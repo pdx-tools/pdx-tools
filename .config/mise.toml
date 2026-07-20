@@ -58,6 +58,7 @@ depends = [
     'build:wasm-bindgen wasm_eu4',
     'build:wasm-bindgen wasm_eu5_map',
     'build:wasm-bindgen wasm_eu5',
+    'build:wasm-bindgen wasm_eu5_diagnostics',
     'build:wasm-bindgen wasm_hoi4',
     'build:wasm-bindgen wasm_imperator',
     'build:wasm-bindgen wasm_pdx_map',

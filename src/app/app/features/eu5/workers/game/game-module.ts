@@ -98,7 +98,15 @@ export const createGame = async (
       timeSync("Create localization bundle", () => wasm_eu5.Eu5WasmLocalizationBundle.open(data)),
     );
 
-  const gamestate = timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
+  const gamestate = await (async () => {
+    try {
+      return timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
+    } catch (originalError) {
+      const { diagnoseEu5Save } = await import("./eu5-diagnostics");
+      await diagnoseEu5Save(saveData, tokens);
+      throw originalError;
+    }
+  })();
   onProgress?.(30); // Parse gamestate
 
   const gameBundleData = await gameDataTask;

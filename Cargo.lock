@@ -4781,6 +4781,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-eu5-diagnostics"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "bumpalo-serde",
+ "eu5save",
+ "pdx-zstd",
+ "schemas",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "wasm-eu5-map"
 version = "0.1.0"
 dependencies = [
