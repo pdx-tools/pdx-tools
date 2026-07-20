@@ -105,12 +105,17 @@ where
         })
         .collect::<Result<_>>()?;
 
-    // Load coat of arms definitions and warm/trace the referenced emblem and
-    // pattern textures now (before the dry_run check) so they are recorded for
-    // bundle tracing even when we skip image processing. EU5 flag assets are
-    // required; `load` fails loudly if they are absent.
-    let flag_renderer = crate::eu5::coat_of_arms::Eu5FlagRenderer::load(fs)?;
-    flag_renderer.trace();
+    // Bundle tracing must visit the coat of arms assets so they are included in
+    // newly created source bundles. Full compiles also need them to generate
+    // the frontend atlases. Minimal compiles only produce versioned game data,
+    // so do not require shared flag assets that older bundles may not contain.
+    let flag_renderer = if options.dry_run || !options.minimal {
+        let renderer = crate::eu5::coat_of_arms::Eu5FlagRenderer::load(fs)?;
+        renderer.trace();
+        Some(renderer)
+    } else {
+        None
+    };
 
     // If we are bundle tracing no need to do expensive image processing or create bundle
     if options.dry_run {
@@ -225,7 +230,13 @@ where
             "EU5 goods icon atlas generated"
         );
 
-        translate_flags(imaging, &version_dir, &flag_renderer)?;
+        translate_flags(
+            imaging,
+            &version_dir,
+            flag_renderer
+                .as_ref()
+                .expect("full EU5 compiles initialize the flag renderer"),
+        )?;
     }
 
     Ok(())
