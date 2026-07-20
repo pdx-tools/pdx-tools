@@ -28,6 +28,7 @@ members = [
   "src/wasm-eu4",
   "src/wasm-eu5-map",
   "src/wasm-eu5",
+  "src/wasm-eu5-diagnostics",
   "src/wasm-hoi4",
   "src/wasm-imperator",
   "src/wasm-pdx-core",

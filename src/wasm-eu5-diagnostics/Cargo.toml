@@ -1,0 +1,23 @@
+[package]
+name = "wasm-eu5-diagnostics"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+default = ["zstd_rust"]
+zstd_c = ["pdx-zstd/zstd_c"]
+zstd_rust = ["pdx-zstd/zstd_rust"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+bumpalo = { workspace = true }
+bumpalo-serde = { workspace = true }
+eu5save = { workspace = true }
+pdx-zstd = { workspace = true, default-features = false }
+schemas = { workspace = true }
+wasm-bindgen = { workspace = true }
