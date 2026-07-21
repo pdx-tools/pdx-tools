@@ -65,6 +65,8 @@ pub struct Eu5Workspace<'bump> {
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
     location_building_levels: OnceLock<LocationIndexedVec<f64>>,
+    color_id_to_location: OnceLock<Vec<Option<LocationIdx>>>,
+    political_surrounded_donors: OnceLock<LocationIndexedVec<Option<LocationIdx>>>,
 
     // Map app state (rendering)
     current_map_mode: MapMode,
@@ -128,6 +130,7 @@ mod insights;
 mod map_render;
 mod overlay;
 mod selection_ops;
+mod terrain_fill;
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Create a new workspace from loaded save data and game data provider
@@ -196,6 +199,8 @@ impl<'bump> Eu5Workspace<'bump> {
             overlord_of,
             location_terrain,
             location_building_levels: OnceLock::new(),
+            color_id_to_location: OnceLock::new(),
+            political_surrounded_donors: OnceLock::new(),
             current_map_mode: MapMode::Political,
             location_arrays,
             gpu_indices,
