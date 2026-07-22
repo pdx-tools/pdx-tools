@@ -1,3 +1,5 @@
+import { ogImageSize } from "./media";
+
 export function seo({
   title,
   description,
@@ -26,8 +28,8 @@ export function seo({
             ? image
             : `${import.meta.env.VITE_EXTERNAL_ADDRESS ?? ""}${image}`,
         },
-        { property: "og:image:width", content: "1200" },
-        { property: "og:image:height", content: "630" },
+        { property: "og:image:width", content: `${ogImageSize.width}` },
+        { property: "og:image:height", content: `${ogImageSize.height}` },
       ]
     : [];
 
