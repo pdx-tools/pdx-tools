@@ -6,13 +6,12 @@ import mapVertex from "./assets/shaders/map.vert?url";
 import mapFragment from "./assets/shaders/map.frag?url";
 import xbrVertex from "./assets/shaders/xbr.vert?url";
 import xbrFragment from "./assets/shaders/xbr.frag?url";
-import provinces1 from "./assets/game/eu4/images/provinces-1.webp?url";
-import provinces2 from "./assets/game/eu4/images/provinces-2.webp?url";
 import terrain1 from "./assets/game/eu4/images/terrain-1.webp?url";
 import terrain2 from "./assets/game/eu4/images/terrain-2.webp?url";
 import stripes from "./assets/game/eu4/images/stripes.webp?url";
-import colorOrderData from "./assets/game/eu4/data/color-order.bin?url";
 import colorIndexData from "./assets/game/eu4/data/color-index.bin?url";
+import provinceLocations1 from "./assets/game/eu4/data/provinces-1.r16.zst?url";
+import provinceLocations2 from "./assets/game/eu4/data/provinces-2.r16.zst?url";
 import colorMap from "./assets/game/eu4/images/colormap.webp?url";
 import seaImage from "./assets/game/eu4/images/sea-image.webp?url";
 import worldNormal from "./assets/game/eu4/images/world_normal.webp?url";
@@ -35,15 +34,16 @@ async function fetchColorData(kind: string) {
 }
 
 const baseImageUrls = {
-  provinces1,
-  provinces2,
   terrain1,
   terrain2,
   stripes,
 };
 
-const provincesUniqueColorUrl = colorOrderData;
-const provincesUniqueIndexUrl = colorIndexData;
+const provinceLocationUrls = {
+  provinceLocations1,
+  provinceLocations2,
+  provinceIdToColorIndex: colorIndexData,
+};
 
 const terrainUrls = {
   colorMap,
@@ -103,7 +103,7 @@ async function main() {
 
   const mapTask = Promise.all([
     worker.init(transfer(offscreen, [offscreen]), shaderUrls),
-    worker.withResources(baseImageUrls, provincesUniqueColorUrl, provincesUniqueIndexUrl),
+    worker.withResources(baseImageUrls, provinceLocationUrls),
     worker.withTerrainImages(terrainUrls, {
       eager: initial.renderTerrain ?? false,
     }),
