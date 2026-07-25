@@ -18,6 +18,7 @@ import {
   DataZoomComponent,
   DatasetComponent,
   GraphicComponent,
+  MarkLineComponent,
   VisualMapComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
@@ -59,6 +60,7 @@ echarts.use([
   GraphicComponent,
   GridComponent,
   LegendComponent,
+  MarkLineComponent,
   TitleComponent,
   VisualMapComponent,
   CanvasRenderer,

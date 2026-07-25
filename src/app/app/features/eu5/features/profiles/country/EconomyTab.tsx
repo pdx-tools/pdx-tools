@@ -4,9 +4,14 @@ import { formatCompact, formatFloat, formatInt } from "@/lib/format";
 import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
+import {
+  chartInk,
+  chartTooltip,
+  getEChartsTheme,
+  seriesColor,
+  seriesFill,
+} from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { StatRail } from "../../../components";
 
@@ -161,7 +166,6 @@ function HistoryChart({
   yLabel: string;
   isYearly?: boolean;
 }) {
-  const isDark = isDarkMode();
   const saveDate = useEu5SaveDate();
 
   const data = useMemo(
@@ -170,8 +174,7 @@ function HistoryChart({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
     const baseMonth = saveDate?.month ?? 1;
 
@@ -213,6 +216,7 @@ function HistoryChart({
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const arr = Array.isArray(params) ? params : [params];
@@ -229,12 +233,12 @@ function HistoryChart({
           data,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: seriesColors.line, width: 2 },
-          areaStyle: { color: isDark ? "rgba(96,165,250,0.12)" : "rgba(37,99,235,0.14)" },
+          lineStyle: { color: seriesColor(0), width: 2 },
+          areaStyle: { color: seriesFill(0) },
         },
       ],
     };
-  }, [data, isDark, isYearly, saveDate, yLabel]);
+  }, [data, isYearly, saveDate, yLabel]);
 
   if (series.length < 2) return null;
 
@@ -249,7 +253,6 @@ function HistoryChart({
 }
 
 function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: number[] }) {
-  const isDark = isDarkMode();
   const saveDate = useEu5SaveDate();
   const n = Math.min(revenue.length, balance.length);
 
@@ -286,11 +289,17 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
   }, [revenue, balance, n, saveDate]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
-      grid: { left: 68, right: 72, top: 16, bottom: 50 },
+      grid: { left: 68, right: 72, top: 16, bottom: 62 },
+      legend: {
+        bottom: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 14,
+        textStyle: { color: tickColor, fontSize: 10 },
+      },
       xAxis: {
         type: "category",
         data: categories,
@@ -336,6 +345,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
         },
       ],
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const arr = Array.isArray(params) ? params : [params];
@@ -351,29 +361,34 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
       },
       series: [
         {
+          name: "Revenue",
           type: "bar",
           data: barData,
           yAxisIndex: 0,
-          itemStyle: { color: seriesColors.line, opacity: 0.7 },
+          itemStyle: { color: seriesColor(0), opacity: 0.7 },
         },
         {
+          name: "Net Margin %",
           type: "line",
           data: lineData,
           yAxisIndex: 1,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: isDark ? "#fb923c" : "#ea580c", width: 2 },
+          // ECharts derives the legend swatch from `color`, not `lineStyle`.
+          color: seriesColor(1),
+          lineStyle: { color: seriesColor(1), width: 2 },
           markLine: {
             silent: true,
             symbol: "none",
+            animation: false,
             data: [{ yAxis: 0 }],
-            lineStyle: { type: "dashed", color: seriesColors.muted, width: 1 },
+            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
             label: { show: false },
           },
         },
       ],
     };
-  }, [categories, barData, lineData, leftMin, leftMax, rightMin, rightMax, isDark]);
+  }, [categories, barData, lineData, leftMin, leftMax, rightMin, rightMax]);
 
   if (n < 2) return null;
 
@@ -388,8 +403,6 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
 }
 
 function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
-  const isDark = isDarkMode();
-
   const eligible = useMemo(() => locations.filter((r) => r.wealth > 0), [locations]);
 
   const scatterData = useMemo(
@@ -403,8 +416,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
   }, [eligible]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     return {
       grid: { left: 70, right: 20, top: 16, bottom: 50 },
       xAxis: {
@@ -430,6 +442,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
         min: 0,
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -453,7 +466,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
             [0, 0],
             [diagonalMax, diagonalMax],
           ],
-          lineStyle: { type: "dashed", color: isDark ? "#475569" : "#94a3b8", width: 1 },
+          lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
           symbol: "none",
           silent: true,
           tooltip: { show: false },
@@ -462,11 +475,11 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
           type: "scatter",
           data: scatterData,
           symbolSize: 6,
-          itemStyle: { color: seriesColors.primary, opacity: 0.8 },
+          itemStyle: { color: seriesColor(0), opacity: 0.8 },
         },
       ],
     };
-  }, [scatterData, diagonalMax, isDark, eligible]);
+  }, [scatterData, diagonalMax, eligible]);
 
   if (eligible.length < 2) return null;
 

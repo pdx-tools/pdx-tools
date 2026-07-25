@@ -30,6 +30,19 @@
   --color-game-info: var(--game-info);
   --color-game-good: var(--game-good);
 
+  /* Chart plate — see DESIGN.md § Charts. Series identity, not chrome. */
+  --color-game-chart-1: var(--game-chart-1);
+  --color-game-chart-2: var(--game-chart-2);
+  --color-game-chart-3: var(--game-chart-3);
+  --color-game-chart-4: var(--game-chart-4);
+  --color-game-chart-5: var(--game-chart-5);
+  --color-game-chart-6: var(--game-chart-6);
+  --color-game-chart-7: var(--game-chart-7);
+
+  --color-game-chart-grid: var(--game-chart-grid);
+  --color-game-chart-axis: var(--game-chart-axis);
+  --color-game-chart-track: var(--game-chart-track);
+
   --font-game-ui: var(--font-game-ui);
   --font-game-num: var(--font-game-num);
 
@@ -71,6 +84,21 @@
   --game-err: var(--color-rose-500);
   --game-info: var(--color-sky-400);
   --game-good: var(--color-emerald-500);
+
+  /* CVD-safe chart slots. Assign in order and do not cycle; brass remains
+     reserved for active/selected chrome. See DESIGN.md § Charts. */
+  --game-chart-1: #1a9f99; /* verdigris  */
+  --game-chart-2: #bb5e1f; /* sanguine   */
+  --game-chart-3: #a17fda; /* smalt      */
+  --game-chart-4: #b76263; /* carmine    */
+  --game-chart-5: #6a8dce; /* indigo     */
+  --game-chart-6: #4c8d57; /* terre verte*/
+  --game-chart-7: #c178a9; /* madder     */
+
+  /* Chart chrome */
+  --game-chart-grid: rgba(255, 255, 255, 0.06);
+  --game-chart-axis: rgba(255, 255, 255, 0.1);
+  --game-chart-track: oklch(22% 0.014 250);
 
   --font-game-ui: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
   --font-game-num: "IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace;

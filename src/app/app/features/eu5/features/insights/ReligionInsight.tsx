@@ -6,8 +6,13 @@ import { Eu5DataTable, SectionTitle } from "../../components";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartInk,
+  chartTooltip,
+  getEChartsTheme,
+  markGap,
+  seriesColor,
+} from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import {
   Eu5InsightEmptyState,
@@ -92,8 +97,6 @@ function stateReligionTooltip(row: FlatStateReligionDatum): string {
 }
 
 function StateReligionChart({ stateReligions }: { stateReligions: StateReligionRow[] }) {
-  const isDark = isDarkMode();
-
   const rows = useMemo<FlatStateReligionDatum[]>(
     () =>
       stateReligions.slice(0, STATE_RELIGION_CAP).map((r) => ({
@@ -120,14 +123,22 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
       dataset: {
         source: flatSource,
         dimensions: ["religion", "stateReligionPopulation", "otherFaithPopulation"],
       },
-      grid: { left: 110, right: 24, top: 10, bottom: 28 },
+      grid: { left: 110, right: 24, top: 10, bottom: 48 },
+      legend: {
+        bottom: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 14,
+        textStyle: { color: tickColor, fontSize: 10 },
+      },
+
       xAxis: {
         type: "value",
         axisLabel: {
@@ -145,6 +156,7 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -161,9 +173,11 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
           type: "bar",
           stack: "population",
           encode: { x: "stateReligionPopulation", y: "religion" },
+          // Religion identity comes from each datum; this series represents its share.
+          color: chartInk.secondary,
           itemStyle: {
             color: (params: { dataIndex: number }) => {
-              return rows[params.dataIndex]?.colorHex ?? "#6366f1";
+              return rows[params.dataIndex]?.colorHex ?? seriesColor(0);
             },
           },
         },
@@ -172,11 +186,11 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
           type: "bar",
           stack: "population",
           encode: { x: "otherFaithPopulation", y: "religion" },
-          itemStyle: { color: isDark ? "#334155" : "#cbd5e1" },
+          itemStyle: { color: chartInk.track, ...markGap },
         },
       ],
     };
-  }, [isDark, rows, flatSource]);
+  }, [rows, flatSource]);
 
   const handleInit = useCallback((chart: echarts.ECharts) => {
     chart.on("click", () => {});

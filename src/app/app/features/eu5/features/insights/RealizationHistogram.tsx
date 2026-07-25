@@ -1,17 +1,19 @@
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
+import {
+  chartInk,
+  chartTooltip,
+  getEChartsTheme,
+  seriesColor,
+} from "@/components/viz/echartsTheme";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 
 const BUCKET_WIDTH = 5;
 const MAX_BUCKET = 100;
 
 export function RealizationHistogram({ countries }: { countries: CountryUnrealizedTaxBase[] }) {
-  const isDark = isDarkMode();
-
   const { buckets, zeroWealthCount } = useMemo(() => {
     const ratios = countries
       .filter((c) => c.totalWealth > 0)
@@ -36,8 +38,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
   }, [countries]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     return {
       grid: { left: 45, right: 20, top: 20, bottom: 45 },
       xAxis: {
@@ -60,6 +61,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
         minInterval: 1,
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -74,18 +76,19 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
         {
           type: "bar",
           data: buckets.map((b) => ({ ...b, value: b.count })),
-          itemStyle: { color: seriesColors.accent },
+          itemStyle: { color: seriesColor(0) },
           markLine: {
             symbol: "none",
             silent: true,
+            animation: false,
             data: [{ xAxis: "95-100%" }],
-            lineStyle: { type: "dashed", color: isDark ? "#e2e8f0" : "#334155", width: 1 },
+            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
             label: { color: tickColor, formatter: "100%" },
           },
         },
       ],
     };
-  }, [buckets, isDark]);
+  }, [buckets]);
 
   return (
     <div>

@@ -12,8 +12,13 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartTooltip,
+  divergingPoles,
+  getEChartsTheme,
+  markGap,
+  seriesColor,
+} from "@/components/viz/echartsTheme";
 import { Eu5Icon } from "../../components/icons/Eu5Icon";
 import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
 import {
@@ -57,8 +62,6 @@ function RgoScopeHeader({ data }: { data?: RgoScopeSummary }) {
 }
 
 function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) {
-  const isDark = isDarkMode();
-
   const scatterData = useMemo(
     () =>
       materials.map((m) => ({
@@ -74,9 +77,8 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor, labelColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
-    const fallbackColor = seriesColors.line;
+    const { axisColor, gridLineColor, tickColor, labelColor } = getEChartsTheme();
+    const fallbackColor = seriesColor(0);
 
     return {
       grid: { left: 60, right: 24, top: 24, bottom: 60 },
@@ -109,6 +111,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -187,14 +190,12 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         },
       ],
     };
-  }, [isDark, scatterData, maxLocCount]);
+  }, [scatterData, maxLocCount]);
 
   return <EChart option={option} style={{ height: "320px", width: "100%" }} />;
 }
 
 function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDelta[] }) {
-  const isDark = isDarkMode();
-
   const data = useMemo(
     () =>
       deltas.map((d) => ({
@@ -208,8 +209,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
       dataset: {
@@ -220,7 +220,15 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
         })),
         dimensions: ["rawMaterialName", "posBar", "negBar"],
       },
-      grid: { left: 100, right: 24, top: 8, bottom: 28 },
+      grid: { left: 100, right: 24, top: 8, bottom: 48 },
+      legend: {
+        bottom: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 14,
+        textStyle: { color: tickColor, fontSize: 10 },
+      },
+
       xAxis: {
         type: "value",
         axisLabel: {
@@ -239,6 +247,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
         axisTick: { show: false },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -263,18 +272,18 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
           type: "bar",
           stack: "delta",
           encode: { x: "posBar", y: "rawMaterialName" },
-          itemStyle: { color: seriesColors.contrast },
+          itemStyle: { color: divergingPoles.cool, ...markGap },
         },
         {
           name: "Under",
           type: "bar",
           stack: "delta",
           encode: { x: "negBar", y: "rawMaterialName" },
-          itemStyle: { color: seriesColors.accent },
+          itemStyle: { color: divergingPoles.warm, ...markGap },
         },
       ],
     };
-  }, [isDark, data]);
+  }, [data]);
 
   const height = data.length * 22 + 52;
   return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;

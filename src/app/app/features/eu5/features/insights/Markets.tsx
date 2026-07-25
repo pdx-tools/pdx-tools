@@ -5,6 +5,16 @@ import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
+import {
+  chartDataZoomSlider,
+  chartInk,
+  chartTooltip,
+  divergingPoles,
+  getEChartsTheme,
+  selectionColor,
+  seriesColor,
+  seriesFill,
+} from "@/components/viz/echartsTheme";
 import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
 import {
   GOODS_CELL_SIZE_32,
@@ -12,8 +22,6 @@ import {
   goodsAtlasUrl32,
   goodsDimensions32,
 } from "../../components/icons/goods";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { MarketProductionLocations } from "./MarketProductionLocations";
@@ -246,7 +254,6 @@ export function GoodsPressureChart({
   metric?: GoodsPressureMetric;
   onMetricChange?: (metric: GoodsPressureMetric) => void;
 }) {
-  const isDark = isDarkMode();
   const [internalMetric, setInternalMetric] = useState<GoodsPressureMetric>("value");
   const metric = controlledMetric ?? internalMetric;
   const setMetric = (m: GoodsPressureMetric) => {
@@ -281,9 +288,29 @@ export function GoodsPressureChart({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     const metricLabel = isValueMetric ? "value" : "units";
+
+    // Label each populated side at zero, where surplus and shortage diverge.
+    const hasSurplus = sorted.some((d) => d.surplusBar < 0);
+    const hasShortage = sorted.some((d) => d.shortageBar > 0);
+
+    const pivotLabel = (text: string, swatch: string, side: "left" | "right") => ({
+      xAxis: 0,
+      lineStyle: { color: axisColor, width: 1, type: "solid" as const },
+      label: {
+        show: true,
+        position: "start" as const,
+        distance: 8,
+        align: side === "left" ? ("right" as const) : ("left" as const),
+        verticalAlign: "bottom" as const,
+        offset: [side === "left" ? -5 : 5, 0] as [number, number],
+        color: tickColor,
+        fontSize: 10,
+        formatter: text,
+        rich: { sw: { backgroundColor: swatch, width: 7, height: 7, borderRadius: 2 } },
+      },
+    });
 
     return {
       dataset: {
@@ -297,16 +324,17 @@ export function GoodsPressureChart({
       grid: {
         left: 100,
         right: 20,
-        top: 10,
-        bottom: 30,
+        top: 30,
+        bottom: 24,
       },
       xAxis: {
         type: "value",
-        name: `Surplus ${metricLabel} ← 0 → Shortage ${metricLabel}`,
-        nameLocation: "middle",
-        nameGap: 24,
-        nameTextStyle: { color: tickColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, fontSize: 10 },
+        axisLabel: {
+          color: tickColor,
+          fontSize: 10,
+          // Surplus is negated only to place it left of zero.
+          formatter: (value: number) => formatInt(Math.abs(value)),
+        },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: {
           lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
@@ -319,6 +347,7 @@ export function GoodsPressureChart({
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -338,32 +367,49 @@ export function GoodsPressureChart({
           type: "bar",
           stack: "balance",
           encode: { x: "surplusBar", y: "goodName" },
+          // ECharts needs a series color to render the mark-line swatch.
+          color: divergingPoles.cool,
           itemStyle: {
             color: (params) => {
               const d = sorted[params.dataIndex];
-              if (d?.good.key === selectedGoodKey) return isDark ? "#67e8f9" : "#0284c7";
-              return seriesColors.accent;
+              if (d?.good.key === selectedGoodKey) return selectionColor;
+              return divergingPoles.cool;
             },
           },
           emphasis: { focus: "series" },
+          markLine: {
+            silent: true,
+            symbol: "none",
+            animation: false,
+            emphasis: { disabled: true },
+            data: [
+              ...(hasSurplus
+                ? [pivotLabel(`{sw|}  ← Surplus ${metricLabel}`, divergingPoles.cool, "left")]
+                : []),
+              ...(hasShortage
+                ? [pivotLabel(`{sw|}  Shortage ${metricLabel} →`, divergingPoles.warm, "right")]
+                : []),
+            ],
+          },
         },
         {
           name: `Shortage ${metricLabel}`,
           type: "bar",
           stack: "balance",
           encode: { x: "shortageBar", y: "goodName" },
+          color: divergingPoles.warm,
           itemStyle: {
             color: (params) => {
               const d = sorted[params.dataIndex];
-              if (d?.good.key === selectedGoodKey) return isDark ? "#fdba74" : "#c2410c";
-              return seriesColors.contrast;
+              if (d?.good.key === selectedGoodKey) return selectionColor;
+              return divergingPoles.warm;
             },
           },
           emphasis: { focus: "series" },
         },
       ],
     };
-  }, [sorted, isDark, isValueMetric, selectedGoodKey]);
+  }, [sorted, isValueMetric, selectedGoodKey]);
 
   if (!hasImbalance) {
     return (
@@ -483,17 +529,17 @@ function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
     nodes.set(name, color ? { name, itemStyle: { color } } : { name });
   };
 
-  addNode(goodNode, "#64748b");
+  addNode(goodNode, chartInk.muted);
 
   for (const entry of positiveEntries(good.suppliedBreakdown)) {
     const node = `${sourcePrefix}${entry.category}`;
-    addNode(node, "#0ea5e9");
+    addNode(node, seriesColor(0));
     links.push({ source: node, target: goodNode, value: entry.amount });
   }
 
   for (const entry of positiveEntries(good.takenBreakdown)) {
     const node = `${sinkPrefix}${entry.category}`;
-    addNode(node, "#22c55e");
+    addNode(node, seriesColor(1));
     links.push({ source: goodNode, target: node, value: entry.amount });
   }
 
@@ -504,19 +550,20 @@ function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
     const unmet = Math.max(0, entry.amount - (takenByCategory.get(entry.category) ?? 0));
     if (unmet <= 0.000001) continue;
     const node = `${sinkPrefix}${entry.category} unmet`;
-    addNode(node, "#f97316");
+    addNode(node, divergingPoles.warm);
     links.push({ source: goodNode, target: node, value: unmet });
   }
 
   const surplus = Math.max(0, good.supply - good.totalTaken);
   if (surplus > 0.000001) {
     const node = `${sinkPrefix}Surplus`;
-    addNode(node, "#38bdf8");
+    addNode(node, divergingPoles.cool);
     links.push({ source: goodNode, target: node, value: surplus });
   }
 
   return {
     tooltip: {
+      ...chartTooltip,
       trigger: "item",
       triggerOn: "mousemove",
       formatter: (params: unknown) => {
@@ -539,9 +586,9 @@ function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
         nodeGap: 10,
         label: {
           formatter: (params: unknown) => formatSankeyLabel((params as { name: string }).name),
-          color: "#e2e8f0",
+          color: chartInk.primary,
           fontSize: 11,
-          backgroundColor: "rgba(15,23,42,0.72)",
+          backgroundColor: chartTooltip.backgroundColor,
           padding: [2, 5],
           borderRadius: 3,
         },
@@ -553,7 +600,6 @@ function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
 }
 
 function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
-  const isDark = isDarkMode();
   const rows = useMemo(() => {
     const demanded = new Map(good.demandedBreakdown.map((entry) => [entry.category, entry.amount]));
     const taken = new Map(good.takenBreakdown.map((entry) => [entry.category, entry.amount]));
@@ -568,8 +614,7 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
   }, [good]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     return {
       dataset: {
         source: rows,
@@ -590,6 +635,7 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -612,17 +658,17 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
           name: "Demanded",
           type: "bar",
           encode: { x: "demanded", y: "category" },
-          itemStyle: { color: seriesColors.contrast, opacity: 0.65 },
+          itemStyle: { color: seriesColor(0), opacity: 0.65 },
         },
         {
           name: "Taken",
           type: "bar",
           encode: { x: "taken", y: "category" },
-          itemStyle: { color: isDark ? "#22c55e" : "#16a34a", opacity: 0.8 },
+          itemStyle: { color: seriesColor(1), opacity: 0.8 },
         },
       ],
     };
-  }, [rows, isDark]);
+  }, [rows]);
 
   if (rows.length === 0) {
     return <EmptyNote>No demand fulfillment breakdown is available for this good.</EmptyNote>;
@@ -654,7 +700,6 @@ function monthOffsetToDate(baseYear: number, baseMonth: number, offset: number):
 }
 
 function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
-  const isDark = isDarkMode();
   const saveDate = useEu5SaveDate();
   const data = useMemo(
     () => good.history.map((price, index) => [index - good.history.length + 1, price]),
@@ -662,8 +707,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
     const baseMonth = saveDate?.month ?? 1;
     const prices = good.history;
@@ -682,9 +726,10 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
     const hasPct = base != null;
     const pctRange = hasPct && pctMin != null && pctMax != null ? pctMax - pctMin : 60;
     const rightGap = hasPct ? 60 : 20;
+    const showZoom = data.length > 40;
 
     return {
-      grid: { left: 60, right: rightGap, top: 20, bottom: 50 },
+      grid: { left: 60, right: rightGap, top: 20, bottom: showZoom ? 68 : 50 },
       xAxis: {
         type: "value",
         name: "Date",
@@ -737,6 +782,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
           : []),
       ],
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const arr = Array.isArray(params) ? params : [params];
@@ -750,19 +796,12 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
           return `<strong>${dateLabel}</strong><br/>Price: ${formatFloat(price, 3)}${pctLine}`;
         },
       },
-      dataZoom:
-        data.length > 40
-          ? [
-              { type: "inside", xAxisIndex: 0 },
-              {
-                type: "slider",
-                xAxisIndex: 0,
-                bottom: 0,
-                height: 18,
-                textStyle: { color: tickColor },
-              },
-            ]
-          : undefined,
+      dataZoom: showZoom
+        ? [
+            { type: "inside", xAxisIndex: 0 },
+            { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 18 },
+          ]
+        : undefined,
       series: [
         {
           type: "line",
@@ -770,22 +809,26 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
           yAxisIndex: 0,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: isDark ? "#facc15" : "#ca8a04", width: 2 },
-          areaStyle: { color: isDark ? "rgba(250,204,21,0.12)" : "rgba(202,138,4,0.16)" },
+          lineStyle: { color: seriesColor(0), width: 2 },
+          areaStyle: { color: seriesFill(0) },
           ...(base != null
             ? {
                 markLine: {
                   silent: true,
                   symbol: "none",
+                  animation: false,
                   data: [{ yAxis: base }],
                   label: {
+                    // Avoid the right-side percentage axis.
+                    position: "insideStartTop" as const,
+                    distance: 2,
                     formatter: `Base: ${formatFloat(base, 2)}`,
-                    color: seriesColors.muted,
+                    color: chartInk.muted,
                     fontSize: 10,
                   },
                   lineStyle: {
                     type: "dashed" as const,
-                    color: seriesColors.muted,
+                    color: chartInk.muted,
                     width: 1,
                   },
                 },
@@ -794,7 +837,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
         },
       ],
     };
-  }, [data, isDark, saveDate, good.defaultMarketPrice, good.history]);
+  }, [data, saveDate, good.defaultMarketPrice, good.history]);
 
   if (data.length < 2) {
     return <EmptyNote>No price history is available for this good.</EmptyNote>;
@@ -820,7 +863,6 @@ export function GoodsPriceVsBaseChart({
   selectedGoodKey?: string;
   onGoodSelect?: (good: ScopedGoodSummary) => void;
 }) {
-  const isDark = isDarkMode();
   const [hoveredGoodKey, setHoveredGoodKey] = useState<string | undefined>(undefined);
 
   const filtered = useMemo(
@@ -833,9 +875,8 @@ export function GoodsPriceVsBaseChart({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
-    const arrowColor = isDark ? "#d97706" : "#b45309";
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
+    const arrowColor = chartInk.muted;
     const topMoverKeys = selectGoodsPriceTrajectoryKeys(filtered);
     const data = filtered.map((g) => {
       const isTopMover = topMoverKeys.has(g.good.key);
@@ -851,7 +892,7 @@ export function GoodsPriceVsBaseChart({
         trajectoryPct: goodsPriceTrajectoryPct(g),
         isTopMover,
         itemStyle: {
-          color: g.good.colorHex || seriesColors.primary,
+          color: g.good.colorHex || seriesColor(0),
           opacity: isTopMover ? 0.85 : 0.35,
         },
       };
@@ -921,8 +962,9 @@ export function GoodsPriceVsBaseChart({
         markLine: {
           silent: true,
           symbol: "none",
+          animation: false,
           data: [{ xAxis: 0 }],
-          lineStyle: { type: "dashed", color: seriesColors.muted, width: 1 },
+          lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
           label: { show: false },
         },
         renderItem: (params, api) => {
@@ -936,8 +978,7 @@ export function GoodsPriceVsBaseChart({
           const x = point[0] - half;
           const y = point[1] - half;
           const isSelected = d.key === selectedGoodKey;
-          const highlightColor =
-            (d.color as string | undefined) || (isDark ? "#67e8f9" : "#0284c7");
+          const highlightColor = (d.color as string | undefined) || selectionColor;
 
           let atlasIndex = goodsAtlasData[d.key as string];
           if (atlasIndex === undefined) atlasIndex = goodsAtlasData["_default"];
@@ -1032,6 +1073,7 @@ export function GoodsPriceVsBaseChart({
         min: 0,
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -1053,7 +1095,7 @@ export function GoodsPriceVsBaseChart({
       },
       series,
     };
-  }, [filtered, isDark, selectedGoodKey, hoveredGoodKey]);
+  }, [filtered, selectedGoodKey, hoveredGoodKey]);
 
   if (filtered.length === 0) {
     return <EmptyNote>No goods with base price data in the selected scope.</EmptyNote>;
@@ -1099,8 +1141,6 @@ function marketTooltip(d: ScopedMarketSummary): string {
 }
 
 function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
-  const isDark = isDarkMode();
-
   const topMarkets = useMemo(
     () =>
       new Set(
@@ -1115,11 +1155,10 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
   const maxTaken = useMemo(() => Math.max(1, ...markets.map((m) => m.totalTaken)), [markets]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 60 },
+      grid: { left: 80, right: 60, top: 20, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Market Value",
@@ -1148,9 +1187,10 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
       },
       dataZoom: [
         { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { type: "slider", xAxisIndex: 0, bottom: 0, height: 20, textStyle: { color: tickColor } },
+        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
       ],
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -1174,7 +1214,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
           itemStyle: {
             color: (params) => {
               const d = markets[params.dataIndex];
-              return d?.market.colorHex ?? seriesColors.primary;
+              return d?.market.colorHex ?? seriesColor(0);
             },
             opacity: 0.75,
           },
@@ -1188,7 +1228,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
                 : "";
             },
             position: "top",
-            color: seriesColors.labelInk,
+            color: chartInk.primary,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,
@@ -1196,7 +1236,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         },
       ],
     };
-  }, [markets, topMarkets, isDark, maxTaken]);
+  }, [markets, topMarkets, maxTaken]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "market",

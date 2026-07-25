@@ -12,8 +12,8 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { buildingOwnershipColors } from "../../gameColors";
+import { chartTooltip, getEChartsTheme, markGap } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
@@ -45,8 +45,6 @@ function BuildingLevelsScopeHeader({ data }: { data?: BuildingLevelsScopeSummary
 }
 
 function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
-  const isDark = isDarkMode();
-
   const rows = useMemo(
     () =>
       types.slice(0, 30).map((t) => ({
@@ -58,7 +56,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
       dataset: {
@@ -92,18 +90,19 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
           type: "bar",
           name: "Domestic",
           stack: "levels",
-          itemStyle: { color: "#4e9e6b" },
+          itemStyle: { color: buildingOwnershipColors.domestic, ...markGap },
           encode: { x: "domestic", y: "name" },
         },
         {
           type: "bar",
           name: "Foreign",
           stack: "levels",
-          itemStyle: { color: "#c0614a" },
+          itemStyle: { color: buildingOwnershipColors.foreign, ...markGap },
           encode: { x: "foreignLevels", y: "name" },
         },
       ],
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const arr = Array.isArray(params) ? params : [params];
@@ -129,7 +128,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
         top: "bottom",
       },
     };
-  }, [isDark, rows]);
+  }, [rows]);
 
   const height = Math.max(120, rows.length * 28 + 40);
   return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
@@ -147,12 +146,17 @@ function ForeignShareCallout({ scope }: { scope: BuildingLevelsScopeSummary }) {
           <span className="font-semibold text-white">{formatLevels(scope.foreignLevels)}</span> /{" "}
           {formatLevels(scope.totalLevels)} levels
         </span>
-        <span className="font-semibold text-[#c0614a]">{formatFloat(pct, 1)}%</span>
+        <span className="font-semibold" style={{ color: buildingOwnershipColors.foreign }}>
+          {formatFloat(pct, 1)}%
+        </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-game-panel-hover">
         <div
-          className="h-full rounded-full bg-[#c0614a]"
-          style={{ width: `${Math.min(pct, 100)}%` }}
+          className="h-full rounded-full"
+          style={{
+            width: `${Math.min(pct, 100)}%`,
+            backgroundColor: buildingOwnershipColors.foreign,
+          }}
         />
       </div>
       {(scope.foreignLocationCount > 0 || scope.foreignOwnerCount > 0) && (
