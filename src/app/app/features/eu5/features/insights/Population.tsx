@@ -14,8 +14,15 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
+import { popRankColors } from "../../gameColors";
+import {
+  chartInk,
+  chartTooltip,
+  divergingPoles,
+  getEChartsTheme,
+  markGap,
+  seriesColor,
+} from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
@@ -33,12 +40,9 @@ import { useEu5SaveDate } from "../../store/eu5Store";
 const COUNTRY_CAP = 24;
 const HISTORY_TOP_COUNT = 10;
 const BACK_LABEL = "Population";
-const RANK_COLORS = {
-  rural: "#b85c5c",
-  town: "#8b949e",
-  city: "#d6a84f",
-  megalopolis: "#2aa6a1",
-};
+// Settlement ranks keep the game's own colours: this is an ordered set, but
+// player recognition outranks the ordinal ramp. See gameColors.ts.
+const RANK_COLORS = popRankColors;
 const RANK_LABELS = ["Rural", "Town", "City", "Megalopolis"] as const;
 
 function formatPercent(value: number, digits = 1) {
@@ -58,7 +62,6 @@ function formatCompact(value: number): string {
 }
 
 function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPopulation[] }) {
-  const isDark = isDarkMode();
   const saveDate = useEu5SaveDate();
 
   const filtered = useMemo(() => {
@@ -81,7 +84,7 @@ function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPo
   }, [countries]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
 
     const series = filtered.map((c) => {
@@ -129,6 +132,7 @@ function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPo
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const arr = Array.isArray(params) ? params : [params];
@@ -146,7 +150,7 @@ function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPo
       },
       series,
     };
-  }, [filtered, isDark, saveDate]);
+  }, [filtered, saveDate]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -310,8 +314,6 @@ function countryTooltip(country: ScopedCountryPopulation): string {
 }
 
 function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulation[] }) {
-  const isDark = isDarkMode();
-
   const rows = useMemo<CountrySpineDatum[]>(
     () =>
       countries.slice(0, COUNTRY_CAP).map((country) => ({
@@ -328,7 +330,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
       dataset: {
@@ -353,6 +355,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -369,32 +372,32 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
           type: "bar",
           stack: "population",
           encode: { x: "rural", y: "name" },
-          itemStyle: { color: RANK_COLORS.rural },
+          itemStyle: { color: RANK_COLORS.rural, ...markGap },
         },
         {
           name: "Town",
           type: "bar",
           stack: "population",
           encode: { x: "town", y: "name" },
-          itemStyle: { color: RANK_COLORS.town },
+          itemStyle: { color: RANK_COLORS.town, ...markGap },
         },
         {
           name: "City",
           type: "bar",
           stack: "population",
           encode: { x: "city", y: "name" },
-          itemStyle: { color: RANK_COLORS.city },
+          itemStyle: { color: RANK_COLORS.city, ...markGap },
         },
         {
           name: "Megalopolis",
           type: "bar",
           stack: "population",
           encode: { x: "megalopolis", y: "name" },
-          itemStyle: { color: RANK_COLORS.megalopolis },
+          itemStyle: { color: RANK_COLORS.megalopolis, ...markGap },
         },
       ],
     };
-  }, [isDark, rows]);
+  }, [rows]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -415,8 +418,6 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 }
 
 export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
-  const isDark = isDarkMode();
-
   const row = useMemo(
     () => ({
       scope: "Scope",
@@ -431,7 +432,7 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
   const total = row.rural + row.town + row.city + row.megalopolis;
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, tickColor } = getEChartsTheme();
 
     return {
       dataset: {
@@ -464,6 +465,7 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
         axisLine: { show: false },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -483,32 +485,32 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
           type: "bar",
           stack: "population",
           encode: { x: "rural", y: "scope" },
-          itemStyle: { color: RANK_COLORS.rural },
+          itemStyle: { color: RANK_COLORS.rural, ...markGap },
         },
         {
           name: "Town",
           type: "bar",
           stack: "population",
           encode: { x: "town", y: "scope" },
-          itemStyle: { color: RANK_COLORS.town },
+          itemStyle: { color: RANK_COLORS.town, ...markGap },
         },
         {
           name: "City",
           type: "bar",
           stack: "population",
           encode: { x: "city", y: "scope" },
-          itemStyle: { color: RANK_COLORS.city },
+          itemStyle: { color: RANK_COLORS.city, ...markGap },
         },
         {
           name: "Megalopolis",
           type: "bar",
           stack: "population",
           encode: { x: "megalopolis", y: "scope" },
-          itemStyle: { color: RANK_COLORS.megalopolis },
+          itemStyle: { color: RANK_COLORS.megalopolis, ...markGap },
         },
       ],
     };
-  }, [isDark, row, total]);
+  }, [row, total]);
 
   return <EChart option={option} style={{ height: "86px", width: "100%" }} />;
 }
@@ -518,11 +520,8 @@ export function PopulationConcentrationCurve({
 }: {
   points: PopulationConcentrationPoint[];
 }) {
-  const isDark = isDarkMode();
-
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
       grid: {
@@ -556,6 +555,7 @@ export function PopulationConcentrationCurve({
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const arr = Array.isArray(params) ? params : [params];
@@ -577,13 +577,13 @@ export function PopulationConcentrationCurve({
           smooth: true,
           showSymbol: false,
           areaStyle: { opacity: 0.16 },
-          lineStyle: { width: 2, color: seriesColors.highlight },
-          itemStyle: { color: seriesColors.highlight },
+          lineStyle: { width: 2, color: seriesColor(0) },
+          itemStyle: { color: seriesColor(0) },
           data: points.map((point) => [point.locationRank, point.populationShare]),
         },
       ],
     };
-  }, [isDark, points]);
+  }, [points]);
 
   return <EChart option={option} style={{ height: "260px", width: "100%" }} />;
 }
@@ -689,8 +689,6 @@ export function PopulationTypeProfile({
   rows: PopulationTypeProfileRow[];
   isEmpty: boolean;
 }) {
-  const isDark = isDarkMode();
-
   const data = useMemo(
     () =>
       rows.map((r) => ({
@@ -703,8 +701,7 @@ export function PopulationTypeProfile({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     if (isEmpty) {
       return {
@@ -731,6 +728,7 @@ export function PopulationTypeProfile({
           axisLine: { lineStyle: { color: axisColor } },
         },
         tooltip: {
+          ...chartTooltip,
           trigger: "axis",
           axisPointer: { type: "shadow" },
           formatter: (params) => {
@@ -753,7 +751,7 @@ export function PopulationTypeProfile({
           {
             type: "bar",
             encode: { x: "share", y: "label" },
-            itemStyle: { color: seriesColors.highlight },
+            itemStyle: { color: seriesColor(0) },
           },
         ],
       };
@@ -761,7 +759,14 @@ export function PopulationTypeProfile({
 
     return {
       dataset: { source: data, dimensions: ["label", "posBar", "negBar"] },
-      grid: { left: 72, right: 16, top: 8, bottom: 28 },
+      grid: { left: 72, right: 16, top: 8, bottom: 48 },
+      legend: {
+        bottom: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 14,
+        textStyle: { color: tickColor, fontSize: 10 },
+      },
       xAxis: {
         type: "value",
         axisLabel: {
@@ -781,6 +786,7 @@ export function PopulationTypeProfile({
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -806,24 +812,24 @@ export function PopulationTypeProfile({
           type: "bar",
           stack: "delta",
           encode: { x: "posBar", y: "label" },
-          itemStyle: { color: seriesColors.contrast },
+          itemStyle: { color: divergingPoles.cool, ...markGap },
         },
         {
           name: "Under",
           type: "bar",
           stack: "delta",
           encode: { x: "negBar", y: "label" },
-          itemStyle: { color: seriesColors.accent },
+          itemStyle: { color: divergingPoles.warm, ...markGap },
         },
       ],
     };
-  }, [isDark, data, isEmpty]);
+  }, [data, isEmpty]);
 
   const height = data.length * 22 + 52;
   return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
 }
 
-const OTHER_COLOR = "#6b7280";
+const OTHER_COLOR = chartInk.muted;
 const NO_CULTURE_LABEL = "No culture";
 
 function getCultureName(row: LocationPopRow) {
@@ -904,6 +910,7 @@ function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
 
   return {
     tooltip: {
+      ...chartTooltip,
       trigger: "item",
       triggerOn: "mousemove",
       formatter: (params: unknown) => {
@@ -926,9 +933,9 @@ function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
         nodeAlign: "left",
         label: {
           formatter: (params: unknown) => (params as { name: string }).name.replace(/^[rc]:/, ""),
-          color: "#e2e8f0",
+          color: chartInk.primary,
           fontSize: 11,
-          backgroundColor: "rgba(15,23,42,0.7)",
+          backgroundColor: chartTooltip.backgroundColor,
           padding: [2, 5],
           borderRadius: 3,
         },

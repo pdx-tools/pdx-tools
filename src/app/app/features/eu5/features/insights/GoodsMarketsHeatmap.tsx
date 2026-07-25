@@ -8,8 +8,12 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartInk,
+  chartTooltip,
+  divergingRamp,
+  getEChartsTheme,
+} from "@/components/viz/echartsTheme";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const MARKETS_COLS = 20;
@@ -21,8 +25,6 @@ interface Props {
 }
 
 export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
-  const isDark = isDarkMode();
-
   const topGoods = useMemo(
     () => [...goods].sort((a, b) => a.good.name.localeCompare(b.good.name)),
     [goods],
@@ -74,8 +76,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, tickColor } = getEChartsTheme();
 
     return {
       grid: { left: 120, right: 40, top: 20, bottom: 100 },
@@ -113,13 +114,10 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
         precision: 0,
         text: ["Surplus", "Shortage"],
         textStyle: { color: tickColor, fontSize: 10 },
-        inRange: {
-          color: isDark
-            ? ["#ef4444", "#f97316", "#1e293b", "#0ea5e9", "#38bdf8"]
-            : ["#dc2626", "#fb923c", "#f1f5f9", "#7dd3fc", "#0ea5e9"],
-        },
+        inRange: { color: [...divergingRamp] },
       },
       tooltip: {
+        ...chartTooltip,
         position: "top",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -143,13 +141,13 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
           type: "heatmap",
           data: seriesData,
           label: { show: false },
-          emphasis: { itemStyle: { borderColor: seriesColors.labelInk, borderWidth: 1 } },
+          emphasis: { itemStyle: { borderColor: chartInk.primary, borderWidth: 1 } },
           progressive: 1000,
           animation: false,
         },
       ],
     };
-  }, [isDark, marketLabels, topGoods, filteredCells, seriesData, maxAbs]);
+  }, [marketLabels, topGoods, filteredCells, seriesData, maxAbs]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "market",

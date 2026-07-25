@@ -10,8 +10,12 @@ import {
 import { useEu5Trigger } from "../useEu5Trigger";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartTooltip,
+  getEChartsTheme,
+  seriesColor,
+  seriesFill,
+} from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, Skeleton } from "../../../components";
 
@@ -47,7 +51,6 @@ function concentrationFromLocations(locations: LocationRow[]): PopulationConcent
 }
 
 function PopulationHistoryChart({ series }: { series: number[] }) {
-  const isDark = isDarkMode();
   const saveDate = useEu5SaveDate();
 
   const data = useMemo(
@@ -56,7 +59,7 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
 
     return {
@@ -89,6 +92,7 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const arr = Array.isArray(params) ? params : [params];
@@ -105,12 +109,12 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           data,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: isDark ? "#4ade80" : "#16a34a", width: 2 },
-          areaStyle: { color: isDark ? "rgba(74,222,128,0.12)" : "rgba(22,163,74,0.14)" },
+          lineStyle: { color: seriesColor(0), width: 2 },
+          areaStyle: { color: seriesFill(0) },
         },
       ],
     };
-  }, [data, isDark, saveDate]);
+  }, [data, saveDate]);
 
   if (series.length < 2) return null;
 

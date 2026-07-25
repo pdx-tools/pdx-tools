@@ -4,8 +4,13 @@ import type { EChartsOption } from "@/components/viz";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartDataZoomSlider,
+  chartInk,
+  chartTooltip,
+  getEChartsTheme,
+  seriesColor,
+} from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { UnrealizedTaxBaseTopLocations } from "./UnrealizedTaxBaseTopLocations";
@@ -63,7 +68,7 @@ export function UnrealizedTaxBaseInsight() {
         <>
           {countries.length >= 1 && (
             <section>
-              <SectionTitle>Tax Base Gap by Country</SectionTitle>
+              <SectionTitle>Tax Base Gap by Country · Realization %</SectionTitle>
               <UnrealizedTaxBaseBarChart countries={countries} />
             </section>
           )}
@@ -119,8 +124,6 @@ function countryTooltip(d: CountryUnrealizedTaxBase): string {
 }
 
 function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealizedTaxBase[] }) {
-  const isDark = isDarkMode();
-
   const sorted = useMemo(
     (): CountryUnrealizedTaxBase[] =>
       [...countries].sort((a, b) => b.unrealizedTaxBase - a.unrealizedTaxBase),
@@ -130,7 +133,7 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
   const hasGap = sorted.some((d) => d.unrealizedTaxBase !== 0);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, gridLineColor, labelColor, tickColor } = getEChartsTheme();
     const showZoom = sorted.length > BAR_CAP;
 
     return {
@@ -138,10 +141,14 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
         left: 60,
         right: 70,
         top: 10,
-        bottom: showZoom ? 30 : 10,
+        bottom: 38,
       },
       xAxis: {
         type: "value",
+        name: "Tax Base Gap",
+        nameLocation: "middle",
+        nameGap: 26,
+        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: { color: tickColor, fontSize: 10 },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: {
@@ -159,19 +166,20 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
         ? {
             dataZoom: [
               {
+                ...chartDataZoomSlider,
                 type: "slider",
                 yAxisIndex: 0,
                 startValue: 0,
                 endValue: BAR_CAP - 1,
                 width: 14,
                 right: 4,
-                textStyle: { color: tickColor },
                 filterMode: "filter",
               },
             ],
           }
         : {}),
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -183,18 +191,8 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
         {
           type: "bar",
           data: sorted.map((d) => ({ ...d, value: d.unrealizedTaxBase })),
-          itemStyle: {
-            color: (params) => {
-              const d = params.data as CountryUnrealizedTaxBase & { value: number };
-              return d.unrealizedTaxBase >= 0
-                ? isDark
-                  ? "#38bdf8"
-                  : "#0ea5e9"
-                : isDark
-                  ? "#fbbf24"
-                  : "#f59e0b";
-            },
-          },
+          // `wealth - tax base` is a non-negative magnitude.
+          color: seriesColor(0),
           label: {
             show: true,
             position: "right",
@@ -204,12 +202,12 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
             },
             fontSize: 10,
             fontWeight: 600,
-            color: tickColor,
+            color: chartInk.primary,
           },
         },
       ],
     };
-  }, [sorted, isDark]);
+  }, [sorted]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -235,7 +233,7 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
     );
   }
 
-  const height = Math.min(sorted.length, BAR_CAP) * 18 + 60;
+  const height = Math.min(sorted.length, BAR_CAP) * 18 + 68;
 
   return (
     <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
@@ -243,8 +241,6 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
 }
 
 function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnrealizedTaxBase[] }) {
-  const isDark = isDarkMode();
-
   const topCountries = useMemo(
     () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
     [countries],
@@ -261,11 +257,10 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
   }, [countries]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 60 },
+      grid: { left: 80, right: 60, top: 20, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Tax Base",
@@ -294,9 +289,10 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
       },
       dataZoom: [
         { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { type: "slider", xAxisIndex: 0, bottom: 0, height: 20, textStyle: { color: tickColor } },
+        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
       ],
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -323,7 +319,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
             [0, 0],
             [diagonalMax, diagonalMax],
           ],
-          lineStyle: { type: "dashed", color: isDark ? "#475569" : "#94a3b8", width: 1 },
+          lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
           symbol: "none",
           silent: true,
           tooltip: { show: false },
@@ -338,7 +334,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
           itemStyle: {
             color: (params) => {
               const d = countries[params.dataIndex];
-              return d?.country.colorHex ?? seriesColors.primary;
+              return d?.country.colorHex ?? seriesColor(0);
             },
             opacity: 0.8,
           },
@@ -351,7 +347,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
                 : "";
             },
             position: "top",
-            color: seriesColors.labelInk,
+            color: chartInk.primary,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,
@@ -359,7 +355,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
         },
       ],
     };
-  }, [scatterData, topCountries, isDark, countries, diagonalMax]);
+  }, [scatterData, topCountries, countries, diagonalMax]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",

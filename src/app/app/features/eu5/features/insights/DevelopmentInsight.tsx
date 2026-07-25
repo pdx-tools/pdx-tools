@@ -4,8 +4,13 @@ import type { EChartsOption } from "@/components/viz";
 import type { CountryDevSummary, DevelopmentScopeSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartDataZoomSlider,
+  chartInk,
+  chartTooltip,
+  getEChartsTheme,
+  seriesColor,
+} from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
@@ -79,8 +84,6 @@ export function DevelopmentInsight() {
 }
 
 function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[] }) {
-  const isDark = isDarkMode();
-
   const topCountries = useMemo(
     () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
     [countries],
@@ -104,11 +107,10 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 60 },
+      grid: { left: 80, right: 60, top: 20, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Total Development",
@@ -136,9 +138,10 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
       },
       dataZoom: [
         { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { type: "slider", xAxisIndex: 0, bottom: 0, height: 20, textStyle: { color: tickColor } },
+        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
       ],
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -159,9 +162,9 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
           symbolSize: 8,
           itemStyle: {
             color: (params) => {
-              if (Array.isArray(params)) return seriesColors.primary;
+              if (Array.isArray(params)) return seriesColor(0);
               const d = params.data as (typeof scatterData)[number];
-              return d.color ?? seriesColors.primary;
+              return d.color ?? seriesColor(0);
             },
             opacity: 0.8,
           },
@@ -173,7 +176,7 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
               return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
             },
             position: "top",
-            color: seriesColors.labelInk,
+            color: chartInk.primary,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,
@@ -181,7 +184,7 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
         },
       ],
     };
-  }, [scatterData, topCountries, isDark, countries.length]);
+  }, [scatterData, topCountries, countries.length]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",

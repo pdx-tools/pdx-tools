@@ -11,8 +11,15 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { isDarkMode } from "@/lib/dark";
-import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartDataZoomSlider,
+  chartInk,
+  chartTooltip,
+  getEChartsTheme,
+  markGap,
+  ordinalRamp,
+  seriesColor,
+} from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
@@ -29,12 +36,13 @@ import { useEu5EntityChartClick } from "./useEntityChartClick";
 const SCATTER_LABEL_CAP = 8;
 const BACK_LABEL = "Control";
 
+// The chart omits the engine's `perfect` band, so use four steps for four bars.
+const BAND_COLORS = ordinalRamp(4);
 const CONTROL_BANDS = [
-  { id: "superficial", label: "<25%", color: "#ef4444" },
-  { id: "functional", label: "25-50%", color: "#f97316" },
-  { id: "effective", label: "50-75%", color: "#f59e0b" },
-  { id: "great", label: "75-90%", color: "#14b8a6" },
-  { id: "perfect", label: "90-100%", color: "#64748b" },
+  { id: "superficial", label: "<25%", color: BAND_COLORS[0]! },
+  { id: "functional", label: "25-50%", color: BAND_COLORS[1]! },
+  { id: "effective", label: "50-75%", color: BAND_COLORS[2]! },
+  { id: "great", label: "75-90%", color: BAND_COLORS[3]! },
 ] as const;
 
 function formatPercent(value: number, digits = 1) {
@@ -128,8 +136,6 @@ function countryBarTooltip(country: BarRow): string {
 }
 
 function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] }) {
-  const isDark = isDarkMode();
-
   const rows = useMemo(
     () =>
       countries.map((c) => {
@@ -157,7 +163,7 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
       dataset: {
@@ -192,6 +198,7 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
+        ...chartTooltip,
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params) => {
@@ -208,32 +215,32 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
           type: "bar",
           stack: "loss",
           encode: { x: "superficial", y: "name" },
-          itemStyle: { color: CONTROL_BANDS[0].color },
+          itemStyle: { color: CONTROL_BANDS[0].color, ...markGap },
         },
         {
           name: "Functional (25-50%)",
           type: "bar",
           stack: "loss",
           encode: { x: "functional", y: "name" },
-          itemStyle: { color: CONTROL_BANDS[1].color },
+          itemStyle: { color: CONTROL_BANDS[1].color, ...markGap },
         },
         {
           name: "Effective (50-75%)",
           type: "bar",
           stack: "loss",
           encode: { x: "effective", y: "name" },
-          itemStyle: { color: CONTROL_BANDS[2].color },
+          itemStyle: { color: CONTROL_BANDS[2].color, ...markGap },
         },
         {
           name: "Great (75-90%)",
           type: "bar",
           stack: "loss",
           encode: { x: "great", y: "name" },
-          itemStyle: { color: CONTROL_BANDS[3].color },
+          itemStyle: { color: CONTROL_BANDS[3].color, ...markGap },
         },
       ],
     };
-  }, [isDark, rows]);
+  }, [rows]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -253,8 +260,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 }
 
 function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }) {
-  const isDark = isDarkMode();
-
   const labelSet = useMemo(() => {
     if (countries.length <= 10) return new Set(countries.map((c) => c.country.tag));
     const sorted = [...countries].sort((a, b) => b.lostDevelopment - a.lostDevelopment);
@@ -284,11 +289,10 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
-    const seriesColors = getEChartsSeriesColors(isDark);
+    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 60 },
+      grid: { left: 80, right: 60, top: 20, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Total Development",
@@ -317,9 +321,10 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
       },
       dataZoom: [
         { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { type: "slider", xAxisIndex: 0, bottom: 0, height: 20, textStyle: { color: tickColor } },
+        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
       ],
       tooltip: {
+        ...chartTooltip,
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
@@ -344,9 +349,9 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
           },
           itemStyle: {
             color: (params) => {
-              if (Array.isArray(params)) return seriesColors.primary;
+              if (Array.isArray(params)) return seriesColor(0);
               const d = params.data as (typeof scatterData)[number];
-              return d.colorHex || seriesColors.primary;
+              return d.colorHex || seriesColor(0);
             },
             opacity: 0.8,
           },
@@ -358,7 +363,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
               return labelSet.has(d.tag) ? d.tag : "";
             },
             position: "top",
-            color: seriesColors.labelInk,
+            color: chartInk.primary,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,
@@ -366,7 +371,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         },
       ],
     };
-  }, [scatterData, labelSet, maxLost, isDark]);
+  }, [scatterData, labelSet, maxLost]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
