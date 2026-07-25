@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable } from "../../components";
+import { Eu5DataTable, SectionTitle } from "../../components";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -17,14 +17,6 @@ import {
 import type * as echarts from "echarts/core";
 
 const STATE_RELIGION_CAP = 30;
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
-}
 
 function formatPercent(value: number, digits = 1) {
   return `${formatFloat(value * 100, digits)}%`;

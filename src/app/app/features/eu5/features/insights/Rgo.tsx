@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
 import type {
   RgoInsightData,
   RgoMaterialProfileDelta,
@@ -14,7 +13,7 @@ import type {
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { Eu5Icon } from "../../components/icons/Eu5Icon";
 import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
 import {
@@ -24,7 +23,6 @@ import {
   goodsDimensions32,
 } from "../../components/icons/goods";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
-import { StatItem } from "../profiles/components/StatItem";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
@@ -37,14 +35,6 @@ import {
 } from "../Eu5InsightState";
 
 const BACK_LABEL = "RGO";
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
-}
 
 function formatLevel(value: number) {
   return formatFloat(value, 1);
@@ -85,7 +75,8 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor, labelColor } = getEChartsTheme(isDark);
-    const fallbackColor = isDark ? "#60a5fa" : "#2563eb";
+    const seriesColors = getEChartsSeriesColors(isDark);
+    const fallbackColor = seriesColors.line;
 
     return {
       grid: { left: 60, right: 24, top: 24, bottom: 60 },
@@ -218,6 +209,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       dataset: {
@@ -271,14 +263,14 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
           type: "bar",
           stack: "delta",
           encode: { x: "posBar", y: "rawMaterialName" },
-          itemStyle: { color: isDark ? "#f97316" : "#ea580c" },
+          itemStyle: { color: seriesColors.contrast },
         },
         {
           name: "Under",
           type: "bar",
           stack: "delta",
           encode: { x: "negBar", y: "rawMaterialName" },
-          itemStyle: { color: isDark ? "#38bdf8" : "#0ea5e9" },
+          itemStyle: { color: seriesColors.accent },
         },
       ],
     };

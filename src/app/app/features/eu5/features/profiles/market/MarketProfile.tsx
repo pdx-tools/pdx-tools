@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { GameTabs } from "../../../components";
+import { GameTabs, Skeleton } from "../../../components";
 import { formatFloat } from "@/lib/format";
 import type { MarketMemberCountry, MarketProfile as MarketProfileData } from "@/wasm/wasm_eu5";
 import { MarketProductionLocations } from "../../insights/MarketProductionLocations";
@@ -66,7 +66,7 @@ export function MarketProfile({ marketId }: { marketId: number }) {
 
 function MarketHeaderStats({ profile }: { profile: MarketProfileData }) {
   return (
-    <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-lg border border-game-line-strong">
+    <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-panel border border-game-line-strong">
       <StatPlate label="Market Value" value={formatFloat(profile.marketValue, 1)} />
       <StatPlate
         label="Owner Country"
@@ -112,7 +112,7 @@ function MarketLocationsTabContent({
       : null;
 
   if (loading && !locations) {
-    return <div className="h-64 animate-pulse rounded bg-game-panel-hover" />;
+    return <Skeleton className="h-64" />;
   }
 
   return (

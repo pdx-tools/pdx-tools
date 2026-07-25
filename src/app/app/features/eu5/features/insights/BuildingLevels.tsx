@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
 import type {
   BuildingLevelsScopeSummary,
   BuildingTypeSummary,
@@ -16,7 +15,6 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
-import { StatItem } from "../profiles/components/StatItem";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
@@ -29,14 +27,6 @@ import {
 } from "../Eu5InsightState";
 
 const BACK_LABEL = "Building Levels";
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
-}
 
 function formatLevels(value: number) {
   return formatInt(value);

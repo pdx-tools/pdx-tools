@@ -8,9 +8,9 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eu5DataTable, Eu5MapDataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
@@ -19,7 +19,6 @@ import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
 import { CountryLink } from "../profiles/EntityLink";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
-import { StatItem } from "../profiles/components/StatItem";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -90,14 +89,6 @@ export function StateEfficacyInsight() {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
-}
-
 function StateEfficacyScatterChart({ countries }: { countries: CountryStateEfficacy[] }) {
   const isDark = isDarkMode();
 
@@ -125,6 +116,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       grid: { left: 80, right: 60, top: 20, bottom: 60 },
@@ -179,9 +171,9 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
           symbolSize: 8,
           itemStyle: {
             color: (params) => {
-              if (Array.isArray(params)) return isDark ? "#93c5fd" : "#3b82f6";
+              if (Array.isArray(params)) return seriesColors.primary;
               const d = params.data as (typeof scatterData)[number];
-              return d.color || (isDark ? "#93c5fd" : "#3b82f6");
+              return d.color || seriesColors.primary;
             },
             opacity: 0.8,
           },
@@ -193,7 +185,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
               return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
             },
             position: "top",
-            color: isDark ? "#e2e8f0" : "#1e293b",
+            color: seriesColors.labelInk,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,

@@ -4,7 +4,7 @@ import type { EChartsOption } from "@/components/viz";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 
 const BUCKET_WIDTH = 5;
 const MAX_BUCKET = 100;
@@ -37,6 +37,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
     return {
       grid: { left: 45, right: 20, top: 20, bottom: 45 },
       xAxis: {
@@ -73,7 +74,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
         {
           type: "bar",
           data: buckets.map((b) => ({ ...b, value: b.count })),
-          itemStyle: { color: isDark ? "#38bdf8" : "#0ea5e9" },
+          itemStyle: { color: seriesColors.accent },
           markLine: {
             symbol: "none",
             silent: true,

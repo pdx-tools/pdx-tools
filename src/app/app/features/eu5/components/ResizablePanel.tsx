@@ -209,7 +209,7 @@ function CloseButton({ className, children }: ButtonProps) {
       type="button"
       onClick={onClose}
       className={cx(
-        "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-control",
         "focus-visible:ring-2 focus-visible:outline-none",
         className,
       )}
@@ -232,7 +232,7 @@ function MaximizeButton({ className, children }: ButtonProps) {
       type="button"
       onClick={toggleMaximize}
       className={cx(
-        "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-control",
         "focus-visible:ring-2 focus-visible:outline-none",
         className,
       )}

@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
 import type {
   LocationPopRow,
   PopulationConcentrationPoint,
@@ -16,9 +15,8 @@ import type {
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
-import { StatItem } from "../profiles/components/StatItem";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
@@ -42,14 +40,6 @@ const RANK_COLORS = {
   megalopolis: "#2aa6a1",
 };
 const RANK_LABELS = ["Rural", "Town", "City", "Megalopolis"] as const;
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
-}
 
 function formatPercent(value: number, digits = 1) {
   return `${formatFloat(value * 100, digits)}%`;
@@ -532,6 +522,7 @@ export function PopulationConcentrationCurve({
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       grid: {
@@ -586,8 +577,8 @@ export function PopulationConcentrationCurve({
           smooth: true,
           showSymbol: false,
           areaStyle: { opacity: 0.16 },
-          lineStyle: { width: 2, color: isDark ? "#f59e0b" : "#d97706" },
-          itemStyle: { color: isDark ? "#f59e0b" : "#d97706" },
+          lineStyle: { width: 2, color: seriesColors.highlight },
+          itemStyle: { color: seriesColors.highlight },
           data: points.map((point) => [point.locationRank, point.populationShare]),
         },
       ],
@@ -713,6 +704,7 @@ export function PopulationTypeProfile({
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     if (isEmpty) {
       return {
@@ -761,7 +753,7 @@ export function PopulationTypeProfile({
           {
             type: "bar",
             encode: { x: "share", y: "label" },
-            itemStyle: { color: isDark ? "#f59e0b" : "#d97706" },
+            itemStyle: { color: seriesColors.highlight },
           },
         ],
       };
@@ -814,14 +806,14 @@ export function PopulationTypeProfile({
           type: "bar",
           stack: "delta",
           encode: { x: "posBar", y: "label" },
-          itemStyle: { color: isDark ? "#f97316" : "#ea580c" },
+          itemStyle: { color: seriesColors.contrast },
         },
         {
           name: "Under",
           type: "bar",
           stack: "delta",
           encode: { x: "negBar", y: "label" },
-          itemStyle: { color: isDark ? "#38bdf8" : "#0ea5e9" },
+          itemStyle: { color: seriesColors.accent },
         },
       ],
     };

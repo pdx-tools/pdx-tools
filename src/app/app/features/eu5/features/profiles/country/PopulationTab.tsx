@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type React from "react";
 import type { LocationRow, PopulationConcentrationPoint } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import {
@@ -14,6 +13,7 @@ import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
 import { getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
+import { SectionTitle, Skeleton } from "../../../components";
 
 function formatCompact(value: number): string {
   if (value >= 1_000_000) {
@@ -25,14 +25,6 @@ function formatCompact(value: number): string {
     return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}K`;
   }
   return formatInt(Math.round(value));
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
 }
 
 function concentrationFromLocations(locations: LocationRow[]): PopulationConcentrationPoint[] {
@@ -146,7 +138,7 @@ export function CountryPopulationTabContent({
   const concentration = useMemo(() => concentrationFromLocations(locations), [locations]);
 
   if (loading && !data) {
-    return <div className="h-64 animate-pulse rounded bg-white/5" />;
+    return <Skeleton className="h-64" />;
   }
 
   const typeProfile = data?.typeProfile ?? [];
