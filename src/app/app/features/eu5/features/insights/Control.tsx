@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import type React from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
 import type {
   ControlScopeSummary,
   ControlTopLocation,
@@ -13,9 +12,8 @@ import type {
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
-import { StatItem } from "../profiles/components/StatItem";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanToEntity } from "../../usePanToEntity";
 import { MapHoverButton } from "../../MapHoverButton";
@@ -38,14 +36,6 @@ const CONTROL_BANDS = [
   { id: "great", label: "75-90%", color: "#14b8a6" },
   { id: "perfect", label: "90-100%", color: "#64748b" },
 ] as const;
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
-}
 
 function formatPercent(value: number, digits = 1) {
   return `${formatFloat(value * 100, digits)}%`;
@@ -295,6 +285,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       grid: { left: 80, right: 60, top: 20, bottom: 60 },
@@ -353,9 +344,9 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
           },
           itemStyle: {
             color: (params) => {
-              if (Array.isArray(params)) return isDark ? "#93c5fd" : "#3b82f6";
+              if (Array.isArray(params)) return seriesColors.primary;
               const d = params.data as (typeof scatterData)[number];
-              return d.colorHex || (isDark ? "#93c5fd" : "#3b82f6");
+              return d.colorHex || seriesColors.primary;
             },
             opacity: 0.8,
           },
@@ -367,7 +358,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
               return labelSet.has(d.tag) ? d.tag : "";
             },
             position: "top",
-            color: isDark ? "#e2e8f0" : "#1e293b",
+            color: seriesColors.labelInk,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,

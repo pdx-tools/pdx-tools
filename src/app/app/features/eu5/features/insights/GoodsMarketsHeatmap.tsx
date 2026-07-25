@@ -9,7 +9,7 @@ import type {
 import { formatFloat } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const MARKETS_COLS = 20;
@@ -75,6 +75,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       grid: { left: 120, right: 40, top: 20, bottom: 100 },
@@ -142,7 +143,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
           type: "heatmap",
           data: seriesData,
           label: { show: false },
-          emphasis: { itemStyle: { borderColor: isDark ? "#e2e8f0" : "#1e293b", borderWidth: 1 } },
+          emphasis: { itemStyle: { borderColor: seriesColors.labelInk, borderWidth: 1 } },
           progressive: 1000,
           animation: false,
         },

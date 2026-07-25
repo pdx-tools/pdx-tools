@@ -13,10 +13,9 @@ import {
   goodsDimensions32,
 } from "../../components/icons/goods";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
-import { StatItem } from "../profiles/components/StatItem";
 import { MarketProductionLocations } from "./MarketProductionLocations";
 import { GoodsMarketsHeatmap } from "./GoodsMarketsHeatmap";
 import {
@@ -26,6 +25,7 @@ import {
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { useEu5SaveDate } from "../../store/eu5Store";
+import { EmptyNote, SectionTitle, StatItem } from "../../components";
 
 const GOODS_BAR_CAP = 20;
 const ARROW_WINDOW_MONTHS = 12;
@@ -210,14 +210,6 @@ export function MarketsInsight() {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
-  );
-}
-
 type GoodBarDatum = ScopedGoodSummary & {
   shortageBar: number;
   surplusBar: number;
@@ -290,6 +282,7 @@ export function GoodsPressureChart({
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
     const metricLabel = isValueMetric ? "value" : "units";
 
     return {
@@ -349,7 +342,7 @@ export function GoodsPressureChart({
             color: (params) => {
               const d = sorted[params.dataIndex];
               if (d?.good.key === selectedGoodKey) return isDark ? "#67e8f9" : "#0284c7";
-              return isDark ? "#38bdf8" : "#0ea5e9";
+              return seriesColors.accent;
             },
           },
           emphasis: { focus: "series" },
@@ -363,7 +356,7 @@ export function GoodsPressureChart({
             color: (params) => {
               const d = sorted[params.dataIndex];
               if (d?.good.key === selectedGoodKey) return isDark ? "#fdba74" : "#c2410c";
-              return isDark ? "#f97316" : "#ea580c";
+              return seriesColors.contrast;
             },
           },
           emphasis: { focus: "series" },
@@ -399,7 +392,7 @@ export function GoodsPressureChart({
             onValueChange={(value) => {
               if (value) setMetric(value as GoodsPressureMetric);
             }}
-            className="inline-flex w-fit rounded-md border border-game-line bg-game-panel-hover p-1"
+            className="inline-flex w-fit rounded-control border border-game-line bg-game-panel-hover p-1"
             aria-label="Goods pressure metric comparison"
           >
             <ToggleGroup.Item value="value">Value</ToggleGroup.Item>
@@ -432,19 +425,20 @@ export function MarketGoodDetail({ good }: { good: ScopedGoodSummary }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <GoodStat label="Price" value={formatFloat(good.weightedPrice, 2)} />
-        <GoodStat label="Supply" value={formatFloat(good.supply, 2)} />
-        <GoodStat label="Demand" value={formatFloat(good.demand, 2)} />
-        <GoodStat label="Taken" value={formatFloat(good.totalTaken, 2)} />
-        <GoodStat label="Stockpile" value={formatFloat(good.stockpile, 0)} />
-        <GoodStat label="Demand Cover" value={`${formatFloat(demandCoverage, 1)} mo`} />
-        <GoodStat
+        <StatItem boxed label="Price" value={formatFloat(good.weightedPrice, 2)} />
+        <StatItem boxed label="Supply" value={formatFloat(good.supply, 2)} />
+        <StatItem boxed label="Demand" value={formatFloat(good.demand, 2)} />
+        <StatItem boxed label="Taken" value={formatFloat(good.totalTaken, 2)} />
+        <StatItem boxed label="Stockpile" value={formatFloat(good.stockpile, 0)} />
+        <StatItem boxed label="Demand Cover" value={`${formatFloat(demandCoverage, 1)} mo`} />
+        <StatItem
+          boxed
           label="Shortfall Cover"
           value={
             shortfallCoverage == null ? "No shortfall" : `${formatFloat(shortfallCoverage, 1)} mo`
           }
         />
-        <GoodStat label="Impact" value={formatFloat(good.impact, 2)} />
+        <StatItem boxed label="Impact" value={formatFloat(good.impact, 2)} />
       </div>
 
       <section>
@@ -465,17 +459,6 @@ export function MarketGoodDetail({ good }: { good: ScopedGoodSummary }) {
   );
 }
 
-function GoodStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 rounded-lg border border-game-line bg-game-panel-hover px-3 py-2">
-      <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
-        {label}
-      </span>
-      <span className="text-sm font-semibold text-game-ink-100">{value}</span>
-    </div>
-  );
-}
-
 function MarketGoodSankey({ good }: { good: ScopedGoodSummary }) {
   const option = useMemo((): EChartsOption => buildMarketGoodSankeyOption(good), [good]);
   const hasFlow =
@@ -484,11 +467,7 @@ function MarketGoodSankey({ good }: { good: ScopedGoodSummary }) {
     good.demandedBreakdown.length > 0;
 
   if (!hasFlow) {
-    return (
-      <p className="rounded-lg border border-game-line bg-game-panel-hover px-3 py-6 text-center text-sm text-game-ink-500">
-        No category breakdown is available for this good.
-      </p>
-    );
+    return <EmptyNote>No category breakdown is available for this good.</EmptyNote>;
   }
 
   return <EChart option={option} style={{ height: "360px", width: "100%" }} />;
@@ -590,6 +569,7 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
     return {
       dataset: {
         source: rows,
@@ -632,7 +612,7 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
           name: "Demanded",
           type: "bar",
           encode: { x: "demanded", y: "category" },
-          itemStyle: { color: isDark ? "#f97316" : "#ea580c", opacity: 0.65 },
+          itemStyle: { color: seriesColors.contrast, opacity: 0.65 },
         },
         {
           name: "Taken",
@@ -645,11 +625,7 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
   }, [rows, isDark]);
 
   if (rows.length === 0) {
-    return (
-      <p className="rounded-lg border border-game-line bg-game-panel-hover px-3 py-6 text-center text-sm text-game-ink-500">
-        No demand fulfillment breakdown is available for this good.
-      </p>
-    );
+    return <EmptyNote>No demand fulfillment breakdown is available for this good.</EmptyNote>;
   }
 
   return <EChart option={option} style={{ height: `${rows.length * 34 + 70}px`, width: "100%" }} />;
@@ -687,6 +663,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
     const baseYear = saveDate?.year ?? 0;
     const baseMonth = saveDate?.month ?? 1;
     const prices = good.history;
@@ -803,12 +780,12 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
                   data: [{ yAxis: base }],
                   label: {
                     formatter: `Base: ${formatFloat(base, 2)}`,
-                    color: isDark ? "#94a3b8" : "#64748b",
+                    color: seriesColors.muted,
                     fontSize: 10,
                   },
                   lineStyle: {
                     type: "dashed" as const,
-                    color: isDark ? "#94a3b8" : "#64748b",
+                    color: seriesColors.muted,
                     width: 1,
                   },
                 },
@@ -820,11 +797,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
   }, [data, isDark, saveDate, good.defaultMarketPrice, good.history]);
 
   if (data.length < 2) {
-    return (
-      <p className="rounded-lg border border-game-line bg-game-panel-hover px-3 py-6 text-center text-sm text-game-ink-500">
-        No price history is available for this good.
-      </p>
-    );
+    return <EmptyNote>No price history is available for this good.</EmptyNote>;
   }
 
   return <EChart option={option} style={{ height: "300px", width: "100%" }} />;
@@ -861,6 +834,7 @@ export function GoodsPriceVsBaseChart({
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
     const arrowColor = isDark ? "#d97706" : "#b45309";
     const topMoverKeys = selectGoodsPriceTrajectoryKeys(filtered);
     const data = filtered.map((g) => {
@@ -877,7 +851,7 @@ export function GoodsPriceVsBaseChart({
         trajectoryPct: goodsPriceTrajectoryPct(g),
         isTopMover,
         itemStyle: {
-          color: g.good.colorHex || (isDark ? "#93c5fd" : "#3b82f6"),
+          color: g.good.colorHex || seriesColors.primary,
           opacity: isTopMover ? 0.85 : 0.35,
         },
       };
@@ -948,7 +922,7 @@ export function GoodsPriceVsBaseChart({
           silent: true,
           symbol: "none",
           data: [{ xAxis: 0 }],
-          lineStyle: { type: "dashed", color: isDark ? "#94a3b8" : "#64748b", width: 1 },
+          lineStyle: { type: "dashed", color: seriesColors.muted, width: 1 },
           label: { show: false },
         },
         renderItem: (params, api) => {
@@ -1082,11 +1056,7 @@ export function GoodsPriceVsBaseChart({
   }, [filtered, isDark, selectedGoodKey, hoveredGoodKey]);
 
   if (filtered.length === 0) {
-    return (
-      <p className="rounded-lg border border-game-line bg-game-panel-hover px-3 py-6 text-center text-sm text-game-ink-500">
-        No goods with base price data in the selected scope.
-      </p>
-    );
+    return <EmptyNote>No goods with base price data in the selected scope.</EmptyNote>;
   }
 
   const handlePriceMouseover = useEffectEvent((params: { dataIndex?: number }) => {
@@ -1146,6 +1116,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       grid: { left: 80, right: 60, top: 20, bottom: 60 },
@@ -1203,7 +1174,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
           itemStyle: {
             color: (params) => {
               const d = markets[params.dataIndex];
-              return d?.market.colorHex ?? (isDark ? "#93c5fd" : "#3b82f6");
+              return d?.market.colorHex ?? seriesColors.primary;
             },
             opacity: 0.75,
           },
@@ -1217,7 +1188,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
                 : "";
             },
             position: "top",
-            color: isDark ? "#e2e8f0" : "#1e293b",
+            color: seriesColors.labelInk,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,

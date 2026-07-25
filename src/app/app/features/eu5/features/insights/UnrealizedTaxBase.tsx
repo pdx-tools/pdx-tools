@@ -5,19 +5,19 @@ import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { UnrealizedTaxBaseTopLocations } from "./UnrealizedTaxBaseTopLocations";
 import { RealizationHistogram } from "./RealizationHistogram";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
-import { StatItem } from "../profiles/components/StatItem";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { SectionTitle, StatItem } from "../../components";
 
 const BAR_CAP = 25;
 
@@ -101,14 +101,6 @@ export function UnrealizedTaxBaseInsight() {
         </>
       )}
     </div>
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
   );
 }
 
@@ -270,6 +262,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       grid: { left: 80, right: 60, top: 20, bottom: 60 },
@@ -345,7 +338,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
           itemStyle: {
             color: (params) => {
               const d = countries[params.dataIndex];
-              return d?.country.colorHex ?? (isDark ? "#93c5fd" : "#3b82f6");
+              return d?.country.colorHex ?? seriesColors.primary;
             },
             opacity: 0.8,
           },
@@ -358,7 +351,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
                 : "";
             },
             position: "top",
-            color: isDark ? "#e2e8f0" : "#1e293b",
+            color: seriesColors.labelInk,
             fontSize: 10,
             fontWeight: 600,
             distance: 4,

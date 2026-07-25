@@ -9,6 +9,7 @@ import { useEu5Trigger } from "../useEu5Trigger";
 import { ToggleGroup } from "@/components/ToggleGroup";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { ScopedGoodSummary } from "@/wasm/wasm_eu5";
+import { Skeleton } from "../../../components";
 
 const TRADE_CATEGORIES = new Set(["Trade", "BurgherTrades"]);
 
@@ -130,7 +131,7 @@ function SummaryTable({
             <span className="w-8 shrink-0 text-right text-xs font-semibold text-game-ink-100">
               {metric === "units" ? formatFloat(primary, 1) : `$${formatInt(primary)}`}
             </span>
-            <span className="text-game-ink-400 w-8 shrink-0 text-right text-xs">
+            <span className="w-8 shrink-0 text-right text-xs text-game-ink-500">
               {metric === "units" ? `$${formatInt(secondary)}` : formatFloat(secondary, 1)}
             </span>
           </div>
@@ -177,24 +178,24 @@ function ImportExportSummary({
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <section className="flex flex-col gap-2 rounded-lg border border-game-line bg-game-panel p-3">
+      <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
         <div>
           <p className="text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Required imports
           </p>
-          <p className="text-game-ink-400 mt-0.5 text-[10px]">
+          <p className="mt-0.5 text-[10px] text-game-ink-500">
             Imports required to meet pop and building needs
           </p>
         </div>
         <SummaryTable rows={importTableRows} metric={metric} />
       </section>
 
-      <section className="flex flex-col gap-2 rounded-lg border border-game-line bg-game-panel p-3">
+      <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
         <div>
           <p className="text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
             Exports shipped out
           </p>
-          <p className="text-game-ink-400 mt-0.5 text-[10px]">
+          <p className="mt-0.5 text-[10px] text-game-ink-500">
             Top exports shipped to other markets
           </p>
         </div>
@@ -231,7 +232,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
   }, [sortedGoods]);
 
   if (loading && !goods) {
-    return <div className="h-64 animate-pulse rounded bg-game-panel-hover" />;
+    return <Skeleton className="h-64" />;
   }
 
   if (!goods || goods.length === 0) {
@@ -250,7 +251,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
           onValueChange={(value) => {
             if (value) setMetric(value as GoodsPressureMetric);
           }}
-          className="inline-flex w-fit rounded-md border border-game-line bg-game-panel-hover p-1"
+          className="inline-flex w-fit rounded-control border border-game-line bg-game-panel-hover p-1"
           aria-label="Metric toggle"
         >
           <ToggleGroup.Item value="units">Units</ToggleGroup.Item>
@@ -281,7 +282,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
             <select
               value={selectedGood.good.key}
               onChange={(event) => setSelectedGoodKey(event.target.value)}
-              className="rounded-md border border-game-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100"
+              className="rounded-control border border-game-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100"
               aria-label="Selected market good"
             >
               {sortedGoods.map((good) => (

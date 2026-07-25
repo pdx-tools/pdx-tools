@@ -5,7 +5,7 @@ import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
-import { getEChartsTheme } from "@/components/viz/echartsTheme";
+import { getEChartsSeriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { StatRail } from "../../../components";
@@ -171,6 +171,7 @@ function HistoryChart({
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
     const baseYear = saveDate?.year ?? 0;
     const baseMonth = saveDate?.month ?? 1;
 
@@ -228,7 +229,7 @@ function HistoryChart({
           data,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: isDark ? "#60a5fa" : "#2563eb", width: 2 },
+          lineStyle: { color: seriesColors.line, width: 2 },
           areaStyle: { color: isDark ? "rgba(96,165,250,0.12)" : "rgba(37,99,235,0.14)" },
         },
       ],
@@ -286,6 +287,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
 
     return {
       grid: { left: 68, right: 72, top: 16, bottom: 50 },
@@ -352,7 +354,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
           type: "bar",
           data: barData,
           yAxisIndex: 0,
-          itemStyle: { color: isDark ? "#60a5fa" : "#2563eb", opacity: 0.7 },
+          itemStyle: { color: seriesColors.line, opacity: 0.7 },
         },
         {
           type: "line",
@@ -365,7 +367,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
             silent: true,
             symbol: "none",
             data: [{ yAxis: 0 }],
-            lineStyle: { type: "dashed", color: isDark ? "#94a3b8" : "#64748b", width: 1 },
+            lineStyle: { type: "dashed", color: seriesColors.muted, width: 1 },
             label: { show: false },
           },
         },
@@ -402,6 +404,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
 
   const option = useMemo((): EChartsOption => {
     const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme(isDark);
+    const seriesColors = getEChartsSeriesColors(isDark);
     return {
       grid: { left: 70, right: 20, top: 16, bottom: 50 },
       xAxis: {
@@ -459,7 +462,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
           type: "scatter",
           data: scatterData,
           symbolSize: 6,
-          itemStyle: { color: isDark ? "#93c5fd" : "#3b82f6", opacity: 0.8 },
+          itemStyle: { color: seriesColors.primary, opacity: 0.8 },
         },
       ],
     };

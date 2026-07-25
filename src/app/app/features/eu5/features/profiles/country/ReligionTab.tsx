@@ -1,10 +1,10 @@
-import type React from "react";
 import { useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { CountryReligionSection, ReligionShare } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
+import { SectionTitle } from "../../../components";
 
 export function ReligionTabContent({ data }: { data: CountryReligionSection }) {
   const { religionBreakdown } = data;
@@ -98,13 +98,5 @@ function ReligionLegend({ breakdown }: { breakdown: ReligionShare[] }) {
         </div>
       ))}
     </div>
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-      {children}
-    </p>
   );
 }
