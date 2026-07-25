@@ -1,0 +1,795 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-25T00:00:00.000Z",
+  "title": "Design System: PDX Tools",
+  "extensions": {
+    "colorMeta": {
+      "brass-300": {
+        "role": "primary",
+        "displayName": "Cartographer's Brass",
+        "canonical": "oklch(72% 0.12 78)",
+        "tonalRamp": [
+          "oklch(20% 0.04 78)",
+          "oklch(31% 0.07 78)",
+          "oklch(41% 0.1 78)",
+          "oklch(52% 0.12 78)",
+          "oklch(58% 0.13 78)",
+          "oklch(72% 0.12 78)",
+          "oklch(86% 0.092 78)",
+          "oklch(95% 0.04 78)"
+        ]
+      },
+      "classic-primary": {
+        "role": "primary",
+        "displayName": "Signal Sky",
+        "canonical": "#0284c7",
+        "tonalRamp": [
+          "#082f49",
+          "#0c4a6e",
+          "#075985",
+          "#0369a1",
+          "#0284c7",
+          "#0ea5e9",
+          "#7dd3fc",
+          "#e0f2fe"
+        ]
+      },
+      "eu5-panel": {
+        "role": "neutral",
+        "displayName": "Cold Slate",
+        "canonical": "oklch(18% 0.012 250)",
+        "tonalRamp": [
+          "oklch(15% 0.012 250)",
+          "oklch(18% 0.012 250)",
+          "oklch(22% 0.014 250)",
+          "oklch(26% 0.018 250)",
+          "oklch(31% 0.02 250)",
+          "oklch(45% 0.02 250)",
+          "oklch(65% 0.015 250)",
+          "oklch(88% 0.008 250)"
+        ]
+      },
+      "eu5-ink-100": {
+        "role": "neutral",
+        "displayName": "Warm Ink",
+        "canonical": "oklch(94% 0.018 80)",
+        "tonalRamp": [
+          "oklch(28% 0.008 80)",
+          "oklch(40% 0.01 80)",
+          "oklch(58% 0.01 80)",
+          "oklch(70% 0.011 80)",
+          "oklch(81% 0.012 80)",
+          "oklch(88% 0.015 80)",
+          "oklch(94% 0.018 80)",
+          "oklch(98% 0.012 80)"
+        ]
+      },
+      "shell-slate": {
+        "role": "neutral",
+        "displayName": "Shell Slate",
+        "canonical": "#0f172a",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "marketing-teal": {
+        "role": "secondary",
+        "displayName": "Marketing Teal",
+        "canonical": "#134e4a",
+        "tonalRamp": [
+          "#042f2e",
+          "#134e4a",
+          "#115e59",
+          "#0f766e",
+          "#0d9488",
+          "#2dd4bf",
+          "#99f6e4",
+          "#f0fdfa"
+        ]
+      },
+      "status-good": {
+        "role": "tertiary",
+        "displayName": "State Green",
+        "canonical": "#10b981",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "status-warn": {
+        "role": "tertiary",
+        "displayName": "State Amber",
+        "canonical": "#f59e0b",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#f59e0b",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "status-err": {
+        "role": "tertiary",
+        "displayName": "State Rose",
+        "canonical": "#f43f5e",
+        "tonalRamp": [
+          "#4c0519",
+          "#881337",
+          "#9f1239",
+          "#be123c",
+          "#f43f5e",
+          "#fb7185",
+          "#fecdd3",
+          "#fff1f2"
+        ]
+      },
+      "chart-1-verdigris": {
+        "role": "tertiary",
+        "displayName": "Verdigris",
+        "purpose": "Plate slot 1. The default first series, and the single hue behind both the sequential and ordinal ramps.",
+        "canonical": "oklch(63.6% 0.105 189.9)",
+        "tonalRamp": [
+          "oklch(15% 0.045 189.9)",
+          "oklch(25% 0.057 189.9)",
+          "oklch(35% 0.070 189.9)",
+          "oklch(45% 0.082 189.9)",
+          "oklch(58% 0.098 189.9)",
+          "oklch(70% 0.097 189.9)",
+          "oklch(82% 0.082 189.9)",
+          "oklch(95% 0.066 189.9)"
+        ]
+      },
+      "chart-2-sanguine": {
+        "role": "tertiary",
+        "displayName": "Sanguine",
+        "purpose": "Plate slot 2, and the warm pole of the diverging ramp — used unchanged in both roles.",
+        "canonical": "oklch(58.4% 0.140 49.9)",
+        "tonalRamp": [
+          "oklch(15% 0.068 49.9)",
+          "oklch(25% 0.085 49.9)",
+          "oklch(35% 0.101 49.9)",
+          "oklch(45% 0.118 49.9)",
+          "oklch(58% 0.139 49.9)",
+          "oklch(70% 0.121 49.9)",
+          "oklch(82% 0.101 49.9)",
+          "oklch(95% 0.079 49.9)"
+        ]
+      },
+      "chart-3-smalt": {
+        "role": "tertiary",
+        "displayName": "Smalt",
+        "purpose": "Plate slot 3. Last of the three slots validated all-pairs, so it closes the set available to scatter, heatmap, and small multiples.",
+        "canonical": "oklch(66.6% 0.135 300.0)",
+        "tonalRamp": [
+          "oklch(15% 0.053 300.0)",
+          "oklch(25% 0.069 300.0)",
+          "oklch(35% 0.085 300.0)",
+          "oklch(45% 0.101 300.0)",
+          "oklch(58% 0.122 300.0)",
+          "oklch(70% 0.130 300.0)",
+          "oklch(82% 0.111 300.0)",
+          "oklch(95% 0.090 300.0)"
+        ]
+      },
+      "chart-4-carmine": {
+        "role": "tertiary",
+        "displayName": "Carmine",
+        "purpose": "Plate slot 4.",
+        "canonical": "oklch(59.5% 0.110 20.2)",
+        "tonalRamp": [
+          "oklch(15% 0.052 20.2)",
+          "oklch(25% 0.065 20.2)",
+          "oklch(35% 0.078 20.2)",
+          "oklch(45% 0.091 20.2)",
+          "oklch(58% 0.108 20.2)",
+          "oklch(70% 0.096 20.2)",
+          "oklch(82% 0.081 20.2)",
+          "oklch(95% 0.064 20.2)"
+        ]
+      },
+      "chart-5-indigo": {
+        "role": "tertiary",
+        "displayName": "Indigo",
+        "purpose": "Plate slot 5, and the cool pole of the diverging ramp — used unchanged in both roles.",
+        "canonical": "oklch(64.5% 0.106 262.2)",
+        "tonalRamp": [
+          "oklch(15% 0.044 262.2)",
+          "oklch(25% 0.056 262.2)",
+          "oklch(35% 0.069 262.2)",
+          "oklch(45% 0.081 262.2)",
+          "oklch(58% 0.098 262.2)",
+          "oklch(70% 0.099 262.2)",
+          "oklch(82% 0.084 262.2)",
+          "oklch(95% 0.068 262.2)"
+        ]
+      },
+      "chart-6-terre-verte": {
+        "role": "tertiary",
+        "displayName": "Terre Verte",
+        "purpose": "Plate slot 6.",
+        "canonical": "oklch(58.6% 0.106 148.0)",
+        "tonalRamp": [
+          "oklch(15% 0.051 148.0)",
+          "oklch(25% 0.064 148.0)",
+          "oklch(35% 0.076 148.0)",
+          "oklch(45% 0.089 148.0)",
+          "oklch(58% 0.105 148.0)",
+          "oklch(70% 0.092 148.0)",
+          "oklch(82% 0.077 148.0)",
+          "oklch(95% 0.060 148.0)"
+        ]
+      },
+      "chart-7-madder": {
+        "role": "tertiary",
+        "displayName": "Madder",
+        "purpose": "Plate slot 7. The last slot; past this, fold the tail into \"Other\" or facet.",
+        "canonical": "oklch(66.5% 0.111 340.1)",
+        "tonalRamp": [
+          "oklch(15% 0.043 340.1)",
+          "oklch(25% 0.056 340.1)",
+          "oklch(35% 0.069 340.1)",
+          "oklch(45% 0.082 340.1)",
+          "oklch(58% 0.099 340.1)",
+          "oklch(70% 0.106 340.1)",
+          "oklch(82% 0.090 340.1)",
+          "oklch(95% 0.073 340.1)"
+        ]
+      },
+      "chart-selection": {
+        "role": "primary",
+        "displayName": "Brass in Plot",
+        "purpose": "Brass read as hex for the chart layer. The one sanctioned entry of the accent into a plot area, and only ever to mark selection.",
+        "canonical": "oklch(71.9% 0.120 77.5)",
+        "tonalRamp": [
+          "oklch(15% 0.042 77.5)",
+          "oklch(25% 0.054 77.5)",
+          "oklch(35% 0.068 77.5)",
+          "oklch(45% 0.082 77.5)",
+          "oklch(58% 0.100 77.5)",
+          "oklch(70% 0.117 77.5)",
+          "oklch(82% 0.106 77.5)",
+          "oklch(95% 0.087 77.5)"
+        ]
+      },
+      "chart-ink": {
+        "role": "neutral",
+        "displayName": "Plate Ink",
+        "purpose": "Chart values and axis names — the answer. Axis ticks step down to chart-ink-tick (#c5c0b8), because ink-500 measures 4.39:1 here, under the 4.5:1 floor for type this small.",
+        "canonical": "oklch(94.0% 0.018 78.2)",
+        "tonalRamp": [
+          "oklch(15% 0.006 78.2)",
+          "oklch(25% 0.006 78.2)",
+          "oklch(35% 0.006 78.2)",
+          "oklch(45% 0.008 78.2)",
+          "oklch(58% 0.010 78.2)",
+          "oklch(70% 0.013 78.2)",
+          "oklch(82% 0.016 78.2)",
+          "oklch(95% 0.018 78.2)"
+        ]
+      },
+      "chart-surface": {
+        "role": "neutral",
+        "displayName": "Plate Surface",
+        "purpose": "The panel charts render on. Every CVD and contrast gate in the Plate was measured against this value.",
+        "canonical": "oklch(18.0% 0.012 254.1)",
+        "tonalRamp": [
+          "oklch(15% 0.012 254.1)",
+          "oklch(25% 0.011 254.1)",
+          "oklch(35% 0.010 254.1)",
+          "oklch(45% 0.008 254.1)",
+          "oklch(58% 0.006 254.1)",
+          "oklch(70% 0.005 254.1)",
+          "oklch(82% 0.004 254.1)",
+          "oklch(95% 0.004 254.1)"
+        ]
+      },
+      "game-pop-rural": {
+        "role": "tertiary",
+        "displayName": "Rural (game colour)",
+        "purpose": "EU5's own settlement-rank colour. Domain truth, exempt from the Plate.",
+        "canonical": "oklch(58.5% 0.119 21.4)",
+        "tonalRamp": [
+          "oklch(15% 0.058 21.4)",
+          "oklch(25% 0.072 21.4)",
+          "oklch(35% 0.086 21.4)",
+          "oklch(45% 0.100 21.4)",
+          "oklch(58% 0.119 21.4)",
+          "oklch(70% 0.103 21.4)",
+          "oklch(82% 0.086 21.4)",
+          "oklch(95% 0.068 21.4)"
+        ]
+      },
+      "game-pop-town": {
+        "role": "tertiary",
+        "displayName": "Town (game colour)",
+        "purpose": "EU5's own settlement-rank colour. Domain truth, exempt from the Plate.",
+        "canonical": "oklch(66.2% 0.018 250.9)",
+        "tonalRamp": [
+          "oklch(15% 0.007 250.9)",
+          "oklch(25% 0.009 250.9)",
+          "oklch(35% 0.011 250.9)",
+          "oklch(45% 0.014 250.9)",
+          "oklch(58% 0.016 250.9)",
+          "oklch(70% 0.017 250.9)",
+          "oklch(82% 0.015 250.9)",
+          "oklch(95% 0.012 250.9)"
+        ]
+      },
+      "game-pop-city": {
+        "role": "tertiary",
+        "displayName": "City (game colour)",
+        "purpose": "EU5's own settlement-rank colour. Domain truth, exempt from the Plate.",
+        "canonical": "oklch(75.7% 0.119 81.7)",
+        "tonalRamp": [
+          "oklch(15% 0.042 81.7)",
+          "oklch(25% 0.048 81.7)",
+          "oklch(35% 0.062 81.7)",
+          "oklch(45% 0.076 81.7)",
+          "oklch(58% 0.094 81.7)",
+          "oklch(70% 0.111 81.7)",
+          "oklch(82% 0.110 81.7)",
+          "oklch(95% 0.092 81.7)"
+        ]
+      },
+      "game-pop-megalopolis": {
+        "role": "tertiary",
+        "displayName": "Megalopolis (game colour)",
+        "purpose": "EU5's own settlement-rank colour. Domain truth, exempt from the Plate — and an ordered set that stays game-coloured rather than becoming an ordinal ramp.",
+        "canonical": "oklch(65.9% 0.104 190.8)",
+        "tonalRamp": [
+          "oklch(15% 0.041 190.8)",
+          "oklch(25% 0.054 190.8)",
+          "oklch(35% 0.066 190.8)",
+          "oklch(45% 0.078 190.8)",
+          "oklch(58% 0.094 190.8)",
+          "oklch(70% 0.099 190.8)",
+          "oklch(82% 0.084 190.8)",
+          "oklch(95% 0.068 190.8)"
+        ]
+      },
+      "game-building-domestic": {
+        "role": "tertiary",
+        "displayName": "Domestic Ownership (game colour)",
+        "purpose": "EU5's own building-ownership colour. Domain truth, exempt from the Plate.",
+        "canonical": "oklch(63.5% 0.111 153.8)",
+        "tonalRamp": [
+          "oklch(15% 0.047 153.8)",
+          "oklch(25% 0.060 153.8)",
+          "oklch(35% 0.073 153.8)",
+          "oklch(45% 0.087 153.8)",
+          "oklch(58% 0.104 153.8)",
+          "oklch(70% 0.102 153.8)",
+          "oklch(82% 0.086 153.8)",
+          "oklch(95% 0.069 153.8)"
+        ]
+      },
+      "game-building-foreign": {
+        "role": "tertiary",
+        "displayName": "Foreign Ownership (game colour)",
+        "purpose": "EU5's own building-ownership colour. Domain truth, exempt from the Plate.",
+        "canonical": "oklch(60.1% 0.127 34.7)",
+        "tonalRamp": [
+          "oklch(15% 0.059 34.7)",
+          "oklch(25% 0.075 34.7)",
+          "oklch(35% 0.090 34.7)",
+          "oklch(45% 0.105 34.7)",
+          "oklch(58% 0.124 34.7)",
+          "oklch(70% 0.112 34.7)",
+          "oklch(82% 0.094 34.7)",
+          "oklch(95% 0.075 34.7)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing hero only. Extrabold, text-balance, second line set italic — the single expressive typographic gesture in the system."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Landing section headers on the Classic world's alternating bands."
+      },
+      "title": {
+        "displayName": "Panel Title",
+        "purpose": "The playthrough name in the Game world control panel header. The largest type the Game world ever uses."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Landing and docs prose, capped at max-w-prose."
+      },
+      "ui": {
+        "displayName": "Control UI",
+        "purpose": "Every Game world control, tab, nav item, and button. Public Sans at 12.5px, leading-none."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "All values, counts, ranks, dates, and shortcuts. IBM Plex Mono with tabular-nums so columns read as columns."
+      },
+      "label": {
+        "displayName": "Micro-label",
+        "purpose": "Uppercase mono section headers. Always ink-500; tracking widens as size shrinks (0.28em at 9.5px, 0.14em at 10-11px)."
+      },
+      "label-lg": {
+        "displayName": "Panel Label",
+        "purpose": "Uppercase mono label heading a whole panel or rail (11px/0.14em). The 10px Label step divides sections inside one."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "The sans counterpart to Label at 11px — descriptive text under a control, chip labels, roadmap copy. The one place 11px is set in UI sans rather than mono."
+      }
+    },
+    "ramps": [
+      {
+        "name": "sequential",
+        "encoding": "magnitude",
+        "purpose": "One hue (slot-1 verdigris). The dark ground inverts the anchor: near-zero recedes toward the panel, magnitude climbs toward light.",
+        "steps": [
+          "#002b29",
+          "#054340",
+          "#0f5d59",
+          "#1b7873",
+          "#26948f",
+          "#32b1ab",
+          "#3ed0c8"
+        ]
+      },
+      {
+        "name": "ordinal",
+        "encoding": "ordered tiers and buckets",
+        "purpose": "Same hue, monotone lightness, so the reader sees the order in the colour itself. Capped at five steps — that is what was validated; sampling fewer only widens the gaps. Gates: monotone L, adjacent ΔL ≥ 0.06, dark end 2.32:1 on surface.",
+        "steps": [
+          "#005a56",
+          "#047470",
+          "#178f8a",
+          "#26aca6",
+          "#35c9c2"
+        ]
+      },
+      {
+        "name": "diverging",
+        "encoding": "polarity around a baseline",
+        "purpose": "The poles are Plate slots 2 and 5 used unchanged — that is what stops a polarity chart from looking like it belongs to a different palette than the categorical charts beside it. The interior steps only walk each pole down to a midpoint sitting just above the panel, so \"no difference\" reads as nothing rather than as a value.",
+        "steps": [
+          "#bb5e1f",
+          "#894d28",
+          "#5b3b29",
+          "#25292e",
+          "#3d4961",
+          "#536a94",
+          "#6a8dce"
+        ]
+      }
+    ],
+    "shadows": [
+      {
+        "name": "none-game-resting",
+        "value": "none",
+        "purpose": "Game world surfaces that sit in the layout carry no shadow. Depth is the five-step panel lightness ladder plus hairline borders."
+      },
+      {
+        "name": "float-transient",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Game world small transients floating over the map — cursor tooltip, selection pill, select menu. Always paired with a translucent ground and backdrop-blur."
+      },
+      {
+        "name": "float-docked",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "purpose": "Game world docked panels floating over the map — toolbar, insight panel, control panel. Always paired with a translucent ground and backdrop-blur."
+      },
+      {
+        "name": "float-menu",
+        "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        "purpose": "Game world menus and modal surfaces — shortcut panel, toolbar dropdowns. Always paired with a translucent ground and backdrop-blur."
+      },
+      {
+        "name": "resting",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Classic world cards and panels at rest."
+      },
+      {
+        "name": "floating",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Classic world dropdowns, popovers, and tooltips."
+      },
+      {
+        "name": "lifted",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "purpose": "Classic world dialogs and sheets over a dimmed page."
+      },
+      {
+        "name": "map-scrim",
+        "value": "rgba(8, 11, 16, 0.72)",
+        "purpose": "Not a shadow — the translucent ground shared by every floating Game world surface, and the scrim that darkens the map behind a modal panel."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "transition-colors 100ms",
+        "purpose": "Game world hover and active transitions. Fast enough that a dense rail does not feel laggy under a moving cursor."
+      },
+      {
+        "name": "state-standard",
+        "value": "transition-colors 200ms",
+        "purpose": "Classic world buttons, links, and opacity shifts."
+      },
+      {
+        "name": "overlay-enter",
+        "value": "fade-in-0 zoom-in-95 + 2px directional slide from trigger side",
+        "purpose": "Tooltips, popovers, and dropdowns entering. Exit reverses with fade-out-0 zoom-out-95."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
+      },
+      {
+        "name": "rail-2col",
+        "value": "720px (container query)"
+      },
+      {
+        "name": "rail-3col",
+        "value": "1040px (container query)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Game Button — Commit",
+      "kind": "button",
+      "refersTo": "game-button-commit",
+      "description": "The Game world's state-changing action. The only inverted control in the system: dark text on brass.",
+      "html": "<button class=\"ds-game-btn-commit\">Commit</button>",
+      "css": ".ds-game-btn-commit { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 12px; border: 1px solid oklch(58% 0.13 78); border-radius: 3px; background: oklch(72% 0.12 78); color: oklch(18% 0.012 250); font-family: 'Public Sans', -apple-system, system-ui, sans-serif; font-size: 12.5px; font-weight: 500; line-height: 1; cursor: pointer; transition: background-color 100ms; } .ds-game-btn-commit:hover { background: oklch(58% 0.13 78); } .ds-game-btn-commit:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(212, 160, 90, 0.55); } .ds-game-btn-commit:disabled { opacity: 0.4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Game Button — Default",
+      "kind": "button",
+      "refersTo": "game-button-default",
+      "description": "The Game world workhorse. Hover moves ground and border together, one step up the panel ladder.",
+      "html": "<button class=\"ds-game-btn\">Map modes</button>",
+      "css": ".ds-game-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 12px; border: 1px solid rgba(255,255,255,0.06); border-radius: 3px; background: oklch(18% 0.012 250); color: oklch(94% 0.018 80); font-family: 'Public Sans', -apple-system, system-ui, sans-serif; font-size: 12.5px; line-height: 1; cursor: pointer; transition: background-color 100ms, border-color 100ms; } .ds-game-btn:hover { background: oklch(26% 0.018 250); border-color: rgba(255,255,255,0.1); } .ds-game-btn:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(212, 160, 90, 0.55); } .ds-game-btn:disabled { opacity: 0.4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Game Search Input",
+      "kind": "input",
+      "refersTo": "game-input",
+      "description": "Recessed to page color — inputs sit below their panel, never on it. Focus ring applies to the wrapper so glyph and shortcut chip live inside the focused field.",
+      "html": "<div class=\"ds-search\"><span class=\"ds-search-glyph\" aria-hidden=\"true\">⌕</span><input class=\"ds-search-input\" placeholder=\"Find a country\" /><span class=\"ds-search-kbd\">⌘K</span></div>",
+      "css": ".ds-search { position: relative; display: flex; align-items: center; height: 28px; border: 1px solid rgba(255,255,255,0.06); border-radius: 3px; background: oklch(15% 0.012 250); } .ds-search:focus-within { box-shadow: 0 0 0 1px rgba(212, 160, 90, 0.55); } .ds-search-glyph { position: absolute; left: 8px; font-family: 'Public Sans', system-ui, sans-serif; font-size: 13px; color: oklch(58% 0.01 80); pointer-events: none; user-select: none; } .ds-search-input { height: 100%; width: 100%; padding: 0 8px 0 28px; border: 0; background: transparent; color: oklch(94% 0.018 80); font-family: 'Public Sans', -apple-system, system-ui, sans-serif; font-size: 12.5px; } .ds-search-input:focus { outline: none; } .ds-search-input::placeholder { color: oklch(58% 0.01 80); } .ds-search-kbd { margin-right: 6px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.06); border-radius: 2px; background: oklch(22% 0.014 250); padding: 2px 8px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; line-height: 1; color: oklch(58% 0.01 80); }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip-default",
+      "description": "2px plate. The committed variant is the only one that takes a brass ground; status variants recolor text and dot only.",
+      "html": "<span class=\"ds-chip\"><span class=\"ds-chip-dot\" aria-hidden=\"true\"></span>Coastal</span> <span class=\"ds-chip ds-chip-committed\"><span class=\"ds-chip-dot\" aria-hidden=\"true\"></span>Committed</span> <span class=\"ds-chip ds-chip-warn\"><span class=\"ds-chip-dot\" aria-hidden=\"true\"></span>Unrest</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.06); border-radius: 2px; background: oklch(22% 0.014 250); padding: 2px 8px; font-family: 'Public Sans', -apple-system, system-ui, sans-serif; font-size: 11px; line-height: 1; color: oklch(81% 0.012 80); } .ds-chip-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; flex-shrink: 0; } .ds-chip-committed { background: rgba(212, 160, 90, 0.14); border-color: rgba(212, 160, 90, 0.55); color: oklch(86% 0.092 78); } .ds-chip-committed .ds-chip-dot { background: oklch(72% 0.12 78); } .ds-chip-warn { color: #f59e0b; }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "sidebar-item-active",
+      "description": "Active state carries three simultaneous signals: a 2px brass bar, a gradient wash, and brass medium-weight text.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-section\"><h3 class=\"ds-nav-section-label\">Insights</h3></div><button class=\"ds-nav-item ds-nav-item-active\"><span class=\"ds-nav-bar\" aria-hidden=\"true\"></span><span class=\"ds-nav-text\">Development</span><span class=\"ds-nav-meta\">42</span></button><button class=\"ds-nav-item\"><span class=\"ds-nav-bar\" aria-hidden=\"true\"></span><span class=\"ds-nav-text\">Religion</span><span class=\"ds-nav-meta\">17</span></button></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; background: oklch(18% 0.012 250); } .ds-nav-section { display: flex; align-items: center; height: 36px; padding: 0 14px; } .ds-nav-section-label { margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; font-weight: 500; letter-spacing: 0.28em; text-transform: uppercase; color: oklch(58% 0.01 80); } .ds-nav-item { position: relative; display: flex; align-items: center; width: 100%; height: 28px; padding: 0 14px; border: 0; background: transparent; text-align: left; font-family: 'Public Sans', -apple-system, system-ui, sans-serif; font-size: 12.5px; color: oklch(81% 0.012 80); cursor: pointer; transition: background-color 100ms, color 100ms; } .ds-nav-item:hover { background: oklch(26% 0.018 250); color: oklch(94% 0.018 80); } .ds-nav-bar { position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; border-radius: 9999px; background: transparent; } .ds-nav-item-active { background: linear-gradient(to right, rgba(212,160,90,0.15), transparent); color: oklch(86% 0.092 78); } .ds-nav-item-active .ds-nav-bar { background: oklch(58% 0.13 78); } .ds-nav-item-active .ds-nav-text { font-weight: 500; } .ds-nav-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-nav-meta { margin-left: 8px; flex-shrink: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; color: oklch(58% 0.01 80); }"
+    },
+    {
+      "name": "Game Tabs",
+      "kind": "nav",
+      "refersTo": "game-tabs",
+      "description": "32px triggers over a line-strong baseline; the active underline is a 2px brass ::after pinned to the bottom edge.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-tab-active\">Overview<span class=\"ds-tab-count\">8</span></button><button class=\"ds-tab\">Provinces<span class=\"ds-tab-count\">112</span></button><button class=\"ds-tab\">Trade</button></div>",
+      "css": ".ds-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); background: oklch(18% 0.012 250); } .ds-tab { position: relative; display: flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: 0; background: transparent; font-family: 'Public Sans', -apple-system, system-ui, sans-serif; font-size: 12.5px; white-space: nowrap; color: oklch(58% 0.01 80); cursor: pointer; transition: color 100ms; } .ds-tab::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 9999px; background: transparent; } .ds-tab:hover { color: oklch(81% 0.012 80); } .ds-tab-active { color: oklch(94% 0.018 80); } .ds-tab-active::after { background: oklch(72% 0.12 78); } .ds-tab:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(212, 160, 90, 0.55); } .ds-tab-count { border-radius: 2px; background: oklch(22% 0.014 250); padding: 0 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; color: oklch(58% 0.01 80); }"
+    },
+    {
+      "name": "Stat Rail",
+      "kind": "custom",
+      "refersTo": "stat-rail-row",
+      "description": "The signature component. A 5-column grid at 30px per row: icon slot, label, bar, value, rank. The bar track is painted only for bounded ratios; raw counts leave it empty.",
+      "html": "<div class=\"ds-rail\"><div class=\"ds-rail-head\"><span class=\"ds-rail-title\">Development</span><span class=\"ds-rail-meta\">1444-11-11 · 512 countries</span></div><div class=\"ds-rail-section\">Economy</div><div class=\"ds-rail-row\"><span class=\"ds-rail-icon\" aria-hidden=\"true\"></span><span class=\"ds-rail-label\">Total development</span><span class=\"ds-rail-track\"><span class=\"ds-rail-bar\" style=\"width:72%\"></span></span><span class=\"ds-rail-value\">418<span class=\"ds-rail-denom\"> / 580</span></span><span class=\"ds-rail-rank\">3<sup>rd</sup></span></div><div class=\"ds-rail-row\"><span class=\"ds-rail-icon\" aria-hidden=\"true\"></span><span class=\"ds-rail-label\">Treasury</span><span class=\"ds-rail-track\"></span><span class=\"ds-rail-value\">1,204</span><span class=\"ds-rail-rank\">11<sup>th</sup></span></div></div>",
+      "css": ".ds-rail { overflow: hidden; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; background: oklch(18% 0.012 250); max-width: 480px; } .ds-rail-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 8px 12px; } .ds-rail-title { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(58% 0.01 80); } .ds-rail-meta { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: oklch(58% 0.01 80); } .ds-rail-section { border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); background: oklch(22% 0.014 250); padding: 8px 12px 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(58% 0.01 80); } .ds-rail-row { display: grid; grid-template-columns: 16px 1fr 60px 76px 64px; align-items: center; column-gap: 6px; height: 30px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.06); background: oklch(18% 0.012 250); } .ds-rail-row:last-child { border-bottom: 0; } .ds-rail-row:hover { background: oklch(26% 0.018 250); } .ds-rail-icon { width: 16px; height: 16px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.06); border-radius: 2px; opacity: 0.7; background-color: oklch(22% 0.014 250); background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 5px); } .ds-rail-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Public Sans', -apple-system, system-ui, sans-serif; font-size: 12px; color: oklch(94% 0.018 80); } .ds-rail-track { position: relative; display: block; height: 4px; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 1px; background: oklch(22% 0.014 250); } .ds-rail-bar { position: absolute; inset: 0 auto 0 0; border-radius: 1px; background: oklch(58% 0.01 80); } .ds-rail-value { text-align: right; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-variant-numeric: tabular-nums; color: oklch(94% 0.018 80); } .ds-rail-denom { color: oklch(58% 0.01 80); } .ds-rail-rank { text-align: right; white-space: nowrap; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; font-variant-numeric: tabular-nums; color: oklch(58% 0.01 80); } .ds-rail-rank sup { font-size: 7.5px; }"
+    },
+    {
+      "name": "Classic Button — Primary",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The Classic world's action control. Filled sky with a darker edge so it reads as a plate with a rim.",
+      "html": "<button class=\"ds-btn-primary\">Upload save</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; padding: 8px 16px; border: 1px solid #075985; border-radius: 6px; background: #0284c7; color: #ffffff; font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 500; cursor: pointer; transition: background-color 200ms; } .ds-btn-primary:hover { background: #0ea5e9; } .ds-btn-primary:active { background: #38bdf8; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(203,213,225,0.7), 0 0 0 4px #0284c7; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Classic Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "The Classic world's resting container. Unlike Game world panels, it does carry a shadow at rest.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Ottoman Blitz</h3><p class=\"ds-card-body\">1444-11-11 → 1512-03-04 · patch 1.37</p></div>",
+      "css": ".ds-card { border: 1px solid rgba(156,163,175,0.5); border-radius: 8px; background: #f8fafc; padding: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); } .ds-card-title { margin: 0 0 4px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 600; color: #0f172a; } .ds-card-body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; color: #475569; }"
+    },
+    {
+      "name": "Tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip",
+      "description": "Shared across both worlds. Portals into the active game-theme container so game tokens still resolve inside it.",
+      "html": "<div class=\"ds-tooltip\">Development needed to flip religion via rebels</div>",
+      "css": ".ds-tooltip { display: inline-block; overflow: hidden; border: 1px solid rgba(75,85,99,1); border-radius: 6px; background: rgba(15,23,42,0.9); padding: 6px 12px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; color: #f3f4f6; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }"
+    },
+    {
+      "name": "Chart Legend — the Plate",
+      "kind": "custom",
+      "refersTo": "chart-1-verdigris",
+      "description": "The seven pigments in fixed slot order. Order is the CVD-safety mechanism: assign in sequence from a stable key, never cycle, never sort. Any series with a colour callback also needs an explicit series-level colour or ECharts silently falls back to its own palette.",
+      "html": "<div class=\"ds-legend\"><h4 class=\"ds-legend-title\">Series</h4><ul class=\"ds-legend-list\"><li class=\"ds-legend-item\"><span class=\"ds-legend-swatch\" style=\"background:#1a9f99\"></span>Verdigris<span class=\"ds-legend-slot\">1</span></li><li class=\"ds-legend-item\"><span class=\"ds-legend-swatch\" style=\"background:#bb5e1f\"></span>Sanguine<span class=\"ds-legend-slot\">2</span></li><li class=\"ds-legend-item\"><span class=\"ds-legend-swatch\" style=\"background:#a17fda\"></span>Smalt<span class=\"ds-legend-slot\">3</span></li><li class=\"ds-legend-item\"><span class=\"ds-legend-swatch\" style=\"background:#b76263\"></span>Carmine<span class=\"ds-legend-slot\">4</span></li><li class=\"ds-legend-item\"><span class=\"ds-legend-swatch\" style=\"background:#6a8dce\"></span>Indigo<span class=\"ds-legend-slot\">5</span></li><li class=\"ds-legend-item\"><span class=\"ds-legend-swatch\" style=\"background:#4c8d57\"></span>Terre Verte<span class=\"ds-legend-slot\">6</span></li><li class=\"ds-legend-item\"><span class=\"ds-legend-swatch\" style=\"background:#c178a9\"></span>Madder<span class=\"ds-legend-slot\">7</span></li></ul><p class=\"ds-legend-note\">Slots 1–3 are validated all-pairs — scatter, heatmap and small multiples stop there.</p></div>",
+      "css": ".ds-legend { max-width: 320px; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; background: #0e1217; padding: 12px 14px; } .ds-legend-title { margin: 0 0 10px; font-family: 'IBM Plex Mono', ui-monospace, 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #7d7a74; } .ds-legend-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; } .ds-legend-item { display: flex; align-items: center; gap: 8px; height: 20px; font-family: 'Public Sans', -apple-system, system-ui, 'Segoe UI', sans-serif; font-size: 11px; color: #c5c0b8; } .ds-legend-swatch { width: 10px; height: 10px; flex-shrink: 0; border-radius: 2px; } .ds-legend-slot { margin-left: auto; font-family: 'IBM Plex Mono', ui-monospace, 'JetBrains Mono', monospace; font-size: 10px; font-variant-numeric: tabular-nums; color: #7d7a74; } .ds-legend-note { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-family: 'Public Sans', -apple-system, system-ui, 'Segoe UI', sans-serif; font-size: 11px; line-height: 1.4; color: #7d7a74; }"
+    },
+    {
+      "name": "Chart Tooltip",
+      "kind": "custom",
+      "refersTo": "chart-surface",
+      "description": "The floating-surface vocabulary applied inside a plot: translucent ground, backdrop-blur and shadow shipped together. Values are mono tabular; the series swatch matches the mark exactly.",
+      "html": "<div class=\"ds-charttip\"><div class=\"ds-charttip-head\">1512-03-04</div><div class=\"ds-charttip-row\"><span class=\"ds-charttip-swatch\" style=\"background:#1a9f99\"></span><span class=\"ds-charttip-key\">Catholic</span><span class=\"ds-charttip-val\">412</span></div><div class=\"ds-charttip-row\"><span class=\"ds-charttip-swatch\" style=\"background:#bb5e1f\"></span><span class=\"ds-charttip-key\">Sunni</span><span class=\"ds-charttip-val\">1,204</span></div></div>",
+      "css": ".ds-charttip { display: inline-block; min-width: 180px; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; background: rgba(8,11,16,0.72); backdrop-filter: blur(8px); padding: 6px 10px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); } .ds-charttip-head { margin-bottom: 4px; font-family: 'IBM Plex Mono', ui-monospace, 'JetBrains Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums; color: #c5c0b8; } .ds-charttip-row { display: flex; align-items: center; gap: 8px; height: 18px; } .ds-charttip-swatch { width: 8px; height: 8px; flex-shrink: 0; border-radius: 2px; } .ds-charttip-key { font-family: 'Public Sans', -apple-system, system-ui, 'Segoe UI', sans-serif; font-size: 11px; color: #c5c0b8; } .ds-charttip-val { margin-left: auto; font-family: 'IBM Plex Mono', ui-monospace, 'JetBrains Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums; color: #f2eade; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Cartographer's Workbench",
+    "overview": "PDX Tools is an instrument for reading a world someone else built — their world, made of their decisions, recovered from a save file. The workbench metaphor governs everything: warm brass hardware sitting on cold slate, hairline rules instead of boxes, ledger numerals that line up so a column of values can be read as a column, and controls machined to exactly the size of their job. Nothing on the bench is decorative. Everything on it is calibrated.\n\nThe system is deliberately two sanctioned worlds plus one domain, and the boundaries are where the user's job changes. The Classic world covers the public web: landing, leaderboard, achievements, account, shared saves — lighter, more generous, Tailwind's stock palette over teal marketing bands, built to be legible to someone who arrived from a link. The Game world covers in-save analysis — dark, flat, dense, tokenized under [data-game-theme], built for someone who has been staring at a map for forty minutes on a second monitor. These are not a system and its skin. They are two rooms with different work happening in them.\n\nInside the Game world sits the third domain, the chart Plate (§ Charts): the only place many colors legitimately coexist, because data is not chrome. It is bounded rather than free — one tonal register, a fixed slot order, and measured separation gates.\n\nDensity is a feature here, not a compromise. The audience reads dense strategy-game UI for fun; the comparison point is the game client itself, not a marketing site. So the Game world runs 28–36px rows, 10–13px type, and hairlines at 6% white, and it is correct at that scale. Where other systems would add padding, this one adds information.\n\nThe system explicitly rejects three neighbors: skeuomorphic Paradox chrome (no faux parchment, no gilded frames, no imitation of the game client's own textures — the tool is adjacent to the game, not cosplaying it), the generic SaaS dashboard (no airy card grids, pastel gradients, or marketing-spaced KPI tiles), and the gamer/RGB aesthetic (no neon glow, no angular cyberpunk framing, no saturated multi-hue accents in chrome — the Plate's seven pigments are a bounded domain, not a license).",
+    "keyCharacteristics": [
+      "Two sanctioned worlds, split by whether the user is browsing or analyzing, plus the chart Plate inside the Game world",
+      "Brass on slate: exactly one accent hue per world, spent sparingly — brass never enters a plot area except to mark selection",
+      "Chart color is derived and validated against CVD gates, never hand-picked",
+      "Hairline rules and tonal layering carry structure; in the Game world, only surfaces floating over the map are allowed to lift",
+      "Low radii (2–4px in the Game world) — plates, not pills",
+      "Fixed row heights and tabular numerals; columns read as columns",
+      "Uppercase mono micro-labels for section headers, wide-tracked and quiet",
+      "Precise and unfussy: every control is exactly as large as its job"
+    ],
+    "rules": [
+      {
+        "name": "The Brass Scarcity Rule",
+        "body": "In the Game world, brass appears on at most one element per functional group: one active nav item, one active tab, one commit action. If two things are brass on the same screen, one of them is lying about being active.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-500 Rule",
+        "body": "Anything that labels, annotates, or qualifies is ink-500. Anything that is the answer is ink-100. There is no third option — a value is either the data or the frame around it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status-Is-State Rule",
+        "body": "The four status colors never carry brand, emphasis, or category. A green number means good; it does not mean \"positive category.\" Category color comes from the map's own legend or the chart Plate, never from this palette.",
+        "section": "colors"
+      },
+      {
+        "name": "The Game-Colour Rule",
+        "body": "Colour that EU5 itself assigns is domain truth and outranks the Plate: entity colorHex from the save, and the hand-transcribed constants in gameColors.ts. Recolouring it to fit the system is a regression even when the result is more coherent, because the tool is read next to the game client and recognition is the point. When a game colour and a Plate colour must sit in one chart, the game colour wins and the Plate colour moves.",
+        "section": "colors"
+      },
+      {
+        "name": "The Reserved Yellow Rule",
+        "body": "Brass owns the yellow region (hue ~60–110) outright, and no chart pigment may enter it. This is measured, not stylistic: no yellow inside the dark band clears brass by the ΔE 15 \"never collides at a glance\" bar — the closest possible gamboge reaches 13.9 — so the Plate carries seven pigments rather than the usual eight. A yellow series would be a series impersonating the selection state.",
+        "section": "colors"
+      },
+      {
+        "name": "The Brass-Is-Selection Rule",
+        "body": "The single exception to \"brass never enters the plot area\" is selection itself: a selected mark wears brass, because brass means selected everywhere else in the shell. This is safe by construction rather than by convention — every pigment was required to clear brass by ΔE ≥ 15, so a brass mark can never be mistaken for a series. The in-plot value is chart-selection (selectionColor in echartsTheme.ts) — brass read as hex for the chart layer, not a second accent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Encoding-Picks-the-Ramp Rule",
+        "body": "The data's job picks the ramp, not the chart's convenience. Identity takes categorical slots; an ordered sequence (tiers, bands, buckets) takes the ordinal ramp so the order is visible in the color; magnitude takes sequential; and anything with two sides of a baseline — surplus/shortage, over/under, positive/negative — takes the diverging poles, never two categorical slots. If swapping two series would change the meaning, it is not categorical. This rule stops at game colour — an ordered set the game already colours keeps those colours, per the Game-Colour Rule.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Any number a user might compare against another number is set in IBM Plex Mono with tabular-nums. This includes ranks, dates, counts, and denominators — not just table columns.",
+        "section": "typography"
+      },
+      {
+        "name": "The Whisper-Label Rule",
+        "body": "Uppercase micro-labels are always the quietest thing on screen: ink-500, mono, ≤11px, tracked ≥0.14em. Tracking increases as size decreases — 0.28em at 9.5px, 0.14em at 10–11px. A micro-label that competes with its own content is set wrong.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Italic Rule",
+        "body": "Italic appears exactly once in the system — the landing hero's second line. It is not available as general emphasis.",
+        "section": "typography"
+      },
+      {
+        "name": "The Row-Height Rule",
+        "body": "In the Game world, controls get a fixed height from the row scale (28 / 30 / 32 / 36), never vertical padding. Two adjacent controls of the same kind are always the same height, and a row of mixed controls always aligns on a single baseline.",
+        "section": "layout"
+      },
+      {
+        "name": "The Container-Query Rule",
+        "body": "Game world panels are movable and resizable, so their internal layout keys off @container, never a media query. A panel dragged narrow must reflow on its own.",
+        "section": "layout"
+      },
+      {
+        "name": "The Sovereign Game Rule",
+        "body": "Each game's surface owns its own design system, scoped under [data-game-theme]. EU5's tokens are not a global default and EU4 is free to establish its own. Shared primitives (Tooltip, Dialog, Table) must read from tokens where a game theme provides them and fall back to Classic values otherwise — never hardcode a game's palette into a shared component.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Flat-Until-Floating Rule (Game world)",
+        "body": "A shadow on a surface that sits in the layout is a bug — move it up the panel ladder and give it a line-strong edge instead. A shadow is earned only by leaving the layout to float over the map, and then it arrives as a set: translucent ground + backdrop-blur + shadow. Never a shadow on its own.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Small-Radius Rule",
+        "body": "No Game world element exceeds 4px radius. If a design calls for a soft, rounded container in a game surface, the design is wrong for the room.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do pick the world from the user's job, not the route: analyzing a save is the Game world, everything public-facing is the Classic world.",
+      "Do scope every new game palette under [data-game-theme=\"<game>\"] and consume it through the semantic --color-game- aliases, never the raw --game- variables.",
+      "Do give Game world controls a fixed height from the row scale (28 / 30 / 32 / 36) instead of vertical padding.",
+      "Do set every comparable number in IBM Plex Mono with tabular-nums, including ranks, dates, and denominators.",
+      "Do spend brass on one element per functional group, per the Brass Scarcity Rule.",
+      "Do express in-layout Game world depth as a step on the panel ladder (panel → panel-raised → panel-hover → panel-active) plus a hairline.",
+      "Do ship floating Game world surfaces as a complete set: translucent ground, backdrop-blur, and a shadow (lg transient / xl docked / 2xl menu).",
+      "Do move border and background together on Game world hover — panel → panel-hover and line → line-strong.",
+      "Do key Game world panel internals off @container, since panels are resizable.",
+      "Do recess Game world inputs to page color; they sit below their panel, not on it.",
+      "Do portal floating Game world content into the theme container so tokens resolve.",
+      "Do leave a stat rail bar track empty when the metric has no bounded denominator.",
+      "Do take every chart color from the Plate in echartsTheme.ts, and assign categorical slots in fixed order from a stable key — never from a sorted position, or a filter will repaint the survivors.",
+      "Do re-run the palette validator against #0e1217 before changing any Plate value, and keep the recorded ΔE figures in § Charts current.",
+      "Do give a chart a legend whenever it carries two or more series, and a 2px surface gap between stacked or adjacent fills."
+    ],
+    "donts": [
+      "Don't put a shadow on a game surface that sits in the layout. Depth is the ladder; shadows belong only to surfaces floating over the map, and only alongside a translucent ground and a backdrop-blur.",
+      "Don't exceed 4px radius in the Game world, or use rounded-full on anything but a status dot or the active-item bar.",
+      "Don't hardcode a game's palette into a shared component — read tokens, fall back to Classic values.",
+      "Don't let a status color carry brand, category, or emphasis; it means state and nothing else.",
+      "Don't promote teal-900 to a brand primary. It is the landing page's band color and belongs to that surface.",
+      "Don't set an uppercase micro-label above 11px, below 0.14em tracking, or in anything but ink-500 mono.",
+      "Don't use italic outside the landing hero's second line.",
+      "Don't add faux parchment, gilded frames, wax seals, or any imitation of the game client's own UI textures.",
+      "Don't reach for the SaaS dashboard reflex — large-radius cards, pastel gradients, or airy KPI tiles with marketing-scale padding.",
+      "Don't introduce neon glow, angular cyberpunk framing, or a second saturated accent hue in chrome. The chart Plate is the one sanctioned polychrome domain, and it is bounded by its own register and gates — this rule governs panels, controls, and surfaces, not the inside of a plot.",
+      "Don't load a webfont on Classic world surfaces; they intentionally run the platform stack.",
+      "Don't put a chart color inline in a builder. Every value comes from the Plate; a one-off hex is how the last palette decayed into 41 of them.",
+      "Don't color a chart by rank, or re-encode with color what bar length already shows.",
+      "Don't replace a game colour with a Plate colour, or fold a game-coloured ordered set into an ordinal ramp — see the Game-Colour Rule.",
+      "Don't hardcode a game colour inline. It goes in gameColors.ts so the chart and the surrounding readout can never drift apart.",
+      "Don't build a dual-axis chart to juxtapose two independent measures — that manufactures a correlation out of two arbitrary scale choices. Use two charts, small multiples, or index both to a common base. The one sanctioned exception is a level and a rate derived from it (EU5's Revenue bars against Net Margin %, EconomyTab.tsx), and it is legal only with all three mitigations present — different mark types so axis binding is unambiguous, both axes named, and the two zeros aligned in pixel space (leftMin = -(f·revMax)/(1-f), where f is the fraction of the rate's range below zero). Removing the zero alignment is what turns this chart back into the anti-pattern. Note the standing limit: relative steepness between the two series is still arbitrary and must never be read as a claim.",
+      "Don't give charts a light selection, or read prefers-color-scheme inside the Game world. The surface is unconditionally dark.",
+      "Don't leave a series' legend swatch to chance. ECharts cannot resolve a colour callback or an unnamed series, and silently falls back to its own default palette — so any series with a callback itemStyle.color, or a line series coloured only through lineStyle, must also carry an explicit series-level color, and every series in a legend needs a name."
+    ]
+  }
+}
