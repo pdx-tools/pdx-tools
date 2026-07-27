@@ -65,7 +65,7 @@ function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps
       className={cx(
         "truncate font-game-ui text-[12px] text-game-ink-100",
         tooltip &&
-          "cursor-help underline decoration-game-ink-500 decoration-dotted underline-offset-2 hover:decoration-game-ink-100",
+          "cursor-help underline decoration-game-ink-rule decoration-dotted underline-offset-2 hover:decoration-game-ink-100",
       )}
     >
       {label}

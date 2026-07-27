@@ -236,7 +236,7 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
       />
       <span className="flex min-w-0 flex-col gap-1">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[10px] tracking-[0.06em] text-game-ink-700">
+          <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[10px] tracking-[0.06em] text-game-ink-500">
             {header.tag}
           </span>
           <span className="truncate font-game-ui text-base font-semibold text-game-ink-100">

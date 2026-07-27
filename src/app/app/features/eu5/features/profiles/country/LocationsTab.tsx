@@ -1,6 +1,5 @@
 import { useEu5Engine } from "../../../store";
 import { usePanToEntity } from "../../../usePanToEntity";
-import { MapHoverButton } from "../../../MapHoverButton";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
@@ -8,6 +7,7 @@ import type { LocationDistribution, LocationRow, MapMode } from "@/wasm/wasm_eu5
 import type { Row } from "@tanstack/react-table";
 import { CountryLink, MarketLink } from "../EntityLink";
 import { locationProfileEntry, usePanelNav } from "../PanelNavContext";
+import { LocationLink } from "../LocationLink";
 import { LocationDistributionChart } from "../../insights/LocationDistributionChart";
 
 const columnHelper = createColumnHelper<LocationRow>();
@@ -17,22 +17,18 @@ function NameCell({ row }: { row: Row<LocationRow> }) {
   const nav = usePanelNav();
   const panToEntity = usePanToEntity();
   return (
-    <MapHoverButton
-      target={{ kind: "location", locationIdx: row.original.location.key }}
-      onClick={() => {
-        panToEntity(row.original.location.key);
+    <LocationLink
+      location={row.original.location}
+      className="text-xs"
+      onActivate={(location) => {
+        panToEntity(location.key);
         if (nav.stack.length > 0) {
-          nav.pushMany([
-            locationProfileEntry(row.original.location.key, row.original.location.name),
-          ]);
+          nav.pushMany([locationProfileEntry(location.key, location.name)]);
         } else {
-          void engine.trigger.setFocusedLocation(row.original.location.key);
+          void engine.trigger.setFocusedLocation(location.key);
         }
       }}
-      className="min-w-0 truncate text-left text-xs text-game-accent-300 hover:text-game-accent-100 hover:underline"
-    >
-      {row.original.location.name}
-    </MapHoverButton>
+    />
   );
 }
 

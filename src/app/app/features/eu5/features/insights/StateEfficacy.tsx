@@ -19,9 +19,7 @@ import {
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
-import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
-import { usePanToEntity } from "../../usePanToEntity";
-import { MapHoverButton } from "../../MapHoverButton";
+import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import {
@@ -217,9 +215,6 @@ const BACK_LABEL = "State Efficacy";
 const columnHelper = createColumnHelper<StateEfficacyTopLocation>();
 
 function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopLocation[] }) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
-
   const columns = useMemo(
     () => [
       columnHelper.accessor("location", {
@@ -228,21 +223,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
-          return (
-            <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.location.key }}
-              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [locationProfileEntry(loc.location.key, loc.location.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(loc.location.key);
-              }}
-            >
-              {loc.location.name}
-            </MapHoverButton>
-          );
+          return <LocationLink location={loc.location} backLabel={BACK_LABEL} />;
         },
       }),
       columnHelper.accessor("stateEfficacy", {
@@ -283,7 +264,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
         ),
       }),
     ],
-    [nav, panToEntity],
+    [],
   );
 
   return (

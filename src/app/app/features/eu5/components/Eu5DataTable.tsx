@@ -89,7 +89,7 @@ const summaryCellVariants = cva(
 );
 
 const sortBtnClass =
-  "inline-flex h-[18px] shrink-0 items-center justify-center border-0 bg-transparent font-game-num text-[10px] text-game-ink-700 data-[active=true]:text-game-accent-100";
+  "inline-flex h-[18px] shrink-0 items-center justify-center border-0 bg-transparent font-game-num text-[10px] text-game-ink-500 data-[active=true]:text-game-accent-100";
 
 const headerSortBtnClass =
   "flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit uppercase hover:text-game-ink-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-game-accent-300";
@@ -501,7 +501,7 @@ function ToolbarBand({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={config.searchPlaceholder}
-            className="min-w-0 flex-1 border-0 bg-transparent font-game-ui text-[12px] text-game-ink-100 placeholder:text-game-ink-700 focus:outline-none"
+            className="min-w-0 flex-1 border-0 bg-transparent font-game-ui text-[12px] text-game-ink-100 placeholder:text-game-ink-500 focus:outline-none"
           />
         </div>
       )}

@@ -43,7 +43,7 @@ export function LocationDistributionChart({ distribution }: Props) {
       yAxis: {
         type: "value",
         name: "Locations",
-        nameTextStyle: { color: chartInk.muted, fontSize: 10 },
+        nameTextStyle: { color: chartInk.secondary, fontSize: 10 },
         axisLabel: { color: tickColor, fontSize: 10 },
         splitLine: { lineStyle: { color: gridLineColor } },
         minInterval: 1,

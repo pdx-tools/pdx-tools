@@ -6,6 +6,7 @@ import { usePanToEntity } from "../../usePanToEntity";
 import { useEu5Engine } from "../../store";
 import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
+import { EntityName, entityLinkControl } from "../../components/EntityName";
 import { Eu5Flag } from "../../components/flags/Eu5Flag";
 import type { Eu5FlagSize } from "../../components/flags/Eu5Flag";
 
@@ -38,7 +39,8 @@ type SharedProps = {
   backLabel?: string;
   className?: string;
   children?: React.ReactNode;
-} & ({ static?: false } | { static: true });
+  static?: boolean;
+};
 
 function EntitySwatch({
   colorHex,
@@ -62,30 +64,55 @@ function EntitySwatch({
 }
 
 type LinkBodyProps = SharedProps & {
+  kind: "country" | "market";
+  id: number;
+  anchorLocationIdx: number;
   hoverTarget: Eu5MapHoverTarget;
   colorHex: string;
   isPlayer: boolean;
   visual?: React.ReactNode;
   tag?: React.ReactNode;
   name: string;
-  onActivate: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onAltActivate: () => void;
 };
 
 function LinkBody({
+  kind,
+  id,
+  anchorLocationIdx,
   hoverTarget,
   colorHex,
   isPlayer,
   visual,
   tag,
   name,
-  onActivate,
+  onAltActivate,
+  backLabel,
   size = "sm",
   className,
   children,
   ...rest
 }: LinkBodyProps) {
+  const nav = usePanelNav();
+  const panToEntity = usePanToEntity();
   const s = sizeClasses[size];
   const hoverProps = useEu5MapHoverTarget(hoverTarget);
+  const nameClass = cx(
+    "min-w-0 flex-[0_1_auto] overflow-hidden font-medium text-ellipsis whitespace-nowrap",
+    s.name,
+  );
+  const content = (
+    <>
+      {visual ?? <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />}
+      {tag}
+      {children ??
+        (rest.static ? (
+          <span className={cx(nameClass, "text-game-ink-100")}>{name}</span>
+        ) : (
+          <EntityName className={nameClass}>{name}</EntityName>
+        ))}
+    </>
+  );
 
   if (rest.static) {
     return (
@@ -93,18 +120,7 @@ function LinkBody({
         {...hoverProps}
         className={cx("inline-flex max-w-full min-w-0 items-center", s.wrapper, className)}
       >
-        {visual ?? <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />}
-        {tag}
-        {children ?? (
-          <span
-            className={cx(
-              "min-w-0 flex-[0_1_auto] overflow-hidden font-medium text-ellipsis whitespace-nowrap text-game-ink-100",
-              s.name,
-            )}
-          >
-            {name}
-          </span>
-        )}
+        {content}
       </span>
     );
   }
@@ -112,27 +128,24 @@ function LinkBody({
   return (
     <button
       type="button"
-      onClick={onActivate}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (event.altKey) {
+          onAltActivate();
+          return;
+        }
+        nav.pushMany([entityProfileEntry(kind, id, name)], backLabel);
+        panToEntity(anchorLocationIdx);
+      }}
       {...hoverProps}
       className={cx(
-        "group/er inline-flex max-w-full min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left align-middle",
+        entityLinkControl,
+        "inline-flex max-w-full min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left align-middle",
         s.wrapper,
         className,
       )}
     >
-      {visual ?? <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />}
-      {tag}
-      {children ?? (
-        <span
-          className={cx(
-            "min-w-0 flex-[0_1_auto] overflow-hidden font-medium text-ellipsis whitespace-nowrap text-game-accent-300",
-            "group-hover/er:text-game-accent-100 group-hover/er:underline group-hover/er:decoration-1 group-hover/er:underline-offset-2",
-            s.name,
-          )}
-        >
-          {name}
-        </span>
-      )}
+      {content}
     </button>
   );
 }
@@ -144,8 +157,6 @@ const flagSizeByLinkSize: Record<Size, Eu5FlagSize> = {
 };
 
 export function CountryLink({ country, ...props }: SharedProps & { country: CountryRef }) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
   const engine = useEu5Engine();
   const s = sizeClasses[props.size ?? "sm"];
 
@@ -161,22 +172,12 @@ export function CountryLink({ country, ...props }: SharedProps & { country: Coun
     </span>
   );
 
-  const onActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    if (event.altKey) {
-      void engine.trigger.removeCountry(country.country.key);
-      return;
-    }
-    nav.pushMany(
-      [entityProfileEntry("country", country.country.key, country.country.name)],
-      props.backLabel,
-    );
-    panToEntity(country.anchorLocationIdx);
-  };
-
   return (
     <LinkBody
       {...props}
+      kind="country"
+      id={country.country.key}
+      anchorLocationIdx={country.anchorLocationIdx}
       hoverTarget={{ kind: "country", countryIdx: country.country.key }}
       colorHex={country.colorHex}
       isPlayer={country.isPlayer}
@@ -193,37 +194,25 @@ export function CountryLink({ country, ...props }: SharedProps & { country: Coun
       }
       tag={tag}
       name={country.country.name}
-      onActivate={onActivate}
+      onAltActivate={() => void engine.trigger.removeCountry(country.country.key)}
     />
   );
 }
 
 export function MarketLink({ market, ...props }: SharedProps & { market: MarketRef }) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
   const engine = useEu5Engine();
-
-  const onActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    if (event.altKey) {
-      void engine.trigger.removeMarket(market.market.key);
-      return;
-    }
-    nav.pushMany(
-      [entityProfileEntry("market", market.market.key, market.market.name)],
-      props.backLabel,
-    );
-    panToEntity(market.anchorLocationIdx);
-  };
 
   return (
     <LinkBody
       {...props}
+      kind="market"
+      id={market.market.key}
+      anchorLocationIdx={market.anchorLocationIdx}
       hoverTarget={{ kind: "market", marketId: market.market.key }}
       colorHex={market.colorHex}
       isPlayer={false}
       name={market.market.name}
-      onActivate={onActivate}
+      onAltActivate={() => void engine.trigger.removeMarket(market.market.key)}
     />
   );
 }

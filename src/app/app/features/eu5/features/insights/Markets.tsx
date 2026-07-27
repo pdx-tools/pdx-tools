@@ -823,7 +823,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
                     position: "insideStartTop" as const,
                     distance: 2,
                     formatter: `Base: ${formatFloat(base, 2)}`,
-                    color: chartInk.muted,
+                    color: chartInk.secondary,
                     fontSize: 10,
                   },
                   lineStyle: {

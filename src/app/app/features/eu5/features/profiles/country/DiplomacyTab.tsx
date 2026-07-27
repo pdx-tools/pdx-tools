@@ -9,8 +9,7 @@ import type {
   DiplomacySubjectType,
   SubjectRef,
 } from "@/wasm/wasm_eu5";
-import { entityProfileEntry, usePanelNav } from "../PanelNavContext";
-import { usePanToEntity } from "../../../usePanToEntity";
+import { usePanelNav } from "../PanelNavContext";
 import { CountryLink } from "../EntityLink";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
 import type { Eu5MapHoverTarget } from "../../../useEu5MapHoverTarget";
@@ -40,30 +39,20 @@ type DiplomacyRow = {
 
 const columnHelper = createColumnHelper<DiplomacyRow>();
 
-function NameCell({ row }: { row: Row<DiplomacyRow> }) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
+function NameCell({ row, backLabel }: { row: Row<DiplomacyRow>; backLabel?: string }) {
   const { entity, subjectLabel, isActive } = row.original;
 
-  const handleOpen = () => {
-    nav.pushMany([entityProfileEntry("country", entity.country.key, entity.country.name)]);
-    panToEntity(entity.anchorLocationIdx);
-  };
-
   return (
-    <button
-      type="button"
-      onClick={handleOpen}
-      className={cx(
-        "flex w-full min-w-0 items-center gap-1 text-left",
-        isActive ? "cursor-default" : "cursor-pointer",
-      )}
-    >
+    <span className="flex w-full min-w-0 items-center gap-1">
       {subjectLabel && (
         <span className="shrink-0 text-[11px] text-game-ink-500">{subjectLabel}</span>
       )}
-      <CountryLink country={entity} aligned static />
-    </button>
+      {isActive ? (
+        <CountryLink country={entity} aligned static />
+      ) : (
+        <CountryLink country={entity} aligned backLabel={backLabel} />
+      )}
+    </span>
   );
 }
 
@@ -79,7 +68,7 @@ function LibertyCell({ row }: { row: Row<DiplomacyRow> }) {
   );
 }
 
-const columns = [
+const buildColumns = (backLabel?: string) => [
   columnHelper.accessor((row) => row.metrics.greatPowerRank, {
     id: "gpRank",
     sortingFn: "basic",
@@ -87,7 +76,7 @@ const columns = [
     cell: (info) => {
       const rank = info.getValue();
       return rank > 0 ? (
-        <Eu5DataTable.NumericCell className="text-[10.5px] text-game-ink-700">
+        <Eu5DataTable.NumericCell className="text-[10.5px] text-game-ink-500">
           #{rank}
         </Eu5DataTable.NumericCell>
       ) : null;
@@ -97,7 +86,7 @@ const columns = [
     id: "name",
     sortingFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Country", variant: "pin" }),
-    cell: ({ row }) => <NameCell row={row} />,
+    cell: ({ row }) => <NameCell row={row} backLabel={backLabel} />,
   }),
   columnHelper.accessor((row) => row.metrics.totalStateEfficacy, {
     id: "effDev",
@@ -143,8 +132,15 @@ function getRowHoverTarget(row: DiplomacyRow): Eu5MapHoverTarget {
   return { kind: "country", countryIdx: row.entity.country.key };
 }
 
-export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
+export function DiplomacyTabContent({
+  data,
+  backLabel,
+}: {
+  data: DiplomacySection;
+  backLabel?: string;
+}) {
   const nav = usePanelNav();
+  const columns = useMemo(() => buildColumns(backLabel), [backLabel]);
   const topProfile =
     nav.top?.kind === "profile" || nav.top?.kind === "focus" ? nav.top.profile : null;
   const activeProfileIdx = topProfile?.kind === "country" ? topProfile.country.key : null;

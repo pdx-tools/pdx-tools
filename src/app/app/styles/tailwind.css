@@ -18,6 +18,7 @@
   --color-game-ink-500: var(--game-ink-500);
   --color-game-ink-700: var(--game-ink-700);
   --color-game-ink-disabled: var(--game-ink-disabled);
+  --color-game-ink-rule: var(--game-ink-rule);
 
   --color-game-accent-100: var(--game-accent-100);
   --color-game-accent-300: var(--game-accent-300);
@@ -70,8 +71,12 @@
 
   --game-ink-100: oklch(94% 0.018 80);
   --game-ink-300: oklch(81% 0.012 80);
-  --game-ink-500: oklch(58% 0.01 80);
+  /* Normal text; clears 4.5:1 on every game surface. */
+  --game-ink-500: oklch(68% 0.012 80);
+  /* Inert marks only: separators, key glyphs, and grips. */
   --game-ink-700: oklch(40% 0.01 80);
+  /* Underline token; clears the 3:1 non-text floor on every game surface. */
+  --game-ink-rule: oklch(58% 0.011 80);
   --game-ink-disabled: oklch(28% 0.008 80);
 
   --game-accent-100: oklch(86% 0.092 78);
