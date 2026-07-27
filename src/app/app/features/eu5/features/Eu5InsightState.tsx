@@ -38,7 +38,7 @@ export function Eu5InsightState({
         className,
       ].join(" ")}
     >
-      <div className="font-game-num text-[10.5px] tracking-[.14em] text-game-ink-700 uppercase">
+      <div className="font-game-num text-[10.5px] tracking-[.14em] text-game-ink-500 uppercase">
         {copy.eyebrow}
       </div>
       <div className="text-sm font-semibold text-game-ink-100">{title ?? copy.title}</div>

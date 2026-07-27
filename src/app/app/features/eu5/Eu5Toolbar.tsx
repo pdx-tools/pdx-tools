@@ -165,7 +165,7 @@ export function Eu5Toolbar() {
                 }
               }}
               placeholder="Search countries or locations..."
-              className="h-7 w-full border-0 bg-transparent px-0 text-[12.5px] text-game-ink-100 outline-none placeholder:text-game-ink-700"
+              className="h-7 w-full border-0 bg-transparent px-0 text-[12.5px] text-game-ink-100 outline-none placeholder:text-game-ink-500"
             />
 
             {showDropdown && (
@@ -187,7 +187,7 @@ export function Eu5Toolbar() {
                             onSelect={() => void handleSelect(result)}
                             className="flex cursor-default items-center gap-2 rounded-plate px-2.5 py-2 text-[12.5px] text-game-ink-300 outline-none select-none aria-selected:bg-game-panel-hover aria-selected:text-game-ink-100"
                           >
-                            <span className="shrink-0 font-game-num text-[11px] text-game-ink-700">
+                            <span className="shrink-0 font-game-num text-[11px] text-game-ink-500">
                               {result.tag}
                             </span>
                             <span className="truncate">{result.name}</span>

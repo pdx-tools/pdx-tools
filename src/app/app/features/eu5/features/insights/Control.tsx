@@ -22,9 +22,7 @@ import {
 } from "@/components/viz/echartsTheme";
 import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
-import { usePanToEntity } from "../../usePanToEntity";
-import { MapHoverButton } from "../../MapHoverButton";
-import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
+import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 import {
   Eu5InsightEmptyState,
@@ -391,9 +389,6 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
 const columnHelper = createColumnHelper<ControlTopLocation>();
 
 function ControlTopLocations({ locations }: { locations: ControlTopLocation[] }) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
-
   const columns = useMemo(
     () => [
       columnHelper.accessor("location", {
@@ -402,21 +397,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
-          return (
-            <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.location.key }}
-              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [locationProfileEntry(loc.location.key, loc.location.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(loc.location.key);
-              }}
-            >
-              {loc.location.name}
-            </MapHoverButton>
-          );
+          return <LocationLink location={loc.location} backLabel={BACK_LABEL} />;
         },
       }),
       columnHelper.accessor("owner", {
@@ -457,7 +438,7 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
         ),
       }),
     ],
-    [nav, panToEntity],
+    [],
   );
 
   return (

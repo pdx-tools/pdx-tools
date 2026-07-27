@@ -3,10 +3,8 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type { WealthTopLocation } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
-import { locationProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
-import { usePanToEntity } from "../../usePanToEntity";
+import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
-import { MapHoverButton } from "../../MapHoverButton";
 
 const BACK_LABEL = "Wealth";
 
@@ -17,9 +15,6 @@ interface Props {
 }
 
 export function WealthTopLocations({ locations }: Props) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
-
   const columns = useMemo(
     () => [
       columnHelper.accessor("location", {
@@ -28,21 +23,7 @@ export function WealthTopLocations({ locations }: Props) {
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
-          return (
-            <MapHoverButton
-              target={{ kind: "location", locationIdx: loc.location.key }}
-              className="text-left text-game-accent-300 hover:text-game-accent-100 hover:underline"
-              onClick={() => {
-                nav.pushMany(
-                  [locationProfileEntry(loc.location.key, loc.location.name)],
-                  BACK_LABEL,
-                );
-                panToEntity(loc.location.key);
-              }}
-            >
-              {loc.location.name}
-            </MapHoverButton>
-          );
+          return <LocationLink location={loc.location} backLabel={BACK_LABEL} />;
         },
       }),
       columnHelper.accessor("wealth", {
@@ -83,7 +64,7 @@ export function WealthTopLocations({ locations }: Props) {
         ),
       }),
     ],
-    [nav, panToEntity],
+    [],
   );
 
   return (
