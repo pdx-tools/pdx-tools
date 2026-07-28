@@ -5,16 +5,21 @@ import { registerAnalysisTerminator } from "@/features/engine/analysisLifecycle"
 import type { Eu5Store } from "./eu5Store";
 import type { Eu5SaveInput } from "./types";
 
+export type Eu5LoadingState = {
+  percent: number;
+  stage: string;
+};
+
 type Eu5SessionSnapshot = {
   data: Eu5Store | null;
-  loading: { percent: number } | null;
+  loading: Eu5LoadingState | null;
   error: unknown;
 };
 
 class Eu5Session {
   private snapshot: Eu5SessionSnapshot = {
     data: null,
-    loading: { percent: 0 },
+    loading: { percent: 0, stage: "Starting workers" },
     error: null,
   };
   private listeners = new Set<() => void>();
@@ -25,9 +30,12 @@ class Eu5Session {
   constructor(readonly save: Eu5SaveInput) {
     this.unregisterTerminator = registerAnalysisTerminator(terminateEu5Session);
     this.controller = new Eu5SurfaceController(save, {
-      onProgress: (increment) => {
+      onProgress: (increment, stage) => {
         this.updateSnapshot({
-          loading: { percent: (this.snapshot.loading?.percent ?? 0) + increment },
+          loading: {
+            percent: Math.min(100, (this.snapshot.loading?.percent ?? 0) + increment),
+            stage,
+          },
         });
       },
       onError: (error) => {

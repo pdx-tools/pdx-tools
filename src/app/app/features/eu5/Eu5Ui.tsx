@@ -13,10 +13,10 @@ import "@fontsource/public-sans/vietnamese-700.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
-import { Eu5InsightPanel } from "./Eu5InsightPanel";
-import { AppLoading } from "@/components/AppLoading";
+import { Eu5InsightPanel, MAP_MODE_TITLES } from "./Eu5InsightPanel";
+import { Eu5Loading, LOADING_DISSOLVE_MS } from "./Eu5Loading";
 import { developerLog } from "@/lib/log";
 import {
   useLoadEu5,
@@ -25,10 +25,10 @@ import {
   useEu5CursorHint,
   useEu5Engine,
   useEu5InsightPanelOpen,
+  useEu5MapMode,
   useSetEu5InsightPanelOpen,
 } from "./store";
 import type { Eu5SaveInput } from "./store/types";
-import { ProgressBar } from "@/components/ProgressBar";
 import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
 import { useCursorPosition } from "@/hooks/useCursorPosition";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
@@ -47,6 +47,8 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
   const { controller, data, error, loading } = useLoadEu5(save);
   const { canvasRef, surfaceRef, focus } = useCanvasCourierSurface({ controller });
   const cursorRef = useCursorPosition(surfaceRef.current);
+  const settled = data !== null || error !== null;
+  const showLoading = useLoadingVisible(settled);
 
   useEffect(() => {
     focus();
@@ -60,13 +62,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
 
   return (
     <>
-      {data === null && error === null ? (
-        <div className="absolute inset-0">
-          <AppLoading />
-        </div>
-      ) : null}
-
-      {data !== null ? <div className="absolute inset-0 bg-game-page"></div> : null}
+      <div className="absolute inset-0 bg-game-page" />
 
       {/* Canvas layer — always present, always fills viewport */}
       <div className="absolute inset-0 overflow-hidden" ref={surfaceRef}>
@@ -86,13 +82,59 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
         </Eu5StoreProvider>
       ) : null}
 
-      <div className="absolute w-full">
-        {loading !== null ? <ProgressBar height={32} value={loading.percent ?? 0} /> : null}
-        {error !== null ? <Eu5ErrorDisplay error={error} /> : null}
-      </div>
+      {showLoading ? (
+        <Eu5Loading loading={loading} filename={saveFilename(save)} done={settled} />
+      ) : null}
+
+      {error !== null ? <Eu5ErrorDisplay error={error} /> : null}
     </>
   );
 };
+
+const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
+  const mapMode = useEu5MapMode();
+  const selectionState = useEu5SelectionState();
+  const label =
+    (selectionState?.isEmpty === false ? selectionState.scopeDisplayName : null) ??
+    MAP_MODE_TITLES[mapMode] ??
+    "Insights";
+
+  return (
+    <div className="pointer-events-auto absolute top-4 right-4 z-20 rounded-panel border border-game-line-strong bg-game-overlay p-1.5 font-game-ui shadow-xl backdrop-blur-md">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${label} panel`}
+        className="flex h-7 max-w-56 items-center gap-2 rounded-control px-2 text-game-ink-500 transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+      >
+        <ChevronLeftIcon className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate font-game-num text-[11px] tracking-[0.14em] uppercase">
+          {label}
+        </span>
+      </button>
+    </div>
+  );
+};
+
+function saveFilename(save: Eu5SaveInput): string {
+  return save.kind === "handle" ? save.name : save.file.name;
+}
+
+/** Keep the loader mounted through its fade-out. */
+function useLoadingVisible(settled: boolean) {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (!settled) {
+      setVisible(true);
+      return;
+    }
+    const timer = setTimeout(() => setVisible(false), LOADING_DISSOLVE_MS);
+    return () => clearTimeout(timer);
+  }, [settled]);
+
+  return visible;
+}
 
 /**
  * Inner component rendered inside Eu5StoreProvider so it can access the store.
@@ -148,17 +190,7 @@ const Eu5UiContent = ({
       {/* Right panel — slides off right edge when closed */}
       <Eu5InsightPanel open={insightOpen} onClose={() => setInsightOpen(false)} />
 
-      {/* Floating button to open right panel — only when closed */}
-      {!insightOpen ? (
-        <button
-          type="button"
-          onClick={() => setInsightOpen(true)}
-          className="pointer-events-auto absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-control border border-game-line-strong bg-game-overlay text-game-ink-300 backdrop-blur-md transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
-          aria-label="Open insights panel"
-        >
-          <ChevronLeftIcon className="h-4 w-4" />
-        </button>
-      ) : null}
+      {!insightOpen ? <InsightPanelTab onOpen={() => setInsightOpen(true)} /> : null}
 
       {/* Canvas overlays */}
       <BoxSelectOverlay />

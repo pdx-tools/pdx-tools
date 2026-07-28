@@ -177,8 +177,8 @@ export type Eu5DataTableProps<TData extends object> = {
   onRowHoverChange?: (row: TData | null) => void;
   onRowFocusChange?: (row: TData | null) => void;
   tableOptions?: Eu5DataTableOptions<TData>;
-  /** Inject a separator before a row. Return non-null to render a full-width separator row. */
-  rowSeparator?: (row: TData, index: number) => React.ReactNode | null;
+  /** Return content to insert before a row; `sorted` indicates an applied sort. */
+  rowSeparator?: (row: TData, index: number, ctx: { sorted: boolean }) => React.ReactNode | null;
 };
 
 type ResolvedPaginationConfig = {
@@ -316,7 +316,8 @@ export function Eu5DataTable<TData extends object>({
             ) : (
               rows.map((row, idx) => {
                 const inFilter = isRowInFilter?.(row.original) ?? false;
-                const separator = rowSeparator?.(row.original, idx) ?? null;
+                const separator =
+                  rowSeparator?.(row.original, idx, { sorted: sorting.length > 0 }) ?? null;
                 const colCount = table.getAllLeafColumns().length;
                 return (
                   <React.Fragment key={row.id}>
@@ -622,7 +623,11 @@ function HeaderCell<TData>({ header }: { header: Header<TData, unknown> }) {
   const showRank = sorted !== false && header.column.getSortingFn() && sortIndex >= 0;
   const align = meta?.align ?? alignForVariant(variant);
 
-  const label = meta?.headerLabel ?? header.column.columnDef.header;
+  const headerDef = header.column.columnDef.header;
+  const rendersOwnHeader = typeof headerDef === "function";
+  const label =
+    meta?.headerLabel ?? (rendersOwnHeader ? undefined : (headerDef as React.ReactNode));
+  const sortLabel = meta?.headerLabel ?? (typeof headerDef === "string" ? headerDef : undefined);
   const headerContent = (
     <>
       <span
@@ -634,9 +639,9 @@ function HeaderCell<TData>({ header }: { header: Header<TData, unknown> }) {
       >
         {isPlaceholder
           ? null
-          : typeof label === "string"
-            ? label
-            : flexRender(header.column.columnDef.header, header.getContext())}
+          : rendersOwnHeader
+            ? flexRender(headerDef, header.getContext())
+            : label}
       </span>
       {canSort && (
         <span
@@ -646,7 +651,7 @@ function HeaderCell<TData>({ header }: { header: Header<TData, unknown> }) {
         >
           {sorted === "desc" ? "▼" : sorted === "asc" ? "▲" : "↕"}
           {showRank && sortIndex >= 0 && (
-            <sup className="ml-px text-[7px] text-game-accent-100">{sortIndex + 1}</sup>
+            <sup className="ml-px text-[7.5px] text-game-accent-100">{sortIndex + 1}</sup>
           )}
         </span>
       )}
@@ -668,7 +673,7 @@ function HeaderCell<TData>({ header }: { header: Header<TData, unknown> }) {
       {canSort ? (
         <button
           type="button"
-          aria-label={`Sort by ${headerLabelText(meta?.headerLabel, header.column.id)}`}
+          aria-label={`Sort by ${headerLabelText(sortLabel, header.column.id)}`}
           onClick={header.column.getToggleSortingHandler()}
           className={cx(
             headerSortBtnClass,

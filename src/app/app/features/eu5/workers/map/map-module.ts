@@ -120,7 +120,7 @@ export const createMapEngine = async (
     onProgress,
   }: {
     mapBundle: { fetch: () => Promise<Uint8Array> };
-    onProgress?: (increment: number) => void;
+    onProgress?: (increment: number, stage: string) => void;
   },
 ) => {
   let prevDimensions = {
@@ -129,12 +129,12 @@ export const createMapEngine = async (
     scaleFactor: display.scaleFactor,
   };
   await initialized;
-  onProgress?.(5); // Initialize map wasm
+  onProgress?.(5, "Preparing canvas");
 
   const canvasInit = await timeAsync("Canvas Initialization", () =>
     Eu5CanvasSurface.init(canvas, display),
   );
-  onProgress?.(5); // Canvas initialization
+  onProgress?.(5, "Loading map data");
 
   const bundle = await mapBundle.fetch();
 
@@ -144,18 +144,18 @@ export const createMapEngine = async (
   const westView = timeSync("Upload Texture Data (West)", () =>
     canvasInit.upload_west_texture(textureData),
   );
-  onProgress?.(12); // West texture data
+  onProgress?.(12, "Building map textures");
 
   const eastView = timeSync("Upload Texture Data (East)", () =>
     canvasInit.upload_east_texture(textureData),
   );
-  onProgress?.(12); // East texture data
+  onProgress?.(12, "Starting renderer");
 
   try {
     const app = timeSync("Create Renderer", () =>
       Eu5WasmMapRenderer.create(canvasInit, westView, eastView, textureData),
     );
-    onProgress?.(6); // Create renderer
+    onProgress?.(6, "Rendering map");
     appResolve(app);
   } catch (e) {
     appReject(e);

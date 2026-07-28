@@ -65,7 +65,7 @@ export const createGame = async (
       fetch: () => Promise<Uint8Array>;
       fetchLocalization: () => Promise<Uint8Array>;
     };
-    onProgress?: (increment: number) => void;
+    onProgress?: (increment: number, stage: string) => void;
   },
 ) => {
   const readFile = async () => {
@@ -77,12 +77,12 @@ export const createGame = async (
 
   const [wasm, tokens] = await Promise.all([initialized, tokensTask]);
   timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens)));
-  onProgress?.(5); // Initialize wasm/tokens
+  onProgress?.(5, "Reading save file");
 
   const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
 
   const saveData = await saveDataTask;
-  onProgress?.(10); // Read save file
+  onProgress?.(10, "Parsing gamestate");
 
   const saveParser = timeSync("Initialize Save Parser", () =>
     metaParser.init(new Uint8Array(saveData)),
@@ -107,20 +107,20 @@ export const createGame = async (
       throw originalError;
     }
   })();
-  onProgress?.(30); // Parse gamestate
+  onProgress?.(30, "Loading game data");
 
   const gameBundleData = await gameDataTask;
   const gameBundleWasm = timeSync("Create game bundle", () =>
     wasm_eu5.Eu5WasmGameBundle.open(gameBundleData),
   );
-  onProgress?.(5); // Create game bundle
+  onProgress?.(5, "Building workspace");
 
   // Build the workspace first so the map worker can begin syncing
   // GPU buffers in parallel with the localization fetch.
   const workspace = timeSync("Initialize workspace", () =>
     wasm_eu5.Eu5WasmWorkspace.init(gamestate, gameBundleWasm),
   );
-  onProgress?.(3); // Initialize workspace
+  onProgress?.(3, "Syncing locations");
 
   if (!mapEndpoint) {
     throw new Error("Map endpoint not initialized");
@@ -150,10 +150,10 @@ export const createGame = async (
 
   await syncInitialLocationData();
   syncInitialGroupingTable();
-  onProgress?.(5); // Sync location data
+  onProgress?.(5, "Localizing");
 
   const localizationBundle = await localizationTask;
-  onProgress?.(2); // Create localization bundle
+  onProgress?.(2, "Building indexes");
 
   const app = timeSync("Localize app", () => workspace.localize(localizationBundle));
 

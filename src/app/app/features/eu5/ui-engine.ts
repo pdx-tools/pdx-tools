@@ -321,7 +321,7 @@ export async function createLoadedEngine(
     display: CanvasSize;
     inputConfig: SharedCanvasInputConfig;
   },
-  onProgress?: (increment: number) => void,
+  onProgress?: (increment: number, stage: string) => void,
 ): Promise<{
   engine: Eu5UIEngine;
   saveDate: Eu5DateComponents;
