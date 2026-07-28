@@ -2,7 +2,6 @@ import React, { useId, useMemo, useState } from "react";
 import {
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
@@ -94,9 +93,6 @@ const sortBtnClass =
 const headerSortBtnClass =
   "flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit uppercase hover:text-game-ink-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-game-accent-300";
 
-const toolBtnClass =
-  "inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-control border border-solid border-transparent bg-transparent px-1.5 font-game-ui text-[11.5px] text-game-ink-300 hover:border-game-line hover:bg-game-panel-hover hover:text-game-ink-100";
-
 const filterChipVariants = cva(
   "inline-flex h-[22px] items-center gap-1 rounded-plate border border-solid pl-1.5 font-game-ui text-[11.5px]",
   {
@@ -116,18 +112,6 @@ type Filter = {
   value: React.ReactNode;
   negated?: boolean;
 };
-
-type SearchConfig = boolean | { placeholder?: string };
-
-type ToolbarConfig =
-  | boolean
-  | {
-      search?: SearchConfig;
-      sort?: boolean;
-      columns?: boolean;
-      density?: boolean;
-      summary?: boolean;
-    };
 
 type PaginationConfig =
   | boolean
@@ -149,8 +133,6 @@ type Eu5DataTableOptions<TData> = Partial<
     | "debugTable"
     | "enableMultiSort"
     | "enableSorting"
-    | "filterFns"
-    | "globalFilterFn"
     | "getRowId"
     | "isMultiSortEvent"
     | "maxMultiSortColCount"
@@ -167,11 +149,9 @@ export type Eu5DataTableProps<TData extends object> = {
   title?: React.ReactNode;
   titleActions?: React.ReactNode;
   totalCount?: number;
-  toolbar?: ToolbarConfig;
   summary?: SummaryRenderer<TData>;
   filters?: Filter[];
   onRemoveFilter?: (index: number) => void;
-  onAddFilter?: () => void;
   /** Marker on each row for the in-filter highlight (panel-active + accent rail). */
   isRowInFilter?: (row: TData) => boolean;
   onRowHoverChange?: (row: TData | null) => void;
@@ -187,15 +167,6 @@ type ResolvedPaginationConfig = {
   pageSizeOptions: readonly PageSize[];
 };
 
-type ResolvedToolbarConfig = {
-  search: boolean;
-  searchPlaceholder: string;
-  sort: boolean;
-  columns: boolean;
-  density: boolean;
-  summary: boolean;
-};
-
 export function Eu5DataTable<TData extends object>({
   data,
   columns,
@@ -205,11 +176,9 @@ export function Eu5DataTable<TData extends object>({
   title,
   titleActions,
   totalCount,
-  toolbar,
   summary,
   filters,
   onRemoveFilter,
-  onAddFilter,
   isRowInFilter,
   onRowHoverChange,
   onRowFocusChange,
@@ -217,10 +186,8 @@ export function Eu5DataTable<TData extends object>({
   rowSeparator,
 }: Eu5DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
-  const [globalFilter, setGlobalFilter] = useState("");
 
   const paginationConfig = normalizePaginationConfig(pagination);
-  const toolbarConfig = normalizeToolbarConfig(toolbar);
 
   const storedPageSize = usePaginationStore((s) => s.pageSize);
   const setStoredPageSize = usePaginationStore((s) => s.setPageSize);
@@ -232,10 +199,9 @@ export function Eu5DataTable<TData extends object>({
   const state = useMemo(
     () => ({
       sorting,
-      globalFilter,
       ...(paginationConfig.enabled ? { pagination: paginationState } : {}),
     }),
-    [sorting, globalFilter, paginationConfig.enabled, paginationState],
+    [sorting, paginationConfig.enabled, paginationState],
   );
 
   const table = useReactTable({
@@ -244,10 +210,8 @@ export function Eu5DataTable<TData extends object>({
     columns,
     state,
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     enableMultiSort: tableOptions?.enableMultiSort ?? true,
     ...(paginationConfig.enabled
       ? {
@@ -258,12 +222,7 @@ export function Eu5DataTable<TData extends object>({
   });
 
   const rows = table.getRowModel().rows;
-  const needsFilteredCount =
-    paginationConfig.enabled ||
-    totalCount !== undefined ||
-    Boolean(title || titleActions) ||
-    Boolean(toolbarConfig?.search);
-  const filteredCount = needsFilteredCount ? table.getFilteredRowModel().rows.length : data.length;
+  const filteredCount = data.length;
   const displayTotal = totalCount ?? data.length;
   const showTitleCount = totalCount !== undefined || data.length !== filteredCount;
   const summaryContent = typeof summary === "function" ? summary(table) : summary;
@@ -285,19 +244,7 @@ export function Eu5DataTable<TData extends object>({
         />
       )}
 
-      {toolbarConfig && (
-        <ToolbarBand
-          config={toolbarConfig}
-          search={toolbarConfig.search ? globalFilter : null}
-          onSearchChange={setGlobalFilter}
-          sortCount={sorting.length}
-          columnCount={table.getAllLeafColumns().length}
-        />
-      )}
-
-      {filters && filters.length > 0 && (
-        <FilterBand filters={filters} onRemove={onRemoveFilter} onAdd={onAddFilter} />
-      )}
+      {filters && filters.length > 0 && <FilterBand filters={filters} onRemove={onRemoveFilter} />}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-full table-auto border-separate border-spacing-0">
@@ -416,38 +363,6 @@ function normalizePaginationConfig(config: PaginationConfig): ResolvedPagination
   };
 }
 
-function normalizeToolbarConfig(config: ToolbarConfig | undefined): ResolvedToolbarConfig | null {
-  if (config === false) return null;
-
-  if (config === undefined) {
-    return null;
-  }
-
-  if (config === true) {
-    return {
-      search: true,
-      searchPlaceholder: "Search…",
-      sort: true,
-      columns: true,
-      density: true,
-      summary: true,
-    };
-  }
-
-  const searchConfig = config.search ?? true;
-  const search = searchConfig !== false;
-
-  return {
-    search,
-    searchPlaceholder:
-      typeof searchConfig === "object" ? (searchConfig.placeholder ?? "Search…") : "Search…",
-    sort: config.sort ?? true,
-    columns: config.columns ?? true,
-    density: config.density ?? true,
-    summary: config.summary ?? true,
-  };
-}
-
 function TitleBand({
   title,
   actions,
@@ -479,70 +394,12 @@ function TitleBand({
   );
 }
 
-function ToolbarBand({
-  config,
-  search,
-  onSearchChange,
-  sortCount,
-  columnCount,
-}: {
-  config: ResolvedToolbarConfig;
-  search: string | null;
-  onSearchChange: (v: string) => void;
-  sortCount: number;
-  columnCount: number;
-}) {
-  return (
-    <div className="flex items-center gap-1 border-b border-solid border-game-line bg-game-panel-2 px-3 py-1.5">
-      {search !== null && (
-        <div className="flex h-[26px] min-w-0 flex-1 items-center gap-1.5 rounded-control border border-solid border-game-line-strong bg-game-page px-2">
-          <span className="font-game-num text-[12px] text-game-ink-500">⌕</span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={config.searchPlaceholder}
-            className="min-w-0 flex-1 border-0 bg-transparent font-game-ui text-[12px] text-game-ink-100 placeholder:text-game-ink-500 focus:outline-none"
-          />
-        </div>
-      )}
-      {(config.columns || config.sort || config.density || config.summary) && (
-        <div className="mx-1 h-[18px] w-px bg-game-line-strong" />
-      )}
-      {config.columns && (
-        <ToolButton glyph="▦" label="Columns" count={`${columnCount}/${columnCount}`} />
-      )}
-      {config.sort && (
-        <ToolButton glyph="⇅" label="Sort" count={sortCount > 0 ? String(sortCount) : undefined} />
-      )}
-      {config.density && <ToolButton glyph="▤" label="Density" />}
-      {config.summary && <ToolButton glyph="Σ" label="Summary" />}
-    </div>
-  );
-}
-
-function ToolButton({ glyph, label, count }: { glyph: string; label: string; count?: string }) {
-  return (
-    <button type="button" className={toolBtnClass} aria-label={label} disabled>
-      <span className="font-game-num text-[12px] text-game-ink-500">{glyph}</span>
-      <span>{label}</span>
-      {count && (
-        <span className="rounded-plate bg-game-accent-soft px-1 py-px font-game-num text-[10px] text-game-accent-100">
-          {count}
-        </span>
-      )}
-    </button>
-  );
-}
-
 function FilterBand({
   filters,
   onRemove,
-  onAdd,
 }: {
   filters: Filter[];
   onRemove?: (index: number) => void;
-  onAdd?: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-solid border-game-line bg-game-panel-2 px-3 py-1.5">
@@ -574,16 +431,6 @@ function FilterBand({
           )}
         </span>
       ))}
-      {onAdd && (
-        <button
-          type="button"
-          onClick={onAdd}
-          className="inline-flex h-[22px] cursor-pointer items-center gap-1 rounded-plate border border-dashed border-game-line-strong bg-transparent px-1.5 font-game-ui text-[11.5px] text-game-ink-500 hover:border-game-accent-line hover:text-game-accent-100"
-        >
-          <span>+</span>
-          <span>Filter</span>
-        </button>
-      )}
     </div>
   );
 }
@@ -869,32 +716,6 @@ function Pill({ children, className }: { children: React.ReactNode; className?: 
   );
 }
 
-const SPARK_MASKS: Record<"up" | "down" | "flat", string> = {
-  up: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'><polyline points='0,15 15,14 30,12 45,11 60,9 75,7 90,5 105,3 120,2' fill='none' stroke='black' stroke-width='1.5'/></svg>\")",
-  down: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'><polyline points='0,5 15,6 30,8 45,9 60,12 75,13 90,15 105,17 120,18' fill='none' stroke='black' stroke-width='1.5'/></svg>\")",
-  flat: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'><polyline points='0,10 15,9 30,11 45,10 60,10 75,11 90,9 105,11 120,10' fill='none' stroke='black' stroke-width='1.5'/></svg>\")",
-};
-
-function Sparkline({ trend }: { trend: "up" | "down" | "flat" }) {
-  const colorClass =
-    trend === "up" ? "bg-game-good" : trend === "down" ? "bg-game-err" : "bg-game-ink-500";
-  return (
-    <span className="relative block h-5 w-full overflow-hidden rounded-[1px]">
-      <span
-        className={cx("absolute inset-0 opacity-80", colorClass)}
-        style={{
-          maskImage: SPARK_MASKS[trend],
-          WebkitMaskImage: SPARK_MASKS[trend],
-          maskSize: "100% 100%",
-          WebkitMaskSize: "100% 100%",
-          maskRepeat: "no-repeat",
-          WebkitMaskRepeat: "no-repeat",
-        }}
-      />
-    </span>
-  );
-}
-
 type AffordanceProps = {
   kind: "add" | "remove";
   onClick?: () => void;
@@ -1012,7 +833,6 @@ function formatCount(n: number): string {
 Eu5DataTable.NumericCell = NumericCell;
 Eu5DataTable.RatioCell = RatioCell;
 Eu5DataTable.Pill = Pill;
-Eu5DataTable.Sparkline = Sparkline;
 Eu5DataTable.Affordance = Affordance;
 Eu5DataTable.SummaryRow = SummaryRow;
 Eu5DataTable.SummaryCell = SummaryCell;
