@@ -133,7 +133,7 @@ function EmptyInsightState() {
   );
 }
 
-const MAP_MODE_TITLES = {
+export const MAP_MODE_TITLES = {
   political: "Great powers",
   control: "Control",
   development: "Development",

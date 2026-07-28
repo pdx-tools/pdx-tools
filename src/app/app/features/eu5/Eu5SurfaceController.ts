@@ -16,7 +16,7 @@ export class Eu5SurfaceController implements CanvasCourierController {
   constructor(
     private readonly save: Eu5SaveInput,
     private readonly callbacks: {
-      onProgress?: (increment: number) => void;
+      onProgress?: (increment: number, stage: string) => void;
       onStore: (store: Eu5Store) => void;
       onError: (error: unknown) => void;
     },

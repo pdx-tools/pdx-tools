@@ -65,7 +65,7 @@ export function Eu5InsightErrorState({ error, className }: { error?: Error; clas
 
 export function Eu5InsightEmptyState({
   title,
-  body = "Reduce the filter set or widen the geographic selection.",
+  body = "Widen the selection on the map, or press Esc to clear it.",
   className,
 }: {
   title?: string;

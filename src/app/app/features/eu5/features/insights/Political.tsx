@@ -87,8 +87,11 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
             Eff. Dev
           </TippedHeader>
         ),
-        enableSorting: false,
-        meta: Eu5DataTable.meta({ variant: "num", width: 88 }),
+        meta: Eu5DataTable.meta({
+          variant: "num",
+          width: 96,
+          headerLabel: "Effective Development",
+        }),
         cell: ({ getValue }) => (
           <Eu5DataTable.NumericCell>{formatFloat(getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
@@ -100,8 +103,11 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
             Active Cap
           </TippedHeader>
         ),
-        enableSorting: false,
-        meta: Eu5DataTable.meta({ variant: "num", width: 88 }),
+        meta: Eu5DataTable.meta({
+          variant: "num",
+          width: 108,
+          headerLabel: "Active State Capacity",
+        }),
         cell: ({ getValue }) => (
           <Eu5DataTable.NumericCell>
             {formatFloat(getValue() / 1_000_000, 1)}
@@ -115,8 +121,11 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
             Pop
           </TippedHeader>
         ),
-        enableSorting: false,
-        meta: Eu5DataTable.meta({ variant: "num", width: 88 }),
+        meta: Eu5DataTable.meta({
+          variant: "num",
+          width: 92,
+          headerLabel: "Population",
+        }),
         cell: ({ getValue }) => (
           <Eu5DataTable.NumericCell>{formatInt(getValue())}</Eu5DataTable.NumericCell>
         ),
@@ -128,8 +137,11 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
             Income
           </TippedHeader>
         ),
-        enableSorting: false,
-        meta: Eu5DataTable.meta({ variant: "num", width: 88 }),
+        meta: Eu5DataTable.meta({
+          variant: "num",
+          width: 80,
+          headerLabel: "Income",
+        }),
         cell: ({ getValue }) => (
           <Eu5DataTable.NumericCell>{formatFloat(getValue(), 2)}</Eu5DataTable.NumericCell>
         ),
@@ -152,7 +164,8 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
   );
 
   const rowSeparator = useMemo(
-    () => (row: PoliticalWorldRow, idx: number) => {
+    () => (row: PoliticalWorldRow, idx: number, ctx: { sorted: boolean }) => {
+      if (ctx.sorted) return null;
       if (idx === 0) return null;
       const prevRow = rows[idx - 1];
       if (prevRow && prevRow.ordinalRank <= 10 && row.ordinalRank > 10) {
@@ -170,13 +183,14 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
   );
 
   return (
-    <Eu5MapDataTable
-      columns={columns}
-      data={rows}
-      tableOptions={{ enableSorting: false }}
-      isRowInFilter={(row) => row.country.country.key === activeProfileIdx}
-      rowSeparator={rowSeparator}
-      getRowHoverTarget={(row) => ({ kind: "country", countryIdx: row.country.country.key })}
-    />
+    <div className="flex flex-col gap-4 p-4">
+      <Eu5MapDataTable
+        columns={columns}
+        data={rows}
+        isRowInFilter={(row) => row.country.country.key === activeProfileIdx}
+        rowSeparator={rowSeparator}
+        getRowHoverTarget={(row) => ({ kind: "country", countryIdx: row.country.country.key })}
+      />
+    </div>
   );
 }

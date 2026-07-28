@@ -164,7 +164,7 @@ export class Eu5GameAdapter {
       inputConfig: SharedCanvasInputConfig;
       save: Eu5SaveInput;
     },
-    onProgress?: (increment: number) => void,
+    onProgress?: (increment: number, stage: string) => void,
   ) {
     // Coordinate part fetching on the main thread. The game worker calls
     // `gameBundle.selectVersion(version)` after parsing save metadata, which
@@ -227,7 +227,7 @@ export class Eu5GameAdapter {
         { save: config.save },
         proxy({
           gameBundle: gameBundleApi,
-          onProgress: (increment: number) => onProgress?.(increment),
+          onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
         }),
       ),
       this.eu5MapWorker.createMapEngine(
@@ -241,7 +241,7 @@ export class Eu5GameAdapter {
         ),
         proxy({
           mapBundle: mapBundleApi,
-          onProgress: (increment: number) => onProgress?.(increment),
+          onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
         }),
       ),
     ]);
