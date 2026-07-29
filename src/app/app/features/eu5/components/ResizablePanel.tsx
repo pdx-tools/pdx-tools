@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { ArrowsPointingInIcon, ArrowsPointingOutIcon } from "@heroicons/react/24/solid";
+import { focusBar, focusRing } from "./focusRing";
 
 interface ResizablePanelContextValue {
   side: "left" | "right";
@@ -147,7 +148,7 @@ function Root({
               "absolute inset-y-0 z-10 w-1.5 cursor-col-resize",
               "transition-colors duration-100",
               "hover:bg-game-accent-soft active:bg-game-accent-line/50",
-              "focus-visible:bg-game-accent-soft focus-visible:outline-none",
+              focusBar,
               side === "right" ? "left-0" : "right-0",
             )}
             onPointerDown={handleDragStart}
@@ -210,7 +211,7 @@ function CloseButton({ className, children }: ButtonProps) {
       onClick={onClose}
       className={cx(
         "flex h-7 w-7 shrink-0 items-center justify-center rounded-control",
-        "focus-visible:ring-2 focus-visible:outline-none",
+        focusRing,
         className,
       )}
       aria-label="Close panel"
@@ -233,7 +234,7 @@ function MaximizeButton({ className, children }: ButtonProps) {
       onClick={toggleMaximize}
       className={cx(
         "flex h-7 w-7 shrink-0 items-center justify-center rounded-control",
-        "focus-visible:ring-2 focus-visible:outline-none",
+        focusRing,
         className,
       )}
       aria-label={isMaximized ? "Restore panel size" : "Maximize panel"}

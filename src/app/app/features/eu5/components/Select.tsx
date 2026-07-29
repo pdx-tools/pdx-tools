@@ -1,6 +1,7 @@
 import React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
+import { focusRingAlways } from "./focusRing";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
@@ -27,7 +28,7 @@ const GameSelectTrigger = React.forwardRef<
         "flex h-7 w-full items-center justify-between gap-1.5 rounded-[var(--radius-control)]",
         "border border-solid border-game-line bg-game-page px-2.5",
         "font-game-ui text-[12.5px] text-game-ink-100",
-        "focus:ring-1 focus:ring-game-accent-line focus:outline-none",
+        focusRingAlways,
         "disabled:cursor-not-allowed disabled:opacity-40",
         "data-[placeholder]:text-game-ink-500",
         className,

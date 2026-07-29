@@ -1,4 +1,5 @@
 import { cx } from "class-variance-authority";
+import { focusRingInset } from "../components/focusRing";
 import { useEu5Engine, useEu5MapMode } from "../store";
 import { MAP_MODES } from "./modeConfig";
 import type { ModeConfig } from "./modeConfig";
@@ -34,6 +35,7 @@ function ModeRow({ mode }: { mode: ModeConfig }) {
         "relative flex h-7 w-full items-center pr-3.5 pl-3.5 text-left",
         "text-[12.5px] text-game-ink-300 transition-colors duration-100",
         "hover:bg-game-panel-hover hover:text-game-ink-100",
+        focusRingInset,
         isActive && "text-game-accent-100",
         isActive && "bg-linear-to-r from-game-accent-500/15 to-transparent",
       )}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import { cx } from "class-variance-authority";
 import { Popover } from "@/components/Popover";
+import { focusRing } from "./components/focusRing";
 
 interface Shortcut {
   action: string;
@@ -76,7 +78,10 @@ export function Eu5ShortcutPanel() {
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+          className={cx(
+            "pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100",
+            focusRing,
+          )}
           aria-label="Keyboard shortcuts"
         >
           <QuestionMarkCircleIcon className="h-4 w-4" />

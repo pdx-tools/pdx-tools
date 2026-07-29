@@ -1,9 +1,12 @@
 import React from "react";
 import { cx } from "class-variance-authority";
 import { Chip } from "./Chip";
+import { focusRingAlways, focusRingWithin } from "./focusRing";
 
-const baseInputClass =
-  "h-7 w-full rounded-control border border-solid border-game-line bg-game-page px-2.5 font-game-ui text-[12.5px] text-game-ink-100 placeholder:text-game-ink-500 focus:outline-none focus:ring-1 focus:ring-game-accent-line disabled:opacity-40 disabled:cursor-not-allowed";
+const baseInputClass = cx(
+  "h-7 w-full rounded-control border border-solid border-game-line bg-game-page px-2.5 font-game-ui text-[12.5px] text-game-ink-100 placeholder:text-game-ink-500 disabled:cursor-not-allowed disabled:opacity-40",
+  focusRingAlways,
+);
 
 export const GameInput = React.forwardRef<
   HTMLInputElement,
@@ -22,7 +25,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       <div
         className={cx(
           "relative flex h-7 items-center rounded-control border border-solid border-game-line bg-game-page",
-          "focus-within:ring-1 focus-within:ring-game-accent-line",
+          focusRingWithin,
           className,
         )}
       >

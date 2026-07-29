@@ -25,6 +25,7 @@
   --color-game-accent-500: var(--game-accent-500);
   --color-game-accent-soft: var(--game-accent-soft);
   --color-game-accent-line: var(--game-accent-line);
+  --color-game-accent-focus: var(--game-accent-focus);
 
   --color-game-warn: var(--game-warn);
   --color-game-err: var(--game-err);
@@ -84,6 +85,7 @@
   --game-accent-500: oklch(58% 0.13 78);
   --game-accent-soft: rgba(212, 160, 90, 0.14);
   --game-accent-line: rgba(212, 160, 90, 0.55);
+  --game-accent-focus: oklch(72% 0.12 78);
 
   --game-warn: var(--color-amber-500);
   --game-err: var(--color-rose-500);
