@@ -31,6 +31,31 @@ bucket_name = "pdx-saves"
 binding = "MEDIA_BUCKET"
 bucket_name = "pdx-media"
 
+[env.local-secondary]
+
+[env.local-secondary.vars]
+SESSION_COOKIE_NAME = "sid_secondary"
+
+[[env.local-secondary.analytics_engine_datasets]]
+binding = "PDX_METRICS"
+dataset = "pdx_metrics"
+
+[[env.local-secondary.hyperdrive]]
+binding = "PDX_DB"
+id = "52bcc7b655d44776a6e42672fd11b388"
+localConnectionString = "postgres://app_user:mercantilismbaby2@localhost:5532/postgres"
+
+[[env.local-secondary.r2_buckets]]
+binding = "SAVE_BUCKET"
+bucket_name = "pdx-saves-secondary"
+
+[[env.local-secondary.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "pdx-media-secondary"
+
+[env.local-secondary.version_metadata]
+binding = "CF_VERSION_METADATA"
+
 [env.test]
 
 [[env.test.analytics_engine_datasets]]
