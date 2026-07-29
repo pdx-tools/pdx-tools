@@ -402,7 +402,7 @@ mod tests {
     fn test_130_game() {
         let game = Game::from_flatbuffer(eu4game_data::game_data(30));
         assert_eq!(game.total_provinces(), 4789);
-        assert_eq!(game.provinces().count(), 3722);
+        assert_eq!(game.provinces().count(), 3773);
     }
 
     #[test]

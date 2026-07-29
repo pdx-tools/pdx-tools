@@ -62,7 +62,8 @@ where
     let tc = generate_trade_company_investments(fs, imaging, &localization, out_dir, options)?;
     let persons = generate_ruler_personalities(fs, imaging, &localization, out_dir, options)?;
     let advs = generate_advisors(fs, imaging, &localization, out_dir, options)?;
-    let (total_provs, provs) = generate_provinces(fs, game_version)?;
+    let center_locations = translate_map(fs, imaging, out_dir, options)?;
+    let (total_provs, provs) = generate_provinces(fs, game_version, &center_locations)?;
     let terrain = generate_terrain(fs)?;
 
     // Generate map data
@@ -79,7 +80,6 @@ where
         .context("achievement images error")?;
     translate_building_images(fs, imaging, out_dir, options).context("building images error")?;
 
-    let center_locations = translate_map(fs, imaging, out_dir, options)?;
     let definitions = fs.read_file("map/definition.csv")?;
 
     // Skip output generation in trace mode
@@ -407,6 +407,7 @@ where
 fn generate_provinces<P: FileProvider + ?Sized>(
     fs: &P,
     game_version: &str,
+    center_locations: &HashMap<u16, (u16, u16)>,
 ) -> anyhow::Result<(usize, Vec<GameProvince>)> {
     let map_data = fs.read_file("map/default.map")?;
     let default_map = map::parse_default_map(map_data.as_slice());
@@ -414,6 +415,7 @@ fn generate_provinces<P: FileProvider + ?Sized>(
         .lakes
         .iter()
         .chain(default_map.sea_starts.iter())
+        .copied()
         .collect();
 
     let data = http::request(format!("eu4-saves/terrain/terrain-{}.eu4", game_version));
@@ -458,7 +460,7 @@ fn generate_provinces<P: FileProvider + ?Sized>(
                 terrain,
                 province_is_on_an_island: is_island,
             })
-        } else if !prov.ub {
+        } else if center_locations.contains_key(&id.as_u16()) {
             if ocean_provs.contains(id) {
                 terrains.push(GameProvince {
                     id: *id,
@@ -477,6 +479,23 @@ fn generate_provinces<P: FileProvider + ?Sized>(
 
     terrains.sort_by_key(|x| x.id);
     terrains.dedup();
+
+    let mapped_oceans = ocean_provs
+        .iter()
+        .filter(|id| center_locations.contains_key(&id.as_u16()))
+        .collect::<HashSet<_>>();
+    let emitted_oceans = terrains
+        .iter()
+        .filter(|province| province.terrain == schemas::eu4::Terrain::Ocean)
+        .map(|province| &province.id)
+        .collect::<HashSet<_>>();
+    anyhow::ensure!(
+        mapped_oceans == emitted_oceans,
+        "mapped ocean province mismatch: missing={:?}, unexpected={:?}",
+        mapped_oceans.difference(&emitted_oceans),
+        emitted_oceans.difference(&mapped_oceans),
+    );
+
     Ok((total_provs, terrains))
 }
 
