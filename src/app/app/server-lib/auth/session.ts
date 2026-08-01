@@ -21,7 +21,7 @@ export const pdxSession = ({
   const cloudflare = getCloudflare(context);
   const storage = createCookieSessionStorage({
     cookie: {
-      name: "sid",
+      name: cloudflare.env.SESSION_COOKIE_NAME ?? "sid",
       secrets: [check(cloudflare.env.SESSION_SECRET, "missing session secret")],
       sameSite: "strict",
       httpOnly: true,

@@ -5,6 +5,11 @@ import starlightBlog from "starlight-blog";
 export default defineConfig({
   outDir: "./dist",
   trailingSlash: "never",
+  vite: {
+    server: {
+      strictPort: true,
+    },
+  },
   integrations: [
     starlight({
       title: "PDX Tools",

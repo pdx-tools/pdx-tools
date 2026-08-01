@@ -138,6 +138,7 @@ hide = true
 depends = ["pnpm-install"]
 description = "Generate TypeScript types"
 dir = "./src/app"
+env.CLOUDFLARE_ENV = false
 run = [
     "pnpm exec wrangler types",
     "pnpm exec react-router typegen",
@@ -161,7 +162,7 @@ hide = true
 description = "Run pdx.tools frontend development"
 depends = ["pnpm-install", "dev:app:setup:**", "tokenize", "build:wasm"]
 dir = "./src/app"
-run = ["pnpm run dev"]
+run = ["pnpm exec react-router dev --port {{ get_env(name='PDX_DEV_APP_PORT', default='3001') }} --strictPort"]
 
 [tasks."dev:map"]
 description = "Run the sample map demo without compiling Rust"
@@ -173,11 +174,21 @@ run = "pnpm run dev"
 description = "Run the docs"
 depends = ["pnpm-install", "docs:setup:changelog"]
 dir = "./src/docs"
-run = "pnpm run dev"
+run = "pnpm exec astro dev --port {{ get_env(name='PDX_DEV_DOCS_PORT', default='4321') }}"
 
 [tasks.dev]
 description = "Run complete development setup (backend and frontend)"
 depends = ["build:wasm", "dev:app", "dev:docs", "start:services:dev", "serve:api:dev"]
+
+[tasks."dev:2"]
+description = "Run a second isolated development stack"
+env.PDX_DEV_APP_PORT = "3101"
+env.PDX_DEV_DOCS_PORT = "4421"
+env.PDX_DEV_API_PORT = "8182"
+env.PDX_DEV_DATABASE_PORT = "5532"
+env.PDX_DEV_COMPOSE_PROJECT = "pdx_dev_secondary"
+env.CLOUDFLARE_ENV = "local-secondary"
+run = "mise run dev"
 
 [tasks."test:wasm"]
 depends = ["setup:wasm"]
@@ -217,7 +228,8 @@ run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-a
 description = "Run backend services (eg: postgres, s3) configured for development"
 dir = "dev"
 hide = true
-run = ["docker-compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name pdx_dev"]
+env.DATABASE_PORT = "{{ get_env(name='PDX_DEV_DATABASE_PORT', default='5432') }}"
+run = ["docker-compose -f ./docker-compose.dev.yml --env-file ../src/app/.env.development --env-file ../src/app/.dev.vars --env-file .env.dev --project-name {{ get_env(name='PDX_DEV_COMPOSE_PROJECT', default='pdx_dev') }}"]
 
 [tasks."env:test"]
 description = "Run backend services (eg: postgres, s3) configured for testing"
@@ -228,7 +240,7 @@ run = ["docker-compose -f ./docker-compose.test.yml --env-file ../src/app/.env.t
 [tasks."serve:api:dev"]
 depends = ["tokenize"]
 description = "Run the API backend (eg: save parsing) for development"
-env.PORT = 8082
+env.PORT = "{{ get_env(name='PDX_DEV_API_PORT', default='8082') }}"
 run = ["cargo run -p pdx-tools-api"]
 
 [tasks."serve:api:test"]
