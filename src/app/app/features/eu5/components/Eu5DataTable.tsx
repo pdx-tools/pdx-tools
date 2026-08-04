@@ -18,6 +18,7 @@ import type {
 } from "@tanstack/react-table";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
+import { focusRing, focusRingWithin } from "./focusRing";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Eu5DataTableColumnMeta, Eu5DataTableColumnVariant } from "@/types/tanstack-table";
@@ -91,8 +92,10 @@ const summaryCellVariants = cva(
 const sortBtnClass =
   "inline-flex h-[18px] shrink-0 items-center justify-center border-0 bg-transparent font-game-num text-[10px] text-game-ink-500 data-[active=true]:text-game-accent-100";
 
-const headerSortBtnClass =
-  "flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit uppercase hover:text-game-ink-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-game-accent-300";
+const headerSortBtnClass = cx(
+  "flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit uppercase hover:text-game-ink-100",
+  focusRing,
+);
 
 const toolBtnClass =
   "inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-control border border-solid border-transparent bg-transparent px-1.5 font-game-ui text-[11.5px] text-game-ink-300 hover:border-game-line hover:bg-game-panel-hover hover:text-game-ink-100";
@@ -495,7 +498,12 @@ function ToolbarBand({
   return (
     <div className="flex items-center gap-1 border-b border-solid border-game-line bg-game-panel-2 px-3 py-1.5">
       {search !== null && (
-        <div className="flex h-[26px] min-w-0 flex-1 items-center gap-1.5 rounded-control border border-solid border-game-line-strong bg-game-page px-2">
+        <div
+          className={cx(
+            "flex h-[26px] min-w-0 flex-1 items-center gap-1.5 rounded-control border border-solid border-game-line-strong bg-game-page px-2",
+            focusRingWithin,
+          )}
+        >
           <span className="font-game-num text-[12px] text-game-ink-500">⌕</span>
           <input
             type="text"

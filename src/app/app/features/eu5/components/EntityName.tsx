@@ -1,8 +1,8 @@
 import type React from "react";
 import { cx } from "class-variance-authority";
+import { focusRing } from "./focusRing";
 
-export const entityLinkControl =
-  "group/entity-link focus-visible:rounded-[1px] focus-visible:ring-1 focus-visible:ring-game-accent-line focus-visible:outline-none";
+export const entityLinkControl = cx("group/entity-link focus-visible:rounded-[1px]", focusRing);
 
 export function EntityName({ className, ...props }: React.ComponentPropsWithoutRef<"span">) {
   return (

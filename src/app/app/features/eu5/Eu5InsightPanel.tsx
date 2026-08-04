@@ -33,8 +33,9 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
     [setInsightPanelWidth],
   );
 
+  // The ring comes from ResizablePanel's own controls; this only styles the plate.
   const btnCx =
-    "border border-game-line bg-game-panel-2 text-game-ink-500 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-game-accent-300/50";
+    "border border-game-line bg-game-panel-2 text-game-ink-500 hover:bg-game-panel-hover hover:text-game-ink-100";
 
   return (
     <PanelNavProvider>

@@ -7,6 +7,7 @@ import { cx } from "class-variance-authority";
 import type { SearchResult } from "./ui-engine";
 import styles from "./Eu5Toolbar.module.css";
 import { Eu5ShortcutPanel } from "./Eu5ShortcutPanel";
+import { focusRing } from "./components/focusRing";
 
 export function Eu5Toolbar() {
   const [searchActive, setSearchActive] = useState(false);
@@ -120,7 +121,10 @@ export function Eu5Toolbar() {
         <button
           type="button"
           onClick={openSearch}
-          className="pointer-events-auto flex h-7 shrink-0 items-center gap-1.5 rounded-control px-1.5 text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+          className={cx(
+            "pointer-events-auto flex h-7 shrink-0 items-center gap-1.5 rounded-control px-1.5 text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100",
+            focusRing,
+          )}
           aria-label="Search countries or locations"
         >
           <MagnifyingGlassIcon className="h-4 w-4" />
@@ -139,7 +143,8 @@ export function Eu5Toolbar() {
               type="button"
               onClick={() => void handleSelectPlayers()}
               className={cx(
-                "pointer-events-auto h-7 shrink-0 rounded-control px-3 text-[10.5px] font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none",
+                "pointer-events-auto h-7 shrink-0 rounded-control px-3 text-[10.5px] font-medium whitespace-nowrap transition-colors",
+                focusRing,
                 selectionState?.preset === "players"
                   ? "bg-game-accent-soft text-game-accent-100 shadow-[inset_0_-1px_0_var(--color-game-accent-300)]"
                   : "text-game-ink-300 hover:bg-game-panel-hover hover:text-game-ink-100",

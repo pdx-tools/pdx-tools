@@ -14,6 +14,8 @@ import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
 import { memo, useEffect, useRef, useState } from "react";
+import { cx } from "class-variance-authority";
+import { focusRing } from "./components/focusRing";
 import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel, MAP_MODE_TITLES } from "./Eu5InsightPanel";
 import { Eu5Loading, LOADING_DISSOLVE_MS } from "./Eu5Loading";
@@ -105,7 +107,10 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
         type="button"
         onClick={onOpen}
         aria-label={`Open ${label} panel`}
-        className="flex h-7 max-w-56 items-center gap-2 rounded-control px-2 text-game-ink-500 transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+        className={cx(
+          "flex h-7 max-w-56 items-center gap-2 rounded-control px-2 text-game-ink-500 transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100",
+          focusRing,
+        )}
       >
         <ChevronLeftIcon className="h-3.5 w-3.5 shrink-0" />
         <span className="truncate font-game-num text-[11px] tracking-[0.14em] uppercase">

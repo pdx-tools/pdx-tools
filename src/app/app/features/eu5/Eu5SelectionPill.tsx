@@ -1,7 +1,9 @@
 import { useCallback } from "react";
 import { useEu5SelectionState, useEu5Engine } from "./store";
 import { XMarkIcon } from "@heroicons/react/24/solid";
+import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";
+import { focusRing } from "./components/focusRing";
 
 function formatSelectionSummary(entityCount: number, locationCount: number): string {
   const locPart = locationCount === 1 ? "1 location" : `${formatInt(locationCount)} locations`;
@@ -38,7 +40,10 @@ export function Eu5SelectionPill() {
       <button
         type="button"
         onClick={() => void handleClear()}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-control text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-line focus-visible:outline-none"
+        className={cx(
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded-control text-game-ink-500 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100",
+          focusRing,
+        )}
         aria-label="Clear selection"
       >
         <XMarkIcon className="h-3 w-3" />

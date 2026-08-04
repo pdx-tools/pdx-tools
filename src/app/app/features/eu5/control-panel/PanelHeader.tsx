@@ -1,5 +1,7 @@
 import { Link } from "react-router";
+import { cx } from "class-variance-authority";
 import { HomeIcon } from "@heroicons/react/24/outline";
+import { focusRing } from "../components/focusRing";
 import { useEngineActions } from "../../engine";
 import { useEu5SaveDate, useEu5PlaythroughName } from "../store";
 import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
@@ -40,7 +42,10 @@ export function PanelHeader() {
       <Link
         to="/"
         onClick={resetSaveAnalysis}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-game-ink-500 transition-colors duration-100 hover:bg-game-panel-hover hover:text-game-ink-100 focus-visible:ring-2 focus-visible:ring-game-accent-300/50 focus-visible:outline-none"
+        className={cx(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded text-game-ink-500 transition-colors duration-100 hover:bg-game-panel-hover hover:text-game-ink-100",
+          focusRing,
+        )}
         aria-label="Return to home"
       >
         <HomeIcon className="h-4 w-4" />

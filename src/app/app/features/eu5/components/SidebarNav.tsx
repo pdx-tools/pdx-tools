@@ -1,5 +1,6 @@
 import React from "react";
 import { cx } from "class-variance-authority";
+import { focusRingInset } from "./focusRing";
 
 export const SidebarNav = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement>>(
   function SidebarNav({ className, ...props }, ref) {
@@ -48,6 +49,7 @@ const SidebarNavItem = React.forwardRef<HTMLButtonElement, SidebarNavItemProps>(
         className={cx(
           "relative flex h-7 w-full items-center px-3.5 pr-3.5 text-left",
           "font-game-ui text-[12.5px] transition-colors duration-100",
+          focusRingInset,
           active
             ? "bg-linear-to-r from-game-accent-500/15 to-transparent text-game-accent-100"
             : "text-game-ink-300 hover:bg-game-panel-hover hover:text-game-ink-100",

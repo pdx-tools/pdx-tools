@@ -2,13 +2,14 @@ import React from "react";
 import { Slot as SlotPrimitive } from "radix-ui";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
+import { focusRing } from "./focusRing";
 
 const buttonVariants = cva(
   [
     "inline-flex cursor-pointer items-center justify-center gap-1.5",
     "rounded-[var(--radius-control)] font-game-ui text-[12.5px] leading-none",
     "border border-solid transition-colors",
-    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-game-accent-line",
+    focusRing,
     "disabled:opacity-40 disabled:cursor-not-allowed",
   ].join(" "),
   {

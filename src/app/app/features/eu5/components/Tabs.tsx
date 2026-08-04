@@ -1,6 +1,7 @@
 import React from "react";
 import { Tabs as TabsPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
+import { focusRing } from "./focusRing";
 
 export const GameTabs = TabsPrimitive.Root as typeof TabsPrimitive.Root & {
   List: typeof GameTabsList;
@@ -42,7 +43,7 @@ const GameTabsTrigger = React.forwardRef<
         "data-[state=active]:text-game-ink-100",
         "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full",
         "after:bg-transparent data-[state=active]:after:bg-game-accent-300",
-        "focus-visible:ring-1 focus-visible:ring-game-accent-line focus-visible:outline-none",
+        focusRing,
         "disabled:pointer-events-none disabled:opacity-40",
         className,
       )}
@@ -64,14 +65,7 @@ const GameTabsContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
 >(function GameTabsContent({ className, ...props }, ref) {
   return (
-    <TabsPrimitive.Content
-      ref={ref}
-      className={cx(
-        "pt-3 focus-visible:ring-1 focus-visible:ring-game-accent-line focus-visible:outline-none",
-        className,
-      )}
-      {...props}
-    />
+    <TabsPrimitive.Content ref={ref} className={cx("pt-3", focusRing, className)} {...props} />
   );
 });
 GameTabs.Content = GameTabsContent;

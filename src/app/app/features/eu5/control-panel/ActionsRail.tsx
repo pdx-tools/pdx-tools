@@ -3,6 +3,7 @@ import { cx } from "class-variance-authority";
 import { CameraIcon } from "@heroicons/react/24/outline";
 import { FireIcon } from "@heroicons/react/24/solid";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
+import { focusRing } from "../components/focusRing";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 import { downloadData } from "@/lib/downloadData";
 import { toast } from "@/lib/toast";
@@ -70,6 +71,7 @@ function ActionButton({ def, onHover, children, isLoading, onClick }: ActionButt
       className={cx(
         "grid h-10 w-10 place-items-center rounded transition-colors duration-100",
         "text-game-ink-500 hover:bg-game-panel-hover hover:text-game-ink-100",
+        focusRing,
         isLoading && "cursor-not-allowed opacity-40",
       )}
     >
