@@ -8,6 +8,26 @@ const SUPPORTS_DEVICE_PIXEL_CONTENT_BOX =
   typeof ResizeObserverEntry !== "undefined" &&
   "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
 
+export function canvasPhysicalSize(
+  cssWidth: number,
+  cssHeight: number,
+  scaleFactor: number,
+  reportedDevicePixels?: { inlineSize: number; blockSize: number },
+): CanvasSize {
+  const expectedWidth = Math.floor(cssWidth * scaleFactor);
+  const expectedHeight = Math.floor(cssHeight * scaleFactor);
+  const reportedIsPlausible =
+    reportedDevicePixels !== undefined &&
+    Math.abs(reportedDevicePixels.inlineSize - expectedWidth) <= 1 &&
+    Math.abs(reportedDevicePixels.blockSize - expectedHeight) <= 1;
+
+  return {
+    width: reportedIsPlausible ? reportedDevicePixels.inlineSize : expectedWidth,
+    height: reportedIsPlausible ? reportedDevicePixels.blockSize : expectedHeight,
+    scaleFactor,
+  };
+}
+
 export class CanvasCourierTransport {
   private activeSurface: CanvasCourierDomSurface | undefined;
   private attachmentAbortController: AbortController | undefined;
@@ -162,25 +182,11 @@ export class CanvasCourierTransport {
       }
 
       const scaleFactor = window.devicePixelRatio;
-      let nextSize: CanvasSize;
-
-      if (SUPPORTS_DEVICE_PIXEL_CONTENT_BOX) {
-        // Physical pixels reported directly; DPR changes fire this observer automatically.
-        const dpSize = entry.devicePixelContentBoxSize[0];
-        nextSize = {
-          width: dpSize.inlineSize,
-          height: dpSize.blockSize,
-          scaleFactor,
-        };
-      } else {
-        // Safari fallback: contentRect is in CSS pixels.
-        const rect = entry.contentRect;
-        nextSize = {
-          width: Math.floor(rect.width * scaleFactor),
-          height: Math.floor(rect.height * scaleFactor),
-          scaleFactor,
-        };
-      }
+      const rect = entry.contentRect;
+      const devicePixels = SUPPORTS_DEVICE_PIXEL_CONTENT_BOX
+        ? entry.devicePixelContentBoxSize[0]
+        : undefined;
+      const nextSize = canvasPhysicalSize(rect.width, rect.height, scaleFactor, devicePixels);
 
       this.canvasSize = nextSize;
       this.inputQueue.writer.enqueueResize(nextSize);
