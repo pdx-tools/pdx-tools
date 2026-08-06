@@ -13,8 +13,12 @@ date-layer = ["render"]
 [dependencies]
 bytemuck = { workspace = true, features = ["derive"] }
 futures-channel = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true, optional = true }
 wgpu = { workspace = true, optional = true }
+
+[dev-dependencies]
+postcard = { workspace = true, features = ["alloc"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { workspace = true, default-features = false }

@@ -1,7 +1,8 @@
 use super::World;
 use crate::R16;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TopologyIndex {
     neighbors: Vec<R16>,
     meta: Vec<NodeEntry>,
@@ -99,7 +100,7 @@ impl TopologyIndex {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct NodeEntry {
     offset: u32,
     len: u16,
@@ -195,6 +196,16 @@ mod tests {
         assert_eq!(to_values(topology.neighbors_of_index(0)), vec![1, 2]);
         assert_eq!(to_values(topology.neighbors_of_index(1)), vec![0, 2]);
         assert_eq!(to_values(topology.neighbors_of_index(2)), vec![0, 1]);
+    }
+
+    #[test]
+    fn topology_index_round_trips_through_postcard() {
+        let grid = vec![2u16, 0u16, 0u16, 1u16];
+        let world = world_from_grid(&grid, 4, 1);
+        let topology = TopologyIndex::from_world(&world);
+        let bytes = postcard::to_allocvec(&topology).unwrap();
+        let decoded: TopologyIndex = postcard::from_bytes(&bytes).unwrap();
+        assert_eq!(topology, decoded);
     }
 
     #[test]

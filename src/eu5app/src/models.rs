@@ -66,7 +66,8 @@ pub enum Terrain {
     #[default]
     Other,
     Impassable,
-    Water,
+    Sea,
+    Lake,
 }
 
 impl Serialize for Terrain {
@@ -77,7 +78,8 @@ impl Serialize for Terrain {
         let s = match self {
             Terrain::Other => 1,
             Terrain::Impassable => 2,
-            Terrain::Water => 3,
+            Terrain::Sea => 3,
+            Terrain::Lake => 4,
         };
         serializer.serialize_u8(s)
     }
@@ -92,7 +94,8 @@ impl<'de> Deserialize<'de> for Terrain {
         match s {
             1 => Ok(Terrain::Other),
             2 => Ok(Terrain::Impassable),
-            3 => Ok(Terrain::Water),
+            3 => Ok(Terrain::Sea),
+            4 => Ok(Terrain::Lake),
             _ => Err(serde::de::Error::custom("invalid terrain value")),
         }
     }
@@ -100,10 +103,18 @@ impl<'de> Deserialize<'de> for Terrain {
 
 impl Terrain {
     pub fn is_water(&self) -> bool {
-        matches!(self, Terrain::Water)
+        matches!(self, Terrain::Sea | Terrain::Lake)
+    }
+
+    pub fn is_sea(&self) -> bool {
+        matches!(self, Terrain::Sea)
     }
 
     pub fn is_passable(&self) -> bool {
         matches!(self, Terrain::Other)
+    }
+
+    pub fn is_surround_fillable(&self) -> bool {
+        matches!(self, Terrain::Lake | Terrain::Impassable)
     }
 }
