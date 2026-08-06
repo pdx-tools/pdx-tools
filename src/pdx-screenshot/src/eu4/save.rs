@@ -30,7 +30,7 @@ impl ParsedSave {
     }
 
     pub fn is_multiplayer(&self) -> bool {
-        self.query.save().meta.multiplayer
+        eu4game::shared::is_multiplayer(&self.query)
     }
 
     pub fn date(&self) -> String {
