@@ -81,7 +81,7 @@ impl Eu5Date {
             return None;
         }
 
-        if raw.hour() > 22 {
+        if raw.hour() > 23 {
             return None;
         }
 
@@ -102,10 +102,6 @@ impl Eu5Date {
     #[inline]
     pub fn from_binary_heuristic(s: i32) -> Option<Self> {
         let date = RawDate::from_binary(s)?;
-        if date.hour() % 2 == 1 {
-            return None;
-        }
-
         if date.year() <= -100 {
             return None;
         }
@@ -115,6 +111,10 @@ impl Eu5Date {
 
     #[inline]
     pub fn hour(&self) -> u8 {
+        if self.raw.hour() % 2 == 1 {
+            return self.raw.hour();
+        }
+
         // Convert game format hour component to in-game hour
         // Game format: 0 = 08:00, 2 = 09:00, 4 = 10:00, ..., 22 = 19:00
         self.raw.hour() / 2 + 8
@@ -273,5 +273,32 @@ mod tests {
             // game_fmt should preserve original format
             assert_eq!(game_full, expected_game_fmt);
         }
+    }
+
+    #[test]
+    fn test_from_binary_odd_hour_is_returned_as_is() {
+        let date = Eu5Date::from_binary(58223375).unwrap();
+
+        assert_eq!(date.game_fmt().to_string(), "1646.7.3.23");
+        assert_eq!(date.iso_8601().to_string(), "1646-07-03T23");
+        assert_eq!(date.hour(), 23);
+    }
+
+    #[test]
+    fn test_from_binary_heuristic_allows_odd_hour() {
+        let date = Eu5Date::from_binary_heuristic(58223375).unwrap();
+
+        assert_eq!(date.game_fmt().to_string(), "1646.7.3.23");
+        assert_eq!(date.iso_8601().to_string(), "1646-07-03T23");
+        assert_eq!(date.hour(), 23);
+    }
+
+    #[test]
+    fn test_parsed_odd_hour_is_returned_as_is() {
+        let date = Eu5Date::parse("1444.11.11.3").unwrap();
+
+        assert_eq!(date.game_fmt().to_string(), "1444.11.11.3");
+        assert_eq!(date.iso_8601().to_string(), "1444-11-11T03");
+        assert_eq!(date.hour(), 3);
     }
 }
