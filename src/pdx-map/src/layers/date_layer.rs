@@ -66,6 +66,12 @@ impl DateLayer {
         }
     }
 
+    /// Rasterize a date overlay for composition outside a render target.
+    pub fn rasterize(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
+        assert!(glyph_scale > 0, "glyph scale must be at least 1");
+        rasterize_text_overlay(text, glyph_scale)
+    }
+
     fn ensure_pipeline(&mut self, device: &wgpu::Device, format: wgpu::TextureFormat) {
         if let Some(pipeline) = &self.pipeline
             && pipeline.format == format
