@@ -985,7 +985,7 @@ impl SaveFileImpl {
     }
 
     pub fn save_mode(&self) -> SaveMode {
-        if self.query.save().meta.multiplayer {
+        if eu4game::shared::is_multiplayer(&self.query) {
             return SaveMode::Multiplayer;
         }
 

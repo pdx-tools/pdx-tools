@@ -89,6 +89,7 @@ pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
         .iter()
         .map(|x| x.name.clone())
         .collect::<Vec<_>>();
+    let is_multiplayer = eu4game::shared::is_multiplayer(&query);
     let player_tag_name = save_game_query.localize_country(&query.save().meta.player);
     let player_start_tag = query
         .starting_country(&player_histories)
@@ -117,7 +118,7 @@ pub fn parse_save_data(data: &[u8]) -> Result<ParseResult, ParseFileError> {
         },
         encoding,
         is_ironman: meta.is_ironman,
-        is_multiplayer: meta.multiplayer,
+        is_multiplayer,
         playthrough_id,
         game_difficulty,
         player_names,
