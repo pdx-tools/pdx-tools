@@ -1,18 +1,26 @@
-export type StaticResources = BaseImageResources & {
-  provincesUniqueColor: Uint8Array;
-};
-
-export type StaticResourceUrls = { [K in keyof StaticResources]: string };
+export type StaticResources = BaseImageResources & ProvinceLocationResources;
 
 export type BaseImageResources = {
-  provinces1: ImageBitmap;
-  provinces2: ImageBitmap;
   terrain1: ImageBitmap;
   terrain2: ImageBitmap;
   stripes: ImageBitmap;
 };
 
 export type BaseImageResourceUrls = { [K in keyof BaseImageResources]: string };
+
+export type ProvinceLocationResources = {
+  provinceLocations1: Uint16Array;
+  provinceLocations2: Uint16Array;
+  colorIndexToProvinceId: Uint16Array;
+  provinceLocationsWidth: number;
+  provinceLocationsHeight: number;
+};
+
+export type ProvinceLocationUrls = {
+  provinceLocations1: string;
+  provinceLocations2: string;
+  provinceIdToColorIndex: string;
+};
 
 export type TerrainOverlayResources = {
   colorMap: ImageBitmap;

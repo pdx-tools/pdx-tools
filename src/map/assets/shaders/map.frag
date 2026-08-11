@@ -1,15 +1,16 @@
 #version 300 es
 
 precision mediump float;
+precision highp int;
+precision highp usampler2D;
 
 uniform sampler2D u_terrainImage1;
 uniform sampler2D u_terrainImage2;
 uniform sampler2D u_riversImage1;
 uniform sampler2D u_riversImage2;
-uniform sampler2D u_provincesImage1;
-uniform sampler2D u_provincesImage2;
+uniform usampler2D u_provincesImage1;
+uniform usampler2D u_provincesImage2;
 uniform sampler2D u_stripesImage;
-uniform sampler2D u_provincesUniqueColorsImage;
 uniform sampler2D u_countryProvincesColorImage;
 uniform sampler2D u_primaryProvincesColorImage;
 uniform sampler2D u_secondaryProvincesColorImage;
@@ -31,10 +32,13 @@ vec3 tcLayer(highp vec2 tc) {
     return vec3((tc.x - 0.5 * layer) * 2.0, tc.y, layer);
 }
 
-vec3 provincesAt(highp vec3 tc) {
+uint provinceIndexAt(highp vec3 tc) {
+    highp vec2 clampedTc = clamp(vec2(tc), vec2(0.0), vec2(1.0));
+    ivec2 texSize = tc.z <= 0.5 ? textureSize(u_provincesImage1, 0) : textureSize(u_provincesImage2, 0);
+    ivec2 coord = ivec2(min(floor(clampedTc * vec2(texSize)), vec2(texSize - ivec2(1))));
     return tc.z <= 0.5 ?
-        texture(u_provincesImage1, vec2(tc)).rgb :
-        texture(u_provincesImage2, vec2(tc)).rgb;
+        texelFetch(u_provincesImage1, coord, 0).r :
+        texelFetch(u_provincesImage2, coord, 0).r;
 }
 
 vec3 terrainAt(highp vec3 tc) {
@@ -63,39 +67,10 @@ bool isSeaAt(highp vec3 terrain_color) {
     return isDeepSea || isInlandSea;
 }
 
-float ordering(vec3 c1, vec3 c2) {
-    vec3 result = sign(c1 - c2);
-    return dot(result, vec3(4.0, 2.0, 1.0));
-}
-
-// Get index of color in the ordered color array u_orderedColors
-ivec2 getOrderedProvinceColorIndex(vec3 color)
-{
-    // Do binary search on u_orderedColors with float indices, since the ordered color data is saved in a texture
-    uint l = 0u;
-    uint r = u_provinceCount;
-    while (l <= r)
-    {
-        uint m = (l + r) / 2u;
-
-        uint col = m % 4096u;
-        uint row = m / 4096u;
-        ivec2 prov = ivec2(int(col), int(row));
-
-        vec3 colorAtIndex = texelFetch(u_provincesUniqueColorsImage, prov, 0).rgb;
-        float order = ordering(color, colorAtIndex);
-        if (order > 0.0) {
-            l = m + 1u;
-            continue;
-        }
-
-        if (order < 0.0) {
-            r = m - 1u;
-            continue;
-        }
-        return prov;
-    }
-    return ivec2(0, 0);
+ivec2 provinceColorTexel(uint idx) {
+    uint col = idx % 4096u;
+    uint row = idx / 4096u;
+    return ivec2(int(col), int(row));
 }
 
 bool renderSecondaryColorAt(highp vec2 tc) {
@@ -107,12 +82,12 @@ bool renderSecondaryColorAt(highp vec2 tc) {
     return stripes_color.a > 0.0;
 }
 
-bool borderCompare(highp vec3 t1, highp vec3 t2, vec3 prov1, vec3 prov2) {
+bool borderCompare(highp vec3 t1, highp vec3 t2, uint prov1, uint prov2) {
     if (isSeaAt(t1) && !isSeaAt(t2)) {
         return false;
     }
 
-    return (!isSeaAt(t1) && isSeaAt(t2)) || ordering(prov1, prov2) > 0.0;
+    return (!isSeaAt(t1) && isSeaAt(t2)) || prov1 > prov2;
 }
 
 bool hasBorder(highp vec4[5] data) {
@@ -122,7 +97,7 @@ bool hasBorder(highp vec4[5] data) {
 vec3 edgeDetectionImage(
     highp vec3[5] tc,
     highp vec3[5] terrain,
-    highp vec3[5] provinces,
+    uint[5] provinces,
     ivec2[5] provinceIndices,
     highp vec4[5] country,
     highp vec4[5] mapMode
@@ -159,10 +134,10 @@ vec3 edgeDetectionImage(
 vec4 displayImage(
     highp vec3[5] tc,
     highp vec3[5] terrain,
-    highp vec3[5] provinces,
+    uint[5] provinces,
     ivec2[5] provinceIndices,
     highp vec4[5] country,
-    highp vec4[5] mapMode   
+    highp vec4[5] mapMode
 ) {
     if (isSeaAt(terrain[0])) {
         return vec4(0.0, 0.0, 1.0, 0.2);
@@ -203,15 +178,15 @@ void main() {
 
     vec3[5] tc = neighborhood(v_texCoord, ps);
     vec3[5] terrain;
-    vec3[5] provinces;
+    uint[5] provinces;
     ivec2[5] provinceIndices;
     vec4[5] country;
     vec4[5] mapMode;
 
     for (int i = 0; i < 5; i++) {
         terrain[i] = terrainAt(tc[i]);
-        provinces[i] = provincesAt(tc[i]);
-        provinceIndices[i] = getOrderedProvinceColorIndex(provinces[i]);
+        provinces[i] = provinceIndexAt(tc[i]);
+        provinceIndices[i] = provinceColorTexel(provinces[i]);
         country[i] = texelFetch(u_countryProvincesColorImage, provinceIndices[i], 0);
         mapMode[i] = texelFetch(u_primaryProvincesColorImage, provinceIndices[i], 0);
     }

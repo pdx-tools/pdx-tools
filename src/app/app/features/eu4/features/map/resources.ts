@@ -22,7 +22,7 @@ export const shaderUrls = () => ({
 export async function fetchProvinceUniqueIndex(version: string): Promise<Uint16Array> {
   const url = resources(gameVersion(version));
 
-  return fetchOk(url.provincesUniqueIndex)
+  return fetchOk(url.provinceIdToColorIndex)
     .then((x) => x.arrayBuffer())
     .then((x) => new Uint16Array(x));
 }

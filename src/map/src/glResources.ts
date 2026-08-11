@@ -26,7 +26,6 @@ export class GLResources {
     public surfaceNormalRock: WebGLTexture,
     public surfaceNormalGreen: WebGLTexture,
     public heightMap: WebGLTexture,
-    public readonly provincesUniqueColor: WebGLTexture,
     public readonly countryProvinceColors: WebGLTexture,
     public readonly primaryProvinceColors: WebGLTexture,
     public readonly secondaryProvinceColors: WebGLTexture,
@@ -65,7 +64,7 @@ export class GLResources {
   }
 
   static create(gl: WebGL2RenderingContext, staticRes: StaticResources) {
-    let provinceCount = staticRes.provincesUniqueColor.length / 3;
+    let provinceCount = staticRes.colorIndexToProvinceId.length;
 
     let rawMapFramebuffer1 = notNull(gl.createFramebuffer());
     gl.bindFramebuffer(gl.FRAMEBUFFER, rawMapFramebuffer1);
@@ -114,8 +113,18 @@ export class GLResources {
     var xbrPositionBuffer = notNull(gl.createBuffer());
     resizeXbrGeometry(gl, xbrPositionBuffer, gl.canvas.width);
 
-    const provinces1 = setupTexture(gl, staticRes.provinces1, gl.NEAREST);
-    const provinces2 = setupTexture(gl, staticRes.provinces2, gl.NEAREST);
+    const provinces1 = setupR16Texture(
+      gl,
+      staticRes.provinceLocations1,
+      staticRes.provinceLocationsWidth,
+      staticRes.provinceLocationsHeight,
+    );
+    const provinces2 = setupR16Texture(
+      gl,
+      staticRes.provinceLocations2,
+      staticRes.provinceLocationsWidth,
+      staticRes.provinceLocationsHeight,
+    );
 
     const terrain1 = setupTexture(gl, staticRes.terrain1, gl.NEAREST);
     const terrain2 = setupTexture(gl, staticRes.terrain2, gl.NEAREST);
@@ -152,7 +161,6 @@ export class GLResources {
       surfaceNormalRock,
       surfaceNormalGreen,
       heightMap,
-      setupProvinceColorsTexture(gl, gl.RGB, provinceCount, staticRes.provincesUniqueColor),
       setupProvinceColorsTexture(gl, gl.RGBA, provinceCount),
       setupProvinceCustomColorsTexture(gl, provinceCount),
       setupProvinceCustomColorsTexture(gl, provinceCount),
@@ -170,7 +178,7 @@ export class GLResources {
       fbRawMapTexture2,
       rawMapFramebuffer1,
       rawMapFramebuffer2,
-      staticRes.provincesUniqueColor.length / 3,
+      provinceCount,
     ] as const;
   }
 
@@ -273,11 +281,40 @@ function setupTexture(
   return texture;
 }
 
+function setupR16Texture(
+  gl: WebGL2RenderingContext,
+  data: Uint16Array,
+  width: number,
+  height: number,
+) {
+  const texture = gl.createTexture();
+  if (texture === null) {
+    throw new Error("unexpected null texture");
+  }
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.R16UI,
+    width,
+    height,
+    0,
+    gl.RED_INTEGER,
+    gl.UNSIGNED_SHORT,
+    data,
+  );
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return texture;
+}
+
 function setupProvinceColorsTexture(
   gl: WebGL2RenderingContext,
   type: GLenum,
   provinceCount: number,
-  data?: Uint8Array,
 ) {
   const texture = gl.createTexture();
   if (texture === null) {
@@ -297,9 +334,6 @@ function setupProvinceColorsTexture(
 
   const total = MAX_TEXTURE_SIZE * (Math.floor(provinceCount / MAX_TEXTURE_SIZE) + 1) * 4;
   const buffed = new Uint8Array(total);
-  if (data) {
-    buffed.set(data);
-  }
 
   gl.texImage2D(
     gl.TEXTURE_2D,
