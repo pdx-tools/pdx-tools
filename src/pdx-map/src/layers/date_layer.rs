@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-use crate::{RenderLayer, ViewportBounds};
+use crate::{PhysicalSize, RenderLayer, ViewportBounds};
 
 const GLYPH_PATTERN_WIDTH: usize = 5;
 const GLYPH_PATTERN_HEIGHT: usize = 7;
@@ -40,8 +40,7 @@ struct OverlayGeometry {
 /// Pending pixel data awaiting GPU upload
 struct PendingUpload {
     pixels: Vec<u8>,
-    width: u32,
-    height: u32,
+    size: PhysicalSize<u32>,
 }
 
 pub struct DateLayer {
@@ -64,6 +63,12 @@ impl DateLayer {
             geometry: None,
             pending_upload: None,
         }
+    }
+
+    /// Rasterize a date overlay for composition outside a render target.
+    pub fn rasterize(text: &str, glyph_scale: u32) -> (Vec<u8>, PhysicalSize<u32>) {
+        assert!(glyph_scale > 0, "glyph scale must be at least 1");
+        rasterize_text_overlay(text, glyph_scale)
     }
 
     fn ensure_pipeline(&mut self, device: &wgpu::Device, format: wgpu::TextureFormat) {
@@ -161,20 +166,18 @@ impl DateLayer {
     }
 
     fn rebuild_resources(&mut self, device: &wgpu::Device, target_width: u32, target_height: u32) {
-        let (pixels, overlay_width, overlay_height) =
-            rasterize_text_overlay(&self.text, self.glyph_scale);
+        let (pixels, overlay_size) = rasterize_text_overlay(&self.text, self.glyph_scale);
 
         self.pending_upload = Some(PendingUpload {
             pixels,
-            width: overlay_width,
-            height: overlay_height,
+            size: overlay_size,
         });
 
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Date Layer Texture"),
             size: wgpu::Extent3d {
-                width: overlay_width,
-                height: overlay_height,
+                width: overlay_size.width,
+                height: overlay_size.height,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -206,8 +209,8 @@ impl DateLayer {
         let vertices = quad_vertices(
             target_width as f32,
             target_height as f32,
-            overlay_width,
-            overlay_height,
+            overlay_size.width,
+            overlay_size.height,
         );
 
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -242,12 +245,12 @@ impl DateLayer {
             &upload.pixels,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(upload.width * 4),
-                rows_per_image: Some(upload.height),
+                bytes_per_row: Some(upload.size.width * 4),
+                rows_per_image: Some(upload.size.height),
             },
             wgpu::Extent3d {
-                width: upload.width,
-                height: upload.height,
+                width: upload.size.width,
+                height: upload.size.height,
                 depth_or_array_layers: 1,
             },
         );
@@ -296,7 +299,7 @@ struct OverlayVertex {
     uv: [f32; 2],
 }
 
-fn rasterize_text_overlay(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
+fn rasterize_text_overlay(text: &str, glyph_scale: u32) -> (Vec<u8>, PhysicalSize<u32>) {
     let glyphs: Vec<char> = text.chars().collect();
     let glyph_count = glyphs.len() as u32;
     let glyph_width = GLYPH_PATTERN_WIDTH as u32 * glyph_scale;
@@ -341,7 +344,7 @@ fn rasterize_text_overlay(text: &str, glyph_scale: u32) -> (Vec<u8>, u32, u32) {
         cursor_x += glyph_width + letter_spacing;
     }
 
-    (pixels, overlay_width, overlay_height)
+    (pixels, PhysicalSize::new(overlay_width, overlay_height))
 }
 
 fn fill_glyph_block(

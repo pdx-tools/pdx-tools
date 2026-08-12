@@ -5,6 +5,10 @@ use pdx_map::{HemisphereSize, PhysicalSize, ViewportBounds, WorldPoint, WorldSiz
 pub(super) const EU4_HEMISPHERE_SIZE: HemisphereSize<u32> = HemisphereSize::new(2816, 2048);
 pub(super) const EU4_WORLD_SIZE: WorldSize<u32> = EU4_HEMISPHERE_SIZE.world();
 pub(super) const OUTPUT_IMAGE_SIZE: PhysicalSize<u32> = PhysicalSize::new(1200, 630);
+/// Multiplayer draws the map short of the output height. The remaining rows are
+/// the ocean band that holds the date overlay, so this must stay narrower than
+/// the world and short enough to leave room for the rasterized date.
+pub(super) const MP_MAP_IMAGE_SIZE: PhysicalSize<u32> = PhysicalSize::new(1200, 570);
 
 fn viewport_bounds(origin: WorldPoint<u32>, size: WorldSize<u32>) -> ViewportBounds {
     let mut viewport = ViewportBounds::new(size);
@@ -34,11 +38,15 @@ pub fn calculate_sp_viewport(center: WorldPoint<u32>) -> ViewportBounds {
 
 /// Calculate viewport for multiplayer (full world)
 pub fn calculate_mp_viewport() -> ViewportBounds {
-    // Match CSS object-fit: cover. The OG image is slightly narrower than the
-    // EU4 world aspect ratio, so use full height and crop the east/west edges.
-    let width = EU4_WORLD_SIZE.height * OUTPUT_IMAGE_SIZE.width / OUTPUT_IMAGE_SIZE.height;
+    // Use the full map height and crop the east/west edges.
+    // Apply most of the crop to the Americas to keep East Asia in view.
+    let width = EU4_WORLD_SIZE.height * MP_MAP_IMAGE_SIZE.width / MP_MAP_IMAGE_SIZE.height;
+    let horizontal_crop = EU4_WORLD_SIZE
+        .width
+        .checked_sub(width)
+        .expect("multiplayer output must be narrower than the world");
     viewport_bounds(
-        WorldPoint::new((EU4_WORLD_SIZE.width - width) / 2, 0),
+        WorldPoint::new(horizontal_crop * 3 / 4, 0),
         WorldSize::new(width, EU4_WORLD_SIZE.height),
     )
 }
@@ -61,9 +69,9 @@ mod tests {
     fn multiplayer_viewport_covers_output_aspect() {
         let viewport = calculate_mp_viewport();
 
-        assert_eq!(viewport.rect.size.width, 3900);
+        assert_eq!(viewport.rect.size.width, 4311);
         assert_eq!(viewport.rect.size.height, EU4_WORLD_SIZE.height);
-        assert_eq!(viewport.rect.origin.x, 866);
+        assert_eq!(viewport.rect.origin.x, 990);
         assert_eq!(viewport.rect.origin.y, 0);
     }
 

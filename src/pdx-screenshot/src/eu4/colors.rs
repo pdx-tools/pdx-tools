@@ -2,7 +2,7 @@ use eu4game::game::Game;
 use eu4save::{CountryTag, models::Eu4Save};
 use std::collections::HashMap;
 
-const OCEAN: [u8; 4] = [69, 94, 119, 255];
+pub(super) const OCEAN: [u8; 4] = [69, 94, 119, 255];
 const WASTELAND: [u8; 4] = [61, 61, 61, 255];
 const UNOWNED_COLOR: [u8; 4] = [94, 94, 94, 128];
 
