@@ -9,7 +9,7 @@
     "typecheck": "tsc --build"
   },
   "dependencies": {
-    "concurrently": "10.0.3",
+    "concurrently": "10.0.4",
     "wrangler": "catalog:"
   },
   "devDependencies": {
