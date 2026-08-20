@@ -75,6 +75,7 @@ export function getMeta(savefile: mod.SaveFile) {
     warnings,
     ...saveInfo,
     ...meta,
+    multiplayer: saveInfo.mode === "Multiplayer",
   };
 }
 
