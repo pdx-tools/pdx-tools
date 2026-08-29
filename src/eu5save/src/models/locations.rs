@@ -263,6 +263,16 @@ pub struct LocationIndexedVec<T> {
 }
 
 impl<T> LocationIndexedVec<T> {
+    pub fn from_vec(data: Vec<T>) -> Self {
+        Self { data }
+    }
+
+    pub fn map<U, F: FnMut(&T) -> U>(&self, mut f: F) -> LocationIndexedVec<U> {
+        LocationIndexedVec {
+            data: self.data.iter().map(&mut f).collect(),
+        }
+    }
+
     pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.data.iter()
     }

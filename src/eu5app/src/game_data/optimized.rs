@@ -2,7 +2,7 @@ use crate::{
     GameLocation,
     game_data::{GameData, GameDataError, GoodsData, Localization, LocalizationsData},
 };
-use pdx_map::R16;
+use pdx_map::{R16, TopologyIndex};
 use rawzip::{ZipArchive, ZipSliceArchive};
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,7 @@ pub struct OptimizedGameBundle<R: AsRef<[u8]>> {
     zip: ZipSliceArchive<R>,
     location_lookup: (u64, rawzip::ZipArchiveEntryWayfinder),
     game_data: (u64, rawzip::ZipArchiveEntryWayfinder),
+    topology: (u64, rawzip::ZipArchiveEntryWayfinder),
 }
 
 impl<R> OptimizedGameBundle<R>
@@ -37,6 +38,7 @@ where
         let zip = ZipArchive::from_slice(data).map_err(GameDataError::ZipAccess)?;
         let mut location_lookup_entry = None;
         let mut game_data_entry = None;
+        let mut topology_entry = None;
 
         for entry in zip.entries() {
             let entry = entry.map_err(GameDataError::ZipAccess)?;
@@ -48,6 +50,9 @@ where
                 b"game_data.bin" => {
                     game_data_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
                 }
+                b"topology.bin" => {
+                    topology_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
+                }
                 _ => {}
             }
         }
@@ -58,16 +63,24 @@ where
         let game_data = game_data_entry.ok_or_else(|| {
             GameDataError::MissingData("game_data.bin not found in bundle".to_string())
         })?;
+        let topology = topology_entry.ok_or_else(|| {
+            GameDataError::MissingData("topology.bin not found in bundle".to_string())
+        })?;
 
         Ok(Self {
             zip,
             location_lookup,
             game_data,
+            topology,
         })
     }
 
     pub fn into_game_data(self) -> Result<GameData, GameDataError> {
-        let buf_size = self.location_lookup.0.max(self.game_data.0);
+        let buf_size = self
+            .location_lookup
+            .0
+            .max(self.game_data.0)
+            .max(self.topology.0);
         let mut buf = vec![0; buf_size as usize];
 
         let location_entry = self
@@ -86,9 +99,18 @@ where
         pdx_zstd::decode_to(game_data_entry.data(), game_data_buf)?;
         let game_data: GoodsData = postcard::from_bytes(game_data_buf)?;
 
+        let topology_entry = self
+            .zip
+            .get_entry(self.topology.1)
+            .map_err(GameDataError::ZipAccess)?;
+        let topology_buf = &mut buf[..self.topology.0 as usize];
+        pdx_zstd::decode_to(topology_entry.data(), topology_buf)?;
+        let topology: TopologyIndex = postcard::from_bytes(topology_buf)?;
+
         Ok(GameData {
             locations,
             goods: game_data.goods,
+            topology,
         })
     }
 }
@@ -365,7 +387,18 @@ mod tests {
             Vec::<GameLocation>::new(),
         );
         write_test_entry(&mut archive, "game_data.bin", goods);
+        write_test_entry(&mut archive, "topology.bin", empty_topology());
         archive.finish().unwrap().into_inner()
+    }
+
+    fn empty_topology() -> TopologyIndex {
+        use pdx_map::{Hemisphere, HemisphereLength, World};
+        let world = World::builder(
+            Hemisphere::new(vec![R16::new(0)], HemisphereLength::new(1)),
+            Hemisphere::new(vec![R16::new(0)], HemisphereLength::new(1)),
+        )
+        .build();
+        world.build_topology_index()
     }
 
     fn test_loc_zip(localizations: LocalizationsData) -> Vec<u8> {

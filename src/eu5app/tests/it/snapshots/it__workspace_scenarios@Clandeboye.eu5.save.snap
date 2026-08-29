@@ -16,17 +16,17 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     }
   ],
   "map_mode_colors": {
-    "building_levels": "0xf3c03224d8dc0794b478bfcbd6e5720df7d62229d8d602c2b81fd4c29c3a9bb6",
-    "control": "0xfe012cddbf3709f6bdc62afcf3406de09dadfaedad4db8c035b50ad726811181",
-    "development": "0xdd95ba93a37136d7dde68d7e1cafe24a7a8fefd5eb898e2e93749b3f9e401d29",
-    "markets": "0x7eef6b272c18867c72b7880422d2bfef8ac23380b653d387f0762bb2a6957955",
-    "political": "0x3c5e79d1450bbb157fa83171d2c1ad0f23f6794f9097cde8c0dfbc3cd2c73e1d",
-    "population": "0x799e75484664a7f27fc01c4a9f419cb966d61c8dbcdce5e1759fc24b6c8af73c",
-    "religion": "0xe424c860024bd7e944ef54962a0337845a7ee7962f35552a7603e8385117177a",
-    "rgo_level": "0xecef7be6af747cb86a9b0e434da3435323c170e42a827881b791241a64e68551",
-    "state_efficacy": "0xc4f549fd28ac2645823e85681716cbcab97e0814f05d4934d7e770859f73dfd3",
-    "unrealized_tax_base": "0xdf3e5255e2c0a6fb69accc5dba9e44a6ad4016a34e3032468f23204d0e7fd2e0",
-    "wealth": "0x6900729141c0595d2f5bff1dfe665bdad4c7d53adc8e3248f77741f16f07ba58"
+    "building_levels": "0x8d1e82d0c5c5c9858cb40c332f92807b94eb4094498aa4ca4a8704337ba1d09a",
+    "control": "0xa2b6ca8f083af04490a181ae52726d4a1ad3cb8d430b64ab6ca432ad22d5cfbe",
+    "development": "0x402baf97468b747cda23367d86ff4eed6de64fd333f5df4727fd35f981d8403b",
+    "markets": "0xf78269c0cee1a142dd102aecdc3a020e9cdefd97f4c4cb2792739acfa79b7161",
+    "political": "0xb22a8e8f923086c3f5db27ee5690add3317f189b8a01fcac42cc695ba2e6ee47",
+    "population": "0xe03a436e1967d77b4f91086c53eb034c62bdf4957f31a111b656c2205fd4bf85",
+    "religion": "0x9936969cfc7047864dbee0054be90abfd632ce4459215ed51d17b2e74de96e16",
+    "rgo_level": "0x812bd2131c459d7e0e1e65a1452d638fbaa644d27cce8bf5da29d01fd4e45664",
+    "state_efficacy": "0x1de0cf542b2d20de6e5c27d78d31ff15e4233afb57dc3c6e5469f1d906e74b20",
+    "unrealized_tax_base": "0x06a78fc9032ee2221bb137c11a81226cab1dcf3a33039a587e160c6f69a31d71",
+    "wealth": "0xbc76c41458128e099686f31c3772622f327b8aa782127de6ce1bbb6c82d4ad1f"
   },
   "save_version": "1.0.4",
   "selection_counts": {
