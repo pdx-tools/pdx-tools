@@ -129,6 +129,15 @@ pub fn playthrough_id(query: &Query) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
+/// Return true when the save contains more than one parsed player.
+pub fn is_multiplayer(query: &Query) -> bool {
+    is_multiplayer_from_player_count(query.players().len())
+}
+
+fn is_multiplayer_from_player_count(player_count: usize) -> bool {
+    player_count > 1
+}
+
 pub fn hash_countries(hash: &mut impl HighwayHash, content_date: Eu4Date, save: &Eu4Save) {
     let events = save
         .game
@@ -358,5 +367,12 @@ mod tests {
         summer.append(b"world");
         let hash = summer.finish().unwrap();
         assert_eq!(hash, "/p54eGIaz1s/t1mJgg7qSZwKd+s+R19l1t1xcdou/Yc=");
+    }
+
+    #[test]
+    fn multiplayer_requires_multiple_players() {
+        assert!(is_multiplayer_from_player_count(2));
+        assert!(!is_multiplayer_from_player_count(1));
+        assert!(!is_multiplayer_from_player_count(0));
     }
 }
