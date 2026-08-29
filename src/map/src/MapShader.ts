@@ -17,7 +17,6 @@ export class MapShader {
     private uProvinces1: WebGLUniformLocation | null,
     private uProvinces2: WebGLUniformLocation | null,
     private uStripes: WebGLUniformLocation | null,
-    private uProvincesUniqueColors: WebGLUniformLocation | null,
     private uCountryProvinceColor: WebGLUniformLocation | null,
     private uPrimaryProvinceColor: WebGLUniformLocation | null,
     private uSecondaryProvinceColor: WebGLUniformLocation | null,
@@ -41,7 +40,6 @@ export class MapShader {
       gl.getUniformLocation(program, "u_provincesImage1"),
       gl.getUniformLocation(program, "u_provincesImage2"),
       gl.getUniformLocation(program, "u_stripesImage"),
-      gl.getUniformLocation(program, "u_provincesUniqueColorsImage"),
       gl.getUniformLocation(program, "u_countryProvincesColorImage"),
       gl.getUniformLocation(program, "u_primaryProvincesColorImage"),
       gl.getUniformLocation(program, "u_secondaryProvincesColorImage"),
@@ -89,20 +87,16 @@ export class MapShader {
     gl.uniform1i(this.uStripes, 6);
 
     gl.activeTexture(gl.TEXTURE7);
-    gl.bindTexture(gl.TEXTURE_2D, res.provincesUniqueColor);
-    gl.uniform1i(this.uProvincesUniqueColors, 7);
+    gl.bindTexture(gl.TEXTURE_2D, res.countryProvinceColors);
+    gl.uniform1i(this.uCountryProvinceColor, 7);
 
     gl.activeTexture(gl.TEXTURE8);
-    gl.bindTexture(gl.TEXTURE_2D, res.countryProvinceColors);
-    gl.uniform1i(this.uCountryProvinceColor, 8);
+    gl.bindTexture(gl.TEXTURE_2D, res.primaryProvinceColors);
+    gl.uniform1i(this.uPrimaryProvinceColor, 8);
 
     gl.activeTexture(gl.TEXTURE9);
-    gl.bindTexture(gl.TEXTURE_2D, res.primaryProvinceColors);
-    gl.uniform1i(this.uPrimaryProvinceColor, 9);
-
-    gl.activeTexture(gl.TEXTURE10);
     gl.bindTexture(gl.TEXTURE_2D, res.secondaryProvinceColors);
-    gl.uniform1i(this.uSecondaryProvinceColor, 10);
+    gl.uniform1i(this.uSecondaryProvinceColor, 9);
   }
 
   setProvinceCount(count: number) {

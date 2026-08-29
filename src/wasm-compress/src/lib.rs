@@ -193,6 +193,12 @@ pub enum ContentType {
     Zstd,
 }
 
+/// Decode an arbitrary zstd-compressed byte stream.
+#[wasm_bindgen]
+pub fn decode_zstd(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
+    Ok(pdx_zstd::decode_all(&data)?)
+}
+
 /// Undoes the compress function, so that the save file can be loaded into EU4.
 ///
 /// - Remux Zstd ZIP archives with Deflate.

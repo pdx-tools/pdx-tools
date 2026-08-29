@@ -1,6 +1,6 @@
 export interface ResourceUrls {
-  provinces1: string;
-  provinces2: string;
+  provinceLocations1: string;
+  provinceLocations2: string;
   terrain1: string;
   terrain2: string;
   colorMap: string;
@@ -15,6 +15,5 @@ export interface ResourceUrls {
   surfaceNormalRock: string;
   surfaceNormalGreen: string;
   heightmap: string;
-  provincesUniqueColor: string;
-  provincesUniqueIndex: string;
+  provinceIdToColorIndex: string;
 }
