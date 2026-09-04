@@ -333,7 +333,7 @@ description = "Fetch supported Steam game patches and create raw bundles"
 usage = '''
 flag "--username <username>" help="Steam username" env="STEAM_USERNAME"
 flag "--game <game>" help="Only process targets for one game" {
-  choices "eu4" "eu5"
+  choices "eu4" "eu5" "ck3" "hoi4" "imperator" "vic3"
 }
 flag "--version <version>" help="Only process targets matching this version (e.g. 1.2) or 'public' for the current public branch"
 flag "--archive-dir <path>" help="Directory for permanent storage" env="ARCHIVE_DIR"

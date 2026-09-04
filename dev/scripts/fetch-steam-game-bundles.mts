@@ -5,7 +5,12 @@ import { access, mkdir, rename, rm } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
-type Game = "eu4" | "eu5";
+const games = ["eu4", "eu5", "ck3", "hoi4", "imperator", "vic3"] as const;
+
+type Game = (typeof games)[number];
+
+/** Games that the asset pipeline can turn into a compiled bundle */
+const bundledGames: Game[] = ["eu4", "eu5"];
 
 type BundleTarget = {
   game: Game;
@@ -38,6 +43,10 @@ const targets: BundleTarget[] = [
   { game: "eu5", branch: "1.1.10", version: "1.1" },
   { game: "eu5", branch: "1.2.5", version: "1.2" },
   { game: "eu5", branch: "1.3.11", version: "1.3" },
+  { game: "ck3", version: "1.19.0.6" },
+  { game: "hoi4", version: "1.19.2" },
+  { game: "imperator", version: "2.0.5" },
+  { game: "vic3", branch: "1.14-openbeta", version: "1.14" },
 ];
 
 type Options = {
@@ -90,7 +99,8 @@ const readBoolean = (name: string) => process.env[name] === "true";
 const readGame = (): Game | undefined => {
   const game = process.env.usage_game;
   if (game === undefined || game === "") return undefined;
-  if (game === "eu4" || game === "eu5") return game;
+  const found = games.find((x) => x === game);
+  if (found !== undefined) return found;
   throw new Error(`Invalid usage_game from mise: ${game}`);
 };
 
@@ -172,6 +182,14 @@ const main = async () => {
       options.archiveDir === undefined ? undefined : archiveZipPathFor(target, options.archiveDir);
     console.log(`\n=== ${target.game} ${labelFor(target)} ===`);
 
+    const bundles = bundledGames.includes(target.game);
+    if (!bundles && archiveZipPath === undefined) {
+      console.log(
+        `Skipping ${target.game}: it has no asset pipeline, so it needs --archive-dir to store the download`,
+      );
+      continue;
+    }
+
     if (archiveZipPath === undefined) {
       try {
         await rm(installDir, { force: true, recursive: true });
@@ -237,19 +255,21 @@ const main = async () => {
       }
     }
 
-    await run(
-      pdxAssetsBinary,
-      [
-        "bundle",
-        "--game",
-        target.game,
-        "--version",
-        target.version,
-        archiveZipPath,
-        gameBundlesDir,
-      ],
-      { dryRun: options.dryRun },
-    );
+    if (bundles) {
+      await run(
+        pdxAssetsBinary,
+        [
+          "bundle",
+          "--game",
+          target.game,
+          "--version",
+          target.version,
+          archiveZipPath,
+          gameBundlesDir,
+        ],
+        { dryRun: options.dryRun },
+      );
+    }
   }
 };
 
