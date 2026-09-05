@@ -8,7 +8,7 @@ use std::process::{Command, ExitCode};
 /// Download a support asset game using SteamCMD
 #[derive(Args, Debug)]
 pub struct FetchGameArgs {
-    /// Game to download (eu4 or eu5)
+    /// Game to download (eu4, eu5, ck3, hoi4, imperator, or vic3)
     #[clap(long)]
     game: Game,
 
@@ -268,9 +268,31 @@ mod tests {
     fn maps_games_to_steam_app_ids() {
         let eu4 = SteamCmdRequest::from_args(&args(Game::Eu4)).unwrap();
         let eu5 = SteamCmdRequest::from_args(&args(Game::Eu5)).unwrap();
+        let vic3 = SteamCmdRequest::from_args(&args(Game::Vic3)).unwrap();
+        let ck3 = SteamCmdRequest::from_args(&args(Game::Ck3)).unwrap();
+        let hoi4 = SteamCmdRequest::from_args(&args(Game::Hoi4)).unwrap();
+        let imperator = SteamCmdRequest::from_args(&args(Game::Imperator)).unwrap();
 
         assert!(arg_strings(&eu4).contains(&String::from("236850")));
         assert!(arg_strings(&eu5).contains(&String::from("3450310")));
+        assert!(arg_strings(&vic3).contains(&String::from("529340")));
+        assert!(arg_strings(&ck3).contains(&String::from("1158310")));
+        assert!(arg_strings(&hoi4).contains(&String::from("394360")));
+        assert!(arg_strings(&imperator).contains(&String::from("859580")));
+    }
+
+    #[test]
+    fn every_game_has_a_default_install_dir() {
+        for game in Game::ALL {
+            let request = SteamCmdRequest::from_args(&args(game)).unwrap();
+
+            assert_eq!(
+                request.install_dir,
+                PathBuf::from("assets/steam")
+                    .join(game.to_string())
+                    .join("public")
+            );
+        }
     }
 
     #[test]

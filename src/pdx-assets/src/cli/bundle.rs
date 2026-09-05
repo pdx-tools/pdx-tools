@@ -91,6 +91,10 @@ impl BundleArgs {
                         &options,
                     )?
                 }
+                game => anyhow::bail!(
+                    "Asset bundling is not supported for {}. Use fetch-game to download it",
+                    game
+                ),
             };
 
             let zip_filename = format!("{}-{}.zip", game, compilation_output.game_version);

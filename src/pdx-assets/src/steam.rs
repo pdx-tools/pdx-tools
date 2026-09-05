@@ -7,12 +7,7 @@ pub fn detect_steam_game_path(game: Game) -> Result<PathBuf> {
     let steam_path =
         detect_steam_path().context("Failed to auto-detect Steam installation path")?;
 
-    let game_dir = match game {
-        Game::Eu4 => "Europa Universalis IV",
-        Game::Eu5 => "Europa Universalis V",
-    };
-
-    let game_path = steam_path.join(format!("steamapps/common/{}", game_dir));
+    let game_path = steam_path.join(format!("steamapps/common/{}", game.steam_directory()));
     anyhow::ensure!(
         game_path.exists(),
         "{} not found in Steam library at expected path: {}",
@@ -31,16 +26,11 @@ pub fn detect_all_installed_games() -> Result<Vec<(Game, PathBuf)>> {
 
     let mut found_games = Vec::new();
 
-    // Check for EU4
-    let eu4_path = steam_path.join("steamapps/common/Europa Universalis IV");
-    if eu4_path.exists() {
-        found_games.push((Game::Eu4, eu4_path));
-    }
-
-    // Check for EU5
-    let eu5_path = steam_path.join("steamapps/common/Europa Universalis V");
-    if eu5_path.exists() {
-        found_games.push((Game::Eu5, eu5_path));
+    for game in [Game::Eu4, Game::Eu5, Game::Vic3] {
+        let game_path = steam_path.join(format!("steamapps/common/{}", game.steam_directory()));
+        if game_path.exists() {
+            found_games.push((game, game_path));
+        }
     }
 
     anyhow::ensure!(

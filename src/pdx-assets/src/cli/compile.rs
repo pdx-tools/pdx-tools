@@ -98,6 +98,10 @@ impl CompileArgs {
                     let asset_compiler = Eu5AssetCompiler;
                     asset_compiler.compile_assets(&provider, &imaging, &base_output, &options)?
                 }
+                game => anyhow::bail!(
+                    "Asset compilation is not supported for {}. Use fetch-game to download it",
+                    game
+                ),
             };
 
             println!(
