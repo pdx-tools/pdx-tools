@@ -10,7 +10,7 @@
   "devDependencies": {
     "@astrojs/starlight": "0.41.7",
     "astro": "7.2.1",
-    "sharp": "0.35.0",
+    "sharp": "0.35.4",
     "starlight-blog": "0.28.0",
     "typescript": "catalog:"
   }
