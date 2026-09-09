@@ -68,7 +68,7 @@
     "tailwindcss-animate": "1.0.7",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "4.1.4",
+    "vitest": "4.1.11",
     "wrangler": "catalog:"
   },
   "browserslist": [
