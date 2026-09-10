@@ -120,7 +120,7 @@ impl<R> SaveResolver<R> {
 
     pub fn create(file: &JominiZip<impl ReaderAt>, inner: R) -> Result<Self, Eu5Error> {
         let mut lookup_data = Vec::new();
-        let string_lookup = if file.header().version() == 2 {
+        let string_lookup = if file.header().version() >= 2 {
             file.read_entry("string_lookup")
                 .map_err(Eu5ErrorKind::from)?
                 .read_to_end(&mut lookup_data)?;

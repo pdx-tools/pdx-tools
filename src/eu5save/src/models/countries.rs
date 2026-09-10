@@ -718,12 +718,16 @@ impl<'de, 'bump> serde::de::Visitor<'de> for CountriesVisitor<'bump> {
 
         let tag_data = map.next_value_seed(TagDataSeed(self.0))?;
 
-        let Some(key) = map.next_key::<CountryField>()? else {
-            return Err(serde::de::Error::custom("expected countries data"));
-        };
+        loop {
+            let Some(key) = map.next_key::<CountryField>()? else {
+                return Err(serde::de::Error::custom("expected countries data"));
+            };
 
-        if !matches!(key, CountryField::Database) {
-            return Err(serde::de::Error::custom("expected 'database' field second"));
+            if matches!(key, CountryField::Database) {
+                break;
+            }
+
+            map.next_value::<serde::de::IgnoredAny>()?;
         }
 
         let database_seed = CountryDatabaseSeed::new(tag_data.0, self.0);
