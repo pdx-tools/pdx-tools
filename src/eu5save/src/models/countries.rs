@@ -191,6 +191,7 @@ pub struct Countries<'bump> {
     ids: CountryIndexedVec<'bump, CountryId>,
     tags: CountryIndexedVec<'bump, CountryTag>,
     database: CountryIndexedVec<'bump, Option<Country<'bump>>>,
+    historical_world_population: &'bump [f64],
 }
 
 impl<'bump> Countries<'bump> {
@@ -239,6 +240,12 @@ impl<'bump> Countries<'bump> {
             data: vec![initial; self.len()].into_boxed_slice(),
         }
     }
+
+    /// The population of the whole world, one annual sample per year of the
+    /// campaign. Empty in a save that does not have the series.
+    pub fn historical_world_population(&self) -> &'bump [f64] {
+        self.historical_world_population
+    }
 }
 
 #[derive(Debug, Clone, ArenaDeserialize)]
@@ -279,6 +286,10 @@ pub struct Country<'bump> {
     #[arena(default)]
     pub historical_tax_base: &'bump [f64],
     #[arena(default)]
+    pub historical_economical_base: &'bump [f64],
+    /// The year of the last sample in the historical arrays.
+    pub last_stat_year: Option<i16>,
+    #[arena(default)]
     pub previous_tags: &'bump [CountryTag],
     #[arena(default)]
     pub economy: CountryEconomy<'bump>,
@@ -311,7 +322,32 @@ pub struct Country<'bump> {
     pub primary_religion: Option<ReligionId>,
 }
 
+/// The year of each sample of a `historical_*` array.
+///
+/// The samples are annual and the last one is `last_stat_year`, so the first
+/// one is the start year of the campaign. The length is not the same for every
+/// country: a country that formed late has fewer samples.
+pub fn historical_sample_years(
+    last_stat_year: i16,
+    samples: usize,
+) -> impl ExactSizeIterator<Item = i16> {
+    let first = last_stat_year - (samples as i16) + 1;
+    (0..samples as i16).map(move |i| first + i)
+}
+
 impl Country<'_> {
+    /// The year of each sample of the historical arrays of this country. All
+    /// of the arrays have the same length.
+    ///
+    /// Empty if the country has no `last_stat_year`.
+    pub fn historical_years(&self) -> impl ExactSizeIterator<Item = i16> {
+        let Some(last_stat_year) = self.last_stat_year else {
+            return historical_sample_years(0, 0);
+        };
+
+        historical_sample_years(last_stat_year, self.historical_population.len())
+    }
+
     /// The economic base is defined as the tax base of the country plus the
     /// volume of all its trades
     ///
@@ -718,16 +754,22 @@ impl<'de, 'bump> serde::de::Visitor<'de> for CountriesVisitor<'bump> {
 
         let tag_data = map.next_value_seed(TagDataSeed(self.0))?;
 
+        let mut world_population: &[f64] = &[];
         loop {
             let Some(key) = map.next_key::<CountryField>()? else {
                 return Err(serde::de::Error::custom("expected countries data"));
             };
 
-            if matches!(key, CountryField::Database) {
-                break;
+            match key {
+                CountryField::Database => break,
+                CountryField::HistoricalWorldPopulation => {
+                    world_population =
+                        map.next_value_seed(bumpalo_serde::SliceDeserializer::<f64>::new(self.0))?;
+                }
+                _ => {
+                    map.next_value::<serde::de::IgnoredAny>()?;
+                }
             }
-
-            map.next_value::<serde::de::IgnoredAny>()?;
         }
 
         let database_seed = CountryDatabaseSeed::new(tag_data.0, self.0);
@@ -744,6 +786,7 @@ impl<'de, 'bump> serde::de::Visitor<'de> for CountriesVisitor<'bump> {
             ids: CountryIndexedVec { data: tag_data.0 },
             tags: CountryIndexedVec { data: tag_data.1 },
             database: CountryIndexedVec { data: database },
+            historical_world_population: world_population,
         })
     }
 }
@@ -766,6 +809,8 @@ enum CountryField {
     Tags,
     #[serde(alias = "database")]
     Database,
+    #[serde(alias = "historical_world_population")]
+    HistoricalWorldPopulation,
     #[serde(other)]
     Other,
 }
@@ -848,6 +893,100 @@ mod tests {
         Wrapper::deserialize_in_arena(&deserializer, allocator)
             .expect("country name deserializes")
             .country_name
+    }
+
+    fn deserialize_countries<'bump>(
+        data: &str,
+        allocator: &'bump bumpalo::Bump,
+    ) -> Countries<'bump> {
+        #[derive(ArenaDeserialize)]
+        struct Wrapper<'bump> {
+            countries: Countries<'bump>,
+        }
+
+        // `Countries` reads its keys as an enum, which only the reader based
+        // deserializer supports. This is the same path the save file takes.
+        let mut deserializer =
+            TextDeserializer::from_utf8_reader(jomini::text::TokenReader::new(data.as_bytes()));
+        Wrapper::deserialize_in_arena(&mut deserializer, allocator)
+            .expect("countries deserialize")
+            .countries
+    }
+
+    /// Newer saves put `historical_world_population` between `tags` and
+    /// `database`, so the visitor must not demand a fixed field order.
+    #[test]
+    fn countries_with_world_population_between_tags_and_database() {
+        let allocator = bumpalo::Bump::new();
+        let countries = deserialize_countries(
+            r#"countries={
+                tags={
+                    0=DUMMY
+                    3=SWE
+                }
+                historical_world_population={ 370505.00095 369278.91483 }
+                database={
+                    0=none
+                    3={
+                        country_name="SWE"
+                        historical_population={ 624.72491 630.38638 }
+                        historical_tax_base={ 43.94665 50.88643 }
+                        historical_economical_base={ 58.24301 86.7986 }
+                        last_stat_year=1346
+                        score={ }
+                        currency_data={ }
+                    }
+                }
+            }"#,
+            &allocator,
+        );
+
+        assert_eq!(
+            countries.historical_world_population(),
+            &[370505.00095, 369278.91483]
+        );
+
+        let swe = countries.get_entry(CountryId::new(3)).expect("SWE present");
+        let swe = swe.data().expect("SWE has data");
+        assert_eq!(swe.historical_economical_base, &[58.24301, 86.7986]);
+        assert_eq!(swe.last_stat_year, Some(1346));
+        assert_eq!(swe.historical_years().collect::<Vec<_>>(), vec![1345, 1346]);
+    }
+
+    /// An older save has no statistic year, so it has no sample years either.
+    #[test]
+    fn historical_years_without_last_stat_year() {
+        let allocator = bumpalo::Bump::new();
+        let countries = deserialize_countries(
+            r#"countries={
+                tags={ 3=SWE }
+                database={ 3={
+                    country_name="SWE"
+                    historical_population={ 1.0 2.0 }
+                    score={ }
+                    currency_data={ }
+                } }
+            }"#,
+            &allocator,
+        );
+
+        let swe = countries.get_entry(CountryId::new(3)).expect("SWE present");
+        let swe = swe.data().expect("SWE has data");
+        assert!(countries.historical_world_population().is_empty());
+        assert_eq!(swe.historical_years().count(), 0);
+    }
+
+    #[test]
+    fn historical_sample_years_are_annual() {
+        assert_eq!(
+            historical_sample_years(1346, 3).collect::<Vec<_>>(),
+            vec![1344, 1345, 1346]
+        );
+        assert_eq!(
+            historical_sample_years(1346, 1).collect::<Vec<_>>(),
+            vec![1346]
+        );
+        assert_eq!(historical_sample_years(1346, 0).count(), 0);
     }
 
     #[test]
