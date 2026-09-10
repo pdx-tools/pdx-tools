@@ -1,9 +1,7 @@
-use crate::{Eu5Error, Eu5ErrorKind, MeltOptions, melt};
+use crate::{Eu5BinaryFormat, Eu5Error, Eu5ErrorKind, MeltOptions, melt};
 use jomini::{
     Encoding, Utf8Encoding,
-    binary::{
-        BinaryDeserializerBuilder, BinaryFlavor, TokenResolver, de::BinaryReaderDeserializer,
-    },
+    binary::{BinaryFlavor, BinaryFormatDeserializer, TokenResolver},
     text::de::TextReaderDeserializer,
 };
 use serde::de::DeserializeOwned;
@@ -16,7 +14,8 @@ pub use jomini::envelope::*;
 ///
 /// A lazy way to avoid the need to reimplement deserializer
 pub type Eu5TextDeserializer<'r> = TextReaderDeserializer<'r, Utf8Encoding>;
-pub type Eu5BinaryDeserializer<'r, 'res, RES> = BinaryReaderDeserializer<'r, 'res, RES, Eu5Flavor>;
+pub type Eu5BinaryDeserializer<'r, 'res, RES> =
+    BinaryFormatDeserializer<'r, Eu5BinaryFormat<'res, RES>>;
 
 pub trait Eu5BinaryDeserialization {
     fn deserializer<'res, RES: TokenResolver>(
@@ -30,8 +29,7 @@ impl<R: ReaderAt> Eu5BinaryDeserialization for &'_ SaveData<BinaryEncoding, R> {
         &mut self,
         resolver: &'res RES,
     ) -> Eu5BinaryDeserializer<'_, 'res, RES> {
-        BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new())
-            .from_reader(self.body().cursor(), resolver)
+        BinaryFormatDeserializer::from_reader(self.body().cursor(), Eu5BinaryFormat::new(resolver))
     }
 }
 
@@ -40,7 +38,7 @@ impl<R: Read> Eu5BinaryDeserialization for SaveContent<BinaryEncoding, R> {
         &mut self,
         resolver: &'res RES,
     ) -> Eu5BinaryDeserializer<'_, 'res, RES> {
-        BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new()).from_reader(self, resolver)
+        BinaryFormatDeserializer::from_reader(self, Eu5BinaryFormat::new(resolver))
     }
 }
 
@@ -49,7 +47,7 @@ impl<R: Read> Eu5BinaryDeserialization for SaveMetadata<BinaryEncoding, R> {
         &mut self,
         resolver: &'res RES,
     ) -> Eu5BinaryDeserializer<'_, 'res, RES> {
-        BinaryDeserializerBuilder::with_flavor(Eu5Flavor::new()).from_reader(self, resolver)
+        BinaryFormatDeserializer::from_reader(self, Eu5BinaryFormat::new(resolver))
     }
 }
 

@@ -26,8 +26,9 @@ impl<'de> de::Visitor<'de> for ColorVisitor {
     where
         A: de::SeqAccess<'de>,
     {
-        // Use size hint to detect binary color
-        if seq.size_hint() == Some(3) {
+        // A binary color arrives with its channel count known. Some fields,
+        // such as `color3`, hold a fourth alpha channel that the map ignores.
+        if matches!(seq.size_hint(), Some(3) | Some(4)) {
             let arr = <[u8; 3]>::deserialize(SeqAccessDeserializer::new(seq))?;
             Ok(Color(arr))
         } else {
