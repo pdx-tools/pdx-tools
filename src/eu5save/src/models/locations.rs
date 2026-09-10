@@ -1,4 +1,7 @@
-use crate::models::{self, MarketId, ReligionId, countries::CountryId};
+use crate::{
+    Eu5Date,
+    models::{self, MarketId, ReligionId, countries::CountryId, countries::CountryTag},
+};
 use bumpalo_serde::{ArenaDeserialize, ArenaSeed};
 use serde::{Deserialize, de};
 use std::{
@@ -129,6 +132,22 @@ pub struct Location<'bump> {
     pub raw_material: Option<models::GoodName<'bump>>,
     #[arena(default)]
     pub rank: LocationRank,
+    /// Every owner the location has had, in date order. The `owner` field above
+    /// is the current owner, and this is the historical source for a map at a
+    /// past date.
+    #[arena(default)]
+    pub ownership_history: &'bump [LocationOwnership],
+}
+
+/// One entry of a [`Location::ownership_history`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ArenaDeserialize)]
+pub struct LocationOwnership {
+    /// The date the country took the location.
+    pub date: Eu5Date,
+    pub owner: CountryId,
+    /// The tag of the owner at that date. A country can change its tag later,
+    /// so this is not always the current tag of `owner`.
+    pub tag: CountryTag,
 }
 
 #[derive(Debug, ArenaDeserialize, Deserialize, PartialEq, Eq, Default)]
@@ -281,5 +300,71 @@ impl<T> Index<LocationIdx> for LocationIndexedVec<T> {
     #[inline]
     fn index(&self, index: LocationIdx) -> &Self::Output {
         &self.data[index.0 as usize]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jomini::{TextDeserializer, common::PdsDate};
+
+    /// Location 134 in a 1346 save: Denmark held it from the start of the
+    /// campaign, and Skane took it on 1338.6.3.
+    #[test]
+    fn ownership_history() {
+        #[derive(ArenaDeserialize)]
+        struct Wrapper<'bump> {
+            location: Location<'bump>,
+        }
+
+        let data = r#"location={
+            owner=5
+            ownership_history={ {
+                    date=1337.4.1
+                    owner=4
+                    tag="DAN"
+                } {
+                    date=1338.6.3
+                    owner=5
+                    tag="SKE"
+                } }
+        }"#;
+
+        let allocator = bumpalo::Bump::new();
+        let deserializer =
+            TextDeserializer::from_utf8_slice(data.as_bytes()).expect("valid text data");
+        let location = Wrapper::deserialize_in_arena(&deserializer, &allocator)
+            .expect("location deserializes")
+            .location;
+
+        let [first, second] = location.ownership_history else {
+            panic!("expected two ownership entries")
+        };
+        assert_eq!(first.date.game_fmt().to_string(), "1337.4.1");
+        assert_eq!(first.owner, CountryId::new(4));
+        assert_eq!(first.tag.as_str(), "DAN");
+        assert_eq!(second.date.game_fmt().to_string(), "1338.6.3");
+        assert_eq!(second.owner, CountryId::new(5));
+        assert_eq!(second.tag.as_str(), "SKE");
+
+        // The last entry at or before the save date is the current owner.
+        assert_eq!(second.owner, location.owner);
+    }
+
+    /// A location that never changed hands has no history.
+    #[test]
+    fn ownership_history_is_optional() {
+        #[derive(ArenaDeserialize)]
+        struct Wrapper<'bump> {
+            location: Location<'bump>,
+        }
+
+        let allocator = bumpalo::Bump::new();
+        let deserializer =
+            TextDeserializer::from_utf8_slice(b"location={ owner=3 }").expect("valid text data");
+        let location = Wrapper::deserialize_in_arena(&deserializer, &allocator)
+            .expect("location deserializes")
+            .location;
+        assert!(location.ownership_history.is_empty());
     }
 }

@@ -12,6 +12,7 @@ mod market_manager;
 mod population;
 mod religion_manager;
 mod subunit_manager;
+mod timeline_manager;
 mod trade_manager;
 mod unit_manager;
 mod version;
@@ -30,6 +31,7 @@ pub use market_manager::*;
 pub use population::*;
 pub use religion_manager::*;
 pub use subunit_manager::*;
+pub use timeline_manager::*;
 pub use trade_manager::*;
 pub use unit_manager::*;
 pub use version::GameVersion;
@@ -87,6 +89,8 @@ pub struct Gamestate<'bump> {
     pub trade_manager: TradeManager<'bump>,
     pub religion_manager: ReligionManager<'bump>,
     pub culture_manager: CultureManager<'bump>,
+    #[arena(default)]
+    pub timeline_manager: TimelineManager<'bump>,
 }
 
 #[derive(Debug, ArenaDeserialize)]
