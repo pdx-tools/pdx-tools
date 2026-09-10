@@ -144,6 +144,10 @@ pub struct Location<'bump> {
 pub struct LocationOwnership {
     /// The date the country took the location.
     pub date: Eu5Date,
+    /// The country that took the location. An entry that makes the location
+    /// unowned has no owner in the save and gets the dummy country, in the
+    /// same way as [`Location::owner`]. Such an entry has the tag `---`.
+    #[arena(default)]
     pub owner: CountryId,
     /// The tag of the owner at that date. A country can change its tag later,
     /// so this is not always the current tag of `owner`.
@@ -352,6 +356,40 @@ mod tests {
     }
 
     /// A location that never changed hands has no history.
+    /// A location can become unowned. The entry then has the tag `---` and no
+    /// owner at all.
+    #[test]
+    fn ownership_history_without_an_owner() {
+        #[derive(ArenaDeserialize)]
+        struct Wrapper<'bump> {
+            location: Location<'bump>,
+        }
+
+        let data = r#"location={
+            ownership_history={ {
+                    date=1337.4.1
+                    owner=606
+                    tag="KOR"
+                } {
+                    date=1352.3.1
+                    tag="---"
+                } }
+        }"#;
+
+        let allocator = bumpalo::Bump::new();
+        let deserializer =
+            TextDeserializer::from_utf8_slice(data.as_bytes()).expect("valid text data");
+        let location = Wrapper::deserialize_in_arena(&deserializer, &allocator)
+            .expect("location to deserialize")
+            .location;
+
+        let history = location.ownership_history;
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0].owner, CountryId::new(606));
+        assert!(history[1].owner.is_dummy());
+        assert_eq!(history[1].date.game_fmt().to_string(), "1352.3.1");
+    }
+
     #[test]
     fn ownership_history_is_optional() {
         #[derive(ArenaDeserialize)]
