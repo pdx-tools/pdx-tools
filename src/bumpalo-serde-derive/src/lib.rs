@@ -19,11 +19,6 @@ fn expand_arena_deserialize(input: &DeriveInput) -> syn::Result<TokenStream> {
     // Determine the arena lifetime to use
     let arena_lifetime = determine_arena_lifetime(&input.generics);
 
-    // Check if this is an owned type that should just forward to Deserialize
-    if is_owned_type(input, &arena_lifetime) {
-        return expand_owned_type_passthrough(name, &input.generics, &arena_lifetime);
-    }
-
     match data {
         Data::Struct(data_struct) => match &data_struct.fields {
             Fields::Named(fields) => expand_struct_with_named_fields(
@@ -40,7 +35,7 @@ fn expand_arena_deserialize(input: &DeriveInput) -> syn::Result<TokenStream> {
             ),
             Fields::Unit => expand_unit_struct(name, &input.generics, &arena_lifetime),
         },
-        Data::Enum(_) => expand_enum(name, &input.generics, &arena_lifetime),
+        Data::Enum(data_enum) => expand_enum(input, name, data_enum, &arena_lifetime),
         Data::Union(_) => Err(syn::Error::new_spanned(
             input,
             "ArenaDeserialize does not support unions",
@@ -182,15 +177,12 @@ fn expand_struct_with_named_fields(
                             #field_name = Some(__map.next_value_seed(bumpalo_serde::ArenaSeed::new(__allocator))?);
                         }
                     }
-                } else if is_arena_type(field_type, arena_lifetime)
-                    || is_option_with_arena_type(field_type, arena_lifetime)
-                {
+                } else {
+                    // The field type decides how it deserializes through its
+                    // `ArenaDeserialize` impl. Types with no arena data
+                    // implement it as a pass-through to `Deserialize`.
                     quote! {
                         #field_name = Some(__map.next_value_seed(bumpalo_serde::ArenaSeed::new(__allocator))?);
-                    }
-                } else {
-                    quote! {
-                        #field_name = Some(__map.next_value()?);
                     }
                 };
 
@@ -395,16 +387,9 @@ fn expand_struct_with_unnamed_fields(
     }
     let (new_impl_generics, _, new_where_clause) = new_generics.split_for_impl();
 
-    let deserialize_impl = if is_arena_type(field_type, arena_lifetime) {
-        quote! {
-            let inner = <bumpalo_serde::ArenaSeed::<#field_type> as serde::de::DeserializeSeed>::deserialize(bumpalo_serde::ArenaSeed::<#field_type>::new(allocator), deserializer)?;
-            Ok(#name(inner))
-        }
-    } else {
-        quote! {
-            let inner = serde::Deserialize::deserialize(deserializer)?;
-            Ok(#name(inner))
-        }
+    let deserialize_impl = quote! {
+        let inner = <bumpalo_serde::ArenaSeed::<#field_type> as serde::de::DeserializeSeed>::deserialize(bumpalo_serde::ArenaSeed::<#field_type>::new(allocator), deserializer)?;
+        Ok(#name(inner))
     };
 
     let output = quote! {
@@ -456,11 +441,58 @@ fn expand_unit_struct(
     Ok(output.into())
 }
 
+/// Expand an enum with only unit variants.
+///
+/// The generated impl reads a variant identifier and maps it to a variant.
+/// Supported attributes:
+///
+/// - `#[arena(rename_all = "...")]` on the enum
+/// - `#[arena(rename = "...")]` on a variant
+/// - `#[arena(other)]` on one variant, which receives unknown identifiers
+///
+/// Enums with data-carrying variants are not supported. Write the
+/// `ArenaDeserialize` impl by hand for those.
 fn expand_enum(
+    input: &DeriveInput,
     name: &syn::Ident,
-    generics: &syn::Generics,
+    data_enum: &syn::DataEnum,
     arena_lifetime: &str,
 ) -> syn::Result<TokenStream> {
+    let rename_all = parse_enum_attributes(input)?;
+
+    let mut variants = Vec::new();
+    let mut other_variant: Option<syn::Ident> = None;
+    for variant in &data_enum.variants {
+        if !matches!(variant.fields, Fields::Unit) {
+            return Err(syn::Error::new_spanned(
+                variant,
+                "ArenaDeserialize supports only unit variants in enums. \
+                 Implement ArenaDeserialize by hand for enums that carry data.",
+            ));
+        }
+
+        let attrs = parse_variant_attributes(variant)?;
+        if attrs.other {
+            if other_variant.is_some() {
+                return Err(syn::Error::new_spanned(
+                    variant,
+                    "Only one variant can have the `other` attribute",
+                ));
+            }
+            other_variant = Some(variant.ident.clone());
+        }
+
+        let serialized = attrs.rename.unwrap_or_else(|| {
+            let ident = variant.ident.to_string();
+            match rename_all {
+                Some(rule) => rule.apply(&ident),
+                None => ident,
+            }
+        });
+        variants.push((variant.ident.clone(), serialized));
+    }
+
+    let generics = &input.generics;
     let (_impl_generics, ty_generics, _where_clause) = generics.split_for_impl();
     let arena_lifetime_syn =
         syn::Lifetime::new(&format!("'{}", arena_lifetime), Span::call_site().into());
@@ -478,19 +510,272 @@ fn expand_enum(
     }
     let (new_impl_generics, _, new_where_clause) = new_generics.split_for_impl();
 
+    let name_str = name.to_string();
+    let variant_idents: Vec<_> = variants.iter().map(|(ident, _)| ident).collect();
+    let variant_names: Vec<_> = variants.iter().map(|(_, s)| s.as_str()).collect();
+    let variant_bytes: Vec<_> = variants
+        .iter()
+        .map(|(_, s)| syn::LitByteStr::new(s.as_bytes(), Span::call_site().into()))
+        .collect();
+    let tags: Vec<_> = (0..variants.len())
+        .map(|i| format_ident!("Variant{}", i))
+        .collect();
+
+    let unknown_arm = match &other_variant {
+        Some(_) => quote! { _ => Ok(__Variant::__Other) },
+        None => quote! {
+            _ => Err(serde::de::Error::unknown_variant(__value, VARIANTS))
+        },
+    };
+    let unknown_bytes_arm = match &other_variant {
+        Some(_) => quote! { _ => Ok(__Variant::__Other) },
+        None => quote! {
+            _ => {
+                let __value = String::from_utf8_lossy(__value);
+                Err(serde::de::Error::unknown_variant(&__value, VARIANTS))
+            }
+        },
+    };
+    let other_match_arm = other_variant
+        .as_ref()
+        .map(|ident| quote! { __Variant::__Other => #name::#ident, });
+
     let output = quote! {
         impl #new_impl_generics bumpalo_serde::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
             fn deserialize_in_arena<'de, D>(deserializer: D, _allocator: &#arena_lifetime_syn bumpalo::Bump) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,
             {
-                // Enums don't need arena allocation, so we just pass through to serde
-                serde::Deserialize::deserialize(deserializer)
+                const VARIANTS: &[&str] = &[#(#variant_names),*];
+
+                enum __Variant {
+                    #(#tags,)*
+                    __Other,
+                }
+
+                struct __VariantVisitor;
+
+                impl<'de> serde::de::Visitor<'de> for __VariantVisitor {
+                    type Value = __Variant;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str("variant identifier")
+                    }
+
+                    fn visit_str<E>(self, __value: &str) -> Result<Self::Value, E>
+                    where
+                        E: serde::de::Error,
+                    {
+                        match __value {
+                            #(#variant_names => Ok(__Variant::#tags),)*
+                            #unknown_arm
+                        }
+                    }
+
+                    fn visit_bytes<E>(self, __value: &[u8]) -> Result<Self::Value, E>
+                    where
+                        E: serde::de::Error,
+                    {
+                        match __value {
+                            #(#variant_bytes => Ok(__Variant::#tags),)*
+                            #unknown_bytes_arm
+                        }
+                    }
+                }
+
+                impl<'de> serde::Deserialize<'de> for __Variant {
+                    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                    where
+                        D: serde::Deserializer<'de>,
+                    {
+                        deserializer.deserialize_identifier(__VariantVisitor)
+                    }
+                }
+
+                struct __Visitor;
+
+                impl<'de> serde::de::Visitor<'de> for __Visitor {
+                    type Value = #name;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str(concat!("enum ", #name_str))
+                    }
+
+                    fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+                    where
+                        A: serde::de::EnumAccess<'de>,
+                    {
+                        let (variant, access) = serde::de::EnumAccess::variant::<__Variant>(data)?;
+                        serde::de::VariantAccess::unit_variant(access)?;
+                        Ok(match variant {
+                            #(__Variant::#tags => #name::#variant_idents,)*
+                            #other_match_arm
+                            // Unreachable when no variant is marked `other`:
+                            // the identifier visitor returns an error instead.
+                            #[allow(unreachable_patterns)]
+                            __Variant::__Other => unreachable!(),
+                        })
+                    }
+                }
+
+                deserializer.deserialize_enum(#name_str, VARIANTS, __Visitor)
             }
         }
     };
 
     Ok(output.into())
+}
+
+#[derive(Clone, Copy)]
+enum RenameRule {
+    Lowercase,
+    Uppercase,
+    PascalCase,
+    CamelCase,
+    SnakeCase,
+    ScreamingSnakeCase,
+    KebabCase,
+    ScreamingKebabCase,
+}
+
+impl RenameRule {
+    fn parse(value: &str) -> Option<Self> {
+        Some(match value {
+            "lowercase" => Self::Lowercase,
+            "UPPERCASE" => Self::Uppercase,
+            "PascalCase" => Self::PascalCase,
+            "camelCase" => Self::CamelCase,
+            "snake_case" => Self::SnakeCase,
+            "SCREAMING_SNAKE_CASE" => Self::ScreamingSnakeCase,
+            "kebab-case" => Self::KebabCase,
+            "SCREAMING-KEBAB-CASE" => Self::ScreamingKebabCase,
+            _ => return None,
+        })
+    }
+
+    /// Apply the rule to a variant name written in PascalCase.
+    fn apply(self, variant: &str) -> String {
+        match self {
+            Self::Lowercase => variant.to_ascii_lowercase(),
+            Self::Uppercase => variant.to_ascii_uppercase(),
+            Self::PascalCase => variant.to_owned(),
+            Self::CamelCase => {
+                let mut chars = variant.chars();
+                match chars.next() {
+                    Some(first) => first.to_ascii_lowercase().to_string() + chars.as_str(),
+                    None => String::new(),
+                }
+            }
+            Self::SnakeCase => join_words(variant, '_', false),
+            Self::ScreamingSnakeCase => join_words(variant, '_', true),
+            Self::KebabCase => join_words(variant, '-', false),
+            Self::ScreamingKebabCase => join_words(variant, '-', true),
+        }
+    }
+}
+
+/// Split a PascalCase name at each uppercase letter and join the words.
+fn join_words(variant: &str, separator: char, upper: bool) -> String {
+    let mut out = String::with_capacity(variant.len() + 4);
+    for (i, ch) in variant.char_indices() {
+        if ch.is_ascii_uppercase() && i > 0 {
+            out.push(separator);
+        }
+        out.push(if upper {
+            ch.to_ascii_uppercase()
+        } else {
+            ch.to_ascii_lowercase()
+        });
+    }
+    out
+}
+
+fn parse_enum_attributes(input: &DeriveInput) -> syn::Result<Option<RenameRule>> {
+    let mut rename_all = None;
+    for attr in &input.attrs {
+        if !attr.path().is_ident("arena") {
+            continue;
+        }
+        let Meta::List(meta_list) = &attr.meta else {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "Invalid arena attribute format",
+            ));
+        };
+        let nested = meta_list.parse_args_with(
+            syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated,
+        )?;
+        for meta in nested {
+            match &meta {
+                Meta::NameValue(nv) if nv.path.is_ident("rename_all") => {
+                    let syn::Expr::Lit(syn::ExprLit {
+                        lit: Lit::Str(s), ..
+                    }) = &nv.value
+                    else {
+                        return Err(syn::Error::new_spanned(
+                            &nv.value,
+                            "rename_all expects a string literal",
+                        ));
+                    };
+                    rename_all =
+                        Some(RenameRule::parse(&s.value()).ok_or_else(|| {
+                            syn::Error::new_spanned(s, "Unknown rename_all rule")
+                        })?);
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(meta, "Unknown arena attribute"));
+                }
+            }
+        }
+    }
+    Ok(rename_all)
+}
+
+struct VariantAttributes {
+    rename: Option<String>,
+    other: bool,
+}
+
+fn parse_variant_attributes(variant: &syn::Variant) -> syn::Result<VariantAttributes> {
+    let mut rename = None;
+    let mut other = false;
+    for attr in &variant.attrs {
+        if !attr.path().is_ident("arena") {
+            continue;
+        }
+        let Meta::List(meta_list) = &attr.meta else {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "Invalid arena attribute format",
+            ));
+        };
+        let nested = meta_list.parse_args_with(
+            syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated,
+        )?;
+        for meta in nested {
+            match &meta {
+                Meta::NameValue(nv) if nv.path.is_ident("rename") => {
+                    let syn::Expr::Lit(syn::ExprLit {
+                        lit: Lit::Str(s), ..
+                    }) = &nv.value
+                    else {
+                        return Err(syn::Error::new_spanned(
+                            &nv.value,
+                            "rename expects a string literal",
+                        ));
+                    };
+                    rename = Some(s.value());
+                }
+                Meta::Path(path) if path.is_ident("other") => {
+                    other = true;
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(meta, "Unknown arena attribute"));
+                }
+            }
+        }
+    }
+    Ok(VariantAttributes { rename, other })
 }
 
 struct FieldInfo {
@@ -578,86 +863,6 @@ fn parse_field_attributes(field: &syn::Field) -> syn::Result<FieldInfo> {
     })
 }
 
-fn is_arena_type(ty: &Type, arena_lifetime: &str) -> bool {
-    match ty {
-        Type::Reference(type_ref) => {
-            // Check for &'arena T where arena_lifetime matches
-            if let Some(lifetime) = &type_ref.lifetime {
-                lifetime.ident == arena_lifetime
-            } else {
-                false
-            }
-        }
-        Type::Path(type_path) => {
-            // Check for bumpalo collections or types with arena lifetime
-            if let Some(segment) = type_path.path.segments.first() {
-                if segment.ident == "bumpalo" {
-                    return true;
-                }
-
-                // Check if the type has generic parameters with arena lifetime
-                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
-                    for arg in &args.args {
-                        if let syn::GenericArgument::Lifetime(lt) = arg
-                            && lt.ident == arena_lifetime
-                        {
-                            return true;
-                        }
-                    }
-                }
-
-                // Check for types that might be custom structs/enums with ArenaDeserialize
-                // We'll assume any non-standard library type implements ArenaDeserialize
-                let type_name = segment.ident.to_string();
-                if !matches!(
-                    type_name.as_str(),
-                    "String"
-                        | "Vec"
-                        | "HashMap"
-                        | "HashSet"
-                        | "BTreeMap"
-                        | "BTreeSet"
-                        | "i8"
-                        | "i16"
-                        | "i32"
-                        | "i64"
-                        | "i128"
-                        | "isize"
-                        | "u8"
-                        | "u16"
-                        | "u32"
-                        | "u64"
-                        | "u128"
-                        | "usize"
-                        | "f32"
-                        | "f64"
-                        | "bool"
-                        | "char"
-                        | "Option"
-                        | "Result"
-                ) {
-                    return true; // Assume custom types implement ArenaDeserialize
-                }
-
-                // Handle the standard types that don't need arena
-                false
-            } else {
-                false
-            }
-        }
-        Type::Slice(_) => true, // Assume slice types need arena deserialization
-        _ => {
-            // Check if the type contains arena lifetime parameter
-            let type_str = quote!(#ty).to_string();
-            type_str.contains(&format!("'{}", arena_lifetime))
-        }
-    }
-}
-
-fn has_bump_lifetime(generics: &syn::Generics) -> bool {
-    generics.lifetimes().any(|lt| lt.lifetime.ident == "bump")
-}
-
 /// Determine the arena lifetime for the struct.
 /// Returns the lifetime identifier string (e.g., "bump", "a", "arena").
 ///
@@ -680,25 +885,6 @@ fn is_option_type(ty: &Type) -> bool {
             } else {
                 false
             }
-        }
-        _ => false,
-    }
-}
-
-fn is_option_with_arena_type(ty: &Type, arena_lifetime: &str) -> bool {
-    match ty {
-        Type::Path(type_path) => {
-            if let Some(segment) = type_path.path.segments.last()
-                && segment.ident == "Option"
-            {
-                // Check if the Option contains an arena type
-                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments
-                    && let Some(syn::GenericArgument::Type(inner_type)) = args.args.first()
-                {
-                    return is_arena_type(inner_type, arena_lifetime);
-                }
-            }
-            false
         }
         _ => false,
     }
@@ -733,72 +919,4 @@ fn get_slice_element_type(ty: &Type) -> Option<&Type> {
         }
         _ => None,
     }
-}
-
-fn is_owned_type(input: &DeriveInput, arena_lifetime: &str) -> bool {
-    // Only consider types with no lifetime parameters as potentially owned
-    if has_bump_lifetime(&input.generics) {
-        return false;
-    }
-
-    match &input.data {
-        Data::Struct(data_struct) => {
-            match &data_struct.fields {
-                Fields::Named(fields) => {
-                    // Check if all fields are owned types (no arena types)
-                    fields
-                        .named
-                        .iter()
-                        .all(|field| !is_arena_type(&field.ty, arena_lifetime))
-                }
-                Fields::Unnamed(fields) => {
-                    // Check if all fields are owned types (no arena types)
-                    fields
-                        .unnamed
-                        .iter()
-                        .all(|field| !is_arena_type(&field.ty, arena_lifetime))
-                }
-                Fields::Unit => true, // Unit structs are always owned
-            }
-        }
-        Data::Enum(_) => true,   // Enums are typically owned
-        Data::Union(_) => false, // We don't support unions anyway
-    }
-}
-
-fn expand_owned_type_passthrough(
-    name: &syn::Ident,
-    generics: &syn::Generics,
-    arena_lifetime: &str,
-) -> syn::Result<TokenStream> {
-    let (_impl_generics, ty_generics, _where_clause) = generics.split_for_impl();
-    let arena_lifetime_syn =
-        syn::Lifetime::new(&format!("'{}", arena_lifetime), Span::call_site().into());
-
-    // Create new generics with arena lifetime
-    let mut new_generics = generics.clone();
-    // Only add arena lifetime if it doesn't already exist
-    if !generics
-        .lifetimes()
-        .any(|lt| lt.lifetime.ident == arena_lifetime)
-    {
-        new_generics.params.insert(
-            0,
-            syn::GenericParam::Lifetime(LifetimeParam::new(arena_lifetime_syn.clone())),
-        );
-    }
-    let (new_impl_generics, _, new_where_clause) = new_generics.split_for_impl();
-
-    let output = quote! {
-        impl #new_impl_generics bumpalo_serde::ArenaDeserialize<#arena_lifetime_syn> for #name #ty_generics #new_where_clause {
-            fn deserialize_in_arena<'de, D>(deserializer: D, _allocator: &#arena_lifetime_syn bumpalo::Bump) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                Self::deserialize(deserializer)
-            }
-        }
-    };
-
-    Ok(output.into())
 }

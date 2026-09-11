@@ -154,18 +154,15 @@ pub struct LocationOwnership<'bump> {
     pub tag: CountryTag<'bump>,
 }
 
-#[derive(Debug, ArenaDeserialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, ArenaDeserialize, PartialEq, Eq, Default)]
+#[arena(rename_all = "snake_case")]
 pub enum LocationRank {
-    #[serde(rename = "rural_settlement")]
     RuralSettlement,
-    #[serde(rename = "town")]
     Town,
-    #[serde(rename = "city")]
     City,
-    #[serde(rename = "megalopolis")]
     Megalopolis,
     #[default]
-    #[serde(other)]
+    #[arena(other)]
     Other,
 }
 
