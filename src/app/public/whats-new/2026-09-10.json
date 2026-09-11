@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "Support loading EU5 SAV03",
+      "Refresh EU5 charts, entity links, loading states, and keyboard focus styles",
+      "Improve framing for multiplayer EU4 screenshots"
+    ],
+    "fixes": [
+      "Support EU5 tags of arbitrary length",
+      "Fix missing ocean provinces in EU4 1.30 saves"
+    ]
+  }
+}
