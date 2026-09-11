@@ -283,6 +283,24 @@ impl<'bump> ArenaDeserialize<'bump> for &'bump str {
     }
 }
 
+// Implementation for &'bump T, which puts a nested value in the arena. This
+// permits recursive models, such as a tweet that contains a retweeted tweet.
+impl<'bump, T> ArenaDeserialize<'bump> for &'bump T
+where
+    T: ArenaDeserialize<'bump> + 'bump,
+{
+    fn deserialize_in_arena<'de, D>(
+        deserializer: D,
+        allocator: &'bump bumpalo::Bump,
+    ) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = T::deserialize_in_arena(deserializer, allocator)?;
+        Ok(allocator.alloc(value))
+    }
+}
+
 // Implementation for &'bump [u8]
 impl<'bump> ArenaDeserialize<'bump> for &'bump [u8] {
     fn deserialize_in_arena<'de, D>(
@@ -682,6 +700,33 @@ mod tests {
         let s: &str = <&str>::deserialize_in_arena(&mut deserializer, &allocator).unwrap();
 
         assert_eq!(s, "Borrowed string");
+    }
+
+    #[derive(ArenaDeserialize)]
+    struct Node<'bump> {
+        value: u32,
+        next: Option<&'bump Node<'bump>>,
+    }
+
+    #[test]
+    fn test_arena_reference() {
+        let allocator = bumpalo::Bump::new();
+
+        let json = r#"{"value": 1, "next": {"value": 2, "next": {"value": 3, "next": null}}}"#;
+        let mut deserializer = serde_json::Deserializer::from_str(json);
+
+        let head: Node = Node::deserialize_in_arena(&mut deserializer, &allocator).unwrap();
+
+        assert_eq!(head.value, 1);
+        let second = head.next.unwrap();
+        assert_eq!(second.value, 2);
+        let third = second.next.unwrap();
+        assert_eq!(third.value, 3);
+        assert!(third.next.is_none());
+
+        // The nested nodes live in the arena, not on the heap.
+        let node_size = std::mem::size_of::<Node>();
+        assert!(allocator.allocated_bytes() >= 2 * node_size);
     }
 
     #[test]
