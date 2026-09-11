@@ -15,6 +15,7 @@ assets/game/eu4/common/images/achievements/*
 assets/game/eu5
 assets/tokens
 assets/vendored/
+src/bench/assets/twitter.json
 .env
 .config/mise.local.toml
 .config/miserc.toml

@@ -10,16 +10,23 @@ workspace = true
 bench = false
 
 [dependencies]
+bumpalo = { workspace = true, features = ["collections"] }
+bumpalo-serde = { workspace = true }
 criterion = { workspace = true }
 jomini = { workspace = true }
 pdx-map = { workspace = true }
 rand = { workspace = true }
 schemas = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 zstd = { workspace = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 criterion = { workspace = true, default-features = true }
+attohttpc = { workspace = true }
 gungraun = { workspace = true }
+sha1_smol = { workspace = true }
+sonic-rs = { workspace = true }
 
 [[bench]]
 name = "pdx-bench-criterion"
