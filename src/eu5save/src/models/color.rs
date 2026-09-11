@@ -2,7 +2,7 @@ use bumpalo_serde::ArenaDeserialize;
 use serde::de::{self, Deserialize, value::SeqAccessDeserializer};
 use std::fmt;
 
-#[derive(Debug, PartialEq, Clone, Copy, ArenaDeserialize)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Color(pub [u8; 3]);
 
 impl Default for Color {
@@ -46,5 +46,18 @@ impl<'de> Deserialize<'de> for Color {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_seq(ColorVisitor)
+    }
+}
+
+impl<'bump> ArenaDeserialize<'bump> for Color {
+    fn deserialize_in_arena<'de, D>(
+        deserializer: D,
+        _allocator: &'bump bumpalo::Bump,
+    ) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Color has no arena data. Forward to the custom visitor above.
+        Self::deserialize(deserializer)
     }
 }

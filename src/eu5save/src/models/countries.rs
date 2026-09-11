@@ -536,7 +536,7 @@ where
     deserializer.deserialize_any(Visitor(allocator))
 }
 
-#[derive(Debug, Clone, Deserialize, ArenaDeserialize)]
+#[derive(Debug, Clone, ArenaDeserialize)]
 pub struct CountryScore {
     pub score_place: Option<i32>,
     #[arena(default)]
@@ -545,41 +545,41 @@ pub struct CountryScore {
     pub score_rank: CountryScoreRank,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, ArenaDeserialize)]
+#[derive(Debug, Clone, Default, ArenaDeserialize)]
 pub struct CountryScoreRating {
-    #[serde(default, alias = "ADM")]
+    #[arena(default, alias = "ADM")]
     pub adm: f64,
-    #[serde(default, alias = "DIP")]
+    #[arena(default, alias = "DIP")]
     pub dip: f64,
-    #[serde(default, alias = "MIL")]
+    #[arena(default, alias = "MIL")]
     pub mil: f64,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, ArenaDeserialize)]
+#[derive(Debug, Clone, Default, ArenaDeserialize)]
 pub struct CountryScoreRank {
-    #[serde(alias = "ADM")]
+    #[arena(alias = "ADM")]
     pub adm: f64,
-    #[serde(alias = "DIP")]
+    #[arena(alias = "DIP")]
     pub dip: f64,
-    #[serde(alias = "MIL")]
+    #[arena(alias = "MIL")]
     pub mil: f64,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, ArenaDeserialize)]
+#[derive(Debug, Clone, Default, ArenaDeserialize)]
 pub struct CurrencyData {
-    #[serde(default)]
+    #[arena(default)]
     pub manpower: f64,
-    #[serde(default)]
+    #[arena(default)]
     pub gold: f64,
-    #[serde(default)]
+    #[arena(default)]
     pub stability: f64,
-    #[serde(default)]
+    #[arena(default)]
     pub prestige: f64,
-    #[serde(default)]
+    #[arena(default)]
     pub army_tradition: f64,
-    #[serde(default)]
+    #[arena(default)]
     pub navy_tradition: f64,
-    #[serde(default)]
+    #[arena(default)]
     pub government_power: f64,
 }
 

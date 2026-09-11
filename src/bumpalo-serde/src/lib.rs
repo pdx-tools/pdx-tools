@@ -76,6 +76,21 @@ impl_arena_deserialize_passthrough! {
     char,
 }
 
+impl<'bump, T, const N: usize> ArenaDeserialize<'bump> for [T; N]
+where
+    [T; N]: for<'de> Deserialize<'de>,
+{
+    fn deserialize_in_arena<'de, D>(
+        deserializer: D,
+        _allocator: &'bump bumpalo::Bump,
+    ) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        <[T; N]>::deserialize(deserializer)
+    }
+}
+
 // Generic implementations for collections where the element types implement Deserialize
 impl<'bump, T> ArenaDeserialize<'bump> for Vec<T>
 where

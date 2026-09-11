@@ -12,7 +12,7 @@ pub struct PopulationDirectory<'bump> {
     pub database: PopDatabase<'bump>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize, ArenaDeserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PopulationType {
     Burghers,
@@ -25,6 +25,20 @@ pub enum PopulationType {
     Tribesmen,
     #[serde(other)]
     Other,
+}
+
+impl<'bump> ArenaDeserialize<'bump> for PopulationType {
+    fn deserialize_in_arena<'de, D>(
+        deserializer: D,
+        _allocator: &'bump bumpalo::Bump,
+    ) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // PopulationType is also read through serde by `Population`, so
+        // serde owns the variant names and this impl forwards to it.
+        Self::deserialize(deserializer)
+    }
 }
 
 #[derive(Debug, JominiDeserialize)]
