@@ -136,12 +136,12 @@ pub struct Location<'bump> {
     /// is the current owner, and this is the historical source for a map at a
     /// past date.
     #[arena(default)]
-    pub ownership_history: &'bump [LocationOwnership],
+    pub ownership_history: &'bump [LocationOwnership<'bump>],
 }
 
 /// One entry of a [`Location::ownership_history`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ArenaDeserialize)]
-pub struct LocationOwnership {
+pub struct LocationOwnership<'bump> {
     /// The date the country took the location.
     pub date: Eu5Date,
     /// The country that took the location. An entry that makes the location
@@ -151,7 +151,7 @@ pub struct LocationOwnership {
     pub owner: CountryId,
     /// The tag of the owner at that date. A country can change its tag later,
     /// so this is not always the current tag of `owner`.
-    pub tag: CountryTag,
+    pub tag: CountryTag<'bump>,
 }
 
 #[derive(Debug, ArenaDeserialize, Deserialize, PartialEq, Eq, Default)]

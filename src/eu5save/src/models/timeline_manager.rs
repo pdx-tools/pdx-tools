@@ -42,7 +42,7 @@ pub struct TimelineNote<'bump> {
 #[derive(Debug, ArenaDeserialize)]
 pub struct DeadCountry<'bump> {
     pub country_id: CountryId,
-    pub tag: CountryTag,
+    pub tag: CountryTag<'bump>,
     /// The coat of arms key the country flew.
     pub flag: Option<BStr<'bump>>,
     pub death_date: Eu5Date,
@@ -68,7 +68,7 @@ pub struct CountryRename<'bump> {
     /// The date the change took effect.
     pub date: Eu5Date,
     pub name: CountryName<'bump>,
-    pub tag: CountryTag,
+    pub tag: CountryTag<'bump>,
     pub flag: Option<BStr<'bump>>,
     /// The map color, packed as one integer instead of an `rgb` block.
     #[arena(default)]
@@ -216,5 +216,30 @@ mod tests {
         assert_eq!(rename.name.name().to_str(), "ADH");
         assert_eq!(rename.tag.as_str(), "ADH");
         assert_eq!(rename.map_color_hex, 4292777777);
+    }
+
+    /// A tag is not always three to five characters. Script can name a formable
+    /// country with a longer tag, like the Sardinia-Piedmont formable.
+    #[test]
+    fn country_rename_with_long_tag() {
+        let allocator = bumpalo::Bump::new();
+        let timeline = deserialize(
+            r#"timeline_manager={
+                country_renames={ {
+                    country_id=2104
+                    date=1341.9.1
+                    name="SAR_piedmont"
+                    tag="SAR_piedmont"
+                    flag="SAR_piedmont"
+                    map_color_hex=4292777777
+                } }
+            }"#,
+            &allocator,
+        );
+
+        let [rename] = timeline.country_renames else {
+            panic!("expected one rename")
+        };
+        assert_eq!(rename.tag.as_str(), "SAR_piedmont");
     }
 }
