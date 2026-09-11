@@ -346,14 +346,11 @@ run = "node ./dev/scripts/fetch-steam-game-bundles.mts"
 run = "cargo build --package pdx-admin-cli --release"
 
 [tasks."release:build:docker"]
-wait_for = ["release:build:api"]
-run = "docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ./target/release/"
-
-[tasks."release:build:api"]
-run = "cargo build --package pdx-tools-api --release"
+description = "Build the api container image. The api compiles inside the image so that it links against the runtime glibc."
+run = "docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ."
 
 [tasks."release:build"]
-depends = ["build:wasm", "optimize:wasm:*", "build:app", "release:build:api", "release:build:docker"]
+depends = ["build:wasm", "optimize:wasm:*", "build:app", "release:build:docker"]
 
 [tasks."bench:wasm"]
 description = "Run benchmarks in wasm"
