@@ -1,6 +1,22 @@
 **/node_modules
 **/fuzz
 .git
+.pnpm-store
 dist
+tmp
 **/target
 **/.cache
+# Secrets and local configuration must not enter any image layer
+**/.env
+**/.env.*
+**/*.local.env
+**/.dev.vars*
+# Large inputs that the api build does not read
+assets/eu4-saves
+assets/game-bundles
+assets/game/eu5
+assets/steam
+dev/infra
+src/app/build
+src/eu5save/assets
+src/vic3save/assets
