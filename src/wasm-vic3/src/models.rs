@@ -7,7 +7,6 @@ use vic3save::Vic3Date;
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct Vic3Metadata {
     pub date: Vic3Date,
     pub is_meltable: bool,
@@ -17,7 +16,6 @@ pub struct Vic3Metadata {
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct Vic3MarketResponse {
     pub prices: Vec<Vic3GoodPrice>,
 }
@@ -31,7 +29,6 @@ pub struct Vic3GoodPrice {
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct Vic3GraphResponse {
     pub data: Vec<Vic3GraphData>,
 }
@@ -50,7 +47,6 @@ pub struct Vic3GraphData {
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct Vic3CountryGraphDataResponse {
     pub data: Vec<Vic3CountryGraphData>,
 }

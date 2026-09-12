@@ -1,15 +1,14 @@
 use jomini::common::{Date, PdsDate};
 use serde::Serialize;
-use tsify::Tsify;
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Tsify, Serialize)]
-#[tsify(into_wasm_abi)]
 #[serde(transparent)]
 pub struct AchievementList(Vec<eu4game_data::Achievement>);
 
 #[wasm_bindgen]
-pub fn achievements() -> AchievementList {
+pub fn achievements() -> Result<Ts<AchievementList>, JsError> {
     let mut achieves = eu4game_data::achievements();
     achieves.sort_unstable_by(|a, b| {
         a.difficulty
@@ -17,7 +16,7 @@ pub fn achievements() -> AchievementList {
             .then_with(|| a.name.cmp(&b.name))
     });
 
-    AchievementList(achieves)
+    Ok(AchievementList(achieves).into_ts()?)
 }
 
 // equivalent to eu4_days_to_date

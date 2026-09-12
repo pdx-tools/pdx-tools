@@ -111,7 +111,7 @@ tower-http = "0.6.8"
 tracing = "0.1"
 tracing-opentelemetry = "0.33"
 tracing-subscriber = "0.3"
-tsify = { version = "0.5.6", default-features = false, features = ["js"] }
+tsify = { version = "0.5.8", default-features = false, features = ["js"] }
 vic3save = { path = "src/vic3save" }
 walkdir = "2.5.0"
 wasm-bindgen = { version = "0.2.118", default-features = false }

@@ -7,6 +7,7 @@ use pdx_map::{
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tsify::Ts;
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -40,7 +41,7 @@ impl PdxCanvasSurface {
     #[wasm_bindgen]
     pub async fn init(
         canvas: OffscreenCanvas,
-        _display: CanvasDisplay,
+        _display: Ts<CanvasDisplay>,
     ) -> Result<PdxCanvasSurface, JsError> {
         let surface = get_surface_target(canvas);
 
@@ -91,9 +92,9 @@ impl PdxMapRenderer {
         image: PdxMapImage,
         west_texture: PdxTexture,
         east_texture: PdxTexture,
-        display: CanvasDisplay,
+        display: Ts<CanvasDisplay>,
     ) -> Result<Self, JsError> {
-        let canvas_dims: CanvasDimensions = display.into();
+        let canvas_dims: CanvasDimensions = display.to_rust()?.into();
 
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
@@ -312,16 +313,30 @@ impl PdxMapRenderer {
     /// Pan to make a world point visible, respecting panel insets. Returns true if a pan was
     /// started. The snap or animation is applied on the next `tick()`.
     #[wasm_bindgen]
-    pub fn pan_to_point(&mut self, x: f32, y: f32, insets: WasmViewportInsets) -> bool {
-        self.interaction
-            .pan_to_visible_region(PanTarget::Point(WorldPoint::new(x, y)), insets.into())
+    pub fn pan_to_point(
+        &mut self,
+        x: f32,
+        y: f32,
+        insets: Ts<WasmViewportInsets>,
+    ) -> Result<bool, JsError> {
+        let insets = insets.to_rust()?;
+        Ok(self
+            .interaction
+            .pan_to_visible_region(PanTarget::Point(WorldPoint::new(x, y)), insets.into()))
     }
 
     /// Whether a world point is currently visible within the inset-adjusted region.
     #[wasm_bindgen]
-    pub fn is_point_visible(&self, x: f32, y: f32, insets: WasmViewportInsets) -> bool {
-        self.interaction
-            .is_target_visible(PanTarget::Point(WorldPoint::new(x, y)), insets.into())
+    pub fn is_point_visible(
+        &self,
+        x: f32,
+        y: f32,
+        insets: Ts<WasmViewportInsets>,
+    ) -> Result<bool, JsError> {
+        let insets = insets.to_rust()?;
+        Ok(self
+            .interaction
+            .is_target_visible(PanTarget::Point(WorldPoint::new(x, y)), insets.into()))
     }
 
     /// Whether a programmatic pan animation is currently in flight.
@@ -445,7 +460,6 @@ impl WasmQueuedWorkFuture {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct WasmViewportInsets {
     pub left: f32,
@@ -466,7 +480,6 @@ impl From<WasmViewportInsets> for ViewportInsets {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasDisplay {
     /// Physical pixel width of the canvas.

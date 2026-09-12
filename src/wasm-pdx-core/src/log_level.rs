@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 #[derive(Debug, Clone, Copy, Tsify, Serialize, Deserialize, PartialEq, Eq)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
     Error,

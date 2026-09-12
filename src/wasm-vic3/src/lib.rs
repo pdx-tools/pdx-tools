@@ -3,6 +3,7 @@ use models::{
     Vic3CountryGraphData, Vic3CountryGraphDataResponse, Vic3GoodPrice, Vic3GraphData, Vic3Metadata,
 };
 use std::io::Cursor;
+use tsify::{Ts, Tsify};
 use vic3save::markets::{Vic3GoodEstimationError, goods_price_based_on_buildings};
 use vic3save::savefile::Vic3Country;
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
@@ -37,23 +38,27 @@ pub fn to_json_value<T: serde::ser::Serialize + ?Sized>(value: &T) -> JsValue {
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn metadata(&self) -> Vic3Metadata {
-        self.0.metadata()
+    pub fn metadata(&self) -> Result<Ts<Vic3Metadata>, JsError> {
+        Ok(self.0.metadata().into_ts()?)
     }
-    pub fn get_countries_stats(&self) -> Vic3CountryGraphDataResponse {
+    pub fn get_countries_stats(&self) -> Result<Ts<Vic3CountryGraphDataResponse>, JsError> {
         Vic3CountryGraphDataResponse {
             data: self.0.get_countries_stats(),
         }
+        .into_ts()
+        .map_err(JsError::from)
     }
 
-    pub fn get_country_stats(&self, tag: &str) -> Vic3GraphResponse {
+    pub fn get_country_stats(&self, tag: &str) -> Result<Ts<Vic3GraphResponse>, JsError> {
         Vic3GraphResponse {
             data: self.0.get_country_stats(tag),
         }
+        .into_ts()
+        .map_err(JsError::from)
     }
-    pub fn get_country_goods_prices(&self, tag: &str) -> Result<Vic3MarketResponse, JsError> {
+    pub fn get_country_goods_prices(&self, tag: &str) -> Result<Ts<Vic3MarketResponse>, JsError> {
         let prices = self.0.get_country_goods_prices(tag)?;
-        Ok(Vic3MarketResponse { prices })
+        Ok(Vic3MarketResponse { prices }.into_ts()?)
     }
 }
 

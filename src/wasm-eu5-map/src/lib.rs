@@ -9,6 +9,7 @@ use pdx_map::{
     R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, default_clock,
 };
 use std::time::Duration;
+use tsify::Ts;
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -36,8 +37,9 @@ impl Eu5CanvasSurface {
     #[wasm_bindgen]
     pub async fn init(
         canvas: OffscreenCanvas,
-        display: CanvasDisplay,
+        display: Ts<CanvasDisplay>,
     ) -> Result<Eu5CanvasSurface, JsError> {
+        let display = display.to_rust()?;
         let surface = get_surface_target(canvas);
         let pipeline_components = pdx_map::GpuSurfaceContext::new(surface)
             .await
@@ -496,12 +498,18 @@ impl Eu5WasmMapRenderer {
     /// Uses a concrete pixel from the spatial index, so wrapping locations pan
     /// to an actual owned pixel instead of an invalid world-midpoint AABB.
     #[wasm_bindgen]
-    pub fn pan_to_color_id(&mut self, color_id: u16, insets: WasmViewportInsets) -> bool {
+    pub fn pan_to_color_id(
+        &mut self,
+        color_id: u16,
+        insets: Ts<WasmViewportInsets>,
+    ) -> Result<bool, JsError> {
         let point = self.spatial_index.point_of(R16::new(color_id));
         let center = WorldPoint::new(point.x as f32, point.y as f32);
+        let insets = insets.to_rust()?;
         let viewport_insets: ViewportInsets = insets.into();
-        self.input
-            .pan_to_visible_region(PanTarget::Point(center), viewport_insets)
+        Ok(self
+            .input
+            .pan_to_visible_region(PanTarget::Point(center), viewport_insets))
     }
 
     /// Enable or disable owner border rendering
@@ -627,7 +635,9 @@ pub struct Eu5WasmTexture {
 }
 
 #[wasm_bindgen]
-pub fn setup_eu5_map_wasm(level: wasm_pdx_core::log_level::LogLevel) {
+pub fn setup_eu5_map_wasm(level: Ts<wasm_pdx_core::log_level::LogLevel>) -> Result<(), JsError> {
+    let level = level.to_rust()?;
     wasm_pdx_core::console_error_panic_hook::set_once();
     wasm_pdx_core::console_writer::init_with_level(level.into());
+    Ok(())
 }

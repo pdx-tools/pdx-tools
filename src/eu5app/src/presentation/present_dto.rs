@@ -75,7 +75,6 @@ macro_rules! present_dto {
         $($attr)*
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
         #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-        #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
         #[serde(rename_all = "camelCase")]
         $vis struct $name {
             $($out_fields)*
@@ -225,7 +224,6 @@ macro_rules! present_dto {
         $($attr)*
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
         #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-        #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
         #[serde(rename_all = "camelCase")]
         $out_vis struct $out {
             $($out_fields)*
@@ -384,7 +382,6 @@ macro_rules! present_dto {
     (@enum_pr_emit [$($attr:tt)*] [$vis:vis] [$name:ident] [$($acc:tt)*]) => {
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
         #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-        #[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
         $($attr)*
         $vis enum $name {
             $($acc)*

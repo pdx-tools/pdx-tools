@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::io::{Cursor, Read, Write};
-use tsify::Tsify;
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug)]
@@ -172,11 +172,12 @@ impl Compression {
 
 #[wasm_bindgen]
 impl Compression {
-    pub fn content_type(&self) -> ContentType {
-        match &self.content {
+    pub fn content_type(&self) -> Result<Ts<ContentType>, JsError> {
+        let content_type = match &self.content {
             Reader::Zip { .. } => ContentType::Zip,
             Reader::Data(_) => ContentType::Zstd,
-        }
+        };
+        Ok(content_type.into_ts()?)
     }
 
     pub fn compress_cb(self, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsError> {
@@ -185,7 +186,6 @@ impl Compression {
 }
 
 #[derive(Tsify, Debug, Serialize)]
-#[tsify(into_wasm_abi)]
 pub enum ContentType {
     #[serde(rename = "application/zip")]
     Zip,

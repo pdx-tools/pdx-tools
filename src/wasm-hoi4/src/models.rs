@@ -7,7 +7,6 @@ use tsify::Tsify;
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct Hoi4Metadata {
     pub date: Hoi4Date,
     pub is_meltable: bool,
@@ -16,7 +15,6 @@ pub struct Hoi4Metadata {
 }
 
 #[derive(Tsify, Debug, Serialize)]
-#[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct CountryDetails {
     pub stability: f64,
