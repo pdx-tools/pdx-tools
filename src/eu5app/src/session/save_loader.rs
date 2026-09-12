@@ -50,7 +50,7 @@ impl Eu5SaveLoader<(), ()> {
                     month: meta.metadata.date.month(),
                     day: meta.metadata.date.day(),
                 },
-                playthrough_name: meta.metadata.playthrough_name.to_string(),
+                playthrough_name: meta.metadata.name().unwrap_or_default().to_owned(),
             }
         };
 
