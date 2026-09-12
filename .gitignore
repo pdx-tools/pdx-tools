@@ -38,3 +38,33 @@ worker-configuration.d.ts
 
 # Generated docs content
 src/docs/src/pages/changelog.mdx
+
+# Claude Code stores project-local hook settings on each machine.
+.claude/settings.local.json
+
+# Impeccable downloads one engine for each platform.
+**/skills/impeccable/scripts/bin/
+
+# impeccable-ignore-start
+# Temporary output and local settings.
+# The .impeccable folder can be at the repository root or in a nested
+# workspace. Do not anchor these patterns.
+# Keep shared design files in Git.
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
+.impeccable/*.png
+.impeccable/review/
+.impeccable/questions/
+.impeccable/live/server.json
+.impeccable/live/sessions/
+.impeccable/live/previews/
+.impeccable/live/annotations/
+.impeccable/live/cache/
+.impeccable/live/manual-edit-apply-transaction.json
+.impeccable/live/manual-edit-events.jsonl
+.impeccable/live/manual-edit-evidence/
+.impeccable/live/pending-manual-edits.json
+.impeccable/live/deferred-svelte-component-accepts.json
+.impeccable/live/*.png
+# impeccable-ignore-end
