@@ -1,4 +1,4 @@
-use bumpalo_serde::ArenaDeserialize;
+use arena_serde::ArenaDeserialize;
 use eu5save::{Eu5BinaryDeserialization, SaveResolver, models::Gamestate};
 use wasm_bindgen::prelude::*;
 
@@ -33,17 +33,17 @@ fn diagnose_save_impl(save: Vec<u8>) -> Result<(), String> {
 
     let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
     let mut path_buf = Vec::new();
-    let track = bumpalo_serde::tracked::Track::new_with(&mut path_buf);
+    let track = arena_serde::tracked::Track::new_with(&mut path_buf);
 
     let game = match game_content {
         eu5save::SaveContentKind::Text(mut content) => {
             let mut deserializer = content.deserializer();
-            let tracked = bumpalo_serde::tracked::Deserializer::new(&mut deserializer, &track);
+            let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &track);
             Gamestate::deserialize_in_arena(tracked, &arena)
         }
         eu5save::SaveContentKind::Binary(mut content) => {
             let mut deserializer = content.deserializer(&resolver);
-            let tracked = bumpalo_serde::tracked::Deserializer::new(&mut deserializer, &track);
+            let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &track);
             Gamestate::deserialize_in_arena(tracked, &arena)
         }
     };

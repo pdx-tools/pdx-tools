@@ -34,13 +34,3 @@ jobs:
       - name: Check Cargo.lock is in sync with manifests
         run: cargo metadata --locked --format-version=1 > /dev/null
       - run: mise run lint
-
-  miri:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@miri
-      - run: cargo +nightly miri setup
-      - run: cargo +nightly miri test -p bumpalo-serde
-        env:
-          MIRIFLAGS: -Zmiri-strict-provenance

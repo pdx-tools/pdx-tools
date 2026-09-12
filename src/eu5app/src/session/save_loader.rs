@@ -1,4 +1,4 @@
-use bumpalo_serde::ArenaDeserialize;
+use arena_serde::ArenaDeserialize;
 use eu5save::{
     Eu5BinaryDeserialization, Eu5File, ReaderAt,
     models::{GameVersion, Gamestate, ZipPrelude},
@@ -105,7 +105,7 @@ impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
 #[cfg(feature = "track-parse")]
 impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
     /// Like [`parse`](Self::parse) but wraps the deserializer with
-    /// [`bumpalo_serde::tracked::Deserializer`] so that deserialization errors include the
+    /// [`arena_serde::tracked::Deserializer`] so that deserialization errors include the
     /// field path (e.g. `culture_manager.database.?.name`).
     #[tracing::instrument(name = "eu5.gamestate.parse_tracked", skip_all)]
     pub fn parse_tracked(self) -> Result<Eu5LoadedSave, Eu5LoadError> {
@@ -118,17 +118,17 @@ impl<R: ReaderAt, RES: TokenResolver> Eu5SaveLoader<R, RES> {
             .map_err(Eu5LoadError::StringLookup)?;
 
         let mut path_buf = Vec::new();
-        let track = bumpalo_serde::tracked::Track::new_with(&mut path_buf);
+        let track = arena_serde::tracked::Track::new_with(&mut path_buf);
 
         let game = match game_content {
             eu5save::SaveContentKind::Text(mut x) => {
                 let mut deser = x.deserializer();
-                let tracked = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
+                let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &track);
                 Gamestate::deserialize_in_arena(tracked, &self.arena)
             }
             eu5save::SaveContentKind::Binary(mut x) => {
                 let mut deser = x.deserializer(&resolver);
-                let tracked = bumpalo_serde::tracked::Deserializer::new(&mut deser, &track);
+                let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &track);
                 Gamestate::deserialize_in_arena(tracked, &self.arena)
             }
         };

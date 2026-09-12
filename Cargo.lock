@@ -175,6 +175,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "arena-serde"
+version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
+dependencies = [
+ "arena-serde-derive",
+ "bumpalo",
+ "serde",
+]
+
+[[package]]
+name = "arena-serde-derive"
+version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -415,26 +435,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d20789868f4b01b2f2caec9f5c4e0213b41e3e5702a50157d699ae31ced2fcb"
 
 [[package]]
-name = "bumpalo-serde"
-version = "0.1.0"
-dependencies = [
- "bumpalo",
- "bumpalo-serde-derive",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "bumpalo-serde-derive"
-version = "0.1.0"
-dependencies = [
- "bumpalo",
- "quote",
- "serde",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "bytemuck"
 version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -558,7 +558,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#38701b96a0e89a64b30c7c0ae4f83192eff24b0d"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
 dependencies = [
  "jomini",
  "serde",
@@ -1033,7 +1033,7 @@ dependencies = [
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/eu4save.git#56e58f69ec8630c3431903d22196aa5d8b6e798f"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
 dependencies = [
  "flate2",
  "jomini",
@@ -1051,9 +1051,9 @@ dependencies = [
 name = "eu5app"
 version = "0.1.0"
 dependencies = [
+ "arena-serde",
  "attohttpc",
  "bumpalo",
- "bumpalo-serde",
  "bytemuck",
  "eu5app",
  "eu5save",
@@ -1099,18 +1099,13 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
 dependencies = [
- "attohttpc",
+ "arena-serde",
  "bumpalo",
- "bumpalo-serde",
- "highway",
  "jomini",
- "rstest",
  "serde",
- "tempfile",
  "thiserror 2.0.18",
- "tsify",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -1517,7 +1512,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/hoi4save.git#8c8f2d2513c071f31aa1fbab33bcb5f4c3898300"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
 dependencies = [
  "jomini",
  "serde",
@@ -1768,7 +1763,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/imperator-save.git#453ce5181f37a864a4245cc313ea3eaf62eaf4af"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
 dependencies = [
  "jomini",
  "serde",
@@ -4553,14 +4548,12 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vic3save"
 version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#7af1b8a842fbadef0942a777b4faa21e0e0f7784"
 dependencies = [
- "attohttpc",
  "getrandom 0.3.4",
- "highway",
  "jomini",
  "mathru",
  "serde",
- "tempfile",
  "thiserror 2.0.18",
 ]
 
@@ -4784,8 +4777,8 @@ dependencies = [
 name = "wasm-eu5-diagnostics"
 version = "0.1.0"
 dependencies = [
+ "arena-serde",
  "bumpalo",
- "bumpalo-serde",
  "eu5save",
  "pdx-zstd",
  "schemas",

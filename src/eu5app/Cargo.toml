@@ -13,7 +13,7 @@ zstd_rust = ["pdx-zstd/zstd_rust"]
 
 [dependencies]
 bumpalo = { workspace = true }
-bumpalo-serde = { workspace = true }
+arena-serde = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
 eu5save = { workspace = true }
 image = { workspace = true, features = ["png"], optional = true }
