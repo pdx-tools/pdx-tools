@@ -44,7 +44,6 @@ pub struct CountryInfo {
 }
 
 #[derive(Tsify, Serialize, Deserialize, Debug)]
-#[tsify(into_wasm_abi)]
 pub struct ProvinceDetails {
     pub id: ProvinceId,
     pub name: String,
@@ -96,7 +95,6 @@ pub struct ProvinceDevDensityPoint {
 
 #[derive(Tsify, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct ProvinceDevDensity {
     pub bandwidth: f32,
     pub min: f32,
@@ -166,7 +164,6 @@ pub struct CompletedAchievement {
 }
 
 #[derive(Tsify, Debug, Serialize)]
-#[tsify(into_wasm_abi)]
 pub struct AchievementsScore {
     pub kind: AchievementCompatibility,
     pub patch: GameVersion,
@@ -187,7 +184,6 @@ pub struct War {
 
 #[derive(Tsify, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct WarInfo {
     pub name: String,
     pub start_date: Eu4Date,
@@ -389,7 +385,6 @@ pub enum SaveMode {
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct SaveInfo {
     pub mode: SaveMode,
     pub encoding: eu4save::Encoding,
@@ -408,7 +403,6 @@ pub struct OptionalLedgerPoint {
 }
 
 #[derive(Tsify, Debug, Clone, Serialize)]
-#[tsify(into_wasm_abi)]
 pub struct LocalizedLedger {
     pub points: Vec<OptionalLedgerPoint>,
     pub localization: Vec<LocalizedTag>,
@@ -416,7 +410,6 @@ pub struct LocalizedLedger {
 
 #[derive(Tsify, Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub enum Reparse {
     TooSoon { date: Eu4Date },
     Updated,
@@ -424,7 +417,6 @@ pub enum Reparse {
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct Monitor {
     pub date: Eu4Date,
     pub countries: Vec<CountryDetails>,
@@ -498,7 +490,6 @@ pub struct CountryHealth {
 }
 
 #[derive(Tsify, Serialize, Debug)]
-#[tsify(into_wasm_abi)]
 pub struct HealthData {
     pub data: Vec<CountryHealth>,
 }
@@ -631,7 +622,6 @@ pub struct ContinentDevelopment {
 }
 
 #[derive(Debug, Tsify, Serialize, Deserialize)]
-#[tsify(from_wasm_abi)]
 pub enum FileObservationFrequency {
     EverySave,
     Daily,
@@ -640,7 +630,6 @@ pub enum FileObservationFrequency {
 }
 
 #[derive(Debug, Tsify, Serialize)]
-#[tsify(into_wasm_abi)]
 pub struct RootTree {
     pub name: &'static str,
     pub children: Vec<ContinentDevelopment>,
@@ -675,7 +664,6 @@ pub struct CountryManaExpenditure {
 // start of country details model
 
 #[derive(Tsify, Serialize, Debug)]
-#[tsify(into_wasm_abi)]
 pub struct CountryDetails {
     pub id: usize,
     pub tag: CountryTag,
@@ -732,7 +720,6 @@ pub struct CountryDetails {
 }
 
 #[derive(Tsify, Serialize, Debug)]
-#[tsify(into_wasm_abi)]
 pub struct CountryMana {
     pub mana_usage: CountryManaUsage,
     pub development: Vec<CountryDevMana>,
@@ -813,7 +800,6 @@ pub struct FailedHeir {
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct CountryAdvisors {
     pub radical_reforms: Option<Eu4Date>,
     pub great_advisors: Vec<GreatAdvisor>,
@@ -828,7 +814,6 @@ pub struct GreatAdvisor {
 
 #[derive(Tsify, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub struct CountryReligions {
     pub allowed_conversions: Vec<LocalizedObj>,
     pub religions: Vec<CountryReligion>,
@@ -988,7 +973,6 @@ pub struct InfluenceModifier {
 
 #[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[tsify(from_wasm_abi)]
 pub enum MapPayloadKind {
     Political,
     Religion,
@@ -1000,7 +984,6 @@ pub enum MapPayloadKind {
 
 #[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[tsify(from_wasm_abi)]
 pub struct MapPayload {
     pub kind: MapPayloadKind,
     pub tag_filter: TagFilterPayloadRaw,
@@ -1026,7 +1009,6 @@ pub enum Interval {
 }
 
 #[derive(Debug, Tsify, Serialize, Deserialize)]
-#[tsify(from_wasm_abi)]
 pub struct MapCursorPayload {
     pub kind: MapCursorPayloadKind,
     pub interval: Interval,
@@ -1035,7 +1017,6 @@ pub struct MapCursorPayload {
 
 #[derive(Debug, Tsify, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-#[tsify(into_wasm_abi)]
 pub enum MapQuickTipPayload {
     #[serde(rename_all = "camelCase")]
     Political {
@@ -1087,7 +1068,6 @@ pub enum MapQuickTipPayload {
 }
 
 #[derive(Tsify, Debug, Clone, Serialize)]
-#[tsify(into_wasm_abi)]
 pub struct MapDate {
     pub days: i32,
     #[serde(rename(serialize = "text"))]
@@ -1095,7 +1075,6 @@ pub struct MapDate {
 }
 
 #[derive(Tsify, Debug, Serialize)]
-#[tsify(into_wasm_abi)]
 pub struct CountryHistory {
     pub data: Vec<CountryHistoryYear>,
 }
@@ -1293,7 +1272,6 @@ pub struct InstitutionCost {
 }
 
 #[derive(Tsify, Debug, Serialize)]
-#[tsify(into_wasm_abi)]
 pub struct CountryInstitution {
     pub institutions_available: i32,
     pub institutions_embraced: i32,

@@ -31,7 +31,6 @@ pub enum AiTagsState {
 
 #[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[tsify(from_wasm_abi)]
 pub struct TagFilterPayloadRaw {
     pub players: TagsState,
     pub ai: AiTagsState,

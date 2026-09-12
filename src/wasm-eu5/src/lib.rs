@@ -33,10 +33,31 @@ use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::ops::Deref;
 use std::rc::Rc;
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
+fn into_ts<T>(value: T) -> Result<Ts<T>, JsError>
+where
+    T: Serialize + Tsify,
+{
+    value.into_ts().map_err(JsError::from)
+}
+
+fn option_into_ts<T>(value: Option<T>) -> Result<Option<Ts<T>>, JsError>
+where
+    T: Serialize + Tsify,
+{
+    value.map(into_ts).transpose()
+}
+
+fn vec_into_ts<T>(value: Vec<T>) -> Result<Vec<Ts<T>>, JsError>
+where
+    T: Serialize + Tsify,
+{
+    value.into_iter().map(into_ts).collect()
+}
+
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify, PartialEq)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub enum MapMode {
     Political,
@@ -53,7 +74,6 @@ pub enum MapMode {
 }
 
 #[derive(Debug, Clone, tsify::Tsify, Serialize)]
-#[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectionSummaryData {
     pub entity_count: u32,
@@ -115,7 +135,6 @@ mod tokens;
 pub use tokens::set_tokens;
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "type", content = "value")]
 #[serde(rename_all = "camelCase")]
 pub enum TableCell {
@@ -140,7 +159,6 @@ impl From<Eu5TableCell> for TableCell {
 pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectionChange {
     center_color_id: Option<u32>,
@@ -148,7 +166,6 @@ pub struct SelectionChange {
 }
 
 #[derive(Clone, Debug, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct GradientStop {
     offset: f64,
@@ -160,14 +177,17 @@ pub struct GradientStop {
 /// it. Keeping the rendering on the Rust side keeps the palette definition the
 /// single source of truth shared with the shader.
 #[wasm_bindgen]
-pub fn palette_stops(palette: GradientPalette) -> Vec<GradientStop> {
-    eu5app::gradient::palette_stops(palette)
-        .into_iter()
-        .map(|(offset, (r, g, b))| GradientStop {
-            offset,
-            color: format!("rgb({r}, {g}, {b})"),
-        })
-        .collect()
+pub fn palette_stops(palette: Ts<GradientPalette>) -> Result<Vec<Ts<GradientStop>>, JsError> {
+    let palette = palette.to_rust()?;
+    vec_into_ts(
+        eu5app::gradient::palette_stops(palette)
+            .into_iter()
+            .map(|(offset, (r, g, b))| GradientStop {
+                offset,
+                color: format!("rgb({r}, {g}, {b})"),
+            })
+            .collect(),
+    )
 }
 
 fn legend_to_gradient(legend: eu5app::gradient::MapLegend) -> Option<GradientConfig> {
@@ -175,6 +195,12 @@ fn legend_to_gradient(legend: eu5app::gradient::MapLegend) -> Option<GradientCon
         eu5app::gradient::MapLegend::Qualitative => None,
         eu5app::gradient::MapLegend::Quantitative(c) => Some(c),
     }
+}
+
+fn legend_to_gradient_ts(
+    legend: eu5app::gradient::MapLegend,
+) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    option_into_ts(legend_to_gradient(legend))
 }
 
 fn selection_change(
@@ -187,8 +213,14 @@ fn selection_change(
     }
 }
 
+fn selection_change_ts(
+    center: Option<eu5app::ColorIdx>,
+    legend: eu5app::gradient::MapLegend,
+) -> Result<Ts<SelectionChange>, JsError> {
+    into_ts(selection_change(center, legend))
+}
+
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasSize {
     width: f32,
@@ -196,7 +228,6 @@ pub struct CanvasSize {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct CanvasDisplay {
     width: f32,
@@ -215,7 +246,6 @@ impl From<CanvasDisplay> for CanvasDimensions {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(transparent)]
 pub struct Eu5SaveMetadataHandle(Rc<Eu5SaveMetadata>);
 
@@ -228,7 +258,6 @@ impl Deref for Eu5SaveMetadataHandle {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct ScreenshotOverlayData {
     pub title: String,
@@ -238,7 +267,6 @@ pub struct ScreenshotOverlayData {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct OverlayBodyConfig {
     pub left_table: OverlayTable,
@@ -247,7 +275,6 @@ pub struct OverlayBodyConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct OverlayTable {
     pub title: Option<String>,
@@ -315,13 +342,13 @@ pub struct SaveLoader {
 #[wasm_bindgen]
 impl SaveLoader {
     #[wasm_bindgen]
-    pub fn meta(&self) -> Eu5SaveMetadataHandle {
-        Eu5SaveMetadataHandle(self.parser.meta())
+    pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
+        into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
 
     #[wasm_bindgen]
     pub fn parse_gamestate(self) -> Result<Eu5WasmGamestate, JsError> {
-        let meta = self.meta();
+        let meta = Eu5SaveMetadataHandle(self.parser.meta());
         let parsed_save = self
             .parser
             .parse()
@@ -427,11 +454,13 @@ impl Eu5WasmWorkspace {
 
     /// Center color id for the player's capital, when present.
     #[wasm_bindgen]
-    pub fn get_starting_coordinates(&self) -> Option<CapitalColorId> {
-        let color_id = self.app.player_capital_color_id()?;
-        Some(CapitalColorId {
+    pub fn get_starting_coordinates(&self) -> Result<Option<Ts<CapitalColorId>>, JsError> {
+        let Some(color_id) = self.app.player_capital_color_id() else {
+            return Ok(None);
+        };
+        option_into_ts(Some(CapitalColorId {
             color_id: color_id.value(),
-        })
+        }))
     }
 
     /// Join a localization bundle to produce the final localized [`Eu5App`].
@@ -466,11 +495,13 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn get_starting_coordinates(&self) -> Option<CapitalColorId> {
-        let color_id = self.app().player_capital_color_id()?;
-        Some(CapitalColorId {
+    pub fn get_starting_coordinates(&self) -> Result<Option<Ts<CapitalColorId>>, JsError> {
+        let Some(color_id) = self.app().player_capital_color_id() else {
+            return Ok(None);
+        };
+        option_into_ts(Some(CapitalColorId {
             color_id: color_id.value(),
-        })
+        }))
     }
 
     #[wasm_bindgen]
@@ -484,14 +515,18 @@ impl Eu5App {
 
     /// Switch map mode to the specified mode
     #[wasm_bindgen]
-    pub fn set_map_mode(&mut self, mode: MapMode) -> Option<GradientConfig> {
-        legend_to_gradient(self.app.set_map_mode(mode.into()))
+    pub fn set_map_mode(
+        &mut self,
+        mode: Ts<MapMode>,
+    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+        let mode = mode.to_rust()?;
+        legend_to_gradient_ts(self.app.set_map_mode(mode.into()))
     }
 
     /// Get the current map mode
     #[wasm_bindgen]
-    pub fn get_map_mode(&self) -> MapMode {
-        self.app().get_map_mode().into()
+    pub fn get_map_mode(&self) -> Result<Ts<MapMode>, JsError> {
+        into_ts(self.app().get_map_mode().into())
     }
 
     /// Check if a location can be highlighted based on its terrain
@@ -534,90 +569,106 @@ impl Eu5App {
 
     /// Select the entity at the given location based on the current interaction mode.
     #[wasm_bindgen]
-    pub fn select_entity(&mut self, location_idx: u32) -> Option<GradientConfig> {
+    pub fn select_entity(
+        &mut self,
+        location_idx: u32,
+    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        legend_to_gradient(self.app.select_entity(idx))
+        legend_to_gradient_ts(self.app.select_entity(idx))
     }
 
     /// Add the entity at `location_idx` to the existing selection.
     #[wasm_bindgen]
-    pub fn add_entity(&mut self, location_idx: u32) -> Option<GradientConfig> {
+    pub fn add_entity(&mut self, location_idx: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        legend_to_gradient(self.app.add_entity(idx))
+        legend_to_gradient_ts(self.app.add_entity(idx))
     }
 
     /// Remove the entity at `location_idx` from the selection.
     #[wasm_bindgen]
-    pub fn remove_entity(&mut self, location_idx: u32) -> Option<GradientConfig> {
+    pub fn remove_entity(
+        &mut self,
+        location_idx: u32,
+    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        legend_to_gradient(self.app.remove_entity(idx))
+        legend_to_gradient_ts(self.app.remove_entity(idx))
     }
 
     #[wasm_bindgen]
-    pub fn select_country(&mut self, country_idx: u32) -> SelectionChange {
+    pub fn select_country(&mut self, country_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
         let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return selection_change(None, eu5app::gradient::MapLegend::Qualitative);
+            return selection_change_ts(None, eu5app::gradient::MapLegend::Qualitative);
         };
         let (center, gradient) = self.app.select_country_by_idx(idx);
-        selection_change(center, gradient)
+        selection_change_ts(center, gradient)
     }
 
     #[wasm_bindgen]
-    pub fn add_country(&mut self, country_idx: u32) -> Option<GradientConfig> {
-        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
-        legend_to_gradient(self.app.add_country_by_idx(idx))
+    pub fn add_country(&mut self, country_idx: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        legend_to_gradient_ts(self.app.add_country_by_idx(idx))
     }
 
     #[wasm_bindgen]
-    pub fn remove_country(&mut self, country_idx: u32) -> Option<GradientConfig> {
-        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
-        legend_to_gradient(self.app.remove_country_by_idx(idx))
+    pub fn remove_country(
+        &mut self,
+        country_idx: u32,
+    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        legend_to_gradient_ts(self.app.remove_country_by_idx(idx))
     }
 
     #[wasm_bindgen]
-    pub fn select_market(&mut self, market_id: u32) -> SelectionChange {
+    pub fn select_market(&mut self, market_id: u32) -> Result<Ts<SelectionChange>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
         let (center, gradient) = self.app.select_market_by_id(id);
-        selection_change(center, gradient)
+        selection_change_ts(center, gradient)
     }
 
     #[wasm_bindgen]
-    pub fn add_market(&mut self, market_id: u32) -> Option<GradientConfig> {
+    pub fn add_market(&mut self, market_id: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
-        legend_to_gradient(self.app.add_market_by_id(id))
+        legend_to_gradient_ts(self.app.add_market_by_id(id))
     }
 
     #[wasm_bindgen]
-    pub fn remove_market(&mut self, market_id: u32) -> Option<GradientConfig> {
+    pub fn remove_market(&mut self, market_id: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
-        legend_to_gradient(self.app.remove_market_by_id(id))
+        legend_to_gradient_ts(self.app.remove_market_by_id(id))
     }
 
     /// Clear the current selection and focus.
     #[wasm_bindgen]
-    pub fn clear_selection(&mut self) -> Option<GradientConfig> {
-        legend_to_gradient(self.app.clear_selection())
+    pub fn clear_selection(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
+        legend_to_gradient_ts(self.app.clear_selection())
     }
 
     /// Set `focused_location` to `location_idx`, entering that location's entity
     /// filter first if needed.
     #[wasm_bindgen]
-    pub fn set_focused_location(&mut self, location_idx: u32) -> SelectionChange {
+    pub fn set_focused_location(
+        &mut self,
+        location_idx: u32,
+    ) -> Result<Ts<SelectionChange>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
         let (center, gradient) = self.app.set_focused_location(idx);
-        selection_change(center, gradient)
+        selection_change_ts(center, gradient)
     }
 
     /// Clear the focused location.
     #[wasm_bindgen]
-    pub fn clear_focus(&mut self) -> Option<GradientConfig> {
-        legend_to_gradient(self.app.clear_focus())
+    pub fn clear_focus(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
+        legend_to_gradient_ts(self.app.clear_focus())
     }
 
     /// Clear focus if set; otherwise clear the selection.
     #[wasm_bindgen]
-    pub fn clear_focus_or_selection(&mut self) -> Option<GradientConfig> {
-        legend_to_gradient(self.app.clear_focus_or_selection())
+    pub fn clear_focus_or_selection(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
+        legend_to_gradient_ts(self.app.clear_focus_or_selection())
     }
 
     /// Display name for the focused location.
@@ -637,28 +688,28 @@ impl Eu5App {
         &mut self,
         location_idxs: js_sys::Uint32Array,
         add: bool,
-    ) -> Option<GradientConfig> {
+    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
         let locations = location_idxs
             .to_vec()
             .into_iter()
             .map(eu5save::models::LocationIdx::new);
         let gradient = self.app.apply_resolved_box_selection(locations, add);
         self.app.clear_highlights();
-        legend_to_gradient(gradient)
+        legend_to_gradient_ts(gradient)
     }
 
     #[wasm_bindgen]
     pub fn replace_selection_with_locations(
         &mut self,
         location_idxs: js_sys::Uint32Array,
-    ) -> Option<GradientConfig> {
+    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
         let locations = location_idxs
             .to_vec()
             .into_iter()
             .map(eu5save::models::LocationIdx::new);
         let gradient = self.app.replace_selection_with_locations(locations);
         self.app.clear_highlights();
-        legend_to_gradient(gradient)
+        legend_to_gradient_ts(gradient)
     }
 
     /// Return the grouping table for the current map mode as a flat Uint32Array.
@@ -673,14 +724,14 @@ impl Eu5App {
 
     /// Select all locations owned by human-controlled countries and their subjects.
     #[wasm_bindgen]
-    pub fn select_players(&mut self) -> Option<GradientConfig> {
+    pub fn select_players(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
         self.app.select_players();
-        legend_to_gradient(self.app.rebuild_colors())
+        legend_to_gradient_ts(self.app.rebuild_colors())
     }
 
     /// Return a summary of the current selection (entity and location counts).
     #[wasm_bindgen]
-    pub fn get_selection_summary(&self) -> SelectionSummaryData {
+    pub fn get_selection_summary(&self) -> Result<Ts<SelectionSummaryData>, JsError> {
         let sel = self.app.selection_state();
         let summary = sel.entity_summary(&self.app);
         let total_population: u32 = sel
@@ -706,7 +757,7 @@ impl Eu5App {
         } else {
             None
         };
-        SelectionSummaryData {
+        into_ts(SelectionSummaryData {
             entity_count: summary.entity_count as u32,
             location_count: summary.location_count as u32,
             is_empty: sel.is_empty(),
@@ -721,33 +772,35 @@ impl Eu5App {
             scope_display_name: self.localized().presenter().scope_display_name(),
             first_location_idx,
             active_profile: self.localized().presenter().active_profile_identity(),
-        }
+        })
     }
 
     /// Get hover display data for a location based on the current interaction mode.
     /// Shows location-level detail when scoped and hovering an in-scope location.
     #[wasm_bindgen]
-    pub fn get_hover_data(&self, location_id: u32) -> HoverDisplayData {
-        self.localized()
-            .presenter()
-            .hover_data(eu5save::models::LocationIdx::new(location_id))
+    pub fn get_hover_data(&self, location_id: u32) -> Result<Ts<HoverDisplayData>, JsError> {
+        into_ts(
+            self.localized()
+                .presenter()
+                .hover_data(eu5save::models::LocationIdx::new(location_id)),
+        )
     }
 
     /// Get screenshot overlay data for the current map mode
     #[wasm_bindgen]
-    pub fn get_overlay_data(&self) -> ScreenshotOverlayData {
+    pub fn get_overlay_data(&self) -> Result<Ts<ScreenshotOverlayData>, JsError> {
         let map_mode_title = self.app().get_map_mode().name().to_string();
         let save_date = format!("{}", self.app().gamestate().metadata.date.date_fmt());
         let version = &self.app().gamestate().metadata.version;
         let patch_version = format!("{}.{}.{}", version.major, version.minor, version.patch);
 
         let overlay_data = self.localized().presenter().get_overlay_data();
-        ScreenshotOverlayData {
+        into_ts(ScreenshotOverlayData {
             title: map_mode_title,
             save_date,
             patch_version,
             body: OverlayBodyConfig::from(overlay_data),
-        }
+        })
     }
 
     /// Return the GPU color ID needed to center the map at a given location.
@@ -760,22 +813,24 @@ impl Eu5App {
 
     /// Return all countries with their localized identity, tag, and capital location idx.
     #[wasm_bindgen]
-    pub fn get_countries(&self) -> CountriesData {
-        self.localized().presenter().country_search_entries()
+    pub fn get_countries(&self) -> Result<Ts<CountriesData>, JsError> {
+        into_ts(self.localized().presenter().country_search_entries())
     }
 
     /// Return all named map-present locations for search.
     #[wasm_bindgen]
-    pub fn get_locations(&self) -> LocationsData {
-        self.localized().presenter().location_search_entries()
+    pub fn get_locations(&self) -> Result<Ts<LocationsData>, JsError> {
+        into_ts(self.localized().presenter().location_search_entries())
     }
 
     /// Calculate state efficacy scores for all nations
     #[wasm_bindgen]
-    pub fn get_state_efficacy(&self) -> StateEfficacyInsightData {
-        self.localized()
-            .presenter()
-            .calculate_state_efficacy_insight()
+    pub fn get_state_efficacy(&self) -> Result<Ts<StateEfficacyInsightData>, JsError> {
+        into_ts(
+            self.localized()
+                .presenter()
+                .calculate_state_efficacy_insight(),
+        )
     }
 
     /// Returns the anchor location index for the best default political country,
@@ -790,8 +845,8 @@ impl Eu5App {
     /// Political world scoreboard: top great powers in scope plus player
     /// countries outside the top tier.
     #[wasm_bindgen]
-    pub fn get_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
-        self.localized().presenter().political_world_scoreboard()
+    pub fn get_political_world_scoreboard(&self) -> Result<Ts<PoliticalWorldScoreboard>, JsError> {
+        into_ts(self.localized().presenter().political_world_scoreboard())
     }
 
     // ── Entity Profile Endpoints ──────────────────────────────────────────
@@ -799,15 +854,20 @@ impl Eu5App {
     /// Header data for the current single-entity scope. None when empty or
     /// when the filter spans multiple entities.
     #[wasm_bindgen]
-    pub fn get_entity_header(&self) -> Option<EntityHeader> {
-        self.localized().presenter().entity_header()
+    pub fn get_entity_header(&self) -> Result<Option<Ts<EntityHeader>>, JsError> {
+        option_into_ts(self.localized().presenter().entity_header())
     }
 
     /// Full country profile resolved from `country_idx`, independent of current map mode.
     #[wasm_bindgen]
-    pub fn get_country_profile(&self, country_idx: u32) -> Option<CountryProfile> {
-        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
-        self.localized().presenter().country_profile_for(idx)
+    pub fn get_country_profile(
+        &self,
+        country_idx: u32,
+    ) -> Result<Option<Ts<CountryProfile>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        option_into_ts(self.localized().presenter().country_profile_for(idx))
     }
 
     /// Population profile resolved from `country_idx`, independent of current map mode.
@@ -815,133 +875,149 @@ impl Eu5App {
     pub fn get_country_population_profile(
         &self,
         country_idx: u32,
-    ) -> Option<CountryPopulationProfile> {
-        let idx = eu5save::models::CountryIdx::from_value(country_idx)?;
-        self.localized()
-            .presenter()
-            .country_population_profile_for(idx)
+    ) -> Result<Option<Ts<CountryPopulationProfile>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        option_into_ts(
+            self.localized()
+                .presenter()
+                .country_population_profile_for(idx),
+        )
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.
     #[wasm_bindgen]
-    pub fn get_market_profile(&self, market_id: u32) -> Option<MarketProfile> {
+    pub fn get_market_profile(&self, market_id: u32) -> Result<Option<Ts<MarketProfile>>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
-        self.localized().presenter().market_profile_for(id)
+        option_into_ts(self.localized().presenter().market_profile_for(id))
     }
 
     /// Goods section for the current market scope.
     #[wasm_bindgen]
-    pub fn get_market_goods_section(&self) -> Option<MarketGoodsSection> {
-        self.localized().presenter().market_goods_section()
+    pub fn get_market_goods_section(&self) -> Result<Option<Ts<MarketGoodsSection>>, JsError> {
+        option_into_ts(self.localized().presenter().market_goods_section())
     }
 
     /// Locations section for the current single-entity scope.
     #[wasm_bindgen]
-    pub fn get_locations_section(&self) -> Option<LocationsSection> {
-        self.localized().presenter().locations_section()
+    pub fn get_locations_section(&self) -> Result<Option<Ts<LocationsSection>>, JsError> {
+        option_into_ts(self.localized().presenter().locations_section())
     }
 
     /// Diplomacy section for the current single country scope.
     /// Returns None for market entities.
     #[wasm_bindgen]
-    pub fn get_diplomacy_section(&self) -> Option<DiplomacySection> {
-        self.localized().presenter().diplomacy_section()
+    pub fn get_diplomacy_section(&self) -> Result<Option<Ts<DiplomacySection>>, JsError> {
+        option_into_ts(self.localized().presenter().diplomacy_section())
     }
 
     /// Full profile for a single location.
     #[wasm_bindgen]
-    pub fn get_location_profile(&self, location_idx: u32) -> Option<LocationProfile> {
+    pub fn get_location_profile(
+        &self,
+        location_idx: u32,
+    ) -> Result<Option<Ts<LocationProfile>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        self.localized().presenter().location_profile_for(idx)
+        option_into_ts(self.localized().presenter().location_profile_for(idx))
     }
 
     /// Development insight data: per-country aggregates for scatter chart and
     /// top development locations for the table view.
     #[wasm_bindgen]
-    pub fn get_development_insight(&self) -> DevelopmentInsightData {
-        self.localized().presenter().calculate_development_insight()
+    pub fn get_development_insight(&self) -> Result<Ts<DevelopmentInsightData>, JsError> {
+        into_ts(self.localized().presenter().calculate_development_insight())
     }
 
     /// Wealth insight data: per-country realized vs ceiling aggregates
     /// and top locations by wealth.
     #[wasm_bindgen]
-    pub fn get_wealth_insight(&self) -> WealthInsightData {
-        self.localized().presenter().calculate_wealth_insight()
+    pub fn get_wealth_insight(&self) -> Result<Ts<WealthInsightData>, JsError> {
+        into_ts(self.localized().presenter().calculate_wealth_insight())
     }
 
     /// Unrealized-tax-base insight data: per-country realized vs ceiling aggregates and
     /// top locations by signed gap.
     #[wasm_bindgen]
-    pub fn get_unrealized_tax_base_insight(&self) -> UnrealizedTaxBaseInsightData {
-        self.localized()
-            .presenter()
-            .calculate_unrealized_tax_base_insight()
+    pub fn get_unrealized_tax_base_insight(
+        &self,
+    ) -> Result<Ts<UnrealizedTaxBaseInsightData>, JsError> {
+        into_ts(
+            self.localized()
+                .presenter()
+                .calculate_unrealized_tax_base_insight(),
+        )
     }
 
     /// Wealth scope: location count, summed wealth ceiling, and
     /// summed realized tax base for the active selection or entire world.
     #[wasm_bindgen]
-    pub fn get_wealth_scope(&self) -> WealthScope {
-        self.app().get_wealth_scope()
+    pub fn get_wealth_scope(&self) -> Result<Ts<WealthScope>, JsError> {
+        into_ts(self.app().get_wealth_scope())
     }
 
     /// Unrealized-tax-base scope: location count, signed gap, and aggregate realization
     /// ratio for the active selection or entire world.
     #[wasm_bindgen]
-    pub fn get_unrealized_tax_base_scope(&self) -> UnrealizedTaxBaseScope {
-        self.app().get_unrealized_tax_base_scope()
+    pub fn get_unrealized_tax_base_scope(&self) -> Result<Ts<UnrealizedTaxBaseScope>, JsError> {
+        into_ts(self.app().get_unrealized_tax_base_scope())
     }
 
     /// Market insight data: scoped goods pressure, scoped market stress,
     /// and top production-opportunity locations for the current filter.
     #[wasm_bindgen]
-    pub fn get_market_insight(&self) -> MarketInsightData {
-        self.localized().presenter().calculate_market_insight()
+    pub fn get_market_insight(&self) -> Result<Ts<MarketInsightData>, JsError> {
+        into_ts(self.localized().presenter().calculate_market_insight())
     }
 
     /// Population insight data: scoped country population, concentration curve,
     /// and top populated locations for the current filter.
     #[wasm_bindgen]
-    pub fn get_population_insight(&self) -> PopulationInsightData {
-        self.localized().presenter().calculate_population_insight()
+    pub fn get_population_insight(&self) -> Result<Ts<PopulationInsightData>, JsError> {
+        into_ts(self.localized().presenter().calculate_population_insight())
     }
 
     /// Building levels insight data: scoped building type aggregates, foreign owner
     /// summaries, heatmap cells, and top locations by total levels.
     #[wasm_bindgen]
-    pub fn get_building_levels_insight(&self) -> BuildingLevelsInsightData {
-        self.localized()
-            .presenter()
-            .calculate_building_levels_insight()
+    pub fn get_building_levels_insight(&self) -> Result<Ts<BuildingLevelsInsightData>, JsError> {
+        into_ts(
+            self.localized()
+                .presenter()
+                .calculate_building_levels_insight(),
+        )
     }
 
     /// Religion insight data: state religions by ruled population and per-religion
     /// follower/coverage breakdown for the current filter.
     #[wasm_bindgen]
-    pub fn get_religion_insight(&self) -> ReligionInsightData {
-        self.localized().presenter().calculate_religion_insight()
+    pub fn get_religion_insight(&self) -> Result<Ts<ReligionInsightData>, JsError> {
+        into_ts(self.localized().presenter().calculate_religion_insight())
     }
 
     /// RGO insight data: scoped raw-material capacity by material and location,
     /// profile deltas against global share, and owner-control breakdown.
     #[wasm_bindgen]
-    pub fn get_rgo_insight(&self) -> RgoInsightData {
-        self.localized().presenter().calculate_rgo_insight()
+    pub fn get_rgo_insight(&self) -> Result<Ts<RgoInsightData>, JsError> {
+        into_ts(self.localized().presenter().calculate_rgo_insight())
     }
 
     /// Control insight data: per-country lost-development breakdown, concentration
     /// curve, and top locations by lost development for the current filter.
     #[wasm_bindgen]
-    pub fn get_control_insight(&self) -> ControlInsightData {
-        self.localized().presenter().calculate_control_insight()
+    pub fn get_control_insight(&self) -> Result<Ts<ControlInsightData>, JsError> {
+        into_ts(self.localized().presenter().calculate_control_insight())
     }
 
     /// Entity header for a specific entity resolved from `anchor_location_idx`,
     /// over that entity's full territory (ignores current selection).
     #[wasm_bindgen]
-    pub fn get_entity_header_for(&self, anchor_location_idx: u32) -> Option<EntityHeader> {
+    pub fn get_entity_header_for(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Result<Option<Ts<EntityHeader>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.localized().presenter().entity_header_for(idx)
+        option_into_ts(self.localized().presenter().entity_header_for(idx))
     }
 
     /// Goods section for a specific market entity's full territory.
@@ -949,16 +1025,19 @@ impl Eu5App {
     pub fn get_market_goods_section_for(
         &self,
         anchor_location_idx: u32,
-    ) -> Option<MarketGoodsSection> {
+    ) -> Result<Option<Ts<MarketGoodsSection>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.localized().presenter().market_goods_section_for(idx)
+        option_into_ts(self.localized().presenter().market_goods_section_for(idx))
     }
 
     /// Goods pressure profile for a specific market entity's full territory.
     #[wasm_bindgen]
-    pub fn get_market_goods_profile(&self, market_id: u32) -> Vec<ScopedGoodSummary> {
+    pub fn get_market_goods_profile(
+        &self,
+        market_id: u32,
+    ) -> Result<Vec<Ts<ScopedGoodSummary>>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
-        self.localized().presenter().market_goods_profile(id)
+        vec_into_ts(self.localized().presenter().market_goods_profile(id))
     }
 
     /// Production-opportunity locations for a specific market entity's full territory.
@@ -966,37 +1045,44 @@ impl Eu5App {
     pub fn get_market_locations_profile(
         &self,
         market_id: u32,
-    ) -> Vec<MarketProductionLocationSummary> {
+    ) -> Result<Vec<Ts<MarketProductionLocationSummary>>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
-        self.localized().presenter().market_locations_profile(id)
+        vec_into_ts(self.localized().presenter().market_locations_profile(id))
     }
 
     /// Locations section for a specific entity's full territory.
     #[wasm_bindgen]
-    pub fn get_locations_section_for(&self, anchor_location_idx: u32) -> Option<LocationsSection> {
+    pub fn get_locations_section_for(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Result<Option<Ts<LocationsSection>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.localized().presenter().locations_section_for(idx)
+        option_into_ts(self.localized().presenter().locations_section_for(idx))
     }
 
     /// Diplomacy section for a specific country entity.
     /// Returns None for market entities.
     #[wasm_bindgen]
-    pub fn get_diplomacy_section_for(&self, anchor_location_idx: u32) -> Option<DiplomacySection> {
+    pub fn get_diplomacy_section_for(
+        &self,
+        anchor_location_idx: u32,
+    ) -> Result<Option<Ts<DiplomacySection>>, JsError> {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
-        self.localized().presenter().diplomacy_section_for(idx)
+        option_into_ts(self.localized().presenter().diplomacy_section_for(idx))
     }
 }
 
 #[derive(Debug, Clone, Copy, tsify::Tsify, Serialize)]
-#[tsify(into_wasm_abi)]
 pub struct CapitalColorId {
     color_id: u16,
 }
 
 #[wasm_bindgen]
-pub fn setup_eu5_wasm(level: wasm_pdx_core::log_level::LogLevel) {
+pub fn setup_eu5_wasm(level: Ts<wasm_pdx_core::log_level::LogLevel>) -> Result<(), JsError> {
+    let level = level.to_rust()?;
     wasm_pdx_core::console_error_panic_hook::set_once();
     wasm_pdx_core::console_writer::init_with_level(level.into());
+    Ok(())
 }
 
 #[wasm_bindgen]

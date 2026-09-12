@@ -78,7 +78,6 @@ pub mod diplomacy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub enum EntityKind {
     Country,
@@ -87,7 +86,6 @@ pub enum EntityKind {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ActiveProfileIdentity {
     Country { country: Localized<UiCountryIdx> },
@@ -97,7 +95,6 @@ pub enum ActiveProfileIdentity {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountrySearchEntry {
     pub country: Localized<UiCountryIdx>,
@@ -107,7 +104,6 @@ pub struct CountrySearchEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountriesData {
     pub countries: Vec<CountrySearchEntry>,
@@ -115,7 +111,6 @@ pub struct CountriesData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct LocationSearchEntry {
     pub location: Localized<UiLocationIdx>,
@@ -123,7 +118,6 @@ pub struct LocationSearchEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct LocationsData {
     pub locations: Vec<LocationSearchEntry>,
@@ -131,7 +125,6 @@ pub struct LocationsData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct EntityHeader {
     pub kind: EntityKind,
@@ -146,7 +139,6 @@ pub struct EntityHeader {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct HeadlineStats {
     pub location_count: u32,
@@ -156,7 +148,6 @@ pub struct HeadlineStats {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryOverviewSection {
     /// Gold on hand minus outstanding loan principal. Negative when a country
@@ -198,7 +189,6 @@ pub struct CountryOverviewSection {
 /// metric (so the UI shows the cohort once rather than repeating it per row).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryOverviewRanks {
     pub cohort: u32,
@@ -218,7 +208,6 @@ pub struct CountryOverviewRanks {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "PascalCase")]
 pub enum DiplomacySubjectType {
     Dominion,
@@ -244,7 +233,6 @@ pub enum DiplomacySubjectType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryMetrics {
     pub great_power_rank: i32,
@@ -256,7 +244,6 @@ pub struct CountryMetrics {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryRef {
     pub country: Localized<UiCountryIdx>,
@@ -280,7 +267,6 @@ impl CountryRef {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct MarketRef {
     pub market: Localized<UiMarketId>,
@@ -290,7 +276,6 @@ pub struct MarketRef {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingEntry {
     pub building: Localized<String>,

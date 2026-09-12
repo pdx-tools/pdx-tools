@@ -2,6 +2,7 @@ use hoi4save::{
     CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File, MeltOptions, models::Hoi4Save,
 };
 use std::{collections::HashMap, io::Cursor};
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
 mod log;
@@ -26,12 +27,12 @@ pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn metadata(&self) -> Hoi4Metadata {
-        self.0.metadata()
+    pub fn metadata(&self) -> Result<Ts<Hoi4Metadata>, JsError> {
+        Ok(self.0.metadata().into_ts()?)
     }
 
-    pub fn country_details(&self, tag: String) -> CountryDetails {
-        self.0.country_details(tag)
+    pub fn country_details(&self, tag: String) -> Result<Ts<CountryDetails>, JsError> {
+        Ok(self.0.country_details(tag).into_ts()?)
     }
 }
 

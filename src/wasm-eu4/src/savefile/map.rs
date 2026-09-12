@@ -9,6 +9,7 @@ use eu4save::{
     query::ReligionIndex,
 };
 use std::{collections::HashMap, str::FromStr};
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
 pub const WASTELAND: [u8; 4] = [61, 61, 61, 0];
@@ -1589,8 +1590,8 @@ impl std::fmt::Debug for TimelapseItem {
 #[wasm_bindgen]
 impl TimelapseItem {
     #[wasm_bindgen]
-    pub fn date(&self) -> MapDate {
-        self.date.clone()
+    pub fn date(&self) -> Result<Ts<MapDate>, JsError> {
+        self.date.clone().into_ts().map_err(JsError::from)
     }
 
     #[wasm_bindgen]

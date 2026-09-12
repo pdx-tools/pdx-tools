@@ -21,7 +21,22 @@ use savefile::{
     RootTree, SaveFileImpl, TagFilterPayloadRaw, WarInfo,
 };
 use std::{collections::HashMap, io::Cursor};
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
+
+fn into_ts<T>(value: T) -> Result<Ts<T>, JsError>
+where
+    T: serde::Serialize + Tsify,
+{
+    value.into_ts().map_err(JsError::from)
+}
+
+fn option_into_ts<T>(value: Option<T>) -> Result<Option<Ts<T>>, JsError>
+where
+    T: serde::Serialize + Tsify,
+{
+    value.map(into_ts).transpose()
+}
 
 mod log;
 mod models;
@@ -45,42 +60,61 @@ pub struct SaveFile(SaveFileImpl);
 impl SaveFile {
     pub fn reparse(
         &mut self,
-        frequency: FileObservationFrequency,
+        frequency: Ts<FileObservationFrequency>,
         save_data: Vec<u8>,
-    ) -> Result<Reparse, JsError> {
-        self.0.reparse(frequency, save_data).map_err(JsError::from)
+    ) -> Result<Ts<Reparse>, JsError> {
+        let frequency = frequency.to_rust()?;
+        into_ts(
+            self.0
+                .reparse(frequency, save_data)
+                .map_err(JsError::from)?,
+        )
     }
 
-    pub fn get_meta_raw(&self) -> MetaRef {
-        MetaRef(unsafe { std::mem::transmute::<&Meta, &Meta>(self.0.get_meta_raw()) })
+    pub fn get_meta_raw(&self) -> Result<Ts<MetaRef>, JsError> {
+        into_ts(MetaRef(unsafe {
+            std::mem::transmute::<&Meta, &Meta>(self.0.get_meta_raw())
+        }))
     }
 
-    pub fn savefile_warnings(&self) -> StringList {
-        self.0.savefile_warnings().into()
+    pub fn savefile_warnings(&self) -> Result<Ts<StringList>, JsError> {
+        into_ts(self.0.savefile_warnings().into())
     }
 
-    pub fn get_annual_income_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
-        self.0.get_annual_income_ledger(payload)
+    pub fn get_annual_income_ledger(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<LocalizedLedger>, JsError> {
+        into_ts(self.0.get_annual_income_ledger(payload.to_rust()?))
     }
 
-    pub fn get_annual_nation_size_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
-        self.0.get_annual_nation_size_ledger(payload)
+    pub fn get_annual_nation_size_ledger(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<LocalizedLedger>, JsError> {
+        into_ts(self.0.get_annual_nation_size_ledger(payload.to_rust()?))
     }
 
-    pub fn get_annual_score_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
-        self.0.get_annual_score_ledger(payload)
+    pub fn get_annual_score_ledger(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<LocalizedLedger>, JsError> {
+        into_ts(self.0.get_annual_score_ledger(payload.to_rust()?))
     }
 
-    pub fn get_annual_inflation_ledger(&self, payload: TagFilterPayloadRaw) -> LocalizedLedger {
-        self.0.get_annual_inflation_ledger(payload)
+    pub fn get_annual_inflation_ledger(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<LocalizedLedger>, JsError> {
+        into_ts(self.0.get_annual_inflation_ledger(payload.to_rust()?))
     }
 
-    pub fn get_achievements(&self) -> AchievementsScore {
-        self.0.get_achievements()
+    pub fn get_achievements(&self) -> Result<Ts<AchievementsScore>, JsError> {
+        into_ts(self.0.get_achievements())
     }
 
-    pub fn get_starting_country(&self) -> OptionalCountryTag {
-        self.0.get_starting_country().into()
+    pub fn get_starting_country(&self) -> Result<Ts<OptionalCountryTag>, JsError> {
+        into_ts(self.0.get_starting_country().into())
     }
 
     pub fn get_start_date(&self) -> String {
@@ -99,108 +133,133 @@ impl SaveFile {
         self.0.date_to_days(date).map(|x| x as f64)
     }
 
-    pub fn get_players(&self) -> StaticMap {
-        StaticMap(unsafe {
+    pub fn get_players(&self) -> Result<Ts<StaticMap>, JsError> {
+        into_ts(StaticMap(unsafe {
             std::mem::transmute::<HashMap<&str, &str>, HashMap<&str, &str>>(self.0.get_players())
-        })
+        }))
     }
 
-    pub fn get_player_histories(&self) -> PlayerHistories {
-        self.0.get_player_histories().into()
+    pub fn get_player_histories(&self) -> Result<Ts<PlayerHistories>, JsError> {
+        into_ts(self.0.get_player_histories().into())
     }
 
-    pub fn get_lucky_countries(&self) -> LocalizedTags {
-        self.0.get_lucky_countries().into()
+    pub fn get_lucky_countries(&self) -> Result<Ts<LocalizedTags>, JsError> {
+        into_ts(self.0.get_lucky_countries().into())
     }
 
-    pub fn get_great_powers(&self) -> GreatPowers {
-        self.0.get_great_powers().into()
+    pub fn get_great_powers(&self) -> Result<Ts<GreatPowers>, JsError> {
+        into_ts(self.0.get_great_powers().into())
     }
 
-    pub fn get_alive_countries(&self) -> CountryTags {
-        self.0.get_alive_countries().into()
+    pub fn get_alive_countries(&self) -> Result<Ts<CountryTags>, JsError> {
+        into_ts(self.0.get_alive_countries().into())
     }
 
     pub fn localize_country(&self, tag: String) -> String {
         self.0.localize_country(tag)
     }
 
-    pub fn save_info(&self) -> SaveInfo {
-        self.0.save_info()
+    pub fn save_info(&self) -> Result<Ts<SaveInfo>, JsError> {
+        into_ts(self.0.save_info())
     }
 
-    pub fn get_provinces(&self) -> ProvinceList {
-        self.0.get_provinces().into()
+    pub fn get_provinces(&self) -> Result<Ts<ProvinceList>, JsError> {
+        into_ts(self.0.get_provinces().into())
     }
 
-    pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
-        self.0.get_health(payload)
+    pub fn get_health(&self, payload: Ts<TagFilterPayloadRaw>) -> Result<Ts<HealthData>, JsError> {
+        into_ts(self.0.get_health(payload.to_rust()?))
     }
 
-    pub fn get_countries(&self) -> CountryInfoList {
-        self.0.get_countries().into()
+    pub fn get_countries(&self) -> Result<Ts<CountryInfoList>, JsError> {
+        into_ts(self.0.get_countries().into())
     }
 
-    pub fn get_country(&self, tag: String) -> CountryDetails {
-        self.0.get_country(tag)
+    pub fn get_country(&self, tag: String) -> Result<Ts<CountryDetails>, JsError> {
+        into_ts(self.0.get_country(tag))
     }
 
-    pub fn get_country_mana(&self, tag: &str) -> CountryMana {
-        self.0.country_mana(tag)
+    pub fn get_country_mana(&self, tag: &str) -> Result<Ts<CountryMana>, JsError> {
+        into_ts(self.0.country_mana(tag))
     }
 
-    pub fn get_countries_income(&self, payload: TagFilterPayloadRaw) -> CountriesIncome {
-        self.0.get_countries_income(payload).into()
+    pub fn get_countries_income(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<CountriesIncome>, JsError> {
+        into_ts(self.0.get_countries_income(payload.to_rust()?).into())
     }
 
-    pub fn get_countries_expenses(&self, payload: TagFilterPayloadRaw) -> CountriesExpenses {
-        self.0.get_countries_expenses(payload).into()
+    pub fn get_countries_expenses(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<CountriesExpenses>, JsError> {
+        into_ts(self.0.get_countries_expenses(payload.to_rust()?).into())
     }
 
-    pub fn get_countries_total_expenses(&self, payload: TagFilterPayloadRaw) -> CountriesExpenses {
-        self.0.get_countries_total_expenses(payload).into()
+    pub fn get_countries_total_expenses(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<CountriesExpenses>, JsError> {
+        into_ts(
+            self.0
+                .get_countries_total_expenses(payload.to_rust()?)
+                .into(),
+        )
     }
 
-    pub fn get_dev_efficiency(&self, payload: TagFilterPayloadRaw) -> CountryDevEfficiencies {
-        self.0.get_dev_efficiency(payload).into()
+    pub fn get_dev_efficiency(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<CountryDevEfficiencies>, JsError> {
+        into_ts(self.0.get_dev_efficiency(payload.to_rust()?).into())
     }
 
-    pub fn get_countries_mana(&self, payload: TagFilterPayloadRaw) -> CountriesManaExpenditure {
-        self.0.get_countries_mana(payload).into()
+    pub fn get_countries_mana(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<CountriesManaExpenditure>, JsError> {
+        into_ts(self.0.get_countries_mana(payload.to_rust()?).into())
     }
 
     pub fn get_province_development_density(
         &self,
-        payload: TagFilterPayloadRaw,
-    ) -> ProvinceDevDensity {
-        self.0.get_province_development_density(payload)
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<ProvinceDevDensity>, JsError> {
+        into_ts(self.0.get_province_development_density(payload.to_rust()?))
     }
 
-    pub fn geographical_development(&self, payload: TagFilterPayloadRaw) -> RootTree {
-        self.0.geographical_development(payload)
+    pub fn geographical_development(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<RootTree>, JsError> {
+        into_ts(self.0.geographical_development(payload.to_rust()?))
     }
 
-    pub fn get_province_details(&self, province_id: u16) -> Option<ProvinceDetails> {
-        self.0.get_province_details(province_id)
+    pub fn get_province_details(
+        &self,
+        province_id: u16,
+    ) -> Result<Option<Ts<ProvinceDetails>>, JsError> {
+        option_into_ts(self.0.get_province_details(province_id))
     }
 
     pub fn owned_development_states(
         &self,
-        payload: TagFilterPayloadRaw,
-    ) -> OwnedDevelopmentStatesList {
-        self.0.owned_development_states(payload).into()
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<OwnedDevelopmentStatesList>, JsError> {
+        into_ts(self.0.owned_development_states(payload.to_rust()?).into())
     }
 
-    pub fn get_country_rulers(&self, tag: &str) -> RunningMonarchs {
-        self.0.get_country_rulers(tag).into()
+    pub fn get_country_rulers(&self, tag: &str) -> Result<Ts<RunningMonarchs>, JsError> {
+        into_ts(self.0.get_country_rulers(tag).into())
     }
 
-    pub fn get_country_advisors(&self, tag: &str) -> CountryAdvisors {
-        self.0.get_country_advisors(tag)
+    pub fn get_country_advisors(&self, tag: &str) -> Result<Ts<CountryAdvisors>, JsError> {
+        into_ts(self.0.get_country_advisors(tag))
     }
 
-    pub fn get_country_history(&self, tag: &str) -> Option<CountryHistory> {
-        self.0.country_history(tag)
+    pub fn get_country_history(&self, tag: &str) -> Result<Option<Ts<CountryHistory>>, JsError> {
+        option_into_ts(self.0.country_history(tag))
     }
 
     pub fn get_country_institutions(
@@ -209,39 +268,45 @@ impl SaveFile {
         country_development_modifier: f64,
         expand_infrastructure_cost: i32,
         overrides: JsValue,
-    ) -> CountryInstitution {
-        self.0.institution_provinces(
+    ) -> Result<Ts<CountryInstitution>, JsError> {
+        into_ts(self.0.institution_provinces(
             tag,
             country_development_modifier,
             expand_infrastructure_cost,
             overrides,
-        )
+        ))
     }
 
-    pub fn get_country_province_religion(&self, tag: &str) -> CountryReligions {
-        self.0.get_country_province_religion(tag)
+    pub fn get_country_province_religion(
+        &self,
+        tag: &str,
+    ) -> Result<Ts<CountryReligions>, JsError> {
+        into_ts(self.0.get_country_province_religion(tag))
     }
 
-    pub fn get_country_province_culture(&self, tag: &str) -> CountryCultures {
-        self.0.get_country_province_culture(tag).into()
+    pub fn get_country_province_culture(&self, tag: &str) -> Result<Ts<CountryCultures>, JsError> {
+        into_ts(self.0.get_country_province_culture(tag).into())
     }
 
-    pub fn get_country_leaders(&self, tag: &str) -> CountryLeaders {
-        self.0.get_country_leaders(tag).into()
+    pub fn get_country_leaders(&self, tag: &str) -> Result<Ts<CountryLeaders>, JsError> {
+        into_ts(self.0.get_country_leaders(tag).into())
     }
 
-    pub fn get_country_states(&self, tag: &str) -> CountryStateDetailsList {
-        self.0.get_country_states(tag).into()
+    pub fn get_country_states(&self, tag: &str) -> Result<Ts<CountryStateDetailsList>, JsError> {
+        into_ts(self.0.get_country_states(tag).into())
     }
 
-    pub fn get_country_estates(&self, tag: &str) -> Estates {
+    pub fn get_country_estates(&self, tag: &str) -> Result<Ts<Estates>, JsError> {
         let result = self.0.get_country_estates(tag);
         let trans: Vec<Estate<'static>> = unsafe { std::mem::transmute(result) };
-        trans.into()
+        into_ts(trans.into())
     }
 
-    pub fn get_nation_idea_groups(&self, payload: TagFilterPayloadRaw) -> IdeaGroups {
-        self.0.get_nation_idea_groups(payload).into()
+    pub fn get_nation_idea_groups(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<IdeaGroups>, JsError> {
+        into_ts(self.0.get_nation_idea_groups(payload.to_rust()?).into())
     }
 
     pub fn province_nation_owner_color(
@@ -270,24 +335,24 @@ impl SaveFile {
         )
     }
 
-    pub fn map_colors(&self, payload: MapPayload) -> Result<Vec<u8>, JsError> {
-        Ok(self.0.map_colors(payload))
+    pub fn map_colors(&self, payload: Ts<MapPayload>) -> Result<Vec<u8>, JsError> {
+        Ok(self.0.map_colors(payload.to_rust()?))
     }
 
     pub fn map_cursor(
         &self,
-        payload: MapCursorPayload,
+        payload: Ts<MapCursorPayload>,
     ) -> Result<savefile::TimelapseIter, JsError> {
-        Ok(self.0.map_cursor(payload))
+        Ok(self.0.map_cursor(payload.to_rust()?))
     }
 
     pub fn map_quick_tip(
         &self,
         province_id: i32,
-        payload: MapPayloadKind,
+        payload: Ts<MapPayloadKind>,
         days: Option<i32>,
-    ) -> Option<MapQuickTipPayload> {
-        self.0.map_quick_tip(province_id, payload, days)
+    ) -> Result<Option<Ts<MapQuickTipPayload>>, JsError> {
+        option_into_ts(self.0.map_quick_tip(province_id, payload.to_rust()?, days))
     }
 
     pub fn initial_map_position(&self) -> js_sys::Uint16Array {
@@ -300,28 +365,37 @@ impl SaveFile {
         js_sys::Uint16Array::from(&[x, y][..])
     }
 
-    pub fn matching_countries(&self, payload: TagFilterPayloadRaw) -> LocalizedTags {
-        self.0.matching_countries(payload).into()
+    pub fn matching_countries(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<LocalizedTags>, JsError> {
+        into_ts(self.0.matching_countries(payload.to_rust()?).into())
     }
 
-    pub fn countries_war_losses(&self, payload: TagFilterPayloadRaw) -> CountriesCasualties {
-        self.0.countries_war_losses(payload).into()
+    pub fn countries_war_losses(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<CountriesCasualties>, JsError> {
+        into_ts(self.0.countries_war_losses(payload.to_rust()?).into())
     }
 
-    pub fn wars(&self, payload: TagFilterPayloadRaw) -> Wars {
-        self.0.wars(payload).into()
+    pub fn wars(&self, payload: Ts<TagFilterPayloadRaw>) -> Result<Ts<Wars>, JsError> {
+        into_ts(self.0.wars(payload.to_rust()?).into())
     }
 
-    pub fn get_country_casualties(&self, tag: &str) -> SingleCountryWarCasualtiesList {
-        self.0.get_country_casualties(tag).into()
+    pub fn get_country_casualties(
+        &self,
+        tag: &str,
+    ) -> Result<Ts<SingleCountryWarCasualtiesList>, JsError> {
+        into_ts(self.0.get_country_casualties(tag).into())
     }
 
-    pub fn get_war(&self, war_name: String) -> Option<WarInfo> {
-        self.0.get_war(&war_name)
+    pub fn get_war(&self, war_name: String) -> Result<Option<Ts<WarInfo>>, JsError> {
+        option_into_ts(self.0.get_war(&war_name))
     }
 
-    pub fn monitoring_data(&self) -> Monitor {
-        self.0.monitoring_data()
+    pub fn monitoring_data(&self) -> Result<Ts<Monitor>, JsError> {
+        into_ts(self.0.monitoring_data())
     }
 }
 

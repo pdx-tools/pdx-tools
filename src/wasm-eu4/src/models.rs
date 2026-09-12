@@ -18,7 +18,6 @@ use crate::savefile::{
 macro_rules! wasm_wrapper {
     ($name:ident,$ty:ty) => {
         #[derive(Debug, Tsify, Serialize)]
-        #[tsify(into_wasm_abi)]
         #[serde(transparent)]
         pub struct $name(pub $ty);
 
