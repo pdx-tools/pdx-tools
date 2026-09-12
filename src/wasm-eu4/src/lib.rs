@@ -404,10 +404,11 @@ impl SaveFile {
 pub struct SaveFileParsed(Eu4Save, Encoding);
 
 #[wasm_bindgen]
-pub fn parse_meta(data: &[u8]) -> Result<eu4save::models::Meta, JsError> {
+pub fn parse_meta(data: &[u8]) -> Result<Ts<eu4save::models::Meta>, JsError> {
     wasm_pdx_core::console_error_panic_hook::set_once();
     let tokens = tokens::get_tokens();
-    eu4game::shared::parse_meta(data, tokens).map_err(JsError::from)
+    let meta = eu4game::shared::parse_meta(data, tokens).map_err(JsError::from)?;
+    into_ts(meta)
 }
 
 #[wasm_bindgen]

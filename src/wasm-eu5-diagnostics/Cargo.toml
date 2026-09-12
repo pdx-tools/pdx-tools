@@ -16,7 +16,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 bumpalo = { workspace = true }
-bumpalo-serde = { workspace = true }
+arena-serde = { workspace = true }
 eu5save = { workspace = true }
 pdx-zstd = { workspace = true, default-features = false }
 schemas = { workspace = true }
