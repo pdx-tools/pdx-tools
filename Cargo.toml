@@ -64,7 +64,7 @@ image_dds = { version = "0.7", default-features = false, features = [
 ] }
 imperator-save = { git = "https://github.com/rakaly/jomini.git" }
 insta = { version = "1.47", features = ["json"] }
-jomini = { version = "0.36", features = ["envelope"] }
+jomini = { version = "0.36.1", features = ["envelope"] }
 js-sys = "0.3.95"
 mimalloc = "0.1.48"
 nu-ansi-term = "0.50.3"
