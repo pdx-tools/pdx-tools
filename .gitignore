@@ -1,7 +1,8 @@
 **/target
 **/*.rs.bk
 dist/
-assets/eu4-saves
+assets/saves
+assets/eu4-terrain
 assets/game-bundles
 assets/steam/
 assets/game/eu4/1.*

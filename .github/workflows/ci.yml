@@ -93,9 +93,8 @@ jobs:
     env:
       ASSET_CACHE_PATHS: |
         assets/game-bundles
-        assets/eu4-saves
-        src/vic3save/assets/vic3-saves
-        src/eu5save/assets/eu5-saves
+        assets/eu4-terrain
+      PDX_FIXTURES_LOG: ${{ github.workspace }}/fixtures.log
       DEVCONTAINER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       CARGO_INCREMENTAL: 0
       CARGO_PROFILE_DEV_DEBUG: 0
@@ -133,9 +132,27 @@ jobs:
       uses: actions/cache/restore@v6
       with:
         path: ${{ env.ASSET_CACHE_PATHS }}
-        key: asset-cache-
-        restore-keys: asset-cache-
+        key: asset-cache-v2-
+        restore-keys: asset-cache-v2-
         enableCrossOsArchive: true # shares one cache with the build job
+
+    - name: Restore EU4 save fixtures
+      if: matrix.arch == 'amd64' && matrix.with_tokens
+      uses: actions/cache/restore@v6
+      with:
+        path: assets/saves/eu4
+        key: save-fixtures-v1-eu4-${{ hashFiles('src/eu4game/tests/it/fixtures.txt') }}
+        restore-keys: save-fixtures-v1-eu4-
+        enableCrossOsArchive: true
+
+    - name: Restore EU5 save fixtures
+      if: matrix.arch == 'amd64' && matrix.with_tokens
+      uses: actions/cache/restore@v6
+      with:
+        path: assets/saves/eu5
+        key: save-fixtures-v1-eu5-${{ hashFiles('src/eu5app/tests/it/fixtures.txt') }}
+        restore-keys: save-fixtures-v1-eu5-
+        enableCrossOsArchive: true
 
     - uses: actions/checkout@v7
       name: Clone tokens
@@ -175,12 +192,33 @@ jobs:
             mise exec -- pnpm --version
             steamcmd 2>&1 | grep -F "steamcmd is only installed in the amd64 devcontainer image."
           else
+            # The host path in PDX_FIXTURES_LOG does not exist in the
+            # container; the checkout is bind-mounted at the current directory.
+            export PDX_FIXTURES_LOG="$PWD/fixtures.log"
             mise run admin:assets:sync && \
             mise run admin:assets:compile:all && \
             mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
             ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
             mise run build:app
           fi
+
+    - name: Check fixture lists
+      if: matrix.arch == 'amd64' && matrix.with_tokens
+      shell: bash
+      run: |
+        for fixture in "eu4 src/eu4game/tests/it/fixtures.txt" "eu5 src/eu5app/tests/it/fixtures.txt"; do
+          game=${fixture%% *}
+          file=${fixture#* }
+          actual=$(mktemp)
+          awk -F/ -v game="$game" '$1 == game { print $2 }' "$PDX_FIXTURES_LOG" | LC_ALL=C sort -u > "$actual"
+          unexpected=$(comm -23 "$actual" <(LC_ALL=C sort "$file"))
+          rm -f "$actual"
+          if [ -n "$unexpected" ]; then
+            echo "Fixtures used by $game are missing from $file:"
+            echo "$unexpected"
+            exit 1
+          fi
+        done
 
   devcontainer-publish:
     runs-on: ubuntu-latest
@@ -253,9 +291,8 @@ jobs:
     env:
       ASSET_CACHE_PATHS: |
         assets/game-bundles
-        assets/eu4-saves
-        src/vic3save/assets/vic3-saves
-        src/eu5save/assets/eu5-saves
+        assets/eu4-terrain
+      PDX_FIXTURES_LOG: ${{ github.workspace }}/fixtures.log
       CARGO_INCREMENTAL: 0
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
@@ -284,10 +321,30 @@ jobs:
       - name: Restore assets
         uses: actions/cache/restore@v6
         with:
-          key: asset-cache-
-          restore-keys: asset-cache-
+          key: asset-cache-v2-
+          restore-keys: asset-cache-v2-
           enableCrossOsArchive: true # shared cache between OSes
           path: ${{ env.ASSET_CACHE_PATHS }}
+
+      - name: Restore EU4 save fixtures
+        id: eu4-fixtures
+        if: matrix.with_tokens
+        uses: actions/cache/restore@v6
+        with:
+          path: assets/saves/eu4
+          key: save-fixtures-v1-eu4-${{ hashFiles('src/eu4game/tests/it/fixtures.txt') }}
+          restore-keys: save-fixtures-v1-eu4-
+          enableCrossOsArchive: true
+
+      - name: Restore EU5 save fixtures
+        id: eu5-fixtures
+        if: matrix.with_tokens
+        uses: actions/cache/restore@v6
+        with:
+          path: assets/saves/eu5
+          key: save-fixtures-v1-eu5-${{ hashFiles('src/eu5app/tests/it/fixtures.txt') }}
+          restore-keys: save-fixtures-v1-eu5-
+          enableCrossOsArchive: true
 
       - uses: actions/checkout@v7
         name: Clone tokens
@@ -337,6 +394,40 @@ jobs:
           ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
           mise run build:app
 
+      - name: Check fixture lists
+        if: matrix.os == 'ubuntu-latest' && matrix.with_tokens
+        shell: bash
+        run: |
+          for fixture in "eu4 src/eu4game/tests/it/fixtures.txt" "eu5 src/eu5app/tests/it/fixtures.txt"; do
+            game=${fixture%% *}
+            file=${fixture#* }
+            actual=$(mktemp)
+            awk -F/ -v game="$game" '$1 == game { print $2 }' "$PDX_FIXTURES_LOG" | LC_ALL=C sort -u > "$actual"
+            unexpected=$(comm -23 "$actual" <(LC_ALL=C sort "$file"))
+            rm -f "$actual"
+            if [ -n "$unexpected" ]; then
+              echo "Fixtures used by $game are missing from $file:"
+              echo "$unexpected"
+              exit 1
+            fi
+          done
+
+      - name: Save EU4 save fixtures
+        if: matrix.os == 'ubuntu-latest' && matrix.with_tokens && steps.eu4-fixtures.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: assets/saves/eu4
+          key: save-fixtures-v1-eu4-${{ hashFiles('src/eu4game/tests/it/fixtures.txt') }}
+          enableCrossOsArchive: true
+
+      - name: Save EU5 save fixtures
+        if: matrix.os == 'ubuntu-latest' && matrix.with_tokens && steps.eu5-fixtures.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: assets/saves/eu5
+          key: save-fixtures-v1-eu5-${{ hashFiles('src/eu5app/tests/it/fixtures.txt') }}
+          enableCrossOsArchive: true
+
       # The one saver. Keyed on the directory listing, so a new entry is
       # written only when this run fetched a fixture the cache lacked; a
       # literal key never re-saves after the first hit. Only a tokens leg
@@ -354,5 +445,5 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ env.ASSET_CACHE_PATHS }}
-          key: asset-cache-${{ steps.assets.outputs.hash }}
+          key: asset-cache-v2-${{ steps.assets.outputs.hash }}
           enableCrossOsArchive: true

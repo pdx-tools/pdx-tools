@@ -154,10 +154,18 @@ async function parseFile(path: string) {
 }
 
 function eu4SaveLocation(save: string) {
-  return `../../assets/eu4-saves/${save}`;
+  return `../../assets/saves/eu4/${save}`;
+}
+
+async function logEu4Fixture(save: string) {
+  const log = process.env.PDX_FIXTURES_LOG;
+  if (log) {
+    await fs.appendFile(log, `eu4/${save}\n`);
+  }
 }
 
 async function fetchEu4Save(save: string) {
+  await logEu4Fixture(save);
   const fp = eu4SaveLocation(save);
 
   try {
@@ -168,6 +176,7 @@ async function fetchEu4Save(save: string) {
       throw new Error(`unable to retrieve: ${save}`);
     }
     const buf = Buffer.from(await resp.arrayBuffer());
+    await fs.mkdir("../../assets/saves/eu4", { recursive: true });
     await fs.writeFile(fp, buf);
     return buf;
   }

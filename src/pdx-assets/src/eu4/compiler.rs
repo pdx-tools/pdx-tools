@@ -418,7 +418,11 @@ fn generate_provinces<P: FileProvider + ?Sized>(
         .copied()
         .collect();
 
-    let data = http::request(format!("eu4-saves/terrain/terrain-{}.eu4", game_version));
+    let terrain_name = format!("terrain-{}.eu4", game_version);
+    let data = http::request_at(
+        format!("eu4-saves/terrain/{terrain_name}"),
+        Path::new("assets").join("eu4-terrain").join(terrain_name),
+    );
     let save_file = Eu4File::from_slice(&data)?;
     let tokens = schemas::resolver::Eu4FlatTokens::new();
     let breakpoint = tokens.breakpoint();
