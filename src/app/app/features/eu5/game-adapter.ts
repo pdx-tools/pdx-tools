@@ -37,6 +37,13 @@ import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
 import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import type { BoxSelectOverlayRect } from "./types/box-select";
 import type { CursorHint } from "./workers/map/map-module";
+import type {
+  MapViewport,
+  TimelapseFraming,
+  TimelapseFrameLayout,
+} from "./timeline/timelapseFrame";
+import type { TimelapseFile, TimelapseFrameTiming } from "./workers/map/map-module";
+import type { DatePlateColors, DatePlateFonts } from "./timeline/timelapse/datePlate";
 
 const gameZipUrls = import.meta.glob<true, string, string>(
   "../../../../../assets/game/eu5/*/game.zip",
@@ -267,6 +274,7 @@ export function saveWorker(
     null;
   let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
   let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
+  let viewportCallback: ((viewport: MapViewport) => void) | null = null;
 
   saveEngine.onHoverDisplayUpdate(
     proxy((data: DisplayData) => {
@@ -292,6 +300,12 @@ export function saveWorker(
     }),
   );
 
+  mapEngine.onViewportChange(
+    proxy((viewport: MapViewport) => {
+      viewportCallback?.(viewport);
+    }),
+  );
+
   return {
     getZoom: () => mapEngine.get_zoom(),
     getPaletteGradients: async (): Promise<PaletteGradients> => {
@@ -305,6 +319,23 @@ export function saveWorker(
     },
     setTimelineDate: async (date: Eu5DateComponents): Promise<TimelineChange> => {
       return await saveEngine.setTimelineDate(date);
+    },
+    beginTimelapseRecording: (options: {
+      framing: TimelapseFraming;
+      output: { width: number; height: number };
+      colors: DatePlateColors;
+      fonts: DatePlateFonts;
+    }): Promise<TimelapseFrameLayout> => {
+      return mapEngine.beginTimelapseRecording(options);
+    },
+    recordTimelapseFrame: (date: Eu5DateComponents): Promise<TimelapseFrameTiming> => {
+      return mapEngine.recordTimelapseFrame(date);
+    },
+    finishTimelapseRecording: (): Promise<TimelapseFile> => {
+      return mapEngine.finishTimelapseRecording();
+    },
+    endTimelapseRecording: (): Promise<void> => {
+      return mapEngine.endTimelapseRecording();
     },
     generateWorldScreenshot: async (fullResolution: boolean): Promise<Blob> => {
       const overlayData = await saveEngine.getOverlayData();
@@ -341,6 +372,9 @@ export function saveWorker(
 
     onCursorHintUpdate: (callback: (hint: CursorHint) => void) => {
       cursorHintCallback = callback;
+    },
+    onViewportChange: (callback: (viewport: MapViewport) => void) => {
+      viewportCallback = callback;
     },
 
     selectCountry: (countryIdx: number) => {

@@ -13,7 +13,7 @@ import {
   useEu5MapMode,
   useEu5IsGeneratingScreenshot,
   useSaveFilename,
-  useEu5SaveDate,
+  useEu5TimelineMapDate,
   useEu5PlaythroughName,
 } from "../store";
 
@@ -90,14 +90,16 @@ function ScreenshotButton({
   const engine = useEu5Engine();
   const mapMode = useEu5MapMode();
   const isGeneratingScreenshot = useEu5IsGeneratingScreenshot();
-  const saveDate = useEu5SaveDate();
+  // The screenshot is the map as it stands, which on a scrubbed timeline is
+  // a past date; the file is named for what it shows, not for the save.
+  const mapDate = useEu5TimelineMapDate();
   const playthroughName = useEu5PlaythroughName();
 
   const { isLoading, run } = useTriggeredAction({
     action: async (fullResolution: boolean) => {
       try {
         const blob = await engine.trigger.generateScreenshot(fullResolution);
-        const dateStr = `${saveDate.year}-${String(saveDate.month).padStart(2, "0")}-${String(saveDate.day).padStart(2, "0")}`;
+        const dateStr = `${mapDate.year}-${String(mapDate.month).padStart(2, "0")}-${String(mapDate.day).padStart(2, "0")}`;
         downloadData(blob, `${playthroughName}-${dateStr}-${mapMode}.png`);
         toast.success("Screenshot downloaded", { duration: 2000 });
       } catch (error) {

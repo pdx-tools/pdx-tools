@@ -42,8 +42,17 @@ function useElementWidth(ref: React.RefObject<HTMLElement | null>): number {
  * shows where the map has caught up to when the two differ.
  */
 export function TimelineScrubber({ controller }: { controller: TimelineController }) {
-  const { timeline, totalDays, dayOffset, mapDayOffset, date, playback, setDayOffset, setDate } =
-    controller;
+  const {
+    timeline,
+    totalDays,
+    dayOffset,
+    mapDayOffset,
+    date,
+    playback,
+    locked,
+    setDayOffset,
+    setDate,
+  } = controller;
 
   const ref = useRef<HTMLDivElement>(null);
   const width = useElementWidth(ref);
@@ -84,7 +93,7 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
   );
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || locked) return;
     if (event.target instanceof HTMLElement && event.target.closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus({ preventScroll: true });
@@ -104,6 +113,7 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (locked) return;
     if (handleTimelineKey(controller, event)) event.preventDefault();
   };
 
@@ -121,6 +131,7 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
       aria-valuemax={totalDays}
       aria-valuenow={dayOffset}
       aria-valuetext={formatLongDate(date)}
+      aria-disabled={locked || undefined}
       data-dragging={dragging || undefined}
       data-playback={playback}
       onPointerDown={onPointerDown}
@@ -131,7 +142,8 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
       className={cx(
         styles.scrubber,
         "relative w-full touch-none rounded-[var(--radius-plate)] select-none",
-        dragging ? "cursor-grabbing" : "cursor-pointer",
+        // A recording drives the track, so it reads as a readout, not a control.
+        locked ? "cursor-default" : dragging ? "cursor-grabbing" : "cursor-pointer",
         focusRing,
       )}
       style={{ height: HEIGHT }}
@@ -175,7 +187,7 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
         </svg>
       )}
 
-      {width > 0 && <NoteMarkers notes={notes} px={px} setDate={setDate} />}
+      {width > 0 && <NoteMarkers notes={notes} px={px} setDate={setDate} locked={locked} />}
 
       {/* Elapsed track and playhead: both move on `transform` with one glide. */}
       {width > 0 && (
@@ -284,10 +296,12 @@ const NoteMarkers = memo(function NoteMarkers({
   notes,
   px,
   setDate,
+  locked,
 }: {
   notes: (TimelineNote & { day: number })[];
   px: (day: number) => number;
   setDate: (date: Eu5DateComponents) => void;
+  locked: boolean;
 }) {
   return notes.map((note) => (
     <Tooltip key={note.key + note.day}>
@@ -295,10 +309,12 @@ const NoteMarkers = memo(function NoteMarkers({
         <button
           type="button"
           onClick={() => setDate(note.date)}
+          disabled={locked}
           aria-label={`${note.label}, ${formatLongDate(note.date)}`}
           className={cx(
             "absolute z-10 grid h-4 w-4 -translate-x-1/2 place-items-center rounded-[var(--radius-plate)]",
-            "text-game-ink-300 transition-colors duration-100 hover:text-game-accent-100",
+            "text-game-ink-300 transition-colors duration-100 enabled:hover:text-game-accent-100",
+            "disabled:cursor-default",
             focusRing,
           )}
           style={{ left: px(note.day), top: TRACK_Y - 8 }}

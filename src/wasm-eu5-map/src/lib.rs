@@ -78,6 +78,14 @@ impl Eu5CanvasSurface {
     }
 }
 
+/// Whether the map at `zoom` draws the borders between locations. The same
+/// rule the live map applies as the player zooms, for a surface that renders
+/// at a zoom of its own.
+#[wasm_bindgen]
+pub fn location_borders_at_zoom(zoom: f32) -> bool {
+    should_highlight_individual_locations(zoom)
+}
+
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
     controller: MapViewController,
@@ -155,6 +163,30 @@ impl Eu5WasmMapRenderer {
     pub fn canvas_to_world(&self) -> Vec<f32> {
         let world_pos = self.input.world_position();
         vec![world_pos.x, world_pos.y]
+    }
+
+    /// The rectangle of the world the live map shows: `[x, y, width, height]`
+    /// in world units.
+    ///
+    /// A recording of the current view frames itself from this, so the film
+    /// shows what the player framed rather than what their window happens to
+    /// be shaped like.
+    #[wasm_bindgen]
+    pub fn viewport_world_rect(&self) -> Vec<u32> {
+        let rect = self.input.viewport_bounds().rect;
+        vec![
+            rect.origin.x,
+            rect.origin.y,
+            rect.size.width,
+            rect.size.height,
+        ]
+    }
+
+    /// The size of the whole world in world units: `[width, height]`.
+    #[wasm_bindgen]
+    pub fn world_size(&self) -> Vec<u32> {
+        let size = self.controller.hemisphere_size().world();
+        vec![size.width, size.height]
     }
 
     /// Update the grouping table used for box-select preview highlighting.

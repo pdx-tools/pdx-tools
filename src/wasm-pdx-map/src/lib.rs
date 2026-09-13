@@ -518,10 +518,23 @@ pub struct PdxTexture {
 #[wasm_bindgen]
 pub struct PdxScreenshotRenderer {
     map: MapViewController,
+    /// Size of the surface this renderer draws to, in pixels. Kept so a
+    /// caller can ask for a world rectangle and have the zoom derived from it.
+    size: PhysicalSize<u32>,
 }
 
 #[wasm_bindgen]
 impl PdxScreenshotRenderer {
+    /// Show or hide the borders between locations.
+    ///
+    /// The renderer starts with the settings of the map it was made from,
+    /// including borders chosen for that map's zoom. A recording renders at
+    /// its own zoom, so it decides this for itself.
+    #[wasm_bindgen]
+    pub fn set_location_borders(&mut self, enabled: bool) {
+        self.map.renderer_mut().set_location_borders(enabled);
+    }
+
     /// Render the western tile to the screenshot surface
     #[wasm_bindgen]
     pub fn render_west_tile(&mut self) -> Result<(), JsError> {
@@ -536,6 +549,36 @@ impl PdxScreenshotRenderer {
         self.map
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render west tile: {e}")))
+    }
+
+    /// Render a rectangle of the world to the screenshot surface, scaled to
+    /// fill it.
+    ///
+    /// The caller gives the rectangle in world units and gets the surface it
+    /// asked for: the zoom comes from the width the surface has to show, so a
+    /// rectangle of the same aspect as the surface lands edge to edge. This is
+    /// what a recording needs, because the output size must not follow the
+    /// window the player happens to have open.
+    #[wasm_bindgen]
+    pub fn render_world_rect(
+        &mut self,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) -> Result<(), JsError> {
+        if width == 0 || height == 0 {
+            return Err(JsError::new("world rectangle cannot be empty"));
+        }
+
+        let mut bounds = self.map.viewport_bounds();
+        bounds.rect.origin = WorldPoint::new(x, y);
+        bounds.rect.size = WorldSize::new(width, height);
+        bounds.zoom_level = self.size.width as f32 / width as f32;
+        self.map.set_viewport_bounds(bounds);
+        self.map
+            .render()
+            .map_err(|e| JsError::new(&format!("Failed to render world rectangle: {e}")))
     }
 
     /// Render the eastern tile to the screenshot surface
@@ -566,7 +609,7 @@ pub fn create_screenshot_renderer_for_app(
         .renderer()
         .create_screenshot_renderer(surface_target, size)?;
     let map = MapViewController::new(screenshot_renderer);
-    Ok(PdxScreenshotRenderer { map })
+    Ok(PdxScreenshotRenderer { map, size })
 }
 
 #[cfg(target_family = "wasm")]
