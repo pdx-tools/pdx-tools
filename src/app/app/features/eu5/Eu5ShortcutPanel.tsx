@@ -47,6 +47,16 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    label: "Timeline",
+    shortcuts: [
+      { action: "Play or pause", keys: ["Space"] },
+      { action: "Step a day", keys: ["←", "→"] },
+      { action: "Step a month", keys: ["Shift", "+", "←", "→"] },
+      { action: "Step a year", keys: ["Ctrl", "+", "←", "→"] },
+      { action: "Campaign start or save date", keys: ["Home", "End"] },
+    ],
+  },
+  {
     label: "Tools",
     shortcuts: [
       { action: "Search", keys: ["/"] },

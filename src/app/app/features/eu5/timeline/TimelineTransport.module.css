@@ -1,0 +1,36 @@
+/*
+ * The play button at the end of a run. The replay glyph turns in as it
+ * arrives, so the change of offer reads as a consequence of the playhead
+ * reaching the save date rather than a silent swap.
+ */
+
+.replayGlyph {
+  display: grid;
+  place-items: center;
+  animation: turn-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes turn-in {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .replayGlyph {
+    animation: opacity-in 160ms ease-out both;
+  }
+  @keyframes opacity-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

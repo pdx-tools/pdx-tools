@@ -23,7 +23,7 @@ use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope};
-use eu5app::{CanvasDimensions, MapMode as Eu5MapMode};
+use eu5app::{CanvasDimensions, Eu5DateComponents, MapMode as Eu5MapMode};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
@@ -163,6 +163,54 @@ pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
 pub struct SelectionChange {
     center_color_id: Option<u32>,
     gradient: Option<GradientConfig>,
+}
+
+/// A named event on the campaign timeline.
+#[derive(Clone, Debug, Serialize, tsify::Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineNote {
+    pub key: String,
+    /// The localized event name, or a readable form of the key.
+    pub label: String,
+    pub date: Eu5DateComponents,
+}
+
+/// What the timeline control needs to draw itself.
+#[derive(Clone, Debug, Serialize, tsify::Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineData {
+    /// False when the save has no ownership history. Hide the control.
+    pub available: bool,
+    /// The first date any location was owned, usually the campaign start.
+    pub start: Eu5DateComponents,
+    /// The save date. The map cannot go past it.
+    pub end: Eu5DateComponents,
+    /// Days after `start` on which at least one location changed hands.
+    pub change_days: Vec<u32>,
+    /// The number of locations that changed hands on each of `change_days`.
+    pub change_counts: Vec<u32>,
+    pub notes: Vec<TimelineNote>,
+}
+
+/// The state of the map after the timeline moved.
+#[derive(Clone, Debug, Serialize, tsify::Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineChange {
+    /// The date the map shows, after clamping to the campaign. Equal to the
+    /// timeline end when the map shows the save date.
+    pub date: Eu5DateComponents,
+    /// The map mode after the move. A past date forces the political mode.
+    pub map_mode: MapMode,
+    pub gradient: Option<GradientConfig>,
+}
+
+fn date_from_components(date: &Eu5DateComponents) -> Result<eu5save::Eu5Date, JsError> {
+    date.to_date().ok_or_else(|| {
+        JsError::new(&format!(
+            "invalid date: {}.{}.{}",
+            date.year, date.month, date.day
+        ))
+    })
 }
 
 #[derive(Clone, Debug, Serialize, tsify::Tsify)]
@@ -513,20 +561,75 @@ impl Eu5App {
         }
     }
 
-    /// Switch map mode to the specified mode
+    /// Switch map mode to the specified mode. A mode without a history pulls
+    /// the timeline back to the save date; read `date` from the result.
     #[wasm_bindgen]
-    pub fn set_map_mode(
-        &mut self,
-        mode: Ts<MapMode>,
-    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn set_map_mode(&mut self, mode: Ts<MapMode>) -> Result<Ts<TimelineChange>, JsError> {
         let mode = mode.to_rust()?;
-        legend_to_gradient_ts(self.app.set_map_mode(mode.into()))
+        let legend = self.app.set_map_mode(mode.into());
+        self.timeline_change(legend)
     }
 
     /// Get the current map mode
     #[wasm_bindgen]
     pub fn get_map_mode(&self) -> Result<Ts<MapMode>, JsError> {
         into_ts(self.app().get_map_mode().into())
+    }
+
+    /// The campaign timeline: its range, the dates borders changed, and the
+    /// named events. Cheap; call once after load.
+    #[wasm_bindgen]
+    pub fn get_timeline(&self) -> Result<Ts<TimelineData>, JsError> {
+        let summary = self.app().timeline_summary();
+        let change_days = summary
+            .change_dates
+            .iter()
+            .map(|date| summary.start.days_until(date).max(0) as u32)
+            .collect();
+        let notes = summary
+            .notes
+            .iter()
+            .map(|note| TimelineNote {
+                label: self
+                    .localization
+                    .get(&note.key)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| eu5app::humanize_note_key(&note.key)),
+                key: note.key.clone(),
+                date: note.date.into(),
+            })
+            .collect();
+        into_ts(TimelineData {
+            available: summary.available,
+            start: summary.start.into(),
+            end: summary.end.into(),
+            change_days,
+            change_counts: summary.change_counts,
+            notes,
+        })
+    }
+
+    /// Show the map on a date. Returns the same buffer parts as the other map
+    /// operations through `location_arrays`; this returns the resulting state.
+    #[wasm_bindgen]
+    pub fn set_timeline_date(
+        &mut self,
+        date: Ts<Eu5DateComponents>,
+    ) -> Result<Ts<TimelineChange>, JsError> {
+        let date = date_from_components(&date.to_rust()?)?;
+        let legend = self.app.set_timeline_date(date);
+        self.timeline_change(legend)
+    }
+
+    fn timeline_change(
+        &self,
+        legend: eu5app::gradient::MapLegend,
+    ) -> Result<Ts<TimelineChange>, JsError> {
+        into_ts(TimelineChange {
+            date: self.app().timeline_date().into(),
+            map_mode: self.app().get_map_mode().into(),
+            gradient: legend_to_gradient(legend),
+        })
     }
 
     /// Check if a location can be highlighted based on its terrain

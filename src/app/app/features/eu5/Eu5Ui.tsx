@@ -37,6 +37,7 @@ import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 import { Eu5Toolbar } from "./Eu5Toolbar";
 import { Eu5SelectionPill } from "./Eu5SelectionPill";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
+import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
@@ -201,6 +202,7 @@ const Eu5UiContent = ({
       <BoxSelectOverlay />
       <Eu5CursorTooltip cursorRef={cursorRef} />
       <Eu5SelectionPill />
+      <TimelineBar />
       <Eu5Toolbar />
     </div>
   );

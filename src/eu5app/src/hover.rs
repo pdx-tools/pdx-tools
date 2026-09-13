@@ -1,7 +1,12 @@
 use crate::entity_profile::CountryRef;
-use crate::presentation::{CountryRefSource, Localized, UiLocationIdx, UiMarketId, present_dto};
+use crate::presentation::{
+    CountryRefSource, Localized, OwnedCountryName, UiLocationIdx, UiMarketId, present_dto,
+};
 use eu5save::models::{LocationIdx, MarketId, ReligionId};
 
+// `DisplayData::HistoricalCountry` is the owner of the location on a past
+// timeline date. The country may no longer exist, so it carries a name instead
+// of a reference.
 present_dto! {
     pub(crate) mod workspace;
     pub mod presentation;
@@ -37,6 +42,11 @@ present_dto! {
             location_id: u32,
             country: CountryRefSource => CountryRef,
             stat: HoverStat => HoverStat,
+        },
+        HistoricalCountry {
+            location_id: u32,
+            name: OwnedCountryName => String,
+            dead: bool,
         },
         Market {
             location_id: u32,

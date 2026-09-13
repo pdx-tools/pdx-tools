@@ -2,6 +2,7 @@ import { check } from "@/lib/isPresent";
 import { createContext, useContext } from "react";
 import { createStore, useStore } from "zustand";
 import type { StoreApi } from "zustand";
+import { isTimelineLive } from "../ui-engine";
 import type { AppEngine, AppState } from "../ui-engine";
 import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
 
@@ -15,6 +16,9 @@ type Eu5State = {
   insightPanelWidth: number;
   setInsightPanelOpen: (open: boolean) => void;
   setInsightPanelWidth: (width: number) => void;
+  /** Height of the timeline bar over the map, so overlays can sit above it. */
+  timelineBarHeight: number;
+  setTimelineBarHeight: (height: number) => void;
 };
 
 export type Eu5Store = StoreApi<Eu5State>;
@@ -35,8 +39,10 @@ export const createEu5Store = (
     playthroughName,
     insightPanelOpen: false,
     insightPanelWidth: 640,
+    timelineBarHeight: 0,
     setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
     setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
+    setTimelineBarHeight: (height) => set({ timelineBarHeight: height }),
   }));
 
   engine.subscribe((appState) => {
@@ -77,3 +83,10 @@ export const useEu5InsightPanelOpen = () => useEu5Store((x) => x.insightPanelOpe
 export const useEu5InsightPanelWidth = () => useEu5Store((x) => x.insightPanelWidth);
 export const useSetEu5InsightPanelOpen = () => useEu5Store((x) => x.setInsightPanelOpen);
 export const useSetEu5InsightPanelWidth = () => useEu5Store((x) => x.setInsightPanelWidth);
+export const useEu5Timeline = () => useEu5Store((x) => x.appState.timeline);
+export const useEu5TimelineDate = () => useEu5Store((x) => x.appState.timelineDate);
+export const useEu5TimelineMapDate = () => useEu5Store((x) => x.appState.timelineMapDate);
+export const useEu5TimelineLive = () => useEu5Store((x) => isTimelineLive(x.appState));
+export const useEu5TimelinePlayback = () => useEu5Store((x) => x.appState.timelinePlayback);
+export const useEu5TimelineBarHeight = () => useEu5Store((x) => x.timelineBarHeight);
+export const useSetEu5TimelineBarHeight = () => useEu5Store((x) => x.setTimelineBarHeight);

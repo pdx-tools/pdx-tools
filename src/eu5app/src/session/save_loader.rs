@@ -16,6 +16,24 @@ pub struct Eu5DateComponents {
     pub day: u8,
 }
 
+impl From<eu5save::Eu5Date> for Eu5DateComponents {
+    fn from(date: eu5save::Eu5Date) -> Self {
+        Self {
+            year: date.year(),
+            month: date.month(),
+            day: date.day(),
+        }
+    }
+}
+
+impl Eu5DateComponents {
+    /// The date at 08:00, or `None` when the components are not a calendar
+    /// date.
+    pub fn to_date(&self) -> Option<eu5save::Eu5Date> {
+        eu5save::Eu5Date::from_ymd_opt(self.year, self.month, self.day)
+    }
+}
+
 #[derive(Debug)]
 pub struct Eu5SaveLoader<R, RES> {
     resolver: RES,
@@ -45,11 +63,7 @@ impl Eu5SaveLoader<(), ()> {
             let meta = meta.map_err(Eu5LoadError::MetaDeserialization)?;
             Eu5SaveMetadata {
                 version: meta.metadata.version,
-                date: Eu5DateComponents {
-                    year: meta.metadata.date.year(),
-                    month: meta.metadata.date.month(),
-                    day: meta.metadata.date.day(),
-                },
+                date: meta.metadata.date.into(),
                 playthrough_name: meta.metadata.name().unwrap_or_default().to_owned(),
             }
         };

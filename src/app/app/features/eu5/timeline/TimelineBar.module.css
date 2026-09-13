@@ -1,0 +1,48 @@
+/*
+ * The bar rises from the bottom edge of the map when the political mode is
+ * chosen and sinks back when another mode takes over. The rise settles with
+ * a long tail; the exit is shorter, because the mode change already has the
+ * user's attention.
+ */
+
+.bar[data-state="open"] {
+  animation: rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bar[data-state="closed"] {
+  animation: sink 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes sink {
+  from {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar[data-state] {
+    /* Keep a run so animationend still fires and the bar unmounts. */
+    animation-duration: 1ms;
+  }
+}

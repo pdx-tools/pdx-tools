@@ -52,6 +52,11 @@ function getTooltipContent(hoverData: DisplayData): TooltipContent | null {
         name: hoverData.country.country.name,
         stat: formatHoverStat(hoverData.stat),
       };
+    case "historicalCountry":
+      return {
+        name: hoverData.name,
+        stat: hoverData.dead ? "no longer exists" : null,
+      };
     case "market":
       return {
         name: hoverData.market.name,

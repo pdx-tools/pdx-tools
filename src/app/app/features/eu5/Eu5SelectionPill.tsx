@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useEu5SelectionState, useEu5Engine } from "./store";
+import { useEu5SelectionState, useEu5Engine, useEu5TimelineBarHeight } from "./store";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";
@@ -11,9 +11,14 @@ function formatSelectionSummary(entityCount: number, locationCount: number): str
   return `${locPart}`;
 }
 
+/** Distance from the map edge, and from the timeline bar when it shows. */
+const PILL_BOTTOM_PX = 16;
+const PILL_GAP_PX = 8;
+
 export function Eu5SelectionPill() {
   const selectionState = useEu5SelectionState();
   const engine = useEu5Engine();
+  const timelineBarHeight = useEu5TimelineBarHeight();
 
   const handleClear = useCallback(async () => {
     await engine.trigger.clearSelection();
@@ -29,7 +34,13 @@ export function Eu5SelectionPill() {
   const meta = formatSelectionSummary(selectionState.entityCount, selectionState.locationCount);
 
   return (
-    <div className="pointer-events-auto absolute bottom-4 left-84 z-20 inline-flex h-7 items-center gap-2 rounded-panel border border-game-accent-line bg-game-overlay px-2.5 font-game-ui shadow-lg backdrop-blur-md">
+    <div
+      className="pointer-events-auto absolute left-84 z-20 inline-flex h-7 items-center gap-2 rounded-panel border border-game-accent-line bg-game-overlay px-2.5 font-game-ui shadow-lg backdrop-blur-md transition-[bottom] duration-200 ease-out motion-reduce:transition-none"
+      // Sits above the timeline bar and follows it as the bar comes and goes.
+      style={{
+        bottom: PILL_BOTTOM_PX + (timelineBarHeight > 0 ? timelineBarHeight + PILL_GAP_PX : 0),
+      }}
+    >
       {name !== null && (
         <>
           <span className="text-[11px] font-semibold text-game-ink-100">{name}</span>

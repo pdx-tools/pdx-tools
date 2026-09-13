@@ -29,6 +29,9 @@ import type {
   RgoInsightData,
   ControlInsightData,
   PoliticalWorldScoreboard,
+  Eu5DateComponents,
+  TimelineChange,
+  TimelineData,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -260,10 +263,27 @@ export const createGame = async (
   );
 
   return proxy({
-    setMapMode: async (mode: MapMode): Promise<void> => {
-      const gradient = app.set_map_mode(mode);
+    setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
+      const change = app.set_map_mode(mode);
       await syncAll();
-      pushSelection(gradient);
+      pushSelection(change.gradient ?? undefined);
+      return change;
+    },
+    getTimeline: (): TimelineData => {
+      return app.get_timeline();
+    },
+    setTimelineDate: async (date: Eu5DateComponents): Promise<TimelineChange> => {
+      const before = app.get_map_mode();
+      const change = app.set_timeline_date(date);
+      // A date can force the political mode, which is a mode change like any
+      // other; a move inside one mode repaints locations only.
+      if (change.mapMode !== before) {
+        await syncAll();
+        pushSelection(change.gradient ?? undefined);
+      } else {
+        await syncLocationData();
+      }
+      return change;
     },
     getMapMode: () => {
       return app.get_map_mode();

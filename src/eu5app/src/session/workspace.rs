@@ -75,6 +75,9 @@ pub struct Eu5Workspace<'bump> {
     selection_state: SelectionState,
     derived_entity_anchor: Option<eu5save::models::LocationIdx>,
     derived_entity_kind: Option<EntityKind>,
+
+    // Campaign timeline: the date the map shows and the owners on that date
+    timeline: timeline::TimelineState<'bump>,
 }
 
 enum SelectionSetOperation {
@@ -128,6 +131,9 @@ mod insights;
 mod map_render;
 mod overlay;
 mod selection_ops;
+mod timeline;
+
+pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Create a new workspace from loaded save data and game data provider
@@ -189,6 +195,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         let location_arrays = LocationArrays::allocate((max_color_id as usize) + 1);
+        let timeline = timeline::TimelineState::new(&gamestate);
 
         let mut workspace = Self {
             gamestate,
@@ -202,6 +209,7 @@ impl<'bump> Eu5Workspace<'bump> {
             selection_state: SelectionState::new(),
             derived_entity_anchor: None,
             derived_entity_kind: None,
+            timeline,
         };
 
         workspace.build_location_arrays();

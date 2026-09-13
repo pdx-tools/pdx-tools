@@ -164,3 +164,68 @@ fn workspace_scenarios() {
         insta::assert_json_snapshot!(snapshot);
     });
 }
+
+/// The border index at the save date must agree with the current owner of
+/// every location, and a round trip through the past must restore the live
+/// map exactly. Saves from before the campaign timeline have no history, so
+/// for them the timeline reports unavailable and the map never changes.
+#[test]
+fn timeline_round_trip_restores_the_live_map() {
+    insta::glob!("saves.d/*.save", |path| {
+        let save_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .expect("pointer file stem is UTF-8");
+        let Some(mut loaded) = utils::build_workspace(save_name) else {
+            return;
+        };
+        let ws = &mut loaded.workspace;
+
+        for entry in ws.gamestate().locations.iter() {
+            assert_eq!(
+                ws.owner_at_timeline_date(entry.idx()),
+                entry.location().owner,
+                "{save_name}: location {:?} owner at the save date",
+                entry.id()
+            );
+        }
+
+        ws.set_map_mode(MapMode::Political);
+        let live = utils::hash_location_arrays(ws.location_arrays());
+        let summary = ws.timeline_summary();
+        assert!(ws.is_timeline_live());
+
+        ws.set_timeline_date(summary.start);
+        let past = utils::hash_location_arrays(ws.location_arrays());
+        if summary.available {
+            assert!(
+                !ws.is_timeline_live(),
+                "{save_name}: the start is a past date"
+            );
+            assert_ne!(
+                past, live,
+                "{save_name}: borders differ at the campaign start"
+            );
+        } else {
+            assert!(
+                ws.is_timeline_live(),
+                "{save_name}: no history keeps the map live"
+            );
+            assert_eq!(past, live);
+        }
+
+        ws.set_timeline_date(summary.end);
+        assert!(ws.is_timeline_live());
+        assert_eq!(
+            utils::hash_location_arrays(ws.location_arrays()),
+            live,
+            "{save_name}: the save date restores the live map"
+        );
+
+        // A mode without a history cannot show a past date.
+        ws.set_timeline_date(summary.start);
+        ws.set_map_mode(MapMode::Population);
+        assert!(ws.is_timeline_live());
+        assert_eq!(ws.get_map_mode(), MapMode::Population);
+    });
+}
