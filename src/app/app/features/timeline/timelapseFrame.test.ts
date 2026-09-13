@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expandToAspect, layoutTimelapseFrame } from "./timelapseFrame";
+import { expandToAspect, layoutTimelapseFrame } from "@pdx.tools/timelapse";
 
 const WORLD = { width: 16384, height: 8192 };
 const OUTPUT = { width: 1920, height: 1080 };

@@ -3,6 +3,8 @@ import type { wrap } from "comlink";
 import type { MapWorker } from "./map-worker-types";
 import type { MapToken, ScreenshotOptions, UpdateOptions } from "./map-worker";
 import type { UserRect, WheelEvent as WorkerWheelEvent, MoveEvent, DrawEvent } from "./map";
+import type { RecordingOptions } from "./map-worker";
+import type { DateComponents, TimelapseFile, TimelapseFrameTiming } from "@pdx.tools/timelapse";
 
 export class MapController {
   private lastScrollTime = 0;
@@ -188,7 +190,7 @@ export class MapController {
     secondary: Uint8Array,
     options?: { country?: Uint8Array; draw?: boolean },
   ) {
-    this.worker.withCommands(
+    return this.worker.withCommands(
       transfer(
         [
           {
@@ -273,6 +275,26 @@ export class MapController {
     return this.worker.screenshot(this.mapToken, screenshot, options);
   }
 
+  public getViewport() {
+    return this.worker.getViewport(this.mapToken);
+  }
+
+  public beginRecording(options: RecordingOptions) {
+    return this.worker.beginRecording(this.mapToken, options);
+  }
+
+  public recordFrame(date: DateComponents): Promise<TimelapseFrameTiming> {
+    return this.worker.recordFrame(this.mapToken, date);
+  }
+
+  public finishRecording(): Promise<TimelapseFile> {
+    return this.worker.finishRecording(this.mapToken);
+  }
+
+  public endRecording(): Promise<void> {
+    return this.worker.endRecording(this.mapToken);
+  }
+
   public update(settings: UpdateOptions, options?: { draw?: boolean }) {
     const redrawMap =
       settings.showProvinceBorders ?? settings.showCountryBorders ?? settings.showMapModeBorders;
@@ -301,13 +323,5 @@ export class MapController {
 
   public setScaleOfMax(proportion: number) {
     return this.worker.proportionScale(this.mapToken, proportion);
-  }
-
-  public stash({ zoom }: { zoom: number }) {
-    return this.worker.stash(this.mapToken, { zoom });
-  }
-
-  public popStash() {
-    return this.worker.popStash(this.mapToken);
   }
 }

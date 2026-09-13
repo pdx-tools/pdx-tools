@@ -11,7 +11,6 @@ import type {
   HealthData,
   LedgerDatum,
   LocalizedTag,
-  MapDate,
   OwnedDevelopmentStates,
   CountryAdvisors,
 } from "../types/models";
@@ -19,10 +18,11 @@ import type { MapPayload, QuickTipPayload } from "../types/map";
 import { workLedgerData } from "../utils/ledger";
 import { expandLosses } from "../utils/losses";
 import { wasm } from "./common";
-import type { ActiveWarParticipant, TimelapseIter, Wars } from "@/wasm/wasm_eu4";
+import type { ActiveWarParticipant, Wars } from "@/wasm/wasm_eu4";
 import { timeSync } from "@/lib/timeit";
 import { createBudget } from "../features/country-details/budget";
 export * from "./init";
+export * from "./timeline";
 
 export const getRawData = () => wasm.viewData();
 export const melt = () => wasm.melt();
@@ -66,47 +66,6 @@ export function eu4MapColors(payload: MapPayload): MapColors {
     const secondary = arr.subarray(arr.length / 2);
     return transfer({ primary, secondary }, [arr.buffer]);
   }
-}
-
-export type MapTimelapseItem = {
-  date: MapDate;
-  primary: Uint8Array;
-  secondary: Uint8Array;
-  country: Uint8Array;
-};
-
-let mapCursor: TimelapseIter | undefined;
-export function mapTimelapseNext(): MapTimelapseItem | undefined {
-  const item = mapCursor?.next();
-  if (item === undefined || mapCursor === undefined) {
-    mapCursor?.free();
-    return undefined;
-  }
-
-  const date = item.date();
-  const arr = item.data();
-  const parts = mapCursor.parts();
-  if (parts == 2) {
-    const primary = arr.subarray(0, arr.length / parts);
-    const secondary = arr.subarray(arr.length / parts);
-    const country = primary;
-    return transfer({ date, primary, secondary, country }, [arr.buffer]);
-  } else if (parts == 3) {
-    const primary = arr.subarray(0, arr.length / parts);
-    const secondary = arr.subarray(arr.length / parts, (arr.length * 2) / parts);
-    const country = arr.subarray((arr.length * 2) / parts);
-    return transfer({ date, primary, secondary, country }, [arr.buffer]);
-  } else {
-    throw new Error("unexpected parts");
-  }
-}
-
-export function mapTimelapse(payload: {
-  kind: "political" | "religion" | "battles";
-  interval: "year" | "month" | "week" | "day";
-  start: number | undefined;
-}) {
-  mapCursor = wasm.save.map_cursor(payload);
 }
 
 export function eu4GetCountries(): EnhancedCountryInfo[] {
@@ -391,10 +350,6 @@ export function eu4MonitoringData() {
       ...armed_forces,
     })),
   };
-}
-
-export function eu4DateToDays(s: string) {
-  return wasm.save.date_to_days(s);
 }
 
 export function eu4DaysToDate(s: number) {

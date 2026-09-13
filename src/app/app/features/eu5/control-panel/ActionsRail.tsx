@@ -3,7 +3,7 @@ import { cx } from "class-variance-authority";
 import { CameraIcon } from "@heroicons/react/24/outline";
 import { FireIcon } from "@heroicons/react/24/solid";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
-import { focusRing } from "../components/focusRing";
+import { focusRing } from "@/components/game/focusRing";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 import { downloadData } from "@/lib/downloadData";
 import { toast } from "@/lib/toast";

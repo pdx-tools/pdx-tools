@@ -7,7 +7,7 @@ import { cx } from "class-variance-authority";
 import type { SearchResult } from "./ui-engine";
 import styles from "./Eu5Toolbar.module.css";
 import { Eu5ShortcutPanel } from "./Eu5ShortcutPanel";
-import { focusRing } from "./components/focusRing";
+import { focusRing } from "@/components/game/focusRing";
 import { resolveSearchSelection } from "./searchSelection";
 
 export function Eu5Toolbar() {

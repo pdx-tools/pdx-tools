@@ -14,7 +14,7 @@ import { appTableFeatures } from "@/lib/tanstack-table";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 import { DropdownMenu } from "@/components/DropdownMenu";
-import { focusRing, focusRingWithin } from "./focusRing";
+import { focusRing, focusRingWithin } from "@/components/game/focusRing";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Eu5DataTableColumnMeta, Eu5DataTableColumnVariant } from "@/types/tanstack-table";

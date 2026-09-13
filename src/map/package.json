@@ -26,6 +26,7 @@
     "vite": "catalog:"
   },
   "dependencies": {
+    "@pdx.tools/timelapse": "workspace:*",
     "comlink": "catalog:"
   }
 }

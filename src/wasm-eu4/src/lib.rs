@@ -16,10 +16,11 @@ use eu4save::{
 use models::{CountriesManaExpenditure, CountryDevEfficiencies};
 use savefile::{
     AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
-    FileObservationFrequency, HealthData, LocalizedLedger, MapCursorPayload, MapPayload,
-    MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails, ProvinceDevDensity, Reparse,
-    RootTree, SaveFileImpl, TagFilterPayloadRaw, WarInfo,
+    FileObservationFrequency, HealthData, LocalizedLedger, MapPayload, MapPayloadKind,
+    MapQuickTipPayload, Monitor, ProvinceDetails, ProvinceDevDensity, Reparse, RootTree,
+    SaveFileImpl, TagFilterPayloadRaw, TimelineKind, WarInfo,
 };
+use serde::Serialize;
 use std::{collections::HashMap, io::Cursor};
 use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
@@ -51,6 +52,44 @@ const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
 const EU4_DATE_TYPE: &'static str = r#"export type Eu4Date = string;"#;
 #[wasm_bindgen(typescript_custom_section)]
 const PROVINCE_ID_TYPE: &'static str = r#"export type ProvinceId = number;"#;
+
+#[derive(Copy, Clone, Debug, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct Eu4DateComponents {
+    pub year: i16,
+    pub month: u8,
+    pub day: u8,
+}
+
+impl From<eu4save::Eu4Date> for Eu4DateComponents {
+    fn from(date: eu4save::Eu4Date) -> Self {
+        use eu4save::PdsDate;
+        Self {
+            year: date.year(),
+            month: date.month(),
+            day: date.day(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineNote {
+    pub key: String,
+    pub label: String,
+    pub date: Eu4DateComponents,
+}
+
+#[derive(Clone, Debug, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineData {
+    pub available: bool,
+    pub start: Eu4DateComponents,
+    pub end: Eu4DateComponents,
+    pub change_days: Vec<u32>,
+    pub change_counts: Vec<u32>,
+    pub notes: Vec<TimelineNote>,
+}
 
 #[wasm_bindgen]
 #[derive(Debug)]
@@ -339,11 +378,30 @@ impl SaveFile {
         Ok(self.0.map_colors(payload.to_rust()?))
     }
 
-    pub fn map_cursor(
+    pub fn get_timeline(&self, kind: Ts<TimelineKind>) -> Result<Ts<TimelineData>, JsError> {
+        let kind = kind.to_rust()?;
+        let start = self.0.query.save().game.start_date;
+        let end = self.0.query.save().meta.date;
+        let changes = self.0.timeline_changes(kind);
+        let (change_days, change_counts) = changes
+            .into_iter()
+            .map(|(date, count)| (start.days_until(&date).max(0) as u32, count))
+            .unzip();
+        into_ts(TimelineData {
+            available: start < end,
+            start: start.into(),
+            end: end.into(),
+            change_days,
+            change_counts,
+            notes: Vec::new(),
+        })
+    }
+
+    pub fn timeline_cursor(
         &self,
-        payload: Ts<MapCursorPayload>,
-    ) -> Result<savefile::TimelapseIter, JsError> {
-        Ok(self.0.map_cursor(payload.to_rust()?))
+        kind: Ts<TimelineKind>,
+    ) -> Result<savefile::TimelineCursor, JsError> {
+        Ok(self.0.timeline_cursor(kind.to_rust()?))
     }
 
     pub fn map_quick_tip(

@@ -38,12 +38,14 @@ import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import type { BoxSelectOverlayRect } from "./types/box-select";
 import type { CursorHint } from "./workers/map/map-module";
 import type {
+  DatePlateColors,
+  DatePlateFonts,
   MapViewport,
+  TimelapseFile,
   TimelapseFraming,
   TimelapseFrameLayout,
-} from "./timeline/timelapseFrame";
-import type { TimelapseFile, TimelapseFrameTiming } from "./workers/map/map-module";
-import type { DatePlateColors, DatePlateFonts } from "./timeline/timelapse/datePlate";
+  TimelapseFrameTiming,
+} from "@pdx.tools/timelapse";
 
 const gameZipUrls = import.meta.glob<true, string, string>(
   "../../../../../assets/game/eu5/*/game.zip",

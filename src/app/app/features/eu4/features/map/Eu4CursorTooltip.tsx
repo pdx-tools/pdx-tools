@@ -36,9 +36,7 @@ export function Eu4CursorTooltip() {
     const requestKey = mapTipKey;
     let isMounted = true;
     const timer = setTimeout(async () => {
-      const state = store.getState();
-      const currentMapDate = selectDate(mapMode, state.save.meta, state.selectedDate);
-      const days = currentMapDate.enabledDays;
+      const days = selectDate(store.getState()).enabledDays;
       const data = await getEu4Worker().eu4GetMapTooltip(provinceId, mapMode, days);
       if (isMounted) setMapTip(data ? { key: requestKey, data } : null);
     }, 250);

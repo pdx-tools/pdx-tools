@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { TimelapseExport } from "./TimelapseExport";
-import { TimelineReadout } from "./TimelineReadout";
-import { TimelineScrubber } from "./TimelineScrubber";
-import { TimelineTransport } from "./TimelineTransport";
-import { useTimelineController, useTimelineKeyboard } from "./useTimelineController";
-import type { TimelineController } from "./useTimelineController";
+import { TimelineReadout } from "@/features/timeline/TimelineReadout";
+import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
+import { TimelineTransport } from "@/features/timeline/TimelineTransport";
+import { useTimelineKeyboard } from "@/features/timeline/controller";
+import type { TimelineController } from "@/features/timeline/controller";
+import { useTimelineController } from "./useTimelineController";
 import { useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";

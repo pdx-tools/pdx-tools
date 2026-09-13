@@ -15,10 +15,23 @@
  * travels to Reddit keeps the product's handwriting without advertising it.
  */
 
-import { MONTH_ABBR } from "../../lib/eu5Date";
-import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
-import plexMono500 from "@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2?url";
-import plexMono600 from "@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2?url";
+import type { DateComponents } from "./frame";
+
+const MONTH_ABBR = [
+  "",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 /**
  * Height of the plate at 1080p. Sized to sit inside the 60px matte band that
@@ -42,81 +55,42 @@ export type DatePlateColors = {
   month: string;
 };
 
+export type DatePlateFace = { weight: string; url: string };
+
 export type DatePlateFonts = {
-  /** The numeral face the plate is set in. */
-  num: string;
+  /**
+   * The one family name the files below are registered under. `FontFace`
+   * takes a single family, not a stack; a stack throws a `SyntaxError`.
+   */
+  family: string;
+  /**
+   * The stack the plate is set in for `ctx.font`: `family` first, then the
+   * page's fallbacks for any glyph the files do not cover.
+   */
+  stack: string;
+  /**
+   * The files of `family`, at the weights the plate uses. A worker has no
+   * document and no stylesheet, so it loads them into its own font set
+   * before it draws the first frame.
+   */
+  faces: readonly DatePlateFace[];
 };
 
 /**
- * The element the game tokens are declared on. They live on a wrapper inside
- * the body, so the body itself does not carry them.
+ * Load the plate's faces into `fontSet`, the font set of whichever global
+ * scope the plate is drawn in. A film whose first second is set in Times is
+ * a defect, so the recording waits on this before its first frame.
  */
-function themeRoot(): HTMLElement {
-  return document.querySelector<HTMLElement>("[data-game-theme]") ?? document.body;
-}
-
-/**
- * Read the design tokens out of the document so the film is painted in the
- * same colors as the app rather than in a second set that drifts from it.
- *
- * The browser resolves each token to a plain color, which is what a canvas
- * can paint with.
- */
-export function readDatePlateColors(): DatePlateColors {
-  const probe = document.createElement("span");
-  probe.style.display = "none";
-  themeRoot().appendChild(probe);
-
-  const resolve = (token: string, fallback: string) => {
-    probe.style.color = fallback;
-    probe.style.color = `var(${token})`;
-    const color = getComputedStyle(probe).color;
-    return color || fallback;
-  };
-
-  try {
-    return {
-      panel: resolve("--game-panel", "#12161b"),
-      line: "rgba(255, 255, 255, 0.1)",
-      year: resolve("--game-ink-100", "#f0ebe3"),
-      month: resolve("--game-ink-300", "#cdc6bb"),
-    };
-  } finally {
-    probe.remove();
-  }
-}
-
-export function readDatePlateFonts(): DatePlateFonts {
-  const style = getComputedStyle(themeRoot());
-  return {
-    num: style.getPropertyValue("--font-game-num").trim() || "monospace",
-  };
-}
-
-/**
- * The faces the plate is set in, at the two weights it uses. They are the
- * same files the page loads for `--font-game-num`, named here so a worker,
- * which has no document and no stylesheet, can load them into its own font
- * set before it draws the first frame.
- */
-const DATE_PLATE_FACES = [
-  { weight: "500", url: plexMono500 },
-  { weight: "600", url: plexMono600 },
-];
-const DATE_PLATE_FAMILY = "IBM Plex Mono";
-
-/**
- * Load the plate's faces into `fonts`, the font set of whichever global scope
- * the plate is drawn in. A film whose first second is set in Times is a
- * defect, so the recording waits on this before its first frame.
- */
-export async function loadDatePlateFonts(fonts: FontFaceSet): Promise<void> {
-  const faces = DATE_PLATE_FACES.map(
-    ({ weight, url }) => new FontFace(DATE_PLATE_FAMILY, `url(${url})`, { weight }),
+export async function loadDatePlateFonts(
+  fontSet: FontFaceSet,
+  fonts: DatePlateFonts,
+): Promise<void> {
+  const faces = fonts.faces.map(
+    ({ weight, url }) => new FontFace(fonts.family, `url(${url})`, { weight }),
   );
   await Promise.all(
     faces.map(async (face) => {
-      fonts.add(face);
+      fontSet.add(face);
       await face.load();
     }),
   );
@@ -141,7 +115,7 @@ export function drawDatePlate({
   matte,
 }: {
   ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
-  date: Eu5DateComponents;
+  date: DateComponents;
   /** Output height over 1080, so a 720p film carries the same proportions. */
   scale: number;
   colors: DatePlateColors;
@@ -158,8 +132,8 @@ export function drawDatePlate({
 
   const yearText = String(date.year);
   const monthText = MONTH_ABBR[date.month];
-  const yearFont = `600 ${YEAR_SIZE * scale}px ${fonts.num}`;
-  const monthFont = `500 ${MONTH_SIZE * scale}px ${fonts.num}`;
+  const yearFont = `600 ${YEAR_SIZE * scale}px ${fonts.stack}`;
+  const monthFont = `500 ${MONTH_SIZE * scale}px ${fonts.stack}`;
 
   // The plate holds one width for the whole film: four figures, and the
   // widest month. It must not breathe as the year ticks from 999 to 1000 or

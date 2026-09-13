@@ -1,0 +1,170 @@
+import { useEffect, useEffectEvent } from "react";
+import type { DateComponents } from "@pdx.tools/timelapse";
+
+export type { DateComponents };
+
+/** A named event on the campaign timeline. */
+export type TimelineNote = {
+  key: string;
+  label: string;
+  date: DateComponents;
+};
+
+/**
+ * What the timeline control needs to draw itself. Both games' workers
+ * return this shape.
+ */
+export type TimelineData = {
+  /** False when the save has no history. Hide the control. */
+  available: boolean;
+  start: DateComponents;
+  /** The save date. The map cannot go past it. */
+  end: DateComponents;
+  /** Days after `start` on which the map changed. */
+  changeDays: number[];
+  /**
+   * How much changed on each of `changeDays`, in the timeline's own measure:
+   * provinces for a border or faith change, casualties for a battle. The
+   * activity strip scales these against each other, so only their ratio
+   * matters.
+   */
+  changeCounts: number[];
+  notes: TimelineNote[];
+};
+
+export type TimelineStepUnit = "day" | "month" | "year";
+
+export type TimelinePlayback = "paused" | "rewinding" | "playing" | "ended";
+
+export type TimelapseStatus = "idle" | "recording" | "encoding";
+
+/** Where an export is, for the button that carries its progress. */
+export type TimelapseProgress = {
+  status: TimelapseStatus;
+  frame: number;
+  frames: number;
+};
+
+/**
+ * One view of the campaign timeline for a control to render. Each game
+ * builds it from its own state; the controls read only this.
+ */
+export type TimelineController = {
+  timeline: TimelineData;
+  /** The date the user asked for; the readout and playhead follow this. */
+  date: DateComponents;
+  live: boolean;
+  playback: TimelinePlayback;
+  /** True while the date advances or rewinds; Pause is the offered action. */
+  playing: boolean;
+  /**
+   * True while a recording drives the date. The controls stand down: the film
+   * is the campaign from end to end, and a nudge would land in it.
+   */
+  locked: boolean;
+  totalDays: number;
+  dayOffset: number;
+  /** Days after the start that the map has rendered; trails `dayOffset` during a drag. */
+  mapDayOffset: number;
+  setDayOffset: (day: number) => void;
+  setDate: (date: DateComponents) => void;
+  step: (unit: TimelineStepUnit, direction: 1 | -1) => void;
+  jumpToStart: () => void;
+  jumpToEnd: () => void;
+  togglePlayback: () => void;
+};
+
+/** Step unit for an arrow key or a step button: Shift is a month, Ctrl a year. */
+export function stepUnitForModifiers(event: {
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+}): TimelineStepUnit {
+  if (event.ctrlKey || event.metaKey) return "year";
+  if (event.shiftKey) return "month";
+  return "day";
+}
+
+/**
+ * Run a timeline key on the controller. Returns true when the key was one
+ * of the timeline's, so the caller can consume the event. The full set is
+ * the ARIA slider's: arrows step (Shift a month, Ctrl a year), Page keys
+ * step a year, Home and End jump to the ends, Space plays and pauses.
+ */
+export function handleTimelineKey(
+  controller: TimelineController,
+  event: { key: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+): boolean {
+  switch (event.key) {
+    case " ":
+      controller.togglePlayback();
+      return true;
+    case "ArrowLeft":
+    case "ArrowDown":
+      controller.step(stepUnitForModifiers(event), -1);
+      return true;
+    case "ArrowRight":
+    case "ArrowUp":
+      controller.step(stepUnitForModifiers(event), 1);
+      return true;
+    case "PageDown":
+      controller.step("year", -1);
+      return true;
+    case "PageUp":
+      controller.step("year", 1);
+      return true;
+    case "Home":
+      controller.jumpToStart();
+      return true;
+    case "End":
+      controller.jumpToEnd();
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return true;
+  return target.isContentEditable;
+}
+
+/** The keys that work anywhere in the window; the rest belong to the focused slider. */
+const WINDOW_KEYS = new Set([" ", "ArrowLeft", "ArrowRight", "Home", "End"]);
+/** Controls that read arrow, Home and End keys themselves. */
+const ARROW_CONSUMERS =
+  "[role='slider'], select, [role='menu'], [role='listbox'], [role='combobox']";
+/** Controls that Space or Enter activates; the timeline must not double up. */
+const ACTIVATABLE = "button, select, a, [role='button'], [role='menuitem'], [role='option']";
+
+/**
+ * Whole-window keys for the mounted timeline control: Space plays and pauses,
+ * arrows step (Shift a month, Ctrl a year), Home and End jump to the ends.
+ * Focus can rest on any button after a click, so the arrows and Home and End
+ * stay live there; a button does not read them. They yield only to controls
+ * that do, such as the scrubber itself, a select or a menu, and to any
+ * handler that already claimed the event. Space yields to whatever it would
+ * activate.
+ */
+export function useTimelineKeyboard(controller: TimelineController | null) {
+  // The controller changes on every date, so keep the listener registered for the life of the control.
+  const mounted = controller !== null;
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    const currentController = controller;
+    if (currentController === null || currentController.locked || !WINDOW_KEYS.has(event.key))
+      return;
+    if (event.defaultPrevented || isTypingTarget(event.target)) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target?.closest(ARROW_CONSUMERS)) return;
+    if (event.key === " " && target?.closest(ACTIVATABLE)) return;
+
+    if (handleTimelineKey(currentController, event)) event.preventDefault();
+  });
+
+  useEffect(() => {
+    if (!mounted) return;
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mounted]);
+}

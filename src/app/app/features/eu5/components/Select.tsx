@@ -1,7 +1,7 @@
 import React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
-import { focusRingAlways } from "./focusRing";
+import { focusRingAlways } from "@/components/game/focusRing";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useGameThemeContainer } from "@/components/GameThemeProvider";
 

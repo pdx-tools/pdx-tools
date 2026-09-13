@@ -544,6 +544,13 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     pub fn handle_location_hover(&mut self, location_idx: eu5save::models::LocationIdx) {
+        // On a past date the selection does not apply and the country under
+        // the cursor is the one that held the land then.
+        if !self.is_timeline_live() {
+            self.highlight_owner_at_timeline_date(location_idx);
+            return;
+        }
+
         let scope_mode = self.derived_scope_map_mode();
 
         if tracing::enabled!(tracing::Level::WARN) {
@@ -565,6 +572,18 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         self.highlight_entity(location_idx);
+    }
+
+    fn highlight_owner_at_timeline_date(&mut self, location_idx: eu5save::models::LocationIdx) {
+        let owner = self.owner_at_timeline_date(location_idx);
+        if owner.is_dummy() {
+            return;
+        }
+        let mut idxs = self.gamestate.locations.create_index(false);
+        for entry in self.gamestate.locations.iter() {
+            idxs[entry.idx()] = self.owner_at_timeline_date(entry.idx()) == owner;
+        }
+        self.highlight_locations_by_index(&idxs);
     }
 
     fn highlight_locations_by_index(&mut self, idxs: &eu5save::models::LocationIndexedVec<bool>) {

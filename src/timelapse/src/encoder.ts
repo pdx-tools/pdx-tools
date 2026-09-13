@@ -22,15 +22,21 @@ import {
   EncodedPacket,
 } from "mediabunny";
 import type { VideoCodec } from "mediabunny";
-import { log } from "@/lib/log";
-import { formatInt } from "@/lib/format";
-import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
-import type { TimelapseFrameLayout } from "../timelapseFrame";
+import type { DateComponents, TimelapseFrameLayout } from "./frame";
 import { TIMELAPSE_FPS, timelapseBitrate } from "./options";
 import { drawDatePlate, loadDatePlateFonts } from "./datePlate";
 import type { DatePlateColors, DatePlateFonts } from "./datePlate";
 
-type VideoEncoding = "mp4" | "webm";
+export type VideoEncoding = "mp4" | "webm";
+
+/** A finished recording, ready to download. */
+export type TimelapseFile = { blob: Blob; extension: VideoEncoding };
+
+/** How long a frame took to render and to encode, for the timing summary. */
+export type TimelapseFrameTiming = { renderMs: number; encodeMs: number };
+
+/** Where the encoder reports what it chose and what it skipped. */
+export type TimelapseLog = (message: string) => void;
 
 /** Black: the map renderer clears to it, so the matte and the map's void match. */
 const MATTE = "#000000";
@@ -70,6 +76,7 @@ export class TimelapseEncoder {
     private colors: DatePlateColors,
     private fonts: DatePlateFonts,
     readonly extension: VideoEncoding,
+    private log: TimelapseLog,
   ) {
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => {
@@ -88,7 +95,7 @@ export class TimelapseEncoder {
    * Compose and encode one frame from `surface`, the recording surface as
    * rendered for `date`. Returns how long that took, for the timing summary.
    */
-  async addFrame(surface: OffscreenCanvas, date: Eu5DateComponents): Promise<number> {
+  async addFrame(surface: OffscreenCanvas, date: DateComponents): Promise<number> {
     this.throwIfFailed();
 
     const start = performance.now();
@@ -160,7 +167,7 @@ export class TimelapseEncoder {
       this.videoSource.close();
       await this.output.cancel();
     } catch (e) {
-      log(`Ignoring error while discarding a cancelled timelapse: ${e}`);
+      this.log(`Ignoring error while discarding a cancelled timelapse: ${e}`);
     }
   }
 
@@ -169,17 +176,19 @@ export class TimelapseEncoder {
     output,
     colors,
     fonts,
+    log = () => {},
   }: {
     layout: TimelapseFrameLayout;
     output: { width: number; height: number };
     colors: DatePlateColors;
     fonts: DatePlateFonts;
+    log?: TimelapseLog;
   }): Promise<TimelapseEncoder> {
     // H.264 encodes even dimensions only.
     const width = 2 * Math.round(output.width / 2);
     const height = 2 * Math.round(output.height / 2);
     const bitrate = timelapseBitrate({ width, height });
-    log(`timelapse bitrate: ${formatInt(bitrate / 1000)}kbps`);
+    log(`timelapse bitrate: ${Math.round(bitrate / 1000)}kbps`);
 
     const findEncoder = async (codecs: Readonly<Readonly<[string, string]>[]>) => {
       for (const [codec, muxCodec] of codecs) {
@@ -230,7 +239,7 @@ export class TimelapseEncoder {
     // The worker's font set. The DOM typings this module compiles against
     // know only the document's, so the global is named by hand.
     const { fonts: fontSet } = self as unknown as { fonts: FontFaceSet };
-    await loadDatePlateFonts(fontSet);
+    await loadDatePlateFonts(fontSet, fonts);
 
     return new TimelapseEncoder(
       chosen.config,
@@ -241,6 +250,7 @@ export class TimelapseEncoder {
       colors,
       fonts,
       encoding,
+      log,
     );
   }
 }

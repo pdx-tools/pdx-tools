@@ -1,7 +1,7 @@
 import React from "react";
 import { Tabs as TabsPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
-import { focusRing } from "./focusRing";
+import { focusRing } from "@/components/game/focusRing";
 
 export const GameTabs = TabsPrimitive.Root as typeof TabsPrimitive.Root & {
   List: typeof GameTabsList;

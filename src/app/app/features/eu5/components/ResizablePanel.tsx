@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { ArrowsPointingInIcon, ArrowsPointingOutIcon } from "@heroicons/react/24/solid";
-import { focusBar, focusRing } from "./focusRing";
+import { focusBar, focusRing } from "@/components/game/focusRing";
 
 interface ResizablePanelContextValue {
   side: "left" | "right";

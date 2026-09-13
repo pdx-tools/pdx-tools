@@ -3,7 +3,7 @@ import { useEu5SelectionState, useEu5Engine, useEu5TimelineBarHeight } from "./s
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";
-import { focusRing } from "./components/focusRing";
+import { focusRing } from "@/components/game/focusRing";
 
 function formatSelectionSummary(entityCount: number, locationCount: number): string {
   const locPart = locationCount === 1 ? "1 location" : `${formatInt(locationCount)} locations`;

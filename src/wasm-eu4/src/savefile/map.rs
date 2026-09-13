@@ -1,15 +1,16 @@
 use super::{
-    LocalizedObj, LocalizedTag, MapCursorPayload, MapCursorPayloadKind, MapDate, MapPayload,
-    MapPayloadKind, MapQuickTipPayload, SaveFileImpl, TagFilterPayload,
+    LocalizedObj, LocalizedTag, MapPayload, MapPayloadKind, MapQuickTipPayload, SaveFileImpl,
+    TagFilterPayload, TimelineKind,
 };
-use crate::savefile::Interval;
 use eu4save::{
-    CountryTag, Eu4Date, PdsDate, ProvinceId,
+    CountryTag, Eu4Date, ProvinceId,
     models::{CountryEvent, Province},
     query::ReligionIndex,
 };
-use std::{collections::HashMap, str::FromStr};
-use tsify::{Ts, Tsify};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 use wasm_bindgen::prelude::*;
 
 pub const WASTELAND: [u8; 4] = [61, 61, 61, 0];
@@ -583,34 +584,99 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn map_cursor(&self, payload: MapCursorPayload) -> TimelapseIter {
-        let timelapse = match payload.kind {
-            MapCursorPayloadKind::Political => Timelapse::Political(PoliticalTimelapse::new(self)),
-            MapCursorPayloadKind::Religion => Timelapse::Religion(ReligionTimelapse::new(self)),
-            MapCursorPayloadKind::Battles => Timelapse::Battles(BattleTimelapse::new(self)),
-        };
+    pub fn timeline_cursor(&self, kind: TimelineKind) -> TimelineCursor {
+        TimelineCursor::new(self, kind)
+    }
 
-        let mut result = TimelapseIter {
-            save_start: self.query.save().game.start_date,
-            start: self
-                .query
-                .save()
-                .game
-                .start_date
-                .add_days(payload.start.unwrap_or(0)),
-            current: Eu4Date::from_ymd(1, 1, 1),
-            end: self.query.save().meta.date,
-            interval: payload.interval,
-            timelapse,
-        };
+    /// Provinces that were settled or abandoned on a given date: an owner
+    /// change with no country on one side. Colonization, a native tribe on
+    /// the move, and a colony given up are all of this shape.
+    fn settlement_provinces(&self) -> HashSet<(Eu4Date, ProvinceId)> {
+        self.province_owners
+            .changes
+            .iter()
+            .filter(|change| change.from == CountryTag::NONE || change.to == CountryTag::NONE)
+            .map(|change| (change.date, change.province))
+            .collect()
+    }
 
-        if matches!(payload.kind, MapCursorPayloadKind::Battles) {
-            // battle map mode marks battles since last interval
-            // so the first interval is a bit wonky, so we skip it
-            let _ = result.next();
+    pub fn timeline_changes(&self, kind: TimelineKind) -> Vec<(Eu4Date, u32)> {
+        use std::collections::BTreeMap;
+
+        // The strip counts the changes a player thinks of as history: a
+        // province that changes hands between countries, or changes faith.
+        // Occupations come and go with every war, and colonies and tribes on
+        // the move fill the map with small changes for centuries; both would
+        // drown the signal. Changes up to the start date are the scenario's
+        // setup, not history: province history reaches back a century before
+        // the bookmark, and it all lands on day one of the strip.
+        //
+        // The counts are read straight from the save. A timelapse would
+        // collect the same events, but also every controller change, war,
+        // and color change, and then sort them all, only to be dropped.
+        let save = self.query.save();
+        let start = save.game.start_date;
+        match kind {
+            TimelineKind::Political => {
+                let settlements = self.settlement_provinces();
+                let mut changes: BTreeMap<Eu4Date, HashSet<ProvinceId>> = BTreeMap::new();
+                for change in &self.province_owners.changes {
+                    if change.date > start && !settlements.contains(&(change.date, change.province))
+                    {
+                        changes
+                            .entry(change.date)
+                            .or_default()
+                            .insert(change.province);
+                    }
+                }
+                changes
+                    .into_iter()
+                    .map(|(date, provinces)| (date, provinces.len() as u32))
+                    .collect()
+            }
+            TimelineKind::Religion => {
+                let settlements = self.settlement_provinces();
+                let mut changes: BTreeMap<Eu4Date, HashSet<ProvinceId>> = BTreeMap::new();
+                for (id, prov) in save.game.provinces.iter() {
+                    for (date, event) in &prov.history.events {
+                        if let eu4save::models::ProvinceEvent::Religion(religion) = event
+                            && *date > start
+                            && self.religion_lookup.index(religion).is_some()
+                            && !settlements.contains(&(*date, *id))
+                        {
+                            changes.entry(*date).or_default().insert(*id);
+                        }
+                    }
+                }
+                changes
+                    .into_iter()
+                    .map(|(date, provinces)| (date, provinces.len() as u32))
+                    .collect()
+            }
+            TimelineKind::Battles => {
+                // The strip weighs a day by its casualties, the same measure
+                // the battle timelapse paints, so a skirmish does not stand
+                // as tall as a decisive battle.
+                let previous = save
+                    .game
+                    .previous_wars
+                    .iter()
+                    .flat_map(|war| war.history.events.iter());
+                let active = save
+                    .game
+                    .active_wars
+                    .iter()
+                    .flat_map(|war| war.history.events.iter());
+                let mut losses: BTreeMap<Eu4Date, u32> = BTreeMap::new();
+                for (date, event) in previous.chain(active) {
+                    if let eu4save::models::WarEvent::Battle(b) = event {
+                        let total = (b.attacker.losses + b.defender.losses).max(0) as u32;
+                        *losses.entry(*date).or_default() += total;
+                    }
+                }
+                losses.into_iter().filter(|(_, x)| *x > 0).collect()
+            }
         }
-
-        result
     }
 }
 
@@ -628,6 +694,16 @@ struct OwnerTimelapse {
     event_index: usize,
     tracking: ProvinceTracking,
     events: Vec<PoliticalEvent>,
+    /// The state at the start date, kept so a rewind is a copy and not a
+    /// second pass over the save.
+    initial: OwnerState,
+}
+
+#[derive(Clone)]
+struct OwnerState {
+    country_colors: HashMap<CountryTag, [u8; 4]>,
+    current_owners: Vec<(Eu4Date, CountryTag)>,
+    current_controllers: Vec<(Eu4Date, CountryTag)>,
 }
 
 impl OwnerTimelapse {
@@ -836,6 +912,11 @@ impl OwnerTimelapse {
         events.sort_by_key(|a| a.date);
 
         OwnerTimelapse {
+            initial: OwnerState {
+                country_colors: country_colors.clone(),
+                current_owners: current_owners.clone(),
+                current_controllers: current_controllers.clone(),
+            },
             country_colors,
             current_owners,
             current_controllers,
@@ -845,6 +926,17 @@ impl OwnerTimelapse {
             event_index: 0,
             conflicts: HashMap::new(),
         }
+    }
+
+    /// Go back to the start date. The sorted events stay; only the running
+    /// state is restored.
+    fn rewind(&mut self) {
+        self.country_colors.clone_from(&self.initial.country_colors);
+        self.current_owners.clone_from(&self.initial.current_owners);
+        self.current_controllers
+            .clone_from(&self.initial.current_controllers);
+        self.conflicts.clear();
+        self.event_index = 0;
     }
 
     fn advance_to(&mut self, date: Eu4Date) {
@@ -983,6 +1075,14 @@ impl Timelapse {
         }
     }
 
+    fn rewind(&mut self) {
+        match self {
+            Timelapse::Political(x) => x.owners.rewind(),
+            Timelapse::Religion(x) => x.rewind(),
+            Timelapse::Battles(x) => x.rewind(),
+        }
+    }
+
     // The number of parts that color is data is divided into. Will be 2 if the
     // primary color and country color is the same.
     fn parts(&self) -> usize {
@@ -1117,6 +1217,13 @@ struct ReligionTimelapse {
     current_religions: Vec<ReligionIndex>,
     event_index: usize,
     events: Vec<ReligionEvent>,
+    initial: ReligionState,
+}
+
+#[derive(Clone)]
+struct ReligionState {
+    country_religions: HashMap<CountryTag, ReligionIndex>,
+    current_religions: Vec<ReligionIndex>,
 }
 
 impl ReligionTimelapse {
@@ -1251,6 +1358,10 @@ impl ReligionTimelapse {
         }
 
         Self {
+            initial: ReligionState {
+                country_religions: country_religions.clone(),
+                current_religions: current_religions.clone(),
+            },
             owners,
             current_religions,
             country_religions,
@@ -1259,6 +1370,15 @@ impl ReligionTimelapse {
             wasm: unsafe { std::mem::transmute::<&SaveFileImpl, &SaveFileImpl>(wasm) },
             event_index: 0,
         }
+    }
+
+    fn rewind(&mut self) {
+        self.owners.rewind();
+        self.country_religions
+            .clone_from(&self.initial.country_religions);
+        self.current_religions
+            .clone_from(&self.initial.current_religions);
+        self.event_index = 0;
     }
 
     fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
@@ -1370,10 +1490,24 @@ enum BattleEventKind {
     Battle { losses: i32 },
 }
 
+/// The shortest a battle's stripe stays on the map, in campaign days. At
+/// playback pace (a year a second) this is a quarter of a second.
+const BATTLE_FLASH_MIN_DAYS: i32 = 90;
+
+/// The longest a stripe stays after a jump forward, so a scrub across a
+/// century shows the battles of its last year and not all of them.
+const BATTLE_FLASH_MAX_DAYS: i32 = 365;
+
 struct BattleTimelapse {
     wasm: &'static SaveFileImpl,
     owners: OwnerTimelapse,
     current_losses: Vec<i32>,
+    /// Days after the start of the latest battle in each province, or
+    /// `i32::MIN` for a province that has seen none yet.
+    last_battle: Vec<i32>,
+    /// The date of the previous frame, if the cursor moved forward to reach
+    /// this one. A rewind clears it.
+    previous: Option<Eu4Date>,
     event_index: usize,
     events: Vec<BattleEvent>,
 }
@@ -1416,13 +1550,36 @@ impl BattleTimelapse {
         events.sort_by_key(|a| a.date);
 
         let current_losses = vec![0; owners.current_owners.len()];
+        let last_battle = vec![i32::MIN; owners.current_owners.len()];
         Self {
             owners,
             current_losses,
+            last_battle,
+            previous: None,
             events,
             wasm: unsafe { std::mem::transmute::<&SaveFileImpl, &SaveFileImpl>(wasm) },
             event_index: 0,
         }
+    }
+
+    fn rewind(&mut self) {
+        self.owners.rewind();
+        self.current_losses.fill(0);
+        self.last_battle.fill(i32::MIN);
+        self.previous = None;
+        self.event_index = 0;
+    }
+
+    /// How far back a battle can be and still stripe its province. A frame
+    /// that follows another covers at least the days between them, so no
+    /// battle falls between two frames unseen; the window is otherwise
+    /// bounded so a stripe reads as a flash at any pace.
+    fn flash_window(&self, date: Eu4Date) -> i32 {
+        let step = self
+            .previous
+            .map(|previous| previous.days_until(&date))
+            .unwrap_or(0);
+        step.clamp(BATTLE_FLASH_MIN_DAYS, BATTLE_FLASH_MAX_DAYS)
     }
 
     fn advance_to(&mut self, date: Eu4Date) -> Vec<u8> {
@@ -1442,17 +1599,22 @@ impl BattleTimelapse {
         let events = &remaining_events[..pos];
         self.event_index += pos;
 
-        let mut province_battles = Vec::with_capacity((events.len() / 2).min(8));
+        let start = self.wasm.query.save().game.start_date;
         for event in events {
             let ind = usize::from(event.province.as_u16());
 
             match event.kind {
                 BattleEventKind::Battle { losses } => {
-                    province_battles.push(event.province);
+                    self.last_battle[ind] = start.days_until(&event.date);
                     self.current_losses[ind] += losses;
                 }
             }
         }
+
+        // The stripe is a flash: a province keeps it only while its latest
+        // battle is within the window behind this frame.
+        let flash_since = start.days_until(&date) - self.flash_window(date);
+        self.previous = Some(date);
 
         let max_losses = self.current_losses.iter().max().copied().unwrap_or(0);
         let min_color = [203., 213., 225.];
@@ -1499,11 +1661,12 @@ impl BattleTimelapse {
             country_colors[offset..offset + 4].copy_from_slice(country_color);
         }
 
-        for ind in province_battles.iter().filter_map(|p| {
-            self.wasm
-                .province_id_to_color_index
-                .get(usize::from(p.as_u16()))
-        }) {
+        let flashing = self
+            .last_battle
+            .iter()
+            .zip(&self.wasm.province_id_to_color_index)
+            .filter(|(last, _)| **last >= flash_since);
+        for (_, ind) in flashing {
             let offset = usize::from(*ind) * 4;
             secondary[offset..offset + 4].copy_from_slice(&[15, 23, 42, 255]);
         }
@@ -1514,55 +1677,42 @@ impl BattleTimelapse {
 
 #[wasm_bindgen]
 #[derive(Debug)]
-pub struct TimelapseIter {
+pub struct TimelineCursor {
     timelapse: Timelapse,
-    save_start: Eu4Date,
     start: Eu4Date,
     current: Eu4Date,
     end: Eu4Date,
-    interval: Interval,
 }
 
 #[wasm_bindgen]
-impl TimelapseIter {
-    #[wasm_bindgen]
-    pub fn next(&mut self) -> Option<TimelapseItem> {
-        use std::cmp::Ordering::{Equal, Greater, Less};
-        let next_date = match (self.current.cmp(&self.start), self.current.cmp(&self.end)) {
-            (_, Equal | Greater) => return None,
-            (Less, _) => self.start,
-            _ => match self.interval {
-                Interval::Year => self.current.add_days(365),
-                Interval::Month => {
-                    if self.current.month() + 1 > 12 {
-                        Eu4Date::from_ymd(self.current.year() + 1, 1, self.current.day().min(28))
-                    } else {
-                        Eu4Date::from_ymd(
-                            self.current.year(),
-                            self.current.month() + 1,
-                            self.current.day(),
-                        )
-                    }
-                }
-                Interval::Week => self.current.add_days(7),
-                Interval::Day => self.current.add_days(1),
-            },
+impl TimelineCursor {
+    fn new(save: &SaveFileImpl, kind: TimelineKind) -> Self {
+        let start = save.query.save().game.start_date;
+        let end = save.query.save().meta.date;
+        let timelapse = match kind {
+            TimelineKind::Political => Timelapse::Political(PoliticalTimelapse::new(save)),
+            TimelineKind::Religion => Timelapse::Religion(ReligionTimelapse::new(save)),
+            TimelineKind::Battles => Timelapse::Battles(BattleTimelapse::new(save)),
         };
+        Self {
+            timelapse,
+            start,
+            current: start,
+            end,
+        }
+    }
 
-        let next_date = if next_date > self.end {
-            self.end
-        } else {
-            next_date
-        };
-
+    pub fn advance_to(&mut self, day: i32) -> TimelapseItem {
+        let next_date = self.start.add_days(day).clamp(self.start, self.end);
+        if next_date < self.current {
+            self.timelapse.rewind();
+        }
         let data = self.timelapse.advance_to(next_date);
-        let date = MapDate {
-            days: self.save_start.days_until(&next_date),
-            date: next_date,
-        };
-
         self.current = next_date;
-        Some(TimelapseItem { date, data })
+        TimelapseItem {
+            days: self.start.days_until(&next_date),
+            data,
+        }
     }
 
     #[wasm_bindgen]
@@ -1574,14 +1724,16 @@ impl TimelapseIter {
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct TimelapseItem {
-    date: MapDate,
+    /// Days after the timeline start, after the cursor clamped the request.
+    /// The date itself is derived on the JS side from the same calendar.
+    days: i32,
     data: Vec<u8>,
 }
 
 impl std::fmt::Debug for TimelapseItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TimelapseItem")
-            .field("date", &self.date)
+            .field("days", &self.days)
             .field("data_len", &self.data.len())
             .finish()
     }
@@ -1589,9 +1741,9 @@ impl std::fmt::Debug for TimelapseItem {
 
 #[wasm_bindgen]
 impl TimelapseItem {
-    #[wasm_bindgen]
-    pub fn date(&self) -> Result<Ts<MapDate>, JsError> {
-        self.date.clone().into_ts().map_err(JsError::from)
+    #[wasm_bindgen(getter)]
+    pub fn days(&self) -> i32 {
+        self.days
     }
 
     #[wasm_bindgen]

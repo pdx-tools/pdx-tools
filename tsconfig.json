@@ -4,6 +4,7 @@
     {"path": "dev/scripts"},
     {"path": "src/app"},
     {"path": "src/map"},
+    {"path": "src/timelapse"},
     {"path": "src/pdx-map-playground"}
   ]
 }
