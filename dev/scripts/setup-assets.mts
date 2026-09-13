@@ -375,8 +375,8 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
   // Generate imports for each version (matching original bash format)
   for (const version of versions) {
     const minor = version.split(".")[1];
-    content += `      import provinces1${minor} from "../../../../assets/game/eu4/${version}/map/provinces-1.webp";
-      import provinces2${minor} from "../../../../assets/game/eu4/${version}/map/provinces-2.webp";
+    content += `      import provinceLocations1${minor} from "../../../../assets/game/eu4/${version}/map/provinces-1.r16.zst?url";
+      import provinceLocations2${minor} from "../../../../assets/game/eu4/${version}/map/provinces-2.r16.zst?url";
       import colorMap${minor} from "../../../../assets/game/eu4/${version}/map/colormap_summer.webp";
       import sea${minor} from "../../../../assets/game/eu4/${version}/map/colormap_water.webp";
       import normal${minor} from "../../../../assets/game/eu4/${version}/map/world_normal.webp";
@@ -391,8 +391,7 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
       import surfaceNormalRock${minor} from "../../../../assets/game/eu4/${version}/map/atlas_normal0_rock.webp";
       import surfaceNormalGreen${minor} from "../../../../assets/game/eu4/${version}/map/atlas_normal0_green.webp";
       import heightmap${minor} from "../../../../assets/game/eu4/${version}/map/heightmap.webp";
-      import provincesUniqueColor${minor} from "../../../../assets/game/eu4/${version}/map/color-order.bin?url";
-      import provincesUniqueIndex${minor} from "../../../../assets/game/eu4/${version}/map/color-index.bin?url";
+      import provinceIdToColorIndex${minor} from "../../../../assets/game/eu4/${version}/map/color-index.bin?url";
       import data${minor} from "../../../../assets/game/eu4/${version}/data.bin?url";
 `;
   }
@@ -421,8 +420,8 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
   for (const version of versions) {
     const minor = version.split(".")[1];
     content += `    case "${version}": return {\n`;
-    content += `      provinces1: provinces1${minor},\n`;
-    content += `      provinces2: provinces2${minor},\n`;
+    content += `      provinceLocations1: provinceLocations1${minor},\n`;
+    content += `      provinceLocations2: provinceLocations2${minor},\n`;
     content += `      colorMap: colorMap${minor},\n`;
     content += `      sea: sea${minor},\n`;
     content += `      normal: normal${minor},\n`;
@@ -437,8 +436,7 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
     content += `      surfaceNormalRock: surfaceNormalRock${minor},\n`;
     content += `      surfaceNormalGreen: surfaceNormalGreen${minor},\n`;
     content += `      heightmap: heightmap${minor},\n`;
-    content += `      provincesUniqueColor: provincesUniqueColor${minor},\n`;
-    content += `      provincesUniqueIndex: provincesUniqueIndex${minor},\n`;
+    content += `      provinceIdToColorIndex: provinceIdToColorIndex${minor},\n`;
     content += "    }\n";
   }
   content += "}}\n";
