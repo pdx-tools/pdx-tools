@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { difficultySort, difficultyText } from "@/lib/difficulty";
 import type { Achievement } from "@/services/appApi";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
@@ -28,12 +28,12 @@ const columns = [
         </div>
       </div>
     ),
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Achievement" />,
   }),
 
   columnHelper.accessor("difficulty", {
-    sortingFn: difficultySort,
+    sortFn: difficultySort,
     cell: (info) => difficultyText(info.getValue()),
     header: ({ column }) => <Table.ColumnHeader column={column} title="Difficulty" />,
   }),

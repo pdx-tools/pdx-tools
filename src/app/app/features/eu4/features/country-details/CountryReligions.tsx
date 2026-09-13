@@ -8,7 +8,7 @@ import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import type { RebelReligion } from "@/wasm/wasm_eu4";
@@ -28,7 +28,7 @@ const columnHelper = createColumnHelper<CountryReligion>();
 
 const columns = [
   columnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
     cell: ({ row }) => (
       <Tooltip>
@@ -45,12 +45,12 @@ const columns = [
     header: "Provinces",
     columns: [
       columnHelper.accessor("provinces", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: "Value",
         cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
       }),
       columnHelper.accessor("provinces_percent", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
         cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
       }),
@@ -61,12 +61,12 @@ const columns = [
     header: "Development",
     columns: [
       columnHelper.accessor("development", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: "Value",
         cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
       }),
       columnHelper.accessor("development_percent", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
         cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
       }),

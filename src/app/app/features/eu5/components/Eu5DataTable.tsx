@@ -1,23 +1,19 @@
 import React, { useId, useMemo, useState } from "react";
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
 import type {
-  Cell,
-  ColumnDef,
-  Header,
-  PaginationState,
-  SortingState,
-  Table as TableInstance,
-  TableOptions,
-} from "@tanstack/react-table";
+  AppCell,
+  AppColumn,
+  AppColumnDef,
+  AppHeader,
+  AppTable,
+  AppTableOptions,
+  RowData,
+} from "@/lib/tanstack-table";
+import { appTableFeatures } from "@/lib/tanstack-table";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
+import { DropdownMenu } from "@/components/DropdownMenu";
 import { focusRing, focusRingWithin } from "./focusRing";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -132,6 +128,14 @@ type ToolbarConfig =
       summary?: boolean;
     };
 
+const DEFAULT_TOOLBAR_CONFIG: ToolbarConfig = {
+  search: false,
+  sort: false,
+  columns: true,
+  density: false,
+  summary: false,
+};
+
 type PaginationConfig =
   | boolean
   | {
@@ -139,11 +143,13 @@ type PaginationConfig =
       pageSizeOptions?: readonly PageSize[];
     };
 
-type SummaryRenderer<TData> = React.ReactNode | ((table: TableInstance<TData>) => React.ReactNode);
+type SummaryRenderer<TData extends RowData> =
+  | React.ReactNode
+  | ((table: AppTable<TData>) => React.ReactNode);
 
-type Eu5DataTableOptions<TData> = Partial<
+type Eu5DataTableOptions<TData extends RowData> = Partial<
   Pick<
-    TableOptions<TData>,
+    AppTableOptions<TData>,
     | "debugAll"
     | "debugCells"
     | "debugColumns"
@@ -152,17 +158,15 @@ type Eu5DataTableOptions<TData> = Partial<
     | "debugTable"
     | "enableMultiSort"
     | "enableSorting"
-    | "filterFns"
     | "globalFilterFn"
     | "getRowId"
     | "isMultiSortEvent"
     | "maxMultiSortColCount"
-    | "sortingFns"
   >
 >;
 
-export type Eu5DataTableProps<TData extends object> = {
-  columns: ColumnDef<TData, any>[];
+export type Eu5DataTableProps<TData extends RowData> = {
+  columns: AppColumnDef<TData, any>[];
   data: TData[];
   className?: string;
   pagination?: PaginationConfig;
@@ -199,7 +203,7 @@ type ResolvedToolbarConfig = {
   summary: boolean;
 };
 
-export function Eu5DataTable<TData extends object>({
+export function Eu5DataTable<TData extends RowData>({
   data,
   columns,
   className,
@@ -208,7 +212,7 @@ export function Eu5DataTable<TData extends object>({
   title,
   titleActions,
   totalCount,
-  toolbar,
+  toolbar = DEFAULT_TOOLBAR_CONFIG,
   summary,
   filters,
   onRemoveFilter,
@@ -241,21 +245,18 @@ export function Eu5DataTable<TData extends object>({
     [sorting, globalFilter, paginationConfig.enabled, paginationState],
   );
 
-  const table = useReactTable({
+  const table = useTable({
     ...tableOptions,
     data,
-    columns,
+    columns: columns as unknown as AppColumnDef<TData, unknown>[],
+    features: appTableFeatures,
     state,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     enableMultiSort: tableOptions?.enableMultiSort ?? true,
     ...(paginationConfig.enabled
       ? {
           onPaginationChange: setPaginationState,
-          getPaginationRowModel: getPaginationRowModel(),
         }
       : {}),
   });
@@ -294,7 +295,7 @@ export function Eu5DataTable<TData extends object>({
           search={toolbarConfig.search ? globalFilter : null}
           onSearchChange={setGlobalFilter}
           sortCount={sorting.length}
-          columnCount={table.getAllLeafColumns().length}
+          table={table}
         />
       )}
 
@@ -310,7 +311,7 @@ export function Eu5DataTable<TData extends object>({
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={table.getAllLeafColumns().length}
+                  colSpan={table.getVisibleLeafColumns().length}
                   className="h-24 text-center font-game-ui text-[12px] text-game-ink-500"
                 >
                   No results.
@@ -321,7 +322,7 @@ export function Eu5DataTable<TData extends object>({
                 const inFilter = isRowInFilter?.(row.original) ?? false;
                 const separator =
                   rowSeparator?.(row.original, idx, { sorted: sorting.length > 0 }) ?? null;
-                const colCount = table.getAllLeafColumns().length;
+                const colCount = table.getVisibleLeafColumns().length;
                 return (
                   <React.Fragment key={row.id}>
                     {separator !== null && (
@@ -388,7 +389,7 @@ export function Eu5DataTable<TData extends object>({
             setStoredPageSize(s);
             setPaginationState((p) => ({ ...p, pageSize: s, pageIndex: 0 }));
           }}
-          pageIndex={table.getState().pagination.pageIndex}
+          pageIndex={table.state.pagination.pageIndex}
           pageCount={table.getPageCount()}
           totalRows={filteredCount}
           canPrev={table.getCanPreviousPage()}
@@ -482,19 +483,22 @@ function TitleBand({
   );
 }
 
-function ToolbarBand({
+function ToolbarBand<TData extends RowData>({
   config,
   search,
   onSearchChange,
   sortCount,
-  columnCount,
+  table,
 }: {
+  table: AppTable<TData>;
   config: ResolvedToolbarConfig;
   search: string | null;
   onSearchChange: (v: string) => void;
   sortCount: number;
-  columnCount: number;
 }) {
+  const allColumns = table.getAllLeafColumns();
+  const visibleColumnCount = table.getVisibleLeafColumns().length;
+
   return (
     <div className="flex items-center gap-1 border-b border-solid border-game-line bg-game-panel-2 px-3 py-1.5">
       {search !== null && (
@@ -518,7 +522,11 @@ function ToolbarBand({
         <div className="mx-1 h-[18px] w-px bg-game-line-strong" />
       )}
       {config.columns && (
-        <ToolButton glyph="▦" label="Columns" count={`${columnCount}/${columnCount}`} />
+        <ColumnVisibilityMenu
+          table={table}
+          visibleColumnCount={visibleColumnCount}
+          columnCount={allColumns.length}
+        />
       )}
       {config.sort && (
         <ToolButton glyph="⇅" label="Sort" count={sortCount > 0 ? String(sortCount) : undefined} />
@@ -526,6 +534,49 @@ function ToolbarBand({
       {config.density && <ToolButton glyph="▤" label="Density" />}
       {config.summary && <ToolButton glyph="Σ" label="Summary" />}
     </div>
+  );
+}
+
+function ColumnVisibilityMenu<TData extends RowData>({
+  table,
+  visibleColumnCount,
+  columnCount,
+}: {
+  table: AppTable<TData>;
+  visibleColumnCount: number;
+  columnCount: number;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Trigger asChild>
+        <button type="button" className={toolBtnClass} aria-label="Columns" aria-haspopup="menu">
+          <span className="font-game-num text-[12px] text-game-ink-500">▦</span>
+          <span>Columns</span>
+          <span className="rounded-plate bg-game-accent-soft px-1 py-px font-game-num text-[10px] text-game-accent-100">
+            {visibleColumnCount}/{columnCount}
+          </span>
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content
+        align="end"
+        className="min-w-48 border-game-line-strong bg-game-panel p-1 font-game-ui text-game-ink-100"
+      >
+        <DropdownMenu.Label className="px-2 py-1.5 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase">
+          Columns
+        </DropdownMenu.Label>
+        {table.getAllLeafColumns().map((column) => (
+          <DropdownMenu.CheckboxItem
+            key={column.id}
+            checked={column.getIsVisible()}
+            disabled={!column.getCanHide()}
+            onCheckedChange={(checked) => column.toggleVisibility(checked === true)}
+            className="text-game-ink-200 rounded-control px-2 py-1.5 pl-8 text-[12px] focus:bg-game-panel-hover focus:text-game-ink-100"
+          >
+            {columnVisibilityLabel(column)}
+          </DropdownMenu.CheckboxItem>
+        ))}
+      </DropdownMenu.Content>
+    </DropdownMenu>
   );
 }
 
@@ -541,6 +592,13 @@ function ToolButton({ glyph, label, count }: { glyph: string; label: string; cou
       )}
     </button>
   );
+}
+
+function columnVisibilityLabel<TData extends RowData>(column: AppColumn<TData>): string {
+  const headerLabel = column.columnDef.meta?.eu5?.headerLabel;
+  if (headerLabel) return headerLabel;
+
+  return typeof column.columnDef.header === "string" ? column.columnDef.header : column.id;
 }
 
 function FilterBand({
@@ -596,7 +654,7 @@ function FilterBand({
   );
 }
 
-function ColumnGroup<TData>({ table }: { table: TableInstance<TData> }) {
+function ColumnGroup<TData extends RowData>({ table }: { table: AppTable<TData> }) {
   return (
     <colgroup>
       {table.getVisibleLeafColumns().map((column) => {
@@ -607,7 +665,7 @@ function ColumnGroup<TData>({ table }: { table: TableInstance<TData> }) {
   );
 }
 
-function HeaderBand<TData>({ table }: { table: TableInstance<TData> }) {
+function HeaderBand<TData extends RowData>({ table }: { table: AppTable<TData> }) {
   return (
     <thead className="sticky top-0 z-2 bg-game-panel-2">
       {table.getHeaderGroups().map((group) => (
@@ -621,14 +679,14 @@ function HeaderBand<TData>({ table }: { table: TableInstance<TData> }) {
   );
 }
 
-function HeaderCell<TData>({ header }: { header: Header<TData, unknown> }) {
+function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData> }) {
   const meta = header.column.columnDef.meta?.eu5;
   const variant: Eu5DataTableColumnVariant = meta?.variant ?? "default";
   const isPlaceholder = header.isPlaceholder;
   const canSort = header.column.getCanSort();
   const sorted = header.column.getIsSorted();
   const sortIndex = header.column.getSortIndex();
-  const showRank = sorted !== false && header.column.getSortingFn() && sortIndex >= 0;
+  const showRank = sorted !== false && header.column.getSortFn() && sortIndex >= 0;
   const align = meta?.align ?? alignForVariant(variant);
 
   const headerDef = header.column.columnDef.header;
@@ -706,7 +764,7 @@ function HeaderCell<TData>({ header }: { header: Header<TData, unknown> }) {
   );
 }
 
-function BodyCell<TData>({ cell }: { cell: Cell<TData, unknown> }) {
+function BodyCell<TData extends RowData>({ cell }: { cell: AppCell<TData> }) {
   const meta = cell.column.columnDef.meta?.eu5;
   const variant: Eu5DataTableColumnVariant = meta?.variant ?? "default";
   const align = meta?.align ?? alignForVariant(variant);

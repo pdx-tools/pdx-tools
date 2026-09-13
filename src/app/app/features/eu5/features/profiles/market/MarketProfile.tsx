@@ -12,7 +12,7 @@ import { LocationDistributionChart } from "../../insights/LocationDistributionCh
 import type { LocationDistribution } from "@/wasm/wasm_eu5";
 import { StatPlate } from "../country/EconomyTab";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 
 export function MarketProfile({ marketId }: { marketId: number }) {
   const profileTab = useProfileTab("market");
@@ -143,21 +143,21 @@ function MarketMembers({
     () => [
       membersColumnHelper.accessor((row) => row.country.country.name, {
         id: "country",
-        sortingFn: "text",
+        sortFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Country", variant: "pin" }),
         cell: ({ row }) => (
           <CountryLink country={row.original.country} aligned backLabel={marketName} />
         ),
       }),
       membersColumnHelper.accessor("tradeAdvantage", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Advantage", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
         ),
       }),
       membersColumnHelper.accessor("tradeCapacity", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Capacity", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>

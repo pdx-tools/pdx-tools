@@ -9,7 +9,7 @@ import { TcInvestmentAvatar, BuildingAvatar, Flag } from "@/features/eu4/compone
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Tooltip } from "@/components/Tooltip";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { DataTable } from "@/components/DataTable";
 
 interface ProvinceDetailsProps {

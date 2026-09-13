@@ -6,7 +6,7 @@ import { formatInt } from "@/lib/format";
 import { Flag } from "@/features/eu4/components/avatars";
 import { createCsv } from "@/lib/csv";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { SheetExpansion } from "../../../components/SheetExpansion";
@@ -31,7 +31,7 @@ const columns = [
   }),
 
   columnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
@@ -40,7 +40,7 @@ const columns = [
     header: "Battle Losses",
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`${type}Battle`, {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -52,7 +52,7 @@ const columns = [
     header: "Attrition Losses",
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`${type}Attrition`, {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -62,14 +62,14 @@ const columns = [
 
   columnHelper.accessor((x) => (x.landTotalAttrition / x.landTotal) * 100, {
     id: "attrition",
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="% from Attrition" />,
     meta: { className: "text-right" },
     cell: (info) => (isNaN(info.getValue()) ? "0%" : formatInt(info.getValue()) + "%"),
   }),
 
   columnHelper.accessor("landTotal", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Total Losses" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),

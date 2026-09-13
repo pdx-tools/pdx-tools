@@ -7,8 +7,8 @@ import { useTagFilter } from "../../store";
 import type { CountryHealth } from "../../types/models";
 import { Flag } from "../../components/avatars";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
-import type { SortingFn } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
+import type { AppSortFn } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import type { HealthDatum, LeaderDatum } from "@/wasm/wasm_eu4";
 import { GameIconSprite, iconSpriteTitle } from "../../components/icons";
@@ -19,19 +19,19 @@ import { cx } from "class-variance-authority";
 import { MoraleText } from "../../components/MoraleText";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const healthSort: SortingFn<any> = (rowA, rowB, column) =>
+const healthSort: AppSortFn<any> = (rowA, rowB, column) =>
   rowA.getValue<HealthDatum>(column).value - rowB.getValue<HealthDatum>(column).value;
 
 const columnHelper = createColumnHelper<CountryHealth>();
 const columns = [
   columnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
   }),
 
   columnHelper.accessor("coreIncome", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -47,7 +47,7 @@ const columns = [
   }),
 
   columnHelper.accessor("treasuryBalance", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -63,7 +63,7 @@ const columns = [
   }),
 
   columnHelper.accessor("development", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -79,7 +79,7 @@ const columns = [
   }),
 
   columnHelper.accessor("buildings", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Buildings" />,
     meta: {
       className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
@@ -88,7 +88,7 @@ const columns = [
   }),
 
   columnHelper.accessor("inflation", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -104,7 +104,7 @@ const columns = [
   }),
 
   columnHelper.accessor("bestGeneral", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -127,7 +127,7 @@ const columns = [
   }),
 
   columnHelper.accessor("armyTradition", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -142,7 +142,7 @@ const columns = [
   }),
 
   columnHelper.accessor("landMorale", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -158,7 +158,7 @@ const columns = [
   }),
 
   columnHelper.accessor("forceStrength", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -174,7 +174,7 @@ const columns = [
   }),
 
   columnHelper.accessor("netManpower", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -190,7 +190,7 @@ const columns = [
   }),
 
   columnHelper.accessor("maxManpower", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -206,7 +206,7 @@ const columns = [
   }),
 
   columnHelper.accessor("professionalism", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -222,7 +222,7 @@ const columns = [
   }),
 
   columnHelper.accessor("bestAdmiral", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -245,7 +245,7 @@ const columns = [
   }),
 
   columnHelper.accessor("navalMorale", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -261,7 +261,7 @@ const columns = [
   }),
 
   columnHelper.accessor("navyTradition", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -276,7 +276,7 @@ const columns = [
   }),
 
   columnHelper.accessor("ships", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -292,7 +292,7 @@ const columns = [
   }),
 
   columnHelper.accessor("stability", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -307,7 +307,7 @@ const columns = [
   }),
 
   columnHelper.accessor("technology", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Technology" />,
     meta: {
       className: (x: HealthDatum) => cx("no-break text-right", colorToClass(x.color)),
@@ -319,7 +319,7 @@ const columns = [
   }),
 
   columnHelper.accessor("ideas", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -334,7 +334,7 @@ const columns = [
   }),
 
   columnHelper.accessor("corruption", {
-    sortingFn: healthSort,
+    sortFn: healthSort,
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -452,7 +452,8 @@ export const HealthGrid = () => {
         enableColumnReordering={true}
         initialState={{
           columnPinning: {
-            left: ["name"],
+            start: ["name"],
+            end: [],
           },
         }}
       />

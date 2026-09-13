@@ -3,25 +3,21 @@ import type { ComponentProps } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { Table } from "./Table";
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import type {
-  Column,
-  ColumnDef,
   ColumnFiltersState,
   SortingState,
-  TableOptions,
   ColumnOrderState,
-  AccessorKeyColumnDefBase,
-  Cell,
   PaginationState,
 } from "@tanstack/react-table";
+import type {
+  AppCell,
+  AppColumn,
+  AppColumnDef,
+  AppTableOptions,
+  RowData,
+} from "@/lib/tanstack-table";
+import { appTableFeatures } from "@/lib/tanstack-table";
 import { Button } from "./Button";
 import { cx } from "class-variance-authority";
 import { Input } from "./Input";
@@ -55,9 +51,9 @@ const usePaginationStore = create<PaginationSettings>()(
 const usePageSize = () => usePaginationStore((state) => state.pageSize);
 const usePaginationActions = () => usePaginationStore((state) => state.setPageSize);
 
-type DataTableProps<TData> = {
+type DataTableProps<TData extends RowData> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  columns: ColumnDef<TData, any>[];
+  columns: AppColumnDef<TData, any>[];
   data: TData[];
   pagination?: boolean;
   summary?: React.ReactNode;
@@ -65,10 +61,10 @@ type DataTableProps<TData> = {
   className?: string;
   enableColumnReordering?: boolean;
   pageSizeOptions?: readonly number[];
-} & Partial<TableOptions<TData>> &
+} & Omit<Partial<AppTableOptions<TData>>, "columns" | "data"> &
   ComponentProps<typeof Table>;
 
-export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
+export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>({
   data,
   columns,
   pagination,
@@ -84,7 +80,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(
-    columns.map((col) => String((col as AccessorKeyColumnDefBase<TData, void>).accessorKey)),
+    columns.map((col) => String((col as { accessorKey?: string }).accessorKey)),
   );
 
   const paginationSelectId = useId();
@@ -106,15 +102,12 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
     [sorting, columnFilters, pagination, paginationState, columnOrder, enableColumnReordering],
   );
 
-  const table = useReactTable({
+  const table = useTable({
     data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
+    columns: columns as unknown as AppColumnDef<TData, unknown>[],
+    features: appTableFeatures,
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
     onColumnOrderChange: enableColumnReordering ? setColumnOrder : undefined,
     manualPagination: !pagination,
     onPaginationChange: pagination ? setPaginationState : undefined,
@@ -276,7 +269,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
               Rows per page:
             </label>
             <Select
-              value={String(table.getState().pagination.pageSize)}
+              value={String(table.state.pagination.pageSize)}
               onValueChange={(value) => {
                 const newSize = Number(value) as PageSize;
                 table.setPageSize(newSize);
@@ -308,7 +301,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
             <div className="flex items-center justify-center text-sm font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+              Page {table.state.pagination.pageIndex + 1} of {table.getPageCount()}
             </div>
             <Button
               shape="square"
@@ -325,7 +318,7 @@ export function DataTable<TData extends object & Partial<{ rowSpan: number }>>({
   );
 }
 
-function cellClassName<TData>(cell: Cell<TData, void>): string | undefined {
+function cellClassName<TData extends RowData>(cell: AppCell<TData, void>): string | undefined {
   let cz = "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -340,7 +333,7 @@ function cellClassName<TData>(cell: Cell<TData, void>): string | undefined {
   return cz;
 }
 
-function Filter<TData>({ column }: { column: Column<TData, unknown> }) {
+function Filter<TData extends RowData>({ column }: { column: AppColumn<TData> }) {
   const columnFilterValue = column.getFilterValue();
   return (
     <Input

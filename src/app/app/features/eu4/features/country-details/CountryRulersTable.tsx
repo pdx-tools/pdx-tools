@@ -1,7 +1,7 @@
 import type { FailedHeir, RunningMonarch } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
 import { Flag, PersonalityAvatar } from "@/features/eu4/components/avatars";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { DataTable } from "@/components/DataTable";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { SheetExpansion } from "../../components/SheetExpansion";

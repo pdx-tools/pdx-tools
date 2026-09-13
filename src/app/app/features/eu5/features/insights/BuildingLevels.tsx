@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
@@ -184,7 +184,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
     () => [
       topLocColHelper.accessor("location", {
         id: "location",
-        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
+        sortFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
@@ -193,7 +193,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
       }),
       topLocColHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
@@ -201,7 +201,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
         ),
       }),
       topLocColHelper.accessor("levels", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Levels", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
@@ -230,7 +230,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
     () => [
       foreignLocColHelper.accessor("location", {
         id: "location",
-        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
+        sortFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const r = row.original;
@@ -239,7 +239,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
       }),
       foreignLocColHelper.accessor("locationOwner", {
         id: "locationOwner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.locationOwner.country.name.localeCompare(
             b.original.locationOwner.country.name,
           ),
@@ -250,7 +250,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
       }),
       foreignLocColHelper.accessor("foreignOwner", {
         id: "foreignOwner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.foreignOwner.country.name.localeCompare(b.original.foreignOwner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Building Owner" }),
         cell: ({ row }) => (
@@ -259,12 +259,12 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
       }),
       foreignLocColHelper.accessor((row) => row.building.name, {
         id: "building",
-        sortingFn: "text",
+        sortFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Type" }),
         cell: (info) => info.getValue(),
       }),
       foreignLocColHelper.accessor("foreignLevels", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Foreign Lvls", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
@@ -293,7 +293,7 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
     () => [
       foreignOwnerCellColHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner", variant: "pin" }),
         cell: ({ row }) => (
@@ -302,19 +302,19 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
       }),
       foreignOwnerCellColHelper.accessor((row) => row.building.name, {
         id: "building",
-        sortingFn: "text",
+        sortFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Type" }),
         cell: (info) => info.getValue(),
       }),
       foreignOwnerCellColHelper.accessor("levels", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Levels", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
         ),
       }),
       foreignOwnerCellColHelper.accessor("buildingCount", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Buildings", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>

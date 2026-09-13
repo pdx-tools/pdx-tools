@@ -5,7 +5,7 @@ import { Flag } from "@/features/eu4/components/avatars";
 import { useEu4Worker } from "@/features/eu4/worker";
 import type { BattleInfo, WarParticipant } from "../../worker/module";
 import { Tooltip } from "@/components/Tooltip";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Divider } from "@/components/Divider";
@@ -59,13 +59,13 @@ const columnHelper = createColumnHelper<WarParticipant>();
 
 const participantColumns = [
   columnHelper.accessor("country.name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => <Flag tag={row.original.country.tag} name={row.original.country.name} />,
   }),
 
   columnHelper.accessor("participation", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Participation" />,
     meta: { className: "text-right" },
     cell: ({ row }) => (
@@ -77,14 +77,14 @@ const participantColumns = [
   }),
 
   columnHelper.accessor("joined", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Joined" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   columnHelper.accessor("exited", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Exited" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
@@ -94,7 +94,7 @@ const participantColumns = [
     header: "Battle Casualties",
     columns: unitTypes.map(([title, column, _c]) =>
       columnHelper.accessor(`losses.${column}`, {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right no-break" },
         cell: (info) => formatInt(info.getValue()),
@@ -106,7 +106,7 @@ const participantColumns = [
     header: "Attrition Casualties",
     columns: unitTypes.map(([title, _c, column]) =>
       columnHelper.accessor(`losses.${column}`, {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right no-break" },
         cell: (info) => formatInt(info.getValue()),
@@ -118,14 +118,14 @@ const participantColumns = [
 const battleColumnHelper = createColumnHelper<BattleInfo>();
 const landColumns = [
   battleColumnHelper.accessor("date", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   battleColumnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: "Location",
   }),
 
@@ -148,14 +148,14 @@ const landColumns = [
   }),
 
   battleColumnHelper.accessor("forces", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Forces" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
   battleColumnHelper.accessor("losses", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
@@ -178,28 +178,28 @@ const landColumns = [
       }),
 
       battleColumnHelper.accessor("attacker.infantry", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Inf" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.cavalry", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Cav" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.artillery", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Art" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.losses", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -224,28 +224,28 @@ const landColumns = [
       }),
 
       battleColumnHelper.accessor("defender.infantry", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Inf" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.cavalry", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Cav" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.artillery", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Art" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.losses", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -256,14 +256,14 @@ const landColumns = [
 
 const navyColumns = [
   battleColumnHelper.accessor("date", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   battleColumnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: "Location",
   }),
 
@@ -286,14 +286,14 @@ const navyColumns = [
   }),
 
   battleColumnHelper.accessor("forces", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Forces" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
   battleColumnHelper.accessor("losses", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
@@ -316,35 +316,35 @@ const navyColumns = [
       }),
 
       battleColumnHelper.accessor("attacker.heavy_ship", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Heavy" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.light_ship", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Light" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.galley", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Galley" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.transport", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Trnspt" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("attacker.losses", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -369,35 +369,35 @@ const navyColumns = [
       }),
 
       battleColumnHelper.accessor("defender.heavy_ship", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Heavy" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.light_ship", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Light" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.galley", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Galley" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.transport", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Trnspt" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       battleColumnHelper.accessor("defender.losses", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Losses" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),

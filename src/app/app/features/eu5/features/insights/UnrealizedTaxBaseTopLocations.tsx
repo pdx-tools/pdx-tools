@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type { UnrealizedTaxBaseTopLocation } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -18,7 +18,7 @@ export function UnrealizedTaxBaseTopLocations({
     () => [
       columnHelper.accessor("location", {
         id: "location",
-        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
+        sortFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
@@ -26,21 +26,21 @@ export function UnrealizedTaxBaseTopLocations({
         },
       }),
       columnHelper.accessor("taxBase", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Tax Base", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("wealth", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Wealth", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("unrealizedTaxBase", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Gap", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
@@ -48,21 +48,21 @@ export function UnrealizedTaxBaseTopLocations({
       }),
       columnHelper.accessor((row) => (row.wealth > 0 ? row.taxBase / row.wealth : 0), {
         id: "realization",
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Realization", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("development", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("control", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
@@ -70,7 +70,7 @@ export function UnrealizedTaxBaseTopLocations({
       }),
       columnHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
@@ -78,7 +78,7 @@ export function UnrealizedTaxBaseTopLocations({
         ),
       }),
       columnHelper.accessor("population", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>

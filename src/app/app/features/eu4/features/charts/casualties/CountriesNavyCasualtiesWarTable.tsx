@@ -5,7 +5,7 @@ import { formatFloat, formatInt } from "@/lib/format";
 import type { SingleCountryWarCasualties } from "@/features/eu4/worker/module";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import type { Losses } from "@/features/eu4/utils/losses";
@@ -25,26 +25,26 @@ const unitTypes = [
 const columnHelper = createColumnHelper<SingleCountryWarCasualties>();
 const columns = [
   columnHelper.accessor("war", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="War" />,
   }),
 
   columnHelper.accessor("start", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Start" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   columnHelper.accessor("end", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="End" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   columnHelper.accessor("participation", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Participation" />,
     meta: { className: "text-right" },
     cell: ({ row }) => (
@@ -59,7 +59,7 @@ const columns = [
     header: "Battle Losses",
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`losses.${type}Battle`, {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -71,7 +71,7 @@ const columns = [
     header: "Attrition Losses",
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`losses.${type}Attrition`, {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -83,7 +83,7 @@ const columns = [
     header: "Losses from Captured Ships",
     columns: unitTypes.map(([title, type]) =>
       columnHelper.accessor(`losses.${type}Capture`, {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={title} />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -93,14 +93,14 @@ const columns = [
 
   columnHelper.accessor((x) => (x.losses.navyTotalAttrition / x.losses.navyTotal) * 100, {
     id: "attrition",
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="% from Attrition" />,
     meta: { className: "text-right" },
     cell: (info) => (isNaN(info.getValue()) ? "0%" : formatInt(info.getValue()) + "%"),
   }),
 
   columnHelper.accessor("losses.navyTotal", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Total Losses" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),

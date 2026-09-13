@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type { MarketProductionLocationSummary } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -18,7 +18,7 @@ export function MarketProductionLocations({
     () => [
       columnHelper.accessor("location", {
         id: "location",
-        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
+        sortFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
@@ -27,20 +27,20 @@ export function MarketProductionLocations({
       }),
       columnHelper.accessor("rawMaterial", {
         id: "rawMaterial",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           (a.original.rawMaterial?.name ?? "").localeCompare(b.original.rawMaterial?.name ?? ""),
         meta: Eu5DataTable.meta({ headerLabel: "Good" }),
         cell: (info) => info.getValue()?.name ?? "—",
       }),
       columnHelper.accessor("rgoLevel", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "RGO", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("marketAccess", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Access", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 0)}%`}</Eu5DataTable.NumericCell>
@@ -48,7 +48,7 @@ export function MarketProductionLocations({
       }),
       columnHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
@@ -56,14 +56,14 @@ export function MarketProductionLocations({
         ),
       }),
       columnHelper.accessor("development", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Dev", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("population", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
