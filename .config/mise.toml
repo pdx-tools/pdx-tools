@@ -5,7 +5,7 @@
 "github:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
 "github:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
 "github:llvm/llvm-project" = { version = "llvmorg-19.1.7", matching = "LLVM-", strip_components = 1, bin_path = "bin", os = ["macos"] }
-"github:pnpm/pnpm" = { version = "11.4.0" }
+"github:pnpm/pnpm" = { version = "12.4.1" }
 "github:rclone/rclone" = { version = "1.70.3" }
 "github:rustwasm/wasm-bindgen" = { version = "0.2.118", extract_all = "true" }
 "github:WebAssembly/binaryen" = { version = "version_129", strip_components = 1, bin_path = "bin" }
