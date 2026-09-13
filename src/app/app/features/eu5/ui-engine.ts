@@ -7,7 +7,10 @@ import type {
   DisplayData,
   PaletteGradients,
   SelectionSummaryData,
+  TimelineChange,
+  TimelineData,
 } from "./game-adapter";
+import { addDays, addMonths, addYears, clampDate, sameDate } from "./lib/eu5Date";
 import type { Eu5SaveInput } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
@@ -35,6 +38,21 @@ import type {
 } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
 
+/** Playback rate of the campaign timeline: one campaign year per real second. */
+export const TIMELINE_DAYS_PER_SECOND = 365;
+
+export type TimelineStepUnit = "day" | "month" | "year";
+
+/**
+ * What playback is doing. `rewinding` is the glide back to the campaign
+ * start before a play from the save date; `ended` is the rest after playback
+ * reaches the save date on its own, until the next date change.
+ */
+export type TimelinePlayback = "paused" | "rewinding" | "playing" | "ended";
+
+/** How long the playhead takes to glide back to the campaign start, in ms. */
+export const TIMELINE_REWIND_MS = 420;
+
 export interface AppState {
   currentMapMode: MapMode;
   hoverDisplayData: DisplayData | null;
@@ -46,6 +64,18 @@ export interface AppState {
   selectionRevision: number;
   boxSelectRect: BoxSelectOverlayRect | null;
   cursorHint: CursorHint;
+  timeline: TimelineData;
+  /**
+   * The date the user asked for. Updates on every drag frame, ahead of the
+   * map, which follows at the pace the worker can render.
+   */
+  timelineDate: Eu5DateComponents;
+  /**
+   * The date the map shows. Lags `timelineDate` during a drag. The map is
+   * live, and every map mode valid, when this is the timeline end.
+   */
+  timelineMapDate: Eu5DateComponents;
+  timelinePlayback: TimelinePlayback;
 }
 
 export type AppStateListener = (state: AppState) => void;
@@ -68,6 +98,14 @@ export type SearchResult =
 
 export interface AppTriggers {
   selectMapMode(mode: MapMode): Promise<void>;
+  /**
+   * Show the map on a date. Calls coalesce: only the latest date renders.
+   * The save date returns the map to the live state and keeps the map mode.
+   */
+  setTimelineDate(date: Eu5DateComponents): void;
+  stepTimeline(unit: TimelineStepUnit, direction: 1 | -1): void;
+  pauseTimeline(): void;
+  toggleTimelinePlayback(): void;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
   toggleOwnerBorders(): Promise<void>;
   getLocationArrays(): Promise<Blob>;
@@ -112,6 +150,16 @@ export interface AppTriggers {
   ): Promise<void>;
 }
 
+/** Only ownership has a history in the save, so only the political map can show a past date. */
+export function isHistoricalMapMode(mode: MapMode): boolean {
+  return mode === "political";
+}
+
+/** True when the map shows the save date, so every map mode is valid. */
+export function isTimelineLive(state: Pick<AppState, "timeline" | "timelineMapDate">): boolean {
+  return sameDate(state.timelineMapDate, state.timeline.end);
+}
+
 export interface AppEngine {
   trigger: AppTriggers;
   state: AppState;
@@ -124,10 +172,17 @@ export class Eu5UIEngine implements AppEngine {
   private _state: AppState;
   private listeners: Set<AppStateListener> = new Set();
 
+  /** The date to send once the in-flight timeline request returns. */
+  private timelineQueued: Eu5DateComponents | null = null;
+  private timelineInFlight = false;
+  private playbackFrame: number | null = null;
+  private rewindTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(
     private gameInstance: GameInstance,
     private workers: Eu5GameAdapter,
     paletteGradients: PaletteGradients,
+    timeline: TimelineData,
     initialState?: Partial<AppState>,
   ) {
     this._state = {
@@ -141,6 +196,10 @@ export class Eu5UIEngine implements AppEngine {
       selectionRevision: 0,
       boxSelectRect: null,
       cursorHint: "default",
+      timeline,
+      timelineDate: timeline.end,
+      timelineMapDate: timeline.end,
+      timelinePlayback: "paused",
       ...initialState,
     };
 
@@ -175,6 +234,11 @@ export class Eu5UIEngine implements AppEngine {
 
   public readonly trigger: AppTriggers = {
     selectMapMode: (mode) => this.handleSelectMapMode(mode),
+    setTimelineDate: (date) => this.handleSetTimelineDate(date),
+    stepTimeline: (unit, direction) => this.handleStepTimeline(unit, direction),
+    pauseTimeline: () => this.handlePauseTimeline(),
+    toggleTimelinePlayback: () =>
+      this.isTimelineRunning() ? this.handlePauseTimeline() : this.handlePlayTimeline(),
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     getLocationArrays: () => this.handleGetLocationArrays(),
@@ -231,6 +295,7 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   destroy(): void {
+    this.handlePauseTimeline();
     this.gameInstance.stopHoverTracking();
     this.workers.terminate();
     this.listeners.clear();
@@ -247,12 +312,145 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   private async handleSelectMapMode(mode: MapMode): Promise<void> {
+    // A mode without a history pulls the map back to the save date.
+    if (!isTimelineLive(this._state) && !isHistoricalMapMode(mode)) {
+      this.handlePauseTimeline();
+    }
     try {
-      await this.gameInstance.setMapMode(mode);
+      const change = await this.gameInstance.setMapMode(mode);
+      this.applyTimelineChange(change);
     } catch (error) {
       console.error("Failed to set map mode:", error);
+      this.updateState(() => ({ currentMapMode: mode }));
     }
-    this.updateState(() => ({ currentMapMode: mode }));
+  }
+
+  /** Adopt the worker's view of the timeline after any call that can move it. */
+  private applyTimelineChange(change: TimelineChange): void {
+    this.updateState(() => ({
+      currentMapMode: change.mapMode,
+      timelineMapDate: change.date,
+      // The requested date stays ahead of the map only while a request is
+      // queued behind this one.
+      timelineDate: this.timelineQueued ?? change.date,
+      mapModeGradient: change.gradient ?? null,
+    }));
+  }
+
+  private handleSetTimelineDate(date: Eu5DateComponents): void {
+    const timeline = this._state.timeline;
+    if (!timeline.available) return;
+    const clamped = clampDate(date, timeline.start, timeline.end);
+    if (sameDate(clamped, this._state.timelineDate) && !this.timelineInFlight) return;
+    this.updateState((state) => ({
+      timelineDate: clamped,
+      // Any move off the save date ends the rest that follows playback.
+      timelinePlayback: state.timelinePlayback === "ended" ? "paused" : state.timelinePlayback,
+    }));
+
+    // Coalesce: while the worker renders one date, remember only the newest
+    // request, so a drag never queues a frame per pointer event.
+    if (this.timelineInFlight) {
+      this.timelineQueued = clamped;
+      return;
+    }
+    void this.sendTimelineDate(clamped);
+  }
+
+  private async sendTimelineDate(date: Eu5DateComponents): Promise<void> {
+    this.timelineInFlight = true;
+    try {
+      const change = await this.gameInstance.setTimelineDate(date);
+      this.applyTimelineChange(change);
+    } catch (error) {
+      console.error("Failed to set timeline date:", error);
+    } finally {
+      this.timelineInFlight = false;
+    }
+
+    const queued = this.timelineQueued;
+    this.timelineQueued = null;
+    if (queued !== null && !sameDate(queued, this._state.timelineMapDate)) {
+      await this.sendTimelineDate(queued);
+    }
+  }
+
+  private handleStepTimeline(unit: TimelineStepUnit, direction: 1 | -1): void {
+    this.handlePauseTimeline();
+    const from = this._state.timelineDate;
+    const to =
+      unit === "day"
+        ? addDays(from, direction)
+        : unit === "month"
+          ? addMonths(from, direction)
+          : addYears(from, direction);
+    this.handleSetTimelineDate(to);
+  }
+
+  private isTimelineRunning(): boolean {
+    const playback = this._state.timelinePlayback;
+    return playback === "playing" || playback === "rewinding";
+  }
+
+  private handlePlayTimeline(): void {
+    const timeline = this._state.timeline;
+    if (!timeline.available || this.isTimelineRunning()) return;
+
+    // A play from the save date first glides the playhead back to the
+    // campaign start, so the eye can follow the rewind before borders move.
+    if (sameDate(this._state.timelineDate, timeline.end)) {
+      this.updateState(() => ({ timelinePlayback: "rewinding" }));
+      this.handleSetTimelineDate(timeline.start);
+      this.rewindTimer = setTimeout(() => {
+        this.rewindTimer = null;
+        this.startPlaybackLoop(timeline.end);
+      }, TIMELINE_REWIND_MS);
+      return;
+    }
+    this.startPlaybackLoop(timeline.end);
+  }
+
+  private startPlaybackLoop(end: Eu5DateComponents): void {
+    this.updateState(() => ({ timelinePlayback: "playing" }));
+
+    // Wall-clock pacing: the requested date advances at the chosen rate even
+    // when the worker cannot render every day, and the coalescing above lets
+    // the map skip ahead to the newest date.
+    let last = performance.now();
+    let carry = 0;
+    const frame = (now: number) => {
+      carry += ((now - last) / 1000) * TIMELINE_DAYS_PER_SECOND;
+      last = now;
+      const days = Math.floor(carry);
+      if (days >= 1) {
+        carry -= days;
+        const next = addDays(this._state.timelineDate, days);
+        this.handleSetTimelineDate(next);
+        if (sameDate(this._state.timelineDate, end)) {
+          // Playback has run its course: rest at the save date and offer a
+          // replay, rather than turning back into a plain Play.
+          this.playbackFrame = null;
+          this.updateState(() => ({ timelinePlayback: "ended" }));
+          return;
+        }
+      }
+      this.playbackFrame = requestAnimationFrame(frame);
+    };
+    this.playbackFrame = requestAnimationFrame(frame);
+  }
+
+  private handlePauseTimeline(): void {
+    if (this.playbackFrame !== null) {
+      cancelAnimationFrame(this.playbackFrame);
+      this.playbackFrame = null;
+    }
+    if (this.rewindTimer !== null) {
+      clearTimeout(this.rewindTimer);
+      this.rewindTimer = null;
+    }
+    if (this.isTimelineRunning()) {
+      this.updateState(() => ({ timelinePlayback: "paused" }));
+    }
   }
 
   private async handleToggleOwnerBorders(): Promise<void> {
@@ -340,12 +538,13 @@ export async function createLoadedEngine(
     onProgress,
   );
 
-  const [metadata, paletteGradients] = await Promise.all([
+  const [metadata, paletteGradients, timeline] = await Promise.all([
     gameInstance.getSaveMetadata(),
     gameInstance.getPaletteGradients(),
+    gameInstance.getTimeline(),
   ]);
 
-  const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients);
+  const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients, timeline);
   return {
     engine,
     saveDate: metadata.date,

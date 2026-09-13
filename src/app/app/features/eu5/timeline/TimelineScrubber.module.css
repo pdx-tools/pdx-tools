@@ -1,0 +1,86 @@
+/*
+ * Motion for the timeline track. The playhead and the elapsed segment share
+ * one glide, so a step of a day or of a year moves both as one. Playback
+ * advances the date a few days per frame, and a short linear glide between
+ * frames keeps the playhead from stuttering; a discrete step gets a longer
+ * glide that settles. A drag sets the position directly, so the glide is off
+ * while the pointer is down.
+ */
+
+.scrubber {
+  --glide: 220ms;
+  --glide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scrubber[data-playback="playing"] {
+  --glide: 90ms;
+  --glide-ease: linear;
+}
+
+/*
+ * The rewind before a play from the save date: one long sweep to the start.
+ * Keep in step with TIMELINE_REWIND_MS in ui-engine.ts, which holds playback
+ * until the sweep lands.
+ */
+.scrubber[data-playback="rewinding"] {
+  --glide: 420ms;
+  --glide-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * Arrival. When playback reaches the save date the terminal line takes the
+ * brass of the elapsed track for a beat, then settles back to ink.
+ */
+.scrubber[data-playback="ended"] .terminal {
+  animation: arrive 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes arrive {
+  0% {
+    stroke: var(--color-game-accent-100);
+    stroke-width: 3;
+  }
+  35% {
+    stroke: var(--color-game-accent-300);
+    stroke-width: 2;
+  }
+  100% {
+    stroke: var(--color-game-ink-500);
+    stroke-width: 1.5;
+  }
+}
+
+.playhead,
+.elapsed {
+  transition: transform var(--glide) var(--glide-ease);
+}
+
+.bar {
+  transition: fill var(--glide) var(--glide-ease);
+}
+
+.scrubber[data-dragging] .playhead,
+.scrubber[data-dragging] .elapsed,
+.scrubber[data-dragging] .bar {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playhead,
+  .elapsed,
+  .bar {
+    transition: none;
+  }
+  /* Keep the arrival as a colour change; drop the width swell. */
+  .scrubber[data-playback="ended"] .terminal {
+    animation: arrive-still 900ms ease-out both;
+  }
+  @keyframes arrive-still {
+    0% {
+      stroke: var(--color-game-accent-300);
+    }
+    100% {
+      stroke: var(--color-game-ink-500);
+    }
+  }
+}

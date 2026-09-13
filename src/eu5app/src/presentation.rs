@@ -516,24 +516,115 @@ impl Present for CountryIdx {
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         let entry = ctx.gamestate.countries.index(self);
         let tag = entry.tag();
-        let tag = tag.to_str();
-        let name = match entry.data().map(|data| &data.country_name) {
+        let name = present_country_name(
+            entry.data().map(|data| &data.country_name),
+            tag.to_str(),
+            ctx,
+        );
+        Localized::new(UiCountryIdx::from(self), name)
+    }
+}
+
+/// The pieces of a country name, borrowed from the save arena: the template
+/// key, the tag that fills `$NAME$` and `$ADJ$`, and the other `$TOKEN$`
+/// substitutions, each value a localization key.
+struct CountryNameParts<'a> {
+    /// The localization key of the name, or the raw name when unlocalized.
+    key: &'a str,
+    base: Option<&'a str>,
+    variables: Vec<(&'a str, &'a str)>,
+}
+
+impl<'a> CountryNameParts<'a> {
+    /// The parts of a country name from its save name record, or from its
+    /// tag when the record is missing.
+    fn new(name: Option<&'a CountryName<'a>>, tag: &'a str) -> Self {
+        match name {
             Some(CountryName::Object(obj)) => {
                 let (key, variables) = match obj.override_name.as_ref() {
                     Some(ov) => (ov.key.to_str(), ov.variables),
                     None => (obj.name.map(|b| b.to_str()).unwrap_or(tag), &[][..]),
                 };
-                let template = ctx.localization.get(key).unwrap_or(key);
-                let base = obj.bases.base.map(|b| b.to_str());
-                interpolate_country_name(template, base, variables, ctx.localization)
+                Self {
+                    key,
+                    base: obj.bases.base.map(|b| b.to_str()),
+                    variables: variables
+                        .iter()
+                        .map(|v| (v.key.to_str(), v.value.to_str()))
+                        .collect(),
+                }
             }
-            Some(CountryName::Tag(t)) => {
-                let key = t.to_str();
-                ctx.localization.get(key).unwrap_or(key).to_string()
-            }
-            None => ctx.localization.get(tag).unwrap_or(tag).to_string(),
-        };
-        Localized::new(UiCountryIdx::from(self), name)
+            Some(CountryName::Tag(t)) => Self {
+                key: t.to_str(),
+                base: None,
+                variables: Vec::new(),
+            },
+            None => Self {
+                key: tag,
+                base: None,
+                variables: Vec::new(),
+            },
+        }
+    }
+
+    fn present(&self, ctx: &LocalizationContext<'_, '_>) -> String {
+        let template = ctx.localization.get(self.key).unwrap_or(self.key);
+        interpolate_country_name(template, self.base, &self.variables, ctx.localization)
+    }
+}
+
+/// The localized display name of a country from its save name record, or
+/// from its tag when the record is missing.
+fn present_country_name(
+    name: Option<&CountryName<'_>>,
+    tag: &str,
+    ctx: &LocalizationContext<'_, '_>,
+) -> String {
+    CountryNameParts::new(name, tag).present(ctx)
+}
+
+/// A country name detached from the save arena.
+///
+/// A DTO without a lifetime can carry this where it cannot carry a
+/// [`CountryName`]: the owner of a location on a past date can be a dead
+/// country whose name lives only in the timeline archive. The live paths
+/// keep to the borrowed [`present_country_name`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct OwnedCountryName {
+    key: String,
+    base: Option<String>,
+    variables: Vec<(String, String)>,
+}
+
+impl OwnedCountryName {
+    pub(crate) fn new(name: Option<&CountryName<'_>>, tag: &str) -> Self {
+        let parts = CountryNameParts::new(name, tag);
+        Self {
+            key: parts.key.to_string(),
+            base: parts.base.map(str::to_string),
+            variables: parts
+                .variables
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        }
+    }
+}
+
+impl Present for OwnedCountryName {
+    type Output = String;
+
+    fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
+        CountryNameParts {
+            key: &self.key,
+            base: self.base.as_deref(),
+            variables: self
+                .variables
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.as_str()))
+                .collect(),
+        }
+        .present(ctx)
     }
 }
 
@@ -543,7 +634,7 @@ impl Present for CountryIdx {
 fn interpolate_country_name(
     template: &str,
     base: Option<&str>,
-    variables: &[eu5save::models::CountryNameVariable<'_>],
+    variables: &[(&str, &str)],
     localization: &Localization,
 ) -> String {
     if !template.contains('$') {
@@ -576,7 +667,7 @@ fn interpolate_country_name(
 fn resolve_token<'a>(
     token: &str,
     base: Option<&'a str>,
-    variables: &'a [eu5save::models::CountryNameVariable<'_>],
+    variables: &'a [(&'a str, &'a str)],
     localization: &'a Localization,
     lookup_key: &'a mut String,
 ) -> Option<&'a str> {
@@ -593,10 +684,10 @@ fn resolve_token<'a>(
             _ => {}
         }
     }
-    variables.iter().find(|v| v.key.to_str() == token).map(|v| {
-        let val = v.value.to_str();
-        localization.get(val).unwrap_or(val)
-    })
+    variables
+        .iter()
+        .find(|(key, _)| *key == token)
+        .map(|(_, val)| localization.get(val).unwrap_or(val))
 }
 
 /// Workspace-side source for a good's rich presentation form.
@@ -778,13 +869,6 @@ mod tests {
         Localization::new(entries)
     }
 
-    fn var<'a>(k: &'a [u8], v: &'a [u8]) -> eu5save::models::CountryNameVariable<'a> {
-        eu5save::models::CountryNameVariable {
-            key: eu5save::models::BStr::new(k),
-            value: eu5save::models::BStr::new(v),
-        }
-    }
-
     #[test]
     fn interpolate_adj_resolves_from_base_tag() {
         let l = loc(&[("TIM_ADJ", "Timurid")]);
@@ -830,7 +914,7 @@ mod tests {
     #[test]
     fn interpolate_variables_substitute_from_override_variables() {
         let l = loc(&[("oyama_dynasty", "Oyama")]);
-        let vars = [var(b"NAME", b"oyama_dynasty")];
+        let vars = [("NAME", "oyama_dynasty")];
         let out = interpolate_country_name("$NAME$ House", None, &vars, &l);
         assert_eq!(out, "Oyama House");
     }
@@ -838,7 +922,7 @@ mod tests {
     #[test]
     fn interpolate_variables_fall_back_to_literal_value() {
         let l = loc(&[]);
-        let vars = [var(b"PREFIX", b"Mc"), var(b"SUFFIX", b"son")];
+        let vars = [("PREFIX", "Mc"), ("SUFFIX", "son")];
         let out = interpolate_country_name("$PREFIX$Donald$SUFFIX$", None, &vars, &l);
         assert_eq!(out, "McDonaldson");
     }
@@ -847,7 +931,7 @@ mod tests {
     fn interpolate_base_tokens_win_over_variables() {
         // $NAME$ resolves from base tag, not from a variable named NAME.
         let l = loc(&[("TIM", "Timurid")]);
-        let vars = [var(b"NAME", b"should_not_be_used")];
+        let vars = [("NAME", "should_not_be_used")];
         let out = interpolate_country_name("$NAME$ Empire", Some("TIM"), &vars, &l);
         assert_eq!(out, "Timurid Empire");
     }

@@ -12,6 +12,7 @@ pub mod presentation;
 mod selection;
 mod session;
 mod subject_color;
+pub mod timeline;
 
 pub use presentation::{
     LocalizationContext, Localized, Present, UiCountryIdx, UiCultureId, UiLocationId,
@@ -24,8 +25,8 @@ pub use selection::{
     SelectionSummary, single_entity_scope,
 };
 pub use session::{
-    Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace,
-    LocalizedEu5Workspace,
+    Eu5DateComponents, Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace,
+    LocalizedEu5Workspace, TimelineNote, TimelineSummary, humanize_note_key,
 };
 
 pub use color::Srgb;

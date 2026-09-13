@@ -1,6 +1,10 @@
 use crate::gradient::{self, GradientScale};
+use eu5save::models::Color;
 
 use super::*;
+
+/// The brightness kept by locations outside an active selection.
+const SELECTION_DIM: f32 = 0.3;
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Compute gradient domain bounds for a quantitative mode in a single pass.
@@ -95,8 +99,21 @@ impl<'bump> Eu5Workspace<'bump> {
         self.location_terrain[idx]
     }
 
+    /// The owner color on the timeline date. At the save date the timeline
+    /// owners equal the current owners, so one path serves every date.
     pub fn location_political_color(&self, key: eu5save::models::LocationIdx) -> GpuColor {
-        self.get_country_color_for_location(key, |loc| loc.owner.real_id())
+        let terrain = self.location_terrain(key);
+        if terrain.is_water() {
+            return GpuColor::WATER;
+        } else if !terrain.is_passable() {
+            return GpuColor::IMPASSABLE;
+        }
+
+        let owner = self.owner_at_timeline_date(key);
+        if owner.is_dummy() {
+            return GpuColor::UNOWNED;
+        }
+        self.country_color_at_timeline_date(owner)
     }
 
     pub fn location_control_color(&self, key: eu5save::models::LocationIdx) -> GpuColor {
@@ -382,19 +399,29 @@ impl<'bump> Eu5Workspace<'bump> {
             return GpuColor::UNOWNED;
         };
 
+        self.subject_blended_color(country_idx, country_color, |idx| {
+            self.gamestate
+                .countries
+                .index(idx)
+                .data()
+                .map(|data| data.color)
+        })
+    }
+
+    /// The map color of a country: its own color, or when it is a subject,
+    /// that color blended toward the top overlord's. `color_of` supplies the
+    /// color of each overlord; an overlord without one is skipped over.
+    pub(super) fn subject_blended_color(
+        &self,
+        country_idx: CountryIdx,
+        country_color: Color,
+        color_of: impl Fn(CountryIdx) -> Option<Color>,
+    ) -> GpuColor {
         let mut current_overlord = country_idx;
         let mut current_overlord_color = country_color;
         while let Some(dep) = self.overlord_of[current_overlord] {
             current_overlord = dep;
-
-            let dep_color = self
-                .gamestate
-                .countries
-                .index(current_overlord)
-                .data()
-                .map(|data| data.color);
-
-            if let Some(dep_color) = dep_color {
+            if let Some(dep_color) = color_of(dep) {
                 current_overlord_color = dep_color;
             }
         }
@@ -513,7 +540,16 @@ impl<'bump> Eu5Workspace<'bump> {
         self.set_map_mode(self.current_map_mode)
     }
 
+    /// Switch the map mode. A mode without a history pulls the timeline back
+    /// to the save date, so the map never shows current data under a past date.
     pub fn set_map_mode(&mut self, mode: MapMode) -> gradient::MapLegend {
+        if !self.is_timeline_live() && !Self::is_historical_map_mode(mode) {
+            self.step_timeline_to(self.save_date());
+        }
+        self.apply_map_mode(mode)
+    }
+
+    pub(super) fn apply_map_mode(&mut self, mode: MapMode) -> gradient::MapLegend {
         self.current_map_mode = mode;
 
         let gradient = match mode {
@@ -536,12 +572,33 @@ impl<'bump> Eu5Workspace<'bump> {
         gradient
     }
 
+    /// Repaint a few locations in the political mode on a past date, with the
+    /// same dimming the full pass applies. The focused flag is untouched.
+    pub(super) fn repaint_locations(&mut self, locations: &[eu5save::models::LocationIdx]) {
+        let has_selection = !self.selection_state.is_empty();
+        for &location_idx in locations {
+            let Some(gpu_index) = self.gpu_indices[location_idx] else {
+                continue;
+            };
+            let mut primary = self.location_political_color(location_idx);
+            let terrain = self.location_terrain(location_idx);
+            if has_selection
+                && !matches!(terrain, Terrain::Impassable)
+                && !self.selection_state.contains(location_idx)
+            {
+                primary = primary.dim(SELECTION_DIM);
+            }
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
+            gpu_location.set_primary_color(primary);
+            gpu_location.set_secondary_color(primary);
+        }
+    }
+
     fn apply_selection_dimming(&mut self) {
         if self.selection_state.is_empty() {
             return;
         }
 
-        const DIM: f32 = 0.3;
         for location in self.gamestate.locations.iter() {
             let terrain = self.location_terrain(location.idx());
             if matches!(terrain, Terrain::Impassable) {
@@ -559,8 +616,8 @@ impl<'bump> Eu5Workspace<'bump> {
             if terrain.is_water() && s.primary_color() == GpuColor::WATER {
                 continue;
             }
-            s.set_primary_color(s.primary_color().dim(DIM));
-            s.set_secondary_color(s.secondary_color().dim(DIM));
+            s.set_primary_color(s.primary_color().dim(SELECTION_DIM));
+            s.set_secondary_color(s.secondary_color().dim(SELECTION_DIM));
         }
     }
 
@@ -580,6 +637,7 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_political_colors(&mut self) -> gradient::MapLegend {
+        let live = self.is_timeline_live();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
             let Some(gpu_index) = self.gpu_indices[location_idx] else {
@@ -587,7 +645,13 @@ impl<'bump> Eu5Workspace<'bump> {
             };
 
             let primary = self.location_political_color(location_idx);
-            let controller = self.location_control_color(location_idx);
+            // Occupation has no history in the save, so a past date shows no
+            // controller stripes.
+            let controller = if live {
+                self.location_control_color(location_idx)
+            } else {
+                primary
+            };
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(primary);
             gpu_location.set_secondary_color(controller);

@@ -24,6 +24,9 @@ import type {
   RgoInsightData,
   ControlInsightData,
   PoliticalWorldScoreboard,
+  Eu5DateComponents,
+  TimelineChange,
+  TimelineData,
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveInput } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
@@ -122,7 +125,7 @@ export type Eu5MapWorker = Remote<Eu5MapWorkerModule>;
 
 export type GameInstance = ReturnType<typeof saveWorker>;
 export type PaletteGradients = Record<GradientPalette, string>;
-export type { GradientConfig, DisplayData, SelectionSummaryData };
+export type { GradientConfig, DisplayData, SelectionSummaryData, TimelineChange, TimelineData };
 export type { BoxSelectOverlayRect } from "./types/box-select";
 export type { CursorHint } from "./workers/map/map-module";
 
@@ -294,8 +297,14 @@ export function saveWorker(
     getPaletteGradients: async (): Promise<PaletteGradients> => {
       return await saveEngine.getPaletteGradients();
     },
-    setMapMode: async (mode: MapMode): Promise<void> => {
-      await saveEngine.setMapMode(mode);
+    setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
+      return await saveEngine.setMapMode(mode);
+    },
+    getTimeline: async (): Promise<TimelineData> => {
+      return await saveEngine.getTimeline();
+    },
+    setTimelineDate: async (date: Eu5DateComponents): Promise<TimelineChange> => {
+      return await saveEngine.setTimelineDate(date);
     },
     generateWorldScreenshot: async (fullResolution: boolean): Promise<Blob> => {
       const overlayData = await saveEngine.getOverlayData();

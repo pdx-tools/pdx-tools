@@ -4,23 +4,8 @@ import { HomeIcon } from "@heroicons/react/24/outline";
 import { focusRing } from "../components/focusRing";
 import { useEngineActions } from "../../engine";
 import { useEu5SaveDate, useEu5PlaythroughName } from "../store";
+import { MONTH_ABBR } from "../lib/eu5Date";
 import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
-
-const MONTH_ABBR = [
-  "",
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
 
 function SaveDateReadout({ date }: { date: Eu5DateComponents }) {
   const monthDay = `${MONTH_ABBR[date.month]} ${date.day}`;

@@ -1,9 +1,14 @@
 use super::*;
+use crate::presentation::OwnedCountryName;
 
 impl<'bump> Eu5Workspace<'bump> {
     pub(crate) fn hover_data(&self, location_idx: LocationIdx) -> HoverDisplayDataSource {
         let mode = self.get_map_mode();
         let location = self.gamestate().locations.index(location_idx).location();
+
+        if !self.is_timeline_live() {
+            return self.historical_hover(location_idx);
+        }
 
         if location.owner.is_dummy() {
             return HoverDisplayDataSource::Clear;
@@ -87,6 +92,25 @@ impl<'bump> Eu5Workspace<'bump> {
             country: CountryRefSource { country_idx },
             stat: self.country_stat(mode, owner_id),
         })
+    }
+
+    /// On a past date the map shows owners only, so the hover names the owner
+    /// of that date. A country that has since died still gets its name.
+    fn historical_hover(&self, location_idx: LocationIdx) -> HoverDisplayDataSource {
+        let owner = self.owner_at_timeline_date(location_idx);
+        if owner.is_dummy() {
+            return HoverDisplayDataSource::Clear;
+        }
+
+        let Some(identity) = self.country_identity_at_timeline_date(owner) else {
+            return HoverDisplayDataSource::Clear;
+        };
+
+        HoverDisplayDataSource::HistoricalCountry {
+            location_id: location_idx.value(),
+            name: OwnedCountryName::new(identity.name, identity.tag),
+            dead: identity.dead,
+        }
     }
 
     fn market_hover(
