@@ -1,6 +1,6 @@
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { formatFloat } from "@/lib/format";
 import type { Vic3GraphData } from "./worker/types";
 
@@ -12,35 +12,35 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
   const columnHelper = createColumnHelper<Vic3GraphData>();
   const columns = [
     columnHelper.accessor("date", {
-      sortingFn: "basic",
+      sortFn: "basic",
       header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
     }),
     columnHelper.accessor("gdp", {
-      sortingFn: "basic",
+      sortFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
       meta: { className: "text-right" },
       header: ({ column }) => <Table.ColumnHeader column={column} title="GDP" />,
     }),
     columnHelper.accessor("gdpGrowth", {
-      sortingFn: "basic",
+      sortFn: "basic",
       cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
       meta: { className: "text-right" },
       header: ({ column }) => <Table.ColumnHeader column={column} title="GDP growth" />,
     }),
     columnHelper.accessor("gdpc", {
-      sortingFn: "basic",
+      sortFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
       meta: { className: "text-right" },
       header: ({ column }) => <Table.ColumnHeader column={column} title="GDP/c" />,
     }),
     columnHelper.accessor("gdpcGrowth", {
-      sortingFn: "basic",
+      sortFn: "basic",
       cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
       meta: { className: "text-right" },
       header: ({ column }) => <Table.ColumnHeader column={column} title="GDP growth" />,
     }),
     columnHelper.accessor("sol", {
-      sortingFn: "basic",
+      sortFn: "basic",
       cell: (info) => formatFloat(info.getValue()),
       meta: { className: "text-right" },
       header: ({ column }) => <Table.ColumnHeader column={column} title="SoL" />,

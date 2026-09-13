@@ -4,7 +4,7 @@ import type { CountryDetails, CountryStateDetails } from "../../types/models";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { MinusIcon, StarIcon } from "@heroicons/react/24/outline";
@@ -17,7 +17,7 @@ export interface CountryStatesProps {
 const columnHelper = createColumnHelper<CountryStateDetails>();
 const columns = [
   columnHelper.accessor("state.name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="State" />,
     cell: ({ row }) => (
       <div className="flex min-w-[150px] items-center gap-2">
@@ -38,13 +38,13 @@ const columns = [
   }),
 
   columnHelper.accessor("total_dev", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Dev" />,
     cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("total_gc", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Gov. Cost" />,
     cell: ({ row }) => (
       <Tooltip>
@@ -64,13 +64,13 @@ const columns = [
 
   columnHelper.accessor((x) => x.total_gc - x.total_gc_if_centralized, {
     id: "total_gc_if_centralized",
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Next Centralize Savings" />,
     cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}</div>,
   }),
 
   columnHelper.accessor("centralizing", {
-    sortingFn: (a, b, column) => {
+    sortFn: (a, b, column) => {
       const aValue = a.getValue<CountryStateDetails["centralizing"]>(column);
       const bValue = b.getValue<CountryStateDetails["centralizing"]>(column);
       return (aValue?.progress ?? -1) - (bValue?.progress ?? -1);
@@ -91,20 +91,20 @@ const columns = [
   }),
 
   columnHelper.accessor("centralized", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Centralized" />,
     cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("state_house", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="State House" />,
     meta: { className: "text-right" },
     cell: (info) => (info.getValue() ? "✔️" : ""),
   }),
 
   columnHelper.accessor("prosperity", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Prosperity" />,
     meta: { className: "text-right" },
     cell: ({ row }) => (

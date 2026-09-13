@@ -1,5 +1,6 @@
 import * as React from "react";
-import type { Column, SortDirection } from "@tanstack/react-table";
+import type { SortDirection } from "@tanstack/react-table";
+import type { AppColumn, RowData } from "@/lib/tanstack-table";
 import { cx } from "class-variance-authority";
 import { Button } from "./Button";
 import { ChevronDownIcon, ChevronUpDownIcon, ChevronUpIcon } from "@heroicons/react/20/solid";
@@ -131,16 +132,16 @@ const TableCaption = React.forwardRef<
 });
 Table.Caption = TableCaption;
 
-interface ColumnHeaderProps<TData, TValue> extends Omit<
+interface ColumnHeaderProps<TData extends RowData, TValue> extends Omit<
   React.HTMLAttributes<HTMLButtonElement>,
   "title"
 > {
-  column: Column<TData, TValue>;
+  column: AppColumn<TData, TValue>;
   icon?: React.ReactNode;
   title: string;
 }
 
-function ColumnHeaderButtonInner<TData, TValue>(
+function ColumnHeaderButtonInner<TData extends RowData, TValue>(
   { column, title, icon, className, ...rest }: ColumnHeaderProps<TData, TValue>,
   ref: React.ForwardedRef<HTMLButtonElement>,
 ) {
@@ -171,13 +172,16 @@ function ColumnHeaderButtonInner<TData, TValue>(
   );
 }
 
-const ColumnHeaderButton = React.forwardRef(ColumnHeaderButtonInner) as <TData, TValue>(
+const ColumnHeaderButton = React.forwardRef(ColumnHeaderButtonInner) as <
+  TData extends RowData,
+  TValue,
+>(
   props: ColumnHeaderProps<TData, TValue> & {
     ref?: React.ForwardedRef<HTMLButtonElement>;
   },
 ) => ReturnType<typeof ColumnHeaderButtonInner>;
 
-function ColumnHeaderInner<TData, TValue>(
+function ColumnHeaderInner<TData extends RowData, TValue>(
   props: ColumnHeaderProps<TData, TValue>,
   ref: React.ForwardedRef<HTMLButtonElement>,
 ) {
@@ -208,7 +212,7 @@ const SortIcon = ({ sorted }: { sorted: false | SortDirection }) => {
   }
 };
 
-const ColumnHeader = React.forwardRef(ColumnHeaderInner) as <TData, TValue>(
+const ColumnHeader = React.forwardRef(ColumnHeaderInner) as <TData extends RowData, TValue>(
   props: ColumnHeaderProps<TData, TValue> & {
     ref?: React.ForwardedRef<HTMLButtonElement>;
   },

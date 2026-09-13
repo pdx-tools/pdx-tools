@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";

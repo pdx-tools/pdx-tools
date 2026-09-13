@@ -1,7 +1,7 @@
 import { Card } from "@/components/Card";
 import type { CountryDetails } from "../../types/models";
 import { formatFloat, formatInt } from "@/lib/format";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { Flag } from "../../components/avatars";
 import { DataTable } from "@/components/DataTable";
@@ -19,7 +19,7 @@ type Participant = ActiveWar["attackers" | "defenders"][number];
 const columnHelper = createColumnHelper<Participant>();
 const activeColumns = [
   columnHelper.accessor("country.name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => (
       <Flag size="xs" tag={row.original.country.tag} name={row.original.country.name} />
@@ -34,7 +34,7 @@ const activeColumns = [
       x.mercenaryUnits.strength,
     {
       id: "total-units",
-      sortingFn: "basic",
+      sortFn: "basic",
       header: ({ column }) => (
         <Table.ColumnHeader
           column={column}
@@ -50,7 +50,7 @@ const activeColumns = [
 
   columnHelper.accessor((x) => x.netManpower, {
     id: "manpower-reserves",
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -84,7 +84,7 @@ const activeColumns = [
 
   columnHelper.accessor((x) => x.treasury - x.debt, {
     id: "net-cash",
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -110,7 +110,7 @@ const activeColumns = [
 
   columnHelper.accessor((x) => budgetSelect.operatingProfit(x.budget), {
     id: "operating-profit",
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -160,7 +160,7 @@ const activeColumns = [
   }),
 
   columnHelper.accessor("professionalism", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -177,7 +177,7 @@ const activeColumns = [
   }),
 
   columnHelper.accessor("armyTradition", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -201,7 +201,7 @@ const activeColumns = [
       (x.bestGeneral?.siege ?? 0),
     {
       id: "best-general",
-      sortingFn: "basic",
+      sortFn: "basic",
       header: ({ column }) => (
         <Table.ColumnHeader
           column={column}
@@ -230,7 +230,7 @@ const activeColumns = [
   ),
 
   columnHelper.accessor("warExhaustion", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -250,7 +250,7 @@ const activeColumns = [
     (x) => x.heavyShipUnits + x.lightShipUnits + x.galleyUnits + x.transportUnits,
     {
       id: "ships",
-      sortingFn: "basic",
+      sortFn: "basic",
       header: ({ column }) => (
         <Table.ColumnHeader
           column={column}
@@ -268,7 +268,7 @@ const activeColumns = [
   ),
 
   columnHelper.accessor("milTech", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -323,7 +323,7 @@ function ParticipantHealth({ participants }: { participants: Participant[] }) {
 
 const totalColumns = [
   columnHelper.accessor("country.name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => (
       <Flag tag={row.original.country.tag} name={row.original.country.name}>
@@ -345,7 +345,7 @@ const totalColumns = [
   }),
 
   columnHelper.accessor("losses.landTotalBattle", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -359,7 +359,7 @@ const totalColumns = [
   }),
 
   columnHelper.accessor("losses.landTotal", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -373,7 +373,7 @@ const totalColumns = [
   }),
 
   columnHelper.accessor("losses.navyTotal", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader
         column={column}
@@ -387,7 +387,7 @@ const totalColumns = [
   }),
 
   columnHelper.accessor("participationPercent", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Table.ColumnHeader column={column} className="justify-end" icon="🏅" title="Participation" />
     ),

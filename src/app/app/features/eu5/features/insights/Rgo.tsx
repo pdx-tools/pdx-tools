@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
@@ -294,7 +294,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
     () => [
       topLocColHelper.accessor("location", {
         id: "location",
-        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
+        sortFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
@@ -303,7 +303,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
       }),
       topLocColHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
@@ -312,7 +312,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
       }),
       topLocColHelper.accessor((row) => row.rawMaterial.name, {
         id: "rawMaterial",
-        sortingFn: "text",
+        sortFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Raw Material" }),
         cell: ({ row }) => {
           const rm = row.original.rawMaterial;
@@ -325,7 +325,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
         },
       }),
       topLocColHelper.accessor("rgoLevel", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "RGO Level", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatLevel(info.getValue())}</Eu5DataTable.NumericCell>

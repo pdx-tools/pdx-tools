@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, SectionTitle } from "../../components";
@@ -232,7 +232,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
     () => [
       religionColumnHelper.accessor((row) => row.religion.name, {
         id: "religion",
-        sortingFn: "text",
+        sortFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Religion", variant: "pin" }),
         cell: ({ row }) => {
           const r = row.original;
@@ -249,7 +249,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       }),
       religionColumnHelper.accessor("totalRuledPopulation", {
         id: "asStateReligion",
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "State Religion" }),
         cell: ({ row }) => {
           const r = row.original;
@@ -269,7 +269,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       }),
       religionColumnHelper.accessor("stateReligionCoverage", {
         id: "ruledPopulation",
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Ruled Population" }),
         cell: ({ row }) => {
           const r = row.original;
@@ -288,7 +288,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       }),
       religionColumnHelper.accessor("followerPopulation", {
         id: "asPopulationReligion",
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Followers" }),
         cell: ({ row }) => {
           const r = row.original;

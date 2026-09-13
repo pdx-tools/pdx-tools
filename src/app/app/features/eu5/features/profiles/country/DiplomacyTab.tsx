@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { cx } from "class-variance-authority";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { formatFloat, formatInt } from "@/lib/format";
 import type {
   CountryMetrics,
@@ -13,7 +13,7 @@ import { usePanelNav } from "../PanelNavContext";
 import { CountryLink } from "../EntityLink";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
 import type { Eu5MapHoverTarget } from "../../../useEu5MapHoverTarget";
-import type { Row } from "@tanstack/react-table";
+import type { AppRow } from "@/lib/tanstack-table";
 
 const PLURAL: Partial<Record<DiplomacySubjectType, string>> = {
   Tributary: "Tributaries",
@@ -39,7 +39,7 @@ type DiplomacyRow = {
 
 const columnHelper = createColumnHelper<DiplomacyRow>();
 
-function NameCell({ row, backLabel }: { row: Row<DiplomacyRow>; backLabel?: string }) {
+function NameCell({ row, backLabel }: { row: AppRow<DiplomacyRow>; backLabel?: string }) {
   const { entity, subjectLabel, isActive } = row.original;
 
   return (
@@ -56,7 +56,7 @@ function NameCell({ row, backLabel }: { row: Row<DiplomacyRow>; backLabel?: stri
   );
 }
 
-function LibertyCell({ row }: { row: Row<DiplomacyRow> }) {
+function LibertyCell({ row }: { row: AppRow<DiplomacyRow> }) {
   const { libertyDesire } = row.original;
   if (libertyDesire == null) return null;
   return (
@@ -71,7 +71,7 @@ function LibertyCell({ row }: { row: Row<DiplomacyRow> }) {
 const buildColumns = (backLabel?: string) => [
   columnHelper.accessor((row) => row.metrics.greatPowerRank, {
     id: "gpRank",
-    sortingFn: "basic",
+    sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "GP", variant: "num", width: 36 }),
     cell: (info) => {
       const rank = info.getValue();
@@ -84,13 +84,13 @@ const buildColumns = (backLabel?: string) => [
   }),
   columnHelper.accessor((row) => row.entity.country.name, {
     id: "name",
-    sortingFn: "text",
+    sortFn: "text",
     meta: Eu5DataTable.meta({ headerLabel: "Country", variant: "pin" }),
     cell: ({ row }) => <NameCell row={row} backLabel={backLabel} />,
   }),
   columnHelper.accessor((row) => row.metrics.totalStateEfficacy, {
     id: "effDev",
-    sortingFn: "basic",
+    sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Eff. Dev", variant: "num" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
@@ -98,7 +98,7 @@ const buildColumns = (backLabel?: string) => [
   }),
   columnHelper.accessor((row) => row.metrics.activeStateCapacity / 1_000_000, {
     id: "activeCap",
-    sortingFn: "basic",
+    sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Active Cap", variant: "num" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
@@ -106,7 +106,7 @@ const buildColumns = (backLabel?: string) => [
   }),
   columnHelper.accessor((row) => row.metrics.totalPopulation, {
     id: "pop",
-    sortingFn: "basic",
+    sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
@@ -114,7 +114,7 @@ const buildColumns = (backLabel?: string) => [
   }),
   columnHelper.accessor((row) => row.metrics.taxTradeIncome, {
     id: "income",
-    sortingFn: "basic",
+    sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Income", variant: "num" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
@@ -122,7 +122,7 @@ const buildColumns = (backLabel?: string) => [
   }),
   columnHelper.accessor((row) => row.libertyDesire ?? -1, {
     id: "liberty",
-    sortingFn: "basic",
+    sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Liberty", variant: "num" }),
     cell: ({ row }) => <LibertyCell row={row} />,
   }),

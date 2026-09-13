@@ -8,7 +8,7 @@ import { useEu4Worker } from "@/features/eu4/worker";
 import { useTagFilter } from "../../store";
 import type { War, WarSide } from "../../worker/module";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { SheetExpansion } from "../../components/SheetExpansion";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
@@ -56,27 +56,27 @@ const columns = [
   }),
 
   columnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     meta: { className: "min-w-[180px]" },
     header: ({ column }) => <Table.ColumnHeader column={column} title="Name" />,
   }),
 
   columnHelper.accessor("start_date", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Start" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   columnHelper.accessor("end_date", {
-    sortingFn: "alphanumeric",
+    sortFn: "alphanumeric",
     header: ({ column }) => <Table.ColumnHeader column={column} title="End" />,
     meta: { className: "text-right no-break" },
     cell: (info) => info.getValue() ?? "---",
   }),
 
   columnHelper.accessor("days", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Days" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
@@ -95,7 +95,7 @@ const columns = [
   }),
 
   columnHelper.accessor("battles", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Battles" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
@@ -105,14 +105,14 @@ const columns = [
     header: "Total Losses",
     columns: [
       columnHelper.accessor("totalBattleLosses", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Battle" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       columnHelper.accessor("totalAttritionLosses", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Attrition" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -124,14 +124,14 @@ const columns = [
     header: "Attacker Losses",
     columns: [
       columnHelper.accessor("attackers.losses.totalBattle", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Battle" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       columnHelper.accessor("attackers.losses.totalAttrition", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Attrition" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
@@ -143,14 +143,14 @@ const columns = [
     header: "Defender Losses",
     columns: [
       columnHelper.accessor("defenders.losses.totalBattle", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Battle" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),
       }),
 
       columnHelper.accessor("defenders.losses.totalAttrition", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Attrition" />,
         meta: { className: "text-right" },
         cell: (info) => formatInt(info.getValue()),

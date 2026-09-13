@@ -14,7 +14,7 @@ import {
 } from "../../store";
 import { Switch } from "@/components/Switch";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 
@@ -56,19 +56,19 @@ export const CountriesIncomeTable = () => {
 
     return [
       columnHelper.accessor("name", {
-        sortingFn: "text",
+        sortFn: "text",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
         cell: ({ row }) => <Flag tag={row.original.tag} name={row.original.name} />,
       }),
       columnHelper.accessor("total", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Total" />,
         meta: { className: "text-right" },
         cell: (info) => formatFloat(info.getValue(), 2),
       }),
       ...aliases.map(([key, text]) =>
         columnHelper.accessor(key, {
-          sortingFn: "basic",
+          sortFn: "basic",
           header: ({ column }) => <Table.ColumnHeader column={column} title={text} />,
           meta: { className: "text-right" },
           cell: (info) => numRenderer(info.getValue()),

@@ -3,7 +3,7 @@ import { useAnalysisWorker } from "../../worker";
 import type { ProvinceItem, ProvinceList } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { Table } from "@/components/Table";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { DataTable } from "@/components/DataTable";
@@ -14,20 +14,20 @@ const columnHelper = createColumnHelper<ProvinceItem>();
 const columns = [
   columnHelper.accessor((x) => `${x.name} (${x.id})`, {
     id: "name",
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Province" />,
     enableColumnFilter: true,
   }),
 
   columnHelper.accessor("owner.tag", {
     enableColumnFilter: false,
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
     cell: ({ row }) => <Flag tag={row.original.owner.tag} name={row.original.owner.name} />,
   }),
 
   columnHelper.accessor("tax", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Tax" />,
     meta: { className: "text-right" },
@@ -35,7 +35,7 @@ const columns = [
   }),
 
   columnHelper.accessor("production", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Production" />,
     meta: { className: "text-right" },
@@ -43,7 +43,7 @@ const columns = [
   }),
 
   columnHelper.accessor("manpower", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Manpower" />,
     meta: { className: "text-right" },
@@ -51,7 +51,7 @@ const columns = [
   }),
 
   columnHelper.accessor("development", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Development" />,
     meta: { className: "text-right" },
@@ -59,28 +59,28 @@ const columns = [
   }),
 
   columnHelper.accessor("religion", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("culture", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Culture" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("tradeGoods", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="TradeGoods" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("devastation", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Devastation" />,
     meta: { className: "text-right" },
@@ -88,21 +88,21 @@ const columns = [
   }),
 
   columnHelper.accessor("inHre", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="In HRE" />,
     cell: (info) => `${info.getValue()}`,
   }),
 
   columnHelper.accessor("exploitDate", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Exploit Date" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("expandInfrastructure", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Expand Infra." />,
     meta: { className: "text-right" },
@@ -110,7 +110,7 @@ const columns = [
   }),
 
   columnHelper.accessor("numCentralizedState", {
-    sortingFn: "basic",
+    sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Centralized State" />,
     meta: { className: "text-right" },

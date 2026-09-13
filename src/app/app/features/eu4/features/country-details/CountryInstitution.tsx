@@ -5,7 +5,7 @@ import type { Eu4Worker } from "../../worker";
 import { Alert } from "@/components/Alert";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { InstitutionCost } from "@/wasm/wasm_eu4";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { create } from "zustand";

@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import type { CountryDetails, CountryLeader } from "../../types/models";
 import { Badge } from "@/components/Badge";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { DataTable } from "@/components/DataTable";
 import { Table } from "@/components/Table";
 import { Button } from "@/components/Button";
@@ -59,7 +59,7 @@ const columnHelper = createColumnHelper<
 >();
 const columns = [
   columnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Leader" />,
     meta: { className: "min-w-[180px]" },
     cell: ({ row }) =>
@@ -88,36 +88,36 @@ const columns = [
   }),
 
   columnHelper.accessor("activation", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Activation" />,
   }),
 
   columnHelper.accessor("fire", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Fire" />,
     cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("shock", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Shock" />,
     cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("maneuver", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Maneuver" />,
     cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("siege", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Siege" />,
     cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),
 
   columnHelper.accessor("total", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Total" />,
     cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
   }),

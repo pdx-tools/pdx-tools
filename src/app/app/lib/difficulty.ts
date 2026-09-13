@@ -1,6 +1,6 @@
 import type { GameDifficulty } from "@/services/appApi";
 import type { AchievementDifficulty } from "../services/appApi";
-import type { SortingFn } from "@tanstack/react-table";
+import type { AppSortFn } from "@/lib/tanstack-table";
 
 export const difficultyText = (diff: AchievementDifficulty | GameDifficulty): string => {
   switch (diff) {
@@ -53,5 +53,5 @@ export const difficultyComparator = (a: DiffProp, b: DiffProp): number => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const difficultySort: SortingFn<any> = (rowA, rowB, columnId) =>
+export const difficultySort: AppSortFn<any> = (rowA, rowB, columnId) =>
   difficultyNum(rowA.getValue(columnId)) - difficultyNum(rowB.getValue(columnId));

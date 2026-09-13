@@ -7,7 +7,7 @@ import { Alert } from "@/components/Alert";
 import type { CountryDevEfficiencies, CountryDevEffiency } from "@/wasm/wasm_eu4";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { Flag } from "../../components/avatars";
 import { DataTable } from "@/components/DataTable";
@@ -17,12 +17,12 @@ import { createCsv } from "@/lib/csv";
 const columnHelper = createColumnHelper<CountryDevEffiency>();
 const columns = [
   columnHelper.accessor("country.name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Country" />,
     cell: ({ row }) => <Flag tag={row.original.country.tag} name={row.original.country.name} />,
   }),
   columnHelper.accessor("dev_clicks", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Dev Clicks" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
@@ -33,7 +33,7 @@ const columns = [
     columns: [
       ...(["adm", "dip", "mil", "total"] as const).map((category) =>
         columnHelper.accessor(category === "total" ? "dev_mana" : `mana.${category}.develop_prov`, {
-          sortingFn: "basic",
+          sortFn: "basic",
           header: ({ column }) => <Table.ColumnHeader column={column} title={category} />,
           meta: { className: "text-right" },
           cell: (info) => formatInt(info.getValue()),
@@ -41,7 +41,7 @@ const columns = [
       ),
       columnHelper.accessor((x) => x.dev_mana / x.dev_clicks, {
         id: "per click",
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title={"per click"} />,
         meta: { className: "text-right" },
         cell: (info) => formatFloat(info.getValue(), 2),

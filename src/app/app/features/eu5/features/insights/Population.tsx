@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
@@ -593,7 +593,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
     () => [
       columnHelper.accessor("location", {
         id: "location",
-        sortingFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
+        sortFn: (a, b) => a.original.location.name.localeCompare(b.original.location.name),
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
@@ -602,7 +602,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
       }),
       columnHelper.accessor("owner", {
         id: "owner",
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
         cell: ({ row }) => (
@@ -610,14 +610,14 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
         ),
       }),
       columnHelper.accessor("population", {
-        sortingFn: "basic",
+        sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("rank", {
-        sortingFn: "text",
+        sortFn: "text",
         meta: Eu5DataTable.meta({ headerLabel: "Rank" }),
         cell: (info) => {
           const rank = info.getValue();

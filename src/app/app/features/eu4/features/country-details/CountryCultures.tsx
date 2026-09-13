@@ -4,7 +4,7 @@ import type { CountryDetails, CountryCulture } from "../../types/models";
 import { useEu4Worker } from "@/features/eu4/worker";
 import { Tooltip } from "@/components/Tooltip";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { StarIcon } from "@heroicons/react/24/outline";
@@ -31,7 +31,7 @@ const CultureStar = ({ tolerance }: { tolerance: CountryCulture["tolerance"] }) 
 const columnHelper = createColumnHelper<CountryCulture>();
 const columns = [
   columnHelper.accessor("name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Culture" />,
     size: 200,
     cell: ({ row }) => (
@@ -48,7 +48,7 @@ const columns = [
   }),
 
   columnHelper.accessor("group", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Group" />,
   }),
 
@@ -59,12 +59,12 @@ const columns = [
         header: "Count",
         columns: [
           columnHelper.accessor("provinces", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: "Value",
             cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
           }),
           columnHelper.accessor("provinces_percent", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
             cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
           }),
@@ -75,12 +75,12 @@ const columns = [
         header: "Development",
         columns: [
           columnHelper.accessor("development", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: "Value",
             cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
           }),
           columnHelper.accessor("development_percent", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
             cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
           }),
@@ -96,12 +96,12 @@ const columns = [
         header: "Count",
         columns: [
           columnHelper.accessor("stated_provs", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: "Value",
             cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
           }),
           columnHelper.accessor("stated_provs_percent", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
             cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
           }),
@@ -112,12 +112,12 @@ const columns = [
         header: "Development",
         columns: [
           columnHelper.accessor("stated_provs_development", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: "Value",
             cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
           }),
           columnHelper.accessor("stated_provs_development_percent", {
-            sortingFn: "basic",
+            sortFn: "basic",
             header: ({ column }) => <Table.ColumnHeader column={column} title="%" />,
             cell: (info) => <div className="text-right">{formatFloat(info.getValue(), 2)}%</div>,
           }),
@@ -130,12 +130,12 @@ const columns = [
     header: "Ongoing Conversions",
     columns: [
       columnHelper.accessor("conversions", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Count" />,
         cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
       }),
       columnHelper.accessor("conversions_development", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Dev" />,
         cell: (info) => <div className="text-right">{formatInt(info.getValue())}</div>,
       }),

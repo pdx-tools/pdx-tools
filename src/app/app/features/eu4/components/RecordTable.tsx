@@ -4,7 +4,7 @@ import { Flag } from "@/features/eu4/components/avatars";
 import { TimeAgo } from "@/components/TimeAgo";
 import { formatInt } from "@/lib/format";
 import { Tooltip } from "@/components/Tooltip";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { Link } from "@/components/Link";
@@ -21,17 +21,17 @@ const columnHelper = createColumnHelper<RankedSave>();
 
 const columns = [
   columnHelper.accessor("rank", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Rank" />,
     cell: (info) => rankDisplay(info.getValue()),
   }),
   columnHelper.accessor("user_name", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Player" />,
     cell: (info) => <Link href={`/users/${info.row.original.user_id}`}>{info.getValue()}</Link>,
   }),
   columnHelper.accessor("weighted_score.days", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => (
       <Tooltip>
         <Tooltip.Trigger asChild>
@@ -54,7 +54,7 @@ const columns = [
   }),
 
   columnHelper.accessor("days", {
-    sortingFn: "basic",
+    sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Date" />,
     cell: (info) => (
       <Tooltip>
@@ -65,13 +65,13 @@ const columns = [
   }),
 
   columnHelper.accessor("game_difficulty", {
-    sortingFn: difficultySort,
+    sortFn: difficultySort,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Difficulty" />,
     cell: (info) => difficultyText(info.getValue()),
   }),
 
   columnHelper.accessor("player_start_tag", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Starting" />,
     cell: ({ row }) =>
       row.original.player_start_tag && row.original.player_start_tag_name ? (
@@ -81,7 +81,7 @@ const columns = [
       ),
   }),
   columnHelper.accessor("player_tag", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Current" />,
     cell: ({ row }) => (
       <Flag
@@ -91,12 +91,12 @@ const columns = [
     ),
   }),
   columnHelper.accessor("patch", {
-    sortingFn: "text",
+    sortFn: "text",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Patch" />,
   }),
 
   columnHelper.accessor("upload_time", {
-    sortingFn: "datetime",
+    sortFn: "datetime",
     cell: (info) => <TimeAgo date={info.getValue()} />,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Uploaded" />,
   }),

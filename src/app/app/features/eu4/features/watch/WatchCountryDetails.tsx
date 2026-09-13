@@ -20,7 +20,7 @@ import { downloadData } from "@/lib/downloadData";
 import { createCsv } from "@/lib/csv";
 import { IconButton } from "@/components/IconButton";
 import { Alert } from "@/components/Alert";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { DataTable } from "@/components/DataTable";
 import { TableCellsIcon } from "@heroicons/react/24/outline";
 import type { MonitorData } from "../../worker/module";

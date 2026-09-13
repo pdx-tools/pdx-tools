@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { LegendColor } from "./LegendColor";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { EChart } from "./EChart";
@@ -133,7 +133,7 @@ export const PieTable = ({
   const columns = useMemo(
     () => [
       columnHelper.accessor("key", {
-        sortingFn: "text",
+        sortFn: "text",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Class" />,
         cell: (info) => (
           <div className="flex items-center space-x-2">
@@ -144,12 +144,12 @@ export const PieTable = ({
       }),
 
       columnHelper.accessor("value", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Value" />,
         cell: (info) => <div className="text-right">{numFormatter(info.getValue())}</div>,
       }),
       columnHelper.accessor("percent", {
-        sortingFn: "basic",
+        sortFn: "basic",
         header: ({ column }) => <Table.ColumnHeader column={column} title="Percent" />,
         cell: (info) => <div className="text-right">{formatFloat(info.getValue() * 100, 2)}%</div>,
       }),
