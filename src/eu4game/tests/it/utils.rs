@@ -1,7 +1,20 @@
 use sha1_smol::Sha1;
 use std::fs;
-use std::io::Seek;
+use std::io::{Seek, Write};
 use std::path::Path;
+
+fn log_access(name: &str) {
+    let Some(path) = std::env::var_os("PDX_FIXTURES_LOG") else {
+        return;
+    };
+    let mut log = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .expect("PDX_FIXTURES_LOG to be writable");
+    // One write per line so parallel tests do not interleave.
+    log.write_all(format!("eu4/{name}\n").as_bytes()).unwrap();
+}
 
 /// Fetch an eu4 save file. Save files can be quite large, so the save files are not stored in the
 /// repo. Instead they are stored in a public S3 bucket. This function will check if the file has
@@ -12,7 +25,8 @@ use std::path::Path;
 /// repository of saves.
 pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
     let reffed = input.as_ref();
-    let cache_dir = Path::new("..").join("..").join("assets").join("eu4-saves");
+    log_access(reffed);
+    let cache_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/saves/eu4");
     let cache = cache_dir.join(reffed);
     if cache.exists() {
         println!("cache hit: {}", reffed);

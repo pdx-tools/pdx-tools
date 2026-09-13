@@ -11,7 +11,7 @@ use walkdir::WalkDir;
 pub fn ironman_saves_detected() -> Result<(), Box<dyn Error>> {
     let mut playthrough_ids: HashMap<String, HashSet<String>> = HashMap::new();
 
-    let files = WalkDir::new("../../assets/eu4-saves");
+    let files = WalkDir::new("../../assets/saves/eu4");
     let add_files = WalkDir::new("../../../eu4saves/assets/saves");
 
     let files = files

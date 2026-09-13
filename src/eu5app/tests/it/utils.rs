@@ -1,8 +1,8 @@
-// Duplicate of eu5save/tests/it/utils.rs until a shared pdx-test-utils crate is warranted.
-// Follow-up: extract to src/pdx-test-utils/ once a second consumer appears.
+// Test helper for EU5 save fixtures.
+// Keep downloaded fixtures outside source directories.
 
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 
@@ -17,6 +17,19 @@ use pdx_map::LocationArrays;
 
 static DATA: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
+fn log_access(name: &str) {
+    let Some(path) = std::env::var_os("PDX_FIXTURES_LOG") else {
+        return;
+    };
+    let mut log = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .expect("PDX_FIXTURES_LOG to be writable");
+    // One write per line so parallel tests do not interleave.
+    log.write_all(format!("eu5/{name}\n").as_bytes()).unwrap();
+}
+
 /// Fetch a save file. Save files can be quite large, so the save files are not stored in the
 /// repo. Instead they are stored in a public S3 bucket. This function will check if the file has
 /// been cached, else fetch it from the S3 bucket. Previous implementations used git lfs, but had
@@ -26,10 +39,8 @@ static DATA: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 /// repository of saves.
 pub fn request_file<S: AsRef<str>>(input: S) -> File {
     let reffed = input.as_ref();
-    let cache_dir = Path::new("..")
-        .join("eu5save")
-        .join("assets")
-        .join("eu5-saves");
+    log_access(reffed);
+    let cache_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/saves/eu5");
     let cache = cache_dir.join(reffed);
     if cache.exists() {
         println!("cache hit: {}", reffed);

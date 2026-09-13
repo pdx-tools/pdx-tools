@@ -10,7 +10,13 @@ use std::path::Path;
 /// repository of saves.
 pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
     let reffed = input.as_ref();
-    let cache = Path::new("assets").join(reffed);
+    request_at(reffed, Path::new("assets").join(reffed))
+}
+
+/// Fetch a file and store it at a custom cache path.
+pub fn request_at<S: AsRef<str>, P: AsRef<Path>>(input: S, cache: P) -> Vec<u8> {
+    let reffed = input.as_ref();
+    let cache = cache.as_ref();
     if cache.exists() {
         println!("cache hit: {}", reffed);
         fs::read(cache).unwrap()
@@ -26,7 +32,7 @@ pub fn request<S: AsRef<str>>(input: S) -> Vec<u8> {
                     } else {
                         let data = resp.bytes().unwrap();
                         std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-                        std::fs::write(&cache, &data).unwrap();
+                        std::fs::write(cache, &data).unwrap();
                         return data;
                     }
                 }
