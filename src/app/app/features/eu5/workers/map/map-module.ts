@@ -3,6 +3,7 @@ import init, {
   Eu5CanvasSurface,
   Eu5WasmMapRenderer,
   Eu5WasmMapBundle,
+  location_borders_at_zoom,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
 import type { CanvasDisplay, LogLevel } from "../../../../wasm/wasm_eu5_map";
@@ -23,6 +24,15 @@ import type {
   BoxSelectOverlayRect,
   BoxSelectCommitEvent,
 } from "../../types/box-select";
+import { layoutTimelapseFrame } from "../../timeline/timelapseFrame";
+import type {
+  MapViewport,
+  TimelapseFraming,
+  TimelapseFrameLayout,
+} from "../../timeline/timelapseFrame";
+import type { TimelapseEncoder } from "../../timeline/timelapse/encoder";
+import type { DatePlateColors, DatePlateFonts } from "../../timeline/timelapse/datePlate";
+import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
 
 // Reverse lookup: numeric WebKeyCode value → string key code name
 const webKeyCodeToString = Object.fromEntries(
@@ -46,8 +56,37 @@ let boxSelectCommitCallback: ((event: BoxSelectCommitEvent) => void) | null = nu
 let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
 let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
 let lastCursorHint: CursorHint | null = null;
+let viewportCallback: ((viewport: MapViewport) => void) | null = null;
+let lastViewport: MapViewport | null = null;
 let newGroupingTable: Uint32Array | null = null;
 let renderOrQueue: () => void = () => {};
+
+/**
+ * A recording in progress. The surface is its own, so the film's size and
+ * framing never follow the window the player happens to have open, and the
+ * map they are watching stays interactive underneath. The encoder sits
+ * beside the surface: a frame goes from the GPU into the file without
+ * leaving this thread.
+ */
+type Recording = {
+  /** The surface the frames are rendered to, at the band's own size. */
+  canvas: OffscreenCanvas;
+  renderer: ReturnType<Eu5WasmMapRenderer["create_screenshot_renderer"]>;
+  encoder: TimelapseEncoder;
+  /** The world rectangle every frame shows, in world units. */
+  rect: { x: number; y: number; width: number; height: number };
+};
+
+/** Where a recorded frame's time went, for the timing summary on the page. */
+export type TimelapseFrameTiming = {
+  renderMs: number;
+  encodeMs: number;
+};
+
+/** The file a finished recording produced. */
+export type TimelapseFile = { blob: Blob; extension: string };
+
+let recording: Recording | null = null;
 let newLocations: Uint32Array | null = null;
 let newDimensions: {
   width: number;
@@ -444,9 +483,11 @@ export const createMapEngine = async (
   // firefox trips over itself and the clear color bleeds through. So for now we
   // just render every frame.
   let hasLocationInformation = false;
-  const rafRender = async () => {
-    // Sync location data before draining events so that updateCursorWorldPosition
-    // always has valid location arrays available when it calls gpu_loc_to_app.
+
+  // Location and grouping data arrive from the game worker between frames
+  // and reach the GPU here, at the next use: the top of the render loop, or
+  // a recorded frame, which cannot wait for the loop.
+  const applyPendingSync = () => {
     if (newLocations) {
       hasLocationInformation = true;
       app.sync_location_array(newLocations);
@@ -456,6 +497,12 @@ export const createMapEngine = async (
       app.sync_grouping_table(newGroupingTable);
       newGroupingTable = null;
     }
+  };
+
+  const rafRender = async () => {
+    // Sync location data before draining events so that updateCursorWorldPosition
+    // always has valid location arrays available when it calls gpu_loc_to_app.
+    applyPendingSync();
 
     // Drain canvas_courier input events before ticking
     inputReader.drain(processInputEvent);
@@ -485,12 +532,37 @@ export const createMapEngine = async (
     if (pressedKeys.size > 0 && lastCursorPosition && boxDrag === null) {
       updateCursorWorldPosition(lastCursorPosition.x, lastCursorPosition.y);
     }
+    publishViewport();
 
     if (hasLocationInformation) {
       app.render();
     }
     requestAnimationFrame(rafRender);
   };
+  // Four integers read off the input state: cheap enough for every frame,
+  // and the comparison keeps a resting map silent.
+  const publishViewport = () => {
+    const [x, y, width, height] = app.viewport_world_rect();
+    const prev = lastViewport?.viewport;
+    if (prev && prev.x === x && prev.y === y && prev.width === width && prev.height === height) {
+      return;
+    }
+    const [worldWidth, worldHeight] = app.world_size();
+    lastViewport = {
+      world: { width: worldWidth, height: worldHeight },
+      viewport: { x, y, width, height },
+    };
+    viewportCallback?.(lastViewport);
+  };
+
+  /** Release the recording's surface; the encoder is the caller's to settle. */
+  const closeRecording = (): Recording | null => {
+    const open = recording;
+    recording = null;
+    open?.renderer.free();
+    return open;
+  };
+
   let inputReader = new SharedCanvasInputReader(inputConfig);
   rafRender();
 
@@ -541,6 +613,95 @@ export const createMapEngine = async (
       return compositeCanvas.convertToBlob({ type: "image/png" });
     },
 
+    /**
+     * Open a recording and report the frame it will produce.
+     *
+     * The surface is independent of the visible canvas: it has the output's
+     * own size and its own view of the world, so the player can keep using
+     * the map while the film records, and a small window cannot shrink the
+     * result. The encoder is opened with it, so the first frame can be
+     * written the moment it is asked for.
+     */
+    beginTimelapseRecording: async ({
+      framing,
+      output,
+      colors,
+      fonts,
+    }: {
+      framing: TimelapseFraming;
+      output: { width: number; height: number };
+      colors: DatePlateColors;
+      fonts: DatePlateFonts;
+    }): Promise<TimelapseFrameLayout> => {
+      await closeRecording()?.encoder.abort();
+
+      const [worldWidth, worldHeight] = app.world_size();
+      const [viewX, viewY, viewWidth, viewHeight] = app.viewport_world_rect();
+      const layout = layoutTimelapseFrame({
+        framing,
+        viewport: { x: viewX, y: viewY, width: viewWidth, height: viewHeight },
+        world: { width: worldWidth, height: worldHeight },
+        output,
+      });
+
+      const canvas = new OffscreenCanvas(layout.band.width, layout.band.height);
+      const renderer = app.create_screenshot_renderer(canvas);
+      // Location borders follow the film's own zoom, as they follow the
+      // player's on the live map. The whole world in a 1080p frame is far
+      // below the zoom at which they read, and a film of it would carry them
+      // as noise on every border; a close view keeps them.
+      renderer.set_location_borders(
+        location_borders_at_zoom(layout.band.width / layout.rect.width),
+      );
+      try {
+        // Loaded on demand: the muxer is large, and most sessions never record.
+        const { TimelapseEncoder } = await import("../../timeline/timelapse/encoder");
+        const encoder = await TimelapseEncoder.create({ layout, output, colors, fonts });
+        recording = { canvas, renderer, encoder, rect: layout.rect };
+      } catch (e) {
+        renderer.free();
+        throw e;
+      }
+      return layout;
+    },
+
+    /**
+     * Render and encode one frame of the open recording, for `date`.
+     *
+     * Call it once the game worker has answered for that date: its colors
+     * are then waiting here, and go to the GPU before the frame is drawn.
+     * The frame is rendered now rather than by the render loop, so a
+     * recording never waits on the display's refresh, and runs on in a
+     * background tab, where the loop stops.
+     */
+    recordTimelapseFrame: async (date: Eu5DateComponents): Promise<TimelapseFrameTiming> => {
+      if (recording === null) {
+        throw new Error("No timelapse recording is open");
+      }
+      const renderStart = performance.now();
+      applyPendingSync();
+      const { rect, canvas, encoder } = recording;
+      recording.renderer.render_world_rect(rect.x, rect.y, rect.width, rect.height);
+      const renderMs = performance.now() - renderStart;
+      const encodeMs = await encoder.addFrame(canvas, date);
+      return { renderMs, encodeMs };
+    },
+
+    /** Close the recording and write its file. */
+    finishTimelapseRecording: async (): Promise<TimelapseFile> => {
+      const open = closeRecording();
+      if (open === null) {
+        throw new Error("No timelapse recording is open");
+      }
+      const blob = await open.encoder.finish();
+      return { blob, extension: open.encoder.extension };
+    },
+
+    /** Close the recording without a file. Nothing to do when none is open. */
+    endTimelapseRecording: async (): Promise<void> => {
+      await closeRecording()?.encoder.abort();
+    },
+
     async execCommands(commands: MapCommand[]) {
       for (const command of commands) {
         switch (command.kind) {
@@ -586,6 +747,17 @@ export const createMapEngine = async (
     onCursorHintUpdate: (callback: (hint: CursorHint) => void) => {
       cursorHintCallback = callback;
       if (lastCursorHint !== null) callback(lastCursorHint);
+    },
+
+    /**
+     * Where the live map is looking, in world units, sent from the render
+     * loop on the frames it changes. The subscriber gets the current view at
+     * once, then one message per pan or zoom frame and none while the map
+     * rests.
+     */
+    onViewportChange: (callback: (viewport: MapViewport) => void) => {
+      viewportCallback = callback;
+      if (lastViewport !== null) callback(lastViewport);
     },
 
     startHoverTracking: startHoverTracking,

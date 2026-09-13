@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
+import { TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "./TimelineReadout";
 import { TimelineScrubber } from "./TimelineScrubber";
 import { TimelineTransport } from "./TimelineTransport";
@@ -70,6 +71,8 @@ export function TimelineBar() {
         <div className="min-w-0 flex-1 basis-64 @max-xl:order-first @max-xl:basis-full">
           <TimelineScrubber controller={controller} />
         </div>
+
+        <TimelapseExport controller={controller} />
       </div>
 
       <TimelineAnnouncer controller={controller} />

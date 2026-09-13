@@ -10,7 +10,11 @@ import type {
   TimelineChange,
   TimelineData,
 } from "./game-adapter";
-import { addDays, addMonths, addYears, clampDate, sameDate } from "./lib/eu5Date";
+import { addDays, addMonths, addYears, clampDate, daysBetween, sameDate } from "./lib/eu5Date";
+import { TIMELAPSE_FPS, timelapsePlan } from "./timeline/timelapse/options";
+import { readDatePlateColors, readDatePlateFonts } from "./timeline/timelapse/datePlate";
+import type { TimelapseOptions } from "./timeline/timelapse/options";
+import type { MapViewport } from "./timeline/timelapseFrame";
 import type { Eu5SaveInput } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
@@ -37,6 +41,54 @@ import type {
   Eu5DateComponents,
 } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
+import { log } from "@/lib/log";
+import { formatInt } from "@/lib/format";
+
+type TimelapsePhase = "date" | "render" | "encode" | "hop" | "pace" | "finish";
+
+/**
+ * Where the time of a recording goes, one phase at a time, so the log can
+ * say whether a slow export is the game worker, the render, the encoder, or
+ * the messages between them.
+ */
+class TimelapseTiming {
+  frames = 0;
+  /** Frames that waited for the film's cadence; the rest ran unpaced. */
+  paced = 0;
+  private readonly start = performance.now();
+  private readonly ms: Record<TimelapsePhase, number> = {
+    date: 0,
+    render: 0,
+    encode: 0,
+    hop: 0,
+    pace: 0,
+    finish: 0,
+  };
+
+  add(phase: TimelapsePhase, ms: number) {
+    this.ms[phase] += ms;
+  }
+
+  /** Charge the time since `since` to `phase`; returns now, for the next lap. */
+  lap(phase: TimelapsePhase, since: number): number {
+    const now = performance.now();
+    this.ms[phase] += now - since;
+    return now;
+  }
+
+  summary(): string {
+    const total = performance.now() - this.start;
+    const per = (phase: TimelapsePhase) =>
+      `${phase} ${(this.ms[phase] / Math.max(1, this.frames)).toFixed(1)}`;
+    const phases: TimelapsePhase[] = ["date", "render", "encode", "hop", "pace"];
+    return (
+      `timelapse timing: ${this.frames} frames in ${(total / 1000).toFixed(1)}s ` +
+      `(${(total / Math.max(1, this.frames)).toFixed(1)}ms/frame): ` +
+      phases.map(per).join(" · ") +
+      ` · finish ${(this.ms.finish / 1000).toFixed(2)}s · paced ${this.paced}/${this.frames}`
+    );
+  }
+}
 
 /** Playback rate of the campaign timeline: one campaign year per real second. */
 export const TIMELINE_DAYS_PER_SECOND = 365;
@@ -52,6 +104,27 @@ export type TimelinePlayback = "paused" | "rewinding" | "playing" | "ended";
 
 /** How long the playhead takes to glide back to the campaign start, in ms. */
 export const TIMELINE_REWIND_MS = 420;
+
+/**
+ * What a timelapse export is doing.
+ *
+ * `recording` runs the campaign past the encoder a frame at a time;
+ * `encoding` is the wait while the file is assembled, which has no progress
+ * to report beyond having started.
+ */
+export type TimelapseStatus = "idle" | "recording" | "encoding";
+
+export type TimelapseState = {
+  status: TimelapseStatus;
+  /** Frames encoded so far, and how many the film has in total. */
+  frame: number;
+  frames: number;
+};
+
+const TIMELAPSE_IDLE: TimelapseState = { status: "idle", frame: 0, frames: 0 };
+
+/** A finished recording: the file and the extension it should be saved under. */
+export type TimelapseRecording = { blob: Blob; extension: string };
 
 export interface AppState {
   currentMapMode: MapMode;
@@ -76,6 +149,12 @@ export interface AppState {
    */
   timelineMapDate: Eu5DateComponents;
   timelinePlayback: TimelinePlayback;
+  timelapse: TimelapseState;
+  /**
+   * Where the live map is looking, in world units. Null until the first
+   * frame has rendered.
+   */
+  mapViewport: MapViewport | null;
 }
 
 export type AppStateListener = (state: AppState) => void;
@@ -106,6 +185,13 @@ export interface AppTriggers {
   stepTimeline(unit: TimelineStepUnit, direction: 1 | -1): void;
   pauseTimeline(): void;
   toggleTimelinePlayback(): void;
+  /**
+   * Record the whole campaign to a video file. Resolves with the file, or
+   * with null when the recording was stopped before it finished.
+   */
+  recordTimelapse(options: TimelapseOptions): Promise<TimelapseRecording | null>;
+  /** Stop a recording in progress and discard what it had encoded. */
+  stopTimelapse(): void;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
   toggleOwnerBorders(): Promise<void>;
   getLocationArrays(): Promise<Blob>;
@@ -175,8 +261,12 @@ export class Eu5UIEngine implements AppEngine {
   /** The date to send once the in-flight timeline request returns. */
   private timelineQueued: Eu5DateComponents | null = null;
   private timelineInFlight = false;
+  /** The date request in flight, so a recording can wait for it to settle. */
+  private timelineRequest: Promise<void> | null = null;
   private playbackFrame: number | null = null;
   private rewindTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Set by `stopTimelapse`, read between frames of a recording. */
+  private timelapseStopped = false;
 
   constructor(
     private gameInstance: GameInstance,
@@ -200,6 +290,8 @@ export class Eu5UIEngine implements AppEngine {
       timelineDate: timeline.end,
       timelineMapDate: timeline.end,
       timelinePlayback: "paused",
+      timelapse: TIMELAPSE_IDLE,
+      mapViewport: null,
       ...initialState,
     };
 
@@ -228,6 +320,10 @@ export class Eu5UIEngine implements AppEngine {
       this.updateState(() => ({ cursorHint: hint }));
     });
 
+    this.gameInstance.onViewportChange((viewport) => {
+      this.updateState(() => ({ mapViewport: viewport }));
+    });
+
     // Start hover tracking
     this.gameInstance.startHoverTracking();
   }
@@ -239,6 +335,8 @@ export class Eu5UIEngine implements AppEngine {
     pauseTimeline: () => this.handlePauseTimeline(),
     toggleTimelinePlayback: () =>
       this.isTimelineRunning() ? this.handlePauseTimeline() : this.handlePlayTimeline(),
+    recordTimelapse: (options) => this.handleRecordTimelapse(options),
+    stopTimelapse: () => this.handleStopTimelapse(),
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     getLocationArrays: () => this.handleGetLocationArrays(),
@@ -312,6 +410,10 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   private async handleSelectMapMode(mode: MapMode): Promise<void> {
+    // A recording owns the map until it is done; a mode change mid-film would
+    // pull the date to the save and spoil what has been encoded.
+    if (this.isTimelapseRunning()) return;
+
     // A mode without a history pulls the map back to the save date.
     if (!isTimelineLive(this._state) && !isHistoricalMapMode(mode)) {
       this.handlePauseTimeline();
@@ -339,7 +441,7 @@ export class Eu5UIEngine implements AppEngine {
 
   private handleSetTimelineDate(date: Eu5DateComponents): void {
     const timeline = this._state.timeline;
-    if (!timeline.available) return;
+    if (!timeline.available || this.isTimelapseRunning()) return;
     const clamped = clampDate(date, timeline.start, timeline.end);
     if (sameDate(clamped, this._state.timelineDate) && !this.timelineInFlight) return;
     this.updateState((state) => ({
@@ -354,7 +456,7 @@ export class Eu5UIEngine implements AppEngine {
       this.timelineQueued = clamped;
       return;
     }
-    void this.sendTimelineDate(clamped);
+    this.timelineRequest = this.sendTimelineDate(clamped);
   }
 
   private async sendTimelineDate(date: Eu5DateComponents): Promise<void> {
@@ -394,7 +496,7 @@ export class Eu5UIEngine implements AppEngine {
 
   private handlePlayTimeline(): void {
     const timeline = this._state.timeline;
-    if (!timeline.available || this.isTimelineRunning()) return;
+    if (!timeline.available || this.isTimelineRunning() || this.isTimelapseRunning()) return;
 
     // A play from the save date first glides the playhead back to the
     // campaign start, so the eye can follow the rewind before borders move.
@@ -450,6 +552,137 @@ export class Eu5UIEngine implements AppEngine {
     }
     if (this.isTimelineRunning()) {
       this.updateState(() => ({ timelinePlayback: "paused" }));
+    }
+  }
+
+  private isTimelapseRunning(): boolean {
+    return this._state.timelapse.status !== "idle";
+  }
+
+  /** Stop a recording at the frame it is on; the loop reads the flag between frames. */
+  private handleStopTimelapse(): void {
+    if (!this.isTimelapseRunning()) return;
+    this.timelapseStopped = true;
+  }
+
+  /**
+   * Run the campaign past a video encoder, a frame at a time.
+   *
+   * Each frame is rendered on a surface of the output's own size rather than
+   * copied off the visible canvas, so the film does not inherit the size of
+   * the player's window. The date is set and awaited per frame instead of
+   * going through the coalescing path: a dropped date here is a dropped frame.
+   *
+   * This thread only relays: the game worker settles the date, the map worker
+   * renders and encodes the frame.
+   *
+   * While the tab is visible the loop keeps to the film's own frame rate, so
+   * the map on screen plays the film as it is written: every frame is shown,
+   * at the pace it will play, and the export takes as long as the film the
+   * panel quoted. The wait is on a schedule, not on the display, so a slow
+   * frame is not doubled by a missed refresh. With the tab hidden nobody is
+   * watching, and the loop runs as fast as the encoder takes frames.
+   */
+  private async handleRecordTimelapse(
+    options: TimelapseOptions,
+  ): Promise<TimelapseRecording | null> {
+    const timeline = this._state.timeline;
+    if (!timeline.available) {
+      throw new Error("This save has no border history to record");
+    }
+    if (this.isTimelapseRunning()) {
+      throw new Error("A timelapse recording is already running");
+    }
+
+    this.handlePauseTimeline();
+    this.timelapseStopped = false;
+    const resumeDate = this._state.timelineDate;
+
+    // A date the player's last drag left in flight would otherwise answer in
+    // the middle of the film, so it settles first.
+    await this.timelineRequest?.catch(() => {});
+    this.timelineQueued = null;
+
+    const plan = timelapsePlan({
+      totalDays: daysBetween(timeline.start, timeline.end),
+      options,
+    });
+    const output = { width: plan.quality.width, height: plan.quality.height };
+
+    this.updateState(() => ({
+      timelapse: { status: "recording", frame: 0, frames: plan.frames },
+    }));
+
+    const timing = new TimelapseTiming();
+    const frameMs = 1000 / TIMELAPSE_FPS;
+    try {
+      // Framing is read before the first date is set, so the current view is
+      // the one the player was looking at when they pressed record. The plate's
+      // colors and fonts are read here, where the document is.
+      await this.gameInstance.beginTimelapseRecording({
+        framing: options.framing,
+        output,
+        colors: readDatePlateColors(),
+        fonts: readDatePlateFonts(),
+      });
+
+      // When the frame on screen should give way to the next one.
+      let due = performance.now();
+      for (let frame = 0; frame < plan.frames; frame += 1) {
+        if (this.timelapseStopped) return null;
+        due += frameMs;
+
+        // The last frame lands exactly on the save date, whatever rounding
+        // did to the frames before it.
+        const date =
+          frame === plan.frames - 1
+            ? timeline.end
+            : addDays(timeline.start, Math.round(frame * plan.daysPerFrame));
+
+        let t = performance.now();
+        const change = await this.gameInstance.setTimelineDate(date);
+        this.applyTimelineChange(change);
+        t = timing.lap("date", t);
+        const { renderMs, encodeMs } = await this.gameInstance.recordTimelapseFrame(change.date);
+        timing.add("render", renderMs);
+        timing.add("encode", encodeMs);
+        timing.add("hop", performance.now() - t - renderMs - encodeMs);
+        timing.frames += 1;
+
+        this.updateState(() => ({
+          timelapse: { status: "recording", frame: frame + 1, frames: plan.frames },
+        }));
+
+        const now = performance.now();
+        if (document.visibilityState !== "visible" || now >= due) {
+          // Nobody watching, or a frame that ran long: the schedule restarts
+          // here rather than racing, or stalling, to catch up.
+          due = now;
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, due - now));
+          timing.lap("pace", now);
+          timing.paced += 1;
+        }
+      }
+
+      this.updateState((state) => ({
+        timelapse: { ...state.timelapse, status: "encoding" },
+      }));
+      const finishStart = performance.now();
+      const file = await this.gameInstance.finishTimelapseRecording();
+      timing.lap("finish", finishStart);
+      // The panel quoted an estimate; the gap between it and the file is what
+      // tells us whether the estimate is honest.
+      log(`timelapse file: ${formatInt(file.blob.size)} bytes, planned ${formatInt(plan.bytes)}`);
+      return file;
+    } finally {
+      log(timing.summary());
+      // A recording that was finished is already closed; a stopped or failed
+      // one is discarded here.
+      await this.gameInstance.endTimelapseRecording();
+      this.updateState(() => ({ timelapse: TIMELAPSE_IDLE }));
+      // Put the map back on the date the player left it on.
+      this.handleSetTimelineDate(resumeDate);
     }
   }
 

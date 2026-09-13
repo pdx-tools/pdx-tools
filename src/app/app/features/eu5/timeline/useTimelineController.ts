@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useEu5Engine,
+  useEu5Timelapse,
   useEu5Timeline,
   useEu5TimelineDate,
   useEu5TimelineLive,
@@ -19,6 +20,11 @@ export type TimelineController = {
   playback: TimelinePlayback;
   /** True while the date advances or rewinds; Pause is the offered action. */
   playing: boolean;
+  /**
+   * True while a recording drives the date. The controls stand down: the film
+   * is the campaign from end to end, and a nudge would land in it.
+   */
+  locked: boolean;
   totalDays: number;
   dayOffset: number;
   /** Days after the start that the map has rendered; trails `dayOffset` during a drag. */
@@ -42,6 +48,7 @@ export function useTimelineController(): TimelineController | null {
   const mapDate = useEu5TimelineMapDate();
   const live = useEu5TimelineLive();
   const playback = useEu5TimelinePlayback();
+  const timelapse = useEu5Timelapse();
 
   const { start, end } = timeline;
   // Every direct move pauses playback; only `step` leaves that to the engine.
@@ -69,6 +76,7 @@ export function useTimelineController(): TimelineController | null {
       live,
       playback,
       playing: playback === "playing" || playback === "rewinding",
+      locked: timelapse.status !== "idle",
       totalDays: daysBetween(timeline.start, timeline.end),
       dayOffset: daysBetween(timeline.start, date),
       mapDayOffset: daysBetween(timeline.start, mapDate),
@@ -85,6 +93,7 @@ export function useTimelineController(): TimelineController | null {
     mapDate,
     live,
     playback,
+    timelapse.status,
     setDayOffset,
     setDate,
     step,
@@ -178,7 +187,7 @@ export function useTimelineKeyboard(controller: TimelineController | null) {
     if (!mounted) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const controller = controllerRef.current;
-      if (controller === null || !WINDOW_KEYS.has(event.key)) return;
+      if (controller === null || controller.locked || !WINDOW_KEYS.has(event.key)) return;
       if (event.defaultPrevented || isTypingTarget(event.target)) return;
       const target = event.target instanceof HTMLElement ? event.target : null;
       if (target?.closest(ARROW_CONSUMERS)) return;

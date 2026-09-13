@@ -88,5 +88,7 @@ export const useEu5TimelineDate = () => useEu5Store((x) => x.appState.timelineDa
 export const useEu5TimelineMapDate = () => useEu5Store((x) => x.appState.timelineMapDate);
 export const useEu5TimelineLive = () => useEu5Store((x) => isTimelineLive(x.appState));
 export const useEu5TimelinePlayback = () => useEu5Store((x) => x.appState.timelinePlayback);
+export const useEu5Timelapse = () => useEu5Store((x) => x.appState.timelapse);
+export const useEu5MapViewport = () => useEu5Store((x) => x.appState.mapViewport);
 export const useEu5TimelineBarHeight = () => useEu5Store((x) => x.timelineBarHeight);
 export const useSetEu5TimelineBarHeight = () => useEu5Store((x) => x.setTimelineBarHeight);

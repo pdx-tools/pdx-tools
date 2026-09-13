@@ -1,0 +1,31 @@
+/* The ring advances a frame at a time, so each step is eased rather than
+   jumped. */
+.ring {
+  transition: stroke-dashoffset 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Assembling the file has no progress to report, so a full ring breathes
+   instead of claiming to advance. */
+.ringPulse {
+  animation: sheen 1.4s ease-in-out infinite;
+}
+
+@keyframes sheen {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ringPulse {
+    animation: none;
+  }
+
+  .ring {
+    transition: none;
+  }
+}

@@ -104,7 +104,7 @@ function StepForwardIcon() {
 const jumpButton = "@max-xl:hidden";
 
 export function TimelineTransport({ controller }: { controller: TimelineController }) {
-  const { playing, playback, dayOffset, live } = controller;
+  const { playing, playback, dayOffset, live, locked } = controller;
   const atStart = dayOffset <= 0;
   const ended = playback === "ended";
   const playLabel = playing ? "Pause" : ended ? "Replay from the campaign start" : "Play";
@@ -115,7 +115,7 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
         label="Campaign start"
         hint="Home"
         onClick={controller.jumpToStart}
-        disabled={atStart}
+        disabled={locked || atStart}
         className={jumpButton}
       >
         <SkipStartIcon />
@@ -124,7 +124,7 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
         label="Back a day"
         hint="← · Shift month · Ctrl year"
         onClick={(event) => controller.step(stepUnitForModifiers(event), -1)}
-        disabled={atStart}
+        disabled={locked || atStart}
       >
         <StepBackIcon />
       </TransportButton>
@@ -136,12 +136,14 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
             aria-label={playLabel}
             aria-pressed={playing}
             data-playback={playback}
+            disabled={locked}
             onClick={controller.togglePlayback}
             className={cx(
               "mx-0.5 grid h-8 w-8 place-items-center rounded-full border transition-colors duration-100",
               playing
                 ? "border-game-accent-500 bg-game-accent-500/20 text-game-accent-100 hover:bg-game-accent-500/30"
-                : "border-game-line-strong bg-game-panel-2 text-game-ink-100 hover:border-game-accent-line hover:bg-game-panel-hover",
+                : "border-game-line-strong bg-game-panel-2 text-game-ink-100 enabled:hover:border-game-accent-line enabled:hover:bg-game-panel-hover",
+              "disabled:cursor-not-allowed disabled:opacity-40",
               focusRing,
             )}
           >
@@ -169,7 +171,7 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
         label="Forward a day"
         hint="→ · Shift month · Ctrl year"
         onClick={(event) => controller.step(stepUnitForModifiers(event), 1)}
-        disabled={live}
+        disabled={locked || live}
       >
         <StepForwardIcon />
       </TransportButton>
@@ -177,7 +179,7 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
         label="Save date"
         hint="End"
         onClick={controller.jumpToEnd}
-        disabled={live}
+        disabled={locked || live}
         className={jumpButton}
       >
         <SkipEndIcon />
