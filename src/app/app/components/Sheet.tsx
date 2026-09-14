@@ -34,7 +34,7 @@ const SheetOverlay = React.forwardRef<
   return (
     <SheetPrimitive.Overlay
       className={cx(
-        "fixed inset-0 z-300 bg-sky-900/80 backdrop-blur-sm data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-300 bg-sky-900/80 backdrop-blur-sm data-[state=closed]:animate-overlay-exit data-[state=open]:animate-overlay-enter motion-reduce:!animate-none",
         className,
       )}
       {...props}
@@ -45,16 +45,16 @@ const SheetOverlay = React.forwardRef<
 Sheet.Overlay = SheetOverlay;
 
 const sheetVariants = cva(
-  "fixed z-300 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500 dark:border-gray-600",
+  "fixed z-300 shadow-lg will-change-transform dark:border-gray-600 data-[state=open]:animate-sheet-enter data-[state=closed]:animate-sheet-exit motion-reduce:!animate-none",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        top: "inset-x-0 top-0 border-b data-[state=open]:[--tw-enter-translate-y:-100%] data-[state=closed]:[--tw-exit-translate-y:-100%]",
         bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+          "inset-x-0 bottom-0 border-t data-[state=open]:[--tw-enter-translate-y:100%] data-[state=closed]:[--tw-exit-translate-y:100%]",
+        left: "inset-y-0 left-0 h-full border-r data-[state=open]:[--tw-enter-translate-x:-100%] data-[state=closed]:[--tw-exit-translate-x:-100%]",
         right:
-          "inset-y-0 right-0 h-full border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+          "inset-y-0 right-0 h-full border-l data-[state=open]:[--tw-enter-translate-x:100%] data-[state=closed]:[--tw-exit-translate-x:100%]",
       },
     },
     defaultVariants: {

@@ -93,7 +93,7 @@ const NavigationMenuContent = React.forwardRef<
     <NavigationMenuPrimitive.Content
       ref={ref}
       className={cx(
-        "top-0 w-full data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 data-[motion^=from-]:animate-in data-[motion^=from-]:fade-in data-[motion^=to-]:animate-out data-[motion^=to-]:fade-out md:absolute md:w-auto",
+        "top-0 w-full data-[motion=from-end]:[--tw-enter-translate-x:13rem] data-[motion=from-start]:[--tw-enter-translate-x:-13rem] data-[motion=to-end]:[--tw-exit-translate-x:13rem] data-[motion=to-start]:[--tw-exit-translate-x:-13rem] data-[motion^=from-]:animate-enter data-[motion^=from-]:[--tw-enter-opacity:0] data-[motion^=to-]:animate-exit data-[motion^=to-]:[--tw-exit-opacity:0] motion-reduce:!animate-none md:absolute md:w-auto",
         className,
       )}
       {...props}
@@ -128,7 +128,7 @@ const NavigationMenuViewport = React.forwardRef<
   return (
     <div className={cx("absolute top-full z-100 flex justify-center", className)}>
       <NavigationMenuPrimitive.Viewport
-        className="bg-popover text-popover-foreground relative mt-1.5 h-(--radix-navigation-menu-viewport-height) w-full overflow-hidden rounded-md border shadow-lg data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:zoom-in-90 md:w-(--radix-navigation-menu-viewport-width)"
+        className="bg-popover text-popover-foreground relative mt-1.5 h-(--radix-navigation-menu-viewport-height) w-full overflow-hidden rounded-md border shadow-lg data-[state=closed]:animate-exit data-[state=closed]:[--tw-exit-scale:0.95] data-[state=open]:animate-enter data-[state=open]:[--tw-enter-scale:0.9] motion-reduce:!animate-none md:w-(--radix-navigation-menu-viewport-width)"
         ref={ref}
         {...props}
       />
@@ -145,7 +145,7 @@ const NavigationMenuIndicator = React.forwardRef<
     <NavigationMenuPrimitive.Indicator
       ref={ref}
       className={cx(
-        "top-full z-1 flex h-1.5 items-end justify-center overflow-hidden data-[state=hidden]:animate-out data-[state=hidden]:fade-out data-[state=visible]:animate-in data-[state=visible]:fade-in",
+        "top-full z-1 flex h-1.5 items-end justify-center overflow-hidden data-[state=hidden]:animate-exit data-[state=hidden]:[--tw-exit-opacity:0] data-[state=visible]:animate-enter data-[state=visible]:[--tw-enter-opacity:0] motion-reduce:!animate-none",
         className,
       )}
       {...props}

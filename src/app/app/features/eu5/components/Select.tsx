@@ -58,9 +58,9 @@ const GameSelectContent = React.forwardRef<
         className={cx(
           "relative z-1001 min-w-24 overflow-hidden",
           "rounded-[var(--radius-panel)] border border-solid border-game-line-strong bg-game-panel py-1 shadow-lg",
-          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-          "data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1",
+          "data-[state=open]:animate-enter data-[state=open]:[--tw-enter-opacity:0] data-[state=open]:[--tw-enter-scale:0.95]",
+          "data-[state=closed]:animate-exit data-[state=closed]:[--tw-exit-opacity:0] data-[state=closed]:[--tw-exit-scale:0.95]",
+          "data-[side=bottom]:[--tw-enter-translate-y:-0.25rem] data-[side=top]:[--tw-enter-translate-y:0.25rem] motion-reduce:!animate-none",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
           className,
