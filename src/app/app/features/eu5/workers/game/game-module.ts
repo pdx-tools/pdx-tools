@@ -1,6 +1,6 @@
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
-import type { Eu5MapEndpoint } from "../map/map-module";
+import type { Eu5MapEndpoint, MapDataSync } from "../map/map-module";
 import type { Eu5SaveInput } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
@@ -32,6 +32,7 @@ import type {
   Eu5DateComponents,
   TimelineChange,
   TimelineData,
+  MapChangeData,
 } from "../../../../wasm/wasm_eu5";
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
@@ -171,15 +172,27 @@ export const createGame = async (
     eu5: paletteToCss("eu5"),
   };
 
-  const syncLocationData = () => {
-    const buffer = app.location_arrays();
-    const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
+  const cloneBuffer = (buffer: { ptr(): number; len(): number }) => {
+    const values = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
+    return new Uint32Array(values);
+  };
 
-    // Making a clone in the web worker instead of having the channel do a
-    // structured clone is 100x faster on firefox. Decreased latency from 600ms
-    // to 6ms.
-    const cloned = new Uint32Array(locationArray);
-    return map.syncLocationData(transfer(cloned, [cloned.buffer]));
+  // Send the stale location buffers to the map worker in one message.
+  const syncMapData = (data: MapDataSync) => {
+    const buffers = [data.colors?.buffer, data.flags?.buffer].filter((x) => x !== undefined);
+    return map.syncMapData(transfer(data, buffers));
+  };
+
+  const syncFlagData = () => syncMapData({ flags: cloneBuffer(app.location_flag_data()) });
+
+  const syncChangedData = (change: MapChangeData) => {
+    if (!change.colorsChanged && !change.flagsChanged) {
+      return Promise.resolve();
+    }
+    return syncMapData({
+      colors: change.colorsChanged ? cloneBuffer(app.location_color_data()) : undefined,
+      flags: change.flagsChanged ? cloneBuffer(app.location_flag_data()) : undefined,
+    });
   };
 
   const syncGroupingTable = () => {
@@ -187,8 +200,8 @@ export const createGame = async (
     return map.syncGroupingTable(transfer(raw, [raw.buffer]));
   };
 
-  const syncAll = () => {
-    const p = syncLocationData();
+  const syncAll = (change: MapChangeData) => {
+    const p = syncChangedData(change);
     syncGroupingTable();
     return p;
   };
@@ -201,14 +214,16 @@ export const createGame = async (
   };
 
   // Run a selection mutation, sync GPU buffers, and push the new state.
-  const afterMutation = (gradient?: GradientConfig) => {
-    const p = syncLocationData();
-    pushSelection(gradient);
+  const afterMutation = (change: MapChangeData) => {
+    const p = syncChangedData(change);
+    pushSelection(change.gradient ?? undefined);
     return p;
   };
 
   map.onLocationHoverUpdate(
     proxy((event) => {
+      // Hover resolution is synchronous and worker messages are ordered. If
+      // this handler becomes asynchronous, carry a generation through it.
       app.clear_highlights();
 
       if (event.kind === "update") {
@@ -218,54 +233,51 @@ export const createGame = async (
         hoverDisplayCallback?.({ kind: "clear" });
       }
 
-      syncLocationData();
+      syncFlagData();
     }),
   );
 
   map.onLocationClickUpdate(
     proxy((event) => {
-      let gradient: GradientConfig | undefined;
+      let change: MapChangeData;
       if (event.kind === "update") {
         const mods = event.modifiers;
         if (mods & SharedCanvasModifierBits.Shift) {
-          gradient = app.add_entity(event.locationIdx);
+          change = app.add_entity(event.locationIdx);
         } else if (mods & SharedCanvasModifierBits.Alt) {
-          gradient = app.remove_entity(event.locationIdx);
+          change = app.remove_entity(event.locationIdx);
         } else {
-          gradient = app.select_entity(event.locationIdx);
+          change = app.select_entity(event.locationIdx);
         }
       } else {
-        gradient = app.clear_focus_or_selection();
+        change = app.clear_focus_or_selection();
       }
-      syncLocationData();
-      pushSelection(gradient);
+      afterMutation(change);
     }),
   );
 
   map.onBoxSelectCommit(
     proxy((event) => {
-      let gradient: GradientConfig | undefined;
+      let change: MapChangeData;
       switch (event.operation) {
         case "add":
-          gradient = app.apply_resolved_box_selection(event.locationIdxs, true);
+          change = app.apply_resolved_box_selection(event.locationIdxs, true);
           break;
         case "remove":
-          gradient = app.apply_resolved_box_selection(event.locationIdxs, false);
+          change = app.apply_resolved_box_selection(event.locationIdxs, false);
           break;
         case "replace":
-          gradient = app.replace_selection_with_locations(event.locationIdxs);
+          change = app.replace_selection_with_locations(event.locationIdxs);
           break;
       }
-      const p = syncLocationData();
-      pushSelection(gradient);
-      return p;
+      return afterMutation(change);
     }),
   );
 
   return proxy({
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       const change = app.set_map_mode(mode);
-      await syncAll();
+      await syncAll(change);
       pushSelection(change.gradient ?? undefined);
       return change;
     },
@@ -278,10 +290,10 @@ export const createGame = async (
       // A date can force the political mode, which is a mode change like any
       // other; a move inside one mode repaints locations only.
       if (change.mapMode !== before) {
-        await syncAll();
+        await syncAll(change);
         pushSelection(change.gradient ?? undefined);
       } else {
-        await syncLocationData();
+        await syncChangedData(change);
       }
       return change;
     },
@@ -320,14 +332,14 @@ export const createGame = async (
     ) => {
       selectionCallback = callback;
     },
-    selectCountry: (countryIdx: number) => afterMutation(app.select_country(countryIdx).gradient),
+    selectCountry: (countryIdx: number) => afterMutation(app.select_country(countryIdx)),
     addCountry: (countryIdx: number) => afterMutation(app.add_country(countryIdx)),
     removeCountry: (countryIdx: number) => afterMutation(app.remove_country(countryIdx)),
-    selectMarket: (marketId: number) => afterMutation(app.select_market(marketId).gradient),
+    selectMarket: (marketId: number) => afterMutation(app.select_market(marketId)),
     addMarket: (marketId: number) => afterMutation(app.add_market(marketId)),
     removeMarket: (marketId: number) => afterMutation(app.remove_market(marketId)),
     setFocusedLocation: (locationIdx: number) =>
-      afterMutation(app.set_focused_location(locationIdx).gradient),
+      afterMutation(app.set_focused_location(locationIdx)),
     clearFocus: () => afterMutation(app.clear_focus()),
     clearFocusOrSelection: () => afterMutation(app.clear_focus_or_selection()),
     selectPlayers: () => afterMutation(app.select_players()),
@@ -345,11 +357,11 @@ export const createGame = async (
           app.highlight_market(target.marketId);
           break;
       }
-      return syncLocationData();
+      return syncFlagData();
     },
     clearMapHoverHighlight: () => {
       app.clear_highlights();
-      return syncLocationData();
+      return syncFlagData();
     },
     getStateEfficacy: (): StateEfficacyInsightData => {
       return app.get_state_efficacy();

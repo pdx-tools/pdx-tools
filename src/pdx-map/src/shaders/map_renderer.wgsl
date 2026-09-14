@@ -26,6 +26,7 @@ struct ComputeUniforms {
     zoom_level: f32,
     surface_width: u32,
     surface_height: u32,
+    interaction_mask: u32,
 }
 
 
@@ -40,6 +41,8 @@ struct ComputeUniforms {
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
 const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
 const STATE_FOCUSED = 4u; // Bit 2: location is the focused single tile
+const STATE_DIMMED = 8u; // Bit 3: location is outside the active selection
+const STATE_PREVIEW = 16u; // Bit 4: location is inside a box-select drag
 
 const TAU = acos(-1.0) * 2.0;
 
@@ -75,6 +78,10 @@ fn get_secondary_color_by_index(location_idx: u32) -> u32 {
 
 fn get_state_flags_by_index(location_idx: u32) -> u32 {
     return location_states[location_idx];
+}
+
+fn is_interaction_enabled(state_flags: u32, flag: u32) -> bool {
+    return (state_flags & flag) != 0u && (uniforms.interaction_mask & flag) != 0u;
 }
 
 // Get location index for a pixel at global coordinates (direct read from R16 texture)
@@ -206,10 +213,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Get location index directly from R16 texture
     let location_idx = get_location_index_at(global_x, global_y);
 
-    // Check if this location is highlighted or focused
+    // Check which interaction effects are active for this renderer.
     let state_flags = get_state_flags_by_index(location_idx);
-    let is_highlighted = (state_flags & STATE_HIGHLIGHTED) != 0u;
-    let is_focused = (state_flags & STATE_FOCUSED) != 0u;
+    let is_dimmed = is_interaction_enabled(state_flags, STATE_DIMMED);
+    let is_highlighted = is_interaction_enabled(state_flags, STATE_HIGHLIGHTED)
+        || is_interaction_enabled(state_flags, STATE_PREVIEW);
+    let is_focused = is_interaction_enabled(state_flags, STATE_FOCUSED);
 
     let primary_color = get_primary_color_by_index(location_idx);
     let secondary_color = get_secondary_color_by_index(location_idx);
@@ -223,6 +232,35 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let is_owner_border = is_owner_border_pixel(global_x, global_y, location_idx, center_owner_color);
     let is_location_border = is_location_border_pixel(global_x, global_y, location_idx, in_secondary_zone, secondary_color);
 
+    var fill_color: vec4<f32>;
+    // Apply interaction effects after the domain fill is complete.
+    if (has_stripes) {
+        fill_color = create_stripe_pattern(primary_color, secondary_color, stripe_blend);
+    } else {
+        let mapped_rgb = unpack_color(primary_color);
+        fill_color = vec4<f32>(mapped_rgb.r, mapped_rgb.g, mapped_rgb.b, 1.0);
+    }
+
+    if (is_dimmed) {
+        fill_color = vec4<f32>(fill_color.rgb * 0.3, 1.0);
+    }
+    if (is_highlighted) {
+        fill_color = vec4<f32>(
+            min(1.0, fill_color.r + 0.25),
+            min(1.0, fill_color.g + 0.25),
+            min(1.0, fill_color.b + 0.25),
+            1.0
+        );
+    }
+    if (is_focused) {
+        fill_color = vec4<f32>(
+            min(1.0, fill_color.r + 0.35),
+            min(1.0, fill_color.g + 0.35),
+            min(1.0, fill_color.b + 0.35),
+            1.0
+        );
+    }
+
     var output_color: vec4<f32>;
     if (is_focused && is_location_border) {
         // Focused border: bright white outline to distinguish the focused tile
@@ -233,46 +271,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         let mapped_rgb = unpack_color(mapped_value);
         output_color = vec4<f32>(mapped_rgb.r * 0.7, mapped_rgb.g * 0.7, mapped_rgb.b * 0.7, 1.0);
     } else if (is_location_border) {
-        // Location border: darken the looked-up color
-        let mapped_value = get_primary_color_by_index(location_idx);
-        let mapped_rgb = unpack_color(mapped_value);
-        // Darken by reducing brightness
+        // Location border: darken the final fill.
         output_color = vec4<f32>(
-            max(0.0, mapped_rgb.r - 0.08),
-            max(0.0, mapped_rgb.g - 0.08),
-            max(0.0, mapped_rgb.b - 0.08),
-            1.0
+            max(0.0, fill_color.r - 0.08),
+            max(0.0, fill_color.g - 0.08),
+            max(0.0, fill_color.b - 0.08),
+            fill_color.a
         );
     } else {
-        // Normal pixel: check for stripes or use primary color
-        if (has_stripes) {
-            // Primary and secondary colors differ - create stripe pattern
-            output_color = create_stripe_pattern(primary_color, secondary_color, stripe_blend);
-        } else {
-            // Use primary color only
-            let mapped_rgb = unpack_color(primary_color);
-            output_color = vec4<f32>(mapped_rgb.r, mapped_rgb.g, mapped_rgb.b, 1.0);
-        }
-
-        // Apply highlighting effect if location is highlighted
-        if (is_highlighted) {
-            // Lighten the color by blending with white
-            output_color = vec4<f32>(
-                min(1.0, output_color.r + 0.25),
-                min(1.0, output_color.g + 0.25),
-                min(1.0, output_color.b + 0.25),
-                1.0
-            );
-        }
-        // Apply focus glow for the selected single tile
-        if (is_focused) {
-            output_color = vec4<f32>(
-                min(1.0, output_color.r + 0.35),
-                min(1.0, output_color.g + 0.35),
-                min(1.0, output_color.b + 0.35),
-                1.0
-            );
-        }
+        output_color = fill_color;
     }
 
     // Return color directly to render target

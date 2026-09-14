@@ -5,7 +5,8 @@ use wgpu::SurfaceTarget;
 
 use crate::error::{RenderError, RenderErrorKind, SurfaceError};
 use crate::{
-    GpuLocationIdx, HemisphereSize, LocationArrays, PhysicalSize, R16, ViewportBounds, WorldPoint,
+    GpuLocationIdx, HemisphereSize, LocationArrays, LocationFlags, PhysicalSize, R16,
+    ViewportBounds, WorldPoint,
 };
 
 /// A drawable layer that can be composed into the main map render pass
@@ -89,6 +90,7 @@ pub struct RenderConfig {
 
     pub enable_location_borders: bool,
     pub enable_owner_borders: bool,
+    pub interaction_mask: LocationFlags,
 }
 
 impl RenderConfig {
@@ -98,7 +100,17 @@ impl RenderConfig {
             hemisphere,
             enable_location_borders: true,
             enable_owner_borders: true,
+            interaction_mask: LocationFlags::INTERACTION,
         }
+    }
+
+    fn disable_interactions(&mut self) {
+        self.interaction_mask = LocationFlags::empty();
+    }
+
+    fn set_interaction_mask(&mut self, mask: LocationFlags) {
+        self.interaction_mask =
+            LocationFlags::from_bits(mask.bits() & LocationFlags::INTERACTION.bits());
     }
 
     /// Get the hemisphere size
@@ -123,7 +135,7 @@ struct ComputeUniforms {
     zoom_level: f32,
     surface_width: u32,
     surface_height: u32,
-    _padding: u32,
+    interaction_mask: u32,
 }
 
 /// Core GPU resources shared across rendering components
@@ -586,16 +598,18 @@ impl MapResources {
 
     /// Update storage buffers from location arrays
     pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, arrays: &LocationArrays) {
-        if arrays.len() > (self.owner_colors.size() as usize / std::mem::size_of::<u32>()) {
-            let [primary_colors, owner_colors, secondary_colors, states] =
-                Self::location_buffers(device, arrays.len() as u64);
-            self.primary_colors = primary_colors;
-            self.owner_colors = owner_colors;
-            self.secondary_colors = secondary_colors;
-            self.states = states;
-            self.bind_group.replace(None);
-        }
+        self.update_colors(device, queue, arrays);
+        self.update_flags(device, queue, arrays);
+    }
 
+    /// Update the primary, owner, and secondary color buffers.
+    pub fn update_colors(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        arrays: &LocationArrays,
+    ) {
+        self.ensure_capacity(device, arrays.len());
         let buffers = arrays.buffers();
 
         queue.write_buffer(
@@ -613,7 +627,30 @@ impl MapResources {
             0,
             bytemuck::cast_slice(buffers.secondary_colors()),
         );
+    }
+
+    /// Update the state flags buffer.
+    pub fn update_flags(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        arrays: &LocationArrays,
+    ) {
+        self.ensure_capacity(device, arrays.len());
+        let buffers = arrays.buffers();
         queue.write_buffer(&self.states, 0, bytemuck::cast_slice(buffers.state_flags()));
+    }
+
+    fn ensure_capacity(&mut self, device: &wgpu::Device, locations: usize) {
+        if locations > (self.owner_colors.size() as usize / std::mem::size_of::<u32>()) {
+            let [primary_colors, owner_colors, secondary_colors, states] =
+                Self::location_buffers(device, locations as u64);
+            self.primary_colors = primary_colors;
+            self.owner_colors = owner_colors;
+            self.secondary_colors = secondary_colors;
+            self.states = states;
+            self.bind_group.replace(None);
+        }
     }
 
     pub fn ensure_bind_group(
@@ -786,7 +823,7 @@ impl MapRenderer {
             zoom_level: bounds.zoom_level,
             surface_width: size.width,
             surface_height: size.height,
-            _padding: 0,
+            interaction_mask: self.config.interaction_mask.bits(),
         };
 
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
@@ -924,6 +961,16 @@ impl MapScene {
     pub fn update_locations(&mut self, queue: &wgpu::Queue, arrays: &LocationArrays) {
         let device = &self.base_renderer.device;
         self.resources.update(device, queue, arrays);
+    }
+
+    pub fn update_colors(&mut self, queue: &wgpu::Queue, arrays: &LocationArrays) {
+        let device = &self.base_renderer.device;
+        self.resources.update_colors(device, queue, arrays);
+    }
+
+    pub fn update_flags(&mut self, queue: &wgpu::Queue, arrays: &LocationArrays) {
+        let device = &self.base_renderer.device;
+        self.resources.update_flags(device, queue, arrays);
     }
 
     pub fn update_layers(&mut self, queue: &wgpu::Queue) {
@@ -1130,6 +1177,16 @@ impl SurfaceMapRenderer {
         self.scene.update_locations(queue, arrays);
     }
 
+    pub fn update_colors(&mut self, arrays: &LocationArrays) {
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_colors(queue, arrays);
+    }
+
+    pub fn update_flags(&mut self, arrays: &LocationArrays) {
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_flags(queue, arrays);
+    }
+
     pub fn resources(&self) -> &MapResources {
         self.scene.resources()
     }
@@ -1156,6 +1213,10 @@ impl SurfaceMapRenderer {
 
     pub fn set_owner_borders(&mut self, enabled: bool) {
         self.scene.renderer_mut().config.enable_owner_borders = enabled;
+    }
+
+    pub fn set_interaction_mask(&mut self, mask: LocationFlags) {
+        self.scene.renderer_mut().config.set_interaction_mask(mask);
     }
 
     /// Get location ID at world coordinates using direct input texture sampling
@@ -1272,7 +1333,8 @@ impl SurfaceMapRenderer {
         let surface_config = self.gpu.surface_config_for_surface(&surface, size);
         surface.configure(&self.scene.renderer().device, &surface_config);
 
-        let renderer = MapRenderer::from_existing(self.scene.renderer());
+        let mut renderer = MapRenderer::from_existing(self.scene.renderer());
+        renderer.config.disable_interactions();
         let resources = self.scene.resources().clone();
         let scene = MapScene::new(renderer, resources);
 
@@ -1354,7 +1416,8 @@ impl HeadlessMapRenderer {
             HemisphereSize::new(west_texture.width(), west_texture.height()),
         );
         let resources = MapResources::new(&gpu, west_texture, east_texture);
-        let scene = MapScene::new(renderer, resources);
+        let mut scene = MapScene::new(renderer, resources);
+        scene.renderer_mut().config.disable_interactions();
         let target_config =
             offscreen_surface_config(viewport_width, viewport_height, viewport_texture.format());
         Ok(HeadlessMapRenderer {
@@ -1572,6 +1635,20 @@ impl HeadlessMapRenderer {
         self.scene.update_locations(queue, arrays);
     }
 
+    pub fn update_colors(&mut self, arrays: &LocationArrays) {
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_colors(queue, arrays);
+    }
+
+    pub fn update_flags(&mut self, arrays: &LocationArrays) {
+        let queue = &self.gpu.gpu.queue;
+        self.scene.update_flags(queue, arrays);
+    }
+
+    pub fn set_interaction_mask(&mut self, mask: LocationFlags) {
+        self.scene.renderer_mut().config.set_interaction_mask(mask);
+    }
+
     pub fn resources(&self) -> &MapResources {
         self.scene.resources()
     }
@@ -1656,4 +1733,31 @@ fn choose_texture_format(available_textures: &[wgpu::TextureFormat]) -> wgpu::Te
     #[cfg(feature = "tracing")]
     tracing::debug!(name: "renderer.texture_format.selected", texture_format = ?result, available_options = ?available_textures);
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn live_renderer_enables_interaction_effects() {
+        let mut config = RenderConfig::new(HemisphereSize::new(1, 1));
+
+        assert_eq!(config.interaction_mask, LocationFlags::INTERACTION);
+
+        config.disable_interactions();
+
+        assert_eq!(config.interaction_mask, LocationFlags::empty());
+    }
+
+    #[test]
+    fn interaction_masks_exclude_structural_flags() {
+        let mut config = RenderConfig::new(HemisphereSize::new(1, 1));
+
+        config.set_interaction_mask(LocationFlags::from_bits(
+            LocationFlags::NO_LOCATION_BORDERS.bits() | LocationFlags::FOCUSED.bits(),
+        ));
+
+        assert_eq!(config.interaction_mask, LocationFlags::FOCUSED);
+    }
 }

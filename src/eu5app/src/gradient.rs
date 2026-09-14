@@ -122,6 +122,7 @@ pub fn palette_stops(palette: GradientPalette) -> Vec<(f64, (u8, u8, u8))> {
 }
 
 /// The legend state produced by a map mode coloring pass.
+#[derive(Clone, Copy, Debug)]
 pub enum MapLegend {
     /// Color encodes identity
     Qualitative,

@@ -242,6 +242,33 @@ impl PdxMapRenderer {
     }
 
     #[wasm_bindgen]
+    pub fn sync_color_array(&mut self, color_data: js_sys::Uint32Array) {
+        let destination = self.location_arrays.color_data_mut();
+        assert_eq!(
+            color_data.length() as usize,
+            destination.len(),
+            "Color data length must match initialized location arrays"
+        );
+        color_data.copy_to(destination);
+        self.controller
+            .renderer_mut()
+            .update_colors(&self.location_arrays);
+    }
+
+    #[wasm_bindgen]
+    pub fn sync_flag_array(&mut self, state_flags: js_sys::Uint32Array) {
+        assert_eq!(
+            state_flags.length() as usize,
+            self.location_arrays.len(),
+            "Flag data length must match initialized location arrays"
+        );
+        state_flags.copy_to(self.location_arrays.flag_data_mut());
+        self.controller
+            .renderer_mut()
+            .update_flags(&self.location_arrays);
+    }
+
+    #[wasm_bindgen]
     pub fn render(&mut self) -> Result<(), JsError> {
         self.controller
             .render()

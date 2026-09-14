@@ -81,6 +81,10 @@ pub struct SelectionState {
     preset: Option<SelectionPreset>,
     /// Single tile focused within the current scope.
     focused_location: Option<LocationIdx>,
+    /// Incremented each time the set of selected locations changes. Focus and
+    /// preset changes do not count. The map uses this to know when a
+    /// selection-dependent color pass must run again.
+    membership_generation: u64,
 }
 
 impl SelectionState {
@@ -88,32 +92,49 @@ impl SelectionState {
         Self::default()
     }
 
-    /// Add a location to the selection. Clears focus because the filter changed.
-    pub fn add(&mut self, idx: LocationIdx) {
-        self.locations.insert(idx);
+    /// The generation of the selected set. See [`Self::membership_generation`].
+    pub fn membership_generation(&self) -> u64 {
+        self.membership_generation
+    }
+
+    /// Record a change to the selected set. Clears focus and preset because
+    /// the filter changed.
+    fn membership_changed(&mut self) {
+        self.membership_generation += 1;
         self.preset = None;
         self.focused_location = None;
+    }
+
+    /// Add a location to the selection. Clears focus because the filter changed.
+    pub fn add(&mut self, idx: LocationIdx) {
+        if self.locations.insert(idx) {
+            self.membership_changed();
+        }
     }
 
     /// Remove a location from the selection. Clears focus because the filter changed.
     pub fn remove(&mut self, idx: LocationIdx) {
-        self.locations.remove(&idx);
-        self.preset = None;
-        self.focused_location = None;
+        if self.locations.remove(&idx) {
+            self.membership_changed();
+        }
     }
 
     /// Add all provided locations to the selection. Clears focus because the filter changed.
     pub fn add_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
+        let before = self.locations.len();
         self.locations.extend(locations.iter().copied());
-        self.preset = None;
-        self.focused_location = None;
+        if self.locations.len() != before {
+            self.membership_changed();
+        }
     }
 
     /// Remove all provided locations from the selection. Clears focus because the filter changed.
     pub fn remove_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
+        let before = self.locations.len();
         self.locations.retain(|idx| !locations.contains(idx));
-        self.preset = None;
-        self.focused_location = None;
+        if self.locations.len() != before {
+            self.membership_changed();
+        }
     }
 
     /// Remove locations from the current explicit filter. If the filter is
@@ -132,9 +153,7 @@ impl SelectionState {
 
     /// Replace the entire selection with `locations`, discarding focus.
     pub fn replace(&mut self, locations: FnvHashSet<LocationIdx>) {
-        self.locations = locations;
-        self.preset = None;
-        self.focused_location = None;
+        self.set_locations(locations, None);
     }
 
     /// Replace the entire selection with `locations` and record the active preset.
@@ -144,21 +163,31 @@ impl SelectionState {
         locations: FnvHashSet<LocationIdx>,
         preset: SelectionPreset,
     ) {
-        self.locations = locations;
-        self.preset = Some(preset);
-        self.focused_location = None;
+        self.set_locations(locations, Some(preset));
     }
 
     /// Clear the entire selection, focus, and any active preset.
     pub fn clear(&mut self) {
-        self.locations.clear();
-        self.preset = None;
+        self.set_locations(FnvHashSet::default(), None);
+    }
+
+    fn set_locations(
+        &mut self,
+        locations: FnvHashSet<LocationIdx>,
+        preset: Option<SelectionPreset>,
+    ) {
+        if self.locations != locations {
+            self.locations = locations;
+            self.membership_changed();
+        }
         self.focused_location = None;
+        self.preset = preset;
     }
 
     /// Add `idx` to the filter if needed and set it as the focused location.
     pub fn set_focus(&mut self, idx: LocationIdx) {
         if self.locations.insert(idx) {
+            self.membership_generation += 1;
             self.preset = None;
         }
         self.focused_location = Some(idx);
