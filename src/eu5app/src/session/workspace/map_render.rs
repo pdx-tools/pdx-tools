@@ -3,9 +3,6 @@ use eu5save::models::Color;
 
 use super::*;
 
-/// The brightness kept by locations outside an active selection.
-const SELECTION_DIM: f32 = 0.3;
-
 impl<'bump> Eu5Workspace<'bump> {
     /// Compute gradient domain bounds for a quantitative mode in a single pass.
     ///
@@ -534,22 +531,35 @@ impl<'bump> Eu5Workspace<'bump> {
         &self.selection_state
     }
 
-    /// Rebuild all GPU location colors for the current mode and selection.
-    /// Call this after any mutation that affects the selection or rendered values.
-    pub fn rebuild_colors(&mut self) -> gradient::MapLegend {
-        self.set_map_mode(self.current_map_mode)
+    /// Bring the GPU location buffers up to date after a selection mutation.
+    ///
+    /// Domain colors are repainted only when the set of selected locations
+    /// changed and the current mode derives its colors from that set. Any
+    /// other mutation (focus, hover, a no-op) only refreshes the flags.
+    pub fn rebuild_colors(&mut self) -> MapChange {
+        let generation = self.selection_state.membership_generation();
+        let membership_changed = generation != self.painted_selection_generation;
+        if membership_changed && self.current_map_mode.selection_affects_domain() {
+            self.set_map_mode(self.current_map_mode)
+        } else {
+            self.apply_interaction_flags();
+            MapChange {
+                dirty: MapDirty::FLAGS,
+                legend: self.current_map_legend,
+            }
+        }
     }
 
     /// Switch the map mode. A mode without a history pulls the timeline back
     /// to the save date, so the map never shows current data under a past date.
-    pub fn set_map_mode(&mut self, mode: MapMode) -> gradient::MapLegend {
+    pub fn set_map_mode(&mut self, mode: MapMode) -> MapChange {
         if !self.is_timeline_live() && !Self::is_historical_map_mode(mode) {
             self.step_timeline_to(self.save_date());
         }
         self.apply_map_mode(mode)
     }
 
-    pub(super) fn apply_map_mode(&mut self, mode: MapMode) -> gradient::MapLegend {
+    pub(super) fn apply_map_mode(&mut self, mode: MapMode) -> MapChange {
         self.current_map_mode = mode;
 
         let gradient = match mode {
@@ -566,73 +576,92 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::StateEfficacy => self.apply_state_efficacy_colors(),
         };
 
-        self.apply_selection_dimming();
-        self.apply_focused_flag();
+        self.current_map_legend = gradient;
+        self.painted_selection_generation = self.selection_state.membership_generation();
+        self.apply_interaction_flags();
 
-        gradient
+        MapChange {
+            dirty: MapDirty::ALL,
+            legend: gradient,
+        }
     }
 
-    /// Repaint a few locations in the political mode on a past date, with the
-    /// same dimming the full pass applies. The focused flag is untouched.
-    pub(super) fn repaint_locations(&mut self, locations: &[eu5save::models::LocationIdx]) {
-        let has_selection = !self.selection_state.is_empty();
+    /// Repaint a few locations in the political mode on a past date.
+    pub(super) fn repaint_locations(
+        &mut self,
+        locations: &[eu5save::models::LocationIdx],
+    ) -> MapChange {
+        let mut dirty = MapDirty::NONE;
         for &location_idx in locations {
             let Some(gpu_index) = self.gpu_indices[location_idx] else {
                 continue;
             };
-            let mut primary = self.location_political_color(location_idx);
-            let terrain = self.location_terrain(location_idx);
-            if has_selection
-                && !matches!(terrain, Terrain::Impassable)
-                && !self.selection_state.contains(location_idx)
-            {
-                primary = primary.dim(SELECTION_DIM);
-            }
+            dirty = MapDirty::COLORS;
+            let primary = self.location_political_color(location_idx);
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(primary);
             gpu_location.set_secondary_color(primary);
         }
+        MapChange {
+            dirty,
+            legend: self.current_map_legend,
+        }
     }
 
-    fn apply_selection_dimming(&mut self) {
-        if self.selection_state.is_empty() {
-            return;
-        }
-
+    fn apply_interaction_flags(&mut self) {
+        let has_selection = !self.selection_state.is_empty();
         for location in self.gamestate.locations.iter() {
             let terrain = self.location_terrain(location.idx());
-            if matches!(terrain, Terrain::Impassable) {
-                continue;
-            }
-            if self.selection_state.contains(location.idx()) {
-                continue;
-            }
             let Some(gpu_idx) = self.gpu_indices[location.idx()] else {
                 continue;
             };
             let mut s = self.location_arrays.get_mut(gpu_idx);
 
-            // Only dim water that has been painted by the map mode (ie: market mode).
-            if terrain.is_water() && s.primary_color() == GpuColor::WATER {
-                continue;
+            let should_dim = Self::should_dim_location(
+                self.current_map_mode,
+                terrain,
+                has_selection,
+                self.selection_state.contains(location.idx()),
+                s.primary_color(),
+            );
+            s.flags_mut().clear(LocationFlags::from_bits(
+                LocationFlags::DIMMED.bits() | LocationFlags::FOCUSED.bits(),
+            ));
+            if should_dim {
+                s.flags_mut().set(LocationFlags::DIMMED);
             }
-            s.set_primary_color(s.primary_color().dim(SELECTION_DIM));
-            s.set_secondary_color(s.secondary_color().dim(SELECTION_DIM));
         }
-    }
 
-    fn apply_focused_flag(&mut self) {
-        // Clear all focused flags
-        let mut iter = self.location_arrays.iter_mut();
-        while let Some(mut loc) = iter.next_location() {
-            loc.flags_mut().clear(LocationFlags::FOCUSED);
-        }
         // Set focused flag for the focused location
         if let Some(fl) = self.selection_state.focused_location()
             && let Some(gpu_idx) = self.gpu_indices[fl]
         {
             let mut state = self.location_arrays.get_mut(gpu_idx);
             state.flags_mut().set(LocationFlags::FOCUSED);
+        }
+    }
+
+    fn should_dim_location(
+        mode: MapMode,
+        terrain: Terrain,
+        has_selection: bool,
+        selected: bool,
+        primary_color: GpuColor,
+    ) -> bool {
+        has_selection && !selected && Self::mode_allows_dimming(mode, terrain, primary_color)
+    }
+
+    fn mode_allows_dimming(mode: MapMode, terrain: Terrain, primary_color: GpuColor) -> bool {
+        if terrain.is_water() {
+            return mode == MapMode::Markets && primary_color != GpuColor::WATER;
+        }
+        terrain.is_passable()
+    }
+
+    pub fn no_map_change(&self) -> MapChange {
+        MapChange {
+            dirty: MapDirty::NONE,
+            legend: self.current_map_legend,
         }
     }
 
@@ -990,5 +1019,61 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn get_map_mode(&self) -> MapMode {
         self.current_map_mode
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selection_dimming_allows_land() {
+        assert!(Eu5Workspace::should_dim_location(
+            MapMode::Political,
+            Terrain::Other,
+            true,
+            false,
+            GpuColor::from_rgb(1, 2, 3),
+        ));
+    }
+
+    #[test]
+    fn selection_dimming_excludes_impassable_and_selected_locations() {
+        assert!(!Eu5Workspace::should_dim_location(
+            MapMode::Political,
+            Terrain::Impassable,
+            true,
+            false,
+            GpuColor::from_rgb(1, 2, 3),
+        ));
+        assert!(!Eu5Workspace::should_dim_location(
+            MapMode::Political,
+            Terrain::Other,
+            true,
+            true,
+            GpuColor::from_rgb(1, 2, 3),
+        ));
+    }
+
+    #[test]
+    fn market_mode_dims_market_assigned_water() {
+        assert!(Eu5Workspace::should_dim_location(
+            MapMode::Markets,
+            Terrain::Water,
+            true,
+            false,
+            GpuColor::from_rgb(1, 2, 3),
+        ));
+    }
+
+    #[test]
+    fn market_mode_keeps_unpainted_water_visible() {
+        assert!(!Eu5Workspace::should_dim_location(
+            MapMode::Markets,
+            Terrain::Water,
+            true,
+            false,
+            GpuColor::WATER,
+        ));
     }
 }

@@ -94,9 +94,9 @@ pub struct Eu5WasmMapRenderer {
     spatial_index: SpatialIndex,
     spatial_scratch: LocationBitset,
     location_arrays: LocationArrays,
+    /// The locations inside the current box-select drag.
+    preview_locations: LocationBitset,
     grouping_table: GroupingTable,
-    cached_preview_groups: FnvHashSet<GroupId>,
-    cached_preview_locations: FnvHashSet<GpuLocationIdx>,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
 }
@@ -144,9 +144,8 @@ impl Eu5WasmMapRenderer {
             spatial_index,
             spatial_scratch: LocationBitset::new(),
             location_arrays: LocationArrays::new(),
+            preview_locations: LocationBitset::new(),
             grouping_table: GroupingTable::empty(),
-            cached_preview_groups: FnvHashSet::default(),
-            cached_preview_locations: FnvHashSet::default(),
             clock: default_clock(),
             last_tick: None,
         })
@@ -201,25 +200,10 @@ impl Eu5WasmMapRenderer {
     /// Called on every drag-update frame during a box-select drag.
     #[wasm_bindgen]
     pub fn preview_box_highlight(&mut self, start_x: f32, start_y: f32, end_x: f32, end_y: f32) {
-        if self.grouping_table.is_empty() {
-            return;
-        }
-
         let start = LogicalPoint::new(start_x, start_y);
         let end = LogicalPoint::new(end_x, end_y);
-
-        self.cached_preview_groups = self.resolve_groups_in_rect(start, end);
-
-        for (gpu, group) in self.grouping_table.iter() {
-            let mut loc = self.location_arrays.get_mut(gpu);
-            if self.cached_preview_groups.contains(&group) {
-                loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
-            } else {
-                loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
-            }
-        }
-
-        self.upload_location_arrays();
+        self.fill_preview_groups(start, end);
+        self.upload_preview();
     }
 
     /// Resolve the canvas rect to a flat array of app-level location indices,
@@ -233,35 +217,20 @@ impl Eu5WasmMapRenderer {
         end_x: f32,
         end_y: f32,
     ) -> js_sys::Uint32Array {
-        if self.grouping_table.is_empty() {
-            return js_sys::Uint32Array::new_with_length(0);
-        }
-
-        let groups = if self.cached_preview_groups.is_empty() {
+        if self.preview_locations.count() == 0 {
             let start = LogicalPoint::new(start_x, start_y);
             let end = LogicalPoint::new(end_x, end_y);
-            self.resolve_groups_in_rect(start, end)
-        } else {
-            std::mem::take(&mut self.cached_preview_groups)
-        };
-
-        let app_ids: Vec<u32> = self
-            .grouping_table
-            .iter()
-            .filter(|(_, group)| groups.contains(group))
-            .map(|(gpu, _)| self.location_arrays.get_location_id(gpu).value())
-            .collect();
-
-        self.clear_all_highlights_and_upload();
-
-        js_sys::Uint32Array::from(app_ids.as_slice())
+            self.fill_preview_groups(start, end);
+        }
+        self.take_preview()
     }
 
     /// Clear all box-select preview highlights.
     /// Called after the commit has been applied to the game worker.
     #[wasm_bindgen]
     pub fn clear_box_highlight(&mut self) {
-        self.clear_all_highlights_and_upload();
+        self.preview_locations.clear();
+        self.upload_preview();
     }
 
     /// Highlight individual GPU locations (not entity-expanded) within the canvas rect.
@@ -276,19 +245,8 @@ impl Eu5WasmMapRenderer {
     ) {
         let start = LogicalPoint::new(start_x, start_y);
         let end = LogicalPoint::new(end_x, end_y);
-
-        self.cached_preview_locations = self.resolve_gpu_locations_in_rect(start, end);
-
-        for (gpu, _group) in self.grouping_table.iter() {
-            let mut loc = self.location_arrays.get_mut(gpu);
-            if self.cached_preview_locations.contains(&gpu) {
-                loc.flags_mut().set(LocationFlags::HIGHLIGHTED);
-            } else {
-                loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
-            }
-        }
-
-        self.upload_location_arrays();
+        self.fill_preview_locations(start, end);
+        self.upload_preview();
     }
 
     /// Resolve the canvas rect to individual app-level location indices without entity expansion.
@@ -301,31 +259,12 @@ impl Eu5WasmMapRenderer {
         end_x: f32,
         end_y: f32,
     ) -> js_sys::Uint32Array {
-        let gpu_locs = if self.cached_preview_locations.is_empty() {
+        if self.preview_locations.count() == 0 {
             let start = LogicalPoint::new(start_x, start_y);
             let end = LogicalPoint::new(end_x, end_y);
-            self.resolve_gpu_locations_in_rect(start, end)
-        } else {
-            std::mem::take(&mut self.cached_preview_locations)
-        };
-
-        let app_ids: Vec<u32> = gpu_locs
-            .into_iter()
-            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
-            .map(|gpu| self.location_arrays.get_location_id(gpu).value())
-            .collect();
-
-        self.clear_all_highlights_and_upload();
-
-        js_sys::Uint32Array::from(app_ids.as_slice())
-    }
-
-    fn clear_all_highlights_and_upload(&mut self) {
-        let mut iter = self.location_arrays.iter_mut();
-        while let Some(mut loc) = iter.next_location() {
-            loc.flags_mut().clear(LocationFlags::HIGHLIGHTED);
+            self.fill_preview_locations(start, end);
         }
-        self.upload_location_arrays();
+        self.take_preview()
     }
 
     #[wasm_bindgen]
@@ -457,7 +396,34 @@ impl Eu5WasmMapRenderer {
             location_array.copy_to(dst);
         }
 
+        self.compose_preview();
         self.upload_location_arrays();
+    }
+
+    #[wasm_bindgen]
+    pub fn sync_color_array(&mut self, color_data: js_sys::Uint32Array) {
+        let destination = self.location_arrays.color_data_mut();
+        assert_eq!(
+            color_data.length() as usize,
+            destination.len(),
+            "Color data length must match initialized location arrays"
+        );
+        color_data.copy_to(destination);
+        self.controller
+            .renderer_mut()
+            .update_colors(&self.location_arrays);
+    }
+
+    #[wasm_bindgen]
+    pub fn sync_flag_array(&mut self, state_flags: js_sys::Uint32Array) {
+        let destination = self.location_arrays.flag_data_mut();
+        assert_eq!(
+            state_flags.length() as usize,
+            destination.len(),
+            "Flag data length must match initialized location arrays"
+        );
+        state_flags.copy_to(destination);
+        self.upload_preview();
     }
 
     #[wasm_bindgen]
@@ -465,40 +431,6 @@ impl Eu5WasmMapRenderer {
         self.controller
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
-    }
-
-    #[wasm_bindgen]
-    pub fn highlight_location(&mut self, idx: u16) {
-        self.location_arrays
-            .get_mut(GpuLocationIdx::new(idx))
-            .flags_mut()
-            .set(LocationFlags::HIGHLIGHTED);
-        self.upload_location_arrays();
-    }
-
-    #[wasm_bindgen]
-    pub fn highlight_app_location(&mut self, idx: u32) {
-        let mut updated = false;
-        let mut iter = self.location_arrays.iter_mut();
-        while let Some(mut location) = iter.next_location() {
-            if location.location_id().value() == idx {
-                location.flags_mut().set(LocationFlags::HIGHLIGHTED);
-                updated = true;
-            }
-        }
-
-        if updated {
-            self.upload_location_arrays();
-        }
-    }
-
-    #[wasm_bindgen]
-    pub fn unhighlight_location(&mut self, idx: u16) {
-        self.location_arrays
-            .get_mut(GpuLocationIdx::new(idx))
-            .flags_mut()
-            .clear(LocationFlags::HIGHLIGHTED);
-        self.upload_location_arrays();
     }
 
     /// Center the viewport at a world point
@@ -572,31 +504,73 @@ impl Eu5WasmMapRenderer {
             .query_exact(rects, &mut self.spatial_scratch);
     }
 
-    fn resolve_groups_in_rect(
-        &mut self,
-        start: LogicalPoint<f32>,
-        end: LogicalPoint<f32>,
-    ) -> FnvHashSet<GroupId> {
+    /// Mark every location that shares a group with a location in the rect.
+    fn fill_preview_groups(&mut self, start: LogicalPoint<f32>, end: LogicalPoint<f32>) {
         self.fill_locations_in_rect(start, end);
-        self.spatial_scratch
+        let groups: FnvHashSet<GroupId> = self
+            .spatial_scratch
             .drain()
-            .map(|r16| GpuLocationIdx::new(r16.value()))
-            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
-            .map(|gpu| self.grouping_table.get(gpu))
-            .collect()
+            .map(|r16| self.grouping_table.get(GpuLocationIdx::new(r16.value())))
+            .filter(|group| !group.is_none())
+            .collect();
+
+        self.preview_locations.clear();
+        for (gpu, group) in self.grouping_table.iter() {
+            if groups.contains(&group) {
+                self.preview_locations.set(R16::new(gpu.value()));
+            }
+        }
     }
 
-    fn resolve_gpu_locations_in_rect(
-        &mut self,
-        start: LogicalPoint<f32>,
-        end: LogicalPoint<f32>,
-    ) -> FnvHashSet<GpuLocationIdx> {
+    /// Mark every grouped location in the rect, without group expansion.
+    fn fill_preview_locations(&mut self, start: LogicalPoint<f32>, end: LogicalPoint<f32>) {
         self.fill_locations_in_rect(start, end);
-        self.spatial_scratch
+        self.preview_locations.clear();
+        for r16 in self.spatial_scratch.drain() {
+            if !self
+                .grouping_table
+                .get(GpuLocationIdx::new(r16.value()))
+                .is_none()
+            {
+                self.preview_locations.set(r16);
+            }
+        }
+    }
+
+    /// Drain the preview into app-level location ids and clear it from the map.
+    fn take_preview(&mut self) -> js_sys::Uint32Array {
+        let app_ids: Vec<u32> = self
+            .preview_locations
             .drain()
-            .map(|r16| GpuLocationIdx::new(r16.value()))
-            .filter(|gpu| !self.grouping_table.get(*gpu).is_none())
-            .collect()
+            .map(|r16| {
+                self.location_arrays
+                    .get_location_id(GpuLocationIdx::new(r16.value()))
+                    .value()
+            })
+            .collect();
+        self.upload_preview();
+        js_sys::Uint32Array::from(app_ids.as_slice())
+    }
+
+    /// Write the preview bit of every location from `preview_locations`.
+    /// The other flags come from the game worker and stay untouched.
+    fn compose_preview(&mut self) {
+        let preview = &self.preview_locations;
+        for (index, flags) in self.location_arrays.flag_data_mut().iter_mut().enumerate() {
+            let bit = LocationFlags::PREVIEW.bits();
+            if preview.contains(R16::new(index as u16)) {
+                *flags |= bit;
+            } else {
+                *flags &= !bit;
+            }
+        }
+    }
+
+    fn upload_preview(&mut self) {
+        self.compose_preview();
+        self.controller
+            .renderer_mut()
+            .update_flags(&self.location_arrays);
     }
 }
 

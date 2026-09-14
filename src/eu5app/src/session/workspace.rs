@@ -77,6 +77,11 @@ pub struct Eu5Workspace<'bump> {
     current_map_mode: MapMode,
     location_arrays: pdx_map::LocationArrays,
     gpu_indices: LocationIndexedVec<Option<GpuLocationIdx>>,
+    current_map_legend: crate::gradient::MapLegend,
+    /// The selection generation the domain colors were last painted for.
+    /// Compared with [`SelectionState::membership_generation`] to skip a
+    /// repaint when only focus or highlights changed.
+    painted_selection_generation: u64,
 
     // Filter / selection state
     selection_state: SelectionState,
@@ -85,6 +90,38 @@ pub struct Eu5Workspace<'bump> {
 
     // Campaign timeline: the date the map shows and the owners on that date
     timeline: timeline::TimelineState<'bump>,
+}
+
+/// The GPU location buffers that a map operation changed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MapDirty(u8);
+
+impl MapDirty {
+    pub const NONE: Self = Self(0);
+    /// Primary, owner, and secondary colors.
+    pub const COLORS: Self = Self(1 << 0);
+    /// The state flags word: structural and interaction bits.
+    pub const FLAGS: Self = Self(1 << 1);
+    pub const ALL: Self = Self(Self::COLORS.0 | Self::FLAGS.0);
+
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+}
+
+impl std::ops::BitOr for MapDirty {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+/// The result of a map operation: which buffers to upload and the legend the
+/// map ends in.
+#[derive(Clone, Copy, Debug)]
+pub struct MapChange {
+    pub dirty: MapDirty,
+    pub legend: crate::gradient::MapLegend,
 }
 
 enum SelectionSetOperation {
@@ -213,6 +250,8 @@ impl<'bump> Eu5Workspace<'bump> {
             current_map_mode: MapMode::Political,
             location_arrays,
             gpu_indices,
+            current_map_legend: crate::gradient::MapLegend::Qualitative,
+            painted_selection_generation: 0,
             selection_state: SelectionState::new(),
             derived_entity_anchor: None,
             derived_entity_kind: None,

@@ -59,6 +59,7 @@ let lastCursorHint: CursorHint | null = null;
 let viewportCallback: ((viewport: MapViewport) => void) | null = null;
 let lastViewport: MapViewport | null = null;
 let newGroupingTable: Uint32Array | null = null;
+let newMapData: MapDataSync | null = null;
 let renderOrQueue: () => void = () => {};
 
 /**
@@ -106,6 +107,15 @@ const mapGameEndpoint = () => {
 
     async syncGroupingTable(raw: Uint32Array) {
       newGroupingTable = raw;
+    },
+
+    async syncMapData(data: MapDataSync) {
+      // A later buffer replaces an earlier pending one of the same kind.
+      newMapData = {
+        colors: data.colors ?? newMapData?.colors,
+        flags: data.flags ?? newMapData?.flags,
+      };
+      renderOrQueue();
     },
 
     async center_at_color_id(color_id: number) {
@@ -493,6 +503,15 @@ export const createMapEngine = async (
       app.sync_location_array(newLocations);
       newLocations = null;
     }
+    if (newMapData) {
+      if (newMapData.colors) {
+        app.sync_color_array(newMapData.colors);
+      }
+      if (newMapData.flags) {
+        app.sync_flag_array(newMapData.flags);
+      }
+      newMapData = null;
+    }
     if (newGroupingTable) {
       app.sync_grouping_table(newGroupingTable);
       newGroupingTable = null;
@@ -574,6 +593,8 @@ export const createMapEngine = async (
       fullResolution: boolean,
       overlayData?: ScreenshotOverlayData,
     ): Promise<Blob> => {
+      applyPendingSync();
+
       const output = fullResolution
         ? { width: 16384, height: 8192 }
         : { width: 8192, height: 4096 };
@@ -595,22 +616,25 @@ export const createMapEngine = async (
 
       // Create independent screenshot renderer
       const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
+      try {
+        // Render west tile using independent screenshot renderer
+        screenshotRenderer.render_west_tile();
+        ctx.drawImage(screenshotCanvas, 0, 0, output.width / 2, output.height);
 
-      // Render west tile using independent screenshot renderer
-      screenshotRenderer.render_west_tile();
-      ctx.drawImage(screenshotCanvas, 0, 0, output.width / 2, output.height);
+        // Render east tile using independent screenshot renderer
+        screenshotRenderer.render_east_tile();
+        ctx.drawImage(screenshotCanvas, output.width / 2, 0, output.width / 2, output.height);
 
-      // Render east tile using independent screenshot renderer
-      screenshotRenderer.render_east_tile();
-      ctx.drawImage(screenshotCanvas, output.width / 2, 0, output.width / 2, output.height);
+        // Composite the small overlay canvas on top if provided
+        if (overlayInfo) {
+          ctx.drawImage(overlayInfo.canvas, overlayInfo.x, overlayInfo.y);
+        }
 
-      // Composite the small overlay canvas on top if provided
-      if (overlayInfo) {
-        ctx.drawImage(overlayInfo.canvas, overlayInfo.x, overlayInfo.y);
+        // Convert composite canvas to PNG blob and return
+        return await compositeCanvas.convertToBlob({ type: "image/png" });
+      } finally {
+        screenshotRenderer.free();
       }
-
-      // Convert composite canvas to PNG blob and return
-      return compositeCanvas.convertToBlob({ type: "image/png" });
     },
 
     /**
@@ -705,14 +729,6 @@ export const createMapEngine = async (
     async execCommands(commands: MapCommand[]) {
       for (const command of commands) {
         switch (command.kind) {
-          case "unhighlight": {
-            app.unhighlight_location(command.locationIdx);
-            break;
-          }
-          case "highlight": {
-            app.highlight_location(command.locationIdx);
-            break;
-          }
           case "render": {
             renderOrQueue();
             break;
@@ -723,14 +739,6 @@ export const createMapEngine = async (
           }
         }
       }
-    },
-
-    unhighlightLocation: (locationIdx: number) => {
-      app.unhighlight_location(locationIdx);
-    },
-
-    highlightLocation: (locationIdx: number) => {
-      app.highlight_location(locationIdx);
     },
 
     pan_to_color_id: (
@@ -766,11 +774,15 @@ export const createMapEngine = async (
   });
 };
 
-export type MapCommand =
-  | { kind: "unhighlight"; locationIdx: number }
-  | { kind: "highlight"; locationIdx: number }
-  | { kind: "setOwnerBorders"; enabled: boolean }
-  | { kind: "render" };
+export type MapCommand = { kind: "setOwnerBorders"; enabled: boolean } | { kind: "render" };
+
+/** The location buffers the game worker sends after a change. */
+export type MapDataSync = {
+  /** Primary, owner, and secondary colors. */
+  colors?: Uint32Array;
+  /** Interaction flags. */
+  flags?: Uint32Array;
+};
 
 type BoxSelectDrag = {
   start: { x: number; y: number };

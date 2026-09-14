@@ -23,7 +23,9 @@ use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope};
-use eu5app::{CanvasDimensions, Eu5DateComponents, MapMode as Eu5MapMode, UiCountryIdx};
+use eu5app::{
+    CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, UiCountryIdx,
+};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
@@ -158,11 +160,31 @@ impl From<Eu5TableCell> for TableCell {
 
 pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
+#[derive(Clone, Debug, Serialize, tsify::Tsify)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectionChange {
     center_color_id: Option<u32>,
-    gradient: Option<GradientConfig>,
+    #[serde(flatten)]
+    map: MapChangeData,
+}
+
+/// Which GPU buffers a map operation left stale, and the legend to show.
+#[derive(Clone, Debug, Serialize, tsify::Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct MapChangeData {
+    pub gradient: Option<GradientConfig>,
+    pub colors_changed: bool,
+    pub flags_changed: bool,
+}
+
+impl From<MapChange> for MapChangeData {
+    fn from(change: MapChange) -> Self {
+        MapChangeData {
+            gradient: legend_to_gradient(change.legend),
+            colors_changed: change.dirty.contains(MapDirty::COLORS),
+            flags_changed: change.dirty.contains(MapDirty::FLAGS),
+        }
+    }
 }
 
 /// A named event on the campaign timeline.
@@ -201,7 +223,8 @@ pub struct TimelineChange {
     pub date: Eu5DateComponents,
     /// The map mode after the move. A past date forces the political mode.
     pub map_mode: MapMode,
-    pub gradient: Option<GradientConfig>,
+    #[serde(flatten)]
+    pub map: MapChangeData,
 }
 
 fn date_from_components(date: &Eu5DateComponents) -> Result<eu5save::Eu5Date, JsError> {
@@ -245,27 +268,18 @@ fn legend_to_gradient(legend: eu5app::gradient::MapLegend) -> Option<GradientCon
     }
 }
 
-fn legend_to_gradient_ts(
-    legend: eu5app::gradient::MapLegend,
-) -> Result<Option<Ts<GradientConfig>>, JsError> {
-    option_into_ts(legend_to_gradient(legend))
-}
-
-fn selection_change(
-    center: Option<eu5app::ColorIdx>,
-    legend: eu5app::gradient::MapLegend,
-) -> SelectionChange {
-    SelectionChange {
-        center_color_id: center.map(|c| c.value() as u32),
-        gradient: legend_to_gradient(legend),
-    }
-}
-
 fn selection_change_ts(
     center: Option<eu5app::ColorIdx>,
-    legend: eu5app::gradient::MapLegend,
+    change: MapChange,
 ) -> Result<Ts<SelectionChange>, JsError> {
-    into_ts(selection_change(center, legend))
+    into_ts(SelectionChange {
+        center_color_id: center.map(|c| c.value() as u32),
+        map: change.into(),
+    })
+}
+
+fn map_change_ts(change: MapChange) -> Result<Ts<MapChangeData>, JsError> {
+    into_ts(change.into())
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, tsify::Tsify)]
@@ -598,13 +612,31 @@ impl Eu5App {
         }
     }
 
+    #[wasm_bindgen]
+    pub fn location_color_data(&self) -> BufferParts {
+        let data = self.app().location_arrays().color_data();
+        BufferParts {
+            ptr: data.as_ptr() as *const u8,
+            len: data.len(),
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn location_flag_data(&self) -> BufferParts {
+        let data = self.app().location_arrays().buffers().state_flags();
+        BufferParts {
+            ptr: data.as_ptr() as *const u8,
+            len: data.len(),
+        }
+    }
+
     /// Switch map mode to the specified mode. A mode without a history pulls
     /// the timeline back to the save date; read `date` from the result.
     #[wasm_bindgen]
     pub fn set_map_mode(&mut self, mode: Ts<MapMode>) -> Result<Ts<TimelineChange>, JsError> {
         let mode = mode.to_rust()?;
-        let legend = self.app.set_map_mode(mode.into());
-        self.timeline_change(legend)
+        let change = self.app.set_map_mode(mode.into());
+        self.timeline_change(change)
     }
 
     /// Get the current map mode
@@ -654,18 +686,15 @@ impl Eu5App {
         date: Ts<Eu5DateComponents>,
     ) -> Result<Ts<TimelineChange>, JsError> {
         let date = date_from_components(&date.to_rust()?)?;
-        let legend = self.app.set_timeline_date(date);
-        self.timeline_change(legend)
+        let change = self.app.set_timeline_date(date);
+        self.timeline_change(change)
     }
 
-    fn timeline_change(
-        &self,
-        legend: eu5app::gradient::MapLegend,
-    ) -> Result<Ts<TimelineChange>, JsError> {
+    fn timeline_change(&self, change: MapChange) -> Result<Ts<TimelineChange>, JsError> {
         into_ts(TimelineChange {
             date: self.app().timeline_date().into(),
             map_mode: self.app().get_map_mode().into(),
-            gradient: legend_to_gradient(legend),
+            map: change.into(),
         })
     }
 
@@ -709,57 +738,48 @@ impl Eu5App {
 
     /// Select the entity at the given location based on the current interaction mode.
     #[wasm_bindgen]
-    pub fn select_entity(
-        &mut self,
-        location_idx: u32,
-    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn select_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        legend_to_gradient_ts(self.app.select_entity(idx))
+        map_change_ts(self.app.select_entity(idx))
     }
 
     /// Add the entity at `location_idx` to the existing selection.
     #[wasm_bindgen]
-    pub fn add_entity(&mut self, location_idx: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn add_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        legend_to_gradient_ts(self.app.add_entity(idx))
+        map_change_ts(self.app.add_entity(idx))
     }
 
     /// Remove the entity at `location_idx` from the selection.
     #[wasm_bindgen]
-    pub fn remove_entity(
-        &mut self,
-        location_idx: u32,
-    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn remove_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        legend_to_gradient_ts(self.app.remove_entity(idx))
+        map_change_ts(self.app.remove_entity(idx))
     }
 
     #[wasm_bindgen]
     pub fn select_country(&mut self, country_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
         let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return selection_change_ts(None, eu5app::gradient::MapLegend::Qualitative);
+            return selection_change_ts(None, self.app.no_map_change());
         };
         let (center, gradient) = self.app.select_country_by_idx(idx);
         selection_change_ts(center, gradient)
     }
 
     #[wasm_bindgen]
-    pub fn add_country(&mut self, country_idx: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn add_country(&mut self, country_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
         let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return Ok(None);
+            return map_change_ts(self.app.no_map_change());
         };
-        legend_to_gradient_ts(self.app.add_country_by_idx(idx))
+        map_change_ts(self.app.add_country_by_idx(idx))
     }
 
     #[wasm_bindgen]
-    pub fn remove_country(
-        &mut self,
-        country_idx: u32,
-    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn remove_country(&mut self, country_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
         let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return Ok(None);
+            return map_change_ts(self.app.no_map_change());
         };
-        legend_to_gradient_ts(self.app.remove_country_by_idx(idx))
+        map_change_ts(self.app.remove_country_by_idx(idx))
     }
 
     #[wasm_bindgen]
@@ -770,21 +790,21 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn add_market(&mut self, market_id: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn add_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
-        legend_to_gradient_ts(self.app.add_market_by_id(id))
+        map_change_ts(self.app.add_market_by_id(id))
     }
 
     #[wasm_bindgen]
-    pub fn remove_market(&mut self, market_id: u32) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    pub fn remove_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
-        legend_to_gradient_ts(self.app.remove_market_by_id(id))
+        map_change_ts(self.app.remove_market_by_id(id))
     }
 
     /// Clear the current selection and focus.
     #[wasm_bindgen]
-    pub fn clear_selection(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
-        legend_to_gradient_ts(self.app.clear_selection())
+    pub fn clear_selection(&mut self) -> Result<Ts<MapChangeData>, JsError> {
+        map_change_ts(self.app.clear_selection())
     }
 
     /// Set `focused_location` to `location_idx`, entering that location's entity
@@ -801,14 +821,14 @@ impl Eu5App {
 
     /// Clear the focused location.
     #[wasm_bindgen]
-    pub fn clear_focus(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
-        legend_to_gradient_ts(self.app.clear_focus())
+    pub fn clear_focus(&mut self) -> Result<Ts<MapChangeData>, JsError> {
+        map_change_ts(self.app.clear_focus())
     }
 
     /// Clear focus if set; otherwise clear the selection.
     #[wasm_bindgen]
-    pub fn clear_focus_or_selection(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
-        legend_to_gradient_ts(self.app.clear_focus_or_selection())
+    pub fn clear_focus_or_selection(&mut self) -> Result<Ts<MapChangeData>, JsError> {
+        map_change_ts(self.app.clear_focus_or_selection())
     }
 
     /// Display name for the focused location.
@@ -828,28 +848,28 @@ impl Eu5App {
         &mut self,
         location_idxs: js_sys::Uint32Array,
         add: bool,
-    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    ) -> Result<Ts<MapChangeData>, JsError> {
         let locations = location_idxs
             .to_vec()
             .into_iter()
             .map(eu5save::models::LocationIdx::new);
-        let gradient = self.app.apply_resolved_box_selection(locations, add);
+        let change = self.app.apply_resolved_box_selection(locations, add);
         self.app.clear_highlights();
-        legend_to_gradient_ts(gradient)
+        map_change_ts(change)
     }
 
     #[wasm_bindgen]
     pub fn replace_selection_with_locations(
         &mut self,
         location_idxs: js_sys::Uint32Array,
-    ) -> Result<Option<Ts<GradientConfig>>, JsError> {
+    ) -> Result<Ts<MapChangeData>, JsError> {
         let locations = location_idxs
             .to_vec()
             .into_iter()
             .map(eu5save::models::LocationIdx::new);
-        let gradient = self.app.replace_selection_with_locations(locations);
+        let change = self.app.replace_selection_with_locations(locations);
         self.app.clear_highlights();
-        legend_to_gradient_ts(gradient)
+        map_change_ts(change)
     }
 
     /// Return the grouping table for the current map mode as a flat Uint32Array.
@@ -864,9 +884,8 @@ impl Eu5App {
 
     /// Select all locations owned by human-controlled countries and their subjects.
     #[wasm_bindgen]
-    pub fn select_players(&mut self) -> Result<Option<Ts<GradientConfig>>, JsError> {
-        self.app.select_players();
-        legend_to_gradient_ts(self.app.rebuild_colors())
+    pub fn select_players(&mut self) -> Result<Ts<MapChangeData>, JsError> {
+        map_change_ts(self.app.select_players())
     }
 
     /// Return a summary of the current selection (entity and location counts).

@@ -40,6 +40,19 @@ pub enum MapMode {
 }
 
 impl MapMode {
+    pub const fn selection_affects_domain(self) -> bool {
+        match self {
+            MapMode::Political | MapMode::Control | MapMode::Markets | MapMode::Religion => false,
+            MapMode::Development
+            | MapMode::Population
+            | MapMode::RgoLevel
+            | MapMode::BuildingLevels
+            | MapMode::Wealth
+            | MapMode::UnrealizedTaxBase
+            | MapMode::StateEfficacy => true,
+        }
+    }
+
     pub fn name(&self) -> &'static str {
         match self {
             MapMode::Political => "Political",

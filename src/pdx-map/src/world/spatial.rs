@@ -352,6 +352,28 @@ impl LocationBitset {
         self.words.iter().map(|w| w.count_ones() as usize).sum()
     }
 
+    pub fn clear(&mut self) {
+        self.words.fill(0);
+    }
+
+    pub fn contains(&self, index: R16) -> bool {
+        let index = index.value() as usize;
+        let word = index / 64;
+        let bit = index % 64;
+        self.words
+            .get(word)
+            .is_some_and(|value| value & (1u64 << bit) != 0)
+    }
+
+    pub fn set(&mut self, index: R16) {
+        let index = index.value() as usize;
+        let word = index / 64;
+        if word >= self.words.len() {
+            self.words.resize(word + 1, 0);
+        }
+        self.words[word] |= 1u64 << (index % 64);
+    }
+
     fn reset(&mut self, len: usize) {
         let words = len.div_ceil(64);
         self.words.clear();
@@ -813,5 +835,28 @@ mod tests {
         );
 
         assert_eq!(coarse(&index, query), Vec::<R16>::new());
+    }
+
+    #[test]
+    fn location_bitset_supports_preview_membership() {
+        let mut bitset = LocationBitset::new();
+        let first = R16::new(0);
+        let last_in_word = R16::new(63);
+        let next_word = R16::new(64);
+
+        bitset.set(first);
+        bitset.set(last_in_word);
+        bitset.set(next_word);
+
+        assert!(bitset.contains(first));
+        assert!(bitset.contains(last_in_word));
+        assert!(bitset.contains(next_word));
+        assert!(!bitset.contains(R16::new(65)));
+        assert_eq!(bitset.count(), 3);
+
+        bitset.clear();
+
+        assert!(!bitset.contains(first));
+        assert_eq!(bitset.count(), 0);
     }
 }

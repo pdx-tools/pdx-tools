@@ -26,7 +26,8 @@ pub use selection::{
 };
 pub use session::{
     Eu5DateComponents, Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace,
-    LocalizedEu5Workspace, Player, TimelineNote, TimelineSummary, humanize_note_key,
+    LocalizedEu5Workspace, MapChange, MapDirty, Player, TimelineNote, TimelineSummary,
+    humanize_note_key,
 };
 
 pub use color::Srgb;

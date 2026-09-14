@@ -1,5 +1,4 @@
 use super::*;
-use crate::gradient;
 use crate::timeline::{BorderIndex, CountryIdentities, CountryIdentity};
 use eu5save::Eu5Date;
 
@@ -107,8 +106,8 @@ impl<'bump> Eu5Workspace<'bump> {
     ///
     /// The date is clamped to the campaign. A date other than the save date
     /// forces the political map mode, because no other mode has a history.
-    /// Returns the legend of the mode the map ends in.
-    pub fn set_timeline_date(&mut self, date: Eu5Date) -> gradient::MapLegend {
+    /// Returns the map changes caused by the date update.
+    pub fn set_timeline_date(&mut self, date: Eu5Date) -> MapChange {
         let start = self
             .timeline
             .borders
@@ -126,8 +125,7 @@ impl<'bump> Eu5Workspace<'bump> {
         // leaving the save date repaints everything, because the live map
         // also carries controller stripes.
         if was_political && !was_live && !self.is_timeline_live() {
-            self.repaint_locations(&touched);
-            return gradient::MapLegend::Qualitative;
+            return self.repaint_locations(&touched);
         }
 
         let mode = if self.is_timeline_live() || Self::is_historical_map_mode(self.current_map_mode)

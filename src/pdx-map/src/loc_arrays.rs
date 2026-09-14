@@ -20,8 +20,7 @@ impl LocationId {
     }
 }
 
-/// Bitfield flags for location state, such as whether a location is
-/// highlighted.
+/// Bitfield flags for location state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct LocationFlags(u32);
@@ -30,6 +29,10 @@ impl LocationFlags {
     pub const NO_LOCATION_BORDERS: Self = Self(1 << 0); // Bit 0: opt out of location border drawing
     pub const HIGHLIGHTED: Self = Self(1 << 1); // Bit 1: location is highlighted
     pub const FOCUSED: Self = Self(1 << 2); // Bit 2: location is the focused single tile
+    pub const DIMMED: Self = Self(1 << 3); // Bit 3: location is outside the active selection
+    pub const PREVIEW: Self = Self(1 << 4); // Bit 4: location is inside a box-select drag
+    pub const INTERACTION: Self =
+        Self(Self::HIGHLIGHTED.0 | Self::FOCUSED.0 | Self::DIMMED.0 | Self::PREVIEW.0);
 
     #[inline]
     pub const fn new() -> Self {
@@ -315,6 +318,29 @@ impl LocationArrays {
         &self.data
     }
 
+    /// Get the contiguous primary, owner, and secondary color arrays.
+    pub fn color_data(&self) -> &[u32] {
+        &self.data.data[..self.len() * 3]
+    }
+
+    /// Get the state flags as raw values for direct synchronization.
+    pub fn flag_data(&self) -> &[u32] {
+        let len = self.len();
+        &self.data.data[len * 3..len * 4]
+    }
+
+    /// Get mutable contiguous primary, owner, and secondary color arrays.
+    pub fn color_data_mut(&mut self) -> &mut [u32] {
+        let len = self.len() * 3;
+        &mut self.data.data[..len]
+    }
+
+    /// Get mutable state flags for direct synchronization.
+    pub fn flag_data_mut(&mut self) -> &mut [u32] {
+        let len = self.len();
+        &mut self.data.as_mut_data()[len * 3..len * 4]
+    }
+
     pub fn iter_mut(&mut self) -> LocationArraysIterMut<'_> {
         LocationArraysIterMut::new(&mut self.data)
     }
@@ -593,6 +619,20 @@ mod tests {
         location.flags_mut().clear(custom_flag);
         assert!(!location.has_flag(custom_flag));
         assert_eq!(location.flags(), LocationFlags::empty());
+    }
+
+    #[test]
+    fn interaction_flags_use_the_expected_bits() {
+        assert_eq!(LocationFlags::DIMMED.bits(), 1 << 3);
+        assert_eq!(LocationFlags::PREVIEW.bits(), 1 << 4);
+        assert_eq!(
+            LocationFlags::INTERACTION.bits(),
+            LocationFlags::DIMMED.bits()
+                | LocationFlags::HIGHLIGHTED.bits()
+                | LocationFlags::FOCUSED.bits()
+                | LocationFlags::PREVIEW.bits()
+        );
+        assert!(!LocationFlags::INTERACTION.contains(LocationFlags::NO_LOCATION_BORDERS));
     }
 
     #[test]
