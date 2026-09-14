@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useSyncExternalStore } from "react";
 import { getIsDeveloper } from "@/lib/isDeveloper";
 import { check } from "@/lib/isPresent";
 import { pdxApi } from "@/services/appApi";
@@ -19,12 +19,12 @@ const SessionContext = React.createContext<SessionContextData>({
   profile: undefined,
 });
 
+const emptySubscribe = () => () => {};
+const getServerDeveloperState = () => false;
+
 export const SessionProvider = ({ children }: SessionProviderProps) => {
-  const [isDeveloper, setIsDeveloper] = useState(false);
+  const isDeveloper = useSyncExternalStore(emptySubscribe, getIsDeveloper, getServerDeveloperState);
   const profile = pdxApi.session.useCurrent();
-  useEffect(() => {
-    setIsDeveloper(getIsDeveloper());
-  }, []);
 
   const user = pdxUser(profile.data);
   return (

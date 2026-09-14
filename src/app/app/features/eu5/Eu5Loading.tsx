@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { cx } from "class-variance-authority";
 import type { Eu5LoadingState } from "./store";
 
@@ -73,14 +73,19 @@ export function Eu5Loading({ loading, filename, done }: Eu5LoadingProps) {
 
 /** Preserve the final progress value during fade-out. */
 function useLatchedLoading(loading: Eu5LoadingState | null) {
-  const latched = useRef({ percent: 0, stage: "" });
-  if (loading) {
-    latched.current = {
-      percent: Math.max(0, Math.min(100, loading.percent)),
-      stage: loading.stage,
-    };
+  const next = loading
+    ? {
+        percent: Math.max(0, Math.min(100, loading.percent)),
+        stage: loading.stage,
+      }
+    : null;
+  const [latched, setLatched] = useState(next ?? { percent: 0, stage: "" });
+
+  if (next && (next.percent !== latched.percent || next.stage !== latched.stage)) {
+    setLatched(next);
   }
-  return latched.current;
+
+  return next ?? latched;
 }
 
 function useSlowParse(done: boolean) {

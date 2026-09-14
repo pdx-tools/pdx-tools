@@ -767,6 +767,8 @@ const CountryHistoryVirtualList = ({
   const parentRef = useRef<HTMLDivElement>(null);
 
   // need to use a virtualizer here as we have so many tooltips
+  // TanStack Virtual manages mutable measurement state for this list.
+  // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
     count: data.length,
     getScrollElement: () => parentRef.current,

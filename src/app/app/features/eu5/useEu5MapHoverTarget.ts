@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEu5Engine } from "./store";
 import type { AppEngine } from "./ui-engine";
 
@@ -65,27 +65,23 @@ function removeHoverSource(id: number) {
 
 export function useEu5MapHoverSource() {
   const engine = useEu5Engine();
-  const sourceId = useRef(0);
-
-  if (sourceId.current === 0) {
-    sourceId.current = nextHoverSourceId++;
-  }
+  const [sourceId] = useState(() => nextHoverSourceId++);
 
   const clear = useCallback(() => {
-    removeHoverSource(sourceId.current);
+    removeHoverSource(sourceId);
     applyHoverTarget(engine, topHoverTarget());
-  }, [engine]);
+  }, [engine, sourceId]);
 
   const highlightTarget = useCallback(
     (target: Eu5MapHoverTarget | null | undefined) => {
       if (target) {
-        upsertHoverSource(sourceId.current, target);
+        upsertHoverSource(sourceId, target);
       } else {
-        removeHoverSource(sourceId.current);
+        removeHoverSource(sourceId);
       }
       applyHoverTarget(engine, topHoverTarget());
     },
-    [engine],
+    [engine, sourceId],
   );
 
   useEffect(() => clear, [clear]);

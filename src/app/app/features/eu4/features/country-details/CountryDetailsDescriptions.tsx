@@ -478,7 +478,7 @@ export const CountryDetailsDescriptions = ({ details }: CountryDetailsProps) => 
         <div className="flex gap-2">
           <IdeaGroupsIcon />
           <div className="grow text-lg">Ideas</div>
-          <div>{formatInt(ideas.reduce((acc, [_, count]) => acc + count, 0))}</div>
+          <div>{formatInt(ideas.reduce((acc, [, count]) => acc + count, 0))}</div>
         </div>
         <div>
           <IdeasTable ideas={ideas} />

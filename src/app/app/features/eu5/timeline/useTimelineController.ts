@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo } from "react";
 import {
   useEu5Engine,
   useEu5Timelapse,
@@ -177,24 +177,22 @@ const ACTIVATABLE = "button, select, a, [role='button'], [role='menuitem'], [rol
  * activate.
  */
 export function useTimelineKeyboard(controller: TimelineController | null) {
-  // The controller changes on every date, so the listener reads it through
-  // a ref and stays registered for the life of the control.
-  const controllerRef = useRef(controller);
-  controllerRef.current = controller;
+  // The controller changes on every date, so keep the listener registered for the life of the control.
   const mounted = controller !== null;
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    const currentController = controller;
+    if (currentController === null || currentController.locked || !WINDOW_KEYS.has(event.key))
+      return;
+    if (event.defaultPrevented || isTypingTarget(event.target)) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target?.closest(ARROW_CONSUMERS)) return;
+    if (event.key === " " && target?.closest(ACTIVATABLE)) return;
+
+    if (handleTimelineKey(currentController, event)) event.preventDefault();
+  });
 
   useEffect(() => {
     if (!mounted) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      const controller = controllerRef.current;
-      if (controller === null || controller.locked || !WINDOW_KEYS.has(event.key)) return;
-      if (event.defaultPrevented || isTypingTarget(event.target)) return;
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      if (target?.closest(ARROW_CONSUMERS)) return;
-      if (event.key === " " && target?.closest(ACTIVATABLE)) return;
-
-      if (handleTimelineKey(controller, event)) event.preventDefault();
-    };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mounted]);

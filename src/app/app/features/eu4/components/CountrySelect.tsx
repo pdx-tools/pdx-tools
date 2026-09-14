@@ -74,7 +74,7 @@ function SelectContent({
         scores.sort(([ascore], [bscore]) => bscore - ascore);
       }
 
-      return scores.map(([_, index]) => countries[index]);
+      return scores.map(([, index]) => countries[index]);
     }
 
     const filteredHumans: Fab[] = humanCountries.map((x) => ({
@@ -88,6 +88,8 @@ function SelectContent({
 
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // TanStack Virtual manages mutable measurement state for this list.
+  // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
     count: filteredCountries.length,
     getScrollElement: () => parentRef.current,

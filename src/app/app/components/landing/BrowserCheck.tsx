@@ -1,35 +1,42 @@
 import { compatibilityReport } from "@/lib/compatibility";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Alert } from "../Alert";
 
+const emptySubscribe = () => () => {};
+const noWarnings: string[] = [];
+let cachedWarnings: string[] | undefined;
+
+function getWarnings() {
+  if (cachedWarnings) return cachedWarnings;
+
+  const report = compatibilityReport();
+  const warnings: string[] = [];
+  if (!report.offscreen.enabled) {
+    warnings.push(
+      "Unable to create a WebGL2 OffscreenCanvas. Upgrade the browser to the latest version",
+    );
+  }
+
+  if (!report.webgl2.enabled) {
+    warnings.push("WebGL2 not available");
+  } else if (report.webgl2.textureSize.tooSmall) {
+    warnings.push(
+      `WebGL2 max texture size (${report.webgl2.textureSize.actual}) is smaller than required (${report.webgl2.textureSize.required})`,
+    );
+  } else if (report.webgl2.performanceCaveat) {
+    warnings.push("WebGL2 major performance caveat detected. Is hardware acceleration turned off?");
+  }
+
+  if (!report.wasm) {
+    warnings.push("WebAssembly not available");
+  }
+
+  cachedWarnings = warnings;
+  return warnings;
+}
+
 export const BrowserCheck = () => {
-  const [warnings, setWarnings] = useState<string[]>([]);
-
-  useEffect(() => {
-    const report = compatibilityReport();
-    if (!report.offscreen.enabled) {
-      setWarnings((x) => [
-        ...x,
-        `Unable to create a WebGL2 OffscreenCanvas. Upgrade the browser to the latest version`,
-      ]);
-    }
-
-    if (!report.webgl2.enabled) {
-      setWarnings((x) => [...x, "WebGL2 not available"]);
-    } else if (report.webgl2.textureSize.tooSmall) {
-      const msg = `WebGL2 max texture size (${report.webgl2.textureSize.actual}) is smaller than required (${report.webgl2.textureSize.required})`;
-      setWarnings((x) => [...x, msg]);
-    } else if (report.webgl2.performanceCaveat) {
-      setWarnings((x) => [
-        ...x,
-        `WebGL2 major performance caveat detected. Is hardware acceleration turned off?`,
-      ]);
-    }
-
-    if (!report.wasm) {
-      setWarnings((x) => [...x, `WebAssembly not available`]);
-    }
-  }, []);
+  const warnings = useSyncExternalStore(emptySubscribe, getWarnings, () => noWarnings);
 
   if (warnings.length === 0) {
     return null;

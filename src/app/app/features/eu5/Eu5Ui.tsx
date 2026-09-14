@@ -49,7 +49,7 @@ type Eu5UiProps = {
 export const Eu5Ui = ({ save }: Eu5UiProps) => {
   const { controller, data, error, loading } = useLoadEu5(save);
   const { canvasRef, surfaceRef, focus } = useCanvasCourierSurface({ controller });
-  const cursorRef = useCursorPosition(surfaceRef.current);
+  const cursorRef = useCursorPosition(surfaceRef);
   const settled = data !== null || error !== null;
   const showLoading = useLoadingVisible(settled);
 
@@ -128,18 +128,17 @@ function saveFilename(save: Eu5SaveInput): string {
 
 /** Keep the loader mounted through its fade-out. */
 function useLoadingVisible(settled: boolean) {
-  const [visible, setVisible] = useState(true);
+  const [hidden, setHidden] = useState(false);
+
+  if (!settled && hidden) setHidden(false);
 
   useEffect(() => {
-    if (!settled) {
-      setVisible(true);
-      return;
-    }
-    const timer = setTimeout(() => setVisible(false), LOADING_DISSOLVE_MS);
+    if (!settled) return;
+    const timer = setTimeout(() => setHidden(true), LOADING_DISSOLVE_MS);
     return () => clearTimeout(timer);
   }, [settled]);
 
-  return visible;
+  return !settled || !hidden;
 }
 
 /**
