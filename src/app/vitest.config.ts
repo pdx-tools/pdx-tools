@@ -6,9 +6,9 @@ export default defineConfig({
   },
   test: {
     testTimeout: 60000,
+    fsModuleCache: true,
     projects: [
       {
-        extends: true,
         test: {
           name: "unit",
           include: ["app/**/*.test.{ts,tsx}", "tests/**/*.test.ts"],
@@ -16,7 +16,6 @@ export default defineConfig({
         },
       },
       {
-        extends: true,
         test: {
           name: "integration",
           include: ["tests/api*.test.ts"],
