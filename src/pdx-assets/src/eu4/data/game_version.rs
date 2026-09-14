@@ -2,7 +2,7 @@ use crate::FileProvider;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-pub fn extract_game_version<P: FileProvider>(provider: &P) -> Result<String> {
+pub fn extract_game_version<P: FileProvider + ?Sized>(provider: &P) -> Result<String> {
     let settings_data = provider
         .read_file("launcher-settings.json")
         .context("unable to read launcher-settings.json")?;
