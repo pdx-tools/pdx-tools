@@ -651,25 +651,23 @@ impl SaveFileImpl {
                         failed_heirs.clear();
                     }
                 }
-                CountryEvent::Heir(heir) => {
-                    if !monarch_ids.contains(&heir.id.id) {
-                        failed_heirs.push(FailedHeir {
-                            name: heir.name.clone(),
-                            country: self.localize_tag(heir.country),
-                            birth: heir.birth_date.iso_8601().to_string(),
-                            personalities: heir
-                                .personalities
-                                .iter()
-                                .map(|(personality, _)| LocalizedObj {
-                                    id: personality.clone(),
-                                    name: self.game.localize_personality(personality),
-                                })
-                                .collect(),
-                            adm: heir.adm as u16,
-                            dip: heir.dip as u16,
-                            mil: heir.mil as u16,
-                        });
-                    }
+                CountryEvent::Heir(heir) if !monarch_ids.contains(&heir.id.id) => {
+                    failed_heirs.push(FailedHeir {
+                        name: heir.name.clone(),
+                        country: self.localize_tag(heir.country),
+                        birth: heir.birth_date.iso_8601().to_string(),
+                        personalities: heir
+                            .personalities
+                            .iter()
+                            .map(|(personality, _)| LocalizedObj {
+                                id: personality.clone(),
+                                name: self.game.localize_personality(personality),
+                            })
+                            .collect(),
+                        adm: heir.adm as u16,
+                        dip: heir.dip as u16,
+                        mil: heir.mil as u16,
+                    });
                 }
                 _ => {}
             }
@@ -1616,7 +1614,7 @@ impl SaveFileImpl {
             self.country_history_war(&resolver, &mut events, WarOverview::from(war))
         }
 
-        events.sort_by(|a, b| a.date.cmp(&b.date));
+        events.sort_by_key(|a| a.date);
 
         let mut years = Vec::new();
         for year in self.query.save().game.start_date.year()..=self.query.save().meta.date.year() {

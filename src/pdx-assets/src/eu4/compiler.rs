@@ -185,7 +185,7 @@ fn generate_countries<P: FileProvider + ?Sized>(
         });
     }
 
-    countries.sort_unstable_by(|x, y| x.tag.cmp(&y.tag));
+    countries.sort_unstable_by_key(|x| x.tag);
     Ok(countries)
 }
 
@@ -297,7 +297,7 @@ where
                     }
                 })
                 .ok_or_else(|| {
-                    anyhow::anyhow!("unable to find personality imaging for {}", &personality)
+                    anyhow::anyhow!("unable to find personality imaging for {}", personality)
                 })?;
 
             personalities_map.insert(personality, PathBuf::from(actual_trait));
@@ -1342,7 +1342,7 @@ fn generate_output_files(out_game_dir: &Path, game_data: &GameData) -> anyhow::R
 
     // TRADE COMPANY INVESTMENTS
     let mut data = game_data.trade_companies.iter().collect::<Vec<_>>();
-    data.sort_unstable_by(|(key1, _), (key2, _)| key1.cmp(key2));
+    data.sort_unstable_by_key(|(key1, _)| *key1);
     let mut trade_companies = Vec::new();
     for (key, name) in data.iter() {
         let key = buffer.create_string(key);
@@ -1360,7 +1360,7 @@ fn generate_output_files(out_game_dir: &Path, game_data: &GameData) -> anyhow::R
 
     // PERSONALITIES
     let mut data = game_data.personalities.iter().collect::<Vec<_>>();
-    data.sort_unstable_by(|(key1, _), (key2, _)| key1.cmp(key2));
+    data.sort_unstable_by_key(|(key1, _)| *key1);
     let mut personalities = Vec::new();
     for (key, name) in data.iter() {
         let key = buffer.create_string(key);
@@ -1378,7 +1378,7 @@ fn generate_output_files(out_game_dir: &Path, game_data: &GameData) -> anyhow::R
 
     // ADVISORS
     let mut data = game_data.advisors.iter().collect::<Vec<_>>();
-    data.sort_unstable_by(|(key1, _), (key2, _)| key1.cmp(key2));
+    data.sort_unstable_by_key(|(key1, _)| *key1);
     let mut advisors = Vec::new();
     for (key, name) in data.iter() {
         let key = buffer.create_string(key);
@@ -1400,7 +1400,7 @@ fn generate_output_files(out_game_dir: &Path, game_data: &GameData) -> anyhow::R
         let (center_x, center_y) = *game_data
             .center_locations
             .get(&province.id.as_u16())
-            .ok_or_else(|| anyhow::anyhow!("province not found in map: {}", &province.id))?;
+            .ok_or_else(|| anyhow::anyhow!("province not found in map: {}", province.id))?;
 
         let entry = schemas::eu4::Province::create(
             &mut buffer,

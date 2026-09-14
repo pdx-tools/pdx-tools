@@ -810,7 +810,9 @@ impl SaveFileImpl {
             .save()
             .game
             .players_countries
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|d| (d[1].as_str(), d[0].as_str()))
             .collect()
     }
@@ -1502,32 +1504,32 @@ impl SaveFileImpl {
                         data: ProvinceHistoryEventKind::Owner(self.localize_tag(*x)),
                     });
                 }
-                ProvinceEvent::KV((key, ProvinceEventValue::Bool(value))) => {
-                    if building_set.contains(key) {
-                        let name = self
-                            .game
-                            .localize_building(key)
-                            .map(String::from)
-                            .unwrap_or_else(|| key.clone());
-                        if *value {
-                            history.push(ProvinceHistoryEvent {
-                                date: date.iso_8601().to_string(),
-                                data: ProvinceHistoryEventKind::Constructed(GfxObj {
-                                    id: key.clone(),
-                                    name,
-                                    gfx: String::from("westerngfx"),
-                                }),
-                            });
-                        } else {
-                            history.push(ProvinceHistoryEvent {
-                                date: date.iso_8601().to_string(),
-                                data: ProvinceHistoryEventKind::Demolished(GfxObj {
-                                    id: key.clone(),
-                                    name,
-                                    gfx: String::from("westerngfx"),
-                                }),
-                            });
-                        }
+                ProvinceEvent::KV((key, ProvinceEventValue::Bool(value)))
+                    if building_set.contains(key) =>
+                {
+                    let name = self
+                        .game
+                        .localize_building(key)
+                        .map(String::from)
+                        .unwrap_or_else(|| key.clone());
+                    if *value {
+                        history.push(ProvinceHistoryEvent {
+                            date: date.iso_8601().to_string(),
+                            data: ProvinceHistoryEventKind::Constructed(GfxObj {
+                                id: key.clone(),
+                                name,
+                                gfx: String::from("westerngfx"),
+                            }),
+                        });
+                    } else {
+                        history.push(ProvinceHistoryEvent {
+                            date: date.iso_8601().to_string(),
+                            data: ProvinceHistoryEventKind::Demolished(GfxObj {
+                                id: key.clone(),
+                                name,
+                                gfx: String::from("westerngfx"),
+                            }),
+                        });
                     }
                 }
                 _ => {}
