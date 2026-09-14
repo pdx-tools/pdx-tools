@@ -11,7 +11,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { usePanelNav } from "../PanelNavContext";
 import { CountryLink } from "../EntityLink";
-import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../../components";
 import type { Eu5MapHoverTarget } from "../../../useEu5MapHoverTarget";
 import type { AppRow } from "@/lib/tanstack-table";
 
@@ -197,11 +197,7 @@ export function DiplomacyTabContent({
       rowSeparator={(row, index) => {
         const prev = index > 0 ? rows[index - 1] : null;
         if (prev?.group === row.group) return null;
-        return (
-          <p className="px-3 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-            {row.group}
-          </p>
-        );
+        return <SectionTitle className="mb-0 px-3 pt-3 pb-1">{row.group}</SectionTitle>;
       }}
     />
   );

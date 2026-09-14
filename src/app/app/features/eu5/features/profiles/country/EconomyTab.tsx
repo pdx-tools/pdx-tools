@@ -13,7 +13,7 @@ import {
   seriesFill,
 } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
-import { StatRail } from "../../../components";
+import { SectionTitle, StatRail } from "../../../components";
 
 const MONTH_NAMES = [
   "Jan",
@@ -244,9 +244,7 @@ function HistoryChart({
 
   return (
     <section>
-      <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-        {title}
-      </p>
+      <SectionTitle>{title}</SectionTitle>
       <EChart option={option} style={{ height: "200px", width: "100%" }} />
     </section>
   );
@@ -394,9 +392,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
 
   return (
     <section>
-      <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-        Revenue &amp; Net Margin
-      </p>
+      <SectionTitle>Revenue &amp; Net Margin</SectionTitle>
       <EChart option={option} style={{ height: "200px", width: "100%" }} />
     </section>
   );
@@ -485,9 +481,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
 
   return (
     <section>
-      <p className="mb-2 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-        Tax Base Gap · Wealth vs Tax Base
-      </p>
+      <SectionTitle>Tax Base Gap · Wealth vs Tax Base</SectionTitle>
       <EChart option={option} style={{ height: "300px", width: "100%" }} />
     </section>
   );
@@ -504,9 +498,7 @@ export function StatPlate({
 }) {
   return (
     <div className="min-w-0 border-r border-game-line bg-game-panel px-3 py-3 last:border-r-0">
-      <div className="mb-1.5 truncate font-mono text-[10px] tracking-[0.14em] text-game-ink-500 uppercase">
-        {label}
-      </div>
+      <SectionTitle className="mb-1.5 truncate">{label}</SectionTitle>
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 font-mono text-[18px] font-medium tracking-[-0.01em] text-game-ink-100 tabular-nums">
         {typeof value === "string" ? <span className="truncate">{value}</span> : value}
         {delta && (

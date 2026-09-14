@@ -47,7 +47,7 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         collapseThreshold={256}
         maxWidth={1920}
         onWidthChange={handleWidthChange}
-        className="border-l border-game-line bg-game-panel shadow-xl backdrop-blur"
+        className="border-l border-game-line-strong bg-game-panel"
       >
         <ResizablePanel.Header className="border-b border-game-line">
           <ResizablePanel.CloseButton className={btnCx} />
@@ -233,7 +233,7 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
         colorHex={header.colorHex}
         size="xl"
         alt={`${header.name} flag`}
-        className="shrink-0 rounded-[2px] border border-black/30 shadow-sm"
+        className="shrink-0 rounded-[2px] border border-black/30"
       />
       <span className="flex min-w-0 flex-col gap-1">
         <span className="flex min-w-0 items-center gap-2">

@@ -1,6 +1,5 @@
 import { useId } from "react";
-import { cx } from "class-variance-authority";
-import { focusRingInset } from "../components/focusRing";
+import { SidebarNav } from "../components/SidebarNav";
 import { useEu5Engine, useEu5MapMode, useEu5Timelapse, useEu5TimelineLive } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { MAP_MODES } from "./modeConfig";
@@ -14,18 +13,13 @@ export function MapModesSection() {
   const locked = useEu5Timelapse().status !== "idle";
 
   return (
-    <section className="flex flex-col overflow-hidden border-b border-game-line">
-      <div className="flex h-9 shrink-0 items-center px-3.5">
-        <h3 className="font-mono text-[9.5px] font-medium tracking-[0.28em] text-game-ink-500 uppercase">
-          Map Modes
-        </h3>
-      </div>
-      <div className="flex-1 overflow-y-auto">
+    <SidebarNav aria-label="Map modes" className="border-b border-game-line">
+      <SidebarNav.Section label="Map Modes">
         {MAP_MODES.map((mode) => (
           <ModeRow key={mode.value} mode={mode} live={live} locked={locked} />
         ))}
-      </div>
-    </section>
+      </SidebarNav.Section>
+    </SidebarNav>
   );
 }
 
@@ -46,33 +40,18 @@ function ModeRow({ mode, live, locked }: { mode: ModeConfig; live: boolean; lock
       : null;
 
   return (
-    <button
-      type="button"
+    <SidebarNav.Item
+      active={isActive}
       disabled={locked}
       aria-describedby={note !== null ? noteId : undefined}
       onClick={() => engine.trigger.selectMapMode(mode.value as MapMode)}
-      className={cx(
-        "relative flex h-7 w-full items-center pr-3.5 pl-3.5 text-left",
-        "text-[12.5px] text-game-ink-300 transition-colors duration-100",
-        "enabled:hover:bg-game-panel-hover enabled:hover:text-game-ink-100",
-        "disabled:cursor-not-allowed disabled:opacity-40",
-        focusRingInset,
-        isActive && "text-game-accent-100",
-        isActive && "bg-linear-to-r from-game-accent-500/15 to-transparent",
-      )}
     >
-      <span
-        className={cx(
-          "absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full",
-          isActive ? "bg-game-accent-500" : "bg-transparent",
-        )}
-      />
-      <span className={cx(isActive && "font-medium")}>{mode.label}</span>
+      {mode.label}
       {note !== null && (
         <span id={noteId} className="sr-only">
           {note}
         </span>
       )}
-    </button>
+    </SidebarNav.Item>
   );
 }

@@ -7,10 +7,9 @@ import {
 } from "../../insights/Markets";
 import type { GoodsPressureMetric } from "../../insights/Markets";
 import { useEu5Trigger } from "../useEu5Trigger";
-import { ToggleGroup } from "@/components/ToggleGroup";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { ScopedGoodSummary } from "@/wasm/wasm_eu5";
-import { Skeleton } from "../../../components";
+import { GameSegmented, SectionTitle, Skeleton } from "../../../components";
 
 const TRADE_CATEGORIES = new Set(["Trade", "BurgherTrades"]);
 
@@ -181,9 +180,7 @@ function ImportExportSummary({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
         <div>
-          <p className="text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-            Required imports
-          </p>
+          <SectionTitle className="mb-0">Required imports</SectionTitle>
           <p className="mt-0.5 text-[10px] text-game-ink-500">
             Imports required to meet pop and building needs
           </p>
@@ -193,9 +190,7 @@ function ImportExportSummary({
 
       <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
         <div>
-          <p className="text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-            Exports shipped out
-          </p>
+          <SectionTitle className="mb-0">Exports shipped out</SectionTitle>
           <p className="mt-0.5 text-[10px] text-game-ink-500">
             Top exports shipped to other markets
           </p>
@@ -246,18 +241,14 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <ToggleGroup
-          type="single"
+        <GameSegmented
           value={metric}
-          onValueChange={(value) => {
-            if (value) setMetric(value as GoodsPressureMetric);
-          }}
-          className="inline-flex w-fit rounded-control border border-game-line bg-game-panel-hover p-1"
-          aria-label="Metric toggle"
+          onValueChange={(value) => setMetric(value as GoodsPressureMetric)}
+          aria-label="Goods metric"
         >
-          <ToggleGroup.Item value="units">Units</ToggleGroup.Item>
-          <ToggleGroup.Item value="value">Value</ToggleGroup.Item>
-        </ToggleGroup>
+          <GameSegmented.Item value="units">Units</GameSegmented.Item>
+          <GameSegmented.Item value="value">Value</GameSegmented.Item>
+        </GameSegmented>
       </div>
 
       <ImportExportSummary goods={goods} metric={metric} />
@@ -277,9 +268,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
       {selectedGood && (
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-              Selected good diagnostic
-            </p>
+            <SectionTitle className="mb-0">Selected good diagnostic</SectionTitle>
             <select
               value={selectedGood.good.key}
               onChange={(event) => setSelectedGoodKey(event.target.value)}

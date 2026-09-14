@@ -150,7 +150,7 @@ export function Eu5Toolbar() {
               type="button"
               onClick={() => void handleSelectPlayers()}
               className={cx(
-                "pointer-events-auto h-7 shrink-0 rounded-control px-3 text-[10.5px] font-medium whitespace-nowrap transition-colors",
+                "pointer-events-auto h-7 shrink-0 rounded-control px-3 font-game-ui text-[12.5px] font-medium whitespace-nowrap transition-colors",
                 focusRing,
                 selectionState?.preset === "players"
                   ? "bg-game-accent-soft text-game-accent-100 shadow-[inset_0_-1px_0_var(--color-game-accent-300)]"

@@ -1,5 +1,6 @@
 import type { LocationProfile } from "@/wasm/wasm_eu5";
 import { formatFloat } from "@/lib/format";
+import { SectionTitle } from "../../../components";
 
 interface Props {
   profile: LocationProfile;
@@ -12,9 +13,7 @@ export function LocationEconomyTab({ profile }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-        Buildings
-      </p>
+      <SectionTitle className="mb-0">Buildings</SectionTitle>
       <div className="flex flex-col gap-1">
         {profile.buildings.map((b, i) => (
           <div key={i} className="flex items-center justify-between text-sm">

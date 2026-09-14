@@ -1,5 +1,6 @@
 import React from "react";
 import { cx } from "class-variance-authority";
+import { sectionLabel } from "./SectionTitle";
 
 export interface StatItemProps {
   label: string;
@@ -29,9 +30,7 @@ export function StatItem({ label, value, boxed, className }: StatItemProps) {
         className,
       )}
     >
-      <span className="text-[10px] font-semibold tracking-wider text-game-ink-300 uppercase">
-        {label}
-      </span>
+      <span className={sectionLabel}>{label}</span>
       <span
         className={cx("text-game-ink-100", boxed ? "text-sm font-semibold" : "text-lg font-bold")}
       >
