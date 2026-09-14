@@ -17,7 +17,8 @@ eu4save = { default-features = false , workspace = true, features = ["zstd_c"] }
 eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
 eu5save = { workspace = true, default-features = false }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
-image = { workspace = true, features = ["png", "pnm"] }
+image = { workspace = true, features = ["bmp", "png", "tga"] }
+image-extras = { workspace = true, default-features = false, features = ["dds"] }
 image_dds = { workspace = true }
 jomini = { workspace = true }
 pdx-map = { workspace = true, default-features = false }

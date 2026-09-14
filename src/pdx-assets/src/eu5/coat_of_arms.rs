@@ -1,8 +1,8 @@
 //! EU5 wiring for the game-agnostic coat of arms compositor.
 //!
 //! Loads EU5's heraldry definitions and named colors from a game file provider,
-//! decodes the BC7 `.dds` emblem/pattern textures (pure-Rust via `image_dds`,
-//! since ImageMagick's DDS coder cannot read BC7), and renders country flags.
+//! decodes the BC7 `.dds` emblem/pattern textures (pure-Rust via `image_dds`),
+//! and renders country flags.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

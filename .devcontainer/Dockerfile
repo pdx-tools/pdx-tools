@@ -5,7 +5,6 @@ ARG TARGETARCH
 RUN if [ "$TARGETARCH" = "amd64" ]; then dpkg --add-architecture i386; fi && \
     apt-get update && apt-get install -y \
       clang \
-      imagemagick \
       libssl-dev \
       mesa-vulkan-drivers \
       musl-tools \
