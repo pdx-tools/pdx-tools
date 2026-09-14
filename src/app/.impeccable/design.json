@@ -407,7 +407,11 @@
       },
       "title": {
         "displayName": "Panel Title",
-        "purpose": "The playthrough name in the Game world control panel header. The largest type the Game world ever uses."
+        "purpose": "The playthrough name in the Game world control panel header and the filename on the parse wait. The largest sans the Game world sets; only a Readout goes larger."
+      },
+      "readout": {
+        "displayName": "Readout",
+        "purpose": "A live figure read at a glance from across the map: the timeline year at 20px, an economy stat plate at 18px. Always a number, always mono with tabular-nums, never a title."
       },
       "body": {
         "displayName": "Body",
@@ -423,7 +427,7 @@
       },
       "label": {
         "displayName": "Micro-label",
-        "purpose": "Uppercase mono section headers. Always ink-500; tracking widens as size shrinks (0.28em at 9.5px, 0.14em at 10-11px)."
+        "purpose": "Uppercase mono section headers, including the SectionTitle above every chart, table, or stat inside a panel (10px/0.14em, one string: sectionLabel). Always ink-500; tracking widens as size shrinks (0.28em at 9.5px, 0.14em at 10-11px)."
       },
       "label-lg": {
         "displayName": "Panel Label",

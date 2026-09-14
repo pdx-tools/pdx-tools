@@ -109,6 +109,13 @@ typography:
     lineHeight: 1
     letterSpacing: "0"
     fontFeature: "tabular-nums"
+  readout:
+    fontFamily: "IBM Plex Mono, ui-monospace, JetBrains Mono, monospace"
+    fontSize: "20px"
+    fontWeight: 500
+    lineHeight: 1
+    letterSpacing: "0"
+    fontFeature: "tabular-nums"
   label:
     fontFamily: "IBM Plex Mono, ui-monospace, JetBrains Mono, monospace"
     fontSize: "10px"
@@ -182,6 +189,23 @@ components:
     rounded: "{rounded.control}"
     padding: "0 10px"
     height: "28px"
+  segmented:
+    backgroundColor: "{colors.eu5-panel}"
+    rounded: "{rounded.control}"
+    padding: "2px"
+    height: "28px"
+  segmented-item:
+    backgroundColor: "transparent"
+    textColor: "{colors.eu5-ink-300}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.plate}"
+    padding: "0 10px"
+  segmented-item-on:
+    backgroundColor: "{colors.brass-soft}"
+    textColor: "{colors.brass-100}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.plate}"
+    padding: "0 10px"
   chip-default:
     backgroundColor: "{colors.eu5-panel-raised}"
     textColor: "{colors.eu5-ink-300}"
@@ -347,11 +371,12 @@ Underline style carries meaning: solid navigates; dotted with `cursor-help` reve
 
 - **Display** (800, 2.25rem → 3.75rem across `lg`/`xl`, tight leading, `-0.025em`): the landing hero only. Set with `text-balance`, and the second line runs italic as the single expressive typographic gesture in the entire system.
 - **Headline** (800, 1.875rem → 2.25rem, `-0.025em`): landing section headers.
-- **Title** (500, 17px, 1.25 leading): the Game world's panel identity — the playthrough name in the control panel header. The largest type the Game world ever uses.
+- **Title** (500, 17px, 1.25 leading): the Game world's panel identity — the playthrough name in the control panel header and the filename on the parse wait. The largest *sans* the Game world sets; only a Readout goes larger.
+- **Readout** (500, 18–20px, mono, `tabular-nums`, leading-none): a live figure read at a glance from across the map — the timeline's 20px year, the 18px figure on an economy stat plate. Always a number, always mono, never a title: words at this size would compete with the map.
 - **Body** (400, 1rem–1.25rem, 1.6 leading): landing and docs prose, capped at `max-w-prose`.
 - **UI** (400/500, 12.5px, leading-none): every Game world control, tab, nav item, and button. 12px for stat rail labels.
 - **Numeric** (400, 10–13px, `tabular-nums`): all values, counts, ranks, dates, shortcuts. Rank ordinals set the suffix as a 7.5px superscript against a 10.5px figure.
-- **Label** (500, 9.5–11px, uppercase, `0.14em`–`0.28em` tracking): section headers in the stat rail (10px/0.14em), sidebar sections (9.5px/0.28em), panel titles and rail headers (11px/0.14em), command palette groups (11px/0.15em). Always `ink-500`. 10px and 11px are both real steps — 11px when the label heads a whole panel or rail, 10px when it divides a section inside one.
+- **Label** (500, 9.5–11px, uppercase, `0.14em`–`0.28em` tracking): section headers in the stat rail and the `SectionTitle` above every chart, table, or stat inside an insight or profile panel (10px/0.14em, one string — `sectionLabel`), sidebar sections (9.5px/0.28em), panel titles and rail headers (11px/0.14em), command palette groups (11px/0.15em). Always `ink-500`. 10px and 11px are both real steps — 11px when the label heads a whole panel or rail, 10px when it divides a section inside one.
 - **Caption** (400, 11px, 1.4 leading): the sans counterpart to Label — descriptive text under a control, roadmap copy, and chip labels. The one place 11px is set in the UI sans rather than the mono.
 
 ### Named Rules
@@ -384,7 +409,9 @@ The two worlds have **deliberately different elevation vocabularies**, and this 
 
 **Game world: two tiers, and only one of them is allowed to lift.** Surfaces *in the layout* — rails, rows, chips, buttons, tabs, section headers — are strictly flat. Their depth comes entirely from the five-step panel lightness ladder plus hairline borders: a panel is "above" the page because it is lighter, and it is bounded because it has a 10%-white edge. Hover is a step up the ladder (`panel` → `panel-hover`), not a lift.
 
-Surfaces *floating over the map* — the toolbar, cursor tooltip, selection pill, shortcut panel, insight panel, control panel, and select menus — are a separate tier and they lift. Each combines three things together, never one without the others: a translucent ground (`eu5-overlay` at `rgba(8,11,16,0.72)`, or `panel/95`), a `backdrop-blur`, and a shadow sized to the surface (`shadow-lg` for small transients, `shadow-xl` for docked panels, `shadow-2xl` for menus and modals). The blur is what makes the shadow legible against a moving map; a shadow without it reads as dirt on the canvas.
+Surfaces *floating over the map* — the toolbar, cursor tooltip, selection pill, shortcut panel, timeline, and select menus — are a separate tier and they lift. Each combines three things together, never one without the others: a translucent ground (`eu5-overlay` at `rgba(8,11,16,0.72)`, or `panel/95`), a `backdrop-blur`, and a shadow sized to the surface (`shadow-lg` for small transients, `shadow-xl` for the docked timeline, `shadow-2xl` for menus and modals). The blur is what makes the shadow legible against a moving map; a shadow without it reads as dirt on the canvas.
+
+The two **side panels** — the control panel on the left, the insight panel on the right — are neither. They run edge to edge from the top of the viewport to the bottom and the map ends where they begin, so they are *walls*, not objects on the map. They take the in-layout treatment: a `panel` ground and a `line-strong` edge on the side that meets the map, no shadow. A flag, swatch, or plate inside them is flat for the same reason.
 
 **Classic world: shadows are the vocabulary.** Cards rest at `shadow-md`, floating surfaces (dialogs, popovers, dropdowns, sheets) use `shadow-lg`/`shadow-xl`. This is the incumbent convention and it stays.
 
@@ -433,6 +460,8 @@ Everything below is **precise and unfussy**: fixed heights, hairline borders, no
 - **Danger:** white fill, `rose-400` border, `rose-800` text — outlined, never filled red.
 - **Focus:** 2px ring with a 2px offset against `slate-300/70`. **Disabled:** 50% opacity, `not-allowed` cursor.
 - Shapes are orthogonal to variants: `default` (rounded-md, 16×8), `square` (rounded-md, 8), `circle` (rounded-full, 8), `none`.
+
+**Segmented** (`GameSegmented`) — a single-choice switch between a few named views of the same data ("Value" / "Units"). The frame is the default button plate: 28px, `panel` ground, `line` edge, `control` radius, 2px inset. Each option is a chip inside it — `plate` radius, 12.5px UI type, 10px horizontal — and exactly one is on: the on option is the committed chip (`brass-soft` ground, `brass-line` edge, `brass-100` medium text); the rest are `ink-300` ghosts that step to `panel-hover` and `ink-100` on hover. Arrow keys move between options and the ring is the shared `focusRing`. It replaces the Classic `ToggleGroup`, whose sky selection has no standing in the Game world.
 
 ### Chips
 
@@ -513,7 +542,7 @@ Two hand-made textures exist and are the system's entire ornament budget:
 - **Do** take every focus style from `components/focusRing.ts`, per the One-Focus-Ring Rule.
 - **Do** render navigable entity names with `EntityName` (`components/EntityName.tsx`) so the solid ink hairline stays consistent.
 - **Do** express in-layout Game world depth as a step on the panel ladder (`panel` → `panel-raised` → `panel-hover` → `panel-active`) plus a hairline.
-- **Do** ship floating Game world surfaces as a complete set: translucent ground, `backdrop-blur`, and a shadow (`lg` transient / `xl` docked / `2xl` menu).
+- **Do** ship floating Game world surfaces as a complete set: translucent ground, `backdrop-blur`, and a shadow (`lg` transient / `xl` docked timeline / `2xl` menu). The side panels are walls, not floating surfaces: `line-strong` edge, no shadow.
 - **Do** move border and background together on Game world hover — `panel` → `panel-hover` *and* `line` → `line-strong`.
 - **Do** key Game world panel internals off `@container`, since panels are resizable.
 - **Do** recess Game world inputs to `page` color; they sit below their panel, not on it.
