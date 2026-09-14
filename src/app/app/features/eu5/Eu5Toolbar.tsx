@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useEu5SelectionState, useEu5Engine } from "./store";
+import { useEu5SelectionState, useEu5Engine, useEu5Players } from "./store";
 import { usePanToEntity } from "./usePanToEntity";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Command as CommandPrimitive } from "cmdk";
@@ -18,6 +18,8 @@ export function Eu5Toolbar() {
   const engine = useEu5Engine();
   const selectionState = useEu5SelectionState();
   const searchQuery = query.trim();
+  // Observer saves have no players, so the preset has nothing to select.
+  const hasPlayers = useEu5Players().length > 0;
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
@@ -139,8 +141,9 @@ export function Eu5Toolbar() {
           )}
         </button>
 
-        {/* Preset buttons + surrounding separators — hidden while search is open */}
-        {!searchActive && (
+        {/* Preset buttons + surrounding separators — hidden while search is open
+            and on saves with nothing for the preset to select */}
+        {!searchActive && hasPlayers && (
           <>
             <span className="h-4 w-px shrink-0 bg-game-line-strong" aria-hidden="true" />
             <button

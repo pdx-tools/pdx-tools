@@ -289,9 +289,7 @@ export const createGame = async (
       return app.get_map_mode();
     },
     getPaletteGradients: () => paletteGradients,
-    getSaveMetadata: () => {
-      return metadata;
-    },
+    getSaveMetadata: () => app.meta(),
     canHighlightLocation: (locationId: number) => {
       return app.can_highlight_location(locationId);
     },

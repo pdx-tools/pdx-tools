@@ -55,6 +55,13 @@ use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+/// A human player and the country they control.
+#[derive(Debug, Clone, Copy)]
+pub struct Player<'a> {
+    pub name: &'a str,
+    pub country: CountryIdx,
+}
+
 /// An EU5 workspace combines the saved game state with patch-specific game data,
 /// and manages rendering state including map modes and GPU data structures.
 pub struct Eu5Workspace<'bump> {
@@ -220,6 +227,19 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn gamestate(&self) -> &Gamestate<'bump> {
         &self.gamestate
+    }
+
+    /// The human players in this save, in the order the save lists them.
+    ///
+    /// Observer games yield nothing. A hot-seat entry that names a country
+    /// no longer in the save is skipped.
+    pub fn players(&self) -> impl Iterator<Item = Player<'_>> + '_ {
+        self.gamestate.played_countries.iter().filter_map(|p| {
+            Some(Player {
+                name: p.name.to_str(),
+                country: self.gamestate.countries.get(p.country)?,
+            })
+        })
     }
 
     pub(crate) fn game_data(&self) -> &GameData {
