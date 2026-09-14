@@ -12,3 +12,4 @@ export * from "./SectionTitle";
 export * from "./Skeleton";
 export * from "./EmptyNote";
 export * from "./StatItem";
+export * from "./Segmented";

@@ -27,7 +27,7 @@ const sizeClasses = {
     wrapper: "gap-2 h-7",
     swatch: "w-[18px] h-3",
     tag: "text-[10.5px]",
-    name: "text-[13.5px]",
+    name: "text-[13px]",
   },
 };
 

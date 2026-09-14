@@ -28,7 +28,7 @@ const SidebarNavSection = React.forwardRef<HTMLDivElement, SidebarNavSectionProp
             </h3>
           </div>
         )}
-        <div className="flex flex-col">{children}</div>
+        <div className="flex min-h-0 flex-col overflow-y-auto">{children}</div>
       </div>
     );
   },
@@ -47,12 +47,13 @@ const SidebarNavItem = React.forwardRef<HTMLButtonElement, SidebarNavItemProps>(
         ref={ref}
         type="button"
         className={cx(
-          "relative flex h-7 w-full items-center px-3.5 pr-3.5 text-left",
+          "relative flex h-7 w-full shrink-0 items-center px-3.5 pr-3.5 text-left",
           "font-game-ui text-[12.5px] transition-colors duration-100",
+          "disabled:cursor-not-allowed disabled:opacity-40",
           focusRingInset,
           active
             ? "bg-linear-to-r from-game-accent-500/15 to-transparent text-game-accent-100"
-            : "text-game-ink-300 hover:bg-game-panel-hover hover:text-game-ink-100",
+            : "text-game-ink-300 enabled:hover:bg-game-panel-hover enabled:hover:text-game-ink-100",
           className,
         )}
         {...props}

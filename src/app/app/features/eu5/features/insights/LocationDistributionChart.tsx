@@ -9,6 +9,7 @@ import {
 } from "@/components/viz/echartsTheme";
 import type { LocationDistribution } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
+import { SectionTitle } from "../../components";
 
 function formatBound(v: number): string {
   return Number.isInteger(v) ? String(v) : formatFloat(v, 1);
@@ -64,9 +65,7 @@ export function LocationDistributionChart({ distribution }: Props) {
 
   return (
     <div>
-      <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-        {distribution.metricLabel} distribution
-      </p>
+      <SectionTitle className="mb-1">{distribution.metricLabel} distribution</SectionTitle>
       <EChart option={option} style={{ height: 180 }} />
     </div>
   );

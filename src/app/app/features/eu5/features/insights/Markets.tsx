@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffectEvent } from "react";
-import { ToggleGroup } from "@/components/ToggleGroup";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
@@ -33,7 +32,7 @@ import {
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { useEu5SaveDate } from "../../store/eu5Store";
-import { EmptyNote, SectionTitle, StatItem } from "../../components";
+import { EmptyNote, GameSegmented, SectionTitle, StatItem } from "../../components";
 
 const GOODS_BAR_CAP = 20;
 const ARROW_WINDOW_MONTHS = 12;
@@ -432,18 +431,14 @@ export function GoodsPressureChart({
     <div className="flex flex-col gap-2">
       {controlledMetric == null && (
         <div className="flex flex-wrap items-center gap-3">
-          <ToggleGroup
-            type="single"
+          <GameSegmented
             value={metric}
-            onValueChange={(value) => {
-              if (value) setMetric(value as GoodsPressureMetric);
-            }}
-            className="inline-flex w-fit rounded-control border border-game-line bg-game-panel-hover p-1"
+            onValueChange={(value) => setMetric(value as GoodsPressureMetric)}
             aria-label="Goods pressure metric comparison"
           >
-            <ToggleGroup.Item value="value">Value</ToggleGroup.Item>
-            <ToggleGroup.Item value="units">Units</ToggleGroup.Item>
-          </ToggleGroup>
+            <GameSegmented.Item value="value">Value</GameSegmented.Item>
+            <GameSegmented.Item value="units">Units</GameSegmented.Item>
+          </GameSegmented>
         </div>
       )}
       <EChart

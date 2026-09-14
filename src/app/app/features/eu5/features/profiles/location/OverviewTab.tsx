@@ -1,7 +1,7 @@
 import type { LocationProfile } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { CountryLink, MarketLink } from "../EntityLink";
-import { StatItem } from "../../../components";
+import { SectionTitle, StatItem } from "../../../components";
 
 interface Props {
   profile: LocationProfile;
@@ -27,18 +27,14 @@ export function LocationOverviewTab({ profile }: Props) {
 
       {profile.header.owner && (
         <div>
-          <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-            Owner
-          </p>
+          <SectionTitle className="mb-1">Owner</SectionTitle>
           <CountryLink country={profile.header.owner} />
         </div>
       )}
 
       {profile.header.market && (
         <div>
-          <p className="mb-1 text-[10px] font-semibold tracking-widest text-game-ink-500 uppercase">
-            Market
-          </p>
+          <SectionTitle className="mb-1">Market</SectionTitle>
           <MarketLink market={profile.header.market} />
         </div>
       )}
