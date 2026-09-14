@@ -318,7 +318,7 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
   );
 }
 
-function cellClassName<TData extends RowData>(cell: AppCell<TData, void>): string | undefined {
+function cellClassName<TData extends RowData>(cell: AppCell<TData, unknown>): string | undefined {
   let cz = "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
