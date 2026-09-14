@@ -742,7 +742,7 @@ const FilterOverlay = () => {
   }
 
   return (
-    <div className="sticky top-0 left-0 z-10 flex justify-end animate-in slide-in-from-right">
+    <div className="sticky top-0 left-0 z-10 flex animate-enter justify-end [--tw-enter-translate-x:100%] motion-reduce:!animate-none">
       <div className="shadow-md">
         <Button
           shape="none"

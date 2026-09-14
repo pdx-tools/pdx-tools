@@ -65,7 +65,6 @@
     "drizzle-kit": "0.31.10",
     "postcss": "8.5.28",
     "tailwindcss": "4.3.3",
-    "tailwindcss-animate": "1.0.7",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "4.1.11",
