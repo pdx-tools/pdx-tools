@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useSyncExternalStore } from "react";
 import { DocumentIcon } from "@heroicons/react/24/solid";
 import { useFilePublisher } from "@/features/engine";
 import { useFileDrop } from "@/hooks/useFileDrop";
@@ -7,6 +7,10 @@ import queenSymbol from "./queen.webp";
 import militaryRank from "./military-rank.webp";
 import { cx } from "class-variance-authority";
 import { Badge } from "@/components/Badge";
+
+const emptySubscribe = () => () => {};
+const hasFileSystemAccessApi = () => "showOpenFilePicker" in window;
+const noFileSystemAccessApi = () => false;
 
 function Eu4FileIcon() {
   return (
@@ -83,11 +87,11 @@ export const HeroFileInput = () => {
   const { isHovering } = useFileDrop({
     onFile: (file) => publishFile(file),
   });
-  const [fileSystemAccessApiEnabled, setFileSystemAccessApi] = useState(false);
-
-  useEffect(() => {
-    setFileSystemAccessApi("showOpenFilePicker" in window);
-  }, []);
+  const fileSystemAccessApiEnabled = useSyncExternalStore(
+    emptySubscribe,
+    hasFileSystemAccessApi,
+    noFileSystemAccessApi,
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.currentTarget.files && e.currentTarget.files[0]) {

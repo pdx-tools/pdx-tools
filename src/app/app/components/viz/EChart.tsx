@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo } from "react";
+import { memo, useEffect, useEffectEvent, useRef } from "react";
 import * as echarts from "echarts/core";
 import {
   PieChart,
@@ -99,15 +99,16 @@ export const escapeEChartsHtml = (value: unknown) =>
 export const EChart = memo(function EChart({ option, style, onInit, className }: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
-  const onInitRef = useRef(onInit);
-  onInitRef.current = onInit;
+  const onInitEvent = useEffectEvent((chart: echarts.ECharts) => {
+    onInit?.(chart);
+  });
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const chart = echarts.init(containerRef.current);
     chartRef.current = chart;
-    onInitRef.current?.(chart);
+    onInitEvent(chart);
 
     let rafId: ReturnType<typeof requestAnimationFrame> | undefined;
     const resizeObserver = new ResizeObserver(() => {

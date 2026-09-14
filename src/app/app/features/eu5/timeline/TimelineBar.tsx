@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "./TimelineReadout";
@@ -20,9 +20,7 @@ const GUTTER_PX = 16;
  */
 function usePresence(open: boolean) {
   const [mounted, setMounted] = useState(open);
-  useEffect(() => {
-    if (open) setMounted(true);
-  }, [open]);
+  if (open && !mounted) setMounted(true);
   const onAnimationEnd = (event: React.AnimationEvent<HTMLElement>) => {
     if (event.target === event.currentTarget && !open) setMounted(false);
   };

@@ -126,7 +126,7 @@ export class WebGLMap {
 
     this.redrawViewportNow();
     return (this.redrawViewportTask = new Promise((res) =>
-      requestAnimationFrame((_) => {
+      requestAnimationFrame(() => {
         this.redrawViewportTask = undefined;
         res(void 0);
       }),
@@ -149,7 +149,7 @@ export class WebGLMap {
 
     this.redrawMapNow();
     return (this.redrawMapTask = new Promise((res) =>
-      requestAnimationFrame((_) => {
+      requestAnimationFrame(() => {
         this.redrawMapTask = undefined;
         res(void 0);
       }),

@@ -1,4 +1,4 @@
-import { useCallback, useEffectEvent } from "react";
+import { useEffectEvent } from "react";
 import type * as echarts from "echarts/core";
 import type { EntityKind } from "@/wasm/wasm_eu5";
 import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
@@ -56,9 +56,9 @@ export function useEu5EntityChartClick(opts: {
     hoverSource.clear();
   });
 
-  return useCallback((chart: echarts.ECharts) => {
+  return (chart: echarts.ECharts) => {
     chart.on("click", handleClick);
     chart.on("mouseover", handleMouseover);
     chart.on("mouseout", handleMouseout);
-  }, []);
+  };
 }

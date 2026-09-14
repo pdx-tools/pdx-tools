@@ -1,13 +1,5 @@
 import type React from "react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { useEu5SelectionRevision } from "../../store";
 
@@ -101,18 +93,16 @@ export function PanelNavProvider({ children }: { children: React.ReactNode }) {
   const [profileTabs, setProfileTabs] = useState<ProfileTabs>(DEFAULT_PROFILE_TABS);
 
   const selectionRevision = useEu5SelectionRevision();
-  const prevRevisionRef = useRef(selectionRevision);
-  const selectionChanged = prevRevisionRef.current !== selectionRevision;
+  const [previousSelectionRevision, setPreviousSelectionRevision] = useState(selectionRevision);
+  const selectionChanged = previousSelectionRevision !== selectionRevision;
   const effectiveStack = selectionChanged ? EMPTY_STACK : stack;
   const effectiveRootLabel = selectionChanged ? undefined : rootLabel;
 
-  useEffect(() => {
-    if (prevRevisionRef.current !== selectionRevision) {
-      prevRevisionRef.current = selectionRevision;
-      setStack([]);
-      setRootLabel(undefined);
-    }
-  }, [selectionRevision]);
+  if (selectionChanged) {
+    setPreviousSelectionRevision(selectionRevision);
+    setStack([]);
+    setRootLabel(undefined);
+  }
 
   const pushMany = useCallback((entries: PanelNavEntry[], nextRootLabel?: string) => {
     if (nextRootLabel != null) {

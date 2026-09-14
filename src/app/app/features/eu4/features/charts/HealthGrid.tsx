@@ -436,7 +436,7 @@ export const HealthGrid = () => {
         );
 
         const csvData = columns.map((x) => Object.fromEntries(x));
-        const columnNames = columns[0].map(([name, _]) => name);
+        const columnNames = columns[0].map(([name]) => name);
         return createCsv(csvData, columnNames);
       },
     });

@@ -49,7 +49,7 @@ export const CountriesExpensesBaseTable = ({ monthlyExpenses }: BaseTableProps) 
         const keys: (keyof CountryExpensesRecord)[] = [
           "tag",
           "name",
-          ...mapping.map(([key, _]) => key),
+          ...mapping.map(([key]) => key),
         ];
 
         return createCsv(data, keys);

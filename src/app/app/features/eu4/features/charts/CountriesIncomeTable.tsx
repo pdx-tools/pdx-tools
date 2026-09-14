@@ -39,11 +39,7 @@ export const CountriesIncomeTable = () => {
     visualizationDispatch({
       type: "update-csv-data",
       getCsvData: async () => {
-        const keys: (keyof CountryIncomeRecord)[] = [
-          "tag",
-          "name",
-          ...aliases.map(([key, _]) => key),
-        ];
+        const keys: (keyof CountryIncomeRecord)[] = ["tag", "name", ...aliases.map(([key]) => key)];
 
         return createCsv(data, keys);
       },

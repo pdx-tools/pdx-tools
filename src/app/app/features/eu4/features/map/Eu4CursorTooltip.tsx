@@ -8,11 +8,15 @@ import { MapTipContents } from "./MapTipContents";
 
 export function Eu4CursorTooltip() {
   const [provinceId, setProvinceId] = useState(0);
-  const [mapTip, setMapTip] = useState<QuickTipPayload | null>(null);
+  const [mapTip, setMapTip] = useState<{
+    key: string;
+    data: NonNullable<QuickTipPayload>;
+  } | null>(null);
   const map = useEu4Map();
   const mapMode = useEu4MapMode();
   const store = useEu4Context();
   const cursorRef = useCursorPosition(map.canvas);
+  const mapTipKey = `${provinceId}:${mapMode}`;
 
   useEffect(() => {
     let isMounted = true;
@@ -27,28 +31,29 @@ export function Eu4CursorTooltip() {
   }, [map]);
 
   useEffect(() => {
-    setMapTip(null);
-
     if (provinceId === 0) return;
 
+    const requestKey = mapTipKey;
     let isMounted = true;
     const timer = setTimeout(async () => {
       const state = store.getState();
       const currentMapDate = selectDate(mapMode, state.save.meta, state.selectedDate);
       const days = currentMapDate.enabledDays;
       const data = await getEu4Worker().eu4GetMapTooltip(provinceId, mapMode, days);
-      if (isMounted) setMapTip(data);
+      if (isMounted) setMapTip(data ? { key: requestKey, data } : null);
     }, 250);
 
     return () => {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [provinceId, mapMode, store]);
+  }, [mapTipKey, provinceId, mapMode, store]);
+
+  const visibleMapTip = mapTip?.key === mapTipKey ? mapTip.data : null;
 
   return (
-    <CursorTooltip cursorRef={cursorRef} visible={mapTip !== null}>
-      {mapTip && <MapTipContents tip={mapTip} />}
+    <CursorTooltip cursorRef={cursorRef} visible={visibleMapTip !== null}>
+      {visibleMapTip && <MapTipContents tip={visibleMapTip} />}
     </CursorTooltip>
   );
 }

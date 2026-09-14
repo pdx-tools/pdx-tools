@@ -17,6 +17,7 @@ export function Eu5Toolbar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const engine = useEu5Engine();
   const selectionState = useEu5SelectionState();
+  const searchQuery = query.trim();
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
@@ -48,15 +49,12 @@ export function Eu5Toolbar() {
 
   // Debounced search
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
+    if (!searchQuery) return;
 
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const hits = await engine.trigger.searchEntities(query.trim());
+        const hits = await engine.trigger.searchEntities(searchQuery);
         setResults(hits);
       } finally {
         setIsSearching(false);
@@ -64,7 +62,7 @@ export function Eu5Toolbar() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [query, engine]);
+  }, [engine, searchQuery]);
 
   const panToEntity = usePanToEntity();
 
@@ -93,10 +91,16 @@ export function Eu5Toolbar() {
     await engine.trigger.selectPlayers();
   }, [engine]);
 
-  const countryResults = useMemo(() => results.filter((r) => r.kind === "country"), [results]);
-  const locationResults = useMemo(() => results.filter((r) => r.kind === "location"), [results]);
+  const countryResults = useMemo(
+    () => (searchQuery ? results.filter((r) => r.kind === "country") : []),
+    [results, searchQuery],
+  );
+  const locationResults = useMemo(
+    () => (searchQuery ? results.filter((r) => r.kind === "location") : []),
+    [results, searchQuery],
+  );
   const hasResults = countryResults.length > 0 || locationResults.length > 0;
-  const showDropdown = searchActive && (hasResults || (query.trim().length > 0 && !isSearching));
+  const showDropdown = searchActive && (hasResults || (searchQuery.length > 0 && !isSearching));
 
   return (
     <div

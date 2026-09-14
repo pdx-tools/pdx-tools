@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { MouseEvent } from "react";
 import { downloadData } from "@/lib/downloadData";
 import { ToggleRow } from "./ToggleRow";
@@ -46,6 +46,14 @@ import { captureException } from "@/lib/captureException";
 
 type Interval = "year" | "month" | "day";
 
+const emptySubscribe = () => () => {};
+const noTextureSize = () => 0;
+
+function getSupportedTextureSize() {
+  const report = compatibilityReport();
+  return report.webgl2.enabled ? report.webgl2.textureSize.actual : 0;
+}
+
 function createTimelapsePayload({ store, interval }: { store: Eu4Store; interval: Interval }) {
   const state = store.getState();
   const mapMode = state.mapMode;
@@ -78,6 +86,11 @@ function calculateTimelapseParams(timeSpanDays: number) {
     const fps = Math.min(30, Math.floor(timeSpanDays / MIN_TIMELAPSE_DURATION));
     return { interval: "day" as Interval, fps: Math.max(fps, 1) };
   }
+}
+
+function setCanvasDimensions(canvas: HTMLCanvasElement, width: string, height: string) {
+  canvas.style.width = width;
+  canvas.style.height = height;
 }
 
 export const Timelapse = () => {
@@ -146,13 +159,11 @@ export const Timelapse = () => {
       const zoom = recordingFrame.charCodeAt(0) - "0".charCodeAt(0);
 
       await map.stash({ zoom });
-      map.canvas.style.width = `${IMG_WIDTH / zoom}px`;
-      map.canvas.style.height = `${IMG_HEIGHT / zoom}px`;
+      setCanvasDimensions(map.canvas, `${IMG_WIDTH / zoom}px`, `${IMG_HEIGHT / zoom}px`);
     }
 
     const restoreMapState = () => {
-      map.canvas.style.width = oldDimensions[0];
-      map.canvas.style.height = oldDimensions[1];
+      setCanvasDimensions(map.canvas, oldDimensions[0], oldDimensions[1]);
       map.popStash();
     };
 
@@ -468,15 +479,12 @@ function Screenshot() {
   const map = useEu4Map();
   const terrainOverlay = useTerrainOverlay();
   const mapMode = useEu4MapMode();
-  const [supportedTextureSize, setSupportedTextureSize] = useState(0);
+  const supportedTextureSize = useSyncExternalStore(
+    emptySubscribe,
+    getSupportedTextureSize,
+    noTextureSize,
+  );
   const currentMapDate = useSelectedDate();
-
-  useEffect(() => {
-    const report = compatibilityReport();
-    if (report.webgl2.enabled) {
-      setSupportedTextureSize(report.webgl2.textureSize.actual);
-    }
-  }, []);
 
   // exporting as webp may seem enticing, but it's a trap, stick to png
   const exportType = terrainOverlay ? "png" : "png";

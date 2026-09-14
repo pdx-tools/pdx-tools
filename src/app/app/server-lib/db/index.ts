@@ -103,7 +103,7 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
     hash: save.hash,
   };
 
-  return Object.fromEntries(Object.entries(result).filter(([_, v]) => v !== undefined));
+  return Object.fromEntries(Object.entries(result).filter(([, v]) => v !== undefined));
 };
 
 export const table = {

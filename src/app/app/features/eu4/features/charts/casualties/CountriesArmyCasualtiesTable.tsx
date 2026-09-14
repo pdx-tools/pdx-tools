@@ -87,8 +87,8 @@ export const CountriesArmyCasualtiesTable = () => {
         const keys: (keyof TableLosses)[] = [
           "tag",
           "name",
-          ...unitTypes.map(([_, type]) => `${type}Battle` as keyof TableLosses),
-          ...unitTypes.map(([_, type]) => `${type}Attrition` as keyof TableLosses),
+          ...unitTypes.map(([, type]) => `${type}Battle` as keyof TableLosses),
+          ...unitTypes.map(([, type]) => `${type}Attrition` as keyof TableLosses),
           "landTotal",
         ];
         return createCsv(casualties.data, keys);

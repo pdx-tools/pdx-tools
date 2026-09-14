@@ -1,11 +1,14 @@
 import { useRef, useEffect } from "react";
 import type { CursorPosition } from "@/components/CursorTooltip";
 
-export function useCursorPosition(element: HTMLElement | null): React.RefObject<CursorPosition> {
+export function useCursorPosition(
+  element: HTMLElement | React.RefObject<HTMLElement | null> | null,
+): React.RefObject<CursorPosition> {
   const posRef = useRef<CursorPosition>({ x: 0, y: 0, active: false });
 
   useEffect(() => {
-    if (!element) return;
+    const target = element && "current" in element ? element.current : element;
+    if (!target) return;
 
     const onMove = (e: PointerEvent) => {
       posRef.current.x = e.clientX;
@@ -17,11 +20,11 @@ export function useCursorPosition(element: HTMLElement | null): React.RefObject<
       posRef.current.active = false;
     };
 
-    element.addEventListener("pointermove", onMove);
-    element.addEventListener("pointerleave", onLeave);
+    target.addEventListener("pointermove", onMove);
+    target.addEventListener("pointerleave", onLeave);
     return () => {
-      element.removeEventListener("pointermove", onMove);
-      element.removeEventListener("pointerleave", onLeave);
+      target.removeEventListener("pointermove", onMove);
+      target.removeEventListener("pointerleave", onLeave);
     };
   }, [element]);
 

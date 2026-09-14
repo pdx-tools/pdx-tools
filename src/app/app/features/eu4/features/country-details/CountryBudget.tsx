@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { incomeLedgerAliases } from "./data";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -32,6 +32,18 @@ function negate<T extends Record<string, number>>(obj: T): T {
 }
 
 type BudgetBar = { key: string; value: number; start: number; end: number };
+
+type PercentTotalProps = {
+  value: number;
+  totalDucatsSpent: number;
+  className?: string;
+};
+
+const PercentTotal = ({ value, totalDucatsSpent, className }: PercentTotalProps) => (
+  <td className={cx("pl-4 text-right", className)}>
+    {formatFloat((value / totalDucatsSpent) * 100, 2)}%
+  </td>
+);
 
 export function CountryBudget({ details }: CountryBudgetCountProps) {
   const date = useEu4Meta().date;
@@ -98,12 +110,14 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
 
   let startBar = x(0);
   const bars: {
-    [P in
-      | keyof typeof budget
-      | "Recurring Revenue"
-      | "Operating Expenses"
-      | "Operating Profit"
-      | "Net Profit"]?: BudgetBar[] | BudgetBar;
+    [
+      P in
+        | keyof typeof budget
+        | "Recurring Revenue"
+        | "Operating Expenses"
+        | "Operating Profit"
+        | "Net Profit"
+    ]?: BudgetBar[] | BudgetBar;
   } = {};
   bars["Core Income"] = Object.entries(budget["Core Income"])
     .map(([key, value]) => [incomeAliases.get(key) ?? key, value] as const)
@@ -248,16 +262,13 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
 
   const y = scaleBand(barLabels, [0, height - marginBottom - marginTop - axisPadding]).padding(0.1);
 
-  const gxCb = useCallback(
-    (gx: SVGGElement | null) => {
-      if (!gx) {
-        return;
-      }
+  const gxCb = (gx: SVGGElement | null) => {
+    if (!gx) {
+      return;
+    }
 
-      select(gx).call(axisTop(x));
-    },
-    [x],
-  );
+    select(gx).call(axisTop(x));
+  };
 
   const isExpense = (
     kind: keyof typeof budget | keyof typeof totalExpenses,
@@ -279,12 +290,6 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
 
   const allIncomes = [lastMonthBudget, ytdDateBudget, lastYearBudget];
   const allExpenses = [lastMonthBudget, ytdDateBudget, lastYearBudget, totalExpenses];
-
-  const PercentTotal = ({ value, className }: { value: number; className?: string }) => (
-    <td className={cx("pl-4 text-right", className)}>
-      {formatFloat((value / totalDucatsSpent) * 100, 2)}%
-    </td>
-  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -670,7 +675,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                           {formatFloat(x[kind][key], 2)}
                         </td>
                       ))}
-                      <PercentTotal value={totalExpenses[kind][key]} />
+                      <PercentTotal
+                        value={totalExpenses[kind][key]}
+                        totalDucatsSpent={totalDucatsSpent}
+                      />
                     </tr>
                   ))}
                 <tr className="border-b border-gray-300 font-semibold italic dark:border-gray-600">
@@ -680,7 +688,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                       {formatFloat(sumValues(x[kind]), 2)}
                     </td>
                   ))}
-                  <PercentTotal value={sumValues(totalExpenses[kind])} />
+                  <PercentTotal
+                    value={sumValues(totalExpenses[kind])}
+                    totalDucatsSpent={totalDucatsSpent}
+                  />
                 </tr>
               </React.Fragment>
             ))}
@@ -692,7 +703,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                     {formatFloat(x["Interest Payments"].Interest, 2)}
                   </td>
                 ))}
-                <PercentTotal value={totalExpenses["Interest Payments"].Interest} />
+                <PercentTotal
+                  value={totalExpenses["Interest Payments"].Interest}
+                  totalDucatsSpent={totalDucatsSpent}
+                />
               </tr>
             )}
 
@@ -707,7 +721,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                   {formatFloat(budgetSelect.operatingExpenses(x), 2)}
                 </td>
               ))}
-              <PercentTotal value={budgetSelect.operatingExpenses(totalExpenses)} />
+              <PercentTotal
+                value={budgetSelect.operatingExpenses(totalExpenses)}
+                totalDucatsSpent={totalDucatsSpent}
+              />
             </tr>
 
             <tr className="bg-gray-200/50 text-xl font-semibold italic dark:bg-gray-600/50">
@@ -778,7 +795,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                             {formatFloat(x[kind][key], 2)}
                           </td>
                         ))}
-                        <PercentTotal value={totalExpenses[kind][key]} />
+                        <PercentTotal
+                          value={totalExpenses[kind][key]}
+                          totalDucatsSpent={totalDucatsSpent}
+                        />
                       </tr>
                     ))}
                   <tr className="border-b border-gray-300 font-semibold italic dark:border-gray-600">
@@ -788,7 +808,10 @@ export function CountryBudget({ details }: CountryBudgetCountProps) {
                         {formatFloat(sumValues(x[kind]), 2)}
                       </td>
                     ))}
-                    <PercentTotal value={sumValues(totalExpenses[kind])} />
+                    <PercentTotal
+                      value={sumValues(totalExpenses[kind])}
+                      totalDucatsSpent={totalDucatsSpent}
+                    />
                   </tr>
                 </React.Fragment>
               ))}
