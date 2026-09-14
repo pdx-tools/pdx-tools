@@ -833,7 +833,7 @@ impl OwnerTimelapse {
             owner_changes.chain(color_changes).collect()
         };
 
-        events.sort_by(|a, b| a.date.cmp(&b.date));
+        events.sort_by_key(|a| a.date);
 
         OwnerTimelapse {
             country_colors,
@@ -1223,7 +1223,7 @@ impl ReligionTimelapse {
             events.extend(extend);
         }
 
-        events.sort_by(|a, b| a.date.cmp(&b.date));
+        events.sort_by_key(|a| a.date);
 
         let default_religion = wasm
             .religion_lookup
@@ -1413,7 +1413,7 @@ impl BattleTimelapse {
             })
             .collect();
 
-        events.sort_by(|a, b| a.date.cmp(&b.date));
+        events.sort_by_key(|a| a.date);
 
         let current_losses = vec![0; owners.current_owners.len()];
         Self {

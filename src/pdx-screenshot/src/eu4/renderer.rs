@@ -28,7 +28,12 @@ fn blend_overlay(
         .zip(image.chunks_exact_mut(image_stride).skip(origin_y as usize))
     {
         let dst_row = &mut dst_row[..overlay_stride];
-        for (src, dst) in src_row.chunks_exact(4).zip(dst_row.chunks_exact_mut(4)) {
+        for (src, dst) in src_row
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst_row.as_chunks_mut::<4>().0.iter_mut())
+        {
             let alpha = u32::from(src[3]);
             for channel in 0..3 {
                 let blended =
@@ -69,8 +74,10 @@ pub async fn render_screenshot(
     let mut location_arrays = LocationArrays::allocate(patch_assets.color_count);
 
     for (color_idx, (primary_color, secondary_color)) in primary_colors
-        .chunks_exact(4)
-        .zip(secondary_colors.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(secondary_colors.as_chunks::<4>().0.iter())
         .enumerate()
     {
         let gpu_idx = GpuLocationIdx::new(color_idx as u16);

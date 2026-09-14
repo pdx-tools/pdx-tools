@@ -76,8 +76,8 @@ impl SaveFileImpl {
         self.save
             .country_manager
             .database
-            .iter()
-            .filter_map(|(_, country)| country.as_ref())
+            .values()
+            .filter_map(|country| country.as_ref())
             .map(|x| x.definition.clone())
             .collect()
     }
@@ -112,8 +112,8 @@ impl SaveFileImpl {
         self.save
             .country_manager
             .database
-            .iter()
-            .filter_map(|(_, c)| c.as_ref())
+            .values()
+            .filter_map(|c| c.as_ref())
             .map(|country| Vic3CountryGraphData {
                 tag: country.definition.clone(),
                 stats: self.country_stats(country),

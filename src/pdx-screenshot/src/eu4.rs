@@ -123,7 +123,9 @@ fn bytes_to_u16(bytes: &[u8]) -> Vec<u16> {
         "embedded u16 asset has odd byte length"
     );
     bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|c| u16::from_le_bytes([c[0], c[1]]))
         .collect()
 }

@@ -76,8 +76,8 @@ mod tests {
             255, 255, 0, 255, 255,
         ];
 
-        img.write_west(west_data.chunks_exact(8));
-        img.write_east(east_data.chunks_exact(8));
+        img.write_west(west_data.as_chunks::<8>().0.iter().map(|row| &row[..]));
+        img.write_east(east_data.as_chunks::<8>().0.iter().map(|row| &row[..]));
 
         let result = img.into_inner();
 

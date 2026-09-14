@@ -338,7 +338,7 @@ impl SaveFileImpl {
             .position(|&x| x == 0)
             .unwrap_or(country.institutions.len() - 1);
 
-        let max_institution_index = (institutions_spawned - 1).max(0);
+        let max_institution_index = institutions_spawned.saturating_sub(1);
 
         let dev_efficiency = match country.technology.adm_tech {
             ..=16 => 0.0,
@@ -456,7 +456,7 @@ impl SaveFileImpl {
             })
         }
 
-        costs.sort_by(|a, b| a.results.cmp(&b.results));
+        costs.sort_by_key(|a| a.results);
 
         let dev_push = costs
             .into_iter()

@@ -106,7 +106,7 @@ impl CompileArgs {
 
             println!(
                 "Asset processing completed successfully for {} ({})!",
-                game, &result.game_version
+                game, result.game_version
             );
         }
 

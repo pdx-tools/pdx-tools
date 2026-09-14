@@ -268,7 +268,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 )
             })
             .collect();
-        sankey_rows.sort_by(|a, b| b.size.cmp(&a.size));
+        sankey_rows.sort_by_key(|a| std::cmp::Reverse(a.size));
 
         Some(CountryPopulationProfile {
             type_profile,
@@ -1039,7 +1039,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 )
             })
             .collect();
-        population_profile.sort_by(|a, b| b.size.cmp(&a.size));
+        population_profile.sort_by_key(|a| std::cmp::Reverse(a.size));
 
         Some(LocationProfile {
             header: LocationHeader {
