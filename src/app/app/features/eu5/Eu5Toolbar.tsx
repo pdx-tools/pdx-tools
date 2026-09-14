@@ -8,6 +8,7 @@ import type { SearchResult } from "./ui-engine";
 import styles from "./Eu5Toolbar.module.css";
 import { Eu5ShortcutPanel } from "./Eu5ShortcutPanel";
 import { focusRing } from "./components/focusRing";
+import { resolveSearchSelection } from "./searchSelection";
 
 export function Eu5Toolbar() {
   const [searchActive, setSearchActive] = useState(false);
@@ -70,12 +71,13 @@ export function Eu5Toolbar() {
 
   const handleSelect = useCallback(
     async (result: SearchResult) => {
-      if (result.kind === "country") {
-        await engine.trigger.selectCountry(result.locationIdx);
+      const selection = resolveSearchSelection(result);
+      if (selection.kind === "country") {
+        await engine.trigger.selectCountry(selection.countryIdx);
       } else {
-        await engine.trigger.setFocusedLocation(result.locationIdx);
+        await engine.trigger.setFocusedLocation(selection.locationIdx);
       }
-      panToEntity(result.locationIdx);
+      panToEntity(selection.panTo);
       setSearchActive(false);
       setQuery("");
       setResults([]);
