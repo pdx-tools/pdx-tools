@@ -1,5 +1,5 @@
-import { daysBetween } from "../lib/eu5Date";
-import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
+import { daysBetween } from "./date";
+import type { DateComponents } from "./controller";
 
 export type YearTick = {
   year: number;
@@ -21,8 +21,8 @@ const MIN_MINOR_TICK_PX = 6;
  * labels collide at the given width.
  */
 export function buildYearTicks(
-  start: Eu5DateComponents,
-  end: Eu5DateComponents,
+  start: DateComponents,
+  end: DateComponents,
   width: number,
 ): YearTick[] {
   const totalDays = daysBetween(start, end);
@@ -50,7 +50,10 @@ export type DensityBar = {
   x: number;
   /** Width in px. */
   w: number;
-  /** 0..1, log scaled so a quiet year still registers next to a civil war. */
+  /**
+   * 0..1 on a log scale between the quietest and busiest buckets, so a
+   * quiet year still registers next to a civil war whatever the unit.
+   */
   level: number;
   /** Days after the campaign start of the first change in the bar. */
   firstDay: number;
@@ -78,20 +81,34 @@ export function buildDensity(
     if (firstDays[bucket] < 0) firstDays[bucket] = day;
   }
 
-  let max = 0;
-  for (const count of counts) max = Math.max(max, count);
-  if (max === 0) return [];
-
+  const level = densityLevel(counts);
   const bars: DensityBar[] = [];
   const w = width / buckets;
   for (let i = 0; i < buckets; i++) {
     if (counts[i] === 0) continue;
-    bars.push({
-      x: i * w,
-      w,
-      level: Math.log1p(counts[i]) / Math.log1p(max),
-      firstDay: firstDays[i],
-    });
+    bars.push({ x: i * w, w, level: level(counts[i]), firstDay: firstDays[i] });
   }
   return bars;
 }
+
+/**
+ * Map a bucket's count to a bar height in 0..1. The scale is logarithmic
+ * between the floor and the largest bucket: the unit differs by timeline
+ * (provinces, casualties) and only the spread within the strip matters. The
+ * floor is a low percentile of the occupied buckets rather than the minimum,
+ * so one stray skirmish does not stretch the scale and flatten the rest.
+ */
+export function densityLevel(counts: ArrayLike<number>): (count: number) => number {
+  const occupied = Array.from(counts)
+    .filter((count) => count > 0)
+    .sort((a, b) => a - b);
+  if (occupied.length === 0) return () => 0;
+  const max = occupied[occupied.length - 1];
+  const floor = occupied[Math.floor((occupied.length - 1) * DENSITY_FLOOR_PERCENTILE)];
+  const range = Math.log(max / floor);
+  if (range === 0) return () => 1;
+  return (count) => Math.min(1, Math.max(0, Math.log(count / floor) / range));
+}
+
+/** Buckets below this share of the occupied ones draw at the floor. */
+const DENSITY_FLOOR_PERCENTILE = 0.1;

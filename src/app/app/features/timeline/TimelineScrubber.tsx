@@ -1,13 +1,12 @@
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { Tooltip } from "@/components/Tooltip";
-import { focusRing } from "../components/focusRing";
-import { daysBetween, formatLongDate } from "../lib/eu5Date";
+import { focusRing } from "@/components/game/focusRing";
+import { daysBetween, formatLongDate } from "./date";
 import { buildDensity, buildYearTicks } from "./timelineScale";
-import { handleTimelineKey } from "./useTimelineController";
-import type { TimelineController } from "./useTimelineController";
+import { handleTimelineKey } from "./controller";
+import type { DateComponents, TimelineController, TimelineNote } from "./controller";
 import type { YearTick } from "./timelineScale";
-import type { Eu5DateComponents, TimelineNote } from "@/wasm/wasm_eu5";
 import styles from "./TimelineScrubber.module.css";
 
 /** Vertical budget of each layer, in px. */
@@ -300,7 +299,7 @@ const NoteMarkers = memo(function NoteMarkers({
 }: {
   notes: (TimelineNote & { day: number })[];
   px: (day: number) => number;
-  setDate: (date: Eu5DateComponents) => void;
+  setDate: (date: DateComponents) => void;
   locked: boolean;
 }) {
   return notes.map((note) => (

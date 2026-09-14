@@ -1,10 +1,10 @@
 import { cx } from "class-variance-authority";
 import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
 import { Tooltip } from "@/components/Tooltip";
-import { GameButton } from "../components/Button";
-import { focusRing } from "../components/focusRing";
-import { stepUnitForModifiers } from "./useTimelineController";
-import type { TimelineController } from "./useTimelineController";
+import { GameButton } from "@/components/game/Button";
+import { focusRing } from "@/components/game/focusRing";
+import { stepUnitForModifiers } from "./controller";
+import type { TimelineController } from "./controller";
 import styles from "./TimelineTransport.module.css";
 
 function TransportButton({

@@ -8,9 +8,11 @@ import {
   dayNumber,
   daysBetween,
   formatLongDate,
-} from "./eu5Date";
+  formatIsoDate,
+  parseDate,
+} from "./date";
 
-describe("eu5Date", () => {
+describe("timeline date", () => {
   it("counts a year as 365 days", () => {
     expect(daysBetween({ year: 1337, month: 4, day: 1 }, { year: 1338, month: 4, day: 1 })).toBe(
       365,
@@ -77,5 +79,14 @@ describe("eu5Date", () => {
 
   it("formats year first", () => {
     expect(formatLongDate({ year: 1346, month: 6, day: 26 })).toBe("1346 Jun 26");
+  });
+
+  it("round-trips the wire format", () => {
+    expect(formatIsoDate({ year: 1444, month: 11, day: 11 })).toBe("1444-11-11");
+    expect(formatIsoDate({ year: 2, month: 1, day: 1 })).toBe("0002-01-01");
+    expect(parseDate("1444-11-11")).toEqual({ year: 1444, month: 11, day: 11 });
+    expect(parseDate("1444.11.11")).toEqual({ year: 1444, month: 11, day: 11 });
+    expect(parseDate("1444.2.30")).toBeNull();
+    expect(parseDate("not a date")).toBeNull();
   });
 });

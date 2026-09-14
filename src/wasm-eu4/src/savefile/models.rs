@@ -991,28 +991,12 @@ pub struct MapPayload {
     pub date: Option<i32>,
 }
 
-#[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
+#[derive(Debug, Tsify, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub enum MapCursorPayloadKind {
+pub enum TimelineKind {
     Political,
     Religion,
     Battles,
-}
-
-#[derive(Debug, Tsify, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum Interval {
-    Year,
-    Month,
-    Week,
-    Day,
-}
-
-#[derive(Debug, Tsify, Serialize, Deserialize)]
-pub struct MapCursorPayload {
-    pub kind: MapCursorPayloadKind,
-    pub interval: Interval,
-    pub start: Option<i32>,
 }
 
 #[derive(Debug, Tsify, Serialize, Deserialize)]
@@ -1065,13 +1049,6 @@ pub enum MapQuickTipPayload {
         dip_tech: u8,
         mil_tech: u8,
     },
-}
-
-#[derive(Tsify, Debug, Clone, Serialize)]
-pub struct MapDate {
-    pub days: i32,
-    #[serde(rename(serialize = "text"))]
-    pub date: Eu4Date,
 }
 
 #[derive(Tsify, Debug, Serialize)]

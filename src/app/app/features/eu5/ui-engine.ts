@@ -10,11 +10,23 @@ import type {
   TimelineChange,
   TimelineData,
 } from "./game-adapter";
-import { addDays, addMonths, addYears, clampDate, daysBetween, sameDate } from "./lib/eu5Date";
-import { TIMELAPSE_FPS, timelapsePlan } from "./timeline/timelapse/options";
-import { readDatePlateColors, readDatePlateFonts } from "./timeline/timelapse/datePlate";
-import type { TimelapseOptions } from "./timeline/timelapse/options";
-import type { MapViewport } from "./timeline/timelapseFrame";
+import {
+  addDays,
+  addMonths,
+  addYears,
+  clampDate,
+  daysBetween,
+  sameDate,
+} from "@/features/timeline/date";
+import { TIMELAPSE_FPS, timelapsePlan } from "@pdx.tools/timelapse";
+import { readDatePlateColors, readDatePlateFonts } from "@/features/timeline/datePlate";
+import type { MapViewport, TimelapseFile, TimelapseOptions } from "@pdx.tools/timelapse";
+import type {
+  TimelapseProgress,
+  TimelapseStatus,
+  TimelinePlayback,
+  TimelineStepUnit,
+} from "@/features/timeline/controller";
 import type { Eu5SaveInput } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
@@ -94,38 +106,17 @@ class TimelapseTiming {
 /** Playback rate of the campaign timeline: one campaign year per real second. */
 export const TIMELINE_DAYS_PER_SECOND = 365;
 
-export type TimelineStepUnit = "day" | "month" | "year";
-
-/**
- * What playback is doing. `rewinding` is the glide back to the campaign
- * start before a play from the save date; `ended` is the rest after playback
- * reaches the save date on its own, until the next date change.
- */
-export type TimelinePlayback = "paused" | "rewinding" | "playing" | "ended";
+export type { TimelineStepUnit, TimelinePlayback, TimelapseStatus };
 
 /** How long the playhead takes to glide back to the campaign start, in ms. */
 export const TIMELINE_REWIND_MS = 420;
 
-/**
- * What a timelapse export is doing.
- *
- * `recording` runs the campaign past the encoder a frame at a time;
- * `encoding` is the wait while the file is assembled, which has no progress
- * to report beyond having started.
- */
-export type TimelapseStatus = "idle" | "recording" | "encoding";
-
-export type TimelapseState = {
-  status: TimelapseStatus;
-  /** Frames encoded so far, and how many the film has in total. */
-  frame: number;
-  frames: number;
-};
+export type TimelapseState = TimelapseProgress;
 
 const TIMELAPSE_IDLE: TimelapseState = { status: "idle", frame: 0, frames: 0 };
 
 /** A finished recording: the file and the extension it should be saved under. */
-export type TimelapseRecording = { blob: Blob; extension: string };
+export type TimelapseRecording = TimelapseFile;
 
 export interface AppState {
   currentMapMode: MapMode;

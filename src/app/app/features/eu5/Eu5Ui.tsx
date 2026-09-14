@@ -15,7 +15,7 @@ import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
 import { memo, useEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
-import { focusRing } from "./components/focusRing";
+import { focusRing } from "@/components/game/focusRing";
 import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel, MAP_MODE_TITLES } from "./Eu5InsightPanel";
 import { Eu5Loading, LOADING_DISSOLVE_MS } from "./Eu5Loading";

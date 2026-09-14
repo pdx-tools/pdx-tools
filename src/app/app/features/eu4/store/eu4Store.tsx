@@ -11,13 +11,30 @@ import type {
   CountryMatcher,
   AchievementsScore,
   EnhancedCountryInfo,
-  MapDate,
   CountryTag,
 } from "../types/models";
 import { getEu4Worker } from "../worker/getEu4Worker";
 import type { EnhancedMeta, FileObservationFrequency, MapTimelapseItem } from "../worker/module";
+import type { TimelineData, TimelineKind } from "@/wasm/wasm_eu4";
 import { proxy } from "comlink";
 import { emitEvent } from "@/lib/events";
+import {
+  addDays,
+  addMonths,
+  addYears,
+  daysBetween,
+  formatIsoDate,
+  parseDate,
+} from "@/features/timeline/date";
+import { TIMELAPSE_FPS, timelapsePlan } from "@pdx.tools/timelapse";
+import type { TimelapseFile, TimelapseOptions } from "@pdx.tools/timelapse";
+import { readDatePlateColors, readDatePlateFonts } from "@/features/timeline/datePlate";
+import type {
+  TimelapseProgress,
+  TimelinePlayback,
+  TimelineStepUnit,
+} from "@/features/timeline/controller";
+import { log } from "@/lib/log";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
   players: "none",
@@ -57,7 +74,18 @@ type Eu4State = Eu4StateProps & {
   showMapModeBorders: boolean;
   selectedTag: string;
   countryDrawerVisible: boolean;
-  selectedDate: MapDate;
+  /**
+   * The political timeline is read with the save; the others are read on
+   * the first switch to their map mode. All three span the same dates.
+   */
+  timelines: { political: TimelineData } & Partial<Record<TimelineKind, TimelineData>>;
+  /** Days after the timeline start the user asked for. */
+  requestedDay: number;
+  /** Days after the timeline start the map shows; trails `requestedDay`. */
+  mapDayOffset: number;
+  playback: TimelinePlayback;
+  locked: boolean;
+  timelapse: TimelapseProgress;
   showOneTimeLineItems: boolean;
   prefereredValueFormat: "absolute" | "percent";
   watcher: {
@@ -77,9 +105,13 @@ type Eu4State = Eu4StateProps & {
     setPrefersPercents: (enabled: boolean) => void;
     setShowOneTimeLineItems: (enabled: boolean) => void;
     setSelectedTag: (tag: string) => void;
-    setSelectedDate: (date: Eu4State["selectedDate"] | null) => void;
     setSelectedDateDay: (days: number) => Promise<void>;
     setSelectedDateText: (text: string) => Promise<void>;
+    pauseTimeline: () => void;
+    stepTimeline: (unit: TimelineStepUnit, direction: 1 | -1) => void;
+    toggleTimelinePlayback: () => void;
+    recordTimelapse: (options: TimelapseOptions) => Promise<TimelapseFile | null>;
+    stopTimelapse: () => void;
     startWatcher: (frequency: FileObservationFrequency) => void;
     stopWatcher: () => void;
     updateProvinceColors: (options?: { countryColors?: Uint8Array }) => Promise<void>;
@@ -103,6 +135,11 @@ type Eu4StoreInit = Eu4StateProps & {
 export const Eu4SaveContext = createContext<Eu4Store | null>(null);
 
 export const createEu4Store = async ({ store: prevStore, save, map, settings }: Eu4StoreInit) => {
+  const worker = getEu4Worker();
+  const politicalTimeline = await worker.eu4GetTimeline("political");
+  let playbackFrame: number | null = null;
+  let rewindTimer: ReturnType<typeof setTimeout> | null = null;
+  let timelapseStopped = false;
   const defaults = {
     mapMode: "political",
     paintSubjectInOverlordHue: false,
@@ -136,6 +173,41 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
     });
   };
 
+  /**
+   * One worker round trip at a time. A drag fires a request per pointer
+   * event; while one is out, only the newest waits, and the rest are
+   * dropped, so the map lands on the pointer instead of chasing it.
+   */
+  let advancing: Promise<void> | null = null;
+  let pendingDay: number | null = null;
+  const advanceMap = (day: number): Promise<void> => {
+    // A recording steps the same cursor; a nudge now would land in the film.
+    if (store.getState().locked) return Promise.resolve();
+    pendingDay = day;
+    if (advancing !== null) return advancing;
+    advancing = (async () => {
+      try {
+        while (pendingDay !== null) {
+          const next = pendingDay;
+          pendingDay = null;
+          const kind = timelineKindForMode(store.getState().mapMode);
+          const item = await worker.eu4TimelineAdvance(kind, next);
+          store.getState().actions.updateMap(item);
+          store.getState().map.redrawMap();
+        }
+      } finally {
+        advancing = null;
+      }
+    })();
+    return advancing;
+  };
+
+  const ensureTimeline = async (kind: TimelineKind) => {
+    if (store.getState().timelines[kind] !== undefined) return;
+    const timeline = await worker.eu4GetTimeline(kind);
+    store.setState({ timelines: { ...store.getState().timelines, [kind]: timeline } });
+  };
+
   const store = createStore<Eu4State>()((set, get) => ({
     ...defaults,
     ...prevStore?.getState(),
@@ -143,7 +215,12 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
     map,
     ...settings,
     selectedTag: save.defaultSelectedCountry,
-    selectedDate: selectDefaultDate(save.meta),
+    timelines: { political: politicalTimeline },
+    requestedDay: save.meta.total_days,
+    mapDayOffset: save.meta.total_days,
+    playback: "paused",
+    locked: false,
+    timelapse: { status: "idle", frame: 0, frames: 0 },
     watcher: {
       status: "idle",
     },
@@ -160,6 +237,8 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
         get().actions.setMapMode(mapModes[index + 1] ?? mapModes[0]);
       },
       setMapMode: async (mode: Eu4State["mapMode"]) => {
+        if (get().locked) return;
+        if (dateEnabledMapMode(mode)) await ensureTimeline(timelineKindForMode(mode));
         const countryColors =
           !dateEnabledMapMode(mode) && dateEnabledMapMode(get().mapMode)
             ? new Uint8Array(get().save.initialPoliticalMapColors)
@@ -201,28 +280,152 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
         set({ renderTerrain: enabled });
         syncMapSettings(get(), { draw: true });
       },
-      setSelectedDate: (date: Eu4State["selectedDate"] | null) => {
-        if (date !== null) {
-          set({ selectedDate: date });
-        } else {
-          set({ selectedDate: selectDefaultDate(get().save.meta) });
-        }
-      },
       setSelectedDateDay: async (days: number) => {
-        const text = await getEu4Worker().eu4DaysToDate(days);
-        get().actions.setSelectedDate({ days, text });
-        await get().actions.updateProvinceColors();
-        get().map.redrawMap();
+        if (get().locked) return;
+        const clamped = Math.max(0, Math.min(days, selectTotalDays(get())));
+        set({
+          requestedDay: clamped,
+          playback: get().playback === "ended" ? "paused" : get().playback,
+        });
+        await advanceMap(clamped);
       },
       setSelectedDateText: async (text: string) => {
-        const days = await getEu4Worker().eu4DateToDays(text);
-        if (days === undefined) {
+        const date = parseDate(text);
+        if (date === null) return;
+        await get().actions.setSelectedDateDay(daysBetween(selectTimeline(get()).start, date));
+      },
+      pauseTimeline: () => {
+        if (playbackFrame !== null) cancelAnimationFrame(playbackFrame);
+        if (rewindTimer !== null) clearTimeout(rewindTimer);
+        playbackFrame = null;
+        rewindTimer = null;
+        if (get().playback === "playing" || get().playback === "rewinding") {
+          set({ playback: "paused" });
+        }
+      },
+      stepTimeline: (unit, direction) => {
+        if (get().locked) return;
+        get().actions.pauseTimeline();
+        const start = selectTimeline(get()).start;
+        const from = addDays(start, get().requestedDay);
+        const date =
+          unit === "day"
+            ? addDays(from, direction)
+            : unit === "month"
+              ? addMonths(from, direction)
+              : addYears(from, direction);
+        void get().actions.setSelectedDateDay(daysBetween(start, date));
+      },
+      toggleTimelinePlayback: () => {
+        if (get().locked) return;
+        if (get().playback === "playing" || get().playback === "rewinding") {
+          get().actions.pauseTimeline();
           return;
         }
-
-        get().actions.setSelectedDate({ days, text });
-        await get().actions.updateProvinceColors();
-        get().map.redrawMap();
+        const startLoop = () => {
+          set({ playback: "playing" });
+          let last = performance.now();
+          let carry = 0;
+          const tick = (now: number) => {
+            carry += ((now - last) / 1000) * 365;
+            last = now;
+            const days = Math.floor(carry);
+            if (days > 0) {
+              carry -= days;
+              const totalDays = selectTotalDays(get());
+              const next = Math.min(get().requestedDay + days, totalDays);
+              void get().actions.setSelectedDateDay(next);
+              if (next >= totalDays) {
+                playbackFrame = null;
+                set({ playback: "ended" });
+                return;
+              }
+            }
+            playbackFrame = requestAnimationFrame(tick);
+          };
+          playbackFrame = requestAnimationFrame(tick);
+        };
+        if (get().requestedDay >= selectTotalDays(get())) {
+          set({ playback: "rewinding" });
+          void get().actions.setSelectedDateDay(0);
+          rewindTimer = setTimeout(startLoop, 450);
+        } else {
+          startLoop();
+        }
+      },
+      stopTimelapse: () => {
+        timelapseStopped = true;
+      },
+      recordTimelapse: async (options) => {
+        if (get().timelapse.status !== "idle")
+          throw new Error("A timelapse recording is already running");
+        get().actions.pauseTimeline();
+        timelapseStopped = false;
+        const resumeDay = get().requestedDay;
+        const timeline = selectTimeline(get());
+        const kind = timelineKindForMode(get().mapMode);
+        const totalDays = daysBetween(timeline.start, timeline.end);
+        const plan = timelapsePlan({ totalDays, options });
+        set({ locked: true, timelapse: { status: "recording", frame: 0, frames: plan.frames } });
+        // A scrub still in flight would step the cursor under the recording.
+        await advancing;
+        const frameMs = 1000 / TIMELAPSE_FPS;
+        const timing = { date: 0, render: 0, encode: 0, hop: 0, pace: 0, finish: 0 };
+        try {
+          // Framing is read by the worker before the first date is set, so
+          // the current view is the one the player pressed record on. The
+          // plate's colors and fonts are read here, where the document is.
+          await map.beginRecording({
+            framing: options.framing,
+            output: { width: plan.quality.width, height: plan.quality.height },
+            colors: readDatePlateColors(),
+            fonts: readDatePlateFonts(),
+          });
+          let due = performance.now();
+          for (let frame = 0; frame < plan.frames; frame += 1) {
+            if (timelapseStopped) return null;
+            due += frameMs;
+            const day =
+              frame === plan.frames - 1 ? totalDays : Math.round(frame * plan.daysPerFrame);
+            let lap = performance.now();
+            const item = await worker.eu4TimelineAdvance(kind, day);
+            timing.date += performance.now() - lap;
+            get().actions.updateMap(item);
+            // The export plays the film once on screen while it writes it.
+            get().map.redrawMap();
+            const date = addDays(timeline.start, day);
+            lap = performance.now();
+            const frameTiming = await map.recordFrame(date);
+            timing.render += frameTiming.renderMs;
+            timing.encode += frameTiming.encodeMs;
+            timing.hop += performance.now() - lap - frameTiming.renderMs - frameTiming.encodeMs;
+            set({
+              requestedDay: day,
+              timelapse: { status: "recording", frame: frame + 1, frames: plan.frames },
+            });
+            const now = performance.now();
+            if (document.visibilityState !== "visible" || now >= due) due = now;
+            else {
+              const paceStart = performance.now();
+              await new Promise((resolve) => setTimeout(resolve, due - now));
+              timing.pace += performance.now() - paceStart;
+            }
+          }
+          set({ timelapse: { status: "encoding", frame: plan.frames, frames: plan.frames } });
+          const finishStart = performance.now();
+          const file = await map.finishRecording();
+          timing.finish = performance.now() - finishStart;
+          log(`timelapse file: ${file.blob.size} bytes, planned ${plan.bytes}`);
+          return file;
+        } finally {
+          const frames = Math.max(get().timelapse.frame, 1);
+          log(
+            `timelapse timing: date ${(timing.date / frames).toFixed(1)} ms · render ${(timing.render / frames).toFixed(1)} · encode ${(timing.encode / frames).toFixed(1)} · hop ${(timing.hop / frames).toFixed(1)} · pace ${timing.pace.toFixed(0)} · finish ${timing.finish.toFixed(0)}`,
+          );
+          await map.endRecording();
+          set({ locked: false, timelapse: { status: "idle", frame: 0, frames: 0 } });
+          await get().actions.setSelectedDateDay(resumeDay);
+        }
       },
 
       setSelectedTag: (tag: string) => set({ selectedTag: tag, countryDrawerVisible: true }),
@@ -258,6 +461,10 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
         get().map.redrawMap();
       },
       updateProvinceColors: async (options?: { countryColors?: Uint8Array }) => {
+        if (dateEnabledMapMode(get().mapMode) && get().mapDayOffset !== selectTotalDays(get())) {
+          await advanceMap(get().mapDayOffset);
+          return;
+        }
         const payload = selectMapPayload(get());
         const colors = await getEu4Worker().eu4MapColors(payload);
         const secondary = get().showSecondaryColor ? colors.secondary : colors.primary;
@@ -266,13 +473,20 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
         });
       },
       updateMap: (frame: MapTimelapseItem) => {
-        get().actions.setSelectedDate(frame.date);
+        set({ mapDayOffset: frame.days });
         const stripes = get().showSecondaryColor ? frame.secondary : frame.primary;
         get().map.updateProvinceColors(frame.primary, stripes, {
           country: frame.country,
         });
       },
       async updateSave({ meta, achievements, countries }) {
+        // The worker dropped its cursor with the reparse. Re-read only the
+        // timelines that have been read before; the rest load on demand.
+        const kinds = Object.keys(get().timelines) as TimelineKind[];
+        const loaded = await Promise.all(
+          kinds.map(async (kind) => [kind, await worker.eu4GetTimeline(kind)] as const),
+        );
+        const political = loaded.find(([kind]) => kind === "political")?.[1] ?? politicalTimeline;
         set({
           save: {
             ...get().save,
@@ -280,7 +494,9 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
             achievements,
             countries,
           },
-          selectedDate: selectDefaultDate(meta),
+          timelines: { ...Object.fromEntries(loaded), political },
+          requestedDay: meta.total_days,
+          mapDayOffset: meta.total_days,
         });
 
         await get().actions.updateProvinceColors();
@@ -303,15 +519,10 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
   return store;
 };
 
-const selectDefaultDate = (meta: EnhancedMeta) => ({
-  text: meta.date,
-  days: meta.total_days,
-});
-
 export const selectMapPayload = (state: Eu4State): MapPayload => ({
   kind: state.mapMode,
   tagFilter: state.countryFilter,
-  date: selectDate(state.mapMode, state.save.meta, state.selectedDate).enabledDays,
+  date: selectDate(state).enabledDays,
   paintSubjectInOverlordHue: state.paintSubjectInOverlordHue,
 });
 
@@ -344,6 +555,12 @@ export const useValueFormatPreference = () => useEu4Store((x) => x.prefereredVal
 export const useShowOnetimeLineItems = () => useEu4Store((x) => x.showOneTimeLineItems);
 export const useCountryDrawerVisible = () => useEu4Store((x) => x.countryDrawerVisible);
 export const useWatcher = () => useEu4Store((x) => x.watcher);
+export const useEu4Timeline = () => useEu4Store(selectTimeline);
+export const useEu4TimelineRequestedDay = () => useEu4Store((x) => x.requestedDay);
+export const useEu4TimelineMapDay = () => useEu4Store((x) => x.mapDayOffset);
+export const useEu4TimelinePlayback = () => useEu4Store((x) => x.playback);
+export const useEu4TimelineLocked = () => useEu4Store((x) => x.locked);
+export const useEu4Timelapse = () => useEu4Store((x) => x.timelapse);
 export const useColonialOverlord = (tag: CountryTag) =>
   useEu4Store((x) => x.save.meta.colonialSubjects).get(tag);
 
@@ -408,12 +625,34 @@ export const useIsDatePickerEnabled = () => {
   return dateEnabledMapMode(mode);
 };
 
-const dateEnabledMapMode = (mode: MapPayload["kind"]) => {
+export const dateEnabledMapMode = (mode: MapPayload["kind"]) => {
   return mode === "political" || mode === "religion" || mode === "battles";
 };
 
-export const selectDate = (mode: MapPayload["kind"], meta: EnhancedMeta, date: MapDate) => {
-  if (!dateEnabledMapMode(mode)) {
+const timelineKindForMode = (mode: MapPayload["kind"]): TimelineKind =>
+  mode === "religion" || mode === "battles" ? mode : "political";
+
+/**
+ * The timeline of the current map mode. A mode's timeline is read before
+ * the mode is entered, so the political one only stands in for modes
+ * without a date, where no timeline is shown.
+ */
+export const selectTimeline = (state: Pick<Eu4State, "mapMode" | "timelines">): TimelineData =>
+  state.timelines[timelineKindForMode(state.mapMode)] ?? state.timelines.political;
+
+export const selectTotalDays = (state: Pick<Eu4State, "mapMode" | "timelines">) => {
+  const timeline = selectTimeline(state);
+  return daysBetween(timeline.start, timeline.end);
+};
+
+type DateSelection = Pick<Eu4State, "mapMode" | "timelines" | "mapDayOffset"> & {
+  save: Pick<Eu4State["save"], "meta">;
+};
+
+/** The date the map shows, as the rest of the analysis reads it. */
+export const selectDate = (state: DateSelection) => {
+  const meta = state.save.meta;
+  if (!dateEnabledMapMode(state.mapMode)) {
     return {
       kind: "disabled",
       days: meta.total_days,
@@ -422,19 +661,25 @@ export const selectDate = (mode: MapPayload["kind"], meta: EnhancedMeta, date: M
     } as const;
   }
 
-  const isCustom = date.days !== meta.total_days;
+  const days = state.mapDayOffset;
+  const isCustom = days !== meta.total_days;
   return {
-    ...date,
     kind: isCustom ? "custom" : "latest",
-    enabledDays: isCustom ? date.days : undefined,
+    days,
+    text: isCustom ? formatIsoDate(addDays(selectTimeline(state).start, days)) : meta.date,
+    enabledDays: isCustom ? days : undefined,
   } as const;
 };
 
 export const useSelectedDate = () => {
-  const selectedDate = useEu4Store((x) => x.selectedDate);
-  const mode = useEu4MapMode();
+  const mapMode = useEu4MapMode();
   const meta = useEu4Meta();
-  return useMemo(() => selectDate(mode, meta, selectedDate), [mode, meta, selectedDate]);
+  const timelines = useEu4Store((x) => x.timelines);
+  const mapDayOffset = useEu4TimelineMapDay();
+  return useMemo(
+    () => selectDate({ mapMode, save: { meta }, timelines, mapDayOffset }),
+    [mapMode, meta, timelines, mapDayOffset],
+  );
 };
 
 type PersistedMapSettings = {

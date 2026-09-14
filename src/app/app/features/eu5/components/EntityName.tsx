@@ -1,6 +1,6 @@
 import type React from "react";
 import { cx } from "class-variance-authority";
-import { focusRing } from "./focusRing";
+import { focusRing } from "@/components/game/focusRing";
 
 export const entityLinkControl = cx("group/entity-link focus-visible:rounded-[1px]", focusRing);
 

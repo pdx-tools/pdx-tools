@@ -10,7 +10,8 @@ import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { ogImageUrl } from "@/lib/media";
 import { Eu4CursorTooltip } from "./features/map/Eu4CursorTooltip";
-import { Timelapse } from "./features/settings/Timelapse";
+import { TimelineBar } from "./features/timeline/TimelineBar";
+import { GameThemeProvider } from "@/components/GameThemeProvider";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -64,15 +65,13 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
 
       {data !== null ? (
         <Eu4StoreProvider store={data}>
-          <div className="fixed bottom-0 left-0 flex w-[calc(100%-56px)] items-end text-white">
-            <Timelapse />
-          </div>
-
-          <div className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
-            <Eu4CanvasOverlay />
-          </div>
-
-          <Eu4CursorTooltip />
+          <GameThemeProvider theme="eu4">
+            <TimelineBar />
+            <div className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
+              <Eu4CanvasOverlay />
+            </div>
+            <Eu4CursorTooltip />
+          </GameThemeProvider>
         </Eu4StoreProvider>
       ) : null}
 

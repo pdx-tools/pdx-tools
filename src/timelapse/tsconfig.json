@@ -1,0 +1,8 @@
+{
+  "extends": "../../dev/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2022", "dom", "dom.iterable"],
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

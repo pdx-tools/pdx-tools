@@ -21,6 +21,33 @@ import type {
   TerrainOverlayResourcesUrls,
 } from "./types";
 import { XbrShader } from "./XbrShader";
+import { layoutTimelapseFrame } from "@pdx.tools/timelapse";
+import type {
+  DateComponents,
+  DatePlateColors,
+  DatePlateFonts,
+  TimelapseEncoder,
+  TimelapseFile,
+  TimelapseFraming,
+  TimelapseFrameLayout,
+  TimelapseFrameTiming,
+} from "@pdx.tools/timelapse";
+
+export type RecordingOptions = {
+  framing: TimelapseFraming;
+  output: { width: number; height: number };
+  colors: DatePlateColors;
+  fonts: DatePlateFonts;
+};
+
+type OpenRecording = {
+  layout: TimelapseFrameLayout;
+  encoder: TimelapseEncoder;
+  canvas: OffscreenCanvas;
+  map: WebGLMap;
+};
+
+let recording: OpenRecording | null = null;
 
 let state: Partial<{
   canvas: OffscreenCanvas;
@@ -33,12 +60,10 @@ let state: Partial<{
   map: WebGLMap;
   terrainImages: TerrainOverlayResources;
   terrainImageUrls: TerrainOverlayResourcesUrls;
-  stash: {
-    focusPoint: [number, number];
-    scale: number;
-    width: number;
-    height: number;
-  };
+  sourceUrls: { map: ShaderSourceUrls; xbr: ShaderSourceUrls };
+  currentPrimary: Uint8Array;
+  currentSecondary: Uint8Array;
+  currentCountry: Uint8Array;
 }> = {};
 
 declare const tag: unique symbol;
@@ -63,6 +88,7 @@ export async function init(
   },
 ) {
   state.canvas = canvas;
+  state.sourceUrls = sourceUrls;
   const gl = canvas.getContext("webgl2", glContextOptions());
   if (gl === null) {
     throw new Error("unable to acquire webgl2 context");
@@ -267,10 +293,15 @@ export async function withCommands(
     switch (command.kind) {
       case "country-province-colors": {
         map.updateCountryProvinceColors(command.primaryPoliticalColors);
+        state.currentCountry = command.primaryPoliticalColors;
+        recording?.map.updateCountryProvinceColors(command.primaryPoliticalColors);
         break;
       }
       case "province-colors": {
         map.updateProvinceColors(command.primary, command.secondary);
+        state.currentPrimary = command.primary;
+        state.currentSecondary = command.secondary;
+        recording?.map.updateProvinceColors(command.primary, command.secondary);
         break;
       }
       case "draw-map": {
@@ -330,30 +361,115 @@ export function proportionScale(_map: MapToken, proportion: number) {
   map.scale = map.maxScale * proportion;
 }
 
-export async function stash(_map: MapToken, { zoom }: { zoom: number }) {
+export function getViewport(_map: MapToken) {
   const map = state.map!;
-  state.stash = {
-    width: state.canvas!.width,
-    height: state.canvas!.height,
-    focusPoint: map.focusPoint,
-    scale: map.scale,
+  return {
+    world: { width: IMG_WIDTH, height: IMG_HEIGHT },
+    viewport: map.viewportWorldRect(),
   };
-
-  map.focusPoint = [0, 0];
-  map.scale = 1;
-  map.resize(IMG_WIDTH / zoom, IMG_HEIGHT / zoom);
-  await map.redrawViewport();
 }
 
-export function popStash(_map: MapToken) {
-  if (!state.stash) {
-    return;
+/**
+ * Open a recording on its own surface. The framing is read from the live
+ * map now, so the current view is the one the player pressed record on.
+ */
+export async function beginRecording(
+  _map: MapToken,
+  options: RecordingOptions,
+): Promise<TimelapseFrameLayout> {
+  await endRecording(_map);
+  const layout = layoutTimelapseFrame({
+    framing: options.framing,
+    viewport: state.map!.viewportWorldRect(),
+    world: { width: IMG_WIDTH, height: IMG_HEIGHT },
+    output: options.output,
+  });
+  const canvas = new OffscreenCanvas(layout.band.width, layout.band.height);
+  const gl = canvas.getContext("webgl2", glContextOptions());
+  if (gl === null) throw new Error("Unable to create the recording WebGL context");
+  const shaders = await loadShaders(state.sourceUrls!);
+  const [mapProgram, xbrProgram] = compileShaders(gl, [shaders.map, shaders.xbr]).linked();
+  const mapShader = MapShader.create(gl, mapProgram);
+  const xbrShader = XbrShader.create(gl, xbrProgram);
+  const resources = new GLResources(
+    ...GLResources.create(gl, state.staticResources!),
+    mapShader,
+    xbrShader,
+  );
+  const finder = new ProvinceFinder(
+    state.staticResources!.provinces1,
+    state.staticResources!.provinces2,
+    state.staticResources!.provincesUniqueColor,
+    state.colorIndexToProvinceId!,
+  );
+  const map = WebGLMap.create(resources, finder, 1);
+  const live = state.map!;
+  map.renderTerrain = live.renderTerrain;
+  map.showCountryBorders = live.showCountryBorders;
+  map.showMapModeBorders = live.showMapModeBorders;
+  map.showProvinceBorders = live.showProvinceBorders && layout.band.width / layout.rect.width >= 1;
+  if (state.terrainImages) map.updateTerrainTextures(state.terrainImages);
+  if (state.currentPrimary && state.currentSecondary) {
+    map.updateProvinceColors(state.currentPrimary, state.currentSecondary);
   }
+  if (state.currentCountry) map.updateCountryProvinceColors(state.currentCountry);
+  // Loaded on demand: the muxer is large, and most sessions never record.
+  const { TimelapseEncoder } = await import("@pdx.tools/timelapse/encoder");
+  let encoder: TimelapseEncoder;
+  try {
+    encoder = await TimelapseEncoder.create({
+      layout,
+      output: options.output,
+      colors: options.colors,
+      fonts: options.fonts,
+    });
+  } catch (e) {
+    releaseRecordingMap(map);
+    throw e;
+  }
+  recording = { layout, encoder, canvas, map };
+  return layout;
+}
 
-  const map = state.map!;
-  map.focusPoint = state.stash.focusPoint;
-  map.scale = state.stash.scale;
-  state.canvas!.width = state.stash.width;
-  state.canvas!.height = state.stash.height;
-  state.stash = undefined;
+/**
+ * Give the recording surface's GPU memory back. Dropping the JS reference
+ * is not enough: a browser keeps a lost context's textures until the
+ * context itself is lost, and holds only a handful of contexts before it
+ * evicts the oldest, which could be the live map's.
+ */
+function releaseRecordingMap(map: WebGLMap) {
+  map.gl.getExtension("WEBGL_lose_context")?.loseContext();
+}
+
+export async function recordFrame(
+  _map: MapToken,
+  date: DateComponents,
+): Promise<TimelapseFrameTiming> {
+  if (recording === null) throw new Error("No timelapse recording is open");
+  const renderStart = performance.now();
+  recording.map.redrawRawMap();
+  recording.map.renderWorldRect(
+    recording.layout.rect,
+    recording.layout.band.width,
+    recording.layout.band.height,
+  );
+  const renderMs = performance.now() - renderStart;
+  const encodeMs = await recording.encoder.addFrame(recording.canvas, date);
+  return { renderMs, encodeMs };
+}
+
+export async function finishRecording(_map: MapToken): Promise<TimelapseFile> {
+  const open = recording;
+  recording = null;
+  if (open === null) throw new Error("No timelapse recording is open");
+  releaseRecordingMap(open.map);
+  return { blob: await open.encoder.finish(), extension: open.encoder.extension };
+}
+
+export async function endRecording(_map: MapToken): Promise<void> {
+  const open = recording;
+  recording = null;
+  if (open === null) return;
+  releaseRecordingMap(open.map);
+  await open.encoder.abort();
 }

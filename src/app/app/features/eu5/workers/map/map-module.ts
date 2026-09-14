@@ -1,4 +1,5 @@
 import { timeAsync, timeSync } from "@/lib/timeit";
+import { log } from "@/lib/log";
 import init, {
   Eu5CanvasSurface,
   Eu5WasmMapRenderer,
@@ -24,14 +25,17 @@ import type {
   BoxSelectOverlayRect,
   BoxSelectCommitEvent,
 } from "../../types/box-select";
-import { layoutTimelapseFrame } from "../../timeline/timelapseFrame";
+import { layoutTimelapseFrame } from "@pdx.tools/timelapse";
 import type {
+  DatePlateColors,
+  DatePlateFonts,
   MapViewport,
+  TimelapseEncoder,
+  TimelapseFile,
   TimelapseFraming,
   TimelapseFrameLayout,
-} from "../../timeline/timelapseFrame";
-import type { TimelapseEncoder } from "../../timeline/timelapse/encoder";
-import type { DatePlateColors, DatePlateFonts } from "../../timeline/timelapse/datePlate";
+  TimelapseFrameTiming,
+} from "@pdx.tools/timelapse";
 import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
 
 // Reverse lookup: numeric WebKeyCode value → string key code name
@@ -78,14 +82,7 @@ type Recording = {
   rect: { x: number; y: number; width: number; height: number };
 };
 
-/** Where a recorded frame's time went, for the timing summary on the page. */
-export type TimelapseFrameTiming = {
-  renderMs: number;
-  encodeMs: number;
-};
-
-/** The file a finished recording produced. */
-export type TimelapseFile = { blob: Blob; extension: string };
+export type { TimelapseFile, TimelapseFrameTiming };
 
 let recording: Recording | null = null;
 let newLocations: Uint32Array | null = null;
@@ -679,8 +676,8 @@ export const createMapEngine = async (
       );
       try {
         // Loaded on demand: the muxer is large, and most sessions never record.
-        const { TimelapseEncoder } = await import("../../timeline/timelapse/encoder");
-        const encoder = await TimelapseEncoder.create({ layout, output, colors, fonts });
+        const { TimelapseEncoder } = await import("@pdx.tools/timelapse/encoder");
+        const encoder = await TimelapseEncoder.create({ layout, output, colors, fonts, log });
         recording = { canvas, renderer, encoder, rect: layout.rect };
       } catch (e) {
         renderer.free();

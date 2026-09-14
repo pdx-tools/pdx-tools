@@ -1,10 +1,10 @@
 import { Link } from "react-router";
 import { cx } from "class-variance-authority";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { focusRing } from "../components/focusRing";
+import { focusRing } from "@/components/game/focusRing";
 import { useEngineActions } from "../../engine";
 import { useEu5SaveDate, useEu5PlaythroughName } from "../store";
-import { MONTH_ABBR } from "../lib/eu5Date";
+import { MONTH_ABBR } from "@/features/timeline/date";
 import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
 
 function SaveDateReadout({ date }: { date: Eu5DateComponents }) {

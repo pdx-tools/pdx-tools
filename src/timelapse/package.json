@@ -1,0 +1,27 @@
+{
+  "name": "@pdx.tools/timelapse",
+  "version": "1.0.0",
+  "description": "Encodes a campaign timelapse: frame layout, date plate, and video muxing",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": "true",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "require": "./src/index.ts"
+    },
+    "./encoder": {
+      "import": "./src/encoder.ts",
+      "require": "./src/encoder.ts"
+    }
+  },
+  "scripts": {
+    "test": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "mediabunny": "1.56.2"
+  }
+}

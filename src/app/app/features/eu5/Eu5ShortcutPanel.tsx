@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { cx } from "class-variance-authority";
 import { Popover } from "@/components/Popover";
-import { focusRing } from "./components/focusRing";
+import { focusRing } from "@/components/game/focusRing";
 
 interface Shortcut {
   action: string;

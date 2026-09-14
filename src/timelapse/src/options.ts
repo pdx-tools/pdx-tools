@@ -8,12 +8,12 @@
  * put to the player.
  */
 
-import type { TimelapseFraming } from "../timelapseFrame";
+import type { TimelapseFraming } from "./frame";
 
 /** Frame rate of every export. Smooth on a feed, cheap on bitrate. */
 export const TIMELAPSE_FPS = 30;
 
-/** The EU5 calendar has no leap day; see `lib/eu5Date.ts`. */
+/** Neither game's calendar has a leap day. */
 const DAYS_PER_YEAR = 365;
 
 /**
@@ -28,6 +28,12 @@ export const TIMELAPSE_SECONDS = 30;
  * shorter than the target length plays at this pace and runs shorter.
  */
 const MIN_YEARS_PER_SECOND = 1;
+
+/**
+ * The shortest film. A campaign of a few years still gets a clip that can be
+ * watched, so it plays slower than a year a second to reach this length.
+ */
+export const MIN_TIMELAPSE_SECONDS = 10;
 
 /**
  * Bits per pixel per frame the encoder is asked for.
@@ -78,15 +84,21 @@ export function timelapseBitrate({ width, height }: { width: number; height: num
 }
 
 /**
- * Campaign years the film advances each second.
+ * How long the film runs for a campaign of `totalDays`.
  *
  * The target length decides the pace, unless the campaign is so short that
  * the pace would drop under a year a second, when the film runs shorter
- * instead.
+ * instead, down to the minimum length. Every film is between 10 and 30
+ * seconds long.
  */
-export function timelapseYearsPerSecond(totalDays: number): number {
+export function timelapseSeconds(totalDays: number): number {
   const years = totalDays / DAYS_PER_YEAR;
-  return Math.max(MIN_YEARS_PER_SECOND, years / TIMELAPSE_SECONDS);
+  return Math.min(TIMELAPSE_SECONDS, Math.max(MIN_TIMELAPSE_SECONDS, years / MIN_YEARS_PER_SECOND));
+}
+
+/** Campaign years the film advances each second. */
+export function timelapseYearsPerSecond(totalDays: number): number {
+  return totalDays / DAYS_PER_YEAR / timelapseSeconds(totalDays);
 }
 
 /**
@@ -107,7 +119,7 @@ export function timelapsePlan({
 }) {
   const quality = timelapseQuality(options.quality);
   const yearsPerSecond = timelapseYearsPerSecond(totalDays);
-  const seconds = Math.max(totalDays / (yearsPerSecond * DAYS_PER_YEAR), 1 / TIMELAPSE_FPS);
+  const seconds = timelapseSeconds(totalDays);
   const frames = Math.max(2, Math.round(seconds * TIMELAPSE_FPS));
   const bitrate = timelapseBitrate(quality);
 

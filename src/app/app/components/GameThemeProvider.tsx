@@ -1,6 +1,6 @@
 import React from "react";
 
-export type GameTheme = "eu5";
+export type GameTheme = "eu4" | "eu5";
 
 type GameThemeContextValue = {
   theme: GameTheme;

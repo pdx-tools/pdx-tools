@@ -1,6 +1,6 @@
 import React from "react";
 import { cx } from "class-variance-authority";
-import { sectionLabel } from "./SectionTitle";
+import { sectionLabel } from "@/components/game/SectionTitle";
 
 export interface StatItemProps {
   label: string;

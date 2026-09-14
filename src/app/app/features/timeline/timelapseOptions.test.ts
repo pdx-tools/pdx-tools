@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MIN_TIMELAPSE_SECONDS,
   TIMELAPSE_FPS,
   TIMELAPSE_SECONDS,
   formatCampaignSpan,
@@ -7,8 +8,8 @@ import {
   formatFileSize,
   timelapsePlan,
   timelapseYearsPerSecond,
-} from "./options";
-import type { TimelapseOptions } from "./options";
+} from "@pdx.tools/timelapse";
+import type { TimelapseOptions } from "@pdx.tools/timelapse";
 
 const BASE: TimelapseOptions = { framing: "world", quality: "1080p" };
 
@@ -25,6 +26,14 @@ describe("timelapsePlan", () => {
     const plan = timelapsePlan({ totalDays: 12 * 365, options: BASE });
     expect(plan.yearsPerSecond).toBe(1);
     expect(plan.seconds).toBeCloseTo(12, 0);
+  });
+
+  it("gives a campaign of a few years a film that can be watched", () => {
+    // 3 years at a year a second is a 3-second flash; the film holds at the
+    // minimum length and the years pass slower.
+    const plan = timelapsePlan({ totalDays: 3 * 365, options: BASE });
+    expect(plan.seconds).toBeCloseTo(MIN_TIMELAPSE_SECONDS, 0);
+    expect(plan.yearsPerSecond).toBeCloseTo(0.3, 6);
   });
 
   it("covers the whole campaign with the frames it plans", () => {
@@ -48,9 +57,13 @@ describe("timelapsePlan", () => {
 });
 
 describe("timelapseYearsPerSecond", () => {
-  it("never drops under a year a second", () => {
-    expect(timelapseYearsPerSecond(5 * 365)).toBe(1);
+  it("holds a year a second between the shortest and the target length", () => {
+    expect(timelapseYearsPerSecond(10 * 365)).toBe(1);
     expect(timelapseYearsPerSecond(30 * 365)).toBe(1);
+  });
+
+  it("slows under a year a second only to reach the shortest film", () => {
+    expect(timelapseYearsPerSecond(5 * 365)).toBe(0.5);
   });
 
   it("speeds up so a long campaign still fits the target length", () => {

@@ -2,6 +2,7 @@ packages:
   - src/app
   - src/docs
   - src/map
+  - src/timelapse
   - src/pdx-map-playground
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true

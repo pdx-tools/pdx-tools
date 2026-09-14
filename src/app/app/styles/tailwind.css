@@ -65,6 +65,12 @@
   --color-game-accent-line: var(--game-accent-line);
   --color-game-accent-focus: var(--game-accent-focus);
 
+  /* The commit button: the one filled action in a panel. */
+  --color-game-commit: var(--game-commit);
+  --color-game-commit-hover: var(--game-commit-hover);
+  --color-game-commit-line: var(--game-commit-line);
+  --color-game-commit-ink: var(--game-commit-ink);
+
   --color-game-warn: var(--game-warn);
   --color-game-err: var(--game-err);
   --color-game-info: var(--game-info);
@@ -125,6 +131,11 @@
   --game-accent-line: rgba(212, 160, 90, 0.55);
   --game-accent-focus: oklch(72% 0.12 78);
 
+  --game-commit: var(--game-accent-300);
+  --game-commit-hover: var(--game-accent-500);
+  --game-commit-line: var(--game-accent-500);
+  --game-commit-ink: var(--game-panel);
+
   --game-warn: var(--color-amber-500);
   --game-err: var(--color-rose-500);
   --game-info: var(--color-sky-400);
@@ -149,4 +160,42 @@
   --font-game-num: "IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace;
   font-family: var(--font-game-ui);
   letter-spacing: 0;
+}
+
+[data-game-theme="eu4"] {
+  --game-page: oklch(17% 0.025 255);
+  --game-panel: oklch(20% 0.03 255);
+  --game-panel-2: oklch(25% 0.035 255);
+  --game-panel-hover: oklch(30% 0.04 255);
+  --game-panel-active: oklch(35% 0.045 255);
+  --game-overlay: rgba(15, 23, 42, 0.82);
+  --game-line: rgba(226, 232, 240, 0.08);
+  --game-line-strong: rgba(226, 232, 240, 0.16);
+  --game-ink-100: oklch(96% 0.012 85);
+  --game-ink-300: oklch(84% 0.018 85);
+  --game-ink-500: oklch(69% 0.02 85);
+  --game-ink-700: oklch(45% 0.025 255);
+  --game-ink-rule: oklch(62% 0.025 85);
+  --game-ink-disabled: oklch(34% 0.02 255);
+  /* The accent is the sky of the rest of the EU4 app (the primary button,
+     the switches), stepped as sky-200, sky-400 and sky-500. */
+  --game-accent-100: oklch(90% 0.058 231);
+  --game-accent-300: oklch(75% 0.16 233);
+  --game-accent-500: oklch(68.5% 0.169 237);
+  --game-accent-soft: rgba(14, 165, 233, 0.14);
+  --game-accent-line: rgba(14, 165, 233, 0.55);
+  --game-accent-focus: oklch(75% 0.16 233);
+
+  /* The same fill as the app's primary button (`Button variant="primary"`). */
+  --game-commit: var(--color-sky-600);
+  --game-commit-hover: var(--color-sky-500);
+  --game-commit-line: var(--color-sky-800);
+  --game-commit-ink: white;
+  --game-warn: var(--color-amber-500);
+  --game-err: var(--color-rose-500);
+  --game-info: var(--color-sky-400);
+  --game-good: var(--color-emerald-500);
+  --font-game-ui: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
+  --font-game-num: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: var(--font-game-ui);
 }

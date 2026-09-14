@@ -16,7 +16,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         commit:
-          "h-7 px-3 bg-game-accent-300 border-game-accent-500 text-game-panel font-medium enabled:hover:bg-game-accent-500",
+          "h-7 px-3 bg-game-commit border-game-commit-line text-game-commit-ink font-medium enabled:hover:bg-game-commit-hover",
         default:
           "h-7 px-3 bg-game-panel border-game-line text-game-ink-100 enabled:hover:bg-game-panel-hover enabled:hover:border-game-line-strong",
         ghost:

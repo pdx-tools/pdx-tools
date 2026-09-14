@@ -1,6 +1,6 @@
 import { cx } from "class-variance-authority";
-import { MONTH_ABBR } from "../lib/eu5Date";
-import type { TimelineController } from "./useTimelineController";
+import { MONTH_ABBR } from "./date";
+import type { TimelineController } from "./controller";
 
 /**
  * The date the map shows. The year leads; month and day follow in the

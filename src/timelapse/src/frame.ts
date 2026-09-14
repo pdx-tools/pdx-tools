@@ -7,6 +7,9 @@
  * and how large the rendered band is inside the output frame.
  */
 
+/** A calendar date as the games' workers report it. Months and days count from 1. */
+export type DateComponents = { year: number; month: number; day: number };
+
 export type WorldRect = { x: number; y: number; width: number; height: number };
 export type FrameSize = { width: number; height: number };
 

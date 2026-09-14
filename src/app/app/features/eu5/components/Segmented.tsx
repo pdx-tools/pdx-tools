@@ -1,7 +1,7 @@
 import React from "react";
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
-import { focusRing } from "./focusRing";
+import { focusRing } from "@/components/game/focusRing";
 
 /**
  * GameSegmented — a single-choice switch between a few named views of the

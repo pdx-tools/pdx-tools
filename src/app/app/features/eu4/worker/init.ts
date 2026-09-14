@@ -5,6 +5,7 @@ import type * as mod from "@/wasm/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu4SaveInput } from "../store";
 import { captureException } from "@/lib/captureException";
+import { resetTimelineCursor } from "./timeline";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(save: Eu4SaveInput) {
@@ -122,6 +123,8 @@ export function startFileObserver<T>(
         return;
       }
 
+      // The old cursor points into the save that was just replaced.
+      resetTimelineCursor();
       const achievements = wasm.save.get_achievements();
       cb({ meta: getMeta(wasm.save), achievements });
     } catch (ex) {

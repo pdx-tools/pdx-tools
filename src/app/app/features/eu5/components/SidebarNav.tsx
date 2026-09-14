@@ -1,6 +1,6 @@
 import React from "react";
 import { cx } from "class-variance-authority";
-import { focusRingInset } from "./focusRing";
+import { focusRingInset } from "@/components/game/focusRing";
 
 export const SidebarNav = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement>>(
   function SidebarNav({ className, ...props }, ref) {

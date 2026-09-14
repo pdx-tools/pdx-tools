@@ -32,6 +32,8 @@ export interface DrawEvent {
   mapDrawsQueued: number;
 }
 
+export type WorldRect = { x: number; y: number; width: number; height: number };
+
 export const glContextOptions = (): WebGLContextAttributes => ({
   depth: false,
   antialias: false,
@@ -307,6 +309,65 @@ export class WebGLMap {
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     return data;
+  }
+
+  /** The part of the world that the visible canvas currently shows. */
+  public viewportWorldRect(): WorldRect {
+    const canvasAspect = this.gl.canvas.width / this.gl.canvas.height;
+    // At scale 1 the world spans the canvas width, so the canvas height
+    // covers IMG_ASPECT / canvasAspect of the world's height.
+    const width = IMG_WIDTH / this.scale;
+    const height = (IMG_HEIGHT * (IMG_ASPECT / canvasAspect)) / this.scale;
+    const centerX = IMG_WIDTH / 2 + (this.focusPoint[0] / this.gl.canvas.width) * IMG_WIDTH;
+    const focusY = this.focusPoint[1] * (IMG_ASPECT / canvasAspect);
+    const centerY = IMG_HEIGHT / 2 + (focusY / this.gl.canvas.height) * IMG_HEIGHT;
+    return {
+      x: (centerX - width / 2 + IMG_WIDTH) % IMG_WIDTH,
+      y: Math.max(0, Math.min(IMG_HEIGHT - height, centerY - height / 2)),
+      width,
+      height,
+    };
+  }
+
+  /** Render a world rectangle to the GL canvas without changing the live camera. */
+  public renderWorldRect(rect: WorldRect, width: number, height: number) {
+    const gl = this.gl;
+    // Assigning a canvas size reallocates the drawing buffer even when the
+    // size is unchanged, so a recording sized once is left alone per frame.
+    if (gl.canvas.width !== width) gl.canvas.width = width;
+    if (gl.canvas.height !== height) gl.canvas.height = height;
+    gl.viewport(0, 0, width, height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    const worldAspect = IMG_WIDTH / IMG_HEIGHT;
+    const geometryHeight = width / worldAspect;
+    const centerX = (rect.x + rect.width / 2) % IMG_WIDTH;
+    const centerY = rect.y + rect.height / 2;
+    const scale = IMG_WIDTH / rect.width;
+    const focusPoint: [number, number] = [
+      (centerX / IMG_WIDTH - 0.5) * width,
+      (centerY / IMG_HEIGHT - 0.5) * geometryHeight,
+    ];
+
+    this.glResources.resizeXbrGeometry(width);
+    this.glResources.xbrShaderProgram.use();
+    this.glResources.xbrShaderProgram.setFocusPoint(focusPoint);
+    this.glResources.xbrShaderProgram.setScale(scale);
+    // The shader fades map colors into terrain as scale nears the maximum,
+    // so the maximum is the same as the live map's for a canvas this wide.
+    // A fixed value lets a close view pass it and wash the borders out.
+    this.glResources.xbrShaderProgram.setMaxScale(this.maxViewWidth / width);
+    this.glResources.xbrShaderProgram.setResolution(width, height);
+    this.glResources.xbrShaderProgram.setFlipY(false);
+    this.glResources.xbrShaderProgram.setRenderTerrain(this.renderTerrain);
+    this.glResources.xbrShaderProgram.setTextureSize(IMG_PADDED_WIDTH, IMG_HEIGHT);
+    this.glResources.xbrShaderProgram.setUsedTextureSize(IMG_WIDTH, IMG_HEIGHT);
+    this.glResources.xbrShaderProgram.setTextures(this.glResources);
+    gl.bindVertexArray(this.glResources.xbrVao);
+    gl.drawArrays(gl.TRIANGLES, 0, 18);
+    gl.bindVertexArray(null);
+    this.glResources.xbrShaderProgram.clear();
   }
 
   public updateTerrainTextures(textures: TerrainOverlayResources) {

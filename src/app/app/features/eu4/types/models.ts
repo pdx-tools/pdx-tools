@@ -29,7 +29,6 @@ export type {
   LocalizedTag,
   FailedHeir,
   TradeCompanyInvestments,
-  MapDate,
   CountryLeader,
   MonarchStats,
   AchievementsScore,
