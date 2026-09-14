@@ -177,8 +177,8 @@ mod insights;
 mod map_render;
 mod overlay;
 mod selection_ops;
-mod timeline;
 mod terrain_fill;
+mod timeline;
 
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
 
