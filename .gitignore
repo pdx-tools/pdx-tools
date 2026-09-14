@@ -29,6 +29,7 @@ node_modules
 .vscode/settings.json
 .pnpm-store/
 .wrangler/
+.vitest/
 
 # TypeScript Build Cache
 *.tsbuildinfo
