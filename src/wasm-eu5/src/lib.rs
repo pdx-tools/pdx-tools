@@ -23,7 +23,7 @@ use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope};
-use eu5app::{CanvasDimensions, Eu5DateComponents, MapMode as Eu5MapMode};
+use eu5app::{CanvasDimensions, Eu5DateComponents, MapMode as Eu5MapMode, UiCountryIdx};
 use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
@@ -305,6 +305,25 @@ impl Deref for Eu5SaveMetadataHandle {
     }
 }
 
+/// A human player and the country they control.
+#[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct Eu5PlayerData {
+    pub name: String,
+    pub country_idx: UiCountryIdx,
+}
+
+/// Save header fields joined with facts that need the parsed gamestate.
+#[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct Eu5AppMetadata {
+    pub version: eu5save::models::GameVersion,
+    pub date: Eu5DateComponents,
+    pub playthrough_name: String,
+    /// Human players in save order. Empty for observer games.
+    pub players: Vec<Eu5PlayerData>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
 #[serde(rename_all = "camelCase")]
 pub struct ScreenshotOverlayData {
@@ -518,7 +537,7 @@ impl Eu5WasmWorkspace {
             _loaded_save: self._loaded_save,
             app: self.app,
             localization: localization.localization,
-            _meta: self.meta,
+            meta: self.meta,
         }
     }
 }
@@ -529,7 +548,7 @@ pub struct Eu5App {
     _loaded_save: Eu5LoadedSave,
     app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
     localization: Localization,
-    _meta: Eu5SaveMetadataHandle,
+    meta: Eu5SaveMetadataHandle,
 }
 
 #[wasm_bindgen]
@@ -540,6 +559,24 @@ impl Eu5App {
 
     fn localized(&self) -> eu5app::LocalizedEu5Workspace<'_, 'static> {
         self.app.localized(&self.localization)
+    }
+
+    /// Save metadata with the fields that only the parsed gamestate can supply.
+    #[wasm_bindgen]
+    pub fn meta(&self) -> Result<Ts<Eu5AppMetadata>, JsError> {
+        into_ts(Eu5AppMetadata {
+            version: self.meta.version,
+            date: self.meta.date.clone(),
+            playthrough_name: self.meta.playthrough_name.clone(),
+            players: self
+                .app
+                .players()
+                .map(|p| Eu5PlayerData {
+                    name: p.name.to_owned(),
+                    country_idx: p.country.into(),
+                })
+                .collect(),
+        })
     }
 
     #[wasm_bindgen]

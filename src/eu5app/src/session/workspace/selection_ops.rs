@@ -387,12 +387,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Select all locations owned by human-controlled countries and their subjects.
     pub fn select_players(&mut self) {
-        let player_idxs: FnvHashSet<CountryIdx> = self
-            .gamestate
-            .played_countries
-            .iter()
-            .filter_map(|p| self.gamestate.countries.get(p.country))
-            .collect();
+        let player_idxs: FnvHashSet<CountryIdx> = self.players().map(|p| p.country).collect();
 
         if player_idxs.is_empty() {
             return;
@@ -450,8 +445,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Get the color ID of the player's capital location for map centering.
     /// Returns None if no player country, no capital, or capital has no map presence.
     pub fn player_capital_color_id(&self) -> Option<crate::ColorIdx> {
-        let player_country = self.gamestate.played_countries.first()?.country;
-        let country_idx = self.gamestate.countries.get(player_country)?;
+        let country_idx = self.players().next()?.country;
         let capital_id = self
             .gamestate
             .countries
@@ -495,10 +489,8 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        self.gamestate
-            .played_countries
-            .iter()
-            .filter_map(|p| self.gamestate.countries.get(p.country))
+        self.players()
+            .map(|p| p.country)
             .find(|idx| seen.contains(idx))
             .or_else(|| {
                 candidates

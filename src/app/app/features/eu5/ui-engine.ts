@@ -39,6 +39,7 @@ import type {
   ControlInsightData,
   PoliticalWorldScoreboard,
   Eu5DateComponents,
+  Eu5PlayerData,
 } from "@/wasm/wasm_eu5";
 import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import { log } from "@/lib/log";
@@ -757,6 +758,8 @@ export async function createLoadedEngine(
   engine: Eu5UIEngine;
   saveDate: Eu5DateComponents;
   playthroughName: string;
+  /** Human players in save order. Empty for observer games. */
+  players: Eu5PlayerData[];
 }> {
   const { offscreen, display, inputConfig } = canvas;
 
@@ -782,5 +785,6 @@ export async function createLoadedEngine(
     engine,
     saveDate: metadata.date,
     playthroughName: metadata.playthroughName,
+    players: metadata.players,
   };
 }
