@@ -9,6 +9,7 @@ mod file_provider;
 mod file_tracker;
 pub mod http;
 pub mod images;
+pub mod launcher;
 pub mod steam;
 
 pub use cli::*;
