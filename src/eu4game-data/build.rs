@@ -5,6 +5,8 @@ use std::path::Path;
 use std::{env, fs};
 
 fn main() {
+    // Rerun when a version directory is added or removed.
+    println!("cargo:rerun-if-changed=../../assets/game/eu4");
     let entries = fs::read_dir("../../assets/game/eu4").unwrap();
     let re = Regex::new(r"(\d+)\.(\d+)").unwrap();
     let entries = entries.filter_map(|x| x.ok());
@@ -41,7 +43,6 @@ fn main() {
         let p = Path::new("../../assets/game/eu4")
             .join(&version)
             .join("data-raw.bin");
-        println!("cargo:rerun-if-changed={}", p.display());
         let rust_friendly_version = version.replace('.', "");
         let versioned = Path::new(&env::var("OUT_DIR").unwrap()).join(rust_friendly_version);
         std::fs::create_dir_all(&versioned).unwrap();
@@ -57,7 +58,6 @@ fn main() {
                 .join(&version)
                 .join("map")
                 .join(filename);
-            println!("cargo:rerun-if-changed={}", p.display());
             if p.exists() {
                 std::fs::copy(p, versioned.join(filename)).unwrap();
             } else {
