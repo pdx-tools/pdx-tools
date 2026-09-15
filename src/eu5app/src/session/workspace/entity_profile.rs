@@ -978,7 +978,8 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let terrain = match self.location_terrain(idx) {
             Terrain::Other => "Land",
-            Terrain::Water => "Water",
+            Terrain::Sea => "Sea",
+            Terrain::Lake => "Lake",
             Terrain::Impassable => "Impassable",
         }
         .to_string();

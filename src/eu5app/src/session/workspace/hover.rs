@@ -11,6 +11,17 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         if location.owner.is_dummy() {
+            // Filled special-terrain locations inherit the source location's
+            // categorical data for hover purposes only; the displayed
+            // `location_id` stays the hovered one.
+            if Self::uses_terrain_fill(mode)
+                && let Some(donor) = self.political_surrounded_donors()[location_idx]
+            {
+                let donor_location = self.gamestate().locations.index(donor).location();
+                return self
+                    .country_hover(location_idx, donor_location, mode)
+                    .unwrap_or(HoverDisplayDataSource::Clear);
+            }
             return HoverDisplayDataSource::Clear;
         }
 

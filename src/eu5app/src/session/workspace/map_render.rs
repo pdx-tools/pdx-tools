@@ -1,6 +1,7 @@
 use crate::gradient::{self, GradientScale};
 use eu5save::models::Color;
 
+use super::terrain_fill::compute_surrounded_donors;
 use super::*;
 
 impl<'bump> Eu5Workspace<'bump> {
@@ -94,6 +95,42 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn location_terrain(&self, idx: eu5save::models::LocationIdx) -> Terrain {
         self.location_terrain[idx]
+    }
+
+    /// Reverse map: GPU color-id (R16 value) -> save `LocationIdx`.
+    /// Sized to `max(color_id) + 1`.
+    pub(crate) fn color_id_to_location(&self) -> &[Option<eu5save::models::LocationIdx>] {
+        self.color_id_to_location.get_or_init(|| {
+            let mut max_color_id: u16 = 0;
+            for g in self.gpu_indices.iter().flatten() {
+                max_color_id = max_color_id.max(g.value());
+            }
+            let mut out = vec![None; max_color_id as usize + 1];
+            for (raw_idx, entry) in self.gpu_indices.iter().enumerate() {
+                if let Some(g) = entry {
+                    out[g.value() as usize] =
+                        Some(eu5save::models::LocationIdx::new(raw_idx as u32));
+                }
+            }
+            out
+        })
+    }
+
+    /// Per-location donor override for the political map mode: `Some(donor)`
+    /// when this location's color should be inherited from `donor`.
+    pub(crate) fn political_surrounded_donors(
+        &self,
+    ) -> &LocationIndexedVec<Option<eu5save::models::LocationIdx>> {
+        self.political_surrounded_donors.get_or_init(|| {
+            let reverse = self.color_id_to_location();
+            compute_surrounded_donors(
+                &self.game_data.topology,
+                &self.gpu_indices,
+                &self.location_terrain,
+                reverse,
+                |loc| self.location_political_color(loc),
+            )
+        })
     }
 
     /// The owner color on the timeline date. At the save date the timeline
@@ -486,6 +523,10 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     pub(super) fn build_location_arrays(&mut self) {
+        // Populate donor cache once before the loop so subsequent lookups
+        // are pure indexing.
+        let _ = self.political_surrounded_donors();
+
         for location in self.gamestate.locations.iter() {
             let Some(gpu_index) = self.gpu_indices[location.idx()] else {
                 tracing::debug!(id = ?location.id(), location_idx = ?location.idx(), "Skipping location not in texture");
@@ -493,29 +534,43 @@ impl<'bump> Eu5Workspace<'bump> {
             };
 
             let terrain = self.location_terrain(location.idx());
+            let donor = if terrain.is_water() || !terrain.is_passable() {
+                self.political_surrounded_donors()[location.idx()]
+            } else {
+                None
+            };
+
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_location_id(pdx_map::LocationId::new(location.idx().value()));
 
             // Water locations get a specific color and no location borders
             if terrain.is_water() {
-                gpu_location.set_primary_color(GpuColor::WATER);
-                gpu_location.set_owner_color(GpuColor::WATER);
-                gpu_location.set_secondary_color(GpuColor::WATER);
+                if donor.is_none() {
+                    gpu_location.set_primary_color(GpuColor::WATER);
+                    gpu_location.set_owner_color(GpuColor::WATER);
+                    gpu_location.set_secondary_color(GpuColor::WATER);
+                    gpu_location
+                        .flags_mut()
+                        .set(LocationFlags::NO_LOCATION_BORDERS);
+                    continue;
+                }
+                // Surrounded water: paint like the donor's land, suppress
+                // location borders so it visually merges with the country.
                 gpu_location
                     .flags_mut()
                     .set(LocationFlags::NO_LOCATION_BORDERS);
-                continue;
             }
 
-            if !terrain.is_passable() {
+            if !terrain.is_passable() && donor.is_none() {
                 gpu_location.set_primary_color(GpuColor::IMPASSABLE);
                 gpu_location.set_owner_color(GpuColor::IMPASSABLE);
                 gpu_location.set_secondary_color(GpuColor::IMPASSABLE);
                 continue;
             }
 
-            let owner_color = self.location_political_color(location.idx());
-            let control_color = self.location_control_color(location.idx());
+            let source = donor.unwrap_or_else(|| location.idx());
+            let owner_color = self.location_political_color(source);
+            let control_color = self.location_control_color(source);
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(owner_color);
             gpu_location.set_secondary_color(control_color);
@@ -578,6 +633,9 @@ impl<'bump> Eu5Workspace<'bump> {
 
         self.current_map_legend = gradient;
         self.painted_selection_generation = self.selection_state.membership_generation();
+        if Self::uses_terrain_fill(mode) {
+            self.apply_surrounded_fill_from_current_colors();
+        }
         self.apply_interaction_flags();
 
         MapChange {
@@ -608,8 +666,62 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
+    pub(crate) fn uses_terrain_fill(mode: MapMode) -> bool {
+        matches!(mode, MapMode::Political | MapMode::Religion)
+    }
+
+    fn apply_surrounded_fill_from_current_colors(&mut self) {
+        // Donor color is read live from the GPU buffers via each location's
+        // gpu index. Donors are always non-fillable boundary land, which this
+        // pass never mutates, so reading them live matches a pre-pass snapshot
+        // without the per-rebuild allocation.
+        let donors = compute_surrounded_donors(
+            &self.game_data.topology,
+            &self.gpu_indices,
+            &self.location_terrain,
+            self.color_id_to_location(),
+            |loc| {
+                self.gpu_indices[loc]
+                    .map(|g| self.location_arrays.buffers().primary_colors()[g.value() as usize])
+                    .unwrap_or(GpuColor::DEBUG)
+            },
+        );
+
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let terrain = self.location_terrain(location_idx);
+            if !terrain.is_surround_fillable() {
+                continue;
+            }
+            let Some(donor) = donors[location_idx] else {
+                continue;
+            };
+            let (Some(gpu_index), Some(donor_gpu)) =
+                (self.gpu_indices[location_idx], self.gpu_indices[donor])
+            else {
+                continue;
+            };
+
+            let buffers = self.location_arrays.buffers();
+            let primary = buffers.primary_colors()[donor_gpu.value() as usize];
+            let secondary = buffers.secondary_colors()[donor_gpu.value() as usize];
+
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
+            gpu_location.set_primary_color(primary);
+            gpu_location.set_secondary_color(secondary);
+            if terrain.is_water() {
+                gpu_location
+                    .flags_mut()
+                    .set(LocationFlags::NO_LOCATION_BORDERS);
+            }
+        }
+    }
+
     fn apply_interaction_flags(&mut self) {
         let has_selection = !self.selection_state.is_empty();
+        let donors: Option<Vec<Option<eu5save::models::LocationIdx>>> =
+            Self::uses_terrain_fill(self.current_map_mode)
+                .then(|| self.political_surrounded_donors().iter().copied().collect());
         for location in self.gamestate.locations.iter() {
             let terrain = self.location_terrain(location.idx());
             let Some(gpu_idx) = self.gpu_indices[location.idx()] else {
@@ -617,11 +729,16 @@ impl<'bump> Eu5Workspace<'bump> {
             };
             let mut s = self.location_arrays.get_mut(gpu_idx);
 
+            let selected = self.selection_state.contains(location.idx())
+                || donors
+                    .as_ref()
+                    .and_then(|donors| donors[location.idx().value() as usize])
+                    .is_some_and(|donor| self.selection_state.contains(donor));
             let should_dim = Self::should_dim_location(
                 self.current_map_mode,
                 terrain,
                 has_selection,
-                self.selection_state.contains(location.idx()),
+                selected,
                 s.primary_color(),
             );
             s.flags_mut().clear(LocationFlags::from_bits(
@@ -1059,7 +1176,7 @@ mod tests {
     fn market_mode_dims_market_assigned_water() {
         assert!(Eu5Workspace::should_dim_location(
             MapMode::Markets,
-            Terrain::Water,
+            Terrain::Sea,
             true,
             false,
             GpuColor::from_rgb(1, 2, 3),
@@ -1070,7 +1187,7 @@ mod tests {
     fn market_mode_keeps_unpainted_water_visible() {
         assert!(!Eu5Workspace::should_dim_location(
             MapMode::Markets,
-            Terrain::Water,
+            Terrain::Sea,
             true,
             false,
             GpuColor::WATER,

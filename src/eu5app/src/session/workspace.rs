@@ -72,6 +72,8 @@ pub struct Eu5Workspace<'bump> {
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
     location_building_levels: OnceLock<LocationIndexedVec<f64>>,
+    color_id_to_location: OnceLock<Vec<Option<LocationIdx>>>,
+    political_surrounded_donors: OnceLock<LocationIndexedVec<Option<LocationIdx>>>,
 
     // Map app state (rendering)
     current_map_mode: MapMode,
@@ -175,6 +177,7 @@ mod insights;
 mod map_render;
 mod overlay;
 mod selection_ops;
+mod terrain_fill;
 mod timeline;
 
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
@@ -247,6 +250,8 @@ impl<'bump> Eu5Workspace<'bump> {
             overlord_of,
             location_terrain,
             location_building_levels: OnceLock::new(),
+            color_id_to_location: OnceLock::new(),
+            political_surrounded_donors: OnceLock::new(),
             current_map_mode: MapMode::Political,
             location_arrays,
             gpu_indices,
