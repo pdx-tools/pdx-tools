@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "Show density plot on EU4 timelapse",
+      "Improved EU4 timelapse export with 1080p and 720p options"
+    ],
+    "fixes": [
+      "Fix EU5 country search selecting the wrong country",
+      "Fix EU4 display of chinese / japanese text saves",
+      "Fix EU5 saves that use a save label instead of a playthrough name"
+    ]
+  }
+}
