@@ -1,6 +1,22 @@
 # Copy to terraform.tfvars (gitignored) to override defaults in variables.tf.
 # gcp_project / artifact_region / run_region already default in variables.tf.
-invoker_members = ["allUsers"]
+
+# Worker -> api auth. tofu creates the worker-invoker service account and
+# grants it run.invoker; the key is created out-of-band so it never lands in
+# state. The Worker reads the key JSON from the PARSE_API_SA_KEY secret:
+#
+#   gcloud iam service-accounts keys create worker-invoker.json \
+#     --iam-account=worker-invoker@i-hexagon-388212.iam.gserviceaccount.com
+#   pnpm --dir src/app exec wrangler secret put PARSE_API_SA_KEY < worker-invoker.json
+#   rm worker-invoker.json
+#
+# Rotate by creating a new key, putting it as the secret, then deleting the
+# old key id (`gcloud iam service-accounts keys list/delete`). Both keys are
+# valid during the overlap, so there is no downtime.
+#
+# Extra invokers. Leave empty in production. ["allUsers"] reopens the service
+# to unauthenticated calls, e.g. to roll back the Worker change.
+# invoker_members = []
 
 # Trace export (Grafana Cloud Tempo). Two-step, so the token stays out of state:
 #
