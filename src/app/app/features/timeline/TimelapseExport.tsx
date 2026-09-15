@@ -310,12 +310,8 @@ export function TimelapseExport({
     }
   };
 
-  const buttonClass = cx(
-    "grid h-7 w-7 shrink-0 place-items-center rounded-control border transition-colors duration-100",
-    "disabled:cursor-not-allowed disabled:opacity-40",
-    focusRing,
-  );
-
+  // At rest the export is an icon button like the others on the bar; only
+  // a run in progress raises it to a plate, the way play does while playing.
   if (timelapse.status !== "idle") {
     const encoding = timelapse.status === "encoding";
     return (
@@ -331,9 +327,11 @@ export function TimelapseExport({
               }
               onClick={stop}
               className={cx(
-                buttonClass,
+                "grid h-7 w-7 shrink-0 place-items-center rounded-control border transition-colors duration-100",
                 "border-game-accent-line bg-game-accent-500/15 text-game-accent-100",
                 "enabled:hover:bg-game-accent-500/25",
+                "disabled:cursor-not-allowed disabled:opacity-40",
+                focusRing,
               )}
             >
               <ProgressRing progress={progress} encoding={encoding} />
@@ -365,18 +363,14 @@ export function TimelapseExport({
               the pointer why. */}
           <span className="flex">
             <Popover.Trigger asChild>
-              <button
-                type="button"
+              <GameButton
+                variant="icon"
                 disabled={!supported}
                 aria-label="Export timelapse video"
-                className={cx(
-                  buttonClass,
-                  "border-game-line-strong bg-game-panel-2 text-game-ink-300",
-                  "enabled:hover:border-game-accent-line enabled:hover:text-game-ink-100",
-                )}
+                className="shrink-0"
               >
                 <VideoCameraIcon className="h-4 w-4" />
-              </button>
+              </GameButton>
             </Popover.Trigger>
           </span>
         </Tooltip.Trigger>
