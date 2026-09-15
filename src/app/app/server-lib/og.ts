@@ -2,14 +2,14 @@ import { log } from "./logging";
 import { timeit } from "@/lib/timeit";
 import { pdxMetrics } from "./metrics";
 import type { PdxStorage } from "./storage";
-import { pdxFns } from "./functions";
+import { parseApiFromEnv, pdxFns } from "./functions";
 import { getCloudflare } from "./cloudflare-context";
 import type { PdxRouteContext } from "./cloudflare-context";
 
 export const pdxOg = ({ storage, context }: { storage: PdxStorage; context: PdxRouteContext }) => {
-  const parseApiEndpoint = getCloudflare(context).env.PARSE_API_ENDPOINT;
+  const parseApi = parseApiFromEnv(getCloudflare(context).env);
   return {
-    enabled: !!parseApiEndpoint,
+    enabled: !!parseApi.endpoint,
     generateOgIntoStorage: async (saveId: string, saveData?: ArrayBuffer) => {
       const metrics = pdxMetrics(context);
       let data: ArrayBuffer;
@@ -23,11 +23,7 @@ export const pdxOg = ({ storage, context }: { storage: PdxStorage; context: PdxR
         data = await object.arrayBuffer();
       }
 
-      const result = await timeit(() =>
-        pdxFns({
-          endpoint: parseApiEndpoint,
-        }).renderScreenshot(data),
-      ).catch((err) => {
+      const result = await timeit(() => pdxFns(parseApi).renderScreenshot(data)).catch((err) => {
         metrics.record({
           domain: "parse_api",
           operation: "render_screenshot",

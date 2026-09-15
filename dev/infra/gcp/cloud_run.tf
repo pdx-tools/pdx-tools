@@ -114,8 +114,29 @@ resource "google_cloud_run_v2_service" "api" {
   ]
 }
 
-# Cloud Run is private by default. The Worker calls PARSE_API_ENDPOINT
-# unauthenticated, so the service must grant run.invoker to allUsers
+# Identity the Cloudflare Worker uses to call the api. The Worker holds a key
+# for this account (PARSE_API_SA_KEY) and mints ID tokens with it; see
+# terraform.tfvars.example for how the key is created and rotated. It has no
+# roles beyond run.invoker on the api service below.
+resource "google_service_account" "worker_invoker" {
+  account_id   = "worker-invoker"
+  display_name = "Cloudflare Worker -> Cloud Run api invoker"
+}
+
+# Cloud Run is private by default. Only the Worker identity (plus any extra
+# var.invoker_members) may call the service; Google rejects everyone else at
+# its frontend, before a container starts.
+#
+# The Worker grant is its own resource, not an entry in the for_each below:
+# for_each keys must be known at plan time, and the account email is not
+# known until the service account exists.
+resource "google_cloud_run_v2_service_iam_member" "worker_invoker" {
+  name     = google_cloud_run_v2_service.api.name
+  location = google_cloud_run_v2_service.api.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.worker_invoker.email}"
+}
+
 resource "google_cloud_run_v2_service_iam_member" "invokers" {
   for_each = toset(var.invoker_members)
 
