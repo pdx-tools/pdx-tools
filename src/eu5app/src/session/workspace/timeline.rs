@@ -48,7 +48,9 @@ pub struct TimelineSummary {
     pub start: Eu5Date,
     /// The save date. The map cannot go past it.
     pub end: Eu5Date,
-    /// Every date on which at least one location changed hands.
+    /// Every date on which a location changed hands between two countries.
+    /// Setup on the first date and settlement do not count; see
+    /// [`BorderIndex::history_changes`].
     pub change_dates: Vec<Eu5Date>,
     /// The number of locations that changed hands on each of `change_dates`.
     pub change_counts: Vec<u32>,
@@ -92,12 +94,13 @@ impl<'bump> Eu5Workspace<'bump> {
             .first_date()
             .is_some_and(|first| first < self.timeline.save_date);
 
+        let (change_dates, change_counts) = borders.history_changes().into_iter().unzip();
         TimelineSummary {
             available,
             start: borders.first_date().unwrap_or(self.timeline.save_date),
             end: self.timeline.save_date,
-            change_dates: borders.dates().to_vec(),
-            change_counts: borders.change_counts().collect(),
+            change_dates,
+            change_counts,
             notes,
         }
     }
