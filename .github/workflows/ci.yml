@@ -298,25 +298,6 @@ jobs:
       CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v7
-      - name: Install dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-          convert -version
-
-          # Use bundled permissive policy.xml for file and large image processing
-          sudo cp src/pdx-assets/policy.xml /etc/ImageMagick-6/policy.xml
-      - name: Install dependencies (macos)
-        if: matrix.os == 'macos-15'
-        run: |
-          brew install imagemagick
-
-          # For some reason macos github runner stopped including a font and imagemagick montage needs it
-          brew install --cask font-dejavu
-          FONT_PATH="$(find "$HOME/Library/Fonts" -type f -name 'DejaVuSans.ttf' -print -quit)"
-          echo "IMAGEMAGICK_FONT=$FONT_PATH" >> "$GITHUB_ENV"
-
       # See the note on the devcontainer job's restore step.
       - name: Restore assets
         uses: actions/cache/restore@v6

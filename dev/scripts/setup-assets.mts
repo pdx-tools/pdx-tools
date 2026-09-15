@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { readdir, access, mkdir, writeFile, copyFile, readFile, rm, stat } from "fs/promises";
 import { join, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,19 +22,30 @@ const exists = async (path: string) => {
   }
 };
 
-const execCommand = async (command: string, options = {}) => {
+const runImageMontage = async (
+  sourceDir: string,
+  outputPath: string,
+  size?: string,
+  lossless = false,
+) => {
   try {
-    const { stdout, stderr } = await execAsync(command, {
+    const args = ["run", "-p", "pdx-assets", "--", "images", "montage", sourceDir, outputPath];
+    if (size) {
+      args.push("--size", size);
+    }
+    if (lossless) {
+      args.push("--lossless");
+    }
+    const { stdout, stderr } = await execFileAsync("cargo", args, {
       cwd: projectRoot,
       encoding: "utf-8",
-      ...options,
     });
     if (stderr) {
-      console.warn(`Warning from command "${command}": ${stderr}`);
+      console.warn(`Warning from image montage: ${stderr}`);
     }
-    return stdout;
+    process.stdout.write(stdout);
   } catch (error) {
-    console.error(`Command failed: ${command}`);
+    console.error("Image montage failed");
     console.error(`Error: ${(error as Error).message}`);
     throw error;
   }
@@ -64,40 +75,6 @@ const touchFile = async (filePath: string) => {
   if (!(await exists(filePath))) {
     await writeFile(filePath, "");
   }
-};
-
-const hasCommand = async (command: string) => {
-  try {
-    await execAsync(`command -v ${command}`);
-    return true;
-  } catch {
-    try {
-      // Windows fallback
-      await execAsync(`where ${command}`);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-};
-
-const getMontageCommand = async () => {
-  if (await hasCommand("magick")) {
-    return "magick montage";
-  }
-
-  if (await hasCommand("montage")) {
-    return "montage";
-  }
-
-  return null;
-};
-
-const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
-
-const getMontageFontArg = () => {
-  const font = process.env.IMAGEMAGICK_FONT?.trim();
-  return font ? ` -font ${shellQuote(font)}` : "";
 };
 
 const findLatestBundle = async (game: string) => {
@@ -216,29 +193,15 @@ async function setupAssets() {
     await touchFile(txtFile);
   }
 
-  // Create DLC spritesheet (with ImageMagick fallback)
+  // Create DLC spritesheet.
   console.log("🎨 Creating DLC spritesheet...");
   const dlcDir = join(projectRoot, "src/app/app/features/eu4/components/dlc-list");
   const dlcImagesDir = join(dlcDir, "dlc-images");
 
   if (await exists(dlcImagesDir)) {
-    const dlcImages = await readdir(dlcImagesDir);
-    const numImages = dlcImages.length;
-    const cols = Math.ceil(Math.sqrt(numImages - 0.5));
+    const dlcImages = (await readdir(dlcImagesDir)).sort();
 
-    const montageCommand = await getMontageCommand();
-
-    if (montageCommand) {
-      console.log("  ✅ Using ImageMagick for DLC spritesheet");
-      const fontArg = getMontageFontArg();
-      await execCommand(
-        `${montageCommand}${fontArg} -tile ${cols}x -background transparent -define webp:lossless=true -mode concatenate "dlc-images/*" dlc-sprites.webp`,
-        { cwd: dlcDir },
-      );
-    } else {
-      console.log("  ⚠️  ImageMagick not found, creating empty DLC spritesheet placeholder");
-      await writeFile(join(dlcDir, "dlc-sprites.webp"), "");
-    }
+    await runImageMontage(dlcImagesDir, join(dlcDir, "dlc-sprites.webp"), undefined, true);
 
     // Generate DLC sprites JSON
     const dlcData = Object.fromEntries(
@@ -250,29 +213,14 @@ async function setupAssets() {
     await writeFile(join(dlcDir, "dlc-sprites.json"), JSON.stringify(dlcData));
   }
 
-  // Create icons spritesheet (with ImageMagick fallback)
+  // Create icons spritesheet.
   console.log("🎯 Creating icons spritesheet...");
   const iconsDir = join(projectRoot, "src/app/app/features/eu4/components/icons");
 
   if (await exists(iconsDir)) {
-    const iconFiles = (await readdir(iconsDir)).filter((file) => file.endsWith(".png"));
-    const numIcons = iconFiles.length;
-    const cols = Math.ceil(Math.sqrt(numIcons - 0.5));
+    const iconFiles = (await readdir(iconsDir)).filter((file) => file.endsWith(".png")).sort();
 
-    const montageCommand = await getMontageCommand();
-
-    if (montageCommand) {
-      console.log("  ✅ Using ImageMagick for icons spritesheet");
-      const iconArgs = iconFiles.join(" ");
-      const fontArg = getMontageFontArg();
-      await execCommand(
-        `${montageCommand}${fontArg} -tile ${cols}x -mode concatenate -geometry "32x32>" -background transparent ${iconArgs} icons.webp`,
-        { cwd: iconsDir },
-      );
-    } else {
-      console.log("  ⚠️  ImageMagick not found, creating empty icons spritesheet placeholder");
-      await writeFile(join(iconsDir, "icons.webp"), "");
-    }
+    await runImageMontage(iconsDir, join(iconsDir, "icons.webp"), "32x32");
 
     // Generate icons JSON
     const iconsData = Object.fromEntries(

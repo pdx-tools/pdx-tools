@@ -2,7 +2,7 @@ use crate::asset_compilers::{
     Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, PackageOptions,
 };
 use crate::bundler::{AssetBundler, AssetManifest};
-use crate::images::imagemagick::ImageMagickProcessor;
+use crate::images::RustImageProcessor;
 use crate::{FileAccessTracker, FileProvider, Game, create_provider, steam};
 use anyhow::{Context, Result};
 use clap::Args;
@@ -32,7 +32,7 @@ pub struct BundleArgs {
 
 impl BundleArgs {
     pub fn run(&self) -> Result<ExitCode> {
-        let imaging = ImageMagickProcessor::create()?;
+        let imaging = RustImageProcessor::create()?;
         let out_dir = match self.out_directory.as_ref() {
             Some(dir) => dir.clone(),
             None => PathBuf::from("."),

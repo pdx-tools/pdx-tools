@@ -2,9 +2,10 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 pub mod error;
-pub mod imagemagick;
+pub mod rust;
 
 pub use error::ImageError;
+pub use rust::RustImageProcessor;
 
 pub trait ImageProcessor {
     fn convert(&self, request: ConvertRequest) -> Result<()>;
@@ -42,6 +43,11 @@ pub enum MontageSizing {
         sizes: Vec<Geometry>,
         filter: ScaleFilter,
     },
+    /// Scale every image into each size without enlarging smaller images.
+    ScaledDown {
+        sizes: Vec<Geometry>,
+        filter: ScaleFilter,
+    },
 }
 
 /// How to resample source images when scaling them into montage cells.
@@ -54,15 +60,6 @@ pub enum ScaleFilter {
     /// Windowed sinc. The right choice for continuous-tone art such as country
     /// flags, whose emblems are rendered rather than hand-placed pixels.
     Lanczos,
-}
-
-impl ScaleFilter {
-    fn as_arg(self) -> &'static str {
-        match self {
-            ScaleFilter::Point => "point",
-            ScaleFilter::Lanczos => "Lanczos",
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

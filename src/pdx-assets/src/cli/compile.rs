@@ -1,7 +1,7 @@
 use crate::asset_compilers::{
     Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, PackageOptions,
 };
-use crate::images::imagemagick::ImageMagickProcessor;
+use crate::images::RustImageProcessor;
 use crate::{Game, create_provider, steam};
 use anyhow::{Context, Result};
 use clap::Args;
@@ -73,7 +73,7 @@ impl CompileArgs {
             }
         };
 
-        let imaging = ImageMagickProcessor::create()?;
+        let imaging = RustImageProcessor::create()?;
         let options = PackageOptions {
             dry_run: false,
             minimal: self.minimal,
