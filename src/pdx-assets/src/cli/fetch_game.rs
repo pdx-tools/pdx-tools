@@ -108,17 +108,7 @@ struct SteamCmdRequest {
 
 impl SteamCmdRequest {
     fn from_args(args: &FetchGameArgs) -> Result<Self> {
-        let username = match args.username.as_ref() {
-            Some(username) if !username.trim().is_empty() => username.trim().to_owned(),
-            Some(_) => anyhow::bail!("Steam username cannot be empty"),
-            None => {
-                let username = std::env::var("STEAM_USERNAME")
-                    .map_err(|_| anyhow!("Provide --username or set STEAM_USERNAME"))?;
-                let username = username.trim();
-                anyhow::ensure!(!username.is_empty(), "STEAM_USERNAME cannot be empty");
-                username.to_owned()
-            }
-        };
+        let username = steam_username(args.username.as_deref())?;
 
         let branch = args
             .branch
@@ -184,6 +174,21 @@ impl SteamCmdRequest {
             .map(|x| shell_display(&x))
             .collect::<Vec<_>>()
             .join(" ")
+    }
+}
+
+/// Resolve the Steam username from the argument or STEAM_USERNAME
+pub fn steam_username(username: Option<&str>) -> Result<String> {
+    match username {
+        Some(username) if !username.trim().is_empty() => Ok(username.trim().to_owned()),
+        Some(_) => anyhow::bail!("Steam username cannot be empty"),
+        None => {
+            let username = std::env::var("STEAM_USERNAME")
+                .map_err(|_| anyhow!("Provide --username or set STEAM_USERNAME"))?;
+            let username = username.trim();
+            anyhow::ensure!(!username.is_empty(), "STEAM_USERNAME cannot be empty");
+            Ok(username.to_owned())
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
-use pdx_assets::{BundleArgs, CompileArgs, FetchGameArgs, ImagesArgs, PackArgs};
+use pdx_assets::{
+    BuildInfoArgs, BundleArgs, CompileArgs, FetchGameArgs, ImagesArgs, PackArgs, SteamBuildsArgs,
+};
 use std::{io::IsTerminal, process::ExitCode};
 use tracing_subscriber::{EnvFilter, filter::LevelFilter, fmt::format::FmtSpan};
 
@@ -18,11 +20,13 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    BuildInfo(BuildInfoArgs),
     Bundle(BundleArgs),
     Compile(CompileArgs),
     FetchGame(FetchGameArgs),
     Images(ImagesArgs),
     Pack(PackArgs),
+    SteamBuilds(SteamBuildsArgs),
 }
 
 fn main() -> ExitCode {
@@ -39,11 +43,13 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
 
     let exit_code = match cli.command {
+        Commands::BuildInfo(args) => args.run(),
         Commands::Bundle(args) => args.run(),
         Commands::Compile(args) => args.run(),
         Commands::FetchGame(args) => args.run(),
         Commands::Images(args) => args.run(),
         Commands::Pack(args) => args.run(),
+        Commands::SteamBuilds(args) => args.run(),
     };
 
     match exit_code {

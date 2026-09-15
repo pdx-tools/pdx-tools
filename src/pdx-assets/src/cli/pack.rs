@@ -16,6 +16,12 @@ pub struct PackArgs {
     /// Output zip path
     #[clap(value_parser)]
     output_zip: PathBuf,
+
+    /// Skip files whose archive path starts with this prefix.
+    /// Use forward slashes. A prefix that ends with '/' matches a directory.
+    /// Can be given more than once
+    #[clap(long = "exclude", value_name = "PREFIX")]
+    excludes: Vec<String>,
 }
 
 impl PackArgs {
@@ -49,10 +55,16 @@ impl PackArgs {
         files.sort();
 
         let mut files_added = 0u64;
+        let mut files_skipped = 0u64;
         let mut total_bytes = 0u64;
 
         for file_path in files {
             let archive_path = relative_zip_path(&self.source_dir, &file_path)?;
+            if is_excluded(&archive_path, &self.excludes) {
+                files_skipped += 1;
+                continue;
+            }
+
             let mut input = fs::File::open(&file_path)
                 .with_context(|| format!("Failed to open {}", file_path.display()))?;
 
@@ -72,6 +84,7 @@ impl PackArgs {
         archive.finish()?;
 
         println!("Files added: {}", files_added);
+        println!("Files skipped: {}", files_skipped);
         println!("Bytes written: {}", total_bytes);
 
         Ok(ExitCode::SUCCESS)
@@ -81,4 +94,34 @@ impl PackArgs {
 fn relative_zip_path(source_dir: &Path, file_path: &Path) -> Result<String> {
     let relative = file_path.strip_prefix(source_dir)?;
     Ok(relative.to_string_lossy().replace('\\', "/"))
+}
+
+fn is_excluded(archive_path: &str, excludes: &[String]) -> bool {
+    excludes
+        .iter()
+        .any(|prefix| archive_path.starts_with(prefix))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exclude_matches_prefixes() {
+        let excludes = vec![
+            String::from("_CommonRedist/"),
+            String::from("steamapps/workshop/"),
+            String::from("steamapps/appmanifest_228980.acf"),
+        ];
+
+        assert!(is_excluded("_CommonRedist/vcredist/x64.exe", &excludes));
+        assert!(is_excluded(
+            "steamapps/workshop/content/236850/1/a.txt",
+            &excludes
+        ));
+        assert!(is_excluded("steamapps/appmanifest_228980.acf", &excludes));
+        assert!(!is_excluded("steamapps/appmanifest_236850.acf", &excludes));
+        assert!(!is_excluded("map/provinces.bmp", &excludes));
+        assert!(!is_excluded("gfx/_CommonRedist/x.dds", &excludes));
+    }
 }
