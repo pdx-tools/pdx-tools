@@ -162,6 +162,7 @@ pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
 
 #[derive(Clone, Debug, Serialize, tsify::Tsify)]
 #[serde(rename_all = "camelCase")]
+#[tsify(hashmap_as_object)]
 pub struct SelectionChange {
     center_color_id: Option<u32>,
     #[serde(flatten)]
@@ -217,6 +218,7 @@ pub struct TimelineData {
 /// The state of the map after the timeline moved.
 #[derive(Clone, Debug, Serialize, tsify::Tsify)]
 #[serde(rename_all = "camelCase")]
+#[tsify(hashmap_as_object)]
 pub struct TimelineChange {
     /// The date the map shows, after clamping to the campaign. Equal to the
     /// timeline end when the map shows the save date.

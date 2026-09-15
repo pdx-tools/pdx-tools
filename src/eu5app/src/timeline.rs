@@ -11,7 +11,7 @@
 //!   this date" for live, renamed, and dead countries alike.
 
 use eu5save::Eu5Date;
-use eu5save::hash::FxHashMap;
+use eu5save::hash::{FxHashMap, FxHashSet};
 use eu5save::models::{
     Color, CountryId, CountryName, CountryRename, DeadCountry, Gamestate, LocationIdx,
     LocationIndexedVec, Locations,
@@ -118,9 +118,32 @@ impl BorderIndex {
         &self.dates
     }
 
-    /// The number of locations that changed hands on each of [`Self::dates`].
-    pub fn change_counts(&self) -> impl ExactSizeIterator<Item = u32> + '_ {
-        self.offsets.windows(2).map(|pair| pair[1] - pair[0])
+    /// The dates on which a location changed hands between two countries,
+    /// with the number of locations that did, in the same measure as EU4.
+    ///
+    /// The index holds every change, but a player reads only some of them
+    /// as history. Changes on the first date are the scenario's setup: every
+    /// location gets its initial owner then, which is nine in ten of all the
+    /// changes in a short campaign, and it would flatten the rest of the
+    /// strip. A location settled or abandoned has no country on one side of
+    /// the change, and colonization fills the map with those for centuries.
+    /// A location that changes hands twice on one day counts once.
+    pub fn history_changes(&self) -> Vec<(Eu5Date, u32)> {
+        let mut result = Vec::new();
+        let mut seen = FxHashSet::default();
+        for (idx, date) in self.dates.iter().enumerate().skip(1) {
+            seen.clear();
+            let count = self
+                .changes_on(idx)
+                .iter()
+                .filter(|change| !change.from.is_dummy() && !change.to.is_dummy())
+                .filter(|change| seen.insert(change.location))
+                .count();
+            if count > 0 {
+                result.push((*date, count as u32));
+            }
+        }
+        result
     }
 
     fn changes_on(&self, date_idx: usize) -> &[OwnerChange] {
@@ -309,8 +332,28 @@ mod tests {
             &[date("1337.4.1"), date("1338.6.3"), date("1340.1.1")]
         );
         assert_eq!(index.changes_on(1), &[change(134, 4, 5)]);
-        assert_eq!(index.change_counts().collect::<Vec<_>>(), [2, 1, 2]);
+        assert_eq!(index.changes_on(2).len(), 2);
         assert_eq!(index.first_date(), Some(date("1337.4.1")));
+    }
+
+    /// The first date is setup, a change to or from no owner is settlement,
+    /// and a location counts once per date.
+    #[test]
+    fn history_changes_count_locations_that_changed_hands() {
+        let index = BorderIndex::from_entries(vec![
+            (date("1337.4.1"), change(0, 0, 4)),
+            (date("1337.4.1"), change(134, 0, 4)),
+            (date("1338.6.3"), change(134, 4, 5)),
+            (date("1338.6.3"), change(7, 0, 5)),
+            (date("1339.1.1"), change(7, 5, 0)),
+            (date("1340.1.1"), change(0, 4, 5)),
+            (date("1340.1.1"), change(0, 5, 6)),
+            (date("1340.1.1"), change(134, 5, 6)),
+        ]);
+        assert_eq!(
+            index.history_changes(),
+            [(date("1338.6.3"), 1), (date("1340.1.1"), 2)]
+        );
     }
 
     #[test]
