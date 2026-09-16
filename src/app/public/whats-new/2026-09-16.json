@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "fixes": [
+      "Fix the EU4 timeline after a new save is dropped in",
+      "Fix Firefox-on-Windows H.264 timelapse exports that do not play in Windows Media Player"
+    ]
+  }
+}
