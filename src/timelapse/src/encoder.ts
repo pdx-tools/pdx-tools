@@ -23,6 +23,7 @@ import {
 } from "mediabunny";
 import type { VideoCodec } from "mediabunny";
 import type { DateComponents, TimelapseFrameLayout } from "./frame";
+import { repairAvcDescription } from "./avc";
 import { TIMELAPSE_FPS, timelapseBitrate } from "./options";
 import { drawDatePlate, loadDatePlateFonts } from "./datePlate";
 import type { DatePlateColors, DatePlateFonts } from "./datePlate";
@@ -81,7 +82,7 @@ export class TimelapseEncoder {
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => {
         const packet = EncodedPacket.fromEncodedChunk(chunk);
-        this.pendingAdds.push(this.videoSource.add(packet, meta));
+        this.pendingAdds.push(this.videoSource.add(packet, this.repairMetadata(meta)));
       },
       error: (e) => {
         this.error = e;
@@ -89,6 +90,20 @@ export class TimelapseEncoder {
       },
     });
     this.encoder.configure(config);
+  }
+
+  /**
+   * The muxer writes the decoder description as the browser gives it, so a
+   * browser that writes it wrong (see `repairAvcDescription`) is corrected
+   * here, before the record reaches the file.
+   */
+  private repairMetadata(meta: EncodedVideoChunkMetadata | undefined) {
+    const decoderConfig = meta?.decoderConfig;
+    if (this.extension !== "mp4" || decoderConfig?.description === undefined) return meta;
+    const repaired = repairAvcDescription(decoderConfig.description);
+    if (repaired === decoderConfig.description) return meta;
+    this.log("Repaired a doubled NAL header in the H.264 decoder description");
+    return { ...meta, decoderConfig: { ...decoderConfig, description: repaired } };
   }
 
   /**
