@@ -1,6 +1,6 @@
 import { transfer } from "comlink";
 import { wasm } from "./common";
-import type { TimelineCursor, TimelineData, TimelineKind } from "@/wasm/wasm_eu4";
+import type { SaveFile, TimelineCursor, TimelineData, TimelineKind } from "@/wasm/wasm_eu4";
 
 /**
  * The province colors for one timeline date, split into the textures the
@@ -17,20 +17,25 @@ export type MapTimelapseItem = {
 /**
  * The cursor that steps a timelapse through the save, kept between calls
  * so a forward step replays only the events since the last date. It holds
- * a reference into the parsed save, so it is dropped before the save is
- * replaced (see `resetTimelineCursor`).
+ * a reference into the save it was built from, so it is only stepped while
+ * `save` is still the current one. A new save gets a new cursor; a reparse
+ * keeps the same save object, so it drops the cursor explicitly (see
+ * `resetTimelineCursor`).
  */
-let cursor: { kind: TimelineKind; cursor: TimelineCursor; parts: number } | undefined;
+let cursor:
+  | { save: SaveFile; kind: TimelineKind; cursor: TimelineCursor; parts: number }
+  | undefined;
 
 export function eu4GetTimeline(kind: TimelineKind): TimelineData {
   return wasm.save.get_timeline(kind);
 }
 
 export function eu4TimelineAdvance(kind: TimelineKind, day: number): MapTimelapseItem {
-  if (cursor === undefined || cursor.kind !== kind) {
+  const save = wasm.save;
+  if (cursor === undefined || cursor.save !== save || cursor.kind !== kind) {
     cursor?.cursor.free();
-    const next = wasm.save.timeline_cursor(kind);
-    cursor = { kind, cursor: next, parts: next.parts() };
+    const next = save.timeline_cursor(kind);
+    cursor = { save, kind, cursor: next, parts: next.parts() };
   }
   const item = cursor.cursor.advance_to(day);
   const days = item.days;
@@ -46,7 +51,8 @@ export function eu4TimelineAdvance(kind: TimelineKind, day: number): MapTimelaps
 
 /**
  * Drop the cursor. Called in the worker right after a watched save is
- * reparsed, so no step can run against a cursor built from the old save.
+ * reparsed in place, so no step can run against a cursor built from the
+ * old contents of the same save object.
  */
 export function resetTimelineCursor() {
   cursor?.cursor.free();
