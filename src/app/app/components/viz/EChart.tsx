@@ -22,6 +22,7 @@ import {
   VisualMapComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { LabelLayout } from "echarts/features";
 import type { ComposeOption } from "echarts/core";
 import type {
   PieSeriesOption,
@@ -64,6 +65,7 @@ echarts.use([
   TitleComponent,
   VisualMapComponent,
   CanvasRenderer,
+  LabelLayout,
 ]);
 
 // Compose option type from only the charts and components we use

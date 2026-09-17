@@ -2,10 +2,9 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import type {
   LocationPopRow,
-  PopulationConcentrationPoint,
   PopulationRankSegment,
   PopulationScopeSummary,
   PopulationTopLocation,
@@ -23,7 +22,6 @@ import {
   markGap,
   seriesColor,
 } from "@/components/viz/echartsTheme";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -33,10 +31,11 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { useEu5SaveDate } from "../../store/eu5Store";
+import { ConcentrationCurve } from "./ConcentrationCurve";
+import { PopulationReadout, PopulationReadoutSkeleton } from "./PopulationReadout";
+import { MOST_POPULOUS_CAP } from "./populationConstants";
+import { countryGrowthLines, formatPeople } from "./populationFormatting";
 
-const COUNTRY_CAP = 24;
-const HISTORY_TOP_COUNT = 10;
 const BACK_LABEL = "Population";
 // Settlement ranks keep the game's own colours: this is an ordered set, but
 // player recognition outranks the ordinal ramp. See gameColors.ts.
@@ -47,149 +46,9 @@ function formatPercent(value: number, digits = 1) {
   return `${formatFloat(value * 100, digits)}%`;
 }
 
-function formatCompact(value: number): string {
-  if (value >= 1_000_000) {
-    const v = value / 1_000_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    const v = value / 1_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}K`;
-  }
-  return formatInt(Math.round(value));
-}
-
-function PopulationHistoryMultiChart({ countries }: { countries: ScopedCountryPopulation[] }) {
-  const saveDate = useEu5SaveDate();
-
-  const filtered = useMemo(() => {
-    const playerTags = new Set(
-      countries.filter((c) => c.country.isPlayer).map((c) => c.country.tag),
-    );
-    const topRanked = countries
-      .filter((c) => c.greatPowerRank > 0)
-      .sort((a, b) => a.greatPowerRank - b.greatPowerRank)
-      .slice(0, HISTORY_TOP_COUNT)
-      .map((c) => c.country.tag);
-    const topRankedTags = new Set(topRanked);
-
-    if (topRankedTags.size > 0 || playerTags.size > 0) {
-      return countries.filter(
-        (c) => topRankedTags.has(c.country.tag) || playerTags.has(c.country.tag),
-      );
-    }
-    return countries.slice(0, HISTORY_TOP_COUNT);
-  }, [countries]);
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-    const baseYear = saveDate?.year ?? 0;
-
-    const series = filtered.map((c) => {
-      const len = c.historicalPopulation.length;
-      return {
-        name: c.country.country.name,
-        type: "line" as const,
-        smooth: true,
-        showSymbol: false,
-        lineStyle: { color: c.country.colorHex, width: 2 },
-        itemStyle: { color: c.country.colorHex },
-        data: c.historicalPopulation.flatMap((v, i) => (v === 0 ? [] : [[i - len + 1, v * 1000]])),
-      };
-    });
-
-    const minX = filtered.reduce((min, c) => Math.min(min, 1 - c.historicalPopulation.length), 0);
-
-    return {
-      legend: {
-        type: "scroll",
-        bottom: 0,
-        textStyle: { color: labelColor, fontSize: 11 },
-        pageTextStyle: { color: labelColor },
-      },
-      grid: { left: 60, right: 20, top: 16, bottom: 56 },
-      xAxis: {
-        type: "value",
-        min: minX,
-        max: 0,
-        axisLabel: {
-          color: tickColor,
-          formatter: (value: number) => String(baseYear + value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
-      },
-      yAxis: {
-        type: "value",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: formatCompact },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
-      },
-      tooltip: {
-        ...chartTooltip,
-        trigger: "axis",
-        formatter: (params) => {
-          const arr = Array.isArray(params) ? params : [params];
-          if (arr.length === 0) return "";
-          const firstVal = arr[0]?.value;
-          const year = baseYear + Number(Array.isArray(firstVal) ? firstVal[0] : 0);
-          const lines = arr
-            .filter((p) => Array.isArray(p.value))
-            .map(
-              (p) =>
-                `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(String(p.color))};margin-right:4px"></span>${escapeEChartsHtml(String(p.seriesName))}: ${formatCompact(Number((p.value as number[])[1]))}`,
-            );
-          return `<strong>${year}</strong><br/>${lines.join("<br/>")}`;
-        },
-      },
-      series,
-    };
-  }, [filtered, saveDate]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: BACK_LABEL,
-    getTarget: (params) => {
-      const c = params.seriesIndex != null ? filtered[params.seriesIndex] : null;
-      return c
-        ? {
-            id: c.country.country.key,
-            anchorLocationIdx: c.country.anchorLocationIdx,
-            label: c.country.country.name,
-          }
-        : null;
-    },
-  });
-
-  const hasData = filtered.some((c) => c.historicalPopulation.length >= 2);
-  if (!hasData) return null;
-
-  return (
-    <section>
-      <SectionTitle>How has population changed over time?</SectionTitle>
-      <EChart option={option} style={{ height: "260px", width: "100%" }} onInit={handleInit} />
-    </section>
-  );
-}
-
 function PopulationScopeHeader({ data }: { data?: PopulationScopeSummary }) {
-  if (!data) return <InsightScopeHeaderSkeleton />;
-
-  return (
-    <InsightScopeHeader>
-      <StatItem
-        label={data.isEmpty ? "Countries" : "Entities"}
-        value={formatInt(data.countryCount)}
-      />
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="Population" value={formatInt(data.totalPopulation)} />
-      <StatItem label="Median Loc" value={formatInt(data.medianLocationPopulation)} />
-    </InsightScopeHeader>
-  );
+  if (!data) return <PopulationReadoutSkeleton />;
+  return <PopulationReadout mode="population" figures={data} />;
 }
 
 export function PopulationInsight() {
@@ -213,21 +72,17 @@ export function PopulationInsight() {
         <>
           {countries.length > 0 && (
             <section>
-              <SectionTitle>Who holds the selected population?</SectionTitle>
+              <SectionTitle>Population by country</SectionTitle>
               <CountryPopulationSpine countries={countries} />
             </section>
           )}
-
-          {countries.length > 0 && <PopulationHistoryMultiChart countries={countries} />}
 
           {typeProfile.some(
             (r: PopulationTypeProfileRow) => r.population > 0 || r.baselinePopulation > 0,
           ) && (
             <section>
               <SectionTitle>
-                {scopeIsEmpty
-                  ? "What is the population made of?"
-                  : "What makes this selection unusual?"}
+                {scopeIsEmpty ? "Population by pop type" : "Pop types vs world share"}
               </SectionTitle>
               <PopulationTypeProfile rows={typeProfile} isEmpty={scopeIsEmpty} />
             </section>
@@ -235,21 +90,21 @@ export function PopulationInsight() {
 
           {rankTotals.some((rank) => rank.population > 0) && (
             <section>
-              <SectionTitle>What kind of settlements hold the population?</SectionTitle>
+              <SectionTitle>Settlement mix</SectionTitle>
               <UrbanizationMix ranks={rankTotals} />
             </section>
           )}
 
           {concentration.length > 1 && (
             <section>
-              <SectionTitle>How concentrated is the selected population?</SectionTitle>
-              <PopulationConcentrationCurve points={concentration} />
+              <SectionTitle>Population concentration</SectionTitle>
+              <ConcentrationCurve points={concentration} metric="population" />
             </section>
           )}
 
           {topLocations.length > 0 && (
             <section>
-              <SectionTitle>What are the most populous locations?</SectionTitle>
+              <SectionTitle>Most populous locations</SectionTitle>
               <PopulationTopLocations locations={topLocations} />
             </section>
           )}
@@ -303,8 +158,7 @@ function countryTooltip(country: ScopedCountryPopulation): string {
   return [
     `<strong>${escapeEChartsHtml(country.country.country.name)}</strong>`,
     country.country.tag ? `Tag: ${escapeEChartsHtml(country.country.tag)}` : "",
-    `Population: ${formatInt(country.totalPopulation)}`,
-    `Locations: ${formatInt(country.locationCount)}`,
+    ...countryGrowthLines(country),
     ...ranks,
   ]
     .filter(Boolean)
@@ -314,7 +168,7 @@ function countryTooltip(country: ScopedCountryPopulation): string {
 function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulation[] }) {
   const rows = useMemo<CountrySpineDatum[]>(
     () =>
-      countries.slice(0, COUNTRY_CAP).map((country) => ({
+      countries.slice(0, MOST_POPULOUS_CAP).map((country) => ({
         ...country,
         name: country.country.country.name,
         id: country.country.country.key,
@@ -341,7 +195,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatInt(value),
+          formatter: (value: number) => formatPeople(value),
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -513,79 +367,6 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
   return <EChart option={option} style={{ height: "86px", width: "100%" }} />;
 }
 
-export function PopulationConcentrationCurve({
-  points,
-}: {
-  points: PopulationConcentrationPoint[];
-}) {
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
-    return {
-      grid: {
-        left: 48,
-        right: 18,
-        top: 10,
-        bottom: 36,
-        outerBounds: { left: 0, right: 0, top: 0, bottom: 0 },
-        outerBoundsContain: "axisLabel",
-      },
-      xAxis: {
-        type: "value",
-        name: "Locations",
-        min: 1,
-        max: points.at(-1)?.locationRank ?? 1,
-        nameTextStyle: { color: tickColor, fontSize: 10 },
-        axisLabel: { color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.4, width: 1 } },
-      },
-      yAxis: {
-        type: "value",
-        min: 0,
-        max: 1,
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatPercent(value, 0),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
-      },
-      tooltip: {
-        ...chartTooltip,
-        trigger: "axis",
-        formatter: (params) => {
-          const arr = Array.isArray(params) ? params : [params];
-          const idx = (arr[0] as { dataIndex?: number } | undefined)?.dataIndex;
-          if (idx == null) return "";
-          const point = points[idx];
-          if (!point) return "";
-          return [
-            `<strong>Top ${formatInt(point.locationRank)} locations</strong>`,
-            `Account for <strong>${formatPercent(point.populationShare)}</strong> of total population`,
-            `Total: ${formatInt(point.cumulativePopulation)}`,
-            `Location population: ${formatInt(point.population)}`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          type: "line",
-          smooth: true,
-          showSymbol: false,
-          areaStyle: { opacity: 0.16 },
-          lineStyle: { width: 2, color: seriesColor(0) },
-          itemStyle: { color: seriesColor(0) },
-          data: points.map((point) => [point.locationRank, point.populationShare]),
-        },
-      ],
-    };
-  }, [points]);
-
-  return <EChart option={option} style={{ height: "260px", width: "100%" }} />;
-}
-
 const columnHelper = createColumnHelper<PopulationTopLocation>();
 
 function PopulationTopLocations({ locations }: { locations: PopulationTopLocation[] }) {
@@ -720,11 +501,10 @@ export function PopulationTypeProfile({
             if (!d) return "";
             return [
               `<strong>${escapeEChartsHtml(d.label)}</strong>`,
-              `Population: ${formatFloat(d.population, 0)}`,
+              `Population: ${formatPeople(d.population)}`,
               `Share: ${formatPercent(d.share)}`,
-              `Avg Satisfaction: ${formatFloat(d.avgSatisfaction * 100, 1)}%`,
+              `Avg Satisfaction: ${formatPercent(d.avgSatisfaction)}`,
               `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
-              `Pop records: ${formatInt(d.popCount)}`,
             ].join("<br/>");
           },
         },
@@ -778,12 +558,11 @@ export function PopulationTypeProfile({
           if (!d) return "";
           return [
             `<strong>${escapeEChartsHtml(d.label)}</strong>`,
-            `Selected pop: ${formatFloat(d.population, 0)} (${formatPercent(d.share)})`,
+            `Selected pop: ${formatPeople(d.population)} (${formatPercent(d.share)})`,
             `World share: ${formatPercent(d.baselineShare)}`,
             `Difference: ${formatPercent(d.shareDelta, 1)}`,
-            `Avg Satisfaction: ${formatFloat(d.avgSatisfaction * 100, 1)}%`,
+            `Avg Satisfaction: ${formatPercent(d.avgSatisfaction)}`,
             `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
-            `Pop records: ${formatInt(d.popCount)}`,
           ].join("<br/>");
         },
       },

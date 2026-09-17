@@ -1,5 +1,5 @@
 use super::*;
-use crate::population::{annualize_monthly_rate, location_reproduction_rate};
+use crate::population::{location_reproduction_rate, location_yearly_births};
 use crate::presentation::OwnedCountryName;
 
 impl<'bump> Eu5Workspace<'bump> {
@@ -262,7 +262,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 for entry in self.gamestate().locations.iter() {
                     let location = entry.location();
                     if location.owner == owner_id {
-                        born += location.population.changes.reproduction.total() * 1000.0;
+                        born += location_yearly_births(location);
                         population += self.gamestate().location_population(location);
                     }
                 }
@@ -271,7 +271,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     HoverStatSource::None
                 } else {
                     HoverStatSource::PopulationGrowth {
-                        value: annualize_monthly_rate(born / population),
+                        value: born / population,
                     }
                 }
             }

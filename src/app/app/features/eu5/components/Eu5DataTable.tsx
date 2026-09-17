@@ -184,6 +184,11 @@ export function Eu5DataTable<TData extends RowData>({
     data,
     columns: columns as unknown as AppColumnDef<TData, unknown>[],
     features: appTableFeatures,
+    // TanStack's built-in default header renders the accessor key, which
+    // would win over `meta.headerLabel` because it is a function.
+    defaultColumn: {
+      header: ({ column }) => column.columnDef.meta?.eu5?.headerLabel ?? column.id,
+    },
     state,
     onSortingChange: setSorting,
     enableMultiSort: tableOptions?.enableMultiSort ?? true,

@@ -67,7 +67,7 @@ impl MapMode {
             MapMode::Wealth => "Wealth",
             MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
             MapMode::Religion => "Religion",
-            MapMode::StateEfficacy => "State Efficacy",
+            MapMode::StateEfficacy => "Effective Development",
             MapMode::PopulationGrowth => "Population Growth",
         }
     }

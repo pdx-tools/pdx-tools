@@ -2,11 +2,15 @@ use crate::entity_profile::{CountryRef, MarketRef};
 use crate::presentation::{Localized, UiLocationIdx, present_dto};
 use serde::{Deserialize, Serialize};
 
+/// The whole map, as the scope every insight falls back to when nothing is
+/// selected. Computed once per save.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct WorldSummary {
+    /// Owned locations.
     pub location_count: u32,
+    /// Countries that own at least one location.
     pub country_count: u32,
     pub total_population: u32,
 }
@@ -31,6 +35,8 @@ pub struct StateEfficacyScopeSummary {
     pub country_count: u32,
     pub total_efficacy: f64,
     pub total_development: f64,
+    /// Effective development as a fraction of all development in scope: a
+    /// development-weighted mean control.
     pub realization_ratio: f64,
     pub median_efficacy: f64,
     pub total_population: u32,
@@ -44,6 +50,7 @@ pub struct WealthScope {
     pub location_count: u32,
     pub total_wealth: f64,
     pub median_wealth: f64,
+    /// Share of the scoped wealth held by the wealthiest tenth of locations.
     pub top_decile_share: f64,
     pub is_empty: bool,
 }
@@ -55,7 +62,10 @@ pub struct UnrealizedTaxBaseScope {
     pub location_count: u32,
     pub total_wealth: f64,
     pub unrealized_tax_base: f64,
+    /// The gap as a fraction of the scoped wealth.
     pub unrealized_ratio: f64,
+    /// Share of the scoped gap held by the tenth of locations with the
+    /// largest gaps.
     pub top_decile_share: f64,
     pub is_empty: bool,
 }
@@ -67,10 +77,14 @@ pub struct MarketScopeSummary {
     pub location_count: u32,
     pub market_count: u32,
     pub good_count: u32,
+    /// Price times goods taken, summed over the scoped markets.
     pub market_value: f64,
+    /// Price times demand, summed over the scoped markets.
     pub demand_value: f64,
     pub shortage_value: f64,
     pub surplus_value: f64,
+    /// Shortage as a fraction of the demand value: what was wanted but did
+    /// not arrive.
     pub unmet_demand_share: f64,
     pub avg_market_access: f64,
     pub is_empty: bool,
@@ -92,6 +106,25 @@ pub struct PopulationScopeSummary {
     pub country_count: u32,
     pub total_population: u32,
     pub median_location_population: u32,
+    /// Share of the scoped population that lives in a town, city, or
+    /// megalopolis: every ranked settlement above rural.
+    pub urbanization: f64,
+    /// People in peasant pops.
+    pub peasant_population: u32,
+    pub is_empty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationGrowthScopeSummary {
+    pub location_count: u32,
+    pub country_count: u32,
+    pub total_population: u32,
+    /// People born in a year at the recorded rate.
+    pub births_per_year: f64,
+    /// Yearly births as a fraction of the scoped population.
+    pub growth_rate: f64,
     pub is_empty: bool,
 }
 
@@ -107,17 +140,9 @@ pub struct PopulationRankSegment {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
-pub struct PopulationConcentrationPoint {
-    pub location_rank: u32,
-    pub location_count: u32,
-    pub population: u32,
-    pub cumulative_population: u32,
-    pub population_share: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[serde(rename_all = "camelCase")]
+/// One step of a concentration curve: the locations ranked high to low by
+/// a metric, and the share of the scope's total the top `location_rank`
+/// of them hold.
 pub struct ConcentrationPoint {
     pub location_rank: u32,
     pub location_count: u32,
@@ -131,24 +156,31 @@ pub struct ConcentrationPoint {
 #[serde(rename_all = "camelCase")]
 pub struct PopulationTypeProfileRow {
     pub population_type: u8,
+    /// People of this type in scope.
     pub population: f64,
     pub share: f64,
+    /// People of this type in the whole world.
     pub baseline_population: f64,
     pub baseline_share: f64,
     pub share_delta: f64,
+    /// Size-weighted mean satisfaction as a fraction of 1.
     pub avg_satisfaction: f64,
+    /// Size-weighted mean literacy as a fraction of 1.
     pub avg_literacy: f64,
-    pub pop_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingLevelsScopeSummary {
+    /// Owned locations in scope, built or not.
     pub location_count: u32,
     pub total_levels: f64,
+    /// Levels in the middle owned location, counting locations with no
+    /// buildings as zero.
     pub median_levels: f64,
     pub foreign_levels: f64,
+    /// Foreign-owned levels as a fraction of all levels.
     pub foreign_share: f64,
     pub foreign_location_count: u32,
     pub foreign_owner_count: u32,
@@ -164,6 +196,8 @@ pub struct ControlScopeSummary {
     pub effective_development: f64,
     pub lost_development: f64,
     pub weighted_avg_control: f64,
+    /// Share of the scoped development in locations under 50% control: the
+    /// superficial and functional bands.
     pub weak_control_development_share: f64,
     pub is_empty: bool,
 }
@@ -445,6 +479,8 @@ pub mod population {
             total_population: u32,
             location_count: u32,
             ranks: Vec<PopulationRankSegment>,
+            growth_rate: f64,
+            births_per_year: f64,
             historical_population: Vec<f64>,
             great_power_rank: i32,
         }
@@ -460,9 +496,43 @@ pub mod population {
             scope: PopulationScopeSummary,
             rank_totals: Vec<PopulationRankSegment>,
             countries: Vec<workspace::ScopedCountryPopulation> => Vec<presentation::ScopedCountryPopulation>,
-            concentration: Vec<PopulationConcentrationPoint>,
+            concentration: Vec<ConcentrationPoint>,
             top_locations: Vec<workspace::PopulationTopLocation> => Vec<presentation::PopulationTopLocation>,
             type_profile: Vec<PopulationTypeProfileRow>,
+        }
+    }
+}
+
+pub mod population_growth {
+    use super::*;
+
+    present_dto! {
+        pub(crate) mod workspace;
+        pub mod presentation;
+
+        pub CountryPopulationGrowth {
+            country: crate::presentation::CountryRefSource => CountryRef,
+            growth_rate: f64,
+            births_per_year: f64,
+            total_population: u32,
+            location_count: u32,
+            historical_population: Vec<f64>,
+            great_power_rank: i32,
+        }
+
+        pub PopulationGrowthTopLocation {
+            location: eu5save::models::LocationIdx => Localized<UiLocationIdx>,
+            owner: crate::presentation::CountryRefSource => CountryRef,
+            growth_rate: f64,
+            births_per_year: f64,
+            population: u32,
+        }
+
+        pub PopulationGrowthInsightData {
+            scope: PopulationGrowthScopeSummary,
+            countries: Vec<workspace::CountryPopulationGrowth> => Vec<presentation::CountryPopulationGrowth>,
+            top_locations: Vec<workspace::PopulationGrowthTopLocation> => Vec<presentation::PopulationGrowthTopLocation>,
+            distribution: distribution::workspace::LocationDistribution => distribution::presentation::LocationDistribution,
         }
     }
 }

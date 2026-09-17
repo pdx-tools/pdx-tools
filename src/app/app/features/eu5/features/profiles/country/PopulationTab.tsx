@@ -1,13 +1,13 @@
 import { useMemo } from "react";
-import type { LocationRow, PopulationConcentrationPoint } from "@/wasm/wasm_eu5";
+import type { ConcentrationPoint, LocationRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import {
-  PopulationConcentrationCurve,
   PopulationSankey,
   PopulationTypeProfile,
   UrbanizationMix,
 } from "../../insights/Population";
 import { useEu5Trigger } from "../useEu5Trigger";
+import { ConcentrationCurve } from "../../insights/ConcentrationCurve";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import {
@@ -31,21 +31,21 @@ function formatCompact(value: number): string {
   return formatInt(Math.round(value));
 }
 
-function concentrationFromLocations(locations: LocationRow[]): PopulationConcentrationPoint[] {
+function concentrationFromLocations(locations: LocationRow[]): ConcentrationPoint[] {
   const sorted = [...locations].sort(
     (a, b) => b.population - a.population || a.location.key - b.location.key,
   );
-  const totalPopulation = sorted.reduce((sum, location) => sum + location.population, 0);
-  let cumulativePopulation = 0;
+  const total = sorted.reduce((sum, location) => sum + location.population, 0);
+  let cumulativeValue = 0;
 
   return sorted.map((location, idx) => {
-    cumulativePopulation += location.population;
+    cumulativeValue += location.population;
     return {
       locationRank: idx + 1,
       locationCount: sorted.length,
-      population: location.population,
-      cumulativePopulation,
-      populationShare: totalPopulation > 0 ? cumulativePopulation / totalPopulation : 0,
+      value: location.population,
+      cumulativeValue,
+      share: total > 0 ? cumulativeValue / total : 0,
     };
   });
 }
@@ -181,7 +181,7 @@ export function CountryPopulationTabContent({
       {showConcentration && (
         <section>
           <SectionTitle>How concentrated is the population?</SectionTitle>
-          <PopulationConcentrationCurve points={concentration} />
+          <ConcentrationCurve points={concentration} metric="population" />
         </section>
       )}
 

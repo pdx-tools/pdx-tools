@@ -29,6 +29,7 @@ use crate::insights::markets::workspace::{
     ProductionLocationSummary, ScopedGoodSummary, ScopedMarketSummary,
 };
 use crate::insights::population::workspace::*;
+use crate::insights::population_growth::workspace::*;
 use crate::insights::religion::workspace::*;
 use crate::insights::rgo::workspace::*;
 use crate::insights::state_efficacy::workspace::*;
@@ -36,7 +37,7 @@ use crate::insights::tax::workspace::*;
 use crate::insights::{
     BuildingLevelsScopeSummary, ConcentrationPoint, ControlBandSegment, ControlScopeSummary,
     DevelopmentScopeSummary, DistributionBucket, GoodBreakdownEntry, MarketScopeSummary,
-    PopulationConcentrationPoint, PopulationRankSegment, PopulationScopeSummary,
+    PopulationGrowthScopeSummary, PopulationRankSegment, PopulationScopeSummary,
     PopulationTypeProfileRow, RgoScopeSummary, StateEfficacyScopeSummary, UnrealizedTaxBaseScope,
     WealthScope, WorldSummary,
 };

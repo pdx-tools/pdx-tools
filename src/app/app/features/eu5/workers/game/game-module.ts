@@ -24,6 +24,7 @@ import type {
   MarketInsightData,
   ScopedGoodSummary,
   PopulationInsightData,
+  PopulationGrowthInsightData,
   BuildingLevelsInsightData,
   ReligionInsightData,
   RgoInsightData,
@@ -406,6 +407,9 @@ export const createGame = async (
     },
     getPopulationInsight: (): PopulationInsightData => {
       return app.get_population_insight();
+    },
+    getPopulationGrowthInsight: (): PopulationGrowthInsightData => {
+      return app.get_population_growth_insight();
     },
     getBuildingLevelsInsight: (): BuildingLevelsInsightData => {
       return app.get_building_levels_insight();

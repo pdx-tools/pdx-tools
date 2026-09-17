@@ -19,6 +19,7 @@ import type {
   MarketInsightData,
   ScopedGoodSummary,
   PopulationInsightData,
+  PopulationGrowthInsightData,
   BuildingLevelsInsightData,
   ReligionInsightData,
   RgoInsightData,
@@ -474,6 +475,9 @@ export function saveWorker(
     },
     getPopulationInsight: async (): Promise<PopulationInsightData> => {
       return await saveEngine.getPopulationInsight();
+    },
+    getPopulationGrowthInsight: async (): Promise<PopulationGrowthInsightData> => {
+      return await saveEngine.getPopulationGrowthInsight();
     },
     getBuildingLevelsInsight: async (): Promise<BuildingLevelsInsightData> => {
       return await saveEngine.getBuildingLevelsInsight();
