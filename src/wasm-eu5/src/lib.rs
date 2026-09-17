@@ -22,7 +22,7 @@ use eu5app::insights::religion::presentation::ReligionInsightData;
 use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
-use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope};
+use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope, WorldSummary};
 use eu5app::{
     CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, UiCountryIdx,
 };
@@ -341,6 +341,7 @@ pub struct Eu5AppMetadata {
     pub playthrough_name: String,
     /// Human players in save order. Empty for observer games.
     pub players: Vec<Eu5PlayerData>,
+    pub world: WorldSummary,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
@@ -595,6 +596,7 @@ impl Eu5App {
                     country_idx: p.country.into(),
                 })
                 .collect(),
+            world: self.app.world_summary(),
         })
     }
 

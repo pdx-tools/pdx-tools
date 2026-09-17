@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import type {
   ControlScopeSummary,
   ControlTopLocation,
@@ -20,7 +20,7 @@ import {
   ordinalRamp,
   seriesColor,
 } from "@/components/viz/echartsTheme";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -48,18 +48,18 @@ function formatPercent(value: number, digits = 1) {
 }
 
 function ControlScopeHeader({ data }: { data?: ControlScopeSummary }) {
-  if (!data) return <InsightScopeHeaderSkeleton />;
+  if (!data) return <InsightReadoutSkeleton />;
 
+  // Control is a ratio, so it leads; the ledger says what it costs and how
+  // much development sits in the weakly held bands.
   return (
-    <InsightScopeHeader>
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem
-        label={data.isEmpty ? "Countries" : "Entities"}
-        value={formatInt(data.countryCount)}
+    <InsightReadout figure={formatPercent(data.weightedAvgControl)} unit="control">
+      <ReadoutFigure value={formatInt(Math.round(data.lostDevelopment))} label="development lost" />
+      <ReadoutFigure
+        value={formatPercent(data.weakControlDevelopmentShare, 0)}
+        label="of development under 50% control"
       />
-      <StatItem label="Avg Control" value={formatPercent(data.weightedAvgControl)} />
-      <StatItem label="Lost Dev" value={formatFloat(data.lostDevelopment, 1)} />
-    </InsightScopeHeader>
+    </InsightReadout>
   );
 }
 
@@ -82,21 +82,21 @@ export function ControlInsight() {
         <>
           {barCountries.length > 0 && (
             <section>
-              <SectionTitle>Where is control costing the most development?</SectionTitle>
+              <SectionTitle>Development lost by country</SectionTitle>
               <ControlLossBars countries={barCountries} />
             </section>
           )}
 
           {scatterCountries.length >= 2 && (
             <section>
-              <SectionTitle>Which powers combine scale with weak control?</SectionTitle>
+              <SectionTitle>Control vs development by country</SectionTitle>
               <ControlScaleScatter countries={scatterCountries} />
             </section>
           )}
 
           {topLocations.length > 0 && (
             <section>
-              <SectionTitle>Which locations deserve attention first?</SectionTitle>
+              <SectionTitle>Top development-loss locations</SectionTitle>
               <ControlTopLocations locations={topLocations} />
             </section>
           )}

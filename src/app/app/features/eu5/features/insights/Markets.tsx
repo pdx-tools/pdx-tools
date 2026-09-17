@@ -22,7 +22,7 @@ import {
   goodsDimensions32,
 } from "../../components/icons/goods";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { MarketProductionLocations } from "./MarketProductionLocations";
 import { GoodsMarketsHeatmap } from "./GoodsMarketsHeatmap";
 import {
@@ -145,17 +145,23 @@ export function buildGoodsPriceArrowData(
 }
 
 function MarketsScopeHeader({ data }: { data?: MarketScopeSummary }) {
-  if (!data) return <InsightScopeHeaderSkeleton />;
+  if (!data) return <InsightReadoutSkeleton />;
 
+  // Every chart below is about shortage, so the ledger gives it a scale:
+  // the demand it fails, the access that explains it, and the market count,
+  // which shifts over a campaign.
   return (
-    <InsightScopeHeader>
-      <StatItem label="Markets" value={formatInt(data.marketCount)} />
-      <StatItem label="Goods" value={formatInt(data.goodCount)} />
-      <StatItem label="Market Value" value={formatInt(data.marketValue)} />
-      <StatItem label="Shortage $" value={formatInt(data.shortageValue)} />
-      <StatItem label="Surplus $" value={formatInt(data.surplusValue)} />
-      <StatItem label="Avg Access" value={`${formatFloat(data.avgMarketAccess * 100, 0)}%`} />
-    </InsightScopeHeader>
+    <InsightReadout figure={formatInt(Math.round(data.marketValue))} unit="market value">
+      <ReadoutFigure
+        value={formatInt(Math.round(data.shortageValue))}
+        label={`shortage, ${formatFloat(data.unmetDemandShare * 100, 0)}% of demand unmet`}
+      />
+      <ReadoutFigure
+        value={`${formatFloat(data.avgMarketAccess * 100, 0)}%`}
+        label="market access"
+      />
+      <ReadoutFigure value={formatInt(data.marketCount)} label="markets" />
+    </InsightReadout>
   );
 }
 
@@ -178,32 +184,28 @@ export function MarketsInsight() {
         <>
           {goods.length > 0 && (
             <section>
-              <SectionTitle>
-                What is the selected scope missing, and what is it overproducing?
-              </SectionTitle>
+              <SectionTitle>Shortage and surplus by good</SectionTitle>
               <GoodsPressureChart goods={goods} />
             </section>
           )}
 
           {markets.length >= 2 && (
             <section>
-              <SectionTitle>Which markets matter most, and which are stressed?</SectionTitle>
+              <SectionTitle>Shortage vs market value by market</SectionTitle>
               <MarketsStressChart markets={markets} />
             </section>
           )}
 
           {goods.length >= 2 && markets.length >= 2 && cells.length > 0 && (
             <section>
-              <SectionTitle>
-                Is the shortage systemic or localized to specific markets?
-              </SectionTitle>
+              <SectionTitle>Supply balance by good and market</SectionTitle>
               <GoodsMarketsHeatmap goods={goods} markets={markets} cells={cells} />
             </section>
           )}
 
           {topProduction.length > 0 && (
             <section>
-              <SectionTitle>Where should I look first?</SectionTitle>
+              <SectionTitle>Top production locations</SectionTitle>
               <MarketProductionLocations locations={topProduction} />
             </section>
           )}
@@ -483,17 +485,17 @@ export function MarketGoodDetail({ good }: { good: ScopedGoodSummary }) {
       </div>
 
       <section>
-        <SectionTitle>Where does {good.good.name} come from, and who gets it?</SectionTitle>
+        <SectionTitle>{good.good.name} supply and demand flow</SectionTitle>
         <MarketGoodSankey good={good} />
       </section>
 
       <section>
-        <SectionTitle>Are demand categories receiving what they asked for?</SectionTitle>
+        <SectionTitle>Demand fulfillment by category</SectionTitle>
         <MarketGoodFulfillmentChart good={good} />
       </section>
 
       <section>
-        <SectionTitle>How has the price moved?</SectionTitle>
+        <SectionTitle>Price history</SectionTitle>
         <MarketGoodPriceHistoryChart good={good} />
       </section>
     </div>

@@ -16,6 +16,6 @@ export const MAP_MODES: ModeConfig[] = [
   { value: "rgoLevel", label: "RGO Level" },
   { value: "buildingLevels", label: "Building Levels" },
   { value: "population", label: "Population" },
-  { value: "stateEfficacy", label: "State Efficacy" },
+  { value: "stateEfficacy", label: "Effective Development" },
   { value: "populationGrowth", label: "Population Growth" },
 ];

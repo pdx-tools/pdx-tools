@@ -4,7 +4,12 @@ import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { formatCompact, formatInt } from "@/lib/format";
 import { Eu5Flag } from "./components/flags/Eu5Flag";
-import { useEu5MapMode, useEu5SelectionState, useSetEu5InsightPanelWidth } from "./store";
+import {
+  useEu5MapMode,
+  useEu5SelectionState,
+  useEu5World,
+  useSetEu5InsightPanelWidth,
+} from "./store";
 import { StateEfficacyInsight } from "./features/insights/StateEfficacy";
 import { ControlInsight } from "./features/insights/Control";
 import { DevelopmentInsight } from "./features/insights/DevelopmentInsight";
@@ -138,7 +143,7 @@ export const MAP_MODE_TITLES = {
   political: "Great powers",
   control: "Control",
   development: "Development",
-  stateEfficacy: "State Efficacy",
+  stateEfficacy: "Effective Development",
   wealth: "Wealth",
   unrealizedTaxBase: "Tax Base Gap",
   markets: "Markets",
@@ -160,10 +165,41 @@ function InsightPanelTitle() {
   if (identity) return <ProfilePanelTitle identity={identity} />;
 
   return (
-    <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
-      {MAP_MODE_TITLES[currentMapMode] ?? "Insights"}
+    <span className="flex min-w-0 flex-col gap-1">
+      <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+        {MAP_MODE_TITLES[currentMapMode] ?? "Insights"}
+      </span>
+      <InsightScopeLine />
     </span>
   );
+}
+
+function InsightScopeLine() {
+  const selection = useEu5SelectionState();
+  const world = useEu5World();
+
+  const parts: string[] = [];
+  if (selection == null || selection.isEmpty) {
+    parts.push("World", countOf(world.locationCount, "location"));
+    parts.push(countOf(world.countryCount, "country", "countries"));
+  } else {
+    const name =
+      selection.preset === "players" ? "Players" : (selection.scopeDisplayName ?? "Selection");
+    parts.push(name, countOf(selection.locationCount, "location"));
+    if (selection.entityCount > 1) {
+      parts.push(countOf(selection.entityCount, "country", "countries"));
+    }
+  }
+
+  return (
+    <span className="truncate font-game-num text-[10.5px] text-game-ink-500 tabular-nums">
+      {parts.join(" · ")}
+    </span>
+  );
+}
+
+function countOf(n: number, singular: string, plural = `${singular}s`) {
+  return `${formatInt(n)} ${n === 1 ? singular : plural}`;
 }
 
 function ProfilePanelTitle({ identity }: { identity: ActiveProfileIdentity }) {

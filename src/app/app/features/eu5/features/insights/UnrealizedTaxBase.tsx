@@ -15,35 +15,43 @@ import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { UnrealizedTaxBaseTopLocations } from "./UnrealizedTaxBaseTopLocations";
 import { RealizationHistogram } from "./RealizationHistogram";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { SectionTitle, StatItem } from "../../components";
+import { SectionTitle } from "../../components";
 
 const BAR_CAP = 25;
+
+function formatPercent(value: number, digits = 0) {
+  return `${formatFloat(value * 100, digits)}%`;
+}
 
 function UnrealizedTaxBaseScopeHeader() {
   const { data, error, loading } = useEu5SelectionTrigger((engine) =>
     engine.trigger.getUnrealizedTaxBaseScope(),
   );
 
-  if (loading && !data) {
-    return <InsightScopeHeaderSkeleton />;
-  }
-
+  if (loading && !data) return <InsightReadoutSkeleton />;
   if (error && !data) return <Eu5InsightErrorState error={error} />;
   if (!data) return null;
 
+  // The gap is a to-do list, not a distribution: the ledger says how much of
+  // the wealth it is and whether a few locations hold most of it.
   return (
-    <InsightScopeHeader>
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="Tax Base Gap" value={formatInt(data.unrealizedTaxBase)} />
-      <StatItem label="Realization" value={`${formatFloat(data.realizationRatio * 100, 1)}%`} />
-    </InsightScopeHeader>
+    <InsightReadout figure={formatInt(Math.round(data.unrealizedTaxBase))} unit="tax base gap">
+      <ReadoutFigure
+        value={formatPercent(data.unrealizedRatio, 1)}
+        label={`of ${formatInt(Math.round(data.totalWealth))} wealth`}
+      />
+      <ReadoutFigure
+        value={formatPercent(data.topDecileShare)}
+        label="in the top 10% of locations"
+      />
+    </InsightReadout>
   );
 }
 
@@ -68,14 +76,14 @@ export function UnrealizedTaxBaseInsight() {
         <>
           {countries.length >= 1 && (
             <section>
-              <SectionTitle>Tax Base Gap by Country · Realization %</SectionTitle>
+              <SectionTitle>Tax base gap by country</SectionTitle>
               <UnrealizedTaxBaseBarChart countries={countries} />
             </section>
           )}
 
           {countries.length >= 2 && (
             <section>
-              <SectionTitle>By Scale · Tax Base vs Wealth</SectionTitle>
+              <SectionTitle>Tax base vs wealth by country</SectionTitle>
               <UnrealizedTaxBaseScatterChart countries={countries} />
             </section>
           )}

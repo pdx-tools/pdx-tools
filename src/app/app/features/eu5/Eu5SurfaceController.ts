@@ -48,7 +48,7 @@ export class Eu5SurfaceController implements CanvasCourierController {
       },
       this.callbacks.onProgress,
     )
-      .then(({ engine, saveDate, playthroughName, players }) => {
+      .then(({ engine, saveDate, playthroughName, players, world }) => {
         if (generation !== this.loadGeneration) {
           engine.destroy();
           return;
@@ -57,7 +57,7 @@ export class Eu5SurfaceController implements CanvasCourierController {
         this.dispose = () => engine.destroy();
         const filename = this.save.kind === "handle" ? this.save.name : this.save.file.name;
         this.callbacks.onStore(
-          createEu5Store(engine, filename, saveDate, playthroughName, players),
+          createEu5Store(engine, filename, saveDate, playthroughName, players, world),
         );
       })
       .catch((error) => {

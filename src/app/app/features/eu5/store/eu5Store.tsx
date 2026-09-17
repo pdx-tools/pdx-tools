@@ -4,7 +4,7 @@ import { createStore, useStore } from "zustand";
 import type { StoreApi } from "zustand";
 import { isTimelineLive } from "../ui-engine";
 import type { AppEngine, AppState } from "../ui-engine";
-import type { Eu5DateComponents, Eu5PlayerData } from "@/wasm/wasm_eu5";
+import type { Eu5DateComponents, Eu5PlayerData, WorldSummary } from "@/wasm/wasm_eu5";
 
 type Eu5State = {
   engine: AppEngine;
@@ -14,6 +14,7 @@ type Eu5State = {
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
+  world: WorldSummary;
   insightPanelOpen: boolean;
   insightPanelWidth: number;
   setInsightPanelOpen: (open: boolean) => void;
@@ -33,6 +34,7 @@ export const createEu5Store = (
   saveDate: Eu5DateComponents,
   playthroughName: string,
   players: Eu5PlayerData[],
+  world: WorldSummary,
 ): Eu5Store => {
   const store = createStore<Eu5State>()((set) => ({
     engine,
@@ -41,6 +43,7 @@ export const createEu5Store = (
     saveDate,
     playthroughName,
     players,
+    world,
     insightPanelOpen: false,
     insightPanelWidth: 640,
     timelineBarHeight: 0,
@@ -80,6 +83,7 @@ export const useEu5BoxSelectRect = () => useEu5Store((x) => x.appState.boxSelect
 export const useEu5CursorHint = () => useEu5Store((x) => x.appState.cursorHint);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
+export const useEu5World = () => useEu5Store((x) => x.world);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5Players = () => useEu5Store((x) => x.players);
 export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);

@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import type { CountryDevSummary, DevelopmentScopeSummary } from "@/wasm/wasm_eu5";
+import { GameButton } from "@/components/game/Button";
+import type { CountryDevSummary, DevelopmentInsightData } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
@@ -12,31 +13,40 @@ import {
   seriesColor,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Engine } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { SectionTitle, StatItem } from "../../components";
+import { SectionTitle } from "../../components";
 
-function DevelopmentScopeHeader({ data }: { data?: DevelopmentScopeSummary }) {
-  if (!data) return <InsightScopeHeaderSkeleton />;
+function DevelopmentScopeHeader({ data }: { data?: DevelopmentInsightData }) {
+  const engine = useEu5Engine();
+  if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightScopeHeader>
-      <StatItem
-        label={data.isEmpty ? "Nations" : "Entities"}
-        value={formatInt(data.countryCount)}
-      />
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="Development" value={formatFloat(data.totalDevelopment, 1)} />
-      <StatItem label="Avg Dev" value={formatFloat(data.avgDevelopment, 2)} />
-      <StatItem label="Population" value={formatInt(data.totalPopulation)} />
-    </InsightScopeHeader>
+    <InsightReadout
+      figure={formatInt(Math.round(data.scope.totalDevelopment))}
+      unit="total development"
+      action={
+        <GameButton
+          variant="ghost"
+          className="-mr-3 shrink-0"
+          onClick={() => engine.trigger.selectMapMode("stateEfficacy")}
+        >
+          Effective Development
+          <span aria-hidden="true">→</span>
+        </GameButton>
+      }
+    >
+      <ReadoutFigure value={formatFloat(data.scope.avgDevelopment, 1)} label="avg / location" />
+      <ReadoutFigure value={formatFloat(data.distribution.median, 1)} label="median / location" />
+    </InsightReadout>
   );
 }
 
@@ -47,7 +57,7 @@ export function DevelopmentInsight() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <DevelopmentScopeHeader data={insightQuery.data?.scope} />
+      <DevelopmentScopeHeader data={insightQuery.data} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
       ) : insightQuery.loading && !insightQuery.data ? (
@@ -56,7 +66,7 @@ export function DevelopmentInsight() {
         <>
           {countries.length >= 2 && (
             <section>
-              <SectionTitle>Development · Total vs Average per Location</SectionTitle>
+              <SectionTitle>Development by country</SectionTitle>
               <DevelopmentScatterChart countries={countries} />
             </section>
           )}

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import type {
   BuildingLevelsScopeSummary,
   BuildingTypeSummary,
@@ -14,7 +14,7 @@ import { formatFloat, formatInt } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { buildingOwnershipColors } from "../../gameColors";
 import { chartTooltip, getEChartsTheme, markGap } from "@/components/viz/echartsTheme";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -31,14 +31,13 @@ function formatLevels(value: number) {
 }
 
 function BuildingLevelsScopeHeader({ data }: { data?: BuildingLevelsScopeSummary }) {
-  if (!data) return <InsightScopeHeaderSkeleton />;
+  if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightScopeHeader>
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="Levels" value={formatLevels(data.totalLevels)} />
-      <StatItem label="Foreign Levels" value={formatLevels(data.foreignLevels)} />
-    </InsightScopeHeader>
+    <InsightReadout figure={formatLevels(data.totalLevels)} unit="building levels">
+      <ReadoutFigure value={formatLevels(data.medianLevels)} label="median / location" />
+      <ReadoutFigure value={`${formatFloat(data.foreignShare * 100, 1)}%`} label="foreign-owned" />
+    </InsightReadout>
   );
 }
 
@@ -133,8 +132,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
 }
 
 function ForeignShareCallout({ scope }: { scope: BuildingLevelsScopeSummary }) {
-  const share = scope.totalLevels > 0 ? scope.foreignLevels / scope.totalLevels : 0;
-  const pct = share * 100;
+  const pct = scope.foreignShare * 100;
 
   return (
     <div className="flex flex-col gap-2">
@@ -363,35 +361,35 @@ export function BuildingLevelsInsight() {
         <>
           {types.length > 0 && (
             <section>
-              <SectionTitle>What is built here?</SectionTitle>
+              <SectionTitle>Building levels by type</SectionTitle>
               <BuildingTypesChart types={types} />
             </section>
           )}
 
           {totalLevels > 0 && foreignLevels > 0 && scope && (
             <section>
-              <SectionTitle>How foreign-owned is the built environment?</SectionTitle>
+              <SectionTitle>Foreign ownership</SectionTitle>
               <ForeignShareCallout scope={scope} />
             </section>
           )}
 
           {topLocations.length > 0 && (
             <section>
-              <SectionTitle>Top building centers</SectionTitle>
+              <SectionTitle>Top building locations</SectionTitle>
               <DomesticTopLocationsTable locations={topLocations} />
             </section>
           )}
 
           {foreignLocationRows.length > 0 && (
             <section>
-              <SectionTitle>Foreign-owned buildings</SectionTitle>
+              <SectionTitle>Foreign-owned buildings by location</SectionTitle>
               <ForeignBuildingLocationTable rows={foreignLocationRows} />
             </section>
           )}
 
           {foreignOwnerCells.length > 0 && (
             <section>
-              <SectionTitle>Foreign-owned building types</SectionTitle>
+              <SectionTitle>Foreign-owned buildings by type and owner</SectionTitle>
               <ForeignOwnerCellsTable cells={foreignOwnerCells} />
             </section>
           )}
