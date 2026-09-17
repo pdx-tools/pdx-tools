@@ -34,10 +34,11 @@ use crate::insights::rgo::workspace::*;
 use crate::insights::state_efficacy::workspace::*;
 use crate::insights::tax::workspace::*;
 use crate::insights::{
-    BuildingLevelsScopeSummary, ControlBandSegment, ControlScopeSummary, DevelopmentScopeSummary,
-    DistributionBucket, GoodBreakdownEntry, MarketScopeSummary, PopulationConcentrationPoint,
-    PopulationRankSegment, PopulationScopeSummary, PopulationTypeProfileRow, RgoScopeSummary,
-    StateEfficacyScopeSummary, UnrealizedTaxBaseScope, WealthScope,
+    BuildingLevelsScopeSummary, ConcentrationPoint, ControlBandSegment, ControlScopeSummary,
+    DevelopmentScopeSummary, DistributionBucket, GoodBreakdownEntry, MarketScopeSummary,
+    PopulationConcentrationPoint, PopulationRankSegment, PopulationScopeSummary,
+    PopulationTypeProfileRow, RgoScopeSummary, StateEfficacyScopeSummary, UnrealizedTaxBaseScope,
+    WealthScope,
 };
 use crate::overlay::{OverlayBodyConfigSource, OverlayTableSource, TableCellSource};
 use crate::presentation::{CountryRefSource, Eu5Presenter, MarketRefSource};

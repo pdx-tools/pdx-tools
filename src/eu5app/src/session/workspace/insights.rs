@@ -37,6 +37,193 @@ fn political_world_display_rows(
         .collect()
 }
 
+/// Buckets per-location metric values into a histogram with "nice" step
+/// widths, and keeps the ten highest values as ranked locations.
+fn location_distribution(
+    metric_label: &str,
+    mut metrics: Vec<(LocationIdx, f64)>,
+) -> LocationDistribution {
+    if metrics.is_empty() {
+        return LocationDistribution {
+            metric_label: metric_label.to_string(),
+            buckets: vec![],
+            median: 0.0,
+            p90: 0.0,
+            top_locations: vec![],
+        };
+    }
+
+    let min_val = metrics
+        .iter()
+        .map(|(_, v)| *v)
+        .fold(f64::INFINITY, f64::min);
+    let max_val = metrics
+        .iter()
+        .map(|(_, v)| *v)
+        .fold(f64::NEG_INFINITY, f64::max);
+
+    const TARGET_BUCKETS: usize = 20;
+
+    metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
+    let median = percentile_desc(&metrics, 0.5);
+
+    let buckets = if (max_val - min_val).abs() < f64::EPSILON {
+        vec![DistributionBucket {
+            lo: min_val,
+            hi: max_val,
+            count: metrics.len() as u32,
+        }]
+    } else if is_heavy_tailed(min_val, median, max_val) {
+        log_buckets(&metrics, TARGET_BUCKETS)
+    } else {
+        let step = nice_bucket_step(max_val - min_val, TARGET_BUCKETS);
+        let start = (min_val / step).floor() * step;
+        let end = (max_val / step).ceil() * step;
+        let num_buckets = ((end - start) / step).ceil() as usize;
+        let num_buckets = num_buckets.clamp(1, TARGET_BUCKETS * 2);
+        let mut counts = vec![0u32; num_buckets];
+        for (_, v) in &metrics {
+            let b = ((*v - start) / step).floor() as usize;
+            let b = b.min(num_buckets - 1);
+            counts[b] += 1;
+        }
+        counts
+            .into_iter()
+            .enumerate()
+            .map(|(i, count)| DistributionBucket {
+                lo: start + i as f64 * step,
+                hi: start + (i + 1) as f64 * step,
+                count,
+            })
+            .collect()
+    };
+
+    let top_locations: Vec<RankedLocation> = metrics
+        .iter()
+        .take(10)
+        .map(|(idx, value)| RankedLocation {
+            location: *idx,
+            value: *value,
+        })
+        .collect();
+
+    LocationDistribution {
+        metric_label: metric_label.to_string(),
+        buckets,
+        median,
+        p90: percentile_desc(&metrics, 0.9),
+        top_locations,
+    }
+}
+
+/// Linear buckets put a heavy-tailed metric in one bar. When the largest
+/// value dwarfs the typical one, the histogram spreads the tail out on a
+/// log ladder instead. Negative values stay linear: a log ladder has no
+/// place for them.
+fn is_heavy_tailed(min: f64, median: f64, max: f64) -> bool {
+    const TAIL_RATIO: f64 = 20.0;
+    min >= 0.0 && median > 0.0 && max / median > TAIL_RATIO
+}
+
+/// Buckets on a 1-2-5 ladder (1, 2, 5, 10, 20, 50, ...). Zeros get a bucket
+/// of their own, and everything below the ladder's first rung shares one
+/// bucket so the ladder does not chase the smallest fractions down.
+fn log_buckets(
+    sorted_desc: &[(LocationIdx, f64)],
+    target_buckets: usize,
+) -> Vec<DistributionBucket> {
+    const LADDER: [f64; 3] = [1.0, 2.0, 5.0];
+    let rung = |i: i32| LADDER[i.rem_euclid(3) as usize] * 10f64.powi(i.div_euclid(3));
+
+    let positives: Vec<f64> = sorted_desc
+        .iter()
+        .map(|(_, v)| *v)
+        .filter(|v| *v > 0.0)
+        .collect();
+    let zero_count = (sorted_desc.len() - positives.len()) as u32;
+    let Some(&max) = positives.first() else {
+        return vec![DistributionBucket {
+            lo: 0.0,
+            hi: 0.0,
+            count: zero_count,
+        }];
+    };
+
+    // The top rung is the first ladder value above the maximum. The bottom
+    // rung is the ladder value at or under the 5th percentile of positive
+    // values, but never so low that the ladder outgrows the bucket budget.
+    let top = {
+        let mut i = (max.log10() * 3.0).floor() as i32;
+        while rung(i) <= max {
+            i += 1;
+        }
+        i
+    };
+    let p5 =
+        positives[(positives.len() - 1) - ((positives.len() - 1) as f64 * 0.05).round() as usize];
+    let bottom = ((p5.log10() * 3.0).floor() as i32).max(top - target_buckets as i32);
+
+    let mut buckets: Vec<DistributionBucket> = Vec::new();
+    if zero_count > 0 {
+        buckets.push(DistributionBucket {
+            lo: 0.0,
+            hi: 0.0,
+            count: zero_count,
+        });
+    }
+    let below = positives.iter().filter(|v| **v < rung(bottom)).count() as u32;
+    if below > 0 {
+        buckets.push(DistributionBucket {
+            lo: 0.0,
+            hi: rung(bottom),
+            count: below,
+        });
+    }
+    for i in bottom..top {
+        let (lo, hi) = (rung(i), rung(i + 1));
+        let count = positives.iter().filter(|v| **v >= lo && **v < hi).count() as u32;
+        buckets.push(DistributionBucket { lo, hi, count });
+    }
+    buckets
+}
+
+/// The concentration curve of values sorted high to low: how much of the
+/// total the top `n` locations hold, for every `n`.
+fn concentration_curve(sorted_desc: impl ExactSizeIterator<Item = f64>) -> Vec<ConcentrationPoint> {
+    let location_count = sorted_desc.len() as u32;
+    let values: Vec<f64> = sorted_desc.collect();
+    let total: f64 = values.iter().sum();
+    let mut cumulative_value = 0.0;
+    values
+        .into_iter()
+        .enumerate()
+        .map(|(idx, value)| {
+            cumulative_value += value;
+            ConcentrationPoint {
+                location_rank: idx as u32 + 1,
+                location_count,
+                value,
+                cumulative_value,
+                share: if total > 0.0 {
+                    cumulative_value / total
+                } else {
+                    0.0
+                },
+            }
+        })
+        .collect()
+}
+
+/// The nearest-rank percentile of metrics sorted high to low. `q` is a
+/// fraction of 1, so 0.5 is the median.
+fn percentile_desc(sorted_desc: &[(LocationIdx, f64)], q: f64) -> f64 {
+    let Some(last) = sorted_desc.len().checked_sub(1) else {
+        return 0.0;
+    };
+    let ascending_rank = (last as f64 * q).round() as usize;
+    sorted_desc[last - ascending_rank].1
+}
+
 impl<'bump> Eu5Workspace<'bump> {
     pub(crate) fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
         #[derive(Default)]
@@ -201,71 +388,12 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     pub(crate) fn state_efficacy_location_distribution(&self) -> LocationDistribution {
-        let mut metrics = self.state_efficacy_location_metrics();
-
-        if metrics.is_empty() {
-            return LocationDistribution {
-                metric_label: "State Efficacy".to_string(),
-                buckets: vec![],
-                top_locations: vec![],
-            };
-        }
-
-        let min_val = metrics
-            .iter()
-            .map(|(_, v, _, _, _)| *v)
-            .fold(f64::INFINITY, f64::min);
-        let max_val = metrics
-            .iter()
-            .map(|(_, v, _, _, _)| *v)
-            .fold(f64::NEG_INFINITY, f64::max);
-
-        const TARGET_BUCKETS: usize = 20;
-
-        let buckets = if (max_val - min_val).abs() < f64::EPSILON {
-            vec![DistributionBucket {
-                lo: min_val,
-                hi: max_val,
-                count: metrics.len() as u32,
-            }]
-        } else {
-            let step = nice_bucket_step(max_val - min_val, TARGET_BUCKETS);
-            let start = (min_val / step).floor() * step;
-            let end = (max_val / step).ceil() * step;
-            let num_buckets = ((end - start) / step).ceil() as usize;
-            let num_buckets = num_buckets.clamp(1, TARGET_BUCKETS * 2);
-            let mut counts = vec![0u32; num_buckets];
-            for (_, value, _, _, _) in &metrics {
-                let b = ((*value - start) / step).floor() as usize;
-                let b = b.min(num_buckets - 1);
-                counts[b] += 1;
-            }
-            counts
-                .into_iter()
-                .enumerate()
-                .map(|(i, count)| DistributionBucket {
-                    lo: start + i as f64 * step,
-                    hi: start + (i + 1) as f64 * step,
-                    count,
-                })
-                .collect()
-        };
-
-        metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
-        let top_locations: Vec<RankedLocation> = metrics
-            .iter()
-            .take(10)
-            .map(|(idx, value, _, _, _)| RankedLocation {
-                location: *idx,
-                value: *value,
-            })
+        let metrics = self
+            .state_efficacy_location_metrics()
+            .into_iter()
+            .map(|(idx, value, _, _, _)| (idx, value))
             .collect();
-
-        LocationDistribution {
-            metric_label: "State Efficacy".to_string(),
-            buckets,
-            top_locations,
-        }
+        location_distribution("Effective Development", metrics)
     }
 
     pub(crate) fn state_efficacy_top_locations(&self) -> Vec<StateEfficacyTopLocation> {
@@ -362,70 +490,7 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        if metrics.is_empty() {
-            return LocationDistribution {
-                metric_label: metric_label.to_string(),
-                buckets: vec![],
-                top_locations: vec![],
-            };
-        }
-
-        let min_val = metrics
-            .iter()
-            .map(|(_, v)| *v)
-            .fold(f64::INFINITY, f64::min);
-        let max_val = metrics
-            .iter()
-            .map(|(_, v)| *v)
-            .fold(f64::NEG_INFINITY, f64::max);
-
-        const TARGET_BUCKETS: usize = 20;
-
-        let buckets = if (max_val - min_val).abs() < f64::EPSILON {
-            vec![DistributionBucket {
-                lo: min_val,
-                hi: max_val,
-                count: metrics.len() as u32,
-            }]
-        } else {
-            let step = nice_bucket_step(max_val - min_val, TARGET_BUCKETS);
-            let start = (min_val / step).floor() * step;
-            let end = (max_val / step).ceil() * step;
-            let num_buckets = ((end - start) / step).ceil() as usize;
-            let num_buckets = num_buckets.clamp(1, TARGET_BUCKETS * 2);
-            let mut counts = vec![0u32; num_buckets];
-            for (_, v) in &metrics {
-                let b = ((*v - start) / step).floor() as usize;
-                let b = b.min(num_buckets - 1);
-                counts[b] += 1;
-            }
-            counts
-                .into_iter()
-                .enumerate()
-                .map(|(i, count)| DistributionBucket {
-                    lo: start + i as f64 * step,
-                    hi: start + (i + 1) as f64 * step,
-                    count,
-                })
-                .collect()
-        };
-
-        let mut sorted_metrics = metrics;
-        sorted_metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
-        let top_locations: Vec<RankedLocation> = sorted_metrics
-            .iter()
-            .take(10)
-            .map(|(idx, value)| RankedLocation {
-                location: *idx,
-                value: *value,
-            })
-            .collect();
-
-        LocationDistribution {
-            metric_label: metric_label.to_string(),
-            buckets,
-            top_locations,
-        }
+        location_distribution(metric_label, metrics)
     }
 
     /// Development insight: per-country aggregates + top locations by development,
@@ -620,10 +685,12 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
+        let concentration = concentration_curve(all_locs.iter().map(|(_, wealth, ..)| *wealth));
         let distribution = self.selection_location_distribution();
 
         WealthInsightData {
             countries,
+            concentration,
             top_locations,
             distribution,
         }
@@ -2270,6 +2337,99 @@ impl<'bump> Eu5Workspace<'bump> {
 mod tests {
     use super::*;
     use eu5save::models::CountryIdx;
+
+    #[test]
+    fn location_distribution_buckets_cover_the_range_and_ranks_the_top() {
+        let metrics: Vec<(LocationIdx, f64)> = [0.2, 1.7, 0.9, 3.4, 0.0]
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (LocationIdx::new(i as u32), v))
+            .collect();
+
+        let dist = location_distribution("Growth", metrics);
+
+        assert_eq!(dist.metric_label, "Growth");
+        assert_eq!(dist.buckets.first().map(|b| b.lo), Some(0.0));
+        assert!(dist.buckets.last().map(|b| b.hi >= 3.4).unwrap_or(false));
+        assert_eq!(dist.buckets.iter().map(|b| b.count).sum::<u32>(), 5);
+        assert_eq!(dist.median, 0.9);
+        assert_eq!(dist.p90, 3.4);
+        let top: Vec<f64> = dist.top_locations.iter().map(|r| r.value).collect();
+        assert_eq!(top, vec![3.4, 1.7, 0.9, 0.2, 0.0]);
+    }
+
+    #[test]
+    fn heavy_tailed_metrics_get_log_buckets() {
+        let values = [
+            0.0, 0.0, 0.3, 1.5, 3.0, 7.0, 12.0, 40.0, 95.0, 400.0, 1800.0,
+        ];
+        let metrics: Vec<(LocationIdx, f64)> = values
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (LocationIdx::new(i as u32), v))
+            .collect();
+
+        let dist = location_distribution("Wealth", metrics);
+
+        let zeros = dist.buckets.first().unwrap();
+        assert_eq!((zeros.lo, zeros.hi, zeros.count), (0.0, 0.0, 2));
+        assert_eq!(dist.buckets.iter().map(|b| b.count).sum::<u32>(), 11);
+        assert!(dist.buckets.last().map(|b| b.hi >= 1800.0).unwrap_or(false));
+        // Every rung after the zero bucket is on the 1-2-5 ladder.
+        for w in dist.buckets[1..].windows(2) {
+            assert_eq!(w[0].hi, w[1].lo);
+            let ratio = w[1].hi / w[1].lo;
+            assert!(
+                (ratio - 2.0).abs() < 1e-9 || (ratio - 2.5).abs() < 1e-9,
+                "{ratio}"
+            );
+        }
+        assert!(dist.buckets.len() <= 22);
+    }
+
+    #[test]
+    fn bell_shaped_metrics_stay_linear() {
+        let metrics: Vec<(LocationIdx, f64)> = (0..100)
+            .map(|i| (LocationIdx::new(i), 20.0 + (i % 40) as f64))
+            .collect();
+        let dist = location_distribution("Development", metrics);
+        let step = dist.buckets[0].hi - dist.buckets[0].lo;
+        assert!(
+            dist.buckets
+                .iter()
+                .all(|b| (b.hi - b.lo - step).abs() < 1e-9)
+        );
+    }
+
+    #[test]
+    fn concentration_curve_accumulates_shares() {
+        let points = concentration_curve([50.0, 30.0, 20.0].into_iter());
+        let shares: Vec<f64> = points.iter().map(|p| p.share).collect();
+        assert_eq!(shares, vec![0.5, 0.8, 1.0]);
+        assert_eq!(points[1].cumulative_value, 80.0);
+        assert!(points.iter().all(|p| p.location_count == 3));
+    }
+
+    #[test]
+    fn percentile_desc_uses_nearest_rank() {
+        let sorted: Vec<(LocationIdx, f64)> = [10.0, 8.0, 6.0, 4.0, 2.0, 1.0]
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (LocationIdx::new(i as u32), v))
+            .collect();
+        assert_eq!(percentile_desc(&sorted, 0.0), 1.0);
+        assert_eq!(percentile_desc(&sorted, 0.5), 6.0);
+        assert_eq!(percentile_desc(&sorted, 0.9), 10.0);
+        assert_eq!(percentile_desc(&sorted, 1.0), 10.0);
+        assert_eq!(percentile_desc(&[], 0.5), 0.0);
+    }
+
+    #[test]
+    fn location_distribution_of_nothing_is_empty() {
+        let dist = location_distribution("Growth", Vec::new());
+        assert!(dist.buckets.is_empty());
+        assert!(dist.top_locations.is_empty());
+    }
 
     fn candidate(
         country_idx_value: u32,
