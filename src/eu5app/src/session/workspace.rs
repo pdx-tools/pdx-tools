@@ -38,7 +38,7 @@ use crate::insights::{
     DevelopmentScopeSummary, DistributionBucket, GoodBreakdownEntry, MarketScopeSummary,
     PopulationConcentrationPoint, PopulationRankSegment, PopulationScopeSummary,
     PopulationTypeProfileRow, RgoScopeSummary, StateEfficacyScopeSummary, UnrealizedTaxBaseScope,
-    WealthScope,
+    WealthScope, WorldSummary,
 };
 use crate::overlay::{OverlayBodyConfigSource, OverlayTableSource, TableCellSource};
 use crate::presentation::{CountryRefSource, Eu5Presenter, MarketRefSource};

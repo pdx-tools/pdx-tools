@@ -45,6 +45,7 @@ import type {
   MarketInsightData,
   ScopedGoodSummary,
   PopulationInsightData,
+  WorldSummary,
   BuildingLevelsInsightData,
   ReligionInsightData,
   RgoInsightData,
@@ -751,6 +752,7 @@ export async function createLoadedEngine(
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
+  world: WorldSummary;
 }> {
   const { offscreen, display, inputConfig } = canvas;
 
@@ -777,5 +779,6 @@ export async function createLoadedEngine(
     saveDate: metadata.date,
     playthroughName: metadata.playthroughName,
     players: metadata.players,
+    world: metadata.world,
   };
 }

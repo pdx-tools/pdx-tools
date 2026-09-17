@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import type {
   RgoInsightData,
   RgoMaterialProfileDelta,
@@ -27,7 +27,7 @@ import {
   goodsAtlasUrl32,
   goodsDimensions32,
 } from "../../components/icons/goods";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -48,14 +48,12 @@ function formatPercent(value: number) {
 }
 
 function RgoScopeHeader({ data }: { data?: RgoScopeSummary }) {
-  if (!data) return <InsightScopeHeaderSkeleton />;
+  if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightScopeHeader>
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="RGO Levels" value={formatInt(data.totalRgoLevel)} />
-      <StatItem label="Avg RGO" value={formatLevel(data.avgRgoLevel)} />
-    </InsightScopeHeader>
+    <InsightReadout figure={formatInt(Math.round(data.totalRgoLevel))} unit="RGO levels">
+      <ReadoutFigure value={formatLevel(data.medianRgoLevel)} label="median / location" />
+    </InsightReadout>
   );
 }
 
@@ -367,14 +365,14 @@ export function RgoInsight() {
         <>
           {materials.length > 0 && (
             <section>
-              <SectionTitle>What raw materials define this selection?</SectionTitle>
+              <SectionTitle>RGO levels by raw material</SectionTitle>
               <RawMaterialScatter materials={materials} />
             </section>
           )}
 
           {!scopeIsEmpty && profileDeltas.length > 0 && (
             <section>
-              <SectionTitle>What makes this selection unusual?</SectionTitle>
+              <SectionTitle>Raw material share vs world</SectionTitle>
               <RawMaterialProfileDeltaChart deltas={profileDeltas} />
             </section>
           )}

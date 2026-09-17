@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
+import { GameButton } from "@/components/game/Button";
 import type {
   CountryStateEfficacy,
   StateEfficacyScopeSummary,
@@ -8,7 +9,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@/lib/tanstack-table";
-import { Eu5DataTable, Eu5MapDataTable, SectionTitle, StatItem } from "../../components";
+import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
@@ -18,10 +19,11 @@ import {
   seriesColor,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Engine } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -30,19 +32,32 @@ import {
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }) {
-  if (!data) return <InsightScopeHeaderSkeleton />;
+  const engine = useEu5Engine();
+  if (!data) return <InsightReadoutSkeleton />;
 
+  // Effective development is development discounted by control, so the
+  // ledger says how much of the development survives the discount.
   return (
-    <InsightScopeHeader>
-      <StatItem
-        label={data.isEmpty ? "Nations" : "Entities"}
-        value={formatInt(data.countryCount)}
+    <InsightReadout
+      figure={formatInt(Math.round(data.totalEfficacy))}
+      unit="effective development"
+      action={
+        <GameButton
+          variant="ghost"
+          className="-mr-3 shrink-0"
+          onClick={() => engine.trigger.selectMapMode("development")}
+        >
+          Development
+          <span aria-hidden="true">→</span>
+        </GameButton>
+      }
+    >
+      <ReadoutFigure
+        value={`${formatFloat(data.realizationRatio * 100, 1)}%`}
+        label={`of ${formatInt(Math.round(data.totalDevelopment))} development`}
       />
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="Effective Dev" value={formatFloat(data.totalEfficacy, 1)} />
-      <StatItem label="Avg Efficacy" value={formatFloat(data.avgEfficacy, 2)} />
-      <StatItem label="Population" value={formatInt(data.totalPopulation)} />
-    </InsightScopeHeader>
+      <ReadoutFigure value={formatFloat(data.medianEfficacy, 1)} label="median / location" />
+    </InsightReadout>
   );
 }
 
@@ -62,29 +77,29 @@ export function StateEfficacyInsight() {
         <>
           {countries.length >= 2 && (
             <section>
-              <SectionTitle>Which powers realize the most territorial capacity?</SectionTitle>
+              <SectionTitle>Effective development by country</SectionTitle>
               <StateEfficacyScatterChart countries={countries} />
             </section>
           )}
 
           {insightQuery.data?.distribution && (
             <section>
-              <SectionTitle>
-                How is effective development distributed across locations?
-              </SectionTitle>
-              <LocationDistributionChart distribution={insightQuery.data.distribution} />
+              <LocationDistributionChart
+                distribution={insightQuery.data.distribution}
+                title="Effective development distribution"
+              />
             </section>
           )}
 
           {insightQuery.data && insightQuery.data.topLocations.length > 0 && (
             <section>
-              <SectionTitle>What are the strongest effective locations?</SectionTitle>
+              <SectionTitle>Top Effective Development Locations</SectionTitle>
               <StateEfficacyTopLocations locations={insightQuery.data.topLocations} />
             </section>
           )}
 
           {countries.length === 0 && !insightQuery.data?.distribution && (
-            <Eu5InsightEmptyState title="No state efficacy data in the selected scope." />
+            <Eu5InsightEmptyState title="No effective development data in the selected scope." />
           )}
         </>
       )}
@@ -135,7 +150,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
       },
       yAxis: {
         type: "value",
-        name: "Avg Efficacy per Location",
+        name: "Avg Effective Development per Location",
         nameLocation: "middle",
         nameGap: 60,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
@@ -158,8 +173,8 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
           const d = params.data as (typeof scatterData)[number];
           return [
             `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Total Efficacy: ${formatFloat(d.totalEfficacy, 1)}`,
-            `Avg per Location: ${formatFloat(d.avgEfficacy, 2)}`,
+            `Total Effective Development: ${formatFloat(d.totalEfficacy, 1)}`,
+            `Avg Effective Development per Location: ${formatFloat(d.avgEfficacy, 2)}`,
             `Locations: ${formatInt(d.locationCount)}`,
             `Population: ${formatInt(d.totalPopulation)}`,
           ].join("<br/>");
@@ -211,7 +226,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
   return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }
 
-const BACK_LABEL = "State Efficacy";
+const BACK_LABEL = "Effective Development";
 const columnHelper = createColumnHelper<StateEfficacyTopLocation>();
 
 function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopLocation[] }) {
@@ -228,7 +243,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
       }),
       columnHelper.accessor("stateEfficacy", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "State Efficacy", variant: "num" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Effective Development", variant: "num" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),

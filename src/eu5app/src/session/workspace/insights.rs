@@ -297,11 +297,9 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    /// Calculate state efficacy scores for all nations
+    /// Calculate effective development scores for all nations.
     ///
-    /// State efficacy measures territorial quality by combining location control and development.
-    /// Formula: Location Efficacy = Control × Development
-    /// National metrics: Total Efficacy (sum), Average Efficacy (mean), Location Count, Total Population
+    /// Effective development combines location control and development.
     pub(crate) fn calculate_state_efficacy_insight(&self) -> StateEfficacyInsightData {
         #[derive(Default)]
         struct EfficacyAggregator {
@@ -313,7 +311,9 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut aggregates: FxHashMap<CountryId, EfficacyAggregator> = FxHashMap::default();
         let mut location_count = 0u32;
         let mut total_efficacy = 0.0f64;
+        let mut total_development = 0.0f64;
         let mut total_population = 0u32;
+        let mut efficacies: Vec<f64> = Vec::new();
 
         for location_entry in self.gamestate.locations.iter() {
             let location = location_entry.location();
@@ -332,7 +332,9 @@ impl<'bump> Eu5Workspace<'bump> {
             let population = self.gamestate.location_population(location) as u32;
             location_count += 1;
             total_efficacy += location_efficacy;
+            total_development += location.development;
             total_population += population;
+            efficacies.push(location_efficacy);
 
             let aggregate = aggregates.entry(location.owner).or_default();
             aggregate.total_efficacy += location_efficacy;
@@ -368,16 +370,20 @@ impl<'bump> Eu5Workspace<'bump> {
             })
         });
 
+        efficacies.sort_by(f64::total_cmp);
+
         StateEfficacyInsightData {
             scope: StateEfficacyScopeSummary {
                 location_count,
                 country_count: results.len() as u32,
                 total_efficacy,
-                avg_efficacy: if location_count > 0 {
-                    total_efficacy / location_count as f64
+                total_development,
+                realization_ratio: if total_development > 0.0 {
+                    total_efficacy / total_development
                 } else {
                     0.0
                 },
+                median_efficacy: efficacies.get(efficacies.len() / 2).copied().unwrap_or(0.0),
                 total_population,
                 is_empty: self.selection_state.is_empty(),
             },
@@ -455,7 +461,7 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::BuildingLevels => "Building Levels",
             MapMode::Wealth | MapMode::Markets => "Wealth",
             MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
-            MapMode::StateEfficacy => "State Efficacy",
+            MapMode::StateEfficacy => "Effective Development",
             MapMode::PopulationGrowth => "Population Growth",
             _ => "Development",
         };
@@ -850,6 +856,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut good_market_cells: Vec<GoodMarketBalanceCell<'_>> = Vec::new();
 
         let mut total_market_value = 0.0f64;
+        let mut total_demand_value = 0.0f64;
         let mut total_shortage_value = 0.0f64;
         let mut total_surplus_value = 0.0f64;
 
@@ -876,6 +883,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 let good_value = good.price * good.total_taken;
 
                 market_value += good_value;
+                total_demand_value += good.price * good.demand;
                 shortage_pressure += shortage_value;
                 surplus_pressure += surplus_value;
                 total_taken += good.total_taken;
@@ -1123,8 +1131,14 @@ impl<'bump> Eu5Workspace<'bump> {
             market_count: markets.len() as u32,
             good_count: goods.len() as u32,
             market_value: total_market_value,
+            demand_value: total_demand_value,
             shortage_value: total_shortage_value,
             surplus_value: total_surplus_value,
+            unmet_demand_share: if total_demand_value > 0.0 {
+                total_shortage_value / total_demand_value
+            } else {
+                0.0
+            },
             avg_market_access: if market_access_count > 0 {
                 market_access_sum / market_access_count as f64
             } else {
@@ -1139,6 +1153,26 @@ impl<'bump> Eu5Workspace<'bump> {
             markets,
             good_market_cells,
             top_production_locations: production_rows,
+        }
+    }
+
+    pub fn world_summary(&self) -> WorldSummary {
+        let mut owners: FxHashSet<CountryId> = FxHashSet::default();
+        let mut location_count = 0u32;
+        let mut total_population = 0u32;
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
+                continue;
+            };
+            owners.insert(owner_id);
+            location_count += 1;
+            total_population += self.gamestate.location_population(loc) as u32;
+        }
+        WorldSummary {
+            location_count,
+            country_count: owners.len() as u32,
+            total_population,
         }
     }
 
@@ -1725,7 +1759,23 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let location_count = loc_agg.len() as u32;
+        let mut location_levels: Vec<f64> = self
+            .gamestate
+            .locations
+            .iter()
+            .filter(|entry| in_scope(entry.idx()) && !entry.location().owner.is_dummy())
+            .map(|entry| {
+                loc_agg
+                    .get(&entry.idx().value())
+                    .map_or(0.0, |location| location.levels)
+            })
+            .collect();
+        location_levels.sort_by(f64::total_cmp);
+        let location_count = location_levels.len() as u32;
+        let median_levels = location_levels
+            .get(location_levels.len() / 2)
+            .copied()
+            .unwrap_or(0.0);
 
         // Build type summaries (all types, sorted by levels descending). Keep
         // the borrowed kind alongside each entry so we can sort by key without
@@ -1858,7 +1908,13 @@ impl<'bump> Eu5Workspace<'bump> {
             scope: BuildingLevelsScopeSummary {
                 location_count,
                 total_levels,
+                median_levels,
                 foreign_levels: total_foreign_levels,
+                foreign_share: if total_levels > 0.0 {
+                    total_foreign_levels / total_levels
+                } else {
+                    0.0
+                },
                 foreign_location_count,
                 foreign_owner_count,
             },
@@ -1874,8 +1930,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn get_wealth_scope(&self) -> WealthScope {
         let is_empty = self.selection_state.is_empty();
-        let mut total_wealth = 0.0f64;
-        let mut location_count = 0u32;
+        let mut wealths: Vec<f64> = Vec::new();
 
         for entry in self.gamestate.locations.iter() {
             let loc = entry.location();
@@ -1885,15 +1940,20 @@ impl<'bump> Eu5Workspace<'bump> {
             if !is_empty && !self.selection_state.contains(entry.idx()) {
                 continue;
             }
-            total_wealth += loc.possible_tax;
-            location_count += 1;
+            wealths.push(loc.possible_tax);
         }
 
+        wealths.sort_by(|a, b| b.total_cmp(a));
+        let location_count = wealths.len();
+        let total_wealth: f64 = wealths.iter().sum();
+        let top_decile: f64 = wealths.iter().take(location_count.div_ceil(10)).sum();
+
         WealthScope {
-            location_count,
+            location_count: location_count as u32,
             total_wealth,
-            avg_wealth: if location_count > 0 {
-                total_wealth / location_count as f64
+            median_wealth: wealths.get(location_count / 2).copied().unwrap_or(0.0),
+            top_decile_share: if total_wealth > 0.0 {
+                top_decile / total_wealth
             } else {
                 0.0
             },
@@ -1903,9 +1963,8 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn get_unrealized_tax_base_scope(&self) -> UnrealizedTaxBaseScope {
         let is_empty = self.selection_state.is_empty();
-        let mut total_tax_base = 0.0f64;
         let mut total_wealth = 0.0f64;
-        let mut location_count = 0u32;
+        let mut gaps: Vec<f64> = Vec::new();
 
         for entry in self.gamestate.locations.iter() {
             let loc = entry.location();
@@ -1915,18 +1974,25 @@ impl<'bump> Eu5Workspace<'bump> {
             if !is_empty && !self.selection_state.contains(entry.idx()) {
                 continue;
             }
-            total_tax_base += loc.tax;
             total_wealth += loc.possible_tax;
-            location_count += 1;
+            gaps.push(loc.possible_tax - loc.tax);
         }
 
-        let unrealized_tax_base = total_wealth - total_tax_base;
+        gaps.sort_by(|a, b| b.total_cmp(a));
+        let unrealized_tax_base: f64 = gaps.iter().sum();
+        let top_decile: f64 = gaps.iter().take(gaps.len().div_ceil(10)).sum();
 
         UnrealizedTaxBaseScope {
-            location_count,
+            location_count: gaps.len() as u32,
+            total_wealth,
             unrealized_tax_base,
-            realization_ratio: if total_wealth > 0.0 {
-                total_tax_base / total_wealth
+            unrealized_ratio: if total_wealth > 0.0 {
+                unrealized_tax_base / total_wealth
+            } else {
+                0.0
+            },
+            top_decile_share: if unrealized_tax_base > 0.0 {
+                top_decile / unrealized_tax_base
             } else {
                 0.0
             },
@@ -1958,7 +2024,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let mut scoped_total = 0.0_f64;
         let mut global_total = 0.0_f64;
-        let mut scoped_loc_count = 0u32;
+        let mut scoped_levels: Vec<f64> = Vec::new();
         let mut scoped_locs: Vec<LocEntry<'_>> = Vec::new();
 
         for entry in self.gamestate.locations.iter() {
@@ -1978,7 +2044,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
             if in_scope {
                 scoped_total += loc.rgo_level;
-                scoped_loc_count += 1;
+                scoped_levels.push(loc.rgo_level);
 
                 let mat = scoped_mat.entry(raw_material).or_default();
                 mat.total_rgo_level += loc.rgo_level;
@@ -2092,14 +2158,14 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
+        scoped_levels.sort_by(f64::total_cmp);
         let scope = RgoScopeSummary {
-            location_count: scoped_loc_count,
+            location_count: scoped_levels.len() as u32,
             total_rgo_level: scoped_total,
-            avg_rgo_level: if scoped_loc_count > 0 {
-                scoped_total / scoped_loc_count as f64
-            } else {
-                0.0
-            },
+            median_rgo_level: scoped_levels
+                .get(scoped_levels.len() / 2)
+                .copied()
+                .unwrap_or(0.0),
             is_empty: is_selection_empty,
         };
 
@@ -2124,6 +2190,7 @@ impl<'bump> Eu5Workspace<'bump> {
             ("great", 0.75, 0.90),
             ("perfect", 0.90, 1.01),
         ];
+        const WEAK_CONTROL_BANDS: usize = 2;
 
         #[derive(Default, Clone, Copy)]
         struct ControlBandAgg {
@@ -2164,6 +2231,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut scope_total_development = 0.0f64;
         let mut scope_effective_development = 0.0f64;
         let mut scope_lost_development = 0.0f64;
+        let mut scope_weak_control_development = 0.0f64;
         let mut scope_location_count = 0u32;
 
         for entry in self.gamestate.locations.iter() {
@@ -2197,6 +2265,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 .iter()
                 .position(|(_, lo, hi)| control >= *lo && control < *hi)
                 .unwrap_or(4);
+            if band_idx < WEAK_CONTROL_BANDS {
+                scope_weak_control_development += development;
+            }
             agg.bands[band_idx].development += development;
             agg.bands[band_idx].lost_development += lost_development;
             agg.bands[band_idx].location_count += 1;
@@ -2324,6 +2395,11 @@ impl<'bump> Eu5Workspace<'bump> {
                 effective_development: scope_effective_development,
                 lost_development: scope_lost_development,
                 weighted_avg_control: scope_weighted_avg_control,
+                weak_control_development_share: if scope_total_development > 0.0 {
+                    scope_weak_control_development / scope_total_development
+                } else {
+                    0.0
+                },
                 is_empty,
             },
             bar_countries,

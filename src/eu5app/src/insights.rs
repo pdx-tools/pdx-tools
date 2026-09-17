@@ -5,6 +5,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
+pub struct WorldSummary {
+    pub location_count: u32,
+    pub country_count: u32,
+    pub total_population: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
 pub struct DevelopmentScopeSummary {
     pub location_count: u32,
     pub country_count: u32,
@@ -21,7 +30,9 @@ pub struct StateEfficacyScopeSummary {
     pub location_count: u32,
     pub country_count: u32,
     pub total_efficacy: f64,
-    pub avg_efficacy: f64,
+    pub total_development: f64,
+    pub realization_ratio: f64,
+    pub median_efficacy: f64,
     pub total_population: u32,
     pub is_empty: bool,
 }
@@ -32,7 +43,8 @@ pub struct StateEfficacyScopeSummary {
 pub struct WealthScope {
     pub location_count: u32,
     pub total_wealth: f64,
-    pub avg_wealth: f64,
+    pub median_wealth: f64,
+    pub top_decile_share: f64,
     pub is_empty: bool,
 }
 
@@ -41,8 +53,10 @@ pub struct WealthScope {
 #[serde(rename_all = "camelCase")]
 pub struct UnrealizedTaxBaseScope {
     pub location_count: u32,
+    pub total_wealth: f64,
     pub unrealized_tax_base: f64,
-    pub realization_ratio: f64,
+    pub unrealized_ratio: f64,
+    pub top_decile_share: f64,
     pub is_empty: bool,
 }
 
@@ -54,8 +68,10 @@ pub struct MarketScopeSummary {
     pub market_count: u32,
     pub good_count: u32,
     pub market_value: f64,
+    pub demand_value: f64,
     pub shortage_value: f64,
     pub surplus_value: f64,
+    pub unmet_demand_share: f64,
     pub avg_market_access: f64,
     pub is_empty: bool,
 }
@@ -131,7 +147,9 @@ pub struct PopulationTypeProfileRow {
 pub struct BuildingLevelsScopeSummary {
     pub location_count: u32,
     pub total_levels: f64,
+    pub median_levels: f64,
     pub foreign_levels: f64,
+    pub foreign_share: f64,
     pub foreign_location_count: u32,
     pub foreign_owner_count: u32,
 }
@@ -146,6 +164,7 @@ pub struct ControlScopeSummary {
     pub effective_development: f64,
     pub lost_development: f64,
     pub weighted_avg_control: f64,
+    pub weak_control_development_share: f64,
     pub is_empty: bool,
 }
 
@@ -174,7 +193,7 @@ pub struct DistributionBucket {
 pub struct RgoScopeSummary {
     pub location_count: u32,
     pub total_rgo_level: f64,
-    pub avg_rgo_level: f64,
+    pub median_rgo_level: f64,
     pub is_empty: bool,
 }
 

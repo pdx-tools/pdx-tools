@@ -14,30 +14,41 @@ import {
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { WealthTopLocations } from "./WealthTopLocations";
-import { InsightScopeHeader, InsightScopeHeaderSkeleton } from "../InsightScopeHeader";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
+import { ConcentrationCurve } from "./ConcentrationCurve";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { SectionTitle, StatItem } from "../../components";
+import { SectionTitle } from "../../components";
+
+function formatPercent(value: number, digits = 0) {
+  return `${formatFloat(value * 100, digits)}%`;
+}
+
+const formatWealthValue = (value: number) => formatFloat(value, 1);
 
 function WealthScopeHeader() {
   const { data, error, loading } = useEu5SelectionTrigger((engine) =>
     engine.trigger.getWealthScope(),
   );
 
-  if (loading && !data) return <InsightScopeHeaderSkeleton />;
+  if (loading && !data) return <InsightReadoutSkeleton />;
   if (error && !data) return <Eu5InsightErrorState error={error} />;
   if (!data) return null;
 
+  // Wealth is heavy-tailed, so the ledger says what a typical location has
+  // and how much sits in the few richest, not the mean nobody is near.
   return (
-    <InsightScopeHeader>
-      <StatItem label="Locations" value={formatInt(data.locationCount)} />
-      <StatItem label="Total Wealth" value={formatInt(data.totalWealth)} />
-      <StatItem label="Avg per Location" value={formatFloat(data.avgWealth, 2)} />
-    </InsightScopeHeader>
+    <InsightReadout figure={formatInt(Math.round(data.totalWealth))} unit="total wealth">
+      <ReadoutFigure value={formatFloat(data.medianWealth, 1)} label="median / location" />
+      <ReadoutFigure
+        value={formatPercent(data.topDecileShare)}
+        label="in the top 10% of locations"
+      />
+    </InsightReadout>
   );
 }
 
@@ -57,7 +68,7 @@ export function WealthInsight() {
         <>
           {countries.length >= 2 && (
             <section>
-              <SectionTitle>Wealth · Total vs Average per Location</SectionTitle>
+              <SectionTitle>Wealth by country</SectionTitle>
               <WealthScatterChart countries={countries} />
             </section>
           )}
@@ -65,6 +76,17 @@ export function WealthInsight() {
           {insightQuery.data?.distribution && (
             <section>
               <LocationDistributionChart distribution={insightQuery.data.distribution} />
+            </section>
+          )}
+
+          {insightQuery.data && insightQuery.data.concentration.length > 1 && (
+            <section>
+              <SectionTitle>Wealth concentration</SectionTitle>
+              <ConcentrationCurve
+                points={insightQuery.data.concentration}
+                metric="wealth"
+                formatValue={formatWealthValue}
+              />
             </section>
           )}
 
