@@ -18,6 +18,7 @@ use eu5app::insights::markets::presentation::{
     MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
 };
 use eu5app::insights::population::presentation::PopulationInsightData;
+use eu5app::insights::population_growth::presentation::PopulationGrowthInsightData;
 use eu5app::insights::religion::presentation::ReligionInsightData;
 use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
@@ -341,6 +342,7 @@ pub struct Eu5AppMetadata {
     pub playthrough_name: String,
     /// Human players in save order. Empty for observer games.
     pub players: Vec<Eu5PlayerData>,
+    /// The whole map, the scope of every insight when nothing is selected.
     pub world: WorldSummary,
 }
 
@@ -588,6 +590,7 @@ impl Eu5App {
             version: self.meta.version,
             date: self.meta.date.clone(),
             playthrough_name: self.meta.playthrough_name.clone(),
+            world: self.app.world_summary(),
             players: self
                 .app
                 .players()
@@ -596,7 +599,6 @@ impl Eu5App {
                     country_idx: p.country.into(),
                 })
                 .collect(),
-            world: self.app.world_summary(),
         })
     }
 
@@ -989,7 +991,7 @@ impl Eu5App {
         into_ts(self.localized().presenter().location_search_entries())
     }
 
-    /// Calculate state efficacy scores for all nations
+    /// Calculate effective development scores for all nations
     #[wasm_bindgen]
     pub fn get_state_efficacy(&self) -> Result<Ts<StateEfficacyInsightData>, JsError> {
         into_ts(
@@ -1141,6 +1143,19 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_population_insight(&self) -> Result<Ts<PopulationInsightData>, JsError> {
         into_ts(self.localized().presenter().calculate_population_insight())
+    }
+
+    /// Population growth insight data: yearly births per country, the
+    /// locations that add the most people, and the growth rate histogram.
+    #[wasm_bindgen]
+    pub fn get_population_growth_insight(
+        &self,
+    ) -> Result<Ts<PopulationGrowthInsightData>, JsError> {
+        into_ts(
+            self.localized()
+                .presenter()
+                .calculate_population_growth_insight(),
+        )
     }
 
     /// Building levels insight data: scoped building type aggregates, foreign owner

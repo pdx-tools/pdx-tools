@@ -27,7 +27,7 @@ export function InsightScopeHeader({ children, stats }: InsightScopeHeaderProps)
 
   return (
     <div className="rounded-panel border border-game-line-strong bg-game-panel-hover px-4 py-3">
-      <div className="flex gap-5">
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
         {children ?? stats?.map((s) => <StatItem key={s.label} label={s.label} value={s.value} />)}
       </div>
     </div>

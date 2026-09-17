@@ -14,6 +14,7 @@ type Eu5State = {
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
+  /** The whole map: the scope of every insight when nothing is selected. */
   world: WorldSummary;
   insightPanelOpen: boolean;
   insightPanelWidth: number;

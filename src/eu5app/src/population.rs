@@ -2,6 +2,14 @@
 
 use eu5save::models::{Gamestate, Location};
 
+/// People per unit of a pop's `size`. The save stores pop sizes in
+/// thousands; [`Gamestate::location_population`] applies the same scale.
+pub const POP_SIZE_SCALE: f64 = 1000.0;
+
+/// The top of a pop's `literacy` range. The save stores literacy as a
+/// percentage, not as a fraction of 1.
+pub const LITERACY_SCALE: f64 = 100.0;
+
 /// Number of population ticks in a year. The game shows the recorded
 /// changes as "Last month change".
 const TICKS_PER_YEAR: f64 = 12.0;
@@ -11,6 +19,14 @@ const TICKS_PER_YEAR: f64 = 12.0;
 /// inverse is a linear scale, not a compound one.
 pub fn annualize_monthly_rate(monthly: f64) -> f64 {
     monthly * TICKS_PER_YEAR
+}
+
+/// The people born in a location in a year at the rate of the last
+/// population tick, in the same unit as [`Gamestate::location_population`].
+pub fn location_yearly_births(location: &Location<'_>) -> f64 {
+    // `location_population` scales pop sizes, the changes keep the raw pop
+    // size unit.
+    annualize_monthly_rate(location.population.changes.reproduction.total() * POP_SIZE_SCALE)
 }
 
 /// The yearly reproduction rate of a location: the people born in the last
@@ -26,10 +42,7 @@ pub fn location_reproduction_rate(gamestate: &Gamestate<'_>, location: &Location
         return 0.0;
     }
 
-    // `location_population` scales pop sizes by 1000, the changes keep the
-    // raw pop size unit.
-    let born = location.population.changes.reproduction.total() * 1000.0;
-    annualize_monthly_rate(born / population)
+    location_yearly_births(location) / population
 }
 
 #[cfg(test)]

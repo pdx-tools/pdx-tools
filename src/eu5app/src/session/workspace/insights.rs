@@ -1,5 +1,7 @@
 use super::*;
-use crate::population::location_reproduction_rate;
+use crate::population::{
+    LITERACY_SCALE, POP_SIZE_SCALE, location_reproduction_rate, location_yearly_births,
+};
 
 const POLITICAL_SCOREBOARD_TOP_COUNT: usize = 10;
 
@@ -297,9 +299,12 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    /// Calculate effective development scores for all nations.
+    /// Calculate effective development scores for all nations
     ///
-    /// Effective development combines location control and development.
+    /// Effective development measures territorial quality by combining location control and development.
+    /// Formula: Effective Development = Control × Development
+    /// National metrics: total effective development, average effective development, location count, and total population.
+    /// Scope metrics: total effective development, total development, realization, and median effective development.
     pub(crate) fn calculate_state_efficacy_insight(&self) -> StateEfficacyInsightData {
         #[derive(Default)]
         struct EfficacyAggregator {
@@ -1156,26 +1161,6 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub fn world_summary(&self) -> WorldSummary {
-        let mut owners: FxHashSet<CountryId> = FxHashSet::default();
-        let mut location_count = 0u32;
-        let mut total_population = 0u32;
-        for entry in self.gamestate.locations.iter() {
-            let loc = entry.location();
-            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
-                continue;
-            };
-            owners.insert(owner_id);
-            location_count += 1;
-            total_population += self.gamestate.location_population(loc) as u32;
-        }
-        WorldSummary {
-            location_count,
-            country_count: owners.len() as u32,
-            total_population,
-        }
-    }
-
     /// Population insight: scoped country population, concentration curve, and
     /// top populated locations for the current selection or whole save.
     pub(crate) fn calculate_population_insight(&self) -> PopulationInsightData {
@@ -1189,26 +1174,15 @@ impl<'bump> Eu5Workspace<'bump> {
         struct CountryPopAgg {
             population: u32,
             location_count: u32,
+            births_per_year: f64,
             ranks: [RankAgg; 4],
         }
 
         let is_empty = self.selection_state.is_empty();
-
-        // When a non-empty selection is active, track total owned locations per country so we
-        // can suppress historical_population (country-level data) for partially-selected countries.
-        let total_country_locations: FxHashMap<CountryId, u32> = if is_empty {
-            FxHashMap::default()
-        } else {
-            let mut counts: FxHashMap<CountryId, u32> = FxHashMap::default();
-            for entry in self.gamestate.locations.iter() {
-                if let Some(owner_id) = entry.location().owner.real_id().map(|r| r.country_id()) {
-                    *counts.entry(owner_id).or_insert(0) += 1;
-                }
-            }
-            counts
-        };
+        let total_country_locations = self.country_location_counts();
 
         let mut scoped_locations: Vec<(LocationIdx, CountryId, u32, Option<usize>)> = Vec::new();
+        let mut country_aggs: FxHashMap<CountryId, CountryPopAgg> = FxHashMap::default();
 
         for entry in self.gamestate.locations.iter() {
             let idx = entry.idx();
@@ -1229,10 +1203,19 @@ impl<'bump> Eu5Workspace<'bump> {
                 LocationRank::Other => None,
             };
             scoped_locations.push((idx, owner_id, population, rank_idx));
+            country_aggs.entry(owner_id).or_default().births_per_year +=
+                location_yearly_births(loc);
         }
 
         let location_count = scoped_locations.len() as u32;
         let total_population: u32 = scoped_locations.iter().map(|(_, _, pop, _)| *pop).sum();
+        // Urban means every ranked settlement above rural. Unranked locations
+        // count in the total but not as urban.
+        let urban_population: u32 = scoped_locations
+            .iter()
+            .filter(|(_, _, _, rank)| rank.is_some_and(|r| r > 0))
+            .map(|(_, _, pop, _)| *pop)
+            .sum();
 
         let mut populations: Vec<u32> =
             scoped_locations.iter().map(|(_, _, pop, _)| *pop).collect();
@@ -1244,7 +1227,6 @@ impl<'bump> Eu5Workspace<'bump> {
             populations[populations.len() / 2]
         };
 
-        let mut country_aggs: FxHashMap<CountryId, CountryPopAgg> = FxHashMap::default();
         let mut rank_totals = [
             RankAgg::default(),
             RankAgg::default(),
@@ -1271,13 +1253,12 @@ impl<'bump> Eu5Workspace<'bump> {
             .filter_map(|(cid, agg)| {
                 let cidx = self.gamestate.countries.get(cid)?;
                 let data = self.gamestate.countries.index(cidx).data()?;
-                let selected = agg.location_count;
-                let total = total_country_locations.get(&cid).copied().unwrap_or(0);
-                let historical_population = if is_empty || selected == total {
-                    data.historical_population.to_vec()
-                } else {
-                    Vec::new()
-                };
+                let historical_population =
+                    if is_empty || Some(&agg.location_count) == total_country_locations.get(&cid) {
+                        data.historical_population.to_vec()
+                    } else {
+                        Vec::new()
+                    };
                 let great_power_rank = data.great_power_rank;
                 let country = self.country_ref_from_country_idx(cidx);
                 let ranks = agg
@@ -1295,6 +1276,12 @@ impl<'bump> Eu5Workspace<'bump> {
                     total_population: agg.population,
                     location_count: agg.location_count,
                     ranks,
+                    growth_rate: if agg.population > 0 {
+                        agg.births_per_year / agg.population as f64
+                    } else {
+                        0.0
+                    },
+                    births_per_year: agg.births_per_year,
                     historical_population,
                     great_power_rank,
                 })
@@ -1309,25 +1296,11 @@ impl<'bump> Eu5Workspace<'bump> {
             })
         });
 
-        let mut cumulative_population = 0u32;
-        let concentration: Vec<PopulationConcentrationPoint> = sorted_locations
-            .iter()
-            .enumerate()
-            .map(|(idx, (_, _, population, _))| {
-                cumulative_population += *population;
-                PopulationConcentrationPoint {
-                    location_rank: idx as u32 + 1,
-                    location_count,
-                    population: *population,
-                    cumulative_population,
-                    population_share: if total_population > 0 {
-                        cumulative_population as f64 / total_population as f64
-                    } else {
-                        0.0
-                    },
-                }
-            })
-            .collect();
+        let concentration = concentration_curve(
+            sorted_locations
+                .iter()
+                .map(|(_, _, population, _)| *population as f64),
+        );
 
         let top_locations: Vec<PopulationTopLocation> = sorted_locations
             .into_iter()
@@ -1354,12 +1327,13 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
+        // Sums stay in the raw pop size unit (thousands of people) and in the
+        // save's literacy unit (0-100). The output rows convert both.
         #[derive(Default)]
         struct TypeAgg {
             population: f64,
             satisfaction_num: f64,
             literacy_num: f64,
-            pop_count: u32,
         }
 
         fn pop_type_id(kind: PopulationType) -> Option<usize> {
@@ -1396,12 +1370,10 @@ impl<'bump> Eu5Workspace<'bump> {
                 baseline_agg[type_idx].population += pop.size;
                 baseline_agg[type_idx].satisfaction_num += pop.satisfaction * pop.size;
                 baseline_agg[type_idx].literacy_num += pop.literacy * pop.size;
-                baseline_agg[type_idx].pop_count += 1;
                 if in_scope {
                     scoped_agg[type_idx].population += pop.size;
                     scoped_agg[type_idx].satisfaction_num += pop.satisfaction * pop.size;
                     scoped_agg[type_idx].literacy_num += pop.literacy * pop.size;
-                    scoped_agg[type_idx].pop_count += 1;
                 }
             }
         }
@@ -1425,9 +1397,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 };
                 PopulationTypeProfileRow {
                     population_type: i,
-                    population: s.population,
+                    population: s.population * POP_SIZE_SCALE,
                     share,
-                    baseline_population: b.population,
+                    baseline_population: b.population * POP_SIZE_SCALE,
                     baseline_share,
                     share_delta: share - baseline_share,
                     avg_satisfaction: if s.population > 0.0 {
@@ -1436,11 +1408,10 @@ impl<'bump> Eu5Workspace<'bump> {
                         0.0
                     },
                     avg_literacy: if s.population > 0.0 {
-                        s.literacy_num / s.population
+                        s.literacy_num / s.population / LITERACY_SCALE
                     } else {
                         0.0
                     },
-                    pop_count: s.pop_count,
                 }
             })
             .collect();
@@ -1451,6 +1422,12 @@ impl<'bump> Eu5Workspace<'bump> {
                 country_count: countries.len() as u32,
                 total_population,
                 median_location_population,
+                urbanization: if total_population > 0 {
+                    urban_population as f64 / total_population as f64
+                } else {
+                    0.0
+                },
+                peasant_population: (scoped_agg[0].population * POP_SIZE_SCALE).floor() as u32,
                 is_empty,
             },
             rank_totals,
@@ -1458,6 +1435,171 @@ impl<'bump> Eu5Workspace<'bump> {
             concentration,
             top_locations,
             type_profile,
+        }
+    }
+
+    /// The whole map: owned locations, owning countries, and their people.
+    pub fn world_summary(&self) -> WorldSummary {
+        let mut owners: FxHashSet<CountryId> = FxHashSet::default();
+        let mut location_count = 0u32;
+        let mut total_population = 0u32;
+        for entry in self.gamestate.locations.iter() {
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
+                continue;
+            };
+            owners.insert(owner_id);
+            location_count += 1;
+            total_population += self.gamestate.location_population(loc) as u32;
+        }
+        WorldSummary {
+            location_count,
+            country_count: owners.len() as u32,
+            total_population,
+        }
+    }
+
+    /// Owned locations per country over the whole map, used to tell a fully
+    /// selected country from a partly selected one.
+    fn country_location_counts(&self) -> FxHashMap<CountryId, u32> {
+        let mut counts: FxHashMap<CountryId, u32> = FxHashMap::default();
+        for entry in self.gamestate.locations.iter() {
+            if let Some(owner_id) = entry.location().owner.real_id().map(|r| r.country_id()) {
+                *counts.entry(owner_id).or_insert(0) += 1;
+            }
+        }
+        counts
+    }
+
+    /// Population growth insight: yearly births per country, the locations
+    /// that add the most people, and how growth rates spread over locations.
+    /// Scoped to the current selection, or all owned locations when empty.
+    pub(crate) fn calculate_population_growth_insight(&self) -> PopulationGrowthInsightData {
+        #[derive(Default)]
+        struct GrowthAgg {
+            births_per_year: f64,
+            population: u32,
+            location_count: u32,
+        }
+
+        /// How many locations the top table keeps.
+        const TOP_LOCATIONS: usize = 50;
+
+        let is_empty = self.selection_state.is_empty();
+        let total_country_locations = self.country_location_counts();
+        let mut aggregates: FxHashMap<CountryId, GrowthAgg> = FxHashMap::default();
+        let mut scoped: Vec<(LocationIdx, f64, f64, u32)> = Vec::new();
+
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
+            if !is_empty && !self.selection_state.contains(idx) {
+                continue;
+            }
+            let loc = entry.location();
+            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
+                continue;
+            };
+
+            let births = location_yearly_births(loc);
+            let rate = location_reproduction_rate(&self.gamestate, loc);
+            let population = self.gamestate.location_population(loc) as u32;
+            scoped.push((idx, rate, births, population));
+
+            let agg = aggregates.entry(owner_id).or_default();
+            agg.births_per_year += births;
+            agg.population += population;
+            agg.location_count += 1;
+        }
+
+        let location_count = scoped.len() as u32;
+        let total_population: u32 = scoped.iter().map(|(_, _, _, pop)| *pop).sum();
+        let births_per_year: f64 = scoped.iter().map(|(_, _, births, _)| *births).sum();
+        let growth_rate = if total_population > 0 {
+            births_per_year / total_population as f64
+        } else {
+            0.0
+        };
+
+        let mut countries: Vec<CountryPopulationGrowth> = aggregates
+            .into_iter()
+            .filter(|(_, agg)| agg.population > 0)
+            .filter_map(|(country_id, agg)| {
+                let country_idx = self.gamestate.countries.get(country_id)?;
+                let data = self.gamestate.countries.index(country_idx).data()?;
+                // The history is country-wide, so a partly selected country
+                // does not get one.
+                let historical_population = if is_empty
+                    || Some(&agg.location_count) == total_country_locations.get(&country_id)
+                {
+                    data.historical_population.to_vec()
+                } else {
+                    Vec::new()
+                };
+                Some(CountryPopulationGrowth {
+                    country: self.country_ref_from_country_idx(country_idx),
+                    growth_rate: agg.births_per_year / agg.population as f64,
+                    births_per_year: agg.births_per_year,
+                    total_population: agg.population,
+                    location_count: agg.location_count,
+                    historical_population,
+                    great_power_rank: data.great_power_rank,
+                })
+            })
+            .collect();
+        countries.sort_by(|a, b| {
+            b.births_per_year
+                .total_cmp(&a.births_per_year)
+                .then_with(|| {
+                    a.country
+                        .country_idx
+                        .value()
+                        .cmp(&b.country.country_idx.value())
+                })
+        });
+
+        // The histogram is in percent per year so the bucket steps read as
+        // the legend and hover do.
+        let distribution = location_distribution(
+            "Growth %/yr",
+            scoped
+                .iter()
+                .map(|(idx, rate, _, _)| (*idx, rate * 100.0))
+                .collect(),
+        );
+
+        scoped.sort_by(|a, b| {
+            b.2.total_cmp(&a.2)
+                .then_with(|| a.0.value().cmp(&b.0.value()))
+        });
+        let top_locations: Vec<PopulationGrowthTopLocation> = scoped
+            .iter()
+            .take_while(|(_, _, births, _)| *births > 0.0)
+            .take(TOP_LOCATIONS)
+            .filter_map(|&(idx, growth_rate, births_per_year, population)| {
+                let loc = self.gamestate.locations.index(idx).location();
+                let owner = self.owner_country_ref_for_location(loc)?;
+                Some(PopulationGrowthTopLocation {
+                    location: idx,
+                    owner,
+                    growth_rate,
+                    births_per_year,
+                    population,
+                })
+            })
+            .collect();
+
+        PopulationGrowthInsightData {
+            scope: PopulationGrowthScopeSummary {
+                location_count,
+                country_count: countries.len() as u32,
+                total_population,
+                births_per_year,
+                growth_rate,
+                is_empty,
+            },
+            countries,
+            top_locations,
+            distribution,
         }
     }
 
@@ -1507,7 +1649,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     continue;
                 };
 
-                let pop_size = (pop.size * 1000.0).floor();
+                let pop_size = (pop.size * POP_SIZE_SCALE).floor();
                 let pop_rel_id = pop.religion;
 
                 let follower = follower_aggs.entry(pop_rel_id).or_default();
@@ -1759,6 +1901,8 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
+        // The median runs over every owned location in scope, so a location
+        // with nothing built counts as zero rather than dropping out.
         let mut location_levels: Vec<f64> = self
             .gamestate
             .locations
@@ -1767,7 +1911,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|entry| {
                 loc_agg
                     .get(&entry.idx().value())
-                    .map_or(0.0, |location| location.levels)
+                    .map_or(0.0, |la| la.levels)
             })
             .collect();
         location_levels.sort_by(f64::total_cmp);
@@ -2190,6 +2334,7 @@ impl<'bump> Eu5Workspace<'bump> {
             ("great", 0.75, 0.90),
             ("perfect", 0.90, 1.01),
         ];
+        /// The bands under 50% control: superficial and functional.
         const WEAK_CONTROL_BANDS: usize = 2;
 
         #[derive(Default, Clone, Copy)]

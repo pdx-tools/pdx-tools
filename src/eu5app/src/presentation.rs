@@ -31,6 +31,7 @@ use crate::insights::markets::presentation::{
     MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
 };
 use crate::insights::population::presentation::PopulationInsightData;
+use crate::insights::population_growth::presentation::PopulationGrowthInsightData;
 use crate::insights::religion::presentation::ReligionInsightData;
 use crate::insights::rgo::presentation::RgoInsightData;
 use crate::insights::state_efficacy::presentation::StateEfficacyInsightData;
@@ -88,6 +89,12 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
     pub fn calculate_population_insight(&self) -> PopulationInsightData {
         self.workspace
             .calculate_population_insight()
+            .present(&self.ctx)
+    }
+
+    pub fn calculate_population_growth_insight(&self) -> PopulationGrowthInsightData {
+        self.workspace
+            .calculate_population_growth_insight()
             .present(&self.ctx)
     }
 

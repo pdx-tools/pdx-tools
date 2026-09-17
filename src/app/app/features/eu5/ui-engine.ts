@@ -45,6 +45,7 @@ import type {
   MarketInsightData,
   ScopedGoodSummary,
   PopulationInsightData,
+  PopulationGrowthInsightData,
   WorldSummary,
   BuildingLevelsInsightData,
   ReligionInsightData,
@@ -203,6 +204,7 @@ export interface AppTriggers {
   getUnrealizedTaxBaseScope(): Promise<UnrealizedTaxBaseScope>;
   getMarketInsight(): Promise<MarketInsightData>;
   getPopulationInsight(): Promise<PopulationInsightData>;
+  getPopulationGrowthInsight(): Promise<PopulationGrowthInsightData>;
   getBuildingLevelsInsight(): Promise<BuildingLevelsInsightData>;
   getReligionInsight(): Promise<ReligionInsightData>;
   getRgoInsight(): Promise<RgoInsightData>;
@@ -349,6 +351,7 @@ export class Eu5UIEngine implements AppEngine {
     getUnrealizedTaxBaseScope: () => this.gameInstance.getUnrealizedTaxBaseScope(),
     getMarketInsight: () => this.gameInstance.getMarketInsight(),
     getPopulationInsight: () => this.gameInstance.getPopulationInsight(),
+    getPopulationGrowthInsight: () => this.gameInstance.getPopulationGrowthInsight(),
     getBuildingLevelsInsight: () => this.gameInstance.getBuildingLevelsInsight(),
     getReligionInsight: () => this.gameInstance.getReligionInsight(),
     getRgoInsight: () => this.gameInstance.getRgoInsight(),

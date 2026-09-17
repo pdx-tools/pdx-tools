@@ -1,6 +1,7 @@
 use eu5save::{hash::FnvHashMap, models::CountryDiplomacy};
 
 use super::*;
+use crate::population::{LITERACY_SCALE, POP_SIZE_SCALE};
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Returns the entity kind for the current single-entity scope.
@@ -130,12 +131,13 @@ impl<'bump> Eu5Workspace<'bump> {
             location_count: u32,
         }
 
+        // Sums stay in the raw pop size unit (thousands of people) and in the
+        // save's literacy unit (0-100). The output rows convert both.
         #[derive(Default)]
         struct TypeAgg {
             population: f64,
             satisfaction_num: f64,
             literacy_num: f64,
-            pop_count: u32,
         }
 
         fn pop_type_id(kind: PopulationType) -> Option<usize> {
@@ -200,10 +202,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     agg.population += pop.size;
                     agg.satisfaction_num += pop.satisfaction * pop.size;
                     agg.literacy_num += pop.literacy * pop.size;
-                    agg.pop_count += 1;
                 }
                 if pop.kind != PopulationType::Other {
-                    let pop_size = (pop.size * 1000.0).floor() as u32;
+                    let pop_size = (pop.size * POP_SIZE_SCALE).floor() as u32;
                     let entry = sankey_map
                         .entry((pop.kind, pop.culture, pop.religion))
                         .or_default();
@@ -223,11 +224,12 @@ impl<'bump> Eu5Workspace<'bump> {
                 } else {
                     0.0
                 };
+                let population = agg.population * POP_SIZE_SCALE;
                 PopulationTypeProfileRow {
                     population_type: i,
-                    population: agg.population,
+                    population,
                     share,
-                    baseline_population: agg.population,
+                    baseline_population: population,
                     baseline_share: share,
                     share_delta: 0.0,
                     avg_satisfaction: if agg.population > 0.0 {
@@ -236,11 +238,10 @@ impl<'bump> Eu5Workspace<'bump> {
                         0.0
                     },
                     avg_literacy: if agg.population > 0.0 {
-                        agg.literacy_num / agg.population
+                        agg.literacy_num / agg.population / LITERACY_SCALE
                     } else {
                         0.0
                     },
-                    pop_count: agg.pop_count,
                 }
             })
             .collect();
@@ -297,7 +298,10 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|r| crate::Srgb(r.color.0))
             .unwrap_or(crate::Srgb([0x80, 0x80, 0x80]));
         let (satisfaction, literacy) = if size > 0 {
-            (sat_weighted / size as f64, lit_weighted / size as f64)
+            (
+                sat_weighted / size as f64,
+                lit_weighted / size as f64 / LITERACY_SCALE,
+            )
         } else {
             (0.0, 0.0)
         };
@@ -573,7 +577,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
             for &pop_id in loc.population.pops {
                 if let Some(pop) = self.gamestate.population.database.lookup(pop_id) {
-                    let pop_size = (pop.size * 1000.0).floor() as u32;
+                    let pop_size = (pop.size * POP_SIZE_SCALE).floor() as u32;
                     by_religion.entry(pop.religion).or_default().population += pop_size;
                 }
             }
@@ -1018,7 +1022,7 @@ impl<'bump> Eu5Workspace<'bump> {
             let Some(pop) = self.gamestate.population.database.lookup(pop_id) else {
                 continue;
             };
-            let pop_size = (pop.size * 1000.0).floor() as u32;
+            let pop_size = (pop.size * POP_SIZE_SCALE).floor() as u32;
             let entry = by_pop
                 .entry((pop.kind, pop.culture, pop.religion))
                 .or_default();

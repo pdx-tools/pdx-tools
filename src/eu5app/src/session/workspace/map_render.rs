@@ -109,7 +109,7 @@ impl<'bump> Eu5Workspace<'bump> {
         self.gradient_domain(|_, loc| loc.possible_tax).1
     }
 
-    /// Effective max for the state efficacy gradient (filtered when selection active).
+    /// Effective max for the effective development gradient (filtered when selection active).
     pub fn max_state_efficacy(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.control * loc.development)
             .1

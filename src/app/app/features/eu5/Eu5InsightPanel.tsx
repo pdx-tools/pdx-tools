@@ -17,6 +17,7 @@ import { WealthInsight } from "./features/insights/Wealth";
 import { UnrealizedTaxBaseInsight } from "./features/insights/UnrealizedTaxBase";
 import { MarketsInsight } from "./features/insights/Markets";
 import { PopulationInsight } from "./features/insights/Population";
+import { PopulationGrowthInsight } from "./features/insights/PopulationGrowth";
 import { BuildingLevelsInsight } from "./features/insights/BuildingLevels";
 import { ReligionInsight } from "./features/insights/ReligionInsight";
 import { RgoInsight } from "./features/insights/Rgo";
@@ -101,6 +102,8 @@ function PanelContentInner() {
     content = <MarketsInsight />;
   } else if (currentMapMode === "population") {
     content = <PopulationInsight />;
+  } else if (currentMapMode === "populationGrowth") {
+    content = <PopulationGrowthInsight />;
   } else if (currentMapMode === "buildingLevels") {
     content = <BuildingLevelsInsight />;
   } else if (currentMapMode === "religion") {
@@ -174,6 +177,12 @@ function InsightPanelTitle() {
   );
 }
 
+/**
+ * What every insight in this panel is a view of: the whole map, or the
+ * current selection. This is the panel's line, not the map mode's, so it
+ * holds still as the mode changes. It says the same thing the selection pill
+ * on the map does.
+ */
 function InsightScopeLine() {
   const selection = useEu5SelectionState();
   const world = useEu5World();
@@ -193,7 +202,7 @@ function InsightScopeLine() {
 
   return (
     <span className="truncate font-game-num text-[10.5px] text-game-ink-500 tabular-nums">
-      {parts.join(" · ")}
+      {parts.join(" \u00b7 ")}
     </span>
   );
 }
