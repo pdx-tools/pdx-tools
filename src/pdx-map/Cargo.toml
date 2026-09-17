@@ -16,5 +16,8 @@ futures-channel = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
 wgpu = { workspace = true, optional = true }
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { workspace = true, default-features = false }

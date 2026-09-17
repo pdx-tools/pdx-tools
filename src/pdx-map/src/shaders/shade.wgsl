@@ -1,3 +1,11 @@
+// Shade pass: compute the color of each output pixel.
+//
+// This pass reads the location index texture that the resolve pass wrote,
+// so every lookup is in screen space and has no knowledge of the map
+// geometry. Borders and stripes are measured in logical pixels, so they
+// have the same width on every display. The renderer computes the border
+// radii, which shrink with the map when zoomed out.
+
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -12,31 +20,34 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     return VertexOutput(clip_position, uv);
 }
 
-struct ComputeUniforms {
-    tile_width: u32,
-    tile_height: u32,
+struct ShadeUniforms {
+    surface_width: u32,
+    surface_height: u32,
     enable_location_borders: u32,
     enable_owner_borders: u32,
 
-    view_x: u32,
-    view_y: u32,
-    view_width: u32,
-    view_height: u32,
-
-    zoom_level: f32,
-    surface_width: u32,
-    surface_height: u32,
     interaction_mask: u32,
+    // Physical pixels per logical pixel
+    scale_factor: f32,
+    // Screen-space offset of the stripe pattern so stripes stay anchored to
+    // the world while the view pans
+    stripe_phase_x: f32,
+    stripe_phase_y: f32,
+
+    // Border radii in physical pixels, at least 1
+    location_border_radius: u32,
+    owner_border_radius: u32,
+    // Guard band in physical pixels around the output in the resolved texture
+    guard_band: u32,
+    _pad0: u32,
 }
 
-
-@group(0) @binding(0) var west_input_texture: texture_2d<u32>;
-@group(0) @binding(1) var east_input_texture: texture_2d<u32>;
-@group(0) @binding(2) var<uniform> uniforms: ComputeUniforms;
-@group(0) @binding(3) var<storage, read> location_primary_colors: array<u32>;
-@group(0) @binding(4) var<storage, read> location_states: array<u32>;
-@group(0) @binding(5) var<storage, read> location_owner_colors: array<u32>;
-@group(0) @binding(6) var<storage, read> location_secondary_colors: array<u32>;
+@group(0) @binding(0) var resolved_texture: texture_2d<u32>;
+@group(0) @binding(1) var<uniform> uniforms: ShadeUniforms;
+@group(0) @binding(2) var<storage, read> location_primary_colors: array<u32>;
+@group(0) @binding(3) var<storage, read> location_states: array<u32>;
+@group(0) @binding(4) var<storage, read> location_owner_colors: array<u32>;
+@group(0) @binding(5) var<storage, read> location_secondary_colors: array<u32>;
 
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
 const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
@@ -44,17 +55,10 @@ const STATE_FOCUSED = 4u; // Bit 2: location is the focused single tile
 const STATE_DIMMED = 8u; // Bit 3: location is outside the active selection
 const STATE_PREVIEW = 16u; // Bit 4: location is inside a box-select drag
 
-const TAU = acos(-1.0) * 2.0;
+// Stripe period in logical pixels
+const STRIPE_WIDTH = 8.0;
 
-// Wrap x coordinate to handle world wraparound
-fn wrap_x_coordinate(x: i32) -> i32 {
-    let world_width = i32(uniforms.tile_width * 2u);
-    let wrapped = x % world_width;
-    if (wrapped < 0) {
-        return wrapped + world_width;
-    }
-    return wrapped;
-}
+const TAU = acos(-1.0) * 2.0;
 
 // Unpack u32 value to RGB color
 fn unpack_color(value: u32) -> vec3<f32> {
@@ -84,23 +88,23 @@ fn is_interaction_enabled(state_flags: u32, flag: u32) -> bool {
     return (state_flags & flag) != 0u && (uniforms.interaction_mask & flag) != 0u;
 }
 
-// Get location index for a pixel at global coordinates (direct read from R16 texture)
-fn get_location_index_at(global_x: i32, global_y: i32) -> u32 {
-    // Wrap x coordinate for horizontal world wraparound
-    let wrapped_x = wrap_x_coordinate(global_x);
-    if (wrapped_x < i32(uniforms.tile_width)) {
-        // West texture
-        let coord = vec2<i32>(wrapped_x, global_y);
-        return textureLoad(west_input_texture, coord, 0).r;
-    } else {
-        // East texture
-        let coord = vec2<i32>(wrapped_x - i32(uniforms.tile_width), global_y);
-        return textureLoad(east_input_texture, coord, 0).r;
-    }
+// Location index at a screen pixel. The resolved texture extends past the
+// output by the guard band, so neighbors of an edge pixel are real map
+// pixels. Coordinates clamp to the texture in case a radius exceeds the
+// band, so a read is never out of bounds.
+fn resolved_id(p: vec2<i32>) -> u32 {
+    let band = i32(uniforms.guard_band);
+    let max_coord = vec2<i32>(
+        i32(uniforms.surface_width) + band * 2 - 1,
+        i32(uniforms.surface_height) + band * 2 - 1,
+    );
+    let c = clamp(p + vec2<i32>(band, band), vec2<i32>(0, 0), max_coord);
+    return textureLoad(resolved_texture, c, 0).r;
 }
 
-// Check if this pixel should be a location border (4-neighbor color difference)
-fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32, in_secondary_zone: bool, secondary_color: u32) -> bool {
+// Check if this pixel should be a location border: a different location
+// within the L1 (diamond) neighborhood of the location border radius.
+fn is_location_border_pixel(p: vec2<i32>, center_location_idx: u32, in_secondary_zone: bool, secondary_color: u32) -> bool {
     if (uniforms.enable_location_borders == 0u) {
         return false;
     }
@@ -111,18 +115,17 @@ fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u
         return false;
     }
 
-    // Check 4 neighbors: up, down, left, right
-    let neighbors = array<vec2<i32>, 4>(
-        vec2<i32>(global_x, global_y - 1), // up
-        vec2<i32>(global_x, global_y + 1), // down
-        vec2<i32>(global_x - 1, global_y), // left
-        vec2<i32>(global_x + 1, global_y)  // right
-    );
-
-    for (var i = 0; i < 4; i++) {
-        let neighbor_location_idx = get_location_index_at(neighbors[i].x, neighbors[i].y);
-        if (neighbor_location_idx != center_location_idx) {
-            // Different location found
+    let r = i32(uniforms.location_border_radius);
+    for (var dy = -r; dy <= r; dy++) {
+        let span = r - abs(dy);
+        for (var dx = -span; dx <= span; dx++) {
+            if (dx == 0 && dy == 0) {
+                continue;
+            }
+            let neighbor_location_idx = resolved_id(p + vec2<i32>(dx, dy));
+            if (neighbor_location_idx == center_location_idx) {
+                continue;
+            }
 
             // If we're in secondary zone, check if neighbor has same secondary color
             if (in_secondary_zone) {
@@ -139,28 +142,29 @@ fn is_location_border_pixel(global_x: i32, global_y: i32, center_location_idx: u
     return false; // All neighbors have same location
 }
 
-// Check if this pixel should be an owner border (2-pixel thick border detection)
-fn is_owner_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32, center_owner_color: u32) -> bool {
+// Check if this pixel should be an owner border: a different owner within
+// the L1 (diamond) neighborhood of the owner border radius.
+fn is_owner_border_pixel(p: vec2<i32>, center_location_idx: u32, center_owner_color: u32) -> bool {
     if (uniforms.enable_owner_borders == 0u) {
         return false;
     }
 
-    // Define a 12-point diamond pattern (skipping corners of the 5x5)
-    let offsets = array<vec2<i32>, 12>(
-        vec2<i32>( 0, -1), vec2<i32>( 0,  1), vec2<i32>(-1,  0), vec2<i32>( 1,  0), // Cross 1
-        vec2<i32>( 0, -2), vec2<i32>( 0,  2), vec2<i32>(-2,  0), vec2<i32>( 2,  0), // Cross 2
-        vec2<i32>(-1, -1), vec2<i32>( 1, -1), vec2<i32>(-1,  1), vec2<i32>( 1,  1)  // Inner Diagonals
-    );
-
-    for (var i = 0; i < 12; i++) {
-        let neighbor_x = global_x + offsets[i].x;
-        let neighbor_y = global_y + offsets[i].y;
-        
-        let neighbor_location_idx = get_location_index_at(neighbor_x, neighbor_y);
-        let neighbor_value = get_owner_color_by_index(neighbor_location_idx);
-
-        if (neighbor_value != center_owner_color) {
-            return true;
+    let r = i32(uniforms.owner_border_radius);
+    for (var dy = -r; dy <= r; dy++) {
+        let span = r - abs(dy);
+        for (var dx = -span; dx <= span; dx++) {
+            if (dx == 0 && dy == 0) {
+                continue;
+            }
+            let neighbor_location_idx = resolved_id(p + vec2<i32>(dx, dy));
+            // Same location, same owner: skip the buffer read
+            if (neighbor_location_idx == center_location_idx) {
+                continue;
+            }
+            let neighbor_value = get_owner_color_by_index(neighbor_location_idx);
+            if (neighbor_value != center_owner_color) {
+                return true;
+            }
         }
     }
 
@@ -168,14 +172,11 @@ fn is_owner_border_pixel(global_x: i32, global_y: i32, center_location_idx: u32,
 }
 
 // Screen-space stripe blend factor (consistent thickness across zoom)
-fn stripe_blend_factor(world_x: f32, world_y: f32) -> f32 {
-    let px_scale_x = f32(uniforms.surface_width) / f32(uniforms.view_width);
-    let px_scale_y = f32(uniforms.surface_height) / f32(uniforms.view_height);
-    let stripe_px = 8.0;
-
-    let screen_x = world_x * px_scale_x;
-    let screen_y = world_y * px_scale_y;
-    let pattern_val = (screen_x + screen_y) / stripe_px;
+fn stripe_blend_factor(screen: vec2<f32>) -> f32 {
+    let stripe_px = STRIPE_WIDTH * uniforms.scale_factor;
+    let phase = vec2<f32>(uniforms.stripe_phase_x, uniforms.stripe_phase_y);
+    let anchored = screen + phase;
+    let pattern_val = (anchored.x + anchored.y) / stripe_px;
 
     let wave = 0.5 + 0.5 * cos(pattern_val * TAU);
     let edge = fwidth(wave);
@@ -194,24 +195,11 @@ fn create_stripe_pattern(primary_color: u32, secondary_color: u32, blend_factor:
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Calculate canvas coordinates from fragment position
-    let canvas_x = u32(in.position.x);
-    let canvas_y = u32(in.position.y);
+    let surface = vec2<u32>(uniforms.surface_width, uniforms.surface_height);
+    let safe = min(vec2<u32>(in.position.xy), surface - vec2<u32>(1u));
+    let screen = vec2<i32>(safe);
 
-    let safe_x = min(u32(in.position.x), uniforms.surface_width - 1u);
-    let safe_y = min(u32(in.position.y), uniforms.surface_height - 1u);
-
-    let world_x_float = (f32(safe_x) / f32(uniforms.surface_width)) * f32(uniforms.view_width);
-    let world_y_float = (f32(safe_y) / f32(uniforms.surface_height)) * f32(uniforms.view_height);
-
-    // Calculate global coordinates by adding viewport offset
-    let world_x = world_x_float + f32(uniforms.view_x);
-    let world_y = world_y_float + f32(uniforms.view_y);
-    let global_x = i32(floor(world_x));
-    let global_y = i32(floor(world_y));
-
-    // Get location index directly from R16 texture
-    let location_idx = get_location_index_at(global_x, global_y);
+    let location_idx = resolved_id(screen);
 
     // Check which interaction effects are active for this renderer.
     let state_flags = get_state_flags_by_index(location_idx);
@@ -224,13 +212,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let secondary_color = get_secondary_color_by_index(location_idx);
     let has_stripes = primary_color != secondary_color && secondary_color != 0u;
 
-    let stripe_blend = stripe_blend_factor(world_x, world_y);
+    let stripe_blend = stripe_blend_factor(vec2<f32>(safe));
     let in_secondary_zone = has_stripes && stripe_blend > 0.5;
 
     // Check for different types of borders
     let center_owner_color = get_owner_color_by_index(location_idx);
-    let is_owner_border = is_owner_border_pixel(global_x, global_y, location_idx, center_owner_color);
-    let is_location_border = is_location_border_pixel(global_x, global_y, location_idx, in_secondary_zone, secondary_color);
+    let is_owner_border = is_owner_border_pixel(screen, location_idx, center_owner_color);
+    let is_location_border = is_location_border_pixel(screen, location_idx, in_secondary_zone, secondary_color);
 
     var fill_color: vec4<f32>;
     // Apply interaction effects after the domain fill is complete.

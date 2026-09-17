@@ -34,8 +34,9 @@ pub use error::{RenderError, RenderErrorKind, SurfaceError};
 pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, default_clock};
 #[cfg(feature = "render")]
 pub use renderer::{
-    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapRenderer, MapResources,
-    MapScene, MapTexture, QueuedWorkFuture, RenderConfig, RenderLayer, SurfaceMapRenderer,
+    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapFrame, MapRenderer,
+    MapResources, MapScene, MapTexture, QueuedWorkFuture, RenderConfig, RenderLayer,
+    SurfaceMapRenderer,
 };
 #[cfg(feature = "render")]
 pub use wgpu;
