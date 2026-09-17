@@ -8,6 +8,7 @@ pub mod insights;
 mod map;
 mod models;
 pub(crate) mod overlay;
+pub mod population;
 pub mod presentation;
 mod selection;
 mod session;

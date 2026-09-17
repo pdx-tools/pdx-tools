@@ -6,6 +6,8 @@ function formatValue(mode: MapMode, value: number): string {
   switch (mode) {
     case "control":
       return `${formatFloat(value * 100, 1)}%`;
+    case "populationGrowth":
+      return `${formatFloat(value * 100, 2)}%/yr`;
     case "population":
       if (value >= 1000) return `${formatFloat(value / 1000, 1)}K`;
       return formatInt(value);
