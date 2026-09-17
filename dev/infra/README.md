@@ -44,9 +44,13 @@ clean account. To rebuild:
 
 ## GCP (`gcp/`)
 
-tofu owns the Artifact Registry `docker` repo and the Cloud Run `api` service
-config (resources, startup probe, and the `run.invoker` IAM the Cloudflare Worker
-relies on via `PARSE_API_ENDPOINT`).
+tofu owns the Artifact Registry `docker` repo, the Cloud Run `api` service
+config (resources, startup probe), and the `worker-invoker` service account with
+`run.invoker` on it. The Cloudflare Worker calls `PARSE_API_ENDPOINT` with a
+Google ID token minted from that account's key (`PARSE_API_SA_KEY` Worker
+secret); see `gcp/terraform.tfvars.example` for how to create and rotate the
+key. Without the secret the Worker calls the api unauthenticated, which only
+works for a local api or when `invoker_members` includes `allUsers`.
 
 ### Setup (one-time, maintainer)
 

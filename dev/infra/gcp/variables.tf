@@ -17,7 +17,11 @@ variable "run_region" {
 }
 
 variable "invoker_members" {
-  description = "IAM members granted roles/run.invoker on the api service (set from the live policy — see README)."
+  description = <<-EOT
+    Extra IAM members granted roles/run.invoker on the api service, in addition
+    to the worker-invoker service account that is always granted. Leave empty
+    for production; set to ["allUsers"] only to temporarily reopen the service.
+  EOT
   type        = list(string)
   default     = []
 }

@@ -7,7 +7,7 @@ import { table, toDbDifficulty } from "@/server-lib/db";
 import type { NewSave } from "@/server-lib/db";
 import { usingDb } from "@/server-lib/db/connection";
 import { ValidationError } from "@/server-lib/errors";
-import { pdxFns } from "@/server-lib/functions";
+import { parseApiFromEnv, pdxFns } from "@/server-lib/functions";
 import { genId } from "@/server-lib/id";
 import { log } from "@/server-lib/logging";
 import { pdxMetrics } from "@/server-lib/metrics";
@@ -102,9 +102,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
 
   try {
     const parsed = await timeit(() =>
-      pdxFns({
-        endpoint: cloudflare.env.PARSE_API_ENDPOINT,
-      }).parseSave(bytes),
+      pdxFns(parseApiFromEnv(cloudflare.env)).parseSave(bytes),
     ).catch((err) => {
       metrics.record({
         domain: "parse_api",
