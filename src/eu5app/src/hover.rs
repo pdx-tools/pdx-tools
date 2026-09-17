@@ -24,6 +24,7 @@ present_dto! {
         UnrealizedTaxBase { value: f64 },
         Religion { religion: ReligionId => Localized<String> },
         StateEfficacy { value: f64 },
+        PopulationGrowth { value: f64 },
     }
 
     #[serde(

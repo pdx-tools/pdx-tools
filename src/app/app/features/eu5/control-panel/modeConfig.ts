@@ -17,4 +17,5 @@ export const MAP_MODES: ModeConfig[] = [
   { value: "buildingLevels", label: "Building Levels" },
   { value: "population", label: "Population" },
   { value: "stateEfficacy", label: "State Efficacy" },
+  { value: "populationGrowth", label: "Population Growth" },
 ];

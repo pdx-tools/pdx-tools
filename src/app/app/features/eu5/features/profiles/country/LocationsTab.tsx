@@ -110,6 +110,7 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   political: { id: "development", desc: true },
   markets: { id: "market", desc: false },
   religion: { id: "location", desc: false },
+  populationGrowth: { id: "population", desc: true },
 };
 
 function bucketLocations(metricLabel: string, values: number[]): LocationDistribution {

@@ -1,4 +1,5 @@
 use crate::gradient::{self, GradientScale};
+use crate::population::location_reproduction_rate;
 use eu5save::models::Color;
 
 use super::*;
@@ -33,6 +34,54 @@ impl<'bump> Eu5Workspace<'bump> {
         (global_max, filtered_max)
     }
 
+    /// Like [`Self::gradient_domain`], but each bound is the value at
+    /// `percentile` (0.0 to 1.0) instead of the max. Use this for a metric
+    /// with a long tail of outliers, so that the outliers saturate at the top
+    /// color instead of compressing everything else into the bottom colors.
+    fn gradient_domain_percentile(
+        &self,
+        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
+        percentile: f64,
+    ) -> (f64, f64) {
+        let has_selection = !self.selection_state.is_empty();
+        let mut global = Vec::new();
+        let mut filtered = Vec::new();
+        for loc_entry in self.gamestate.locations.iter() {
+            let idx = loc_entry.idx();
+            let terrain = self.location_terrain(idx);
+            if terrain.is_water() || !terrain.is_passable() {
+                continue;
+            }
+            let loc = loc_entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            let value = extract(idx, loc);
+            global.push(value);
+            if !has_selection || self.selection_state.contains(idx) {
+                filtered.push(value);
+            }
+        }
+
+        fn value_at(mut values: Vec<f64>, percentile: f64) -> f64 {
+            if values.is_empty() {
+                return 0.0;
+            }
+            values.sort_by(f64::total_cmp);
+            let last = values.len() - 1;
+            let pos = ((last as f64) * percentile.clamp(0.0, 1.0)).round() as usize;
+            values[pos]
+        }
+
+        (value_at(global, percentile), value_at(filtered, percentile))
+    }
+
+    /// The reproduction gradient stops at this percentile. A pop of a few
+    /// hundred people that records a single birth has an annual rate many
+    /// times the median, and a handful of such locations must not flatten
+    /// the rest of the map.
+    const REPRODUCTION_PERCENTILE: f64 = 0.95;
+
     /// Effective max for the development gradient (filtered when selection active).
     pub fn max_development(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.development).1
@@ -64,6 +113,14 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn max_state_efficacy(&self) -> f64 {
         self.gradient_domain(|_, loc| loc.control * loc.development)
             .1
+    }
+
+    /// Gradient bounds for the reproduction mode, see [`Self::gradient_domain`].
+    fn reproduction_domain(&self) -> (f64, f64) {
+        self.gradient_domain_percentile(
+            |_, loc| location_reproduction_rate(&self.gamestate, loc),
+            Self::REPRODUCTION_PERCENTILE,
+        )
     }
 
     /// Lazily computes and caches building levels for all locations.
@@ -360,6 +417,29 @@ impl<'bump> Eu5Workspace<'bump> {
         gradient::interpolate_eu5_gradient(efficacy, max_efficacy, GradientScale::Linear)
     }
 
+    pub fn location_reproduction_color(
+        &self,
+        location_idx: eu5save::models::LocationIdx,
+        max_rate: f64,
+    ) -> GpuColor {
+        let terrain = self.location_terrain(location_idx);
+        if terrain.is_water() {
+            return GpuColor::WATER;
+        } else if !terrain.is_passable() {
+            return GpuColor::IMPASSABLE;
+        }
+
+        let save_location_entry = self.gamestate.locations.index(location_idx);
+        let save_location = save_location_entry.location();
+
+        if save_location.owner.is_dummy() {
+            return GpuColor::UNOWNED;
+        }
+
+        let rate = location_reproduction_rate(&self.gamestate, save_location);
+        gradient::interpolate_eu5_gradient(rate, max_rate, GradientScale::Linear)
+    }
+
     pub(crate) fn get_country_color_for_location<F>(
         &self,
         location_idx: eu5save::models::LocationIdx,
@@ -574,6 +654,7 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::UnrealizedTaxBase => self.apply_unrealized_tax_base_colors(),
             MapMode::Religion => self.apply_religion_colors(),
             MapMode::StateEfficacy => self.apply_state_efficacy_colors(),
+            MapMode::PopulationGrowth => self.apply_reproduction_colors(),
         };
 
         self.current_map_legend = gradient;
@@ -971,6 +1052,42 @@ impl<'bump> Eu5Workspace<'bump> {
             };
             let efficacy_color = self.location_state_efficacy_color(location_idx, max);
             color_data.push((idx, efficacy_color));
+        }
+
+        // Apply colors
+        for (idx, color) in color_data {
+            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
+                continue;
+            };
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
+            gpu_location.set_primary_color(color);
+        }
+
+        // Copy primary colors to secondary to disable stripes
+        self.location_arrays.copy_primary_to_secondary();
+
+        gradient::MapLegend::Quantitative(gradient::sequential(
+            GradientScale::Linear,
+            0.0,
+            filtered_max,
+        ))
+    }
+
+    fn apply_reproduction_colors(&mut self) -> gradient::MapLegend {
+        let (global_max, filtered_max) = self.reproduction_domain();
+
+        // Collect color data first to avoid borrow conflicts
+        let mut color_data = Vec::new();
+        for idx in 0..self.gamestate.locations.len() {
+            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
+            let max = if self.selection_state.contains(location_idx) {
+                filtered_max
+            } else {
+                global_max
+            };
+            let reproduction_color = self.location_reproduction_color(location_idx, max);
+            color_data.push((idx, reproduction_color));
         }
 
         // Apply colors

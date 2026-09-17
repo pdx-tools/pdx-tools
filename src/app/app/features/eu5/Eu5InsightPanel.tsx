@@ -146,6 +146,7 @@ export const MAP_MODE_TITLES = {
   buildingLevels: "Building Levels",
   religion: "Religion",
   rgoLevel: "RGO Level",
+  populationGrowth: "Population Growth",
 } as const;
 
 function InsightPanelTitle() {

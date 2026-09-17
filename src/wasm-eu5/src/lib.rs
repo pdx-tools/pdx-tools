@@ -73,6 +73,7 @@ pub enum MapMode {
     UnrealizedTaxBase,
     Religion,
     StateEfficacy,
+    PopulationGrowth,
 }
 
 #[derive(Debug, Clone, tsify::Tsify, Serialize)]
@@ -111,6 +112,7 @@ impl From<MapMode> for Eu5MapMode {
             MapMode::UnrealizedTaxBase => Eu5MapMode::UnrealizedTaxBase,
             MapMode::Religion => Eu5MapMode::Religion,
             MapMode::StateEfficacy => Eu5MapMode::StateEfficacy,
+            MapMode::PopulationGrowth => Eu5MapMode::PopulationGrowth,
         }
     }
 }
@@ -129,6 +131,7 @@ impl From<Eu5MapMode> for MapMode {
             Eu5MapMode::UnrealizedTaxBase => MapMode::UnrealizedTaxBase,
             Eu5MapMode::Religion => MapMode::Religion,
             Eu5MapMode::StateEfficacy => MapMode::StateEfficacy,
+            Eu5MapMode::PopulationGrowth => MapMode::PopulationGrowth,
         }
     }
 }

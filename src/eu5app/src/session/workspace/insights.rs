@@ -1,4 +1,5 @@
 use super::*;
+use crate::population::location_reproduction_rate;
 
 const POLITICAL_SCOREBOARD_TOP_COUNT: usize = 10;
 
@@ -327,6 +328,7 @@ impl<'bump> Eu5Workspace<'bump> {
             MapMode::Wealth | MapMode::Markets => "Wealth",
             MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
             MapMode::StateEfficacy => "State Efficacy",
+            MapMode::PopulationGrowth => "Population Growth",
             _ => "Development",
         };
 
@@ -344,6 +346,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 MapMode::Wealth | MapMode::Markets => loc.possible_tax,
                 MapMode::UnrealizedTaxBase => loc.possible_tax - loc.tax,
                 MapMode::StateEfficacy => loc.control * loc.development,
+                MapMode::PopulationGrowth => location_reproduction_rate(&self.gamestate, loc),
                 _ => loc.development,
             };
             metrics.push((idx, value));

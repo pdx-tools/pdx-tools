@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use eu5app::{Eu5Workspace, MapMode};
 use eu5save::models::LocationIdx;
 
-const ALL_MAP_MODES: [MapMode; 11] = [
+const ALL_MAP_MODES: [MapMode; 12] = [
     MapMode::Political,
     MapMode::Control,
     MapMode::Development,
@@ -17,6 +17,7 @@ const ALL_MAP_MODES: [MapMode; 11] = [
     MapMode::UnrealizedTaxBase,
     MapMode::Religion,
     MapMode::StateEfficacy,
+    MapMode::PopulationGrowth,
 ];
 
 fn mode_name(mode: MapMode) -> &'static str {
@@ -32,6 +33,7 @@ fn mode_name(mode: MapMode) -> &'static str {
         MapMode::UnrealizedTaxBase => "unrealized_tax_base",
         MapMode::Religion => "religion",
         MapMode::StateEfficacy => "state_efficacy",
+        MapMode::PopulationGrowth => "population_growth",
     }
 }
 

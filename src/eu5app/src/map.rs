@@ -37,6 +37,7 @@ pub enum MapMode {
     UnrealizedTaxBase,
     Religion,
     StateEfficacy,
+    PopulationGrowth,
 }
 
 impl MapMode {
@@ -49,7 +50,8 @@ impl MapMode {
             | MapMode::BuildingLevels
             | MapMode::Wealth
             | MapMode::UnrealizedTaxBase
-            | MapMode::StateEfficacy => true,
+            | MapMode::StateEfficacy
+            | MapMode::PopulationGrowth => true,
         }
     }
 
@@ -66,6 +68,7 @@ impl MapMode {
             MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
             MapMode::Religion => "Religion",
             MapMode::StateEfficacy => "State Efficacy",
+            MapMode::PopulationGrowth => "Population Growth",
         }
     }
 }

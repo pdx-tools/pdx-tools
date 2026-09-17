@@ -19,6 +19,8 @@ function formatHoverStat(stat: HoverStat): string | null {
       return null;
     case "control":
       return `${formatFloat(stat.value.value * 100, 2)}%`;
+    case "populationGrowth":
+      return `${formatFloat(stat.value.value * 100, 2)}%/yr`;
     case "development":
     case "wealth":
     case "unrealizedTaxBase":
