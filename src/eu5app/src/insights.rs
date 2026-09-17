@@ -102,6 +102,17 @@ pub struct PopulationConcentrationPoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
+pub struct ConcentrationPoint {
+    pub location_rank: u32,
+    pub location_count: u32,
+    pub value: f64,
+    pub cumulative_value: f64,
+    pub share: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
 pub struct PopulationTypeProfileRow {
     pub population_type: u8,
     pub population: f64,
@@ -182,6 +193,8 @@ pub mod distribution {
         pub LocationDistribution {
             metric_label: String,
             buckets: Vec<DistributionBucket>,
+            median: f64,
+            p90: f64,
             top_locations: Vec<workspace::RankedLocation> => Vec<presentation::RankedLocation>,
         }
     }
@@ -278,6 +291,7 @@ pub mod tax {
 
         pub WealthInsightData {
             countries: Vec<workspace::CountryWealth> => Vec<presentation::CountryWealth>,
+            concentration: Vec<ConcentrationPoint>,
             top_locations: Vec<workspace::WealthTopLocation> => Vec<presentation::WealthTopLocation>,
             distribution: distribution::workspace::LocationDistribution => distribution::presentation::LocationDistribution,
         }

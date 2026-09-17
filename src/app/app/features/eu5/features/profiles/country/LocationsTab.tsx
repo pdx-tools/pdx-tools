@@ -3,12 +3,13 @@ import { usePanToEntity } from "../../../usePanToEntity";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
-import type { LocationDistribution, LocationRow, MapMode } from "@/wasm/wasm_eu5";
+import type { LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import type { AppRow } from "@/lib/tanstack-table";
 import { CountryLink, MarketLink } from "../EntityLink";
 import { locationProfileEntry, usePanelNav } from "../PanelNavContext";
 import { LocationLink } from "../LocationLink";
 import { LocationDistributionChart } from "../../insights/LocationDistributionChart";
+import { bucketLocations } from "../../insights/bucketLocations";
 
 const columnHelper = createColumnHelper<LocationRow>();
 
@@ -112,54 +113,6 @@ const SORT_BY_MODE: Partial<Record<MapMode, { id: string; desc: boolean }>> = {
   religion: { id: "location", desc: false },
   populationGrowth: { id: "population", desc: true },
 };
-
-function bucketLocations(metricLabel: string, values: number[]): LocationDistribution {
-  const finiteValues = values.filter(Number.isFinite);
-  if (finiteValues.length === 0) {
-    return { metricLabel, buckets: [], topLocations: [] };
-  }
-
-  const min = Math.min(...finiteValues);
-  const max = Math.max(...finiteValues);
-  if (Math.abs(max - min) < Number.EPSILON) {
-    return {
-      metricLabel,
-      buckets: [{ lo: min, hi: max, count: finiteValues.length }],
-      topLocations: [],
-    };
-  }
-
-  const targetBuckets = 20;
-  const step = niceBucketStep(max - min, targetBuckets);
-  const start = Math.floor(min / step) * step;
-  const end = Math.ceil(max / step) * step;
-  const bucketCount = Math.max(1, Math.min(targetBuckets * 2, Math.ceil((end - start) / step)));
-  const counts = Array.from({ length: bucketCount }, () => 0);
-
-  for (const value of finiteValues) {
-    const index = Math.min(bucketCount - 1, Math.floor((value - start) / step));
-    counts[index] += 1;
-  }
-
-  return {
-    metricLabel,
-    buckets: counts.map((count, index) => ({
-      lo: start + index * step,
-      hi: start + (index + 1) * step,
-      count,
-    })),
-    topLocations: [],
-  };
-}
-
-function niceBucketStep(range: number, targetBuckets: number): number {
-  const rawStep = range / Math.max(1, targetBuckets);
-  if (rawStep <= 0) return 1;
-  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
-  const normalized = rawStep / magnitude;
-  const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
-  return niceNormalized * magnitude;
-}
 
 export function LocationsTabContent({
   locations,
