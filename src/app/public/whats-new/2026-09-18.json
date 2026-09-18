@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "improvements": [
+      "Add EU5 population growth map mode and insights",
+      "Refresh EU5 insight summaries with clearer headline metrics",
+      "EU5 map pipeline tweaked for better performance and owner borders"
+    ]
+  }
+}
