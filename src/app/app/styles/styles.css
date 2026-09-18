@@ -15,9 +15,13 @@
 }
 
 /* https://github.com/csstools/sanitize.css/blob/092d0d85922bfa72d28e9e8d25d80a5437c8df44/assets.css */
-:where(img) {
-  height: auto;
-  max-width: 100%;
+/* Kept in the base layer so utilities such as `h-full` can override it. An
+   unlayered rule beats every layered utility, whatever the specificity. */
+@layer base {
+  :where(img) {
+    height: auto;
+    max-width: 100%;
+  }
 }
 
 html {

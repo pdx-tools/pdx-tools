@@ -14,10 +14,14 @@ import {
 } from "@/components/icons";
 import classes from "./Home.module.css";
 import { ImageGallery } from "./ImageGallery";
+import { CreatorReel } from "./CreatorReel";
 import { HomeLeaderboard } from "./HomeLeaderboard";
 import { AchievementWall } from "./AchievementWall";
 import { cx } from "class-variance-authority";
-import { formatInt } from "@/lib/format";
+
+// Band colors are explicit so a row can be added without shifting the ones below it.
+const tealBand = "bg-teal-900 text-white dark:bg-transparent";
+const whiteBand = "bg-white dark:bg-transparent";
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -43,12 +47,7 @@ function Lip() {
 export const Home = ({ subtitle }: HomeProps) => {
   return (
     <div className={`w-full ${classes.main}`}>
-      <div
-        className={cx(
-          "px-5 py-12 text-lg odd:bg-teal-900 odd:text-white even:bg-white md:px-9",
-          classes.row,
-        )}
-      >
+      <div className={cx("bg-teal-900 px-5 py-12 text-lg text-white md:px-9", classes.row)}>
         <div className="mx-auto grid max-w-7xl justify-center gap-8 lg:grid-cols-2 xl:gap-16 2xl:gap-24">
           <div className="flex flex-col gap-y-4 justify-self-end lg:max-w-lg">
             <h1 className="text-4xl font-extrabold tracking-tight text-balance text-white sm:mt-0 lg:mt-6 lg:text-5xl xl:text-6xl">
@@ -85,22 +84,20 @@ export const Home = ({ subtitle }: HomeProps) => {
       <div
         className={cx(
           classes.row,
-          "flex w-full flex-col items-center justify-center px-5 py-16 text-xl odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+          "flex w-full flex-col items-center justify-center px-5 py-16 text-xl md:px-9",
+          whiteBand,
         )}
       >
         <ImageGallery />
       </div>
-      <div
-        className={cx(
-          classes.row,
-          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
-        )}
-      >
+      <div className={cx(classes.row, "w-full border-b border-white/10 py-16 text-lg", tealBand)}>
+        <CreatorReel />
+      </div>
+      <div className={cx(classes.row, "flex justify-center px-5 py-16 text-lg md:px-9", tealBand)}>
         <div className="max-w-7xl">
-          <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
-            <span className="mr-2 tracking-widest">{formatInt(1000000)}+</span> saves analyzed
+          <h2 className="mb-6 text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
+            Answering questions about your EU4 saves
           </h2>
-          <p className="mt-3 mb-6 text-center text-xl">Answering questions about your EU4 saves</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-y-6 xl:grid-cols-4">
             <div className="mx-2 flex items-center justify-center rounded-xl border-4 border-solid border-white px-9 py-6 text-white">
               <p className="text-center text-2xl">
@@ -147,12 +144,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </div>
       </div>
 
-      <div
-        className={cx(
-          classes.row,
-          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
-        )}
-      >
+      <div className={cx(classes.row, "flex justify-center px-5 py-16 text-lg md:px-9", whiteBand)}>
         <div className="flex max-w-7xl flex-col items-center">
           <h2 className="text-center text-3xl font-extrabold tracking-tight xl:text-4xl">
             Achievement Leaderboards
@@ -167,12 +159,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </div>
       </div>
 
-      <div
-        className={cx(
-          classes.row,
-          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
-        )}
-      >
+      <div className={cx(classes.row, "flex justify-center px-5 py-16 text-lg md:px-9", tealBand)}>
         <section>
           <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">BYOB (Bring your own browser)</h2>
@@ -209,7 +196,9 @@ export const Home = ({ subtitle }: HomeProps) => {
       <div
         className={cx(
           classes.row,
-          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+          classes.reverse,
+          "flex justify-center px-5 py-16 text-lg md:px-9",
+          whiteBand,
         )}
       >
         <section>
@@ -236,12 +225,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
 
-      <div
-        className={cx(
-          classes.row,
-          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
-        )}
-      >
+      <div className={cx(classes.row, "flex justify-center px-5 py-16 text-lg md:px-9", tealBand)}>
         <section>
           <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">More Games!</h2>
@@ -270,7 +254,9 @@ export const Home = ({ subtitle }: HomeProps) => {
       <div
         className={cx(
           classes.row,
-          "flex justify-center px-5 py-16 text-lg odd:bg-white even:bg-teal-900 even:text-white md:px-9 dark:odd:bg-transparent dark:even:bg-transparent",
+          classes.reverse,
+          "flex justify-center px-5 py-16 text-lg md:px-9",
+          whiteBand,
         )}
       >
         <section>
