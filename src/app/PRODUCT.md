@@ -91,7 +91,8 @@ A neighboring analyzer that uploads the save to a server, or that only supports 
 - Architecture diagram: `../../assets/dev/pdx-tools-architecture.png`.
 - Design strategy write-up (frictionless, performance, fault-tolerant, spartan): root `README.md`.
 - Blog posts on performance investigations are linked from the README.
-- **Absent:** no testimonials, press quotes, user counts, or benchmark tables are on hand. Do not fabricate them.
+- Creator evidence: seven stills of streamers and YouTubers with PDX Tools on screen (avatars, video titles, timecodes, and links to the moment) in `app/components/landing/creator-gallery/` and `app/components/landing/creatorSpotlights.ts`, plus nine short community remarks from r/eu4 and Discord with source links. Provenance is in `POSITIVE-SENTIMENT-RESEARCH.md` at the repo root. Use only these quotes, with their wording and links.
+- **Absent:** no press quotes, user counts, or benchmark tables are on hand. Do not fabricate them.
 
 ## Product Principles
 
