@@ -6,8 +6,9 @@ use crate::eu4::data::{
     achievements, area, continents, cultures, localization, personalities, regions, religion,
     sprites, superregion,
 };
+use crate::http;
 use anyhow::Context;
-use eu4save::{CountryTag, ProvinceId};
+use eu4save::{CountryTag, Eu4File, ProvinceId};
 use eu5save::hash::FnvBuildHasher;
 use pdx_map::R16;
 use pdx_zstd::zstd_tee::ZstdTee;
@@ -408,7 +409,8 @@ fn generate_provinces<P: FileProvider + ?Sized>(
     game_version: &str,
     center_locations: &HashMap<u16, (u16, u16)>,
 ) -> anyhow::Result<(usize, Vec<GameProvince>)> {
-    let default_map = map::parse_default_map(&fs.read_file("map/default.map")?);
+    let map_data = fs.read_file("map/default.map")?;
+    let default_map = map::parse_default_map(map_data.as_slice());
     let ocean_provs: HashSet<_> = default_map
         .lakes
         .iter()
@@ -416,53 +418,67 @@ fn generate_provinces<P: FileProvider + ?Sized>(
         .copied()
         .collect();
 
-    let impassable_provs: HashSet<_> = if fs.file_exists("map/climate.txt") {
-        map::parse_impassable_provinces(&fs.read_file("map/climate.txt")?)?
-            .into_iter()
-            .map(|id| id.as_u16())
-            .collect()
-    } else {
-        HashSet::new()
-    };
-    let island_provs: HashSet<_> =
-        map::parse_island_check_provinces(&fs.read_file("map/continent.txt")?)?
-            .into_iter()
-            .map(|id| id.as_u16())
-            .collect();
-    let override_precedence = map::TerrainOverridePrecedence::for_game_version(game_version);
-    let trees = fs
-        .file_exists("map/trees.bmp")
-        .then(|| fs.read_file("map/trees.bmp"))
-        .transpose()?;
-    let definitions = fs.read_file("map/definition.csv")?;
-    let calculated_terrains = map::calculate_province_terrains_with_optional_trees(
-        &fs.read_file("map/terrain.txt")?,
-        &definitions,
-        &fs.read_file("map/provinces.bmp")?,
-        &fs.read_file("map/terrain.bmp")?,
-        trees.as_deref(),
-        override_precedence,
-    )?;
-    let total_provs = map::parse_definition(&definitions).len();
+    let terrain_name = format!("terrain-{}.eu4", game_version);
+    let data = http::request_at(
+        format!("eu4-saves/terrain/{terrain_name}"),
+        Path::new("assets").join("eu4-terrain").join(terrain_name),
+    );
+    let save_file = Eu4File::from_slice(&data)?;
+    let tokens = schemas::resolver::Eu4FlatTokens::new();
+    let breakpoint = tokens.breakpoint();
+    let values = tokens.into_values();
+    let resolver = eu4save::SegmentedResolver::from_parts(values, breakpoint, 10000);
+    let save = save_file.parse_save(&resolver)?;
+    let mut provs: Vec<_> = save.game.provinces.iter().collect();
+    provs.sort_unstable_by_key(|(k, _v)| *k);
+    let total_provs = provs.len();
 
     let mut terrains = Vec::new();
-    for (&id, _) in center_locations.iter().filter(|&(&id, _)| id != 0) {
-        let terrain = if ocean_provs.contains(&ProvinceId::from(i32::from(id))) {
-            schemas::eu4::Terrain::Ocean
-        } else if impassable_provs.contains(&id) {
-            schemas::eu4::Terrain::Wasteland
-        } else {
-            calculated_terrains
-                .get(&id)
-                .copied()
-                .with_context(|| format!("terrain is missing for province {id}"))?
-        };
+    let man = CountryTag::new(*b"KOI");
+    for (id, prov) in provs {
+        if let Some(owner) = &prov.owner {
+            let terrain = match owner.as_str() {
+                "KAL" => schemas::eu4::Terrain::Grasslands,
+                "FRA" => schemas::eu4::Terrain::Hills,
+                "SWI" => schemas::eu4::Terrain::Mountains,
+                "OMA" => schemas::eu4::Terrain::Desert,
+                "SWE" => schemas::eu4::Terrain::Marsh,
+                "HOL" => schemas::eu4::Terrain::Farmlands,
+                "NOV" => schemas::eu4::Terrain::Forest,
+                "TUN" => schemas::eu4::Terrain::CoastalDesert,
+                "VEN" => schemas::eu4::Terrain::Coastline,
+                "CRE" => schemas::eu4::Terrain::Savannah,
+                "MAM" => schemas::eu4::Terrain::Drylands,
+                "KAR" => schemas::eu4::Terrain::Highlands,
+                "MOS" => schemas::eu4::Terrain::Woods,
+                "COC" => schemas::eu4::Terrain::Jungle,
+                "KAZ" => schemas::eu4::Terrain::Steppe,
+                "KMC" => schemas::eu4::Terrain::Glacier,
+                _ => panic!("unknown tag"),
+            };
 
-        terrains.push(GameProvince {
-            id: ProvinceId::from(i32::from(id)),
-            terrain,
-            province_is_on_an_island: island_provs.contains(&id),
-        });
+            let is_island = prov.cores.contains(&man);
+
+            terrains.push(GameProvince {
+                id: *id,
+                terrain,
+                province_is_on_an_island: is_island,
+            })
+        } else if center_locations.contains_key(&id.as_u16()) {
+            if ocean_provs.contains(id) {
+                terrains.push(GameProvince {
+                    id: *id,
+                    terrain: schemas::eu4::Terrain::Ocean,
+                    province_is_on_an_island: false,
+                });
+            } else {
+                terrains.push(GameProvince {
+                    id: *id,
+                    terrain: schemas::eu4::Terrain::Wasteland,
+                    province_is_on_an_island: false,
+                });
+            }
+        }
     }
 
     terrains.sort_by_key(|x| x.id);
