@@ -5,11 +5,11 @@ use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Tsify, Serialize)]
 #[serde(transparent)]
-pub struct AchievementList(Vec<eu4game_data::Achievement>);
+pub struct AchievementList(Vec<eu4_achievements::Achievement>);
 
 #[wasm_bindgen]
 pub fn achievements() -> Result<Ts<AchievementList>, JsError> {
-    let mut achieves = eu4game_data::achievements();
+    let mut achieves = eu4_achievements::achievements();
     achieves.sort_unstable_by(|a, b| {
         a.difficulty
             .cmp(&b.difficulty)

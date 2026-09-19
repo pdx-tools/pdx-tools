@@ -15,5 +15,6 @@ crate-type = ["cdylib", "rlib"]
 wasm-bindgen = { workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
 serde = { features = ["derive"] , workspace = true }
-eu4game-data = { features = ["tsify"] , workspace = true }
+eu4-achievements = { features = ["tsify"], workspace = true }
+eu4game-data = { workspace = true }
 jomini = { workspace = true }

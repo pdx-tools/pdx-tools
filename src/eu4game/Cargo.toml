@@ -17,6 +17,7 @@ zstd_c = ["pdx-zstd/zstd_c", "eu4save/zstd_c"]
 [dependencies]
 jomini = { workspace = true }
 erased-serde = { workspace = true }
+eu4-achievements = { workspace = true }
 eu4game-data = { workspace = true }
 eu4save = { default-features = false , workspace = true }
 schemas = { features = ["inline"] , workspace = true }
@@ -32,4 +33,3 @@ attohttpc = { workspace = true }
 sha1_smol = { workspace = true }
 tempfile = { workspace = true }
 walkdir = { workspace = true }
-

@@ -11,12 +11,3 @@ workspace = true
 [features]
 embedded = []
 embedded-screenshot = []
-tsify = ["dep:tsify", "dep:wasm-bindgen"]
-
-[dependencies]
-serde = { features = ["derive"] , workspace = true }
-tsify = { default-features = false, optional = true , workspace = true }
-wasm-bindgen = { default-features = false, optional = true , workspace = true }
-
-[build-dependencies]
-regex = { workspace = true }

@@ -1040,12 +1040,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "eu4-achievements"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tsify",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "eu4game"
 version = "0.1.0"
 dependencies = [
  "attohttpc",
  "base64",
  "erased-serde",
+ "eu4-achievements",
  "eu4game-data",
  "eu4save",
  "highway",
@@ -1063,12 +1073,6 @@ dependencies = [
 [[package]]
 name = "eu4game-data"
 version = "0.1.0"
-dependencies = [
- "regex",
- "serde",
- "tsify",
- "wasm-bindgen",
-]
 
 [[package]]
 name = "eu4save"
@@ -2918,7 +2922,7 @@ dependencies = [
  "bytemuck",
  "clap",
  "csv",
- "eu4game-data",
+ "eu4-achievements",
  "eu4save",
  "eu5app",
  "eu5save",
@@ -4708,6 +4712,7 @@ dependencies = [
 name = "wasm-app"
 version = "0.1.0"
 dependencies = [
+ "eu4-achievements",
  "eu4game-data",
  "jomini",
  "serde",

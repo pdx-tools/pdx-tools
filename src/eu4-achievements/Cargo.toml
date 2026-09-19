@@ -1,0 +1,15 @@
+[package]
+name = "eu4-achievements"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+tsify = ["dep:tsify", "dep:wasm-bindgen"]
+
+[dependencies]
+serde = { features = ["derive"], workspace = true }
+tsify = { default-features = false, optional = true, workspace = true }
+wasm-bindgen = { default-features = false, optional = true, workspace = true }

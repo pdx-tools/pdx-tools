@@ -1,4 +1,3 @@
-use regex::Regex;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -8,20 +7,17 @@ fn main() {
     // Rerun when a version directory is added or removed.
     println!("cargo:rerun-if-changed=../../assets/game/eu4");
     let entries = fs::read_dir("../../assets/game/eu4").unwrap();
-    let re = Regex::new(r"(\d+)\.(\d+)").unwrap();
     let entries = entries.filter_map(|x| x.ok());
 
     let mut versions = Vec::new();
     for entry in entries {
         let filename = entry.file_name();
-        let captures = re.captures(filename.to_str().unwrap());
-        let captures = match captures {
-            Some(x) => x,
-            None => continue,
+        let Some((major, minor)) = filename.to_str().and_then(|filename| {
+            let (major, minor) = filename.split_once('.')?;
+            Some((major.parse::<i32>().ok()?, minor.parse::<i32>().ok()?))
+        }) else {
+            continue;
         };
-
-        let major: i32 = captures.get(1).unwrap().as_str().parse().unwrap();
-        let minor: i32 = captures.get(2).unwrap().as_str().parse().unwrap();
         versions.push((major, minor));
     }
 
@@ -38,30 +34,40 @@ fn main() {
         latest_minor
     );
 
+    let embed_game = env::var_os("CARGO_FEATURE_EMBEDDED").is_some();
+    let embed_screenshot = env::var_os("CARGO_FEATURE_EMBEDDED_SCREENSHOT").is_some();
+    if !embed_game && !embed_screenshot {
+        return;
+    }
+
     for (major, minor) in &versions {
         let version = format!("{}.{}", major, minor);
-        let p = Path::new("../../assets/game/eu4")
-            .join(&version)
-            .join("data-raw.bin");
         let rust_friendly_version = version.replace('.', "");
         let versioned = Path::new(&env::var("OUT_DIR").unwrap()).join(rust_friendly_version);
         std::fs::create_dir_all(&versioned).unwrap();
-        let out_path = versioned.join("data.bin");
-        std::fs::copy(p, out_path).unwrap();
 
-        for filename in [
-            "color-index.bin",
-            "provinces-1.r16.zst",
-            "provinces-2.r16.zst",
-        ] {
+        if embed_game {
             let p = Path::new("../../assets/game/eu4")
                 .join(&version)
-                .join("map")
-                .join(filename);
-            if p.exists() {
-                std::fs::copy(p, versioned.join(filename)).unwrap();
-            } else {
-                File::create(versioned.join(filename)).unwrap();
+                .join("data-raw.bin");
+            std::fs::copy(p, versioned.join("data.bin")).unwrap();
+        }
+
+        if embed_screenshot {
+            for filename in [
+                "color-index.bin",
+                "provinces-1.r16.zst",
+                "provinces-2.r16.zst",
+            ] {
+                let p = Path::new("../../assets/game/eu4")
+                    .join(&version)
+                    .join("map")
+                    .join(filename);
+                if p.exists() {
+                    std::fs::copy(p, versioned.join(filename)).unwrap();
+                } else {
+                    File::create(versioned.join(filename)).unwrap();
+                }
             }
         }
     }
