@@ -265,14 +265,17 @@ fn terrain_class(state_flags: u32) -> u32 {
 // reach. Only owned land has an owner, and its frontier with unowned land
 // counts as an owner edge. A coast is an edge between water and anything
 // else. `terrain` is any edge between terrain classes, so it includes
-// coasts and the edges of impassable and unowned land.
+// coasts and the edges of impassable and unowned land. Impassable terrain
+// or a lake that shows the color of the country around it has no terrain
+// edge against that country: it is filled so that it merges with the
+// country, and an outline would undo that.
 struct EdgeDistances {
     owner: i32,
     coast: i32,
     terrain: i32,
 }
 
-fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_owner_color: u32, center_terrain: u32, max_r: i32) -> EdgeDistances {
+fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: u32, center_owner_color: u32, center_terrain: u32, max_r: i32) -> EdgeDistances {
     var result = EdgeDistances(max_r + 1, max_r + 1, max_r + 1);
     // Unowned land draws no edge from this scan, so skip it
     if (uniforms.enable_owner_borders == 0u || center_terrain == TERRAIN_UNOWNED) {
@@ -295,7 +298,11 @@ fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_owner_color: u3
                 }
                 let neighbor_terrain = terrain_class(get_state_flags_by_index(neighbor_location_idx));
                 if (neighbor_terrain != center_terrain) {
-                    result.terrain = min(result.terrain, d);
+                    let filled = (center_terrain == TERRAIN_IMPASSABLE || center_terrain == TERRAIN_LAKE)
+                        && get_primary_color_by_index(neighbor_location_idx) == center_primary_color;
+                    if (!filled) {
+                        result.terrain = min(result.terrain, d);
+                    }
                     if (neighbor_terrain == TERRAIN_WATER || center_terrain == TERRAIN_WATER) {
                         result.coast = min(result.coast, d);
                     }
@@ -377,7 +384,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let center_owner_color = get_owner_color_by_index(location_idx);
     let owner_r = i32(uniforms.owner_border_radius);
     let glow_r = i32(uniforms.owner_glow_radius);
-    let edges = edge_distances(screen, location_idx, center_owner_color, center_terrain, owner_r + glow_r);
+    let edges = edge_distances(screen, location_idx, primary_color, center_owner_color, center_terrain, owner_r + glow_r);
     let is_location_border = is_location_border_pixel(screen, location_idx, in_secondary_zone, secondary_color);
 
     var fill_color: vec4<f32>;
@@ -415,8 +422,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // so the land keeps its light rim and coasts read thinner than
     // political borders. Impassable terrain and lakes get a soft edge of
     // their own and give their neighbors no rim, so wasteland does not
-    // shout and a lake does not read as a sea. Unowned land draws only its
-    // location borders: it is not a country.
+    // shout and a lake does not read as a sea. Terrain filled with its
+    // country's color has no such edge, only its location borders, so it
+    // fades into the country with the rest of the grid.
+    // Unowned land draws only its location borders: it is not a country.
     var rgb = fill_color.rgb;
     if (is_focused && is_location_border) {
         // Focused border: bright white outline to distinguish the focused tile
