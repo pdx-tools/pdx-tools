@@ -65,6 +65,7 @@ type Options = {
   dryRun: boolean;
   force: boolean;
   check: boolean;
+  all: boolean;
 };
 
 const exists = async (path: string) => {
@@ -156,6 +157,7 @@ const readOptions = (): Options => {
     dryRun: readBoolean("usage_dry_run"),
     force: readBoolean("usage_force"),
     check: readBoolean("usage_check"),
+    all: readBoolean("usage_all"),
   };
 };
 
@@ -358,10 +360,12 @@ const main = async () => {
     dryRun: options.dryRun,
   });
 
+  // Without --game or --all, only process the games that the asset
+  // pipeline can compile. The archive-only games are maintained on request.
+  const selectedGames: readonly Game[] =
+    options.game !== undefined ? [options.game] : options.all ? games : bundledGames;
   const selectedTargets = targets.filter(
-    (t) =>
-      (options.game === undefined || t.game === options.game) &&
-      targetMatchesVersion(t, options.version),
+    (t) => selectedGames.includes(t.game) && targetMatchesVersion(t, options.version),
   );
 
   const movingTargets =
