@@ -165,12 +165,41 @@ struct ShadeUniforms {
     location_border_radius: u32,
     owner_border_radius: u32,
     guard_band: u32,
+    owner_glow_radius: u32,
+
+    // Strength of the owner border, coast, and impassable edge darkening
+    edge_strength: f32,
+    // Strength of the location border darkening
+    location_edge_strength: f32,
     _pad0: u32,
+    _pad1: u32,
 }
 
-/// Border widths in logical pixels at zoom 1
+/// Border widths in logical pixels at zoom 1. The owner border is a thin
+/// line: at two pixels a side, small countries were mostly border. The
+/// wider light band inside it carries the weight of the frontier.
 const LOCATION_BORDER_WIDTH: f32 = 1.0;
-const OWNER_BORDER_WIDTH: f32 = 2.0;
+const OWNER_BORDER_WIDTH: f32 = 1.0;
+/// Logical width of the light band inside an owner border
+const OWNER_GLOW_WIDTH: f32 = 2.0;
+
+/// Strength of the border darkening for a zoom level.
+///
+/// Zoomed out, borders are one pixel wide and dense, so full-strength
+/// lines darken the whole map. The strength eases from 1 at zoom 1 to 0.6
+/// at the smallest zoom, in the same spirit as the border radius.
+fn edge_strength(zoom_level: f32) -> f32 {
+    0.6 + 0.4 * zoom_level.clamp(0.0, 1.0)
+}
+
+/// Strength of the location border darkening for a zoom level.
+///
+/// Zoomed out, the location grid is texture, not information, so it fades
+/// faster than the political borders: from 1 at zoom 1 to 0.3 at the
+/// smallest zoom.
+fn location_edge_strength(zoom_level: f32) -> f32 {
+    0.3 + 0.7 * zoom_level.clamp(0.0, 1.0)
+}
 
 /// Physical pixel radius of a border.
 ///
@@ -214,7 +243,11 @@ impl ShadeUniforms {
             ),
             owner_border_radius: border_radius(OWNER_BORDER_WIDTH, bounds.zoom_level, scale_factor),
             guard_band: guard_band(size),
+            owner_glow_radius: border_radius(OWNER_GLOW_WIDTH, bounds.zoom_level, scale_factor),
+            edge_strength: edge_strength(bounds.zoom_level),
+            location_edge_strength: location_edge_strength(bounds.zoom_level),
             _pad0: 0,
+            _pad1: 0,
         }
     }
 }

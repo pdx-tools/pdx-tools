@@ -39,7 +39,17 @@ struct ShadeUniforms {
     owner_border_radius: u32,
     // Guard band in physical pixels around the output in the resolved texture
     guard_band: u32,
+    // Width in physical pixels of the light band inside an owner border
+    owner_glow_radius: u32,
+
+    // Strength of the owner border, coast, and impassable edge darkening,
+    // 0 to 1. Eases off when zoomed out.
+    edge_strength: f32,
+    // Strength of the location border darkening, 0 to 1. Eases off faster
+    // than `edge_strength`: zoomed out, the location grid is texture.
+    location_edge_strength: f32,
     _pad0: u32,
+    _pad1: u32,
 }
 
 @group(0) @binding(0) var resolved_texture: texture_2d<u32>;
@@ -54,6 +64,19 @@ const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
 const STATE_FOCUSED = 4u; // Bit 2: location is the focused single tile
 const STATE_DIMMED = 8u; // Bit 3: location is outside the active selection
 const STATE_PREVIEW = 16u; // Bit 4: location is inside a box-select drag
+const STATE_WATER = 32u; // Bit 5: location is water, so its edge with land is a coast
+const STATE_IMPASSABLE = 64u; // Bit 6: location is impassable terrain, which no one owns
+const STATE_UNOWNED = 128u; // Bit 7: location is land that no country owns
+const STATE_LAKE = 256u; // Bit 8: location is a lake, which has no coast
+
+// Lightness offsets in Oklab. Oklab lightness is perceptual, so the same
+// offset reads the same on a navy fill and on a cream fill.
+const LOCATION_BORDER_DARKEN = 0.07;
+const OWNER_BORDER_DARKEN = 0.28;
+const OWNER_GLOW_LIGHTEN = 0.05;
+const COAST_DARKEN = 0.14;
+const SHALLOWS_LIGHTEN = 0.05;
+const IMPASSABLE_EDGE_DARKEN = 0.10;
 
 // Stripe period in logical pixels
 const STRIPE_WIDTH = 8.0;
@@ -66,6 +89,72 @@ fn unpack_color(value: u32) -> vec3<f32> {
     let g = f32((value >> 8u) & 0xFFu) / 255.0;
     let b = f32(value & 0xFFu) / 255.0;
     return vec3<f32>(r, g, b);
+}
+
+fn srgb_to_linear(c: vec3<f32>) -> vec3<f32> {
+    let lo = c / 12.92;
+    let hi = pow((c + 0.055) / 1.055, vec3<f32>(2.4));
+    return select(lo, hi, c > vec3<f32>(0.04045));
+}
+
+fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
+    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+    let lo = v * 12.92;
+    let hi = 1.055 * pow(v, vec3<f32>(1.0 / 2.4)) - 0.055;
+    return select(lo, hi, v > vec3<f32>(0.0031308));
+}
+
+// sRGB to Oklab (L, a, b). See https://bottosson.github.io/posts/oklab/
+fn srgb_to_oklab(c: vec3<f32>) -> vec3<f32> {
+    let rgb = srgb_to_linear(c);
+    let l = 0.4122214708 * rgb.r + 0.5363325363 * rgb.g + 0.0514459929 * rgb.b;
+    let m = 0.2119034982 * rgb.r + 0.6806995451 * rgb.g + 0.1073969566 * rgb.b;
+    let s = 0.0883024619 * rgb.r + 0.2817188376 * rgb.g + 0.6299787005 * rgb.b;
+    let l_ = pow(max(l, 0.0), 1.0 / 3.0);
+    let m_ = pow(max(m, 0.0), 1.0 / 3.0);
+    let s_ = pow(max(s, 0.0), 1.0 / 3.0);
+    return vec3<f32>(
+        0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+        1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+        0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
+    );
+}
+
+fn oklab_to_srgb(lab: vec3<f32>) -> vec3<f32> {
+    let l_ = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
+    let m_ = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
+    let s_ = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
+    let l = l_ * l_ * l_;
+    let m = m_ * m_ * m_;
+    let s = s_ * s_ * s_;
+    let rgb = vec3<f32>(
+        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+    );
+    return linear_to_srgb(rgb);
+}
+
+// Shift the perceptual lightness of a color. A positive delta lightens.
+fn shift_lightness(c: vec3<f32>, delta: f32) -> vec3<f32> {
+    var lab = srgb_to_oklab(c);
+    lab.x = clamp(lab.x + delta, 0.0, 1.0);
+    return oklab_to_srgb(lab);
+}
+
+// Lighten a color for a rim or a band. A fill near white has no room to
+// get lighter, so the part of the delta that lightness cannot absorb is
+// spent on chroma instead: a cream fill takes a paler rim rather than
+// none at all. Fills with room take a plain lightness shift.
+fn lighten(c: vec3<f32>, delta: f32) -> vec3<f32> {
+    var lab = srgb_to_oklab(c);
+    let headroom = max(1.0 - lab.x, 0.0);
+    let shortfall = max(delta - headroom, 0.0);
+    lab.x = min(lab.x + delta, 1.0);
+    let chroma_scale = 1.0 - shortfall / delta;
+    lab.y *= chroma_scale;
+    lab.z *= chroma_scale;
+    return oklab_to_srgb(lab);
 }
 
 fn get_primary_color_by_index(location_idx: u32) -> u32 {
@@ -142,33 +231,102 @@ fn is_location_border_pixel(p: vec2<i32>, center_location_idx: u32, in_secondary
     return false; // All neighbors have same location
 }
 
-// Check if this pixel should be an owner border: a different owner within
-// the L1 (diamond) neighborhood of the owner border radius.
-fn is_owner_border_pixel(p: vec2<i32>, center_location_idx: u32, center_owner_color: u32) -> bool {
-    if (uniforms.enable_owner_borders == 0u) {
-        return false;
+// Terrain class of a location. Only owned land has a political border.
+// Water, lakes, impassable terrain, and unowned land have no owner, so
+// their own edges are not political borders, but a country that meets
+// unowned land still has a frontier there. A lake is its own class so
+// that it keeps an edge against impassable terrain, but it is not water:
+// its shore is not a coast.
+const TERRAIN_LAND = 0u;
+const TERRAIN_WATER = 1u;
+const TERRAIN_IMPASSABLE = 2u;
+const TERRAIN_UNOWNED = 3u;
+const TERRAIN_LAKE = 4u;
+
+fn terrain_class(state_flags: u32) -> u32 {
+    if ((state_flags & STATE_LAKE) != 0u) {
+        return TERRAIN_LAKE;
+    }
+    if ((state_flags & STATE_WATER) != 0u) {
+        return TERRAIN_WATER;
+    }
+    if ((state_flags & STATE_IMPASSABLE) != 0u) {
+        return TERRAIN_IMPASSABLE;
+    }
+    if ((state_flags & STATE_UNOWNED) != 0u) {
+        return TERRAIN_UNOWNED;
+    }
+    return TERRAIN_LAND;
+}
+
+// Distances in L1 (diamond) pixels from `p` to the nearest pixel of a
+// different owner, to the nearest coast, and to the nearest edge of
+// another terrain class, each capped at `max_r + 1` when none is within
+// reach. Only owned land has an owner, and its frontier with unowned land
+// counts as an owner edge. A coast is an edge between water and anything
+// else. `terrain` is any edge between terrain classes, so it includes
+// coasts and the edges of impassable and unowned land.
+struct EdgeDistances {
+    owner: i32,
+    coast: i32,
+    terrain: i32,
+}
+
+fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_owner_color: u32, center_terrain: u32, max_r: i32) -> EdgeDistances {
+    var result = EdgeDistances(max_r + 1, max_r + 1, max_r + 1);
+    // Unowned land draws no edge from this scan, so skip it
+    if (uniforms.enable_owner_borders == 0u || center_terrain == TERRAIN_UNOWNED) {
+        return result;
     }
 
-    let r = i32(uniforms.owner_border_radius);
-    for (var dy = -r; dy <= r; dy++) {
-        let span = r - abs(dy);
-        for (var dx = -span; dx <= span; dx++) {
-            if (dx == 0 && dy == 0) {
-                continue;
+    // Scan ring by ring so a pixel on a border stops at the first ring.
+    for (var d = 1; d <= max_r; d++) {
+        for (var dy = -d; dy <= d; dy++) {
+            let span = d - abs(dy);
+            // Only the two points on the ring for this row
+            for (var side = 0; side < 2; side++) {
+                let dx = select(-span, span, side == 1);
+                if (side == 1 && span == 0) {
+                    continue;
+                }
+                let neighbor_location_idx = resolved_id(p + vec2<i32>(dx, dy));
+                if (neighbor_location_idx == center_location_idx) {
+                    continue;
+                }
+                let neighbor_terrain = terrain_class(get_state_flags_by_index(neighbor_location_idx));
+                if (neighbor_terrain != center_terrain) {
+                    result.terrain = min(result.terrain, d);
+                    if (neighbor_terrain == TERRAIN_WATER || center_terrain == TERRAIN_WATER) {
+                        result.coast = min(result.coast, d);
+                    }
+                    if (center_terrain == TERRAIN_LAND && neighbor_terrain == TERRAIN_UNOWNED) {
+                        result.owner = min(result.owner, d);
+                    }
+                } else if (center_terrain == TERRAIN_LAND) {
+                    let neighbor_value = get_owner_color_by_index(neighbor_location_idx);
+                    if (neighbor_value != center_owner_color) {
+                        result.owner = min(result.owner, d);
+                    }
+                }
             }
-            let neighbor_location_idx = resolved_id(p + vec2<i32>(dx, dy));
-            // Same location, same owner: skip the buffer read
-            if (neighbor_location_idx == center_location_idx) {
-                continue;
-            }
-            let neighbor_value = get_owner_color_by_index(neighbor_location_idx);
-            if (neighbor_value != center_owner_color) {
-                return true;
-            }
+        }
+        // Stop at the first ring that decides this pixel's edge: the owner
+        // edge on land, the coast on water, and any edge on a lake or on
+        // impassable terrain. A closer coast cannot change a land pixel
+        // that already has its owner edge, because the band takes the
+        // nearer of the two.
+        var found = result.terrain <= d;
+        if (center_terrain == TERRAIN_LAND) {
+            found = result.owner <= d;
+        } else if (center_terrain == TERRAIN_WATER) {
+            found = result.coast <= d;
+        }
+        if (found) {
+            break;
         }
     }
 
-    return false;
+    return result;
 }
 
 // Screen-space stripe blend factor (consistent thickness across zoom)
@@ -215,9 +373,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let stripe_blend = stripe_blend_factor(vec2<f32>(safe));
     let in_secondary_zone = has_stripes && stripe_blend > 0.5;
 
-    // Check for different types of borders
+    let center_terrain = terrain_class(state_flags);
     let center_owner_color = get_owner_color_by_index(location_idx);
-    let is_owner_border = is_owner_border_pixel(screen, location_idx, center_owner_color);
+    let owner_r = i32(uniforms.owner_border_radius);
+    let glow_r = i32(uniforms.owner_glow_radius);
+    let edges = edge_distances(screen, location_idx, center_owner_color, center_terrain, owner_r + glow_r);
     let is_location_border = is_location_border_pixel(screen, location_idx, in_secondary_zone, secondary_color);
 
     var fill_color: vec4<f32>;
@@ -249,26 +409,45 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         );
     }
 
-    var output_color: vec4<f32>;
+    // Edge treatment, outermost first. An owner border is a dark line on
+    // both sides of the boundary with a light band inside each country. A
+    // coast is a dark line and a band of shallows on the water side only,
+    // so the land keeps its light rim and coasts read thinner than
+    // political borders. Impassable terrain and lakes get a soft edge of
+    // their own and give their neighbors no rim, so wasteland does not
+    // shout and a lake does not read as a sea. Unowned land draws only its
+    // location borders: it is not a country.
+    var rgb = fill_color.rgb;
     if (is_focused && is_location_border) {
         // Focused border: bright white outline to distinguish the focused tile
-        output_color = vec4<f32>(1.0, 1.0, 1.0, 1.0);
-    } else if (is_owner_border) {
-        // Owner border: darken the current pixel by 30%
-        let mapped_value = get_owner_color_by_index(location_idx);
-        let mapped_rgb = unpack_color(mapped_value);
-        output_color = vec4<f32>(mapped_rgb.r * 0.7, mapped_rgb.g * 0.7, mapped_rgb.b * 0.7, 1.0);
-    } else if (is_location_border) {
-        // Location border: darken the final fill.
-        output_color = vec4<f32>(
-            max(0.0, fill_color.r - 0.08),
-            max(0.0, fill_color.g - 0.08),
-            max(0.0, fill_color.b - 0.08),
-            fill_color.a
-        );
+        rgb = vec3<f32>(1.0, 1.0, 1.0);
+    } else if (center_terrain == TERRAIN_WATER) {
+        if (edges.coast <= owner_r) {
+            rgb = shift_lightness(rgb, -COAST_DARKEN * uniforms.edge_strength);
+        } else if (edges.coast <= owner_r + glow_r) {
+            rgb = lighten(rgb, SHALLOWS_LIGHTEN);
+        }
+    } else if (center_terrain == TERRAIN_IMPASSABLE || center_terrain == TERRAIN_LAKE) {
+        if (edges.terrain <= owner_r) {
+            rgb = shift_lightness(rgb, -IMPASSABLE_EDGE_DARKEN * uniforms.edge_strength);
+        } else if (is_location_border) {
+            rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
+        }
+    } else if (center_terrain == TERRAIN_UNOWNED) {
+        if (is_location_border) {
+            rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
+        }
+    } else if (edges.owner <= owner_r) {
+        rgb = shift_lightness(unpack_color(center_owner_color), -OWNER_BORDER_DARKEN * uniforms.edge_strength);
     } else {
-        output_color = fill_color;
+        if (min(edges.owner, edges.coast) <= owner_r + glow_r) {
+            rgb = lighten(rgb, OWNER_GLOW_LIGHTEN);
+        }
+        if (is_location_border) {
+            rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
+        }
     }
+    let output_color = vec4<f32>(rgb, fill_color.a);
 
     // Return color directly to render target
     return output_color;

@@ -67,6 +67,7 @@ pub enum Terrain {
     Other,
     Impassable,
     Water,
+    Lake,
 }
 
 impl Serialize for Terrain {
@@ -78,6 +79,7 @@ impl Serialize for Terrain {
             Terrain::Other => 1,
             Terrain::Impassable => 2,
             Terrain::Water => 3,
+            Terrain::Lake => 4,
         };
         serializer.serialize_u8(s)
     }
@@ -93,14 +95,16 @@ impl<'de> Deserialize<'de> for Terrain {
             1 => Ok(Terrain::Other),
             2 => Ok(Terrain::Impassable),
             3 => Ok(Terrain::Water),
+            4 => Ok(Terrain::Lake),
             _ => Err(serde::de::Error::custom("invalid terrain value")),
         }
     }
 }
 
 impl Terrain {
+    /// Seas and lakes. Both take the water color and neither has an owner.
     pub fn is_water(&self) -> bool {
-        matches!(self, Terrain::Water)
+        matches!(self, Terrain::Water | Terrain::Lake)
     }
 
     pub fn is_passable(&self) -> bool {

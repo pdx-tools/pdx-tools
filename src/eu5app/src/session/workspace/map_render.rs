@@ -576,7 +576,9 @@ impl<'bump> Eu5Workspace<'bump> {
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_location_id(pdx_map::LocationId::new(location.idx().value()));
 
-            // Water locations get a specific color and no location borders
+            // Water locations get a specific color and no location borders.
+            // A lake is flagged apart from the sea so that its shore is
+            // drawn like the edge of impassable terrain, not as a coast.
             if terrain.is_water() {
                 gpu_location.set_primary_color(GpuColor::WATER);
                 gpu_location.set_owner_color(GpuColor::WATER);
@@ -584,6 +586,11 @@ impl<'bump> Eu5Workspace<'bump> {
                 gpu_location
                     .flags_mut()
                     .set(LocationFlags::NO_LOCATION_BORDERS);
+                let water_flag = match terrain {
+                    Terrain::Lake => LocationFlags::LAKE,
+                    _ => LocationFlags::WATER,
+                };
+                gpu_location.flags_mut().set(water_flag);
                 continue;
             }
 
@@ -591,15 +598,18 @@ impl<'bump> Eu5Workspace<'bump> {
                 gpu_location.set_primary_color(GpuColor::IMPASSABLE);
                 gpu_location.set_owner_color(GpuColor::IMPASSABLE);
                 gpu_location.set_secondary_color(GpuColor::IMPASSABLE);
+                gpu_location.flags_mut().set(LocationFlags::IMPASSABLE);
                 continue;
             }
 
             let owner_color = self.location_political_color(location.idx());
             let control_color = self.location_control_color(location.idx());
+            let unowned = self.owner_at_timeline_date(location.idx()).is_dummy();
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(owner_color);
             gpu_location.set_secondary_color(control_color);
             gpu_location.set_owner_color(owner_color);
+            set_unowned_flag(gpu_location.flags_mut(), unowned);
         }
     }
 
@@ -1136,6 +1146,16 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn get_map_mode(&self) -> MapMode {
         self.current_map_mode
+    }
+}
+
+/// Mark or unmark a location as land that no country owns. The renderer
+/// draws no political border on unowned land.
+pub(super) fn set_unowned_flag(flags: &mut LocationFlags, unowned: bool) {
+    if unowned {
+        flags.set(LocationFlags::UNOWNED);
+    } else {
+        flags.clear(LocationFlags::UNOWNED);
     }
 }
 

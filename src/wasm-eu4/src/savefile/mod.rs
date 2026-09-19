@@ -1792,7 +1792,7 @@ impl SaveFileImpl {
                     .get_province(id)
                     .map_or(schemas::eu4::Terrain::Wasteland, |x| x.terrain);
                 match terrain {
-                    schemas::eu4::Terrain::Ocean => {
+                    schemas::eu4::Terrain::Ocean | schemas::eu4::Terrain::Lake => {
                         result[offset] = 138;
                         result[offset + 1] = 180;
                         result[offset + 2] = 248;
