@@ -8,7 +8,7 @@
   @apply flex-grow basis-0;
 }
 
-.row:nth-child(odd) > section {
+.reverse > section {
   @apply lg:flex-row-reverse;
 }
 
