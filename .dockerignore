@@ -12,7 +12,6 @@ tmp
 **/*.local.env
 **/.dev.vars*
 # Large inputs that the api build does not read
-assets/eu4-terrain
 assets/saves
 assets/game-bundles
 assets/game/eu5
