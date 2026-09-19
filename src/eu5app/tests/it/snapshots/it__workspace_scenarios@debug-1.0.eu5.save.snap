@@ -16,18 +16,18 @@ input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
     }
   ],
   "map_mode_colors": {
-    "building_levels": "0x4c85a6fc211e826dc99dcde117dae98a30afa8077f105a06b2144daff953ffab",
-    "control": "0x30c0fe477b303a9f5be4c14317d9bd4b97375fc4214144eb755da82a30ad4c4d",
-    "development": "0xe607c912a03177e4448d95ea553e51cb4c1c566fcee400f0655f4c3d2d00418f",
-    "markets": "0x250d38d1849dceef72516ba840f26487c09f5cbe8e8c357cf6e9abf2972da5ef",
-    "political": "0x581133f6e235f7f728f0cf3eab84db641a410726acd71a3d35f5a2fba5185c8a",
-    "population": "0x0f1d06df69f6379c616dc273a78e42cffb86ff962f34c1dee8d0363d7302bb4a",
-    "population_growth": "0x714a058aab83859b2b14c5311d18178ace55807ac0760917c19e1813905def23",
-    "religion": "0xcdd369549b541164e4df30eec2f86bd52e51e6e4a8f8d70e02ad1de525ff9769",
-    "rgo_level": "0xe6ad949687bed97bdf923df24c6eb6104f1abc4a3337dd41220c97b367166f80",
-    "state_efficacy": "0x3cb5ab4cb962b133063acd9adfdd5515f6009af4412e19699a921168bca85f7a",
-    "unrealized_tax_base": "0x2ce7b415d88356e3b6116654a153e1f1a1d6938ce90e7a7ee5a305c39a0bdf7d",
-    "wealth": "0xd442603f9b52f9ee32a5c3310a365289ebe36039fe7cde6e2185503bb0615f89"
+    "building_levels": "0x11d82e0d94b940861cb0c2c373cd266d190ba0aff43058ec2f1d1fceb8cfb08f",
+    "control": "0x3d9e6cc040032ff2bfff10a115bd2b4c7fef62eb6d286ffd69011c69a8b3852c",
+    "development": "0xd07e6158fbbe416f9ebcf60f517e2af9e1f0e1fdec70844f0ec7b640ac029f09",
+    "markets": "0x04d80f560436ee99542a1108dca0c20f24c75b29b351adce06e5febc49cb59e1",
+    "political": "0x6fa1cec73c55f732c9c90e834c92007448cb776765d2f554b8304924b4ba6d9d",
+    "population": "0x97c024be8f7359ead551a1822176b33c1bfa868074fb582085b5433e919f6b26",
+    "population_growth": "0x54625e920cd94520170fe38d3c0a6a25e62107bab75cc224fbf597e34f3566b6",
+    "religion": "0x233256fc246cd934ea4acfb2a112ced855fb2f5d60e35563e24fb872115c0d0d",
+    "rgo_level": "0xa0222e492f2bef59b89a8790625e0995c72108688e33ff84d2b9a2e4048b62ed",
+    "state_efficacy": "0x56e917134642cc1f7d2289653c0233ca92112d6bc260ec667a5f1dd487c6427b",
+    "unrealized_tax_base": "0xb951b0d1c4333f294768c3341b92fa0f33bbc63dc78e2963ccc9e2915de2130f",
+    "wealth": "0x1cf874073c2f959f8065c4bbea2329097c56d35c3812cb15f9b3910f79ec2af2"
   },
   "save_version": "1.0.0",
   "selection_counts": {

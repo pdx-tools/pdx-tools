@@ -12,7 +12,16 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         if location.owner.is_dummy() {
-            return HoverDisplayDataSource::Clear;
+            // Filled terrain names the country it takes its color from. It
+            // has no data of its own, so it never shows a location card; the
+            // displayed `location_id` stays the hovered one.
+            let Some(donor) = self.fill_donor(location_idx) else {
+                return HoverDisplayDataSource::Clear;
+            };
+            let donor_location = self.gamestate().locations.index(donor).location();
+            return self
+                .country_hover(location_idx, donor_location, mode)
+                .unwrap_or(HoverDisplayDataSource::Clear);
         }
 
         let should_show_location = self
@@ -101,7 +110,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// On a past date the map shows owners only, so the hover names the owner
     /// of that date. A country that has since died still gets its name.
     fn historical_hover(&self, location_idx: LocationIdx) -> HoverDisplayDataSource {
-        let owner = self.owner_at_timeline_date(location_idx);
+        let owner = self.owner_at_timeline_date(self.political_fill_source(location_idx));
         if owner.is_dummy() {
             return HoverDisplayDataSource::Clear;
         }

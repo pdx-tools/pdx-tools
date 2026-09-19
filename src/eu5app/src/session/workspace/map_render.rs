@@ -153,6 +153,55 @@ impl<'bump> Eu5Workspace<'bump> {
         self.location_terrain[idx]
     }
 
+    /// The location that surrounded terrain takes its color from in the
+    /// current map mode. `None` for land, for terrain that is not surrounded
+    /// by one color, and in the modes that do not fill terrain.
+    ///
+    /// Every interaction with filled terrain (hover, highlight, selection,
+    /// dimming) reads this, so it always agrees with what the map shows.
+    pub(crate) fn fill_donor(
+        &self,
+        idx: eu5save::models::LocationIdx,
+    ) -> Option<eu5save::models::LocationIdx> {
+        match self.current_map_mode {
+            MapMode::Political => self.fill_donors[idx],
+            MapMode::Religion => self.religion_fill_donors()[idx],
+            _ => None,
+        }
+    }
+
+    /// The location whose color `idx` shows in the current map mode: its
+    /// donor when it is filled terrain, otherwise itself.
+    pub(crate) fn fill_source(
+        &self,
+        idx: eu5save::models::LocationIdx,
+    ) -> eu5save::models::LocationIdx {
+        self.fill_donor(idx).unwrap_or(idx)
+    }
+
+    /// The location whose owner color `idx` shows on the timeline date, in
+    /// every map mode. The owner borders read this, so filled terrain merges
+    /// with the country around it even in a mode that paints it as terrain.
+    pub(crate) fn political_fill_source(
+        &self,
+        idx: eu5save::models::LocationIdx,
+    ) -> eu5save::models::LocationIdx {
+        self.fill_donors[idx].unwrap_or(idx)
+    }
+
+    /// The religion fill of surrounded terrain. The key holds the owner too,
+    /// so that the donor's country is the one country around the terrain and
+    /// a hover or a selection can name it. Religion has no history, so the
+    /// religion mode only shows the save date and the fill is computed once.
+    fn religion_fill_donors(&self) -> &LocationIndexedVec<Option<eu5save::models::LocationIdx>> {
+        self.religion_fill_donors.get_or_init(|| {
+            self.fill_components.resolve_all(|loc| {
+                let location = self.gamestate.locations.index(loc).location();
+                Some((location.owner.real_id()?, location.religion))
+            })
+        })
+    }
+
     /// The owner color on the timeline date. At the save date the timeline
     /// owners equal the current owners, so one path serves every date.
     pub fn location_political_color(&self, key: eu5save::models::LocationIdx) -> GpuColor {
@@ -566,41 +615,35 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     pub(super) fn build_location_arrays(&mut self) {
+        self.fill_donors = self
+            .fill_components
+            .resolve_all(|loc| self.owner_at_timeline_date(loc).real_id());
+
         for location in self.gamestate.locations.iter() {
             let Some(gpu_index) = self.gpu_indices[location.idx()] else {
                 tracing::debug!(id = ?location.id(), location_idx = ?location.idx(), "Skipping location not in texture");
                 continue;
             };
 
-            let terrain = self.location_terrain(location.idx());
+            // Filled terrain shows the owner color of its donor so that it
+            // merges with the country around it, owner borders included.
+            let owner_color =
+                self.location_political_color(self.political_fill_source(location.idx()));
+            let is_water = self.location_terrain(location.idx()).is_water();
+
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_location_id(pdx_map::LocationId::new(location.idx().value()));
+            gpu_location.set_owner_color(owner_color);
 
-            // Water locations get a specific color and no location borders
-            if terrain.is_water() {
-                gpu_location.set_primary_color(GpuColor::WATER);
-                gpu_location.set_owner_color(GpuColor::WATER);
-                gpu_location.set_secondary_color(GpuColor::WATER);
+            // Water has no location borders, filled or not.
+            if is_water {
                 gpu_location
                     .flags_mut()
                     .set(LocationFlags::NO_LOCATION_BORDERS);
-                continue;
             }
-
-            if !terrain.is_passable() {
-                gpu_location.set_primary_color(GpuColor::IMPASSABLE);
-                gpu_location.set_owner_color(GpuColor::IMPASSABLE);
-                gpu_location.set_secondary_color(GpuColor::IMPASSABLE);
-                continue;
-            }
-
-            let owner_color = self.location_political_color(location.idx());
-            let control_color = self.location_control_color(location.idx());
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(owner_color);
-            gpu_location.set_secondary_color(control_color);
-            gpu_location.set_owner_color(owner_color);
         }
+
+        self.apply_political_colors();
     }
 
     pub fn location_arrays(&self) -> &pdx_map::LocationArrays {
@@ -667,21 +710,39 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    /// Repaint a few locations in the political mode on a past date.
+    /// Repaint a few locations in the political mode on a past date. The
+    /// list holds the locations that changed hands and the surrounded
+    /// terrain next to them, whose fill and dimming can change with the
+    /// owners around it.
     pub(super) fn repaint_locations(
         &mut self,
         locations: &[eu5save::models::LocationIdx],
     ) -> MapChange {
         let mut dirty = MapDirty::NONE;
+        let has_selection = !self.selection_state.is_empty();
         for &location_idx in locations {
             let Some(gpu_index) = self.gpu_indices[location_idx] else {
                 continue;
             };
-            dirty = MapDirty::COLORS;
-            let primary = self.location_political_color(location_idx);
+            dirty = dirty | MapDirty::COLORS;
+            let primary = self.location_political_color(self.political_fill_source(location_idx));
+            let dimmed = Self::should_dim_location(
+                self.location_terrain(location_idx),
+                has_selection,
+                self.is_selected_or_filled_by_selected(location_idx),
+                primary,
+            );
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(primary);
             gpu_location.set_secondary_color(primary);
+            if gpu_location.flags().contains(LocationFlags::DIMMED) != dimmed {
+                dirty = dirty | MapDirty::FLAGS;
+                if dimmed {
+                    gpu_location.flags_mut().set(LocationFlags::DIMMED);
+                } else {
+                    gpu_location.flags_mut().clear(LocationFlags::DIMMED);
+                }
+            }
         }
         MapChange {
             dirty,
@@ -689,22 +750,27 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
+    /// Surrounded terrain follows the selection state of its donor so that
+    /// it dims and brightens with the rest of the country.
+    fn is_selected_or_filled_by_selected(&self, idx: eu5save::models::LocationIdx) -> bool {
+        self.selection_state.contains(idx)
+            || self
+                .fill_donor(idx)
+                .is_some_and(|donor| self.selection_state.contains(donor))
+    }
+
     fn apply_interaction_flags(&mut self) {
         let has_selection = !self.selection_state.is_empty();
         for location in self.gamestate.locations.iter() {
             let terrain = self.location_terrain(location.idx());
+            let selected = self.is_selected_or_filled_by_selected(location.idx());
             let Some(gpu_idx) = self.gpu_indices[location.idx()] else {
                 continue;
             };
             let mut s = self.location_arrays.get_mut(gpu_idx);
 
-            let should_dim = Self::should_dim_location(
-                self.current_map_mode,
-                terrain,
-                has_selection,
-                self.selection_state.contains(location.idx()),
-                s.primary_color(),
-            );
+            let should_dim =
+                Self::should_dim_location(terrain, has_selection, selected, s.primary_color());
             s.flags_mut().clear(LocationFlags::from_bits(
                 LocationFlags::DIMMED.bits() | LocationFlags::FOCUSED.bits(),
             ));
@@ -723,20 +789,19 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn should_dim_location(
-        mode: MapMode,
         terrain: Terrain,
         has_selection: bool,
         selected: bool,
         primary_color: GpuColor,
     ) -> bool {
-        has_selection && !selected && Self::mode_allows_dimming(mode, terrain, primary_color)
+        has_selection && !selected && Self::terrain_allows_dimming(terrain, primary_color)
     }
 
-    fn mode_allows_dimming(mode: MapMode, terrain: Terrain, primary_color: GpuColor) -> bool {
-        if terrain.is_water() {
-            return mode == MapMode::Markets && primary_color != GpuColor::WATER;
-        }
+    /// Special terrain dims only when a map mode painted it: the water of a
+    /// market, or surrounded terrain filled with the color around it.
+    fn terrain_allows_dimming(terrain: Terrain, primary_color: GpuColor) -> bool {
         terrain.is_passable()
+            || (primary_color != GpuColor::WATER && primary_color != GpuColor::IMPASSABLE)
     }
 
     pub fn no_map_change(&self) -> MapChange {
@@ -747,20 +812,34 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn apply_political_colors(&mut self) -> gradient::MapLegend {
-        let live = self.is_timeline_live();
+        // Occupation has no history in the save, so a past date shows no
+        // controller stripes. Filled terrain shows stripes only when one
+        // controller holds all the land around it. The key holds the owner
+        // too, so a location has a control donor only when it has a fill
+        // donor.
+        let control_donors = self.is_timeline_live().then(|| {
+            self.fill_components.resolve_all(|loc| {
+                let location = self.gamestate.locations.index(loc).location();
+                Some((location.owner.real_id()?, location.controller.real_id()))
+            })
+        });
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
             let Some(gpu_index) = self.gpu_indices[location_idx] else {
                 continue;
             };
 
-            let primary = self.location_political_color(location_idx);
-            // Occupation has no history in the save, so a past date shows no
-            // controller stripes.
-            let controller = if live {
-                self.location_control_color(location_idx)
-            } else {
-                primary
+            let primary = self.location_political_color(self.political_fill_source(location_idx));
+            let controller = match &control_donors {
+                Some(control_donors) => {
+                    let control_source = if self.fill_donors[location_idx].is_none() {
+                        Some(location_idx)
+                    } else {
+                        control_donors[location_idx]
+                    };
+                    control_source.map_or(primary, |source| self.location_control_color(source))
+                }
+                None => primary,
             };
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
             gpu_location.set_primary_color(primary);
@@ -1115,8 +1194,9 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut color_data = Vec::new();
         for idx in 0..self.gamestate.locations.len() {
             let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let religion_color = self.location_religion_color(location_idx);
-            let owner_religion_color = self.owner_religion_color(location_idx);
+            let source = self.fill_source(location_idx);
+            let religion_color = self.location_religion_color(source);
+            let owner_religion_color = self.owner_religion_color(source);
             color_data.push((idx, religion_color, owner_religion_color));
         }
 
@@ -1143,54 +1223,61 @@ impl<'bump> Eu5Workspace<'bump> {
 mod tests {
     use super::*;
 
+    const PAINTED: GpuColor = GpuColor::from_rgb(1, 2, 3);
+
     #[test]
     fn selection_dimming_allows_land() {
         assert!(Eu5Workspace::should_dim_location(
-            MapMode::Political,
             Terrain::Other,
             true,
             false,
-            GpuColor::from_rgb(1, 2, 3),
+            PAINTED,
         ));
     }
 
     #[test]
-    fn selection_dimming_excludes_impassable_and_selected_locations() {
+    fn selection_dimming_excludes_unpainted_and_selected_locations() {
         assert!(!Eu5Workspace::should_dim_location(
-            MapMode::Political,
             Terrain::Impassable,
             true,
             false,
-            GpuColor::from_rgb(1, 2, 3),
+            GpuColor::IMPASSABLE,
         ));
         assert!(!Eu5Workspace::should_dim_location(
-            MapMode::Political,
-            Terrain::Other,
-            true,
-            true,
-            GpuColor::from_rgb(1, 2, 3),
-        ));
-    }
-
-    #[test]
-    fn market_mode_dims_market_assigned_water() {
-        assert!(Eu5Workspace::should_dim_location(
-            MapMode::Markets,
-            Terrain::Water,
-            true,
-            false,
-            GpuColor::from_rgb(1, 2, 3),
-        ));
-    }
-
-    #[test]
-    fn market_mode_keeps_unpainted_water_visible() {
-        assert!(!Eu5Workspace::should_dim_location(
-            MapMode::Markets,
-            Terrain::Water,
+            Terrain::Sea,
             true,
             false,
             GpuColor::WATER,
+        ));
+        assert!(!Eu5Workspace::should_dim_location(
+            Terrain::Other,
+            true,
+            true,
+            PAINTED,
+        ));
+    }
+
+    #[test]
+    fn painted_special_terrain_dims() {
+        // Market water and filled lakes or impassable terrain dim with the
+        // land around them.
+        assert!(Eu5Workspace::should_dim_location(
+            Terrain::Sea,
+            true,
+            false,
+            PAINTED,
+        ));
+        assert!(Eu5Workspace::should_dim_location(
+            Terrain::Lake,
+            true,
+            false,
+            PAINTED,
+        ));
+        assert!(Eu5Workspace::should_dim_location(
+            Terrain::Impassable,
+            true,
+            false,
+            PAINTED,
         ));
     }
 }
