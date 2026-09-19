@@ -13,6 +13,9 @@ pub enum Eu4GameError {
     #[error("eu4 deserialization error: {0}")]
     Deserialize(#[from] jomini::Error),
 
+    #[error("eu4 binary save requires ironman token data")]
+    MissingTokens,
+
     #[error("No meta file detected")]
     NoMeta,
 

@@ -191,7 +191,7 @@ env.CLOUDFLARE_ENV = "local-secondary"
 run = "mise run dev"
 
 [tasks."test:wasm"]
-depends = ["setup:wasm"]
+depends = ["setup:wasm", "tokenize"]
 run = [
     "cargo test -p wasm-*",
     "cargo test -p wasm-eu5 --target wasm32-unknown-unknown",
@@ -200,7 +200,7 @@ hide = true
 
 [tasks."test:cargo"]
 description = "Run all cargo (Rust) tests"
-depends = ["tokenize", "test:wasm"]
+depends = ["test:wasm"]
 run = [
     "cargo test -p pdx-zstd --no-default-features --features zstd_c",
     "cargo test -p pdx-zstd --no-default-features --features zstd_rust",

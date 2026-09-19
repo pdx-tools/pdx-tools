@@ -111,7 +111,7 @@ where
         }
 
         if z < 10000 {
-            breakpoint = z;
+            breakpoint = z + 1;
         }
 
         tokens.push(String::from(text.trim()));
