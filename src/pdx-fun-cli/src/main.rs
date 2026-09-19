@@ -39,7 +39,7 @@ enum Commands {
     ProvinceNames(province_names::ProvinceNamesArgs),
     /// Finds the smallest province on the map
     SmallestProvince(smallest_province::SmallestProvinceArgs),
-    /// Calculates EU4 province terrain from map files
+    /// Terrain mapper (currently disabled)
     TerrainMapper(terrain_mapper::TerrainMapperArgs),
 }
 
