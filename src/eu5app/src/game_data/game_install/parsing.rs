@@ -30,6 +30,8 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
         .deserialize()
         .map_err(|e| GameDataError::Jomini(e, "default.map"))?;
 
+    let sea_zones = default_map.sea_zones.into_iter().collect::<FxHashSet<_>>();
+    let lakes = default_map.lakes.into_iter().collect::<FxHashSet<_>>();
     let impassable = default_map
         .impassable_mountains
         .iter()
@@ -38,8 +40,8 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
         .collect::<FxHashSet<_>>();
 
     Ok(DefaultMap {
-        sea_zones: default_map.sea_zones.into_iter().collect(),
-        lakes: default_map.lakes.into_iter().collect(),
+        sea_zones,
+        lakes,
         impassable,
     })
 }
@@ -416,6 +418,38 @@ eight_chars = 77ac4cff
                 Some(&expected),
                 "Failed for input: {input}"
             );
+        }
+    }
+
+    #[test]
+    fn test_parse_default_map_keeps_lakes_apart_from_seas() {
+        let data = r#"
+sea_zones = { north_sea baltic_sea }
+lakes = { lake_constance }
+impassable_mountains = { alps }
+non_ownable = { sahara }
+"#;
+
+        let default_map = parse_default_map(data.as_bytes()).unwrap();
+        let named = [
+            ("north_sea", Terrain::Sea),
+            ("lake_constance", Terrain::Lake),
+            ("alps", Terrain::Impassable),
+            ("sahara", Terrain::Impassable),
+            ("paris", Terrain::Other),
+        ];
+        let locations = parse_locations_data(
+            named
+                .iter()
+                .map(|(name, _)| (name.to_string(), Srgb::default()))
+                .collect(),
+            &default_map,
+        )
+        .map(|loc| (loc.name, loc.terrain))
+        .collect::<FxHashMap<_, _>>();
+
+        for (name, terrain) in named {
+            assert_eq!(locations[name], terrain, "{name}");
         }
     }
 

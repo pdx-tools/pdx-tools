@@ -409,14 +409,9 @@ fn generate_provinces<P: FileProvider + ?Sized>(
     game_version: &str,
     center_locations: &HashMap<u16, (u16, u16)>,
 ) -> anyhow::Result<(usize, Vec<GameProvince>)> {
-    let map_data = fs.read_file("map/default.map")?;
-    let default_map = map::parse_default_map(map_data.as_slice());
-    let ocean_provs: HashSet<_> = default_map
-        .lakes
-        .iter()
-        .chain(default_map.sea_starts.iter())
-        .copied()
-        .collect();
+    let default_map = map::parse_default_map(&fs.read_file("map/default.map")?);
+    let ocean_provs: HashSet<_> = default_map.sea_starts.iter().copied().collect();
+    let lake_provs: HashSet<_> = default_map.lakes.iter().copied().collect();
 
     let terrain_name = format!("terrain-{}.eu4", game_version);
     let data = http::request_at(
@@ -471,6 +466,12 @@ fn generate_provinces<P: FileProvider + ?Sized>(
                     terrain: schemas::eu4::Terrain::Ocean,
                     province_is_on_an_island: false,
                 });
+            } else if lake_provs.contains(id) {
+                terrains.push(GameProvince {
+                    id: *id,
+                    terrain: schemas::eu4::Terrain::Lake,
+                    province_is_on_an_island: false,
+                });
             } else {
                 terrains.push(GameProvince {
                     id: *id,
@@ -484,20 +485,26 @@ fn generate_provinces<P: FileProvider + ?Sized>(
     terrains.sort_by_key(|x| x.id);
     terrains.dedup();
 
-    let mapped_oceans = ocean_provs
+    let mapped_water = ocean_provs
         .iter()
+        .chain(lake_provs.iter())
         .filter(|id| center_locations.contains_key(&id.as_u16()))
         .collect::<HashSet<_>>();
-    let emitted_oceans = terrains
+    let emitted_water = terrains
         .iter()
-        .filter(|province| province.terrain == schemas::eu4::Terrain::Ocean)
+        .filter(|province| {
+            matches!(
+                province.terrain,
+                schemas::eu4::Terrain::Ocean | schemas::eu4::Terrain::Lake
+            )
+        })
         .map(|province| &province.id)
         .collect::<HashSet<_>>();
     anyhow::ensure!(
-        mapped_oceans == emitted_oceans,
-        "mapped ocean province mismatch: missing={:?}, unexpected={:?}",
-        mapped_oceans.difference(&emitted_oceans),
-        emitted_oceans.difference(&mapped_oceans),
+        mapped_water == emitted_water,
+        "mapped water province mismatch: missing={:?}, unexpected={:?}",
+        mapped_water.difference(&emitted_water),
+        emitted_water.difference(&mapped_water),
     );
 
     Ok((total_provs, terrains))

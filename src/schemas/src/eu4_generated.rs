@@ -39,7 +39,7 @@ pub const ENUM_MIN_TERRAIN: u8 = 0;
 pub const ENUM_MAX_TERRAIN: u8 = 255;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_TERRAIN: [Terrain; 20] = [
+pub const ENUM_VALUES_TERRAIN: [Terrain; 21] = [
   Terrain::Grasslands,
   Terrain::Hills,
   Terrain::Mountains,
@@ -58,6 +58,7 @@ pub const ENUM_VALUES_TERRAIN: [Terrain; 20] = [
   Terrain::Marsh,
   Terrain::Steppe,
   Terrain::Wasteland,
+  Terrain::Lake,
   Terrain::Jungle,
   Terrain::Woods,
 ];
@@ -85,6 +86,7 @@ impl Terrain {
   pub const Marsh: Self = Self(38);
   pub const Steppe: Self = Self(39);
   pub const Wasteland: Self = Self(40);
+  pub const Lake: Self = Self(41);
   pub const Jungle: Self = Self(254);
   pub const Woods: Self = Self(255);
 
@@ -109,6 +111,7 @@ impl Terrain {
     Self::Marsh,
     Self::Steppe,
     Self::Wasteland,
+    Self::Lake,
     Self::Jungle,
     Self::Woods,
   ];
@@ -133,6 +136,7 @@ impl Terrain {
       Self::Marsh => Some("Marsh"),
       Self::Steppe => Some("Steppe"),
       Self::Wasteland => Some("Wasteland"),
+      Self::Lake => Some("Lake"),
       Self::Jungle => Some("Jungle"),
       Self::Woods => Some("Woods"),
       _ => None,
@@ -410,8 +414,12 @@ impl<'b> flatbuffers::Push for Rgb {
     type Output = Rgb;
     #[inline]
     unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-        let src = ::core::slice::from_raw_parts(self as *const Rgb as *const u8, Self::size());
+        let src = ::core::slice::from_raw_parts(self as *const Rgb as *const u8, <Self as flatbuffers::Push>::size());
         dst.copy_from_slice(src);
+    }
+    #[inline]
+    fn alignment() -> flatbuffers::PushAlignment {
+        flatbuffers::PushAlignment::new(1)
     }
 }
 

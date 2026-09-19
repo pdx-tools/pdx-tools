@@ -22,7 +22,10 @@ impl ProvinceBordersArgs {
         let mut ocean_provs: HashSet<u16> = HashSet::new();
         for record in game.provinces().unwrap().iter() {
             province_terrains.insert(record.id());
-            let is_ocean = record.terrain() == schemas::eu4::Terrain::Ocean;
+            let is_ocean = matches!(
+                record.terrain(),
+                schemas::eu4::Terrain::Ocean | schemas::eu4::Terrain::Lake
+            );
             if is_ocean {
                 ocean_provs.insert(record.id());
             }
