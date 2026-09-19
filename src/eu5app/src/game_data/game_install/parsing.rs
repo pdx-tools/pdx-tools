@@ -10,7 +10,8 @@ use std::sync::LazyLock;
 
 #[derive(Debug)]
 pub struct DefaultMap {
-    pub water_locations: FxHashSet<String>,
+    pub sea_zones: FxHashSet<String>,
+    pub lakes: FxHashSet<String>,
     pub impassable: FxHashSet<String>,
 }
 
@@ -29,12 +30,8 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
         .deserialize()
         .map_err(|e| GameDataError::Jomini(e, "default.map"))?;
 
-    let water_locations = default_map
-        .sea_zones
-        .iter()
-        .chain(default_map.lakes.iter())
-        .cloned()
-        .collect::<FxHashSet<_>>();
+    let sea_zones = default_map.sea_zones.into_iter().collect::<FxHashSet<_>>();
+    let lakes = default_map.lakes.into_iter().collect::<FxHashSet<_>>();
 
     let impassable = default_map
         .impassable_mountains
@@ -44,7 +41,8 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
         .collect::<FxHashSet<_>>();
 
     Ok(DefaultMap {
-        water_locations,
+        sea_zones,
+        lakes,
         impassable,
     })
 }
@@ -73,8 +71,10 @@ pub fn parse_locations_data(
     default_map: &DefaultMap,
 ) -> impl Iterator<Item = LocationTerrain> {
     named_locations.into_iter().map(|(name, hex)| {
-        let terrain = if default_map.water_locations.contains(&name) {
+        let terrain = if default_map.sea_zones.contains(&name) {
             Terrain::Water
+        } else if default_map.lakes.contains(&name) {
+            Terrain::Lake
         } else if default_map.impassable.contains(&name) {
             Terrain::Impassable
         } else {
@@ -419,6 +419,38 @@ eight_chars = 77ac4cff
                 Some(&expected),
                 "Failed for input: {input}"
             );
+        }
+    }
+
+    #[test]
+    fn test_parse_default_map_keeps_lakes_apart_from_seas() {
+        let data = r#"
+sea_zones = { north_sea baltic_sea }
+lakes = { lake_constance }
+impassable_mountains = { alps }
+non_ownable = { sahara }
+"#;
+
+        let default_map = parse_default_map(data.as_bytes()).unwrap();
+        let named = [
+            ("north_sea", Terrain::Water),
+            ("lake_constance", Terrain::Lake),
+            ("alps", Terrain::Impassable),
+            ("sahara", Terrain::Impassable),
+            ("paris", Terrain::Other),
+        ];
+        let locations = parse_locations_data(
+            named
+                .iter()
+                .map(|(name, _)| (name.to_string(), Srgb::default()))
+                .collect(),
+            &default_map,
+        )
+        .map(|loc| (loc.name, loc.terrain))
+        .collect::<FxHashMap<_, _>>();
+
+        for (name, terrain) in named {
+            assert_eq!(locations[name], terrain, "{name}");
         }
     }
 

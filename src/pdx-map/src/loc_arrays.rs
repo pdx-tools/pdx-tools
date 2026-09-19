@@ -31,6 +31,10 @@ impl LocationFlags {
     pub const FOCUSED: Self = Self(1 << 2); // Bit 2: location is the focused single tile
     pub const DIMMED: Self = Self(1 << 3); // Bit 3: location is outside the active selection
     pub const PREVIEW: Self = Self(1 << 4); // Bit 4: location is inside a box-select drag
+    pub const WATER: Self = Self(1 << 5); // Bit 5: location is water, so its edge with land is a coast
+    pub const IMPASSABLE: Self = Self(1 << 6); // Bit 6: location is impassable terrain, which no one owns
+    pub const UNOWNED: Self = Self(1 << 7); // Bit 7: location is land that no country owns
+    pub const LAKE: Self = Self(1 << 8); // Bit 8: location is a lake, which has no coast
     pub const INTERACTION: Self =
         Self(Self::HIGHLIGHTED.0 | Self::FOCUSED.0 | Self::DIMMED.0 | Self::PREVIEW.0);
 
@@ -57,6 +61,12 @@ impl LocationFlags {
     #[inline]
     pub const fn contains(self, other: Self) -> bool {
         self.0 & other.0 == other.0
+    }
+
+    /// The union of two flag sets
+    #[inline]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
     }
 
     #[inline]

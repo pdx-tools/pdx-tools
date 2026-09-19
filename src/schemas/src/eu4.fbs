@@ -20,6 +20,7 @@ enum Terrain : ubyte {
   Marsh,
   Steppe,
   Wasteland,
+  Lake,
 
   Jungle = 254,
   Woods = 255,
