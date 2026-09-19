@@ -7,6 +7,7 @@ use eu4save::{
     query::Query,
 };
 use highway::{HighwayHash, HighwayHasher, Key};
+use jomini::binary::TokenResolver;
 use serde::{Deserializer, de::DeserializeOwned};
 use std::io::Read;
 
@@ -263,6 +264,9 @@ impl Eu4Parser {
             }
 
             let encoding = file.encoding();
+            if encoding.is_binary() && resolver.is_empty() {
+                return Err(Eu4GameError::MissingTokens);
+            }
 
             match file.kind_mut() {
                 Eu4SliceFileKind::Text(x) => {
@@ -374,5 +378,17 @@ mod tests {
         assert!(is_multiplayer_from_player_count(2));
         assert!(!is_multiplayer_from_player_count(1));
         assert!(!is_multiplayer_from_player_count(0));
+    }
+
+    #[test]
+    fn empty_tokens_are_only_rejected_for_binary_saves() {
+        let resolver = SegmentedResolver::empty();
+        assert!(matches!(
+            Eu4Parser::new().parse_with(b"EU4bin", &resolver),
+            Err(Eu4GameError::MissingTokens)
+        ));
+
+        let text_error = Eu4Parser::new().parse_with(b"EU4txt", &resolver);
+        assert!(!matches!(text_error, Err(Eu4GameError::MissingTokens)));
     }
 }
