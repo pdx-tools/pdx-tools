@@ -179,13 +179,6 @@ Uploaded files are sent to S3 through the backend. This may be surprising, as wh
 
 ## EU4 new dlc instructions
 
-Generate [province terrain mapping](https://pdx.tools/blog/calculating-eu4-province-terrain)
-
-  - Start new normal game as France
-  - [Run](https://eu4.paradoxwikis.com/Run_files) [`terrain-script.txt`](assets/game/eu4/common/terrain-script.txt)
-  - Save file as `terrain-<major.minor>.eu4`
-  - Upload file to `terrain` directory in the eu4saves-test-cases S3 bucket
-
 Generate game bundle for repo:
 
 ```bash

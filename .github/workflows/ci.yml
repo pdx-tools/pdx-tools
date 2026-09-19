@@ -93,7 +93,6 @@ jobs:
     env:
       ASSET_CACHE_PATHS: |
         assets/game-bundles
-        assets/eu4-terrain
       PDX_FIXTURES_LOG: ${{ github.workspace }}/fixtures.log
       DEVCONTAINER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       CARGO_INCREMENTAL: 0
@@ -132,8 +131,8 @@ jobs:
       uses: actions/cache/restore@v6
       with:
         path: ${{ env.ASSET_CACHE_PATHS }}
-        key: asset-cache-v2-
-        restore-keys: asset-cache-v2-
+        key: asset-cache-v3-
+        restore-keys: asset-cache-v3-
         enableCrossOsArchive: true # shares one cache with the build job
 
     - name: Restore EU4 save fixtures
@@ -291,7 +290,6 @@ jobs:
     env:
       ASSET_CACHE_PATHS: |
         assets/game-bundles
-        assets/eu4-terrain
       PDX_FIXTURES_LOG: ${{ github.workspace }}/fixtures.log
       CARGO_INCREMENTAL: 0
       CARGO_PROFILE_DEV_DEBUG: 0
@@ -302,8 +300,8 @@ jobs:
       - name: Restore assets
         uses: actions/cache/restore@v6
         with:
-          key: asset-cache-v2-
-          restore-keys: asset-cache-v2-
+          key: asset-cache-v3-
+          restore-keys: asset-cache-v3-
           enableCrossOsArchive: true # shared cache between OSes
           path: ${{ env.ASSET_CACHE_PATHS }}
 
@@ -426,5 +424,5 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ env.ASSET_CACHE_PATHS }}
-          key: asset-cache-v2-${{ steps.assets.outputs.hash }}
+          key: asset-cache-v3-${{ steps.assets.outputs.hash }}
           enableCrossOsArchive: true

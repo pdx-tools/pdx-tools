@@ -2,7 +2,6 @@
 **/*.rs.bk
 dist/
 assets/saves
-assets/eu4-terrain
 assets/game-bundles
 assets/steam/
 assets/game/eu4/1.*
