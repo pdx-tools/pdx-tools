@@ -66,7 +66,7 @@
     - Sonora is an acceptable nation switch to
 */
 use crate::game::Game;
-pub use eu4game_data::{Achievement, Difficulty, achievements};
+pub use eu4_achievements::{Achievement, Difficulty, achievements};
 use eu4save::{
     CountryTag, Encoding, Eu4Date, PdsDate, ProvinceId, eu4_start_date,
     models::{Country, Eu4Save, Province, TaxManpowerModifier},

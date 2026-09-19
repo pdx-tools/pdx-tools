@@ -4,6 +4,7 @@ members = [
   "src/api",
   "src/applib",
   "src/bench",
+  "src/eu4-achievements",
   "src/eu4game-data",
   "src/eu4game",
   "src/eu5app",
@@ -46,6 +47,7 @@ clap = "4.6"
 criterion = { version = "0.8", default-features = false }
 csv = "1.4"
 erased-serde = "0.4.10"
+eu4-achievements = { path = "src/eu4-achievements", default-features = false }
 eu4game = { path = "src/eu4game", default-features = false }
 eu4game-data = { path = "src/eu4game-data", default-features = false }
 eu4save = { git = "https://github.com/rakaly/jomini.git", default-features = false }

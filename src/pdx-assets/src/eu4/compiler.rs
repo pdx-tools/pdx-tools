@@ -754,7 +754,7 @@ where
 {
     let achievements_gfx_data = fs.read_file("interface/achievements.gfx")?;
     let achievement_paths = achievements::achievement_images(achievements_gfx_data.as_slice());
-    let achievement_data = eu4game_data::achievements();
+    let achievement_data = eu4_achievements::achievements();
 
     let mut achieves = achievement_data
         .iter()
