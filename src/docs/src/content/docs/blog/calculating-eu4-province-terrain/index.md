@@ -426,6 +426,10 @@ every_province = {
     add_core = KOI
 }
 ```
+```
+```
+```
+```
 
 ## 2026 Addendum: Calculating Terrain from Map Files
 
