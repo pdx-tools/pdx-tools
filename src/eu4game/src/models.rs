@@ -12,7 +12,10 @@ pub struct GameProvince {
 
 impl GameProvince {
     pub fn is_habitable(&self) -> bool {
-        !matches!(self.terrain, Terrain::Wasteland | Terrain::Ocean)
+        !matches!(
+            self.terrain,
+            Terrain::Wasteland | Terrain::Ocean | Terrain::Lake
+        )
     }
 }
 

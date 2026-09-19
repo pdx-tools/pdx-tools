@@ -100,10 +100,33 @@ pub async fn render_screenshot(
         ));
     }
 
+    // Terrain and ownership flags. Water, lakes, and wasteland get no
+    // location borders. Unowned land keeps them, but the renderer draws no
+    // political border on it.
+    let save = parsed.query.save();
     for province in game.provinces() {
-        if province.is_habitable() {
-            continue;
-        }
+        let flags = match province.terrain {
+            schemas::eu4::Terrain::Ocean => {
+                LocationFlags::WATER.union(LocationFlags::NO_LOCATION_BORDERS)
+            }
+            schemas::eu4::Terrain::Lake => {
+                LocationFlags::LAKE.union(LocationFlags::NO_LOCATION_BORDERS)
+            }
+            schemas::eu4::Terrain::Wasteland => {
+                LocationFlags::IMPASSABLE.union(LocationFlags::NO_LOCATION_BORDERS)
+            }
+            _ => {
+                let owned = save
+                    .game
+                    .provinces
+                    .get(&province.id)
+                    .is_some_and(|prov| prov.owner.is_some());
+                if owned {
+                    continue;
+                }
+                LocationFlags::UNOWNED
+            }
+        };
 
         let Some(&color_slot) = patch_assets.color_index.get(province.id.as_u16() as usize) else {
             continue;
@@ -113,11 +136,10 @@ pub async fn render_screenshot(
             continue;
         }
 
-        let gpu_idx = GpuLocationIdx::new(color_idx as u16);
-        let mut gpu_location = location_arrays.get_mut(gpu_idx);
-        gpu_location
+        location_arrays
+            .get_mut(GpuLocationIdx::new(color_idx as u16))
             .flags_mut()
-            .set(LocationFlags::NO_LOCATION_BORDERS);
+            .set(flags);
     }
 
     let viewport = if is_multiplayer {

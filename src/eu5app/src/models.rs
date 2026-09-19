@@ -102,6 +102,7 @@ impl<'de> Deserialize<'de> for Terrain {
 }
 
 impl Terrain {
+    /// Seas and lakes. Both take the water color and neither has an owner.
     pub fn is_water(&self) -> bool {
         matches!(self, Terrain::Sea | Terrain::Lake)
     }

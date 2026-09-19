@@ -59,7 +59,7 @@ pub fn generate_political_colors(
             }
         } else if let Some(game_prov) = game.get_province(id) {
             match game_prov.terrain {
-                schemas::eu4::Terrain::Ocean => {
+                schemas::eu4::Terrain::Ocean | schemas::eu4::Terrain::Lake => {
                     primary_color.copy_from_slice(&OCEAN);
                     secondary_color.copy_from_slice(&OCEAN);
                 }
