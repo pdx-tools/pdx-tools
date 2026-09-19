@@ -143,6 +143,9 @@ struct ResolveUniforms {
 /// side. The shade pass reads neighbors of edge pixels from this band, so
 /// borders continue across the seams of tiled renders and do not pop at
 /// the screen edge while panning. Covers an owner border on a 4x display.
+///
+/// This is the upper limit. [`guard_band`] shrinks it when the output is
+/// near [`MAX_TEXTURE_DIMENSION`], down to zero for a full-size tile.
 const GUARD_BAND: u32 = 8;
 
 /// Uniforms for the shade pass: the appearance
@@ -210,7 +213,7 @@ impl ShadeUniforms {
                 scale_factor,
             ),
             owner_border_radius: border_radius(OWNER_BORDER_WIDTH, bounds.zoom_level, scale_factor),
-            guard_band: GUARD_BAND,
+            guard_band: guard_band(size),
             _pad0: 0,
         }
     }
@@ -781,11 +784,12 @@ struct ResolvedTarget {
 
 impl ResolvedTarget {
     fn new(device: &wgpu::Device, size: PhysicalSize<u32>) -> Self {
+        let band = guard_band(size);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Resolved Location Texture"),
             size: wgpu::Extent3d {
-                width: size.width.max(1) + GUARD_BAND * 2,
-                height: size.height.max(1) + GUARD_BAND * 2,
+                width: size.width.max(1) + band * 2,
+                height: size.height.max(1) + band * 2,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -798,6 +802,19 @@ impl ResolvedTarget {
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         Self { size, view }
     }
+}
+
+/// The guard band that fits around an output of this size.
+///
+/// The resolved target grows by the band on each side, so a large output
+/// must use a smaller band to stay inside [`MAX_TEXTURE_DIMENSION`].
+fn guard_band(size: PhysicalSize<u32>) -> u32 {
+    let width = size.width.max(1);
+    let height = size.height.max(1);
+    let available = MAX_TEXTURE_DIMENSION
+        .saturating_sub(width)
+        .min(MAX_TEXTURE_DIMENSION.saturating_sub(height));
+    GUARD_BAND.min(available / 2)
 }
 
 /// Bind groups for one frame. Cached until the resources or the resolved
@@ -898,7 +915,7 @@ impl MapRenderer {
             view_height: bounds.rect.size.height,
             surface_width: size.width,
             surface_height: size.height,
-            guard_band: GUARD_BAND,
+            guard_band: guard_band(size),
             _pad0: 0,
             _pad1: 0,
             _pad2: 0,
@@ -1946,6 +1963,20 @@ mod tests {
         };
         let uniforms = ShadeUniforms::new(&config, bounds, PhysicalSize::new(64, 12));
         assert_eq!(uniforms.scale_factor, 1.0);
+    }
+
+    #[test]
+    fn guard_band_fits_the_texture_limit() {
+        let max = PhysicalSize::new(MAX_TEXTURE_DIMENSION, MAX_TEXTURE_DIMENSION);
+        assert_eq!(guard_band(max), 0);
+        assert_eq!(
+            guard_band(PhysicalSize::new(
+                MAX_TEXTURE_DIMENSION - 8,
+                MAX_TEXTURE_DIMENSION - 8
+            )),
+            4
+        );
+        assert_eq!(guard_band(PhysicalSize::new(1024, 1024)), GUARD_BAND);
     }
 
     #[test]
