@@ -1,0 +1,135 @@
+every_province = {
+    limit = {
+        has_terrain = grasslands
+        is_wasteland = no
+    }
+    cede_province = KAL
+}
+
+every_province = {
+    limit = {
+        has_terrain = hills
+        is_wasteland = no
+    }
+    cede_province = FRA
+}
+
+every_province = {
+    limit = {
+        has_terrain = mountain
+        is_wasteland = no
+    }
+    cede_province = SWI
+}
+
+every_province = {
+    limit = {
+        has_terrain = desert
+        is_wasteland = no
+    }
+    cede_province = OMA
+}
+
+every_province = {
+    limit = {
+        has_terrain = marsh
+        is_wasteland = no
+    }
+    cede_province = SWE
+}
+
+every_province = {
+    limit = {
+        has_terrain = farmlands
+        is_wasteland = no
+    }
+    cede_province = HOL
+}
+
+every_province = {
+    limit = {
+        has_terrain = forest
+        is_wasteland = no
+    }
+    cede_province = NOV
+}
+
+every_province = {
+    limit = {
+        has_terrain = coastal_desert
+        is_wasteland = no
+    }
+    cede_province = TUN
+}
+
+every_province = {
+    limit = {
+        has_terrain = coastline
+        is_wasteland = no
+    }
+    cede_province = VEN
+}
+
+every_province = {
+    limit = {
+        has_terrain = savannah
+        is_wasteland = no
+    }
+    cede_province = CRE
+}
+
+every_province = {
+    limit = {
+        has_terrain = drylands
+        is_wasteland = no
+    }
+    cede_province = MAM
+}
+
+every_province = {
+    limit = {
+        has_terrain = highlands
+        is_wasteland = no
+    }
+    cede_province = KAR
+}
+
+every_province = {
+    limit = {
+        has_terrain = woods
+        is_wasteland = no
+    }
+    cede_province = MOS
+}
+
+every_province = {
+    limit = {
+        has_terrain = jungle
+        is_wasteland = no
+    }
+    cede_province = COC
+}
+
+every_province = {
+    limit = {
+        has_terrain = steppe
+        is_wasteland = no
+    }
+    cede_province = KAZ
+}
+
+every_province = {
+    limit = {
+        has_terrain = glacier
+        is_wasteland = no
+    }
+    cede_province = KMC
+}
+
+every_province = {
+    limit = {
+        province_is_on_an_island = yes
+        is_wasteland = no
+    }
+    add_core = KOI
+}

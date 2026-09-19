@@ -17,7 +17,7 @@ struct LauncherSettings {
 /// Read the game version from the launcher settings, without a leading `v`
 /// (for example `1.37.5.0`). Returns `None` when the game has no launcher
 /// settings, which is the case for EU5.
-pub fn raw_version<P: FileProvider + ?Sized>(provider: &P) -> Result<Option<String>> {
+pub fn raw_version<P: FileProvider>(provider: &P) -> Result<Option<String>> {
     let Some(path) = LAUNCHER_SETTINGS_PATHS
         .iter()
         .find(|path| provider.file_exists(path))

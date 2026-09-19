@@ -281,7 +281,7 @@ If I was a better person, I'd add this info to the EU4 wiki in a tone agnostic f
 
 Now I can rest and pick back up implementing Eat your greens.
 
-## Terrain Script
+## Addendum
 
 The following EU4 run script can be used to assign provinces of a certain terrain. This proved invaluable while testing the algorithm.
 
@@ -414,29 +414,3 @@ every_province = {
     cede_province = KMC
 }
 ```
-
-You can take it one step further if you want to detect islands too:
-
-```
-every_province = {
-    limit = {
-        province_is_on_an_island = yes
-        is_wasteland = no
-    }
-    add_core = KOI
-}
-```
-
-## 2026 Addendum: Calculating Terrain from Map Files
-
-Six years later, and we're back. AI is here, so might as well see if it can figure out how to map that terrain script onto the game files. The calculation is:
-
-- `map/definition.csv` maps province IDs to colors, and `map/provinces.bmp` tells us which province owns each pixel.
-- `map/terrain.txt` provides the explicit province overrides and maps `terrain.bmp` palette indices to gameplay terrain types.
-- For provinces without an override, count the terrain types inside the province. Different palette indices that represent the same terrain are combined before counting. Ocean and inland-ocean pixels are ignored.
-- `trees.bmp` is applied over `terrain.bmp` before counting. It is not a normal nearest-neighbor image. The tree grid uses staggered rows, and each tree cell writes to every other terrain row. Tree colors are mapped to the lowest terrain palette index for the corresponding terrain.
-- Forest, jungle, and woods pixels have twice the weight of other terrain pixels. The most popular weighted terrain wins.
-- A tie uses the lower EU4 terrain value. This often gives the same result as choosing the lower `terrain.bmp` index, but the two values are not the same thing.
-- `rivers.bmp` unused
-
-There is also a version-dependent correction to the original override rule. Before 1.30, the last terrain category containing a duplicate province wins. In 1.30 and later, the first category wins. For example, a province listed under both forest and woods can change terrain when the game version changes.
