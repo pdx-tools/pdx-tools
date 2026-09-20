@@ -8,7 +8,7 @@ export type ProgressCb = (portion: number) => void;
 
 export const obj = {
   async loadWasm() {
-    await init(wasmPath);
+    await init({ module_or_path: wasmPath });
   },
 
   compress(data: Uint8Array<ArrayBuffer>, cb: ProgressCb) {
