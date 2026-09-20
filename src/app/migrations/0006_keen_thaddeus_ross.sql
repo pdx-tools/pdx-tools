@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "features" text[] DEFAULT '{}'::text[] NOT NULL;

@@ -11,8 +11,28 @@ export function userId(x: string) {
 }
 
 export type Role = "admin" | "user" | "guest";
-export type User = { roles: Role[]; id?: UserId };
-export type LoggedInUser = { roles: Role[]; id: UserId };
+export type User = { roles: Role[]; id?: UserId; features: Feature[] };
+export type LoggedInUser = { roles: Role[]; id: UserId; features: Feature[] };
+
+// Features that can be enabled for individual users. Add an entry here and then
+// enable it for a user with:
+//
+//   UPDATE users SET features = array_append(features, '<name>') WHERE user_id = '<id>';
+//
+// The change is visible to the user within the session refresh interval, no
+// re-login is necessary.
+export const FEATURES = {} as const satisfies Record<string, FeatureDefinition>;
+export type FeatureDefinition = { description: string };
+export type Feature = keyof typeof FEATURES;
+
+export function isFeature(x: string): x is Feature {
+  return Object.hasOwn(FEATURES, x);
+}
+
+// Admins have access to every feature.
+export function hasFeature(user: User, feature: Feature) {
+  return user.roles.includes("admin") || user.features.includes(feature);
+}
 
 type PdxPermissions =
   | {
@@ -116,9 +136,11 @@ export function pdxUser(session: PdxSession): User {
   return session.kind === "guest"
     ? {
         roles: ["guest"],
+        features: [],
       }
     : {
         roles: [session.account === "admin" ? "admin" : "user"],
         id: session.userId,
+        features: session.features,
       };
 }

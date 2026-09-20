@@ -17,6 +17,8 @@ describe("auth", () => {
       account: "free",
       userId: userId("2"),
       steamId: "3",
+      features: [],
+      issuedAt: 0,
     });
     expect(hasPermission(user, "savefile:update")).toBe(false);
     expect(hasPermission(user, "savefile:update", { userId: userId("10") })).toBe(false);
@@ -33,6 +35,8 @@ describe("auth", () => {
       account: "admin",
       userId: userId("2"),
       steamId: "3",
+      features: [],
+      issuedAt: 0,
     });
     expect(hasPermission(user, "savefile:update")).toBe(true);
     expect(hasPermission(user, "savefile:update", { userId: userId("10") })).toBe(true);
