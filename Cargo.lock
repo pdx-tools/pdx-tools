@@ -2996,6 +2996,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdx-save-codec"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "pdx-zstd",
+ "rawzip",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "pdx-screenshot"
 version = "0.1.0"
 dependencies = [
@@ -4833,10 +4843,8 @@ dependencies = [
 name = "wasm-compress"
 version = "0.1.0"
 dependencies = [
- "flate2",
  "js-sys",
- "pdx-zstd",
- "rawzip",
+ "pdx-save-codec",
  "serde",
  "tsify",
  "wasm-bindgen",
