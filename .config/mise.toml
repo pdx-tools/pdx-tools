@@ -23,9 +23,10 @@ run_windows = ["cargo build --release --no-default-features --features zstd_rust
 hide = true
 
 [tasks."build:wasm-bindgen"]
+usage = 'arg "<rust_package>" help="Rust package name"'
 depends = ['build:cargo-wasm']
 run = [
-    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/{{arg(name="rust_package")}}.wasm --out-dir ./src/app/app/wasm'
+    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/{{ usage.rust_package }}.wasm --out-dir ./src/app/app/wasm'
 ]
 hide = true
 
@@ -89,8 +90,9 @@ dir = "src/app"
 run = ["pnpm run build"]
 
 [tasks.wasm-opt]
+usage = 'arg "<rust_package>" help="Rust package name"'
 run = [
-    'wasm-opt -O2 ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm -o ./src/app/app/wasm/{{arg(name="rust_package", i=0)}}_bg.wasm',
+    'wasm-opt -O2 ./src/app/app/wasm/{{ usage.rust_package }}_bg.wasm -o ./src/app/app/wasm/{{ usage.rust_package }}_bg.wasm',
 ]
 hide = true
 
