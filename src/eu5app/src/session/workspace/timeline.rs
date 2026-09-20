@@ -1,14 +1,14 @@
 use super::*;
-use crate::timeline::{BorderIndex, CountryIdentities, CountryIdentity};
+use crate::timeline::{CountryIdentities, CountryIdentity, TimelineIndex};
 use eu5save::Eu5Date;
 
 /// The date the map shows, and the owners on that date.
 ///
 /// The workspace starts at the save date, where the historical owners equal
 /// the current `owner` of every location. Moving the date steps the owners
-/// through the [`BorderIndex`], so a one day step touches few locations.
+/// through the [`TimelineIndex`], so a one day step touches few locations.
 pub(super) struct TimelineState<'bump> {
-    borders: BorderIndex,
+    index: TimelineIndex,
     identities: CountryIdentities<'bump>,
     save_date: Eu5Date,
     date: Eu5Date,
@@ -18,10 +18,14 @@ pub(super) struct TimelineState<'bump> {
 impl<'bump> TimelineState<'bump> {
     pub(super) fn new(gamestate: &Gamestate<'bump>) -> Self {
         let save_date = gamestate.metadata().date.start_of_day();
-        let borders = BorderIndex::from_locations(&gamestate.locations, save_date);
-        let owners = borders.owners_at(gamestate.locations.len(), save_date);
+        let index = TimelineIndex::from_save(
+            &gamestate.locations,
+            gamestate.timeline_manager.country_renames,
+            save_date,
+        );
+        let owners = index.owners_at(gamestate.locations.len(), save_date);
         Self {
-            borders,
+            index,
             identities: CountryIdentities::new(gamestate),
             save_date,
             date: save_date,
@@ -50,7 +54,7 @@ pub struct TimelineSummary {
     pub end: Eu5Date,
     /// Every date on which a location changed hands between two countries.
     /// Setup on the first date and settlement do not count; see
-    /// [`BorderIndex::history_changes`].
+    /// [`TimelineIndex::history_changes`].
     pub change_dates: Vec<Eu5Date>,
     /// The number of locations that changed hands on each of `change_dates`.
     pub change_counts: Vec<u32>,
@@ -75,7 +79,7 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     pub fn timeline_summary(&self) -> TimelineSummary {
-        let borders = &self.timeline.borders;
+        let index = &self.timeline.index;
         let notes = self
             .gamestate
             .timeline_manager
@@ -90,14 +94,14 @@ impl<'bump> Eu5Workspace<'bump> {
         // Reconciliation puts a change on the save date for every owned
         // location of a save without a history, so availability means a
         // change before the save date, not any change at all.
-        let available = borders
+        let available = index
             .first_date()
             .is_some_and(|first| first < self.timeline.save_date);
 
-        let (change_dates, change_counts) = borders.history_changes().into_iter().unzip();
+        let (change_dates, change_counts) = index.history_changes().into_iter().unzip();
         TimelineSummary {
             available,
-            start: borders.first_date().unwrap_or(self.timeline.save_date),
+            start: index.first_date().unwrap_or(self.timeline.save_date),
             end: self.timeline.save_date,
             change_dates,
             change_counts,
@@ -113,7 +117,7 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn set_timeline_date(&mut self, date: Eu5Date) -> MapChange {
         let start = self
             .timeline
-            .borders
+            .index
             .first_date()
             .unwrap_or(self.timeline.save_date);
         let date = date.start_of_day().clamp(start, self.timeline.save_date);
@@ -141,32 +145,78 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     /// Move the owners to `date` and return the locations that changed:
-    /// those that changed hands and the surrounded terrain next to them.
+    /// those that changed hands, every location of a country that was
+    /// recolored, and the surrounded terrain next to them.
+    ///
+    /// A recolored country keeps its land, so its locations do not change
+    /// hands. Without this repaint they keep the old color, and the owner
+    /// borders read the color difference between them and the land the
+    /// country gained later as a frontier.
     ///
     /// The owner color of each changed location is refreshed here, because
     /// the owner borders read it in every map mode, and the map mode passes
     /// do not write it.
     pub(super) fn step_timeline_to(&mut self, date: Eu5Date) -> Vec<LocationIdx> {
-        let mut touched = Vec::new();
         let from = self.timeline.date;
-        if date != from {
-            self.timeline
-                .borders
-                .step(&mut self.timeline.owners, from, date, &mut touched);
-            self.timeline.date = date;
-            self.refill_around(&mut touched);
-            for &location_idx in &touched {
-                let Some(gpu_index) = self.gpu_indices[location_idx] else {
-                    continue;
-                };
-                let color = self.location_political_color(self.political_fill_source(location_idx));
-                let unowned = self.owner_at_timeline_date(location_idx).is_dummy();
-                let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-                gpu_location.set_owner_color(color);
-                super::map_render::set_unowned_flag(gpu_location.flags_mut(), unowned);
-            }
+        if date == from {
+            return Vec::new();
+        }
+
+        let changes = self
+            .timeline
+            .index
+            .step(&mut self.timeline.owners, from, date);
+        self.timeline.date = date;
+
+        let mut touched = changes.locations;
+        let recolored = self.with_subjects(&changes.countries);
+        if !recolored.is_empty() {
+            touched.extend(
+                self.timeline
+                    .owners
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, owner)| recolored.contains(owner))
+                    .map(|(idx, _)| LocationIdx::new(idx as u32)),
+            );
+        }
+        touched.sort_unstable();
+        touched.dedup();
+        self.refill_around(&mut touched);
+        for &location_idx in &touched {
+            let Some(gpu_index) = self.gpu_indices[location_idx] else {
+                continue;
+            };
+            let color = self.location_political_color(self.political_fill_source(location_idx));
+            let unowned = self.owner_at_timeline_date(location_idx).is_dummy();
+            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
+            gpu_location.set_owner_color(color);
+            super::map_render::set_unowned_flag(gpu_location.flags_mut(), unowned);
         }
         touched
+    }
+
+    /// `countries` and their subjects, because a subject's color is blended
+    /// toward its overlord's.
+    fn with_subjects(&self, countries: &[CountryId]) -> FxHashSet<CountryId> {
+        let mut result: FxHashSet<CountryId> = countries.iter().copied().collect();
+        if result.is_empty() {
+            return result;
+        }
+
+        let all = &self.gamestate.countries;
+        let changed: FxHashSet<CountryIdx> = result.iter().filter_map(|&id| all.get(id)).collect();
+        for entry in all.iter() {
+            let mut overlord = self.overlord_of[entry.idx()];
+            while let Some(idx) = overlord {
+                if changed.contains(&idx) {
+                    result.insert(entry.id());
+                    break;
+                }
+                overlord = self.overlord_of[idx];
+            }
+        }
+        result
     }
 
     /// Resolve the fill of the surrounded terrain next to the locations in

@@ -5,8 +5,10 @@
 //! `timeline_manager` with the renames of live countries and an archive of
 //! dead ones. This module folds those into two structures:
 //!
-//! - [`BorderIndex`], a flat list of ownership changes grouped by date, so a
-//!   full state or a step between two dates is one linear pass.
+//! - [`TimelineIndex`], one flat list of dated events, so a full state or a
+//!   step between two dates is one linear pass. Every input to a location's
+//!   political color that changes with the date has an event kind here: the
+//!   owner of a location, and the identity of a country.
 //! - [`CountryIdentities`], which answers "what did this country look like on
 //!   this date" for live, renamed, and dead countries alike.
 
@@ -27,31 +29,57 @@ pub struct OwnerChange {
     pub to: CountryId,
 }
 
-/// Every ownership change in the campaign, grouped by date.
+/// Something that changes the political map on a date.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimelineEvent {
+    /// A location changed hands.
+    Owner(OwnerChange),
+    /// A country took a new identity: name, tag, or color. Its land did not
+    /// move, but every location it owns shows the new color from this date.
+    Recolor(CountryId),
+}
+
+/// The locations and countries a step wrote, so a caller can repaint only
+/// those. A location may appear more than once.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StepChanges {
+    pub locations: Vec<LocationIdx>,
+    pub countries: Vec<CountryId>,
+}
+
+/// Every event in the campaign, grouped by date.
 ///
 /// The index is small: a 24 year campaign has about 18,000 changes over 555
 /// dates. Every location is unowned before its first entry, so the state at
 /// any date is the sum of the changes at or before it.
 #[derive(Debug, Clone, Default)]
-pub struct BorderIndex {
-    /// Distinct dates of change, ascending, at 08:00.
+pub struct TimelineIndex {
+    /// Distinct dates of change, ascending, at the start of the day.
     dates: Vec<Eu5Date>,
-    /// `changes[offsets[i]..offsets[i + 1]]` are the changes on `dates[i]`.
+    /// `events[offsets[i]..offsets[i + 1]]` are the events on `dates[i]`.
     offsets: Vec<u32>,
-    changes: Vec<OwnerChange>,
+    events: Vec<TimelineEvent>,
+    /// The first date with an owner change. A recolor before it does not
+    /// start the campaign.
+    first_date: Option<Eu5Date>,
 }
 
-impl BorderIndex {
-    /// Build the index from the ownership history of every location.
+impl TimelineIndex {
+    /// Build the index from the ownership history of every location and the
+    /// rename records of every country.
     ///
     /// `save_date` is the date the save was written. A location whose replayed
     /// owner differs from its current `owner` gets a final change on the save
     /// date, so the index at the save date agrees with the current state. The
     /// game omits an entry when a civil war swaps two country ids under one
     /// tag, and this reconciliation covers that case.
-    pub fn from_locations(locations: &Locations<'_>, save_date: Eu5Date) -> Self {
+    pub fn from_save(
+        locations: &Locations<'_>,
+        renames: &[CountryRename<'_>],
+        save_date: Eu5Date,
+    ) -> Self {
         let save_date = save_date.start_of_day();
-        let mut entries: Vec<(Eu5Date, OwnerChange)> = Vec::new();
+        let mut entries: Vec<(Eu5Date, TimelineEvent)> = Vec::new();
         for entry in locations.iter() {
             let loc = entry.location();
             let mut prev = CountryId::default();
@@ -59,11 +87,11 @@ impl BorderIndex {
                 let date = owned.date.start_of_day().min(save_date);
                 entries.push((
                     date,
-                    OwnerChange {
+                    TimelineEvent::Owner(OwnerChange {
                         location: entry.idx(),
                         from: prev,
                         to: owned.owner,
-                    },
+                    }),
                 ));
                 prev = owned.owner;
             }
@@ -71,49 +99,59 @@ impl BorderIndex {
             if prev != loc.owner {
                 entries.push((
                     save_date,
-                    OwnerChange {
+                    TimelineEvent::Owner(OwnerChange {
                         location: entry.idx(),
                         from: prev,
                         to: loc.owner,
-                    },
+                    }),
                 ));
             }
+        }
+
+        for rename in renames {
+            let date = rename.date.start_of_day().min(save_date);
+            entries.push((date, TimelineEvent::Recolor(rename.country_id)));
         }
 
         Self::from_entries(entries)
     }
 
-    /// Build the index from dated changes. Entries for one location must be in
+    /// Build the index from dated events. Entries for one location must be in
     /// campaign order; the sort is stable, so that order survives.
-    fn from_entries(mut entries: Vec<(Eu5Date, OwnerChange)>) -> Self {
+    fn from_entries(mut entries: Vec<(Eu5Date, TimelineEvent)>) -> Self {
         entries.sort_by_key(|(date, _)| *date);
 
         let mut dates = Vec::new();
         let mut offsets = Vec::new();
-        let mut changes = Vec::with_capacity(entries.len());
-        for (date, change) in entries {
+        let mut events = Vec::with_capacity(entries.len());
+        let mut first_date = None;
+        for (date, event) in entries {
             if dates.last() != Some(&date) {
                 dates.push(date);
-                offsets.push(changes.len() as u32);
+                offsets.push(events.len() as u32);
             }
-            changes.push(change);
+            if first_date.is_none() && matches!(event, TimelineEvent::Owner(_)) {
+                first_date = Some(date);
+            }
+            events.push(event);
         }
-        offsets.push(changes.len() as u32);
+        offsets.push(events.len() as u32);
 
         Self {
             dates,
             offsets,
-            changes,
+            events,
+            first_date,
         }
     }
 
     /// The first date on which any location was owned. Usually the start of
     /// the campaign.
     pub fn first_date(&self) -> Option<Eu5Date> {
-        self.dates.first().copied()
+        self.first_date
     }
 
-    /// Every date on which at least one location changed hands.
+    /// Every date on which something changed.
     pub fn dates(&self) -> &[Eu5Date] {
         &self.dates
     }
@@ -129,13 +167,18 @@ impl BorderIndex {
     /// the change, and colonization fills the map with those for centuries.
     /// A location that changes hands twice on one day counts once.
     pub fn history_changes(&self) -> Vec<(Eu5Date, u32)> {
+        let setup = self.first_date();
         let mut result = Vec::new();
         let mut seen = FxHashSet::default();
-        for (idx, date) in self.dates.iter().enumerate().skip(1) {
+        for (idx, date) in self.dates.iter().enumerate() {
+            if Some(*date) <= setup {
+                continue;
+            }
             seen.clear();
             let count = self
-                .changes_on(idx)
+                .events_on(idx)
                 .iter()
+                .filter_map(TimelineEvent::owner_change)
                 .filter(|change| !change.from.is_dummy() && !change.to.is_dummy())
                 .filter(|change| seen.insert(change.location))
                 .count();
@@ -146,10 +189,10 @@ impl BorderIndex {
         result
     }
 
-    fn changes_on(&self, date_idx: usize) -> &[OwnerChange] {
+    fn events_on(&self, date_idx: usize) -> &[TimelineEvent] {
         let start = self.offsets[date_idx] as usize;
         let end = self.offsets[date_idx + 1] as usize;
-        &self.changes[start..end]
+        &self.events[start..end]
     }
 
     /// The number of change dates at or before `date`.
@@ -163,42 +206,68 @@ impl BorderIndex {
         let mut owners = LocationIndexedVec::filled(location_count, CountryId::default());
         let end = self.position(date);
         for date_idx in 0..end {
-            for change in self.changes_on(date_idx) {
+            for change in self
+                .events_on(date_idx)
+                .iter()
+                .filter_map(TimelineEvent::owner_change)
+            {
                 owners[change.location] = change.to;
             }
         }
         owners
     }
 
-    /// Move `owners`, which holds the state on `from`, to the state on `to`.
+    /// Move `owners`, which holds the state on `from`, to the state on `to`,
+    /// and return what the step changed.
     ///
-    /// A step forward applies the changes in `(from, to]`. A step backward
-    /// undoes the changes in `(to, from]` in reverse, which restores the owner
-    /// each change replaced. Every location written is appended to `touched`,
-    /// possibly more than once, so a caller can repaint only those.
+    /// A step forward applies the events in `(from, to]`. A step backward
+    /// undoes the events in `(to, from]` in reverse, which restores the owner
+    /// each change replaced. A recolor has no state to move: the identity
+    /// lookup is by date. Crossing one in either direction reports the
+    /// country, because its color differs on the two sides of the date.
     pub fn step(
         &self,
         owners: &mut LocationIndexedVec<CountryId>,
         from: Eu5Date,
         to: Eu5Date,
-        touched: &mut Vec<LocationIdx>,
-    ) {
+    ) -> StepChanges {
+        let mut changes = StepChanges::default();
         let from_pos = self.position(from);
         let to_pos = self.position(to);
         if to_pos >= from_pos {
             for date_idx in from_pos..to_pos {
-                for change in self.changes_on(date_idx) {
-                    owners[change.location] = change.to;
-                    touched.push(change.location);
+                for event in self.events_on(date_idx) {
+                    match event {
+                        TimelineEvent::Owner(change) => {
+                            owners[change.location] = change.to;
+                            changes.locations.push(change.location);
+                        }
+                        TimelineEvent::Recolor(country) => changes.countries.push(*country),
+                    }
                 }
             }
         } else {
             for date_idx in (to_pos..from_pos).rev() {
-                for change in self.changes_on(date_idx).iter().rev() {
-                    owners[change.location] = change.from;
-                    touched.push(change.location);
+                for event in self.events_on(date_idx).iter().rev() {
+                    match event {
+                        TimelineEvent::Owner(change) => {
+                            owners[change.location] = change.from;
+                            changes.locations.push(change.location);
+                        }
+                        TimelineEvent::Recolor(country) => changes.countries.push(*country),
+                    }
                 }
             }
+        }
+        changes
+    }
+}
+
+impl TimelineEvent {
+    fn owner_change(&self) -> Option<&OwnerChange> {
+        match self {
+            TimelineEvent::Owner(change) => Some(change),
+            TimelineEvent::Recolor(_) => None,
         }
     }
 }
@@ -299,19 +368,23 @@ mod tests {
         Eu5Date::parse(s).unwrap()
     }
 
-    fn change(location: u32, from: u32, to: u32) -> OwnerChange {
-        OwnerChange {
+    fn change(location: u32, from: u32, to: u32) -> TimelineEvent {
+        TimelineEvent::Owner(OwnerChange {
             location: LocationIdx::new(location),
             from: CountryId::new(from),
             to: CountryId::new(to),
-        }
+        })
+    }
+
+    fn recolor(country: u32) -> TimelineEvent {
+        TimelineEvent::Recolor(CountryId::new(country))
     }
 
     /// Location 134 of the reference save: Denmark from the campaign start,
     /// Skane from 1338.6.3. Location 7 is never owned. Location 0 changes
     /// hands twice on one day.
-    fn sample_index() -> BorderIndex {
-        BorderIndex::from_entries(vec![
+    fn sample_index() -> TimelineIndex {
+        TimelineIndex::from_entries(vec![
             (date("1337.4.1"), change(0, 0, 4)),
             (date("1337.4.1"), change(134, 0, 4)),
             (date("1338.6.3"), change(134, 4, 5)),
@@ -331,8 +404,8 @@ mod tests {
             index.dates(),
             &[date("1337.4.1"), date("1338.6.3"), date("1340.1.1")]
         );
-        assert_eq!(index.changes_on(1), &[change(134, 4, 5)]);
-        assert_eq!(index.changes_on(2).len(), 2);
+        assert_eq!(index.events_on(1), &[change(134, 4, 5)]);
+        assert_eq!(index.events_on(2).len(), 2);
         assert_eq!(index.first_date(), Some(date("1337.4.1")));
     }
 
@@ -340,12 +413,13 @@ mod tests {
     /// and a location counts once per date.
     #[test]
     fn history_changes_count_locations_that_changed_hands() {
-        let index = BorderIndex::from_entries(vec![
+        let index = TimelineIndex::from_entries(vec![
             (date("1337.4.1"), change(0, 0, 4)),
             (date("1337.4.1"), change(134, 0, 4)),
             (date("1338.6.3"), change(134, 4, 5)),
             (date("1338.6.3"), change(7, 0, 5)),
             (date("1339.1.1"), change(7, 5, 0)),
+            (date("1339.6.1"), recolor(5)),
             (date("1340.1.1"), change(0, 4, 5)),
             (date("1340.1.1"), change(0, 5, 6)),
             (date("1340.1.1"), change(134, 5, 6)),
@@ -385,7 +459,7 @@ mod tests {
         for &from in &dates {
             for &to in &dates {
                 let mut owners = index.owners_at(200, from);
-                index.step(&mut owners, from, to, &mut Vec::new());
+                index.step(&mut owners, from, to);
                 let expected = index.owners_at(200, to);
                 assert!(owners.iter().eq(expected.iter()), "step {from:?} -> {to:?}");
             }
@@ -398,20 +472,62 @@ mod tests {
         let index = sample_index();
         let mut owners = index.owners_at(200, date("1340.1.1"));
         assert_eq!(owner(&owners, 0), 6);
-        let mut touched = Vec::new();
-        index.step(
-            &mut owners,
-            date("1340.1.1"),
-            date("1339.1.1"),
-            &mut touched,
+        let changes = index.step(&mut owners, date("1340.1.1"), date("1339.1.1"));
+        assert_eq!(
+            changes.locations,
+            [LocationIdx::new(0), LocationIdx::new(0)]
         );
-        assert_eq!(touched, [LocationIdx::new(0), LocationIdx::new(0)]);
+        assert!(changes.countries.is_empty());
         assert_eq!(owner(&owners, 0), 4);
+    }
+
+    /// A recolor takes effect on its date. A step from the day before to the
+    /// day of the recolor crosses it, and so does the step back. It moves no
+    /// owner, and it is not a change of hands for the timeline strip.
+    #[test]
+    fn stepping_over_a_recolor_reports_the_country() {
+        let index = TimelineIndex::from_entries(vec![
+            (date("1337.4.1"), change(0, 0, 4)),
+            (date("1400.1.1"), recolor(4)),
+            (date("1400.1.1"), change(0, 4, 5)),
+            (date("1420.1.1"), recolor(5)),
+        ]);
+        let countries = |from: &str, to: &str| {
+            let mut owners = index.owners_at(1, date(from));
+            let changes = index.step(&mut owners, date(from), date(to));
+            changes
+                .countries
+                .iter()
+                .map(|id| id.value())
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(countries("1399.12.31", "1400.1.1"), [4]);
+        assert_eq!(countries("1400.1.1", "1399.12.31"), [4]);
+        assert_eq!(countries("1400.1.1", "1410.1.1"), Vec::<u32>::new());
+        assert_eq!(countries("1400.1.1", "1420.1.1"), [5]);
+        assert_eq!(countries("1337.4.1", "1500.1.1"), [4, 5]);
+        assert_eq!(countries("1420.1.1", "1420.1.1"), Vec::<u32>::new());
+
+        assert_eq!(index.first_date(), Some(date("1337.4.1")));
+        assert_eq!(index.history_changes(), [(date("1400.1.1"), 1)]);
+    }
+
+    /// A recolor before the first owned location does not move the campaign
+    /// start.
+    #[test]
+    fn first_date_is_the_first_owner_change() {
+        let index = TimelineIndex::from_entries(vec![
+            (date("1337.1.1"), recolor(4)),
+            (date("1337.4.1"), change(0, 0, 4)),
+        ]);
+        assert_eq!(index.first_date(), Some(date("1337.4.1")));
+        assert!(index.history_changes().is_empty());
     }
 
     #[test]
     fn empty_index() {
-        let index = BorderIndex::from_entries(Vec::new());
+        let index = TimelineIndex::from_entries(Vec::new());
         assert!(index.dates().is_empty());
         assert_eq!(index.first_date(), None);
         assert_eq!(index.position(date("1400.1.1")), 0);
