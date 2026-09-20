@@ -43,6 +43,13 @@
       "when": 1765915085968,
       "tag": "0005_stormy_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789867922247,
+      "tag": "0006_keen_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,7 @@ import { captureEvent } from "@/server-lib/posthog";
 import { withCore } from "@/server-lib/middleware";
 import type { PdxRouteContext } from "@/server-lib/cloudflare-context";
 import { withDb } from "@/server-lib/db/middleware";
-import { pdxSession } from "@/server-lib/auth/session";
+import { pdxSession, sessionPayload } from "@/server-lib/auth/session";
 import { safeRedirect } from "@/server-lib/auth/redirect";
 import { pdxSteam } from "@/server-lib/steam.server";
 import { userId } from "@/lib/auth";
@@ -35,6 +35,7 @@ export const loader = withCore(
       .returning({
         userId: table.users.userId,
         account: table.users.account,
+        features: table.users.features,
         inserted: sql<boolean>`(xmax = 0)`,
       });
 
@@ -46,12 +47,9 @@ export const loader = withCore(
 
     const dest = new URL(safeRedirect(searchParams.get("returnTo")), request.url);
 
-    const sessionStorage = pdxSession({ context, request });
-    const session = await sessionStorage.new();
-    session.set("userId", user.userId);
-    session.set("steamId", steamUid);
-    session.set("account", user.account);
-    const cookie = await sessionStorage.commit(session);
+    const cookie = await pdxSession({ context, request }).issue(
+      sessionPayload({ ...user, steamId: steamUid }),
+    );
 
     // https://stackoverflow.com/q/42216700/433785
     return new Response(

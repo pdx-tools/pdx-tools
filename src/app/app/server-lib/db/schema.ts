@@ -1,4 +1,5 @@
 import type { UserId } from "@/lib/auth";
+import { sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   pgTable,
@@ -35,6 +36,10 @@ export const users = pgTable(
     display: text("display"),
     createdOn: timestampColumn(),
     apiKey: text("api_key"),
+    features: text("features")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
   },
   (users) => [uniqueIndex("idx_users_steam_id").on(users.steamId)],
 );
