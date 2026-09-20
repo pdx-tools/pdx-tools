@@ -33,6 +33,7 @@ import type { Eu5SaveInput } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import { fetchOk } from "@/lib/fetch";
 import { getLogLevel } from "@/lib/isDeveloper";
+import { trackWorker } from "@/lib/sentryWorker";
 import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
 import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
 import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
@@ -150,11 +151,13 @@ export class Eu5GameAdapter {
     const eu5RawWorker = new Worker(new URL("./workers/game/worker.ts", import.meta.url), {
       type: "module",
     });
+    trackWorker(eu5RawWorker);
     const eu5Worker = wrap<Eu5Worker>(eu5RawWorker);
 
     const mapRawWorker = new Worker(new URL("./workers/map/worker.ts", import.meta.url), {
       type: "module",
     });
+    trackWorker(mapRawWorker);
     const eu5MapWorker = wrap<Eu5MapWorker>(mapRawWorker);
 
     const logLevel = getLogLevel();

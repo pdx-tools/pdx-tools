@@ -1,4 +1,5 @@
 import { wrap, transfer, releaseProxy, proxy } from "comlink";
+import { trackWorker } from "@/lib/sentryWorker";
 import { useEffect, useMemo, useRef } from "react";
 import type { ProgressCb } from "./compress-worker";
 import type * as CompressWorkerModule from "./compress-worker";
@@ -8,6 +9,7 @@ export function createCompressionWorker() {
   const worker = new Worker(new URL("./compress-worker", import.meta.url), {
     type: "module",
   });
+  trackWorker(worker);
   const workerApi = wrap<CompressionWorker>(worker);
   return {
     worker,
