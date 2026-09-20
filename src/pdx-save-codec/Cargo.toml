@@ -1,0 +1,21 @@
+[package]
+name = "pdx-save-codec"
+version = "0.1.0"
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
+edition = "2024"
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+default = ["zstd_rust"]
+zstd_c = ["pdx-zstd/zstd_c"]
+zstd_rust = ["pdx-zstd/zstd_rust"]
+zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto"]
+
+[dependencies]
+flate2 = { default-features = false, features = ["zlib-rs"], workspace = true }
+pdx-zstd = { workspace = true }
+rawzip = { workspace = true }
+thiserror = { workspace = true }
