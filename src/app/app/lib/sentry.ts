@@ -1,5 +1,6 @@
 import { setCaptureExceptionImplementation } from "@/lib/captureException";
 import { isEnvironmentSupported } from "@/lib/compatibility";
+import { setWebWorkerIntegration } from "@/lib/sentryWorker";
 import posthog from "posthog-js";
 
 const isBrowser = typeof window !== "undefined";
@@ -15,6 +16,7 @@ export function sentryInit() {
   // appears to crash the render).
   import("@sentry/react-router")
     .then((Sentry) => {
+      const webWorker = Sentry.webWorkerIntegration({ worker: [] });
       Sentry.init({
         dsn: SENTRY_DSN,
         tracesSampleRate: 0.0,
@@ -26,6 +28,7 @@ export function sentryInit() {
           return isEnvironmentSupported() ? event : null;
         },
         integrations: [
+          webWorker,
           posthog.sentryIntegration({
             organization: import.meta.env.VITE_SENTRY_ORG,
 
@@ -35,6 +38,7 @@ export function sentryInit() {
         ],
       });
 
+      setWebWorkerIntegration(webWorker);
       setCaptureExceptionImplementation((exception, captureContext) =>
         Sentry.captureException(exception, captureContext),
       );

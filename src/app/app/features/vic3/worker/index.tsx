@@ -1,4 +1,5 @@
 import { wrap } from "comlink";
+import { trackWorker } from "@/lib/sentryWorker";
 import type { Vic3WorkerModule } from "./types";
 export { type Vic3Worker } from "./types";
 
@@ -6,6 +7,7 @@ function createWorker() {
   const rawWorker = new Worker(new URL("./bridge", import.meta.url), {
     type: "module",
   });
+  trackWorker(rawWorker);
   return wrap<Vic3WorkerModule>(rawWorker);
 }
 

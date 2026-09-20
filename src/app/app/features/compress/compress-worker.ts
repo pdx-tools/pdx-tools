@@ -1,8 +1,11 @@
 import { expose, transfer } from "comlink";
+import { registerWebWorker } from "@sentry/react-router";
 import init, * as wasmModule from "../../wasm/wasm_compress";
 import wasmPath from "../../wasm/wasm_compress_bg.wasm?url";
 import { timeSync } from "@/lib/timeit";
 import { formatInt } from "@/lib/format";
+
+registerWebWorker({ self });
 
 export type ProgressCb = (portion: number) => void;
 
