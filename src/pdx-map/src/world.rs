@@ -237,6 +237,36 @@ impl World {
         WorldPoint::new(0, 0)
     }
 
+    /// The [`Self::center_of`] point of every location, indexed by location.
+    /// A location that is not on the map has no point.
+    ///
+    /// This is one scan of every pixel, in the same order as
+    /// [`Self::center_of`]. Use it when a caller cannot keep the world in
+    /// memory until it knows which location it needs.
+    ///
+    /// A pixel that continues the run of the previous pixel in its row
+    /// cannot be the first pixel of its location, so the scan does not look
+    /// it up. Runs are long, so most pixels are only one comparison.
+    pub fn centers(&self) -> Vec<Option<WorldPoint<u32>>> {
+        let mut centers = Vec::new();
+        for (y, row) in self.rows().enumerate() {
+            let mut previous = None;
+            for (x, &loc) in row.enumerate() {
+                if previous == Some(loc) {
+                    continue;
+                }
+                previous = Some(loc);
+
+                let idx = usize::from(loc.value());
+                if idx >= centers.len() {
+                    centers.resize(idx + 1, None);
+                }
+                centers[idx].get_or_insert(WorldPoint::new(x as u32, y as u32));
+            }
+        }
+        centers
+    }
+
     pub fn build_spatial_index(&self) -> SpatialIndex {
         SpatialIndex::from_world(self)
     }
@@ -290,6 +320,31 @@ mod tests {
         assert_eq!(world.at(WorldPoint::new(4.0, 0.0)), R16::new(10));
         assert_eq!(world.at(WorldPoint::new(0.0, -100.0)), R16::new(10));
         assert_eq!(world.at(WorldPoint::new(0.0, 100.0)), R16::new(12));
+    }
+
+    #[test]
+    fn world_centers_match_center_of() {
+        let world = world_from_halves(vec![0, 1, 4, 5, 9, 1], vec![2, 3, 6, 7, 3, 9], 3);
+        let centers = world.centers();
+
+        assert_eq!(centers.len(), 10);
+        assert_eq!(centers[8], None);
+        for loc in [0, 1, 2, 3, 4, 5, 6, 7, 9] {
+            assert_eq!(centers[loc], Some(world.center_of(R16::new(loc as u16))));
+        }
+    }
+
+    #[test]
+    fn world_centers_skip_runs() {
+        // Runs within a hemisphere row, and a run of 2 and of 3 that crosses
+        // from the west hemisphere into the east.
+        let world = world_from_halves(vec![1, 1, 2, 0, 3, 3], vec![2, 2, 1, 3, 4, 4], 3);
+        let centers = world.centers();
+
+        assert_eq!(centers.len(), 5);
+        for (loc, &center) in centers.iter().enumerate() {
+            assert_eq!(center, Some(world.center_of(R16::new(loc as u16))));
+        }
     }
 
     #[test]

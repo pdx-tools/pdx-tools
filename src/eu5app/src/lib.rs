@@ -29,7 +29,7 @@ pub use selection::{
 pub use session::{
     Eu5AnySaveLoader, Eu5DateComponents, Eu5DebugSaveLoader, Eu5LoadError, Eu5LoadedSave,
     Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace, LocalizedEu5Workspace, MapChange, MapDirty,
-    Player, TimelineNote, TimelineSummary, humanize_note_key,
+    OpeningView, Player, TimelineNote, TimelineSummary, humanize_note_key,
 };
 
 pub use color::Srgb;

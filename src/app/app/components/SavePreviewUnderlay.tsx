@@ -24,25 +24,23 @@ type SavePreviewUnderlayProps = {
  * preview is rendered after the upload finishes, so a fresh share can beat
  * it) the loader keeps its plain ground.
  */
-export function SavePreviewUnderlay({ src, groundClassName }: SavePreviewUnderlayProps) {
+export function SavePreviewUnderlay(props: SavePreviewUnderlayProps) {
+  // The loading screen stays mounted when the visitor moves from one shared
+  // save to another. The key starts each new preview from pending again.
+  return <PreviewImage key={props.src} {...props} />;
+}
+
+function PreviewImage({ src, groundClassName }: SavePreviewUnderlayProps) {
   const ref = useRef<HTMLImageElement>(null);
   const [status, setStatus] = useState<"pending" | "loaded" | "failed">("pending");
-
-  // The loading screen stays mounted when the visitor moves from one shared
-  // save to another, so each new preview starts from pending again.
-  const [shownSrc, setShownSrc] = useState(src);
-  if (shownSrc !== src) {
-    setShownSrc(src);
-    setStatus("pending");
-  }
 
   // A cached image can finish before hydration attaches onLoad.
   useEffect(() => {
     const img = ref.current;
-    if (img?.complete && img.naturalWidth > 0 && img.currentSrc.endsWith(src)) {
+    if (img?.complete && img.naturalWidth > 0) {
       setStatus("loaded");
     }
-  }, [src]);
+  }, []);
 
   if (status === "failed") return null;
 

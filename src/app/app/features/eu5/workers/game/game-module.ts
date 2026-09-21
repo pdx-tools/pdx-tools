@@ -140,10 +140,11 @@ export const createGame = async (
   }
   const map = mapEndpoint;
 
-  const startingLocation = workspace.get_starting_coordinates();
-  if (startingLocation) {
-    map.center_at_color_id(startingLocation.color_id);
-  }
+  // Do not wait: the map worker can still be loading its textures, and the
+  // parse does not need the view. A failure keeps the default view.
+  map.open_view(workspace.opening_view()).catch((error: unknown) => {
+    console.warn("Failed to open the map view", error);
+  });
 
   const syncInitialLocationData = () => {
     const buffer = workspace.location_arrays();

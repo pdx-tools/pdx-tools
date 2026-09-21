@@ -181,11 +181,13 @@ mod entity_profile;
 mod hover;
 mod insights;
 mod map_render;
+mod opening_view;
 mod overlay;
 mod selection_ops;
 mod terrain_fill;
 mod timeline;
 
+pub use self::opening_view::OpeningView;
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
 
 impl<'bump> Eu5Workspace<'bump> {
