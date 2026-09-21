@@ -1,5 +1,5 @@
 use crate::{
-    Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize,
+    Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldRect, WorldSize,
     units::{WorldLength, WorldPoint},
     viewport::{PanTarget, ViewportInsets},
 };
@@ -328,6 +328,16 @@ impl InteractionController {
     /// Whether a programmatic pan animation is currently in flight.
     pub fn is_animating_pan(&self) -> bool {
         self.pan_animation.is_some()
+    }
+
+    /// Show all of `rect`, as large as the zoom limits allow.
+    pub fn fit(&mut self, rect: WorldRect<u32>) {
+        self.viewport.fit(rect);
+    }
+
+    /// The whole map as a rectangle, for [`Self::fit`].
+    pub fn map_rect(&self) -> WorldRect<u32> {
+        self.viewport.map_rect()
     }
 
     /// Center on world point.

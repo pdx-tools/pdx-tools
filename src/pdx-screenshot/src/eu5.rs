@@ -1,14 +1,14 @@
 use eu5app::{
-    Eu5AnySaveLoader, Eu5Workspace, MapMode,
+    Eu5AnySaveLoader, Eu5Workspace, MapMode, OpeningView,
     game_data::{OptimizedGameBundle, OptimizedMapBundle},
     should_highlight_individual_locations,
 };
 use pdx_map::layers::DateLayer;
 use pdx_map::{
-    GpuContext, HeadlessMapRenderer, LocationArrays, MapTexture, PhysicalSize, ViewportBounds,
-    WorldSize,
+    GpuContext, HeadlessMapRenderer, LocationArrays, MapTexture, PhysicalSize, R16, ViewportBounds,
+    WorldPoint, WorldSize,
 };
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 const OUTPUT_SIZE: PhysicalSize<u32> = PhysicalSize::new(1200, 630);
 
@@ -56,33 +56,57 @@ struct Hemispheres {
     east: MapTexture,
 }
 
+type LocationCenters = Arc<[Option<WorldPoint<u32>>]>;
+type PreparedHemispheres = (Hemispheres, LocationCenters);
+type CachedHemispheres = (usize, Hemispheres, LocationCenters);
+
 /// The hemisphere textures for one patch, uploaded to the GPU. The pair is
 /// ~256 MiB, and the software GPU keeps it in host memory, so only the
 /// textures of the most recent patch stay in the cache. The decoded arrays
 /// are dropped after the upload. The lock is held for the whole load, so
 /// only one patch is decoded at a time.
-fn hemispheres(gpu: &GpuContext, slot: usize) -> Result<Hemispheres, ScreenshotError> {
-    static CACHED: Mutex<Option<(usize, Hemispheres)>> = Mutex::new(None);
+fn hemispheres(gpu: &GpuContext, slot: usize) -> Result<PreparedHemispheres, ScreenshotError> {
+    static CACHED: Mutex<Option<CachedHemispheres>> = Mutex::new(None);
 
     let mut cached = CACHED.lock().unwrap_or_else(PoisonError::into_inner);
-    if let Some((cached_slot, textures)) = cached.as_ref()
+    if let Some((cached_slot, textures, centers)) = cached.as_ref()
         && *cached_slot == slot
     {
-        return Ok(textures.clone());
+        return Ok((textures.clone(), Arc::clone(centers)));
     }
 
-    // Release the textures of the previous patch before the new patch is
-    // decoded. A render that is in progress keeps its own reference.
     *cached = None;
     let mut map_bundle = OptimizedMapBundle::open(PATCH_ASSETS[slot].map)?;
     let (west, east) = map_bundle.load_hemispheres()?;
+    let centers = Arc::from(location_centers(&west, &east));
     let size = eu5app::hemisphere_size().physical();
     let textures = Hemispheres {
         west: gpu.create_texture(&west, size, "EU5 West Texture"),
         east: gpu.create_texture(&east, size, "EU5 East Texture"),
     };
-    *cached = Some((slot, textures.clone()));
-    Ok(textures)
+    *cached = Some((slot, textures.clone(), Arc::clone(&centers)));
+    Ok((textures, centers))
+}
+
+fn location_centers(west: &[R16], east: &[R16]) -> Vec<Option<WorldPoint<u32>>> {
+    let size = eu5app::hemisphere_size();
+    let width = size.width as usize;
+    let mut centers = vec![None; usize::from(u16::MAX) + 1];
+
+    for (y, (west_row, east_row)) in west
+        .chunks_exact(width)
+        .zip(east.chunks_exact(width))
+        .enumerate()
+    {
+        for (x, &location) in west_row.iter().chain(east_row).enumerate() {
+            let center = &mut centers[location.value() as usize];
+            if center.is_none() {
+                *center = Some(WorldPoint::new(x as u32, y as u32));
+            }
+        }
+    }
+
+    centers
 }
 
 /// A parsed save with the map data that [`render`] needs.
@@ -90,6 +114,7 @@ pub struct PreparedSave {
     hemispheres: Hemispheres,
     locations: LocationArrays,
     date: String,
+    capital: Option<WorldPoint<u32>>,
 }
 
 impl std::fmt::Debug for PreparedSave {
@@ -113,7 +138,7 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
 
     // Load the map before the gamestate is parsed, so that the memory to
     // decode the map is not needed at the same time as the parse memory.
-    let hemispheres = hemispheres(gpu, slot)?;
+    let (hemispheres, centers) = hemispheres(gpu, slot)?;
     let mut save = parser
         .parse()
         .map_err(|error| ScreenshotError::Parse(error.to_string()))?;
@@ -122,11 +147,46 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
     let mut workspace = Eu5Workspace::new(save.take_gamestate(), game_data)?;
     workspace.set_map_mode(MapMode::Political);
     let date = workspace.gamestate().metadata.date.date_fmt().to_string();
+    let capital = match workspace.opening_view() {
+        OpeningView::Capital { color_id } => centers
+            .get(usize::from(color_id.value()))
+            .copied()
+            .flatten(),
+        OpeningView::World => None,
+    };
     Ok(PreparedSave {
         hemispheres,
         locations: workspace.location_arrays().clone(),
         date,
+        capital,
     })
+}
+
+const CAPITAL_ZOOM_OUT: f32 = std::f32::consts::SQRT_2;
+
+fn centered_viewport(center: WorldPoint<u32>) -> ViewportBounds {
+    let world = eu5app::hemisphere_size().world();
+    let size = WorldSize::new(
+        (OUTPUT_SIZE.width as f32 * CAPITAL_ZOOM_OUT) as u32,
+        (OUTPUT_SIZE.height as f32 * CAPITAL_ZOOM_OUT) as u32,
+    );
+    let half = size / 2;
+    let x = (center.x as i64 - half.width as i64).rem_euclid(world.width as i64) as u32;
+    let y = center
+        .y
+        .saturating_sub(half.height)
+        .min(world.height.saturating_sub(size.height));
+    let mut viewport = ViewportBounds::new(size);
+    viewport.rect.origin = WorldPoint::new(x, y);
+    viewport
+}
+
+fn world_viewport() -> ViewportBounds {
+    let world = eu5app::hemisphere_size().world();
+    let viewport_width = world.height * OUTPUT_SIZE.width / OUTPUT_SIZE.height;
+    let mut viewport = ViewportBounds::new(WorldSize::new(viewport_width, world.height));
+    viewport.rect.origin.x = (world.width - viewport_width) / 2;
+    viewport
 }
 
 /// Render a prepared save to a WebP image. Returns the WebP-encoded bytes.
@@ -142,12 +202,12 @@ pub async fn render(gpu: &GpuContext, save: PreparedSave) -> Result<Vec<u8>, Scr
     renderer.update_locations(&save.locations);
     renderer.add_layer(DateLayer::new(save.date, 2));
 
-    let world = eu5app::hemisphere_size().world();
-    let viewport_width = world.height * OUTPUT_SIZE.width / OUTPUT_SIZE.height;
-    let mut viewport = ViewportBounds::new(WorldSize::new(viewport_width, world.height));
-    viewport.rect.origin.x = (world.width - viewport_width) / 2;
+    let viewport = save
+        .capital
+        .map(centered_viewport)
+        .unwrap_or_else(world_viewport);
 
-    let zoom = OUTPUT_SIZE.width as f32 / viewport_width as f32;
+    let zoom = OUTPUT_SIZE.width as f32 / viewport.rect.size.width as f32;
     renderer.set_location_borders(should_highlight_individual_locations(zoom));
     let capture = renderer.capture_viewport(viewport).await?;
     let stride = OUTPUT_SIZE.width as usize * 4;

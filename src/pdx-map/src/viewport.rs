@@ -136,6 +136,29 @@ impl MapViewport {
         self.viewport_position.y = self.viewport_position.y.clamp(0.0, max_y);
     }
 
+    /// Show all of `rect`, as large as the zoom limits allow, centered on
+    /// the canvas.
+    pub fn fit(&mut self, rect: WorldRect<u32>) {
+        let zoom_x = self.canvas_size.width as f32 / rect.size.width.max(1) as f32;
+        let zoom_y = self.canvas_size.height as f32 / rect.size.height.max(1) as f32;
+        self.zoom_level = zoom_x.min(zoom_y).clamp(self.min_zoom(), Self::MAX_ZOOM);
+
+        let world = WorldPoint::new(
+            rect.origin.x as f32 + rect.size.width as f32 / 2.0,
+            rect.origin.y as f32 + rect.size.height as f32 / 2.0,
+        );
+        let canvas = LogicalPoint::new(
+            self.canvas_size.width as f32 / 2.0,
+            self.canvas_size.height as f32 / 2.0,
+        );
+        self.set_world_point_under_cursor(world, canvas);
+    }
+
+    /// The whole map as a rectangle, for [`Self::fit`].
+    pub fn map_rect(&self) -> WorldRect<u32> {
+        WorldRect::new(WorldPoint::new(0, 0), self.map_size)
+    }
+
     /// Get current zoom level
     pub fn zoom_level(&self) -> f32 {
         self.zoom_level
@@ -423,6 +446,46 @@ mod tests {
         let min_zoom_y = 1536.0 / map_height as f32;
         let expected_min = min_zoom_x.max(min_zoom_y);
         assert!(controller.zoom_level() >= expected_min);
+    }
+
+    #[test]
+    fn test_fit_map() {
+        let mut controller =
+            MapViewport::new(LogicalSize::new(1024, 768), WorldSize::new(8192, 8192));
+        assert_eq!(controller.zoom_level(), 1.0);
+
+        controller.fit(controller.map_rect());
+
+        // The map (16384 x 8192) is wider than the canvas, so fitting its
+        // width would leave the canvas partly empty; the minimum zoom wins
+        // and the full map height is in view.
+        assert_eq!(controller.zoom_level(), 768.0 / 8192.0);
+        assert_eq!(controller.viewport_position().y, 0.0);
+        let center = controller.canvas_to_world(LogicalPoint::new(512.0, 384.0));
+        assert_eq!(center.x, 8192.0);
+        assert_eq!(center.y, 4096.0);
+
+        // Zooming out further is a no-op.
+        controller.zoom_at_point(LogicalPoint::new(512.0, 384.0), 0.5);
+        assert_eq!(controller.zoom_level(), 768.0 / 8192.0);
+    }
+
+    #[test]
+    fn test_fit_rect() {
+        let mut controller =
+            MapViewport::new(LogicalSize::new(1024, 768), WorldSize::new(8192, 8192));
+
+        // A 2048 x 1024 region: width limits the zoom.
+        let rect = WorldRect::new(WorldPoint::new(1000, 2000), WorldSize::new(2048, 1024));
+        controller.fit(rect);
+        assert_eq!(controller.zoom_level(), 0.5);
+        let center = controller.canvas_to_world(LogicalPoint::new(512.0, 384.0));
+        assert_eq!(center.x, 2024.0);
+        assert_eq!(center.y, 2512.0);
+
+        // A tiny region clamps at the maximum zoom.
+        controller.fit(WorldRect::new(WorldPoint::new(0, 0), WorldSize::new(4, 4)));
+        assert_eq!(controller.zoom_level(), MapViewport::MAX_ZOOM);
     }
 
     #[test]

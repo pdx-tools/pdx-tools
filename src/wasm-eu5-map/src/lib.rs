@@ -1,12 +1,14 @@
 use eu5app::{
-    GroupId, GroupingTable, game_data::OptimizedMapBundle, should_highlight_individual_locations,
+    GroupId, GroupingTable, OpeningView, game_data::OptimizedMapBundle,
+    should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
     LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
-    R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, default_clock,
+    R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect,
+    default_clock,
 };
 use std::time::Duration;
 use tsify::Ts;
@@ -441,6 +443,29 @@ impl Eu5WasmMapRenderer {
 
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Open the map on the view the save calls for.
+    #[wasm_bindgen]
+    pub fn open_view(&mut self, view: Ts<OpeningView>) -> Result<(), JsError> {
+        match view.to_rust()? {
+            OpeningView::Capital { color_id } => self.center_at_color_id(color_id.value()),
+            OpeningView::World => self.fit(self.input.map_rect()),
+        }
+        Ok(())
+    }
+
+    /// Show all of `rect`, as large as the zoom limits allow.
+    fn fit(&mut self, rect: WorldRect<u32>) {
+        self.input.fit(rect);
+
+        let bounds = self.input.viewport_bounds();
+        self.controller.set_viewport_bounds(bounds);
+
+        let show_borders = should_highlight_individual_locations(bounds.zoom_level);
+        self.controller
+            .renderer_mut()
+            .set_location_borders(show_borders);
     }
 
     /// Center the viewport at a location by its color ID (R16 texture index).
