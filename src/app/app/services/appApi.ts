@@ -12,7 +12,6 @@ import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
 import type { PdxSession } from "@/server-lib/auth/session";
-import type { NewestSaveResponse } from "@/routes/api.new";
 import type { FeedResponse } from "@/routes/api.feed";
 import type { CampaignResponse } from "@/routes/api.campaign";
 import type { FeedGame } from "@/server-lib/fn/feed";
@@ -134,7 +133,6 @@ export function fetchFeedPage(params: FeedQuery, cursor?: string) {
 export const pdxKeys = {
   all: ["pdx"] as const,
   profile: () => [...pdxKeys.all, "profile"] as const,
-  newSaves: () => [...pdxKeys.all, "new-saves"] as const,
   feeds: () => [...pdxKeys.all, "feed"] as const,
   feed: (params: FeedQuery) => [...pdxKeys.feeds(), params] as const,
   campaign: (game: FeedGame, key: string) => [...pdxKeys.feeds(), "campaign", game, key] as const,
@@ -176,22 +174,6 @@ export const pdxApi = {
   },
 
   saves: {
-    useNewest: () =>
-      useSuspenseInfiniteQuery({
-        queryKey: pdxKeys.newSaves(),
-        queryFn: ({ pageParam }) =>
-          fetchOkJson<NewestSaveResponse>(
-            "/api/new" +
-              (!pageParam
-                ? ""
-                : `?${new URLSearchParams({
-                    cursor: pageParam,
-                  })}`),
-          ),
-        initialPageParam: undefined as string | undefined,
-        getNextPageParam: (lastPage, _pages) => lastPage.cursor,
-      }),
-
     useFeed: (params: FeedQuery) =>
       useSuspenseInfiniteQuery({
         queryKey: pdxKeys.feed(params),
@@ -421,7 +403,6 @@ export const pdxApi = {
 };
 
 export const invalidateSaves = (queryClient: QueryClient) => () => {
-  queryClient.invalidateQueries({ queryKey: pdxKeys.newSaves() });
   queryClient.invalidateQueries({ queryKey: pdxKeys.feeds() });
   queryClient.invalidateQueries({ queryKey: pdxKeys.saves() });
   queryClient.invalidateQueries({ queryKey: pdxKeys.achievements() });
