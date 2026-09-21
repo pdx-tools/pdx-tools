@@ -8,7 +8,8 @@ export type DbTransaction = Parameters<Parameters<DbConnection["transaction"]>[0
 export type DbRoute = { dbConn: Promise<DbConnection> };
 
 function dbConnect(connection: string) {
-  const sql = postgres(connection);
+  // Create postgres connection according to cloudflare best practices
+  const sql = postgres(connection, { fetch_types: false });
   const orm = drizzle(sql);
   return {
     sql,
