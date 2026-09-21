@@ -25,6 +25,7 @@ colors:
   brass-soft: "rgba(212, 160, 90, 0.14)"
   brass-line: "rgba(212, 160, 90, 0.55)"
   brass-focus: "oklch(72% 0.12 78)" # focus ring; solid, pinned to the 3:1 floor
+  brass-selection: "rgba(212, 160, 90, 0.35)" # ::selection wash; each game theme sets its own at 35% of its accent
   # ── Status (shared vocabulary, both worlds) ──
   status-good: "#10b981"
   status-warn: "#f59e0b"
@@ -292,11 +293,13 @@ Two palettes, one governing instinct: a single accent hue per world, a long neut
 
 ### Primary
 
-- **Cartographer's Brass** (`brass-300`, oklch(72% 0.12 78)): the Game world's only accent. It marks what is *active, selected, or committed* — the active sidebar item's 2px left bar and its gradient wash, the active tab's underline, the committed chip, the commit button's fill, and every focus ring. `brass-100` is its bright reading (text on dark), `brass-500` its pressed/hover fill, `brass-soft` (14% alpha) its wash, `brass-line` (55% alpha) its hairline, and `brass-focus` (solid) its focus ring. Warm, desaturated, closer to unlacquered instrument hardware than to gold leaf.
+- **Cartographer's Brass** (`brass-300`, oklch(72% 0.12 78)): the Game world's only accent. It marks what is *active, selected, or committed* — the active sidebar item's 2px left bar and its gradient wash, the active tab's underline, the committed chip, the commit button's fill, and every focus ring. `brass-100` is its bright reading (text on dark), `brass-500` its pressed/hover fill, `brass-soft` (14% alpha) its wash, `brass-line` (55% alpha) its hairline, `brass-focus` (solid) its focus ring, and `brass-selection` (35% alpha) the wash behind selected text. Warm, desaturated, closer to unlacquered instrument hardware than to gold leaf.
 
   Like `ink-500` and `ink-rule`, **`brass-focus` is pinned to a measured floor rather than to taste.** At solid oklch(72% 0.12 78) it clears the 3:1 non-text floor on every ground: page 7.8, panel 7.5, panel-2 6.9, panel-hover 6.2, panel-active 5.2. It is deliberately *not* an alias of `brass-300` — retuning the accent for a gradient wash must never silently move the focus indicator. Re-measure against all five grounds before changing it.
 
   It exists because the translucent `brass-line` that previously served as the ring measures 3.21 / 3.21 / 3.13 / **2.98** / **2.73** — it fails on `panel-hover` and `panel-active`, which are the ground under a hovered control and under a *selected row*. A selected row must never be the least legible row, and the focus indicator on it must never be the least visible indicator. `brass-line` remains correct as a hairline and a border; it is simply not a focus ring.
+
+  **Selected text takes the accent.** Brass means *selected* everywhere in the Game world, so a text selection inside a game surface is brass too: `[data-game-theme] ::selection` paints `--game-accent-selection`, and each game theme sets that variable at 35% of its own accent (EU5 brass, EU4 sky). The browser's default selection colour belongs to no world and must not show inside one. 35% is the working point: deep enough to read as a highlight on the panel ladder, light enough that `ink-100` text stays legible through it.
 - **Signal Sky** (`classic-primary`, Tailwind `sky-600`): the Classic world's action color. Primary buttons, links, the announcement bar, and the EU4 map sidebar's hover state. Paired with a darker `sky-800` edge on buttons so the control reads as a plate with a rim rather than a floating fill.
 
 ### Neutral
@@ -521,6 +524,14 @@ The campaign's history as a bar along the bottom edge of the map (`features/eu5/
 - **Overlays share the edge by measurement, not by guess.** The bar publishes its measured height to the store; the selection pill and any other overlay on the bottom edge read it and stand clear, and settle together with it as it leaves.
 - **Export rides on the bar.** The timelapse control is the bar's last button; it opens a 288px `panel/95` + `backdrop-blur-xl` + `shadow-2xl` popover that states the film's length and size before a minute of encoding is spent. Once recording, the popover is gone and the button itself carries progress as an 18px ring around the glyph (180ms eased per frame); while the file is assembled and there is no progress to report, the full ring breathes at 1.4s rather than claiming to advance.
 
+### The Panel Foot (Game world)
+
+The control panel ends in three rows that share one grammar (`control-panel/footRow.ts`): a 36px row, a hairline above, a 9.5px mono uppercase label in a fixed 48px column, then the row's controls. **View** holds the render toggles, **Share** holds the save's one public act, **Export** holds the actions that write a file to disk (screenshot, melt) as labelled ghost buttons with the detail a player may not know — the shift modifier, what melting is — in a tooltip. Nothing at the foot needs a hover to be read.
+
+- **Share takes no dialog and no preamble.** Sharing has nothing to configure, and a player knows a local file has no link yet, so the ready row is only the control that commits: **Share save**, a `commit` button at the content column, the row's only brass. The other states read in place: a guest sees *Needs a Steam account* and **Sign in**; a player outside the beta sees *Closed beta* with a dotted help underline and **Ask on Discord**.
+- **The hairline is the track.** While the upload runs, the row's own top rule fills left to right in `brass-300`, 1px tall, scaling on `transform` with the 180ms settling glide; the status names the stage (*Compressing*, *Uploading*, *Finishing*) and a mono `tabular-nums` percent sits where the button was. Progress is drawn on chrome the row already owns rather than on a new element.
+- **The link lands where the eye already is.** When the upload finishes, the same row turns into **Open permalink** (a solid-underline navigable name) and **Copy link** (brass, flipping to a `default` *Copied* for 1.8s). A row that finished in this session takes one 720ms `accent-soft` wash that settles to transparent. A save opened from its permalink is shared too, but the visitor did not share it and is already on the link, so that row is only a ghost **Copy link** — brass belongs to a share that happened in this session. Under `prefers-reduced-motion` the wash and the track glide are off; the state change stays.
+
 ### Tooltips
 
 `rounded-md`, `slate-900/90` ground, `gray-100` text, `text-sm`, 12px × 6px padding, `shadow-md`, at `z-1100`. Entry animates `fade-in-0 zoom-in-95` with a 2px directional slide from the trigger side. Portals into the active game-theme container (not `document.body`) so game tokens still resolve.
@@ -538,6 +549,7 @@ Two hand-made textures exist and are the system's entire ornament budget:
 
 - **Do** pick the world from the user's job, not the route: analyzing a save is the Game world, everything public-facing is the Classic world.
 - **Do** scope every new game palette under `[data-game-theme="<game>"]` and consume it through the semantic `--color-game-*` aliases, never the raw `--game-*` variables.
+- **Do** give every game theme a `--game-accent-selection` at 35% of its accent, so text selected inside a game surface reads as selected in that world's colour rather than the browser's.
 - **Do** give Game world controls a fixed height from the row scale (28 / 30 / 32 / 36) instead of vertical padding.
 - **Do** set every comparable number in IBM Plex Mono with `tabular-nums`, including ranks, dates, and denominators.
 - **Do** spend brass on one element per functional group, per the Brass Scarcity Rule.

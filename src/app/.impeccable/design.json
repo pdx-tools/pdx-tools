@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-13T00:00:00.000Z",
+  "generatedAt": "2026-09-20T00:00:00.000Z",
   "title": "Design System: PDX Tools",
   "extensions": {
     "colorMeta": {
@@ -8,6 +8,22 @@
         "role": "primary",
         "displayName": "Cartographer's Brass",
         "canonical": "oklch(72% 0.12 78)",
+        "tonalRamp": [
+          "oklch(20% 0.04 78)",
+          "oklch(31% 0.07 78)",
+          "oklch(41% 0.1 78)",
+          "oklch(52% 0.12 78)",
+          "oklch(58% 0.13 78)",
+          "oklch(72% 0.12 78)",
+          "oklch(86% 0.092 78)",
+          "oklch(95% 0.04 78)"
+        ]
+      },
+      "brass-selection": {
+        "role": "primary",
+        "displayName": "Brass Selection Wash",
+        "purpose": "The ::selection background inside [data-game-theme] surfaces, via --game-accent-selection. Each game theme sets its own at 35% of its accent (EU5 brass, EU4 sky) because the accent means selected.",
+        "canonical": "rgba(212, 160, 90, 0.35)",
         "tonalRamp": [
           "oklch(20% 0.04 78)",
           "oklch(31% 0.07 78)",
@@ -830,6 +846,7 @@
     "dos": [
       "**Do** pick the world from the user's job, not the route: analyzing a save is the Game world, everything public-facing is the Classic world.",
       "**Do** scope every new game palette under `[data-game-theme=\"<game>\"]` and consume it through the semantic `--color-game-*` aliases, never the raw `--game-*` variables.",
+      "**Do** give every game theme a `--game-accent-selection` at 35% of its accent, so text selected inside a game surface reads as selected in that world's colour rather than the browser's.",
       "**Do** give Game world controls a fixed height from the row scale (28 / 30 / 32 / 36) instead of vertical padding.",
       "**Do** set every comparable number in IBM Plex Mono with `tabular-nums`, including ranks, dates, and denominators.",
       "**Do** spend brass on one element per functional group, per the Brass Scarcity Rule.",
