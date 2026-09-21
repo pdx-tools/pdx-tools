@@ -20,6 +20,7 @@ import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel, MAP_MODE_TITLES } from "./Eu5InsightPanel";
 import { Eu5Loading, LOADING_DISSOLVE_MS } from "./Eu5Loading";
 import { developerLog } from "@/lib/log";
+import { ogImageUrl } from "@/lib/media";
 import {
   useLoadEu5,
   Eu5StoreProvider,
@@ -87,7 +88,12 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       ) : null}
 
       {showLoading ? (
-        <Eu5Loading loading={loading} filename={saveFilename(save)} done={settled} />
+        <Eu5Loading
+          loading={loading}
+          filename={saveFilename(save)}
+          done={settled}
+          preview={save.kind === "server" ? ogImageUrl(save.saveId, "eu5") : undefined}
+        />
       ) : null}
 
       {error !== null ? <Eu5ErrorDisplay error={error} /> : null}

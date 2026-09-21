@@ -7,6 +7,7 @@ import { seo } from "@/lib/seo";
 import { usingDb } from "@/server-lib/db/connection";
 import { NotFoundError } from "@/server-lib/errors";
 import { getEu5Save } from "@/server-lib/fn/eu5-save";
+import { useMemo } from "react";
 import { data, Link, useLoaderData } from "react-router";
 import type { Route } from "./+types/eu5.saves.$saveId";
 
@@ -37,10 +38,14 @@ export const links = () => mediaPreconnectLinks;
 
 export default function Eu5SaveRoute() {
   const { save } = useLoaderData<typeof loader>();
-  if (!save) return <Eu5SaveNotFound />;
+  const input = useMemo(
+    () => save && { kind: "server" as const, saveId: save.id, name: save.filename },
+    [save],
+  );
+  if (!input) return <Eu5SaveNotFound />;
   return (
     <FullscreenPage slideIn={false}>
-      <Eu5Ui save={{ kind: "server", saveId: save.id, name: save.filename }} />
+      <Eu5Ui save={input} />
     </FullscreenPage>
   );
 }
