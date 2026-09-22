@@ -3,7 +3,8 @@
 import { spawn } from "child_process";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { readdir } from "fs/promises";
+import { readFile } from "fs/promises";
+import { parseEnv } from "node:util";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -49,14 +50,26 @@ async function main() {
   await execCommand(`${envPrefix} up --no-start`);
   await execCommand(`${envPrefix} up --wait db`);
 
-  await execCommand(`${envPrefix} cp ../src/app/migrations db:/`);
-  // Run migrations
-  const migrationFiles = await readdir(resolve(projectRoot, "src/app/migrations"));
-  const sqlFiles = migrationFiles.filter((file) => file.endsWith(".sql")).sort();
-
-  for (const sqlFile of sqlFiles) {
-    await execCommand(`${envPrefix} exec -u postgres --no-TTY db psql -f /migrations/${sqlFile}`);
+  const appEnvFile = env === "dev" ? ".env.development" : ".env.test";
+  const appEnv = parseEnv(await readFile(resolve(projectRoot, "src/app", appEnvFile), "utf8"));
+  const servicesEnv = parseEnv(await readFile(resolve(projectRoot, "dev", `.env.${env}`), "utf8"));
+  const port =
+    env === "dev"
+      ? (process.env.PDX_DEV_DATABASE_PORT ?? "5432")
+      : (process.env.DATABASE_PORT ?? appEnv.DATABASE_PORT);
+  const password = process.env.DATABASE_ADMIN_PASSWORD ?? servicesEnv.DATABASE_ADMIN_PASSWORD;
+  if (!port || !password) {
+    throw new Error("Database port and admin password are required for local migrations");
   }
+
+  const databaseUrl = new URL("postgresql://postgres@127.0.0.1/postgres");
+  databaseUrl.port = port;
+  databaseUrl.password = password;
+  databaseUrl.searchParams.set("options", "-c client_min_messages=warning");
+  await execCommand("pnpm exec drizzle-kit migrate --config drizzle-kit.config.ts", {
+    cwd: resolve(projectRoot, "src/app"),
+    env: { ...process.env, DATABASE_URL: databaseUrl.toString() },
+  });
 
   const upArgs = remainingArgs.length > 0 ? ` ${remainingArgs.join(" ")}` : "";
   await execCommand(`${envPrefix} up${upArgs}`);
