@@ -21,7 +21,7 @@ function Contributors({ contributors }: { contributors: readonly FeedContributor
   return <span>by {names}</span>;
 }
 
-function LatestSave({ save }: { save: FeedSave }) {
+function FeaturedSave({ save }: { save: FeedSave }) {
   if (save.game === "eu5") {
     return <Eu5SaveCard save={save} canDelete={false} />;
   }
@@ -73,7 +73,7 @@ function EarlierSaves({ campaign, open }: { campaign: FeedCampaign; open: boolea
     );
   }
 
-  const earlier = data.saves.filter((x) => x.id !== campaign.latest.id);
+  const earlier = data.saves.filter((x) => x.id !== campaign.furthest.id);
   return (
     <ul className="mt-1 divide-y divide-gray-400/30 border-t border-gray-400/30 pl-5">
       {earlier.map((save) => (
@@ -85,17 +85,21 @@ function EarlierSaves({ campaign, open }: { campaign: FeedCampaign; open: boolea
 
 /**
  * One campaign in the feed: a header that names it, how far it has run, and
- * who shared it; the newest save as a card; and the earlier saves folded
+ * who shared it; the save that reached the furthest date as a card; and the other saves folded
  * beneath.
  */
 export function FeedEntryCard({ campaign }: { campaign: FeedCampaign }) {
   const [open, setOpen] = useState(false);
   const earlierCount = campaign.save_count - 1;
+  const name =
+    campaign.furthest.game === "eu5"
+      ? campaign.furthest.playthrough_name
+      : (campaign.furthest.player_tag_name ?? campaign.furthest.player_tag);
   return (
-    <article aria-label={campaign.name} className="flex flex-col">
+    <article aria-label={name} className="flex flex-col">
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <GameMark game={campaign.game} className="self-center" />
-        <h2 className="min-w-0 truncate text-lg leading-tight font-semibold">{campaign.name}</h2>
+        <h2 className="min-w-0 truncate text-lg leading-tight font-semibold">{name}</h2>
         <span className="text-sm text-gray-600 dark:text-gray-400">
           {campaign.save_count > 1 && (
             <>
@@ -110,7 +114,7 @@ export function FeedEntryCard({ campaign }: { campaign: FeedCampaign }) {
           <Contributors contributors={campaign.contributors} />
         </span>
       </header>
-      <LatestSave save={campaign.latest} />
+      <FeaturedSave save={campaign.furthest} />
       {earlierCount > 0 && (
         <details className="group mt-2" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
           <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded text-sm text-gray-600 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-sky-600 dark:text-gray-400 [&::-webkit-details-marker]:hidden">

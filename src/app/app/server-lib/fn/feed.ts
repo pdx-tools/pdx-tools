@@ -1,7 +1,7 @@
 import { dbDifficulty, table, userView } from "@/server-lib/db";
 import type { Eu5Save, Save } from "@/server-lib/db";
 import { userId } from "@/lib/auth";
-import { and, count, desc, eq, gt, lt, notExists, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, lt, notExists, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
@@ -160,6 +160,22 @@ function feedQuery(db: DbConnection, params: FeedParams) {
         latestDate: sql<string>`(array_agg(${s.date} ORDER BY ${ordinal} DESC))[1]`.as(
           "latest_date",
         ),
+        // The save that got the furthest in the campaign, which is the one
+        // the entry shows. It is not always the newest upload: a player
+        // catching up on an old campaign uploads its saves in any order.
+        // Two saves can share the furthest date, so the newer upload of them
+        // wins and the entry keeps the same face between requests.
+        furthestId:
+          sql<string>`(array_agg(${s.id} ORDER BY ${ordinal} DESC, ${s.createdOn} DESC))[1]`.as(
+            "furthest_id",
+          ),
+        // Every save of the campaign, furthest first, with the same order as
+        // `furthest_id` so that the first id is always the furthest save.
+        saveIds: sql<
+          string[]
+        >`to_jsonb((array_agg(${s.id} ORDER BY ${ordinal} DESC, ${s.createdOn} DESC))[1:${sql.raw(String(CAMPAIGN_SAVE_LIMIT))}])`.as(
+          "save_ids",
+        ),
         contributors:
           sql<unknown>`jsonb_agg(DISTINCT jsonb_build_object('user_id', ${table.users.userId}, 'user_name', ${userView.userName}))`.as(
             "contributors",
@@ -175,31 +191,48 @@ function feedQuery(db: DbConnection, params: FeedParams) {
       .groupBy(page.game, page.id);
   const campaigns = db.$with("campaigns").as(stats(eu4).unionAll(stats(eu5)));
 
-  return db
-    .with(page, campaigns)
-    .select({
-      game: page.game,
-      key: page.campaignKey,
-      latestUpload: page.createdOn,
-      saveCount: campaigns.saveCount,
-      firstDate: campaigns.firstDate,
-      latestDate: campaigns.latestDate,
-      contributors: campaigns.contributors,
-      userName: userView.userName,
-      eu4: table.eu4Saves,
-      eu5: table.eu5Saves,
-    })
-    .from(page)
-    .innerJoin(campaigns, and(eq(campaigns.latestGame, page.game), eq(campaigns.latestId, page.id)))
-    .innerJoin(table.users, eq(table.users.userId, page.userId))
-    .leftJoin(table.eu4Saves, and(eq(page.game, "eu4"), eq(table.eu4Saves.id, page.id)))
-    .leftJoin(table.eu5Saves, and(eq(page.game, "eu5"), eq(table.eu5Saves.id, page.id)))
-    .orderBy(desc(page.createdOn));
+  return (
+    db
+      .with(page, campaigns)
+      .select({
+        game: page.game,
+        key: page.campaignKey,
+        latestUpload: page.createdOn,
+        saveCount: campaigns.saveCount,
+        firstDate: campaigns.firstDate,
+        latestDate: campaigns.latestDate,
+        saveIds: campaigns.saveIds,
+        contributors: campaigns.contributors,
+        userName: userView.userName,
+        eu4: table.eu4Saves,
+        eu5: table.eu5Saves,
+      })
+      .from(page)
+      .innerJoin(
+        campaigns,
+        and(eq(campaigns.latestGame, page.game), eq(campaigns.latestId, page.id)),
+      )
+      .leftJoin(
+        table.eu4Saves,
+        and(eq(page.game, "eu4"), eq(table.eu4Saves.id, campaigns.furthestId)),
+      )
+      .leftJoin(
+        table.eu5Saves,
+        and(eq(page.game, "eu5"), eq(table.eu5Saves.id, campaigns.furthestId)),
+      )
+      // The uploader shown is whoever shared the save on display, which in a
+      // multiplayer campaign need not be whoever uploaded most recently.
+      .innerJoin(
+        table.users,
+        eq(table.users.userId, sql`coalesce(${table.eu4Saves.userId}, ${table.eu5Saves.userId})`),
+      )
+      .orderBy(desc(page.createdOn))
+  );
 }
 
 type FeedRow = Awaited<ReturnType<typeof feedQuery>>[number];
 
-function toEu4Save(save: Save, userName: string) {
+export function toEu4Save(save: Save, userName: string) {
   return {
     game: "eu4" as const,
     id: save.id,
@@ -231,6 +264,9 @@ function toEu5Save(save: Eu5Save, userName: string) {
     playthrough_id: save.playthroughId,
     playthrough_name: save.playthroughName,
     players: save.players,
+    player_tag: save.playerTag,
+    player_flag: save.playerFlag,
+    player_country_name: save.playerCountryName,
     version_major: save.versionMajor,
     version_minor: save.versionMinor,
     version_patch: save.versionPatch,
@@ -241,38 +277,86 @@ function toEu5Save(save: Eu5Save, userName: string) {
 
 export type FeedSave = ReturnType<typeof toEu4Save> | ReturnType<typeof toEu5Save>;
 
-function toCampaign(row: FeedRow) {
-  const latest =
+/** The most saves of one campaign that a request returns. */
+const CAMPAIGN_SAVE_LIMIT = 200;
+
+/** The most saves of one campaign that a feed entry shows as frames. */
+const SAMPLE_SIZE = 8;
+
+/**
+ * Spread `SAMPLE_SIZE` picks evenly across the ids, from the first to the
+ * last. A long campaign then shows its whole span and not only its end.
+ */
+function sampleIds(ids: readonly string[]): string[] {
+  if (ids.length <= SAMPLE_SIZE) {
+    return [...ids];
+  }
+
+  const picks = new Set<number>();
+  for (let i = 0; i < SAMPLE_SIZE; i++) {
+    picks.add(Math.round((i * (ids.length - 1)) / (SAMPLE_SIZE - 1)));
+  }
+  return [...picks].sort((a, b) => a - b).flatMap((i) => ids[i] ?? []);
+}
+
+function toCampaign(row: FeedRow, savesById: ReadonlyMap<string, FeedSave>) {
+  const furthest =
     row.game === "eu4" && row.eu4
       ? toEu4Save(row.eu4, row.userName)
       : row.game === "eu5" && row.eu5
         ? toEu5Save(row.eu5, row.userName)
         : undefined;
-  if (latest === undefined) {
+  if (furthest === undefined) {
     throw new Error(`feed row ${row.key} has no ${row.game} save`);
   }
 
   const contributors = z.array(Contributor).parse(row.contributors);
-  const others = contributors.filter((x) => x.user_id !== latest.user_id);
+  const others = contributors.filter((x) => x.user_id !== furthest.user_id);
+  const oldestFirst = [...row.saveIds].reverse();
   return {
     game: row.game,
     key: row.key,
-    name: campaignName(latest),
-    multiplayer: latest.game === "eu4" ? latest.players > 1 : latest.players.length > 1,
+    multiplayer: furthest.game === "eu4" ? furthest.players > 1 : furthest.players.length > 1,
     save_count: row.saveCount,
     latest_upload: row.latestUpload.toISOString(),
     first_date: row.firstDate,
     latest_date: row.latestDate,
-    // The latest uploader leads; the rest follow in name order.
-    contributors: [{ user_id: latest.user_id, user_name: latest.user_name }, ...others],
-    latest,
+    // Whoever shared the save on display leads; the rest follow in name order.
+    contributors: [{ user_id: furthest.user_id, user_name: furthest.user_name }, ...others],
+    /** The save that reached the latest game date, not the newest upload. */
+    furthest,
+    /**
+     * Up to eight saves spread across the campaign, oldest game date first.
+     * The last one is `furthest`.
+     */
+    sample: sampleIds(oldestFirst).flatMap((id) => savesById.get(id) ?? []),
   };
 }
 
 export type FeedCampaign = ReturnType<typeof toCampaign>;
 
-function campaignName(save: FeedSave): string {
-  return save.game === "eu5" ? save.playthrough_name : (save.player_tag_name ?? save.player_tag);
+/** The saves with these ids, with the name of the user that uploaded each. */
+async function savesByIds(db: DbConnection, game: FeedGame, ids: readonly string[]) {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const userName = userView.userName;
+  if (game === "eu4") {
+    const rows = await db
+      .select({ save: table.eu4Saves, userName })
+      .from(table.eu4Saves)
+      .innerJoin(table.users, eq(table.users.userId, table.eu4Saves.userId))
+      .where(inArray(table.eu4Saves.id, [...ids]));
+    return rows.map((row) => toEu4Save(row.save, row.userName));
+  }
+
+  const rows = await db
+    .select({ save: table.eu5Saves, userName })
+    .from(table.eu5Saves)
+    .innerJoin(table.users, eq(table.users.userId, table.eu5Saves.userId))
+    .where(inArray(table.eu5Saves.id, [...ids]));
+  return rows.map((row) => toEu5Save(row.save, row.userName));
 }
 
 /**
@@ -280,9 +364,21 @@ function campaignName(save: FeedSave): string {
  * latest upload.
  */
 export async function getFeed(db: DbConnection, params: FeedParams) {
-  const rows = await feedQuery(db, params);
-  const campaigns = rows.slice(0, params.pageSize).map(toCampaign);
-  const cursor = rows.length > params.pageSize ? campaigns.at(-1)?.latest_upload : undefined;
+  const all = await feedQuery(db, params);
+  const rows = all.slice(0, params.pageSize);
+
+  // One more query per game loads the saves that the entries show as frames.
+  const sampled = { eu4: [] as string[], eu5: [] as string[] };
+  for (const row of rows) {
+    sampled[row.game].push(...sampleIds([...row.saveIds].reverse()));
+  }
+  const saves = (
+    await Promise.all([savesByIds(db, "eu4", sampled.eu4), savesByIds(db, "eu5", sampled.eu5)])
+  ).flat();
+  const savesById = new Map(saves.map((x) => [x.id, x]));
+
+  const campaigns = rows.map((row) => toCampaign(row, savesById));
+  const cursor = all.length > params.pageSize ? campaigns.at(-1)?.latest_upload : undefined;
   return { campaigns, cursor };
 }
 
