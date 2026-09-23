@@ -2,6 +2,8 @@ import { eu4Saves, eu5Saves, users } from "./schema";
 import type { GameDifficulty, Save } from "./schema";
 import type { ParsedFile } from "../functions";
 import { sql, eq, and, isNotNull, inArray, asc, desc } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { NotFoundError } from "../errors";
 import type { Achievement } from "@/wasm/wasm_app";
 import { eu4DaysToDate } from "../game";
@@ -15,6 +17,25 @@ export {
   type Eu5Save,
   type NewEu5Save,
 } from "./schema";
+
+/**
+ * A campaign has one playthrough ID.
+ * A multiplayer campaign can include saves from more than one user.
+ * A single-player campaign belongs to the user who uploaded it.
+ *
+ * The key comes from one save only, so that the feed can find a campaign
+ * through the playthrough index. Thus a save that lists one player goes to
+ * the campaign of its uploader, also when the other saves of its playthrough
+ * are multiplayer. This is intentional: such a save is the same as a
+ * single-player save that continues a shared file.
+ */
+export function campaignKey(s: {
+  playthroughId: AnyPgColumn;
+  players: AnyPgColumn;
+  userId: AnyPgColumn;
+}): SQL<string> {
+  return sql<string>`${s.playthroughId} || CASE WHEN cardinality(${s.players}) > 1 THEN '' ELSE ':' || ${s.userId} END`;
+}
 
 export const userView = {
   get userName() {

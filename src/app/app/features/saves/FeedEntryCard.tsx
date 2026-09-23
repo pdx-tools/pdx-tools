@@ -54,7 +54,11 @@ function EarlierSave({ save }: { save: FeedSave }) {
 
 /** The campaign's other saves, fetched the first time the fold opens. */
 function EarlierSaves({ campaign, open }: { campaign: FeedCampaign; open: boolean }) {
-  const { data, error } = pdxApi.saves.useCampaign(campaign.game, campaign.key, open);
+  const { data, error } = pdxApi.saves.useCampaign({
+    game: campaign.game,
+    key: campaign.key,
+    enabled: open,
+  });
   if (!open) {
     return null;
   }
@@ -75,11 +79,19 @@ function EarlierSaves({ campaign, open }: { campaign: FeedCampaign; open: boolea
 
   const earlier = data.saves.filter((x) => x.id !== campaign.furthest.id);
   return (
-    <ul className="mt-1 divide-y divide-gray-400/30 border-t border-gray-400/30 pl-5">
-      {earlier.map((save) => (
-        <EarlierSave key={save.id} save={save} />
-      ))}
-    </ul>
+    <>
+      <ul className="mt-1 divide-y divide-gray-400/30 border-t border-gray-400/30 pl-5">
+        {earlier.map((save) => (
+          <EarlierSave key={save.id} save={save} />
+        ))}
+      </ul>
+      {data.truncated && (
+        <p className="mt-1 pl-5 text-sm text-gray-600 dark:text-gray-400">
+          Showing the {formatInt(data.saves.length)} newest uploads of{" "}
+          {formatInt(campaign.save_count)}
+        </p>
+      )}
+    </>
   );
 }
 

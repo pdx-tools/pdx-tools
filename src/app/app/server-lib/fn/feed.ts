@@ -1,10 +1,8 @@
-import { dbDifficulty, table, userView } from "@/server-lib/db";
+import { campaignKey, dbDifficulty, table, userView } from "@/server-lib/db";
 import type { Eu5Save, Save } from "@/server-lib/db";
 import { userId } from "@/lib/auth";
 import { and, count, desc, eq, gt, inArray, lt, notExists, sql } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { DbConnection } from "../db/connection";
 
@@ -26,6 +24,8 @@ export const FeedSchema = z.object({
     .nullish()
     .transform((x) => (x ? new Date(x) : undefined)),
   game: FeedGame.nullish(),
+  /** Filter to campaigns this user uploaded to. */
+  user: z.string().transform(userId).nullish(),
 });
 
 export type FeedParams = z.infer<typeof FeedSchema>;
@@ -40,46 +40,20 @@ export type FeedContributor = z.infer<typeof Contributor>;
 
 type SaveTable = typeof table.eu4Saves | typeof table.eu5Saves;
 
-type SaveColumns = {
-  playthroughId: AnyPgColumn;
-  players: AnyPgColumn;
-  userId: AnyPgColumn;
-};
-
 type GameConfig = {
   game: FeedGame;
   table: SaveTable;
-  /** Position of a save within its campaign, on `table`. */
-  ordinal: SQL;
 };
-
-/**
- * A campaign is one playthrough id. Saves from different uploaders belong
- * to the same campaign only when the save is multiplayer; a single-player
- * campaign is scoped to its uploader so that two solo players who share a
- * playthrough id stay apart.
- */
-function campaignKey(s: SaveColumns): SQL<string> {
-  return sql<string>`${s.playthroughId} || CASE WHEN cardinality(${s.players}) > 1 THEN '' ELSE ':' || ${s.userId} END`;
-}
 
 /** The playthrough id that a campaign key was built from. */
 function keyPlaythrough(key: string): string {
   return key.split(":", 1)[0] ?? key;
 }
 
-const eu4: GameConfig = {
-  game: "eu4",
-  table: table.eu4Saves,
-  ordinal: sql`${table.eu4Saves.days}`,
-};
-
-const eu5: GameConfig = {
-  game: "eu5",
-  table: table.eu5Saves,
-  // EU5 dates are `y.m.d` strings.
-  ordinal: sql`split_part(${table.eu5Saves.date}, '.', 1)::int * 10000 + split_part(${table.eu5Saves.date}, '.', 2)::int * 100 + split_part(${table.eu5Saves.date}, '.', 3)::int`,
-};
+// Both games keep the save date as a zero-padded ISO 8601 date, which sorts
+// in date order as text.
+const eu4: GameConfig = { game: "eu4", table: table.eu4Saves };
+const eu5: GameConfig = { game: "eu5", table: table.eu5Saves };
 
 const games = { eu4, eu5 };
 
@@ -95,13 +69,13 @@ const games = { eu4, eu5 };
 function latestSaves(
   db: DbConnection,
   { game, table: saves }: GameConfig,
-  { pageSize, cursor }: FeedParams,
+  { pageSize, cursor, user }: FeedParams,
 ) {
   const s = alias(saves, "s");
   const newer = alias(saves, "newer");
   return db
     .select({
-      game: sql<FeedGame>`${sql.raw(`'${game}'`)}`.as("game"),
+      game: sql<FeedGame>`${game}::text`.as("game"),
       id: s.id,
       playthroughId: s.playthroughId,
       userId: s.userId,
@@ -112,6 +86,7 @@ function latestSaves(
     .where(
       and(
         cursor && lt(s.createdOn, cursor),
+        user ? eq(s.userId, user) : undefined,
         notExists(
           db
             .select({ one: sql`1` })
@@ -120,6 +95,7 @@ function latestSaves(
               and(
                 eq(newer.playthroughId, s.playthroughId),
                 eq(campaignKey(newer), campaignKey(s)),
+                user ? eq(newer.userId, user) : undefined,
                 gt(newer.createdOn, s.createdOn),
               ),
             ),
@@ -147,8 +123,13 @@ function feedQuery(db: DbConnection, params: FeedParams) {
 
   // Aggregates over every save of the campaigns on the page. Each game
   // contributes its own rows, joined back through the playthrough index.
-  const stats = ({ game, table: s, ordinal }: GameConfig) =>
-    db
+  const stats = ({ game, table: s }: GameConfig) => {
+    // Every save of the campaign, furthest first. Two saves can share the
+    // furthest date, so the newer upload of them comes first and the entry
+    // keeps the same face between requests. Postgres computes the two
+    // identical aggregates below one time.
+    const furthestFirst = sql`array_agg(${s.id} ORDER BY ${s.date} DESC, ${s.createdOn} DESC)`;
+    return db
       .select({
         // Named apart from `page.game`: drizzle refers to an aliased SQL
         // field by its bare name, and a join on `"game" = "game"` is
@@ -156,26 +137,15 @@ function feedQuery(db: DbConnection, params: FeedParams) {
         latestGame: sql<FeedGame>`${page.game}`.as("latest_game"),
         latestId: page.id,
         saveCount: count().as("save_count"),
-        firstDate: sql<string>`(array_agg(${s.date} ORDER BY ${ordinal}))[1]`.as("first_date"),
-        latestDate: sql<string>`(array_agg(${s.date} ORDER BY ${ordinal} DESC))[1]`.as(
-          "latest_date",
-        ),
+        firstDate: sql<string>`min(${s.date})`.as("first_date"),
+        latestDate: sql<string>`max(${s.date})`.as("latest_date"),
         // The save that got the furthest in the campaign, which is the one
         // the entry shows. It is not always the newest upload: a player
         // catching up on an old campaign uploads its saves in any order.
-        // Two saves can share the furthest date, so the newer upload of them
-        // wins and the entry keeps the same face between requests.
-        furthestId:
-          sql<string>`(array_agg(${s.id} ORDER BY ${ordinal} DESC, ${s.createdOn} DESC))[1]`.as(
-            "furthest_id",
-          ),
-        // Every save of the campaign, furthest first, with the same order as
-        // `furthest_id` so that the first id is always the furthest save.
+        furthestId: sql<string>`(${furthestFirst})[1]`.as("furthest_id"),
         saveIds: sql<
           string[]
-        >`to_jsonb((array_agg(${s.id} ORDER BY ${ordinal} DESC, ${s.createdOn} DESC))[1:${sql.raw(String(CAMPAIGN_SAVE_LIMIT))}])`.as(
-          "save_ids",
-        ),
+        >`to_jsonb((${furthestFirst})[1:${sql.raw(String(CAMPAIGN_SAVE_LIMIT))}])`.as("save_ids"),
         contributors:
           sql<unknown>`jsonb_agg(DISTINCT jsonb_build_object('user_id', ${table.users.userId}, 'user_name', ${userView.userName}))`.as(
             "contributors",
@@ -189,6 +159,7 @@ function feedQuery(db: DbConnection, params: FeedParams) {
       .innerJoin(table.users, eq(table.users.userId, s.userId))
       .where(eq(page.game, game))
       .groupBy(page.game, page.id);
+  };
   const campaigns = db.$with("campaigns").as(stats(eu4).unionAll(stats(eu5)));
 
   return (
@@ -299,7 +270,7 @@ function sampleIds(ids: readonly string[]): string[] {
   return [...picks].sort((a, b) => a - b).flatMap((i) => ids[i] ?? []);
 }
 
-function toCampaign(row: FeedRow, savesById: ReadonlyMap<string, FeedSave>) {
+function toCampaign(row: FeedRow, sample: FeedSave[]) {
   const furthest =
     row.game === "eu4" && row.eu4
       ? toEu4Save(row.eu4, row.userName)
@@ -311,8 +282,9 @@ function toCampaign(row: FeedRow, savesById: ReadonlyMap<string, FeedSave>) {
   }
 
   const contributors = z.array(Contributor).parse(row.contributors);
-  const others = contributors.filter((x) => x.user_id !== furthest.user_id);
-  const oldestFirst = [...row.saveIds].reverse();
+  const others = contributors
+    .filter((x) => x.user_id !== furthest.user_id)
+    .sort((a, b) => a.user_name.localeCompare(b.user_name));
   return {
     game: row.game,
     key: row.key,
@@ -329,7 +301,7 @@ function toCampaign(row: FeedRow, savesById: ReadonlyMap<string, FeedSave>) {
      * Up to eight saves spread across the campaign, oldest game date first.
      * The last one is `furthest`.
      */
-    sample: sampleIds(oldestFirst).flatMap((id) => savesById.get(id) ?? []),
+    sample,
   };
 }
 
@@ -368,21 +340,27 @@ export async function getFeed(db: DbConnection, params: FeedParams) {
   const rows = all.slice(0, params.pageSize);
 
   // One more query per game loads the saves that the entries show as frames.
-  const sampled = { eu4: [] as string[], eu5: [] as string[] };
-  for (const row of rows) {
-    sampled[row.game].push(...sampleIds([...row.saveIds].reverse()));
-  }
+  const samples = rows.map((row) => sampleIds([...row.saveIds].reverse()));
+  const idsOf = (game: FeedGame) => rows.flatMap((row, i) => (row.game === game ? samples[i] : []));
   const saves = (
-    await Promise.all([savesByIds(db, "eu4", sampled.eu4), savesByIds(db, "eu5", sampled.eu5)])
+    await Promise.all([savesByIds(db, "eu4", idsOf("eu4")), savesByIds(db, "eu5", idsOf("eu5"))])
   ).flat();
   const savesById = new Map(saves.map((x) => [x.id, x]));
 
-  const campaigns = rows.map((row) => toCampaign(row, savesById));
+  const campaigns = rows.map((row, i) =>
+    toCampaign(
+      row,
+      samples[i].flatMap((id) => savesById.get(id) ?? []),
+    ),
+  );
   const cursor = all.length > params.pageSize ? campaigns.at(-1)?.latest_upload : undefined;
   return { campaigns, cursor };
 }
 
-/** Every save of one campaign, newest upload first. */
+/**
+ * The newest uploads of one campaign, newest first, up to
+ * `CAMPAIGN_SAVE_LIMIT`. `truncated` is true when the campaign has more.
+ */
 export async function getCampaignSaves(
   db: DbConnection,
   { game, key }: z.infer<typeof CampaignSchema>,
@@ -403,7 +381,7 @@ export async function getCampaignSaves(
             .innerJoin(table.users, join)
             .where(where)
             .orderBy(order)
-            .limit(200)
+            .limit(CAMPAIGN_SAVE_LIMIT + 1)
         ).map((row) => toEu4Save(row.save, row.userName))
       : (
           await db
@@ -412,7 +390,10 @@ export async function getCampaignSaves(
             .innerJoin(table.users, join)
             .where(where)
             .orderBy(order)
-            .limit(200)
+            .limit(CAMPAIGN_SAVE_LIMIT + 1)
         ).map((row) => toEu5Save(row.save, row.userName));
-  return { saves };
+  return {
+    saves: saves.slice(0, CAMPAIGN_SAVE_LIMIT),
+    truncated: saves.length > CAMPAIGN_SAVE_LIMIT,
+  };
 }

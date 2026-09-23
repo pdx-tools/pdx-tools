@@ -2,14 +2,16 @@ import fs from "node:fs/promises";
 import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
+import { userId } from "@/lib/auth";
 import { eu4Saves, eu5Saves, users } from "@/server-lib/db/schema";
-import type { UserSaves } from "@/server-lib/db";
+import type { NewEu5Save, NewSave, UserSaves } from "@/server-lib/db";
 import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
 import type { SavePostResponse } from "@/server-lib/models";
 import { pdxFns } from "@/server-lib/functions";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import type { FeedResponse } from "@/routes/api.feed";
+import type { CampaignResponse } from "@/routes/api.campaign";
 import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { NewKeyResponse } from "@/services/appApi";
@@ -318,6 +320,106 @@ test("same playthrough id", async () => {
     save_count: 2,
     furthest: { game_difficulty: "Normal" },
   });
+});
+
+test("campaign feed folds, splits, and pages campaigns", async () => {
+  // Rows go into the database directly: the feed only reads them, and saves
+  // from more than one uploader need more than the one test login.
+  const at = (minute: number) => new Date(Date.UTC(2026, 0, 1, 0, minute));
+  const eu4 = (
+    id: string,
+    user: string,
+    playthroughId: string,
+    players: string[],
+    date: string,
+    minute: number,
+  ): NewSave => ({
+    id,
+    createdOn: at(minute),
+    filename: `${id}.eu4`,
+    userId: userId(user),
+    hash: id,
+    date,
+    days: 0,
+    playerTag: "FRA",
+    saveVersionFirst: 1,
+    saveVersionSecond: 37,
+    saveVersionThird: 0,
+    saveVersionFourth: 0,
+    achieveIds: [],
+    players,
+    gameDifficulty: "normal",
+    playthroughId,
+  });
+  const eu5 = (id: string, date: string, minute: number): NewEu5Save => ({
+    id,
+    createdOn: at(minute),
+    filename: `${id}.eu5`,
+    userId: userId("u1"),
+    hash: id,
+    date,
+    playthroughId: "e",
+    playthroughName: "Castile",
+    players: ["a"],
+    versionMajor: 1,
+    versionMinor: 0,
+    versionPatch: 0,
+  });
+
+  await oneshotDb(dbConnection, async (db) => {
+    await db.insert(users).values([
+      { userId: userId("u1"), steamId: "s1", steamName: "Alice" },
+      { userId: userId("u2"), steamId: "s2", steamName: "Bob" },
+    ]);
+    await db.insert(eu4Saves).values([
+      // Multiplayer: one campaign across both uploaders.
+      eu4("mp1", "u1", "mp", ["a", "b"], "1445-01-01", 1),
+      eu4("mp2", "u2", "mp", ["a", "b"], "1450-01-01", 3),
+      // Single player with a shared playthrough id: one campaign per uploader.
+      eu4("solo1", "u1", "solo", ["a"], "1500-01-01", 2),
+      eu4("solo2", "u2", "solo", ["b"], "1500-01-01", 4),
+    ]);
+    // The newest upload is not the furthest save.
+    await db.insert(eu5Saves).values([eu5("e1", "1400-01-01", 0), eu5("e2", "1340-01-01", 5)]);
+  });
+
+  const client = await HttpClient.create();
+  const first = await client.get<FeedResponse>("/api/feed?pageSize=2");
+  expect(first.campaigns.map((x) => x.key)).toEqual(["e:u1", "solo:u2"]);
+  expect(first.campaigns[0]).toMatchObject({
+    save_count: 2,
+    first_date: "1340-01-01",
+    latest_date: "1400-01-01",
+    furthest: { id: "e1" },
+  });
+  expect(first.cursor).toBeDefined();
+
+  const cursor = encodeURIComponent(first.cursor ?? "");
+  const second = await client.get<FeedResponse>(`/api/feed?pageSize=2&cursor=${cursor}`);
+  expect(second.campaigns.map((x) => x.key)).toEqual(["mp", "solo:u1"]);
+  expect(second.campaigns[0]).toMatchObject({
+    save_count: 2,
+    multiplayer: true,
+    furthest: { id: "mp2" },
+    contributors: [
+      { user_id: "u2", user_name: "Bob" },
+      { user_id: "u1", user_name: "Alice" },
+    ],
+  });
+  expect(second.cursor).toBeUndefined();
+
+  const eu5Only = await client.get<FeedResponse>("/api/feed?game=eu5");
+  expect(eu5Only.campaigns.map((x) => x.key)).toEqual(["e:u1"]);
+
+  const bob = await client.get<FeedResponse>("/api/feed?user=u2");
+  expect(bob.campaigns.map((x) => x.key)).toEqual(["solo:u2", "mp"]);
+
+  const campaign = await client.get<CampaignResponse>("/api/campaign?game=eu4&key=mp");
+  expect(campaign.saves.map((x) => x.id)).toEqual(["mp2", "mp1"]);
+  expect(campaign.truncated).toBe(false);
+
+  const badCursor = await client.getReq("/api/feed?cursor=yesterday");
+  expect(badCursor.status).toBe(400);
 });
 
 test("same playthrough disjoint set", async () => {
