@@ -2,9 +2,11 @@ import { WebPage } from "@/components/layout";
 import { LoadingState } from "@/components/LoadingState";
 import { TimeAgo } from "@/components/TimeAgo";
 import { useSession } from "@/features/account";
-import { UserSaveTable } from "@/features/account/UserSaveTable";
+import { CampaignList, NoCampaigns, useCampaigns } from "@/features/account/CampaignList";
+import { UserFeaturesPanel } from "@/features/account/UserFeaturesPanel";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { hasPermission, userId } from "@/lib/auth";
+import { formatInt } from "@/lib/format";
 import { seo } from "@/lib/seo";
 import { mediaPreconnectLinks } from "@/lib/media";
 import { getUser } from "@/server-lib/db";
@@ -18,8 +20,8 @@ import type { Route } from "./+types/users.$userId";
 
 export const meta = ({ params: { userId } }: Route.MetaArgs) =>
   seo({
-    title: "User saves - PDX Tools",
-    description: `EU4 Saves uploaded by user ${userId}`,
+    title: "Shared saves - PDX Tools",
+    description: `EU4 and EU5 campaigns shared by user ${userId}`,
   });
 
 export const links = () => mediaPreconnectLinks;
@@ -70,24 +72,47 @@ export default function UserRoute() {
 function UserPage({ userId }: { userId: string }) {
   const { data: user } = pdxApi.user.useGet(userId);
   const session = useSession();
+  const campaigns = useCampaigns(user);
 
+  const isOwner = session.id === user.user_info.user_id;
   const isPrivileged = hasPermission(session, "savefile:delete", {
     userId: user.user_info.user_id,
   });
-  useDocumentTitle(`${user.user_info.user_name} saves - PDX Tools`);
+  const canManageFeatures = hasPermission(session, "user:features");
+  const userName = user.user_info.user_name || `User ${user.user_info.user_id}`;
+  useDocumentTitle(`${userName} saves - PDX Tools`);
+
+  const saveCount = user.saves.length + user.eu5_saves.length;
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="p-5">
-        <h1 className="text-4xl">
-          {user.user_info.user_name || `User: ${user.user_info.user_id}`}
-        </h1>
-        <div className="mb-4 space-x-2">
-          <span>Joined:</span>
-          <TimeAgo date={user.user_info.created_on} />
-        </div>
+      <div className="space-y-8 p-5">
+        <header>
+          <h1 className="text-4xl">{userName}</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Joined <TimeAgo date={user.user_info.created_on} />
+            {saveCount > 0 && (
+              <>
+                <span className="mx-2 text-gray-400">·</span>
+                <span className="tabular-nums">
+                  {formatInt(campaigns.length)} {campaigns.length === 1 ? "campaign" : "campaigns"}
+                </span>
+                <span className="mx-2 text-gray-400">·</span>
+                <span className="tabular-nums">
+                  {formatInt(saveCount)} {saveCount === 1 ? "save" : "saves"}
+                </span>
+              </>
+            )}
+          </p>
+        </header>
 
-        <UserSaveTable canDeleteSaves={isPrivileged} saves={user.saves} />
+        {canManageFeatures && <UserFeaturesPanel userId={user.user_info.user_id} />}
+
+        {campaigns.length === 0 ? (
+          <NoCampaigns isOwner={isOwner} userName={userName} />
+        ) : (
+          <CampaignList campaigns={campaigns} canDeleteSaves={isPrivileged} />
+        )}
       </div>
     </div>
   );

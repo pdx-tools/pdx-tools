@@ -9,3 +9,6 @@ export type Eu5SaveInput =
  * gets the same bytes, or fails if the game overwrote the file.
  */
 export type Eu5ParsedSave = Exclude<Eu5SaveInput, { kind: "handle" }>;
+
+/** A parsed save that the player opened from disk, so it can be uploaded. */
+export type Eu5LocalSave = Extract<Eu5ParsedSave, { kind: "file" }>;

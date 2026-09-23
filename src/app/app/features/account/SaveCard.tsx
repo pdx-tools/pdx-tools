@@ -1,9 +1,10 @@
 import { TimeAgo } from "@/components/TimeAgo";
-import { DeleteSave } from "../eu4/components/DeleteSave";
 import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
 import { Link } from "@/components/Link";
 import { Card } from "@/components/Card";
-import { ArrowTopRightOnSquareIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { UserGroupIcon } from "@heroicons/react/24/outline";
+import { SaveActions } from "./SaveActions";
+import { formatGameDate } from "./campaigns";
 import { formatInt } from "@/lib/format";
 import { difficultyColor, difficultyText } from "@/lib/difficulty";
 import { ogImageSize, ogImageUrl } from "@/lib/media";
@@ -72,7 +73,11 @@ export function SaveCard({
             </div>
           )}
 
-          <TimeAgo date={save.upload_time} />
+          <div>
+            <span className="text-gray-900 dark:text-gray-100">{formatGameDate(save.date)}</span>
+            <span className="mx-1.5 text-gray-400">·</span>
+            <TimeAgo date={save.upload_time} />
+          </div>
 
           {save.filename !== save.name && (
             <div className="line-clamp-1 break-all">{save.filename}</div>
@@ -92,17 +97,13 @@ export function SaveCard({
             </div>
           )}
 
-          {canDelete && (
-            <DeleteSave saveId={save.id} variant="ghost" shape="none" className="shrink-0" />
-          )}
-          <Link
-            className="shrink-0"
-            to={`/eu4/saves/${save.id}`}
-            target="_blank"
-            aria-label="Open save"
-          >
-            <ArrowTopRightOnSquareIcon className="h-8 w-8" />
-          </Link>
+          <SaveActions
+            path={`/eu4/saves/${save.id}`}
+            saveId={save.id}
+            game="eu4"
+            label={formatGameDate(save.date)}
+            canDelete={canDelete}
+          />
         </div>
       </div>
     </Card>

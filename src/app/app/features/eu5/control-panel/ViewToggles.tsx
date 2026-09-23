@@ -8,10 +8,6 @@ export function ViewToggles() {
 
   return (
     <div className="flex items-center gap-1">
-      <span className="mr-1 font-mono text-[9.5px] font-medium tracking-[0.2em] text-game-ink-500 uppercase">
-        View
-      </span>
-
       <Tooltip>
         <Tooltip.Trigger asChild>
           <span>

@@ -1,37 +1,8 @@
 import { useMemo } from "react";
 import { diff } from "@/lib/dates";
 import { groupBy } from "@/lib/groupBy";
-import { SaveCard } from "./SaveCard";
 import type { UserSaves } from "@/server-lib/db";
-
-interface UserSaveTableProps {
-  saves: UserSaves["saves"];
-  canDeleteSaves: boolean;
-}
-
-export const UserSaveTable = ({ saves, canDeleteSaves }: UserSaveTableProps) => {
-  const data = useSavesGroupedByPlaythrough(saves);
-
-  return (
-    <div className="flex flex-col gap-12">
-      {data.map((playthroughSaves, i) => (
-        <div key={i}>
-          <h2 className="overflow-hidden text-center text-lg font-bold lg:text-2xl">
-            {playthroughSaves[0].name}
-            {playthroughSaves[0].filename !== playthroughSaves[0].name && (
-              <div className="text-sm leading-tight font-semibold text-gray-600 dark:text-gray-400">
-                (playthrough name)
-              </div>
-            )}
-          </h2>
-          {playthroughSaves.map((save) => (
-            <SaveCard key={save.id} save={save} canDelete={canDeleteSaves} />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-};
+import type { Eu4CampaignSave, NonEmptyArray } from "./campaigns";
 
 export function useSavesGroupedByPlaythrough(saves: UserSaves["saves"]) {
   return useMemo(() => {
@@ -45,23 +16,29 @@ export function useSavesGroupedByPlaythrough(saves: UserSaves["saves"]) {
     const uniqnames = new Set(elgibleFilenames);
 
     const groups = groupBy(saves, (x) => x.playthrough_id);
-    const playthroughs = [...groups.entries()].map(([group, saves]) => {
-      // Check if all grouped saves have the same filename
-      const filenames = new Set(saves.map((x) => x.filename));
-      const allSameName = filenames.size === 1;
-      const filename = saves[0].filename;
+    const playthroughs = [...groups.entries()].flatMap(
+      ([group, saves]): NonEmptyArray<Eu4CampaignSave>[] => {
+        if (saves.length === 0) return [];
 
-      // Playthrough name: if all saves in the group have the same name
-      // then use the filename unless other saves outside the group also
-      // share the same name.
-      const name = allSameName && uniqnames.has(filename) ? filename : playthroughName(group);
+        // Check if all grouped saves have the same filename
+        const filenames = new Set(saves.map((x) => x.filename));
+        const allSameName = filenames.size === 1;
+        const filename = saves[0].filename;
 
-      saves.sort((a, b) => b.days - a.days);
-      return saves.map((x) => ({
-        ...x,
-        name,
-      }));
-    });
+        // Playthrough name: if all saves in the group have the same name
+        // then use the filename unless other saves outside the group also
+        // share the same name.
+        const name = allSameName && uniqnames.has(filename) ? filename : playthroughName(group);
+
+        saves.sort((a, b) => b.days - a.days);
+        const namedSaves = saves.map((x) => ({
+          ...x,
+          name,
+        }));
+        const first = namedSaves[0];
+        return [[first, ...namedSaves.slice(1)]];
+      },
+    );
 
     return playthroughs.sort((a, b) => -diff(a[0].upload_time, b[0].upload_time));
   }, [saves]);

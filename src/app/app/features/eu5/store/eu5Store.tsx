@@ -25,6 +25,14 @@ type Eu5State = {
   /** Height of the timeline bar over the map, so overlays can sit above it. */
   timelineBarHeight: number;
   setTimelineBarHeight: (height: number) => void;
+  /**
+   * The permalink id of a local save that this session uploaded. It is in
+   * the store and not in the share row, so the row keeps offering the link
+   * if it remounts. A save opened from its permalink has its id in
+   * `saveInput`.
+   */
+  uploadedSaveId: string | null;
+  setUploadedSaveId: (id: string) => void;
 };
 
 export type Eu5Store = StoreApi<Eu5State>;
@@ -55,6 +63,8 @@ export const createEu5Store = (
     setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
     setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
     setTimelineBarHeight: (height) => set({ timelineBarHeight: height }),
+    uploadedSaveId: null,
+    setUploadedSaveId: (id) => set({ uploadedSaveId: id }),
   }));
 
   engine.subscribe((appState) => {
@@ -107,3 +117,5 @@ export const useEu5Timelapse = () => useEu5Store((x) => x.appState.timelapse);
 export const useEu5MapViewport = () => useEu5Store((x) => x.appState.mapViewport);
 export const useEu5TimelineBarHeight = () => useEu5Store((x) => x.timelineBarHeight);
 export const useSetEu5TimelineBarHeight = () => useEu5Store((x) => x.setTimelineBarHeight);
+export const useEu5UploadedSaveId = () => useEu5Store((x) => x.uploadedSaveId);
+export const useSetEu5UploadedSaveId = () => useEu5Store((x) => x.setUploadedSaveId);

@@ -1,16 +1,9 @@
 import { z } from "zod";
 import { check } from "@/lib/isPresent";
-import { isFeature, userId } from "@/lib/auth";
+import { isFeature, SESSION_REFRESH_MS, userId } from "@/lib/auth";
 import type { Feature, UserId } from "@/lib/auth";
 import type { User } from "../db/schema";
 import { log } from "../logging";
-
-// The session cookie caches the user's account and features. After this
-// interval, the cookie is stale and the next request that goes through
-// `refresh` reads the user row again and issues a new cookie. This lets
-// account and feature changes apply without a new login and without a database
-// read on every request.
-export const SESSION_REFRESH_MS = 15 * 60 * 1000;
 
 export const SessionPayloadSchema = z
   .object({

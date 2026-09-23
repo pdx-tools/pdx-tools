@@ -1,0 +1,32 @@
+/* The moment the upload lands, the row takes a brass wash and settles back
+   to the panel. It is the one cue that the link is now there; the row does
+   not move, so the eye that watched the track fill is already on it. */
+.landed {
+  animation: landed 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes landed {
+  0% {
+    background-color: var(--game-accent-soft);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* The hairline over the row is the track; each step is eased. It scales
+   from the left instead of changing width, so no frame relays out. */
+.track {
+  transform-origin: left;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landed {
+    animation: none;
+  }
+
+  .track {
+    transition: none;
+  }
+}

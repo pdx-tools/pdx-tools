@@ -1,10 +1,5 @@
-import {
-  isSessionStale,
-  knownFeatures,
-  SESSION_REFRESH_MS,
-  sessionPayload,
-} from "@/server-lib/auth/payload";
-import { hasFeature, pdxUser, userId } from "@/lib/auth";
+import { isSessionStale, knownFeatures, sessionPayload } from "@/server-lib/auth/payload";
+import { hasFeature, pdxUser, SESSION_REFRESH_MS, userId } from "@/lib/auth";
 import { describe, expect, it } from "vitest";
 
 describe("session refresh", () => {

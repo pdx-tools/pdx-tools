@@ -1,4 +1,4 @@
-import { fetchOk, fetchOkJson, sendJson } from "@/lib/fetch";
+import { fetchOk, fetchOkJson, sendJson, sendJsonAs } from "@/lib/fetch";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   useMutation,
@@ -17,7 +17,11 @@ import type { UserSaves } from "@/server-lib/db";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import { log } from "@/lib/log";
-import type { Eu5ParsedSave } from "@/features/eu5/store/types";
+import type { Eu5LocalSave } from "@/features/eu5/store/types";
+import type {
+  FeatureChangeInput,
+  UserFeaturesResponse,
+} from "@/routes/api.admin.users.$userId.features";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
 export type { Achievement, Difficulty as AchievementDifficulty };
 
@@ -123,6 +127,7 @@ export const pdxKeys = {
   achievement: (id: string) => [...pdxKeys.achievements(), id] as const,
   users: () => [...pdxKeys.all, "users"] as const,
   user: (id: string) => [...pdxKeys.users(), id] as const,
+  userFeatures: (id: string) => [...pdxKeys.user(id), "features"] as const,
 };
 
 export const pdxApi = {
@@ -257,12 +262,11 @@ export const pdxApi = {
           dispatch,
           signal,
         }: {
-          save: Eu5ParsedSave;
+          save: Eu5LocalSave;
           filename: string;
           dispatch: (progress: number) => void;
           signal?: AbortSignal;
         }) => {
-          if (save.kind === "server") throw new Error("This EU5 save is already uploaded");
           const compression = createCompressionWorker();
           try {
             dispatch(5);
@@ -297,6 +301,30 @@ export const pdxApi = {
     },
   },
 
+  admin: {
+    // The features granted to a user. Admin only: the page mounts the
+    // caller only for admins, so it never asks a question it cannot answer.
+    useUserFeatures: (userId: string) =>
+      useQuery({
+        queryKey: pdxKeys.userFeatures(userId),
+        queryFn: () => fetchOkJson<UserFeaturesResponse>(`/api/admin/users/${userId}/features`),
+      }),
+
+    useSetUserFeature: (userId: string) => {
+      const queryClient = useQueryClient();
+      return useMutation({
+        mutationFn: (change: FeatureChangeInput) =>
+          sendJsonAs<UserFeaturesResponse>(`/api/admin/users/${userId}/features`, {
+            method: "PATCH",
+            body: change,
+          }),
+        onSuccess: (data) => {
+          queryClient.setQueryData(pdxKeys.userFeatures(userId), data);
+        },
+      });
+    },
+  },
+
   save: {
     useGet: (id: string, opts?: Partial<{ enabled?: boolean }>) => {
       const enabled = opts?.enabled ?? true;
@@ -307,10 +335,11 @@ export const pdxApi = {
       });
     },
 
-    useDelete: () => {
+    useDelete: (game: "eu4" | "eu5" = "eu4") => {
       const queryClient = useQueryClient();
+      const base = game === "eu5" ? "/api/eu5/saves" : "/api/saves";
       return useMutation({
-        mutationFn: (id: string) => fetchOk(`/api/saves/${id}`, { method: "DELETE" }),
+        mutationFn: (id: string) => fetchOk(`${base}/${id}`, { method: "DELETE" }),
         onSuccess: invalidateSaves(queryClient),
       });
     },
