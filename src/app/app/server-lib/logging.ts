@@ -44,3 +44,7 @@ class Log {
 }
 
 export const log = new Log();
+
+export function requestLogFields(request: Request) {
+  return { method: request.method, path: new URL(request.url).pathname };
+}

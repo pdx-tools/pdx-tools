@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, EntryContext, LoaderFunctionArgs } from "react-router";
-import { ServerRouter } from "react-router";
+import { isRouteErrorResponse, ServerRouter } from "react-router";
 import { renderToReadableStream } from "react-dom/server";
-import { log } from "./server-lib/logging";
+import { log, requestLogFields } from "./server-lib/logging";
 import { mediaOrigin } from "./lib/media";
 
 export default async function handleRequest(
@@ -47,15 +47,13 @@ export default async function handleRequest(
 }
 
 export function handleError(error: unknown, { request }: LoaderFunctionArgs | ActionFunctionArgs) {
-  if (
-    !request.signal.aborted &&
-    !(
-      typeof error === "object" && // Don't log 404 errors
-      error !== null &&
-      "status" in error &&
-      error.status === 404
-    )
-  ) {
-    log.exception(error, { msg: "server error" });
+  if (request.signal.aborted) return;
+
+  if (isRouteErrorResponse(error)) {
+    // Don't log 404 errors
+    if (error.status === 404) return;
+    if ("error" in error && error.error) error = error.error;
   }
+
+  log.exception(error, { ...requestLogFields(request), msg: "server error" });
 }
