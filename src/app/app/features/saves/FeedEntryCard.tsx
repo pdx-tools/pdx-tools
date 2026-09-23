@@ -1,189 +1,77 @@
 import { useId, useState } from "react";
 import { cx } from "class-variance-authority";
-import { ArrowRightIcon, CheckIcon, LinkIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, CheckIcon, LinkIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/Button";
+import { IconButton } from "@/components/IconButton";
 import { Link } from "@/components/Link";
 import { TimeAgo } from "@/components/TimeAgo";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
-import { AchievementAvatar, Flag } from "@/features/eu4/components/avatars";
-import { Eu5Flag } from "@/features/eu5/components/flags/Eu5Flag";
-import { GameMark } from "@/features/account/CampaignList";
-import { useCopyLink } from "@/features/account/SaveActions";
-import { eu5Version, formatGameDate } from "@/features/account/campaigns";
-import { difficultyColor, difficultyText } from "@/lib/difficulty";
+import { useSession } from "@/features/account";
+import { AchievementAvatar } from "@/features/eu4/components/avatars";
+import { hasPermission } from "@/lib/auth";
 import { formatInt } from "@/lib/format";
 import { ogImageSize, ogImageUrl } from "@/lib/media";
 import { pdxApi } from "@/services/appApi";
 import type { FeedCampaign, FeedContributor, FeedSave } from "@/server-lib/fn/feed";
+import { DeleteSave } from "./DeleteSave";
+import { SaveTile } from "./SaveTile";
+import { formatGameDate } from "./gameDate";
+import {
+  DateLabel,
+  GameMark,
+  PlayedAsValue,
+  PatchValue,
+  playedAs,
+  playedAsText,
+  savePath,
+} from "./saveDetails";
+import { useCopyLink } from "./useCopyLink";
 
 const ogImageStyle = { aspectRatio: `${ogImageSize.width} / ${ogImageSize.height}` };
 
-function savePath(save: FeedSave) {
-  return `/${save.game}/saves/${save.id}`;
-}
-
 /**
- * `1444-11-11` (EU4) or `1444.11.11` (EU5) as `1444-11-11`, digits only, as
- * the preview image writes its date.
+ * Open the save, or copy its link. The uploader got a link to share when
+ * they uploaded, so a reader of the feed rarely needs one: copy is the small
+ * second control. The uploader of the save, and an admin, can also delete
+ * it; in a campaign, that is whichever save the filmstrip has selected.
  */
-function numericGameDate(date: string): string {
-  const [y, m, d] = date.split(/[.-]/);
-  if (!y || !m || !d) return date;
-  return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-}
-
-/** `1444-11-11` (EU4) or `1444.11.11` (EU5) as a sortable number. */
-function gameDateOrdinal(date: string): number {
-  const [y = 0, m = 0, d = 0] = date.split(/[.-]/).map(Number);
-  return y * 10000 + m * 100 + d;
-}
-
-/**
- * Who played the save, from the game's own data. The feed never leads with
- * a name that a player typed (a playthrough name or a file name).
- */
-type PlayedAs =
-  | { kind: "country"; tag: string; name: string }
-  | { kind: "eu5-country"; flag: string; name: string }
-  | { kind: "players"; count: number }
-  | { kind: "observer" };
-
-function playedAs(save: FeedSave): PlayedAs | undefined {
-  if (save.game === "eu4") {
-    return save.players > 1
-      ? { kind: "players", count: save.players }
-      : { kind: "country", tag: save.player_tag, name: save.player_tag_name ?? save.player_tag };
-  }
-
-  if (save.players.length === 0) {
-    return { kind: "observer" };
-  }
-  if (save.players.length > 1) {
-    return { kind: "players", count: save.players.length };
-  }
-
-  // A save uploaded before the country was recorded has no tag.
-  if (save.player_tag === null) {
-    return undefined;
-  }
-  return {
-    kind: "eu5-country",
-    flag: save.player_flag ?? save.player_tag,
-    name: save.player_country_name ?? save.player_tag,
-  };
-}
-
-function playedAsText(played: PlayedAs | undefined): string | undefined {
-  switch (played?.kind) {
-    case "country":
-    case "eu5-country":
-      return played.name;
-    case "players":
-      return `${formatInt(played.count)} players`;
-    case "observer":
-      return "Observer";
-    default:
-      return undefined;
-  }
-}
-
-function PlayedAsValue({ played }: { played: PlayedAs }) {
-  if (played.kind === "country") {
-    return (
-      <Flag tag={played.tag} name={played.name}>
-        <span className="flex min-w-0 items-center gap-2">
-          <Flag.Image size="xs" />
-          <Flag.CountryName className="truncate" />
-        </span>
-      </Flag>
-    );
-  }
-
-  if (played.kind === "eu5-country") {
-    return (
-      <span className="flex min-w-0 items-center gap-2">
-        <Eu5Flag flag={played.flag} size="sm" />
-        <span className="truncate">{played.name}</span>
-      </span>
-    );
-  }
-
-  return (
-    <span className="flex items-center gap-2">
-      <UserGroupIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden />
-      {playedAsText(played)}
-    </span>
-  );
-}
-
-function VersionValue({ save }: { save: FeedSave }) {
-  if (save.game === "eu5") {
-    return <span className="tabular-nums">{eu5Version(save)}</span>;
-  }
-
-  return (
-    <span>
-      <span className="tabular-nums">{save.patch}</span>{" "}
-      <span className={difficultyColor(save.game_difficulty)}>
-        ({difficultyText(save.game_difficulty)})
-      </span>
-    </span>
-  );
-}
-
-/**
- * The date as text, laid over the date that the preview image carries. At
- * the size the feed shows a preview, the image's own date is too small to
- * read.
- *
- * The screenshot renderer (`pdx-map/src/layers/date_layer.rs`) draws that
- * date flush with the bottom-left corner, 174 × 54 px on the 1200 × 630
- * image: 14.5% of the width and 8.57% of the height. This label covers at
- * least that area on an opaque ground, so none of the image's date shows
- * through. If the renderer changes the size of its label, change these
- * values too.
- */
-function DateLabel({ date }: { date: string }) {
-  return (
-    <span
-      aria-hidden
-      className="absolute bottom-0 left-0 flex min-h-[8.58%] min-w-[14.5%] items-center bg-black px-[1.6cqw] font-mono text-[clamp(0.75rem,1.9cqw,1.0625rem)] leading-none text-white tabular-nums"
-    >
-      {date}
-    </span>
-  );
-}
-
-/** Open and copy take one treatment, because they are the two equal ways to follow a save. */
-function SaveButtons({ save }: { save: FeedSave }) {
+function SaveButtons({ save, onDeleted }: { save: FeedSave; onDeleted: () => void }) {
   const path = savePath(save);
   const { copied, copy } = useCopyLink(path);
+  const session = useSession();
+  const canDelete = hasPermission(session, "savefile:delete", { userId: save.user_id });
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex items-center gap-2">
       <Button asChild variant="default" className="gap-2 py-1.5 text-sm hover:no-underline">
         <Link variant="ghost" to={path}>
           Open save
           <ArrowRightIcon className="h-4 w-4" aria-hidden />
         </Link>
       </Button>
-      <Button variant="default" className="gap-2 py-1.5 text-sm" onClick={copy}>
-        {copied ? "Copied" : "Copy link"}
-        {copied ? (
-          <CheckIcon className="h-4 w-4 text-green-700 dark:text-green-400" aria-hidden />
-        ) : (
-          <LinkIcon className="h-4 w-4" aria-hidden />
-        )}
-      </Button>
+      <IconButton
+        variant="ghost"
+        shape="square"
+        className="text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-slate-700 dark:hover:text-white"
+        onClick={copy}
+        aria-label={copied ? "Link copied" : "Copy link"}
+        tooltip={copied ? "Copied" : "Copy link"}
+        icon={
+          copied ? (
+            <CheckIcon className="h-4 w-4 text-green-700 dark:text-green-400" aria-hidden />
+          ) : (
+            <LinkIcon className="h-4 w-4" aria-hidden />
+          )
+        }
+      />
+      {canDelete && (
+        <DeleteSave
+          saveId={save.id}
+          game={save.game}
+          label={formatGameDate(save.date)}
+          onDeleted={onDeleted}
+        />
+      )}
     </div>
-  );
-}
-
-function Detail({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <>
-      <dt className="text-gray-600 dark:text-gray-400">{label}</dt>
-      <dd className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">{children}</dd>
-    </>
   );
 }
 
@@ -195,53 +83,49 @@ function Detail({ label, children }: { label: string; children: React.ReactNode 
  * and a frame cut at the right edge shows that the row scrolls.
  *
  * The feed sends a sample of up to eight saves. A longer campaign offers the
- * rest on request.
+ * rest on request; the entry holds that request, because the save it shows
+ * can come from either list.
  */
 function Filmstrip({
   campaign,
+  saves,
   selected,
   onSelect,
+  onShowAll,
+  loading,
+  failed,
 }: {
   campaign: FeedCampaign;
+  saves: readonly FeedSave[];
   selected: FeedSave;
   onSelect: (save: FeedSave) => void;
+  /** Absent once every save is shown or on the way. */
+  onShowAll: (() => void) | undefined;
+  loading: boolean;
+  failed: boolean;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  const { data, error } = pdxApi.saves.useCampaign(campaign.game, campaign.key, showAll);
-
-  const saves =
-    showAll && data
-      ? [...data.saves].sort(
-          (a, b) =>
-            gameDateOrdinal(a.date) - gameDateOrdinal(b.date) ||
-            a.upload_time.localeCompare(b.upload_time),
-        )
-      : campaign.sample;
   const sampled = campaign.save_count > saves.length;
   const showUploader = campaign.contributors.length > 1;
 
   return (
-    <section
-      aria-label="Saves in this campaign"
-      className="flex min-w-0 flex-col gap-2 lg:col-span-2"
-    >
+    <section aria-label="Saves in this campaign" className="flex min-w-0 flex-col gap-2">
       <div className="flex flex-wrap items-baseline gap-x-3 text-sm text-gray-600 dark:text-gray-400">
         <span className="tabular-nums">
           {sampled
             ? `${formatInt(saves.length)} of ${formatInt(campaign.save_count)} saves`
             : `${formatInt(saves.length)} saves`}
         </span>
-        {sampled && !showAll && (
+        {sampled && onShowAll && (
           <button
             type="button"
             className="cursor-pointer rounded font-medium text-sky-700 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-sky-600 dark:text-sky-400"
-            onClick={() => setShowAll(true)}
+            onClick={onShowAll}
           >
             Show all {formatInt(campaign.save_count)}
           </button>
         )}
-        {showAll && !data && !error && <LoadingIcon className="h-4 w-4 self-center" />}
-        {error && <span className="text-rose-700 dark:text-rose-400">Failed to load saves</span>}
+        {loading && <LoadingIcon className="h-4 w-4 self-center" />}
+        {failed && <span className="text-rose-700 dark:text-rose-400">Failed to load saves</span>}
       </div>
 
       <ol className="flex snap-x gap-3 overflow-x-auto pb-2">
@@ -249,7 +133,7 @@ function Filmstrip({
           const isSelected = save.id === selected.id;
           const gameDate = formatGameDate(save.date);
           return (
-            <li key={save.id} className="w-40 shrink-0 snap-start sm:w-52">
+            <li key={save.id} className="w-40 shrink-0 snap-start sm:w-52 lg:w-40">
               <button
                 type="button"
                 aria-pressed={isSelected}
@@ -295,7 +179,7 @@ function Filmstrip({
   );
 }
 
-/** The uploaders as text, for a row that is already a link of its own. */
+/** The uploaders as text: "A", "A and B", or "A, B and C". */
 function contributorNames(contributors: readonly FeedContributor[]): string {
   const names = contributors.map((x) => x.user_name);
   if (names.length <= 1) {
@@ -312,50 +196,74 @@ function entryLabel(campaign: FeedCampaign, save: FeedSave = campaign.furthest) 
 }
 
 /**
- * One campaign as a single row: the map it reached, who played it, and its
- * date. A game hub uses these to point at the feed without becoming one, so
- * the row carries no filmstrip and no actions.
+ * One campaign as a tile: the save that got the furthest, in the form of a
+ * feed entry at a smaller size. A game hub uses these to point at the feed
+ * without becoming one, so the tile carries no filmstrip and no actions.
  */
-export function FeedEntryRow({ campaign }: { campaign: FeedCampaign }) {
+export function FeedEntryTile({ campaign }: { campaign: FeedCampaign }) {
   const { furthest } = campaign;
-  const who = playedAsText(playedAs(furthest));
+  const others = campaign.contributors.length > 1;
   return (
-    <article aria-label={entryLabel(campaign)}>
-      <Link
-        to={savePath(furthest)}
-        variant="ghost"
-        className="group flex items-center gap-4 rounded border-b border-gray-400/40 py-3 ring-offset-2 ring-offset-white outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:ring-offset-slate-900"
-      >
-        <img
-          className="w-24 shrink-0 rounded-sm border border-gray-400/50 bg-slate-900 object-contain transition-colors group-hover:border-sky-600 sm:w-32 md:w-40"
-          style={ogImageStyle}
-          alt=""
-          width={ogImageSize.width}
-          height={ogImageSize.height}
-          src={ogImageUrl(furthest.id, furthest.game)}
-          loading="lazy"
-        />
-        <div className="flex min-w-0 flex-col gap-1">
-          <h3 className="truncate leading-tight font-semibold group-hover:underline group-hover:underline-offset-4">
-            {who ?? formatGameDate(furthest.date)}
-          </h3>
-          <div className="text-sm text-gray-600 tabular-nums dark:text-gray-400">
-            {who && formatGameDate(furthest.date)}
-            {who && campaign.save_count > 1 && <span className="mx-1.5 text-gray-400">·</span>}
-            {campaign.save_count > 1 && `${formatInt(campaign.save_count)} saves`}
-          </div>
-          <div className="truncate text-sm text-gray-600 dark:text-gray-400">
-            by {contributorNames(campaign.contributors)}
-          </div>
+    <SaveTile save={furthest} label={entryLabel(campaign)}>
+      {(campaign.save_count > 1 || others) && (
+        <div className="text-gray-600 tabular-nums dark:text-gray-400">
+          {campaign.save_count > 1 && `${formatInt(campaign.save_count)} saves`}
+          {campaign.save_count > 1 && others && <span className="mx-1.5 text-gray-400">·</span>}
+          {others && `by ${contributorNames(campaign.contributors)}`}
         </div>
-      </Link>
-    </article>
+      )}
+      {furthest.game === "eu4" && furthest.achievements.length > 0 && (
+        <AchievementRow ids={furthest.achievements} />
+      )}
+    </SaveTile>
+  );
+}
+
+/** The most icons that fit one row of the narrowest tile. */
+const TILE_ACHIEVEMENTS = 5;
+
+/**
+ * The achievements of a save in one row, so every tile keeps one height. A
+ * save with more than fit shows the first ones and a count of the rest.
+ */
+function AchievementRow({ ids }: { ids: readonly number[] }) {
+  const overflow = ids.length > TILE_ACHIEVEMENTS;
+  const shown = overflow ? ids.slice(0, TILE_ACHIEVEMENTS - 1) : ids;
+  const rest = ids.length - shown.length;
+  return (
+    <ul aria-label="Achievements" className="mt-2 flex gap-1.5">
+      {shown.map((id) => (
+        <li key={id}>
+          <AchievementAvatar size={40} id={id} className="block" />
+        </li>
+      ))}
+      {overflow && (
+        <li
+          aria-label={`and ${formatInt(rest)} more`}
+          className="flex h-10 w-10 items-center justify-center rounded-sm border border-gray-400/60 text-sm font-semibold text-gray-700 tabular-nums dark:border-gray-600 dark:text-gray-300"
+        >
+          +{formatInt(rest)}
+        </li>
+      )}
+    </ul>
+  );
+}
+
+function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** The saves oldest game date first, and in upload order within a date. */
+function oldestFirst(saves: readonly FeedSave[]): FeedSave[] {
+  return [...saves].sort(
+    (a, b) => compareText(a.date, b.date) || a.upload_time.localeCompare(b.upload_time),
   );
 }
 
 /**
- * One campaign in the feed: its map on the left, what that save is on the
- * right, and the saves of the run as a filmstrip beneath. The entry has no
+ * One campaign in the feed: its map on the left, and on the right what that
+ * save is, in the order of a hub tile, with the saves of the run as a
+ * filmstrip under it. The entry has no
  * visible title. The map is its face and carries the date, and the details
  * lead with who played. A heading for assistive technology names the entry. The entry opens on
  * the save that got the furthest, not on the newest upload, so a campaign
@@ -363,18 +271,37 @@ export function FeedEntryRow({ campaign }: { campaign: FeedCampaign }) {
  * selects another save into the map and the details.
  *
  * `showGame` marks the map with its game, for a feed that mixes games.
+ * `showNames` adds the names a player typed: the EU5 campaign name as a
+ * visible title, and the file name of the save. A player's own page shows
+ * them; the shared feed does not lead with them.
  */
 export function FeedEntryCard({
   campaign,
   showGame,
+  showNames = false,
 }: {
   campaign: FeedCampaign;
   showGame: boolean;
+  showNames?: boolean;
 }) {
-  const [selected, setSelected] = useState<FeedSave>(campaign.furthest);
+  const [selectedId, setSelectedId] = useState(campaign.furthest.id);
+  const [showAll, setShowAll] = useState(false);
+  // A deleted save leaves the strip at once, and does not wait for the feed
+  // to load again.
+  const [deleted, setDeleted] = useState<ReadonlySet<string>>(new Set());
+  const all = pdxApi.saves.useCampaign(campaign.game, campaign.key, showAll);
+  const saves = (showAll && all.data ? oldestFirst(all.data.saves) : campaign.sample).filter(
+    (x) => !deleted.has(x.id),
+  );
+  // The furthest save is the last frame. When the selected save is gone,
+  // the entry goes back to the furthest save that is left.
+  const selected = saves.find((x) => x.id === selectedId) ?? saves.at(-1) ?? campaign.furthest;
+
   const headingId = useId();
   const played = playedAs(selected);
   const gameDate = formatGameDate(selected.date);
+  const title =
+    showNames && campaign.furthest.game === "eu5" ? campaign.furthest.playthrough_name : undefined;
 
   return (
     <article
@@ -395,53 +322,80 @@ export function FeedEntryCard({
           src={ogImageUrl(selected.id, selected.game)}
           loading="lazy"
         />
-        <DateLabel date={numericGameDate(selected.date)} />
+        <DateLabel date={selected.date} />
         {showGame && <GameMark game={campaign.game} className="absolute top-2 left-2 shadow-md" />}
       </Link>
 
       <div className="flex min-w-0 flex-col gap-4">
-        <h2 id={headingId} className="sr-only">
-          {entryLabel(campaign, selected)}
-        </h2>
+        {title ? (
+          <h2 id={headingId} className="min-w-0 truncate text-xl leading-tight font-semibold">
+            {title}
+          </h2>
+        ) : (
+          <h2 id={headingId} className="sr-only">
+            {entryLabel(campaign, selected)}
+          </h2>
+        )}
 
-        <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
-          {played && (
-            <Detail label="Played as">
-              <PlayedAsValue played={played} />
-            </Detail>
-          )}
-          <Detail label="Version">
-            <VersionValue save={selected} />
-          </Detail>
-          {campaign.save_count > 1 && (
-            <Detail label="Campaign">
-              <span className="tabular-nums">
-                {formatGameDate(campaign.first_date)} – {formatGameDate(campaign.latest_date)}
-              </span>
-            </Detail>
-          )}
-          <Detail label="Uploaded">
-            <Link to={`/users/${selected.user_id}`}>{selected.user_name}</Link>
-            <span className="text-gray-400">·</span>
+        {/* The same order as a tile: who played and the patch, then the upload. */}
+        <div className="flex min-w-0 flex-col gap-1.5 text-sm">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <div className="min-w-0 text-base font-semibold">
+              {played ? <PlayedAsValue played={played} /> : gameDate}
+            </div>
+            <span className="shrink-0 text-gray-600 dark:text-gray-400">
+              <PatchValue save={selected} detailed />
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-wrap gap-x-1.5 text-gray-600 dark:text-gray-400">
+            <Link to={`/users/${selected.user_id}`} className="min-w-0 truncate">
+              {selected.user_name}
+            </Link>
+            <span aria-hidden className="text-gray-400">
+              ·
+            </span>
             <TimeAgo date={selected.upload_time} />
-          </Detail>
-          {selected.game === "eu4" && selected.achievements.length > 0 && (
-            <Detail label="Achievements">
-              <span role="group" aria-label="Achievements" className="flex flex-wrap gap-1.5">
-                {selected.achievements.map((x) => (
-                  <AchievementAvatar key={x} size={40} id={x} />
-                ))}
-              </span>
-            </Detail>
+          </div>
+          {showNames && (
+            <div className="min-w-0 truncate text-gray-600 dark:text-gray-400">
+              {selected.filename}
+            </div>
           )}
-        </dl>
+          {campaign.save_count > 1 && (
+            <div className="text-gray-600 tabular-nums dark:text-gray-400">
+              Campaign {formatGameDate(campaign.first_date)} –{" "}
+              {formatGameDate(campaign.latest_date)}
+            </div>
+          )}
+        </div>
 
-        <SaveButtons save={selected} />
+        {selected.game === "eu4" && selected.achievements.length > 0 && (
+          <ul aria-label="Achievements" className="flex flex-wrap gap-1.5">
+            {selected.achievements.map((x) => (
+              <li key={x}>
+                <AchievementAvatar size={40} id={x} className="block" />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <SaveButtons
+          save={selected}
+          onDeleted={() => setDeleted((prev) => new Set(prev).add(selected.id))}
+        />
+
+        {campaign.save_count > 1 && (
+          <Filmstrip
+            campaign={campaign}
+            saves={saves}
+            selected={selected}
+            onSelect={(save) => setSelectedId(save.id)}
+            onShowAll={showAll ? undefined : () => setShowAll(true)}
+            loading={showAll && !all.data && !all.error}
+            failed={!!all.error}
+          />
+        )}
       </div>
-
-      {campaign.save_count > 1 && (
-        <Filmstrip campaign={campaign} selected={selected} onSelect={setSelected} />
-      )}
     </article>
   );
 }

@@ -11,7 +11,8 @@ import { Button } from "@/components/Button";
 import { ArrowUpRightIcon, UserIcon } from "@heroicons/react/24/outline";
 import { cx } from "class-variance-authority";
 import { useSession } from "@/features/account";
-import { analysisGames, meltGames } from "@/lib/games";
+import { analysisGames } from "@/lib/games";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 import { Form } from "react-router";
 import { WhatsNewButton } from "@/features/whats-new/WhatsNewButton";
 import { WhatsNewDrawer } from "@/features/whats-new/WhatsNewDrawer";
@@ -32,7 +33,7 @@ const menuRow =
  */
 const GamesContent = () => (
   <NavigationMenu.Content className="bg-slate-900 p-3">
-    <div className="flex w-max max-w-[calc(100vw-2rem)] min-w-64 flex-col">
+    <div className="flex w-max max-w-[calc(100vw-2rem)] min-w-32 flex-col">
       {analysisGames.map((game) => (
         <NavigationMenu.Link key={game.id} asChild>
           <Link variant="ghost" to={game.to ?? `/saves?game=${game.id}`} className={menuRow}>
@@ -40,19 +41,6 @@ const GamesContent = () => (
           </Link>
         </NavigationMenu.Link>
       ))}
-
-      <div className="mx-3 my-2 h-px bg-white/10" />
-
-      <NavigationMenu.Link asChild>
-        <Link variant="ghost" to="/#games" className={menuRow}>
-          <span className="text-sm font-semibold text-gray-200">
-            {meltGames.map((x) => x.label).join(" · ")}
-          </span>
-          <span className="text-sm text-gray-400">
-            Melt only: convert an ironman save to plaintext
-          </span>
-        </Link>
-      </NavigationMenu.Link>
     </div>
   </NavigationMenu.Content>
 );
@@ -114,7 +102,7 @@ const AboutContent = () => (
         <SiteMenuLink href="/blog">Blog</SiteMenuLink>
       </MenuGroup>
       <MenuGroup label="Community">
-        <ExternalMenuLink href="https://discord.gg/rCpNWQW">Discord</ExternalMenuLink>
+        <ExternalMenuLink href={DISCORD_INVITE_URL}>Discord</ExternalMenuLink>
         <ExternalMenuLink href="https://github.com/pdx-tools/pdx-tools">GitHub</ExternalMenuLink>
         <ExternalMenuLink href="https://github.com/sponsors/nickbabcock">Donate</ExternalMenuLink>
       </MenuGroup>
@@ -181,7 +169,7 @@ const HeaderMenu = () => {
 
       <div className="flex grow items-center justify-end gap-4 self-center text-end lg:gap-6">
         <div className="hidden items-center gap-1 lg:flex">
-          <CommunityIconLink href="https://discord.gg/rCpNWQW" label="Discord">
+          <CommunityIconLink href={DISCORD_INVITE_URL} label="Discord">
             <DiscordIcon className="h-6 w-6 text-white" />
           </CommunityIconLink>
           <CommunityIconLink href="https://github.com/pdx-tools/pdx-tools" label="GitHub">

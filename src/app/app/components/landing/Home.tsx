@@ -18,6 +18,7 @@ import { HomeLeaderboard } from "./HomeLeaderboard";
 import { AchievementWall } from "./AchievementWall";
 import { cx } from "class-variance-authority";
 import { analysisGames, meltGames } from "@/lib/games";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 import type { Game } from "@/lib/games";
 
 // Band colors are explicit so a row can be added without shifting the ones below it.
@@ -248,7 +249,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             <p>PDX Tools is powered by community use and feedback</p>
             <p>
               Have ideas, questions, or bug reports? Join the{" "}
-              <Link variant="light" href="https://discord.gg/rCpNWQW">
+              <Link variant="light" href={DISCORD_INVITE_URL}>
                 discord!
               </Link>
             </p>

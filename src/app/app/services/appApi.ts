@@ -15,9 +15,9 @@ import type { PdxSession } from "@/server-lib/auth/session";
 import type { FeedResponse } from "@/routes/api.feed";
 import type { CampaignResponse } from "@/routes/api.campaign";
 import type { FeedGame } from "@/server-lib/fn/feed";
-import type { UserSaves } from "@/server-lib/db";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
+import type { LatestPodium } from "@/server-lib/fn/achievement";
 import { log } from "@/lib/log";
 import type { Eu5SaveInput } from "@/features/eu5/store/types";
 import type {
@@ -141,6 +141,7 @@ export const pdxKeys = {
   save: (id: string) => [...pdxKeys.saves(), id] as const,
   achievements: () => [...pdxKeys.all, "achievements"] as const,
   achievement: (id: string) => [...pdxKeys.achievements(), id] as const,
+  latestPodium: () => [...pdxKeys.achievements(), "latest-podium"] as const,
   users: () => [...pdxKeys.all, "users"] as const,
   user: (id: string) => [...pdxKeys.users(), id] as const,
   userFeatures: (id: string) => [...pdxKeys.user(id), "features"] as const,
@@ -156,6 +157,11 @@ export const pdxApi = {
           ...data,
           saves: data.saves.map((x, i) => ({ ...x, rank: i + 1 })),
         }),
+      }),
+    useLatestPodium: () =>
+      useSuspenseQuery({
+        queryKey: pdxKeys.latestPodium(),
+        queryFn: () => fetchOkJson<LatestPodium | null>(`/api/achievements/latest-podium`),
       }),
   },
 
@@ -391,14 +397,6 @@ export const pdxApi = {
     useOgMutation: () =>
       useMutation({
         mutationFn: ({ id }: { id: string }) => sendJson(`/api/admin/og`, { body: { saveId: id } }),
-      }),
-  },
-
-  user: {
-    useGet: (userId: string) =>
-      useSuspenseQuery({
-        queryKey: pdxKeys.user(userId),
-        queryFn: () => fetchOkJson<UserSaves>(`/api/users/${userId}`),
       }),
   },
 };

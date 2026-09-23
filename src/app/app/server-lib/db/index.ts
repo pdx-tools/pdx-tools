@@ -1,7 +1,7 @@
 import { eu4AchievementBests, eu4Saves, eu5Saves, users } from "./schema";
 import type { GameDifficulty, Save } from "./schema";
 import type { ParsedFile } from "../functions";
-import { sql, eq, and, isNotNull, inArray, asc, desc } from "drizzle-orm";
+import { sql, eq, asc, desc } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { NotFoundError } from "../errors";
@@ -135,19 +135,32 @@ export const table = {
   eu5Saves,
 };
 
+/** The user, without their saves. */
+export async function getUserInfo(db: DbConnection, userId: UserId) {
+  const [user] = await db
+    .select({
+      created_on: table.users.createdOn,
+      user_id: table.users.userId,
+      user_name: userView.userName,
+    })
+    .from(table.users)
+    .where(eq(table.users.userId, userId));
+
+  if (user === undefined) {
+    throw new NotFoundError("user");
+  }
+
+  return { ...user, created_on: user.created_on.toISOString() };
+}
+
 export type UserSaves = Awaited<ReturnType<typeof getUser>>;
+
+/** The user and every save they shared, newest first. */
 export async function getUser(db: DbConnection, userId: UserId) {
-  // The three queries run at the same time, so the page waits about as long
-  // as for one query.
-  const [users, eu4Saves, eu5Saves] = await Promise.all([
-    db
-      .select({
-        created_on: table.users.createdOn,
-        user_id: table.users.userId,
-        user_name: userView.userName,
-      })
-      .from(table.users)
-      .where(eq(table.users.userId, userId)),
+  // The three queries run at the same time, so the request waits about as
+  // long as for one query.
+  const [userInfo, eu4Saves, eu5Saves] = await Promise.all([
+    getUserInfo(db, userId),
     db
       .select(
         saveView({
@@ -179,17 +192,8 @@ export async function getUser(db: DbConnection, userId: UserId) {
       .orderBy(desc(table.eu5Saves.createdOn)),
   ]);
 
-  const user = users.at(0);
-  if (user === undefined) {
-    throw new NotFoundError("user");
-  }
-
   return {
-    user_info: {
-      created_on: user.created_on.toISOString(),
-      user_id: user.user_id,
-      user_name: user.user_name,
-    },
+    user_info: userInfo,
     saves: eu4Saves.map(toApiSave),
     eu5_saves: eu5Saves.map((save) => ({
       ...save,
@@ -198,11 +202,15 @@ export async function getUser(db: DbConnection, userId: UserId) {
   };
 }
 
-export async function getAchievementDb(db: DbConnection, achievement: Achievement) {
+/**
+ * The leaderboard of an achievement, in rank order. Set `limit` to get only
+ * the top places.
+ */
+export async function getAchievementDb(db: DbConnection, achievement: Achievement, limit?: number) {
   // The best save of each playthrough is kept by the database, so the
   // leaderboard is an index range scan in rank order.
   const bests = table.eu4AchievementBests;
-  const result = await db
+  const query = db
     .select(
       saveView({
         save: {
@@ -216,7 +224,9 @@ export async function getAchievementDb(db: DbConnection, achievement: Achievemen
     .innerJoin(table.eu4Saves, eq(table.eu4Saves.id, bests.saveId))
     .innerJoin(table.users, eq(table.users.userId, table.eu4Saves.userId))
     .where(eq(bests.achieveId, achievement.id))
-    .orderBy(asc(bests.scoreDays), asc(bests.createdOn), asc(bests.saveId));
+    .orderBy(asc(bests.scoreDays), asc(bests.createdOn), asc(bests.saveId))
+    .$dynamic();
+  const result = await (limit === undefined ? query : query.limit(limit));
 
   const leaderboard = result.map(({ save: { scoreDays, days, ...save }, user }) => ({
     ...user,

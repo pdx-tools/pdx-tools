@@ -8,7 +8,6 @@ import { Tooltip } from "@/components/Tooltip";
 import { toast } from "@/lib/toast";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { cx } from "class-variance-authority";
-import { iconAction } from "@/features/account/iconAction";
 
 interface DeleteSaveProps extends ButtonProps {
   saveId: string;
@@ -16,12 +15,15 @@ interface DeleteSaveProps extends ButtonProps {
   game?: "eu4" | "eu5";
   /** What the confirmation names: a game date, a country, a file. */
   label?: string;
+  /** Called when the save is gone. */
+  onDeleted?: () => void;
 }
 
 export const DeleteSave = ({
   saveId,
   game = "eu4",
   label,
+  onDeleted,
   className,
   ...rest
 }: DeleteSaveProps) => {
@@ -37,15 +39,15 @@ export const DeleteSave = ({
           <Dialog.Trigger asChild>
             <Button
               variant="ghost"
-              shape="none"
+              shape="square"
               aria-label="Delete save"
               className={cx(
-                className ?? iconAction,
-                "hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/40 dark:hover:text-rose-300",
+                "text-gray-600 hover:bg-rose-100 hover:text-rose-700 dark:text-gray-400 dark:hover:bg-rose-900/40 dark:hover:text-rose-300",
+                className,
               )}
               {...rest}
             >
-              <TrashIcon className="h-5 w-5" />
+              <TrashIcon className="h-4 w-4" aria-hidden />
             </Button>
           </Dialog.Trigger>
         </Tooltip.Trigger>
@@ -73,6 +75,7 @@ export const DeleteSave = ({
               saveDeletion.mutate(saveId, {
                 onSuccess: () => {
                   setOpen(false);
+                  onDeleted?.();
                   toast.success("Save deleted", {
                     duration: 1500,
                   });

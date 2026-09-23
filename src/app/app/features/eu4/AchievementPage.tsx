@@ -45,14 +45,28 @@ export const AchievementLayout = ({
   );
 };
 
-function AchievementPlatform({ save, className }: { save: RankedSave; className?: string }) {
+function AchievementPlatform({
+  save,
+  isNew = false,
+  className,
+}: {
+  save: RankedSave;
+  isNew?: boolean;
+  className?: string;
+}) {
   return (
     <Card
       className={cx(
         "relative max-w-64 min-w-64 shadow-lg transition-transform duration-100 lg:hover:scale-105",
+        isNew && "ring-2 ring-sky-600 ring-offset-4 ring-offset-white dark:ring-offset-slate-900",
         className,
       )}
     >
+      {isNew ? (
+        <span className="absolute top-1.5 right-2 rounded-full bg-sky-700 px-2 py-0.5 text-xs font-semibold text-white">
+          New
+        </span>
+      ) : null}
       <div
         className={cx(
           "absolute right-0 left-0 mx-auto text-center text-white",
@@ -153,16 +167,73 @@ function AchievementPlatform({ save, className }: { save: RankedSave; className?
   );
 }
 
+const placeName = { 1: "Gold", 2: "Silver", 3: "Bronze" } as const;
+
+/** A place on the podium that no run holds yet: an opening for the next one. */
+function OpenPlatform({ rank, className }: { rank: 1 | 2 | 3; className?: string }) {
+  return (
+    <Card
+      variant="ghost"
+      className={cx("relative max-w-64 min-w-64 border-dashed! shadow-none", className)}
+    >
+      <div
+        className={cx(
+          "h-8 rounded-t-lg opacity-40",
+          rank === 1 && "bg-yellow-500",
+          rank === 2 && "bg-slate-400",
+          rank === 3 && "bg-amber-800",
+        )}
+      ></div>
+      <div className="flex flex-col items-center gap-2 px-8 pt-8 pb-6 text-center">
+        <p className="text-2xl font-semibold">{placeName[rank]} is open</p>
+        <p className="text-gray-600 dark:text-gray-400">
+          The next run to complete this achievement earns a medal.
+        </p>
+        <p
+          aria-hidden
+          className={cx(
+            "hidden font-semibold text-gray-400 lg:block dark:text-gray-600",
+            rank === 1 && "mt-14 text-9xl",
+            rank === 2 && "mt-10 text-7xl",
+            rank === 3 && "mt-6 text-5xl",
+          )}
+        >
+          {rank}
+        </p>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * The top three of a leaderboard. A place that no run holds is drawn as
+ * open. When `newSaveId` is a place on it, that platform is marked as the
+ * newest finish.
+ */
 export const AchievementPodium = ({
   saves: [gold, silver, bronze],
+  newSaveId,
 }: {
   saves: (RankedSave | undefined)[];
+  newSaveId?: string;
 }) => {
   return (
-    <div className="mt-20 flex flex-col justify-center gap-8 lg:flex-row lg:items-end lg:gap-12">
-      {gold && <AchievementPlatform save={gold} className="lg:order-2" />}
-      {silver && <AchievementPlatform save={silver} className="lg:order-1" />}
-      {bronze && <AchievementPlatform save={bronze} className="lg:order-3" />}
+    <div className="mt-20 flex flex-col items-center justify-center gap-8 lg:flex-row lg:items-end lg:gap-12">
+      {gold ? (
+        <AchievementPlatform save={gold} isNew={gold.id === newSaveId} className="lg:order-2" />
+      ) : (
+        <OpenPlatform rank={1} className="lg:order-2" />
+      )}
+      {silver ? (
+        <AchievementPlatform save={silver} isNew={silver.id === newSaveId} className="lg:order-1" />
+      ) : (
+        <OpenPlatform rank={2} className="lg:order-1" />
+      )}
+      {bronze ? (
+        <AchievementPlatform save={bronze} isNew={bronze.id === newSaveId} className="lg:order-3" />
+      ) : (
+        <OpenPlatform rank={3} className="lg:order-3" />
+      )}
     </div>
   );
 };

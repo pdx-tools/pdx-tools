@@ -6,10 +6,7 @@ import customAchievement from "@/images/eu4/achievements/10000.png";
 import { Link } from "@/components/Link";
 import React from "react";
 
-type AchievementAvatarProps = Omit<
-  React.ComponentPropsWithoutRef<"a">,
-  "id" | "href" | "children"
-> & {
+type AchievementAvatarProps = Omit<React.ComponentPropsWithoutRef<"a">, "id" | "href"> & {
   id: number | string;
   /** The achievement's name. It becomes the image's alt text, and so the link's name. */
   name?: string;
@@ -21,14 +18,16 @@ let dimensions: SpriteDimension | undefined;
 /**
  * An achievement's icon as a link to its leaderboard. The ref and any other
  * props go to the link, so a tooltip or popover can use it as its trigger.
+ * Children go into the link after the icon.
  */
 export const AchievementAvatar = React.forwardRef<HTMLAnchorElement, AchievementAvatarProps>(
-  function AchievementAvatar({ id, name, size, ...props }, ref) {
+  function AchievementAvatar({ id, name, size, children, ...props }, ref) {
     const alt = name ?? `achievement ${id}`;
     if (id === 10000) {
       return (
         <Link ref={ref} {...props} href={`/eu4/achievements/${id}`}>
           <img src={customAchievement} alt={alt} width={size} height={size} />
+          {children}
         </Link>
       );
     }
@@ -54,6 +53,7 @@ export const AchievementAvatar = React.forwardRef<HTMLAnchorElement, Achievement
           alt={alt}
           scale={size / 64}
         />
+        {children}
       </Link>
     );
   },
