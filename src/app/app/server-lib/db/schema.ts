@@ -10,6 +10,7 @@ import {
   boolean,
   integer,
   smallint,
+  primaryKey,
   index,
 } from "drizzle-orm/pg-core";
 
@@ -77,7 +78,6 @@ export const eu4Saves = pgTable(
     leaderboardQualified: boolean("leaderboard_qualified").notNull().default(true),
   },
   (saves) => [
-    index("idx_eu4_save_achieve_ids").on(saves.achieveIds),
     index("idx_eu4_save_creation").on(saves.createdOn),
     uniqueIndex("idx_eu4_save_hash").on(saves.hash),
     index("idx_eu4_save_players").on(saves.players),
@@ -86,6 +86,27 @@ export const eu4Saves = pgTable(
   ],
 );
 export type Save = InferSelectModel<typeof eu4Saves>;
+
+/**
+ * This table stores the best qualified save for each achievement and playthrough.
+ * Triggers update it when a save changes. See migration 0008.
+ */
+export const eu4AchievementBests = pgTable(
+  "eu4_achievement_bests",
+  {
+    achieveId: integer("achieve_id").notNull(),
+    playthroughId: text("playthrough_id").notNull(),
+    saveId: text("save_id")
+      .notNull()
+      .references(() => eu4Saves.id, { onDelete: "cascade" }),
+    scoreDays: integer("score_days").notNull(),
+    createdOn: timestamp("created_on", { precision: 6, withTimezone: true }).notNull(),
+  },
+  (bests) => [
+    primaryKey({ columns: [bests.achieveId, bests.playthroughId] }),
+    index("idx_eu4_achievement_bests_rank").on(bests.achieveId, bests.scoreDays, bests.createdOn),
+  ],
+);
 export type NewSave = InferInsertModel<typeof eu4Saves>;
 export type GameDifficulty = Save["gameDifficulty"];
 

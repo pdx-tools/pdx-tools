@@ -50,6 +50,13 @@
       "when": 1789873534650,
       "tag": "0007_jazzy_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790114322021,
+      "tag": "0008_stiff_kid_colt",
+      "breakpoints": true
     }
   ]
 }

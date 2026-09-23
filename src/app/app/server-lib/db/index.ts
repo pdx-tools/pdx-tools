@@ -1,4 +1,4 @@
-import { eu4Saves, eu5Saves, users } from "./schema";
+import { eu4AchievementBests, eu4Saves, eu5Saves, users } from "./schema";
 import type { GameDifficulty, Save } from "./schema";
 import type { ParsedFile } from "../functions";
 import { sql, eq, and, isNotNull, inArray, asc, desc } from "drizzle-orm";
@@ -131,6 +131,7 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
 export const table = {
   users,
   eu4Saves,
+  eu4AchievementBests,
   eu5Saves,
 };
 
@@ -198,25 +199,9 @@ export async function getUser(db: DbConnection, userId: UserId) {
 }
 
 export async function getAchievementDb(db: DbConnection, achievement: Achievement) {
-  // saves with achievement
-  const saves = db
-    .select({
-      id: table.eu4Saves.id,
-      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY playthrough_id ORDER BY score_days)`.as("rn"),
-    })
-    .from(table.eu4Saves)
-    .where(
-      and(
-        sql`${table.eu4Saves.achieveIds} @> Array[${[achievement.id]}]::int[]`,
-        isNotNull(table.eu4Saves.scoreDays),
-        eq(table.eu4Saves.leaderboardQualified, true),
-      ),
-    )
-    .as("ranked");
-
-  // best save in a given playthrough
-  const top = db.select({ id: saves.id }).from(saves).where(eq(saves.rn, 1));
-
+  // The best save of each playthrough is kept by the database, so the
+  // leaderboard is an index range scan in rank order.
+  const bests = table.eu4AchievementBests;
   const result = await db
     .select(
       saveView({
@@ -227,10 +212,11 @@ export async function getAchievementDb(db: DbConnection, achievement: Achievemen
         },
       }),
     )
-    .from(table.eu4Saves)
+    .from(bests)
+    .innerJoin(table.eu4Saves, eq(table.eu4Saves.id, bests.saveId))
     .innerJoin(table.users, eq(table.users.userId, table.eu4Saves.userId))
-    .where(inArray(table.eu4Saves.id, top))
-    .orderBy(asc(table.eu4Saves.scoreDays), asc(table.eu4Saves.createdOn));
+    .where(eq(bests.achieveId, achievement.id))
+    .orderBy(asc(bests.scoreDays), asc(bests.createdOn), asc(bests.saveId));
 
   const leaderboard = result.map(({ save: { scoreDays, days, ...save }, user }) => ({
     ...user,

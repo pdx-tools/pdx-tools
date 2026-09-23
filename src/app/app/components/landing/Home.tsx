@@ -1,5 +1,4 @@
 import React from "react";
-import melted from "./melted.webp";
 import games from "./games.webp";
 import { HeroFileInput } from "./HeroFileInput";
 import { Link } from "@/components/Link";
@@ -18,10 +17,28 @@ import { CreatorReel } from "./CreatorReel";
 import { HomeLeaderboard } from "./HomeLeaderboard";
 import { AchievementWall } from "./AchievementWall";
 import { cx } from "class-variance-authority";
+import { analysisGames, meltGames } from "@/lib/games";
+import type { Game } from "@/lib/games";
 
 // Band colors are explicit so a row can be added without shifting the ones below it.
 const tealBand = "bg-teal-900 text-white dark:bg-transparent";
 const whiteBand = "bg-white dark:bg-transparent";
+
+/** The games of one tier, each with the oldest patch whose saves load. */
+function GameList({ title, list }: { title: string; list: readonly Game[] }) {
+  return (
+    <div>
+      <h3 className="font-semibold">{title}</h3>
+      <ul className="mt-1 flex flex-col gap-0.5">
+        {list.map((game) => (
+          <li key={game.id}>
+            {game.name} <span className="text-base tabular-nums opacity-75">({game.since}+)</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 interface HomeProps {
   subtitle?: React.ReactNode;
@@ -194,49 +211,22 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
+        id="games"
         className={cx(
           classes.row,
           classes.reverse,
-          "flex justify-center px-5 py-16 text-lg md:px-9",
+          "flex scroll-mt-4 justify-center px-5 py-16 text-lg md:px-9",
           whiteBand,
         )}
       >
         <section>
           <div className="grid max-w-prose gap-4">
-            <h2 className="text-2xl font-bold">Melting Support</h2>
+            <h2 className="text-2xl font-bold">Supported games</h2>
             <p>
-              PDX Tools can convert (aka melt) ironman and binary saves into normal saves so that
-              one can easily inspect the raw contents
+              Melting turns an ironman save into plaintext you can read, and it still loads in game.
             </p>
-            <p>
-              As a bonus the newly converted save can be continued in game as if it was a normal
-              save all along
-            </p>
-          </div>
-          <div>
-            <img
-              src={melted}
-              height={232}
-              width={287}
-              className="drop-shadow-xl"
-              alt="Screenshot of EU4 showing a melted save being loaded"
-            />
-          </div>
-        </section>
-      </div>
-
-      <div className={cx(classes.row, "flex justify-center px-5 py-16 text-lg md:px-9", tealBand)}>
-        <section>
-          <div className="grid max-w-prose gap-4">
-            <h2 className="text-2xl font-bold">More Games!</h2>
-            <p>The following games can be loaded:</p>
-            <ul>
-              <li>Europa Univeralis IV (1.29+)</li>
-              <li>Hearts of Iron IV (1.0+)</li>
-              <li>Crusader Kings III (1.0+)</li>
-              <li>Victoria 3 (1.0+)</li>
-              <li>Imperator: Rome (1.0+)</li>
-            </ul>
+            <GameList title="Flagship" list={analysisGames} />
+            <GameList title="Melt only" list={meltGames} />
           </div>
           <div>
             <img
@@ -251,24 +241,22 @@ export const Home = ({ subtitle }: HomeProps) => {
         </section>
       </div>
 
-      <div
-        className={cx(
-          classes.row,
-          classes.reverse,
-          "flex justify-center px-5 py-16 text-lg md:px-9",
-          whiteBand,
-        )}
-      >
+      <div className={cx(classes.row, "flex justify-center px-5 py-16 text-lg md:px-9", tealBand)}>
         <section>
           <div className="grid max-w-prose gap-4">
             <h2 className="text-2xl font-bold">Community</h2>
             <p>PDX Tools is powered by community use and feedback</p>
             <p>
               Have ideas, questions, or bug reports? Join the{" "}
-              <Link href="https://discord.gg/rCpNWQW">discord!</Link>
+              <Link variant="light" href="https://discord.gg/rCpNWQW">
+                discord!
+              </Link>
             </p>
             <p>
-              See PDX Tools on <Link href="https://github.com/pdx-tools/pdx-tools">our Github</Link>{" "}
+              See PDX Tools on{" "}
+              <Link variant="light" href="https://github.com/pdx-tools/pdx-tools">
+                our Github
+              </Link>{" "}
               and help contribute!
             </p>
           </div>

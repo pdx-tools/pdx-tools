@@ -10,11 +10,11 @@ import { DeleteSave } from "@/features/eu4/components/DeleteSave";
 import { iconAction } from "./iconAction";
 
 /**
- * Put the save's permalink on the clipboard. Sharing is the job this page
- * exists for, so the link is one press away and the button confirms in place
- * rather than only in a toast.
+ * Put a permalink on the clipboard. The caller shows `copied` in place for a
+ * short time, so the confirmation is where the reader already looks, and a
+ * toast is only for the failure.
  */
-export function CopyLinkButton({ path }: { path: string }) {
+export function useCopyLink(path: string) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -27,6 +27,17 @@ export function CopyLinkButton({ path }: { path: string }) {
       toast.error("Could not copy the link", { description: url, duration: 5000 });
     }
   };
+
+  return { copied, copy };
+}
+
+/**
+ * Put the save's permalink on the clipboard. Sharing is the job this page
+ * exists for, so the link is one press away and the button confirms in place
+ * rather than only in a toast.
+ */
+export function CopyLinkButton({ path }: { path: string }) {
+  const { copied, copy } = useCopyLink(path);
 
   return (
     <Tooltip>
