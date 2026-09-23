@@ -324,7 +324,14 @@ impl<'a> AchievementHunter<'a> {
         province
             .owner
             .as_ref()
-            .is_some_and(|x| self.self_and_subjects.contains(x))
+            .is_some_and(|owner| {
+                owner == &self.tag
+                    || (self.self_and_subjects.contains(owner)
+                        && self
+                            .query
+                            .country(owner)
+                            .is_some_and(|country| country.tribute_type.is_none()))
+            })
     }
 
     fn owns_or_non_sovereign_subject_of_id(&self, id: ProvinceId) -> bool {
@@ -454,6 +461,7 @@ impl<'a> AchievementHunter<'a> {
             self.gold_rush(),
             self.tatarstan(),
             self.african_power(),
+            self.kushite_restoration(),
             self.stern_des_sudens(),
             self.terra_mariana(),
             self.draculas_revenge(),
@@ -1980,6 +1988,41 @@ impl<'a> AchievementHunter<'a> {
 
         let desc = "owned and cored all of africa";
         result.and(AchievementCondition::new(kongo_owns_africa, desc));
+        result
+    }
+
+    pub fn kushite_restoration(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(173);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let started_as_nubian = self
+            .query
+            .country(&self.starting_country)
+            .is_some_and(|country| {
+                country
+                    .history
+                    .primary_culture
+                    .as_ref()
+                    .is_some_and(|culture| culture == "nubian")
+            });
+        result.and(AchievementCondition::new(
+            started_as_nubian,
+            "started as a country with Nubian primary culture",
+        ));
+
+        let controls_egypt = if result.completed() {
+            self.all_provs_in_region("egypt_region", |province, _| {
+                self.owns_or_non_sovereign_subject_of_province(province)
+            })
+        } else {
+            false
+        };
+        result.and(AchievementCondition::new(
+            controls_egypt,
+            "player or non-tributary subjects own all provinces in the Egyptian region",
+        ));
+
         result
     }
 
