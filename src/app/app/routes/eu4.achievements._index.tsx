@@ -1,31 +1,12 @@
-import { WebPage } from "@/components/layout/WebPage";
-import { AchievementsPage } from "@/features/eu4/AchievementsPage";
-import { seo } from "@/lib/seo";
-import { loadAchievements } from "@/server-lib/game";
-import { useLoaderData } from "react-router";
+import { redirect } from "react-router";
 
-export const meta = () =>
-  seo({
-    title: "EU4 Achievements - PDX Tools",
-    description: "List of supported EU4 achievements on PDX.Tools",
-  });
+/**
+ * The achievement list now leads the EU4 hub, so this URL keeps working by
+ * pointing at the section it became. The leaderboard of one achievement,
+ * `/eu4/achievements/:id`, is untouched: those are the links players share.
+ */
+export const loader = () => redirect("/eu4#achievements", 301);
 
-export const loader = () => {
-  const achievements = loadAchievements().map((achievement) => ({
-    id: achievement.id,
-    name: achievement.name,
-    description: achievement.description,
-    difficulty: achievement.difficulty,
-  }));
-  return { achievements };
-};
-
-export default function Eu4Achievements() {
-  const { achievements } = useLoaderData<typeof loader>();
-
-  return (
-    <WebPage>
-      <AchievementsPage staticAchievements={achievements} />
-    </WebPage>
-  );
+export default function Eu4AchievementsIndex() {
+  return null;
 }
