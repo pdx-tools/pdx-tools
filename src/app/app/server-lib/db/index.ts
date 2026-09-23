@@ -2,6 +2,8 @@ import { eu4Saves, eu5Saves, users } from "./schema";
 import type { GameDifficulty, Save } from "./schema";
 import type { ParsedFile } from "../functions";
 import { sql, eq, and, isNotNull, inArray, asc, desc } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { NotFoundError } from "../errors";
 import type { Achievement } from "@/wasm/wasm_app";
 import { eu4DaysToDate } from "../game";
@@ -15,6 +17,19 @@ export {
   type Eu5Save,
   type NewEu5Save,
 } from "./schema";
+
+/**
+ * A campaign has one playthrough ID.
+ * A multiplayer campaign can include saves from more than one user.
+ * A single-player campaign belongs to the user who uploaded it.
+ */
+export function campaignKey(s: {
+  playthroughId: AnyPgColumn;
+  players: AnyPgColumn;
+  userId: AnyPgColumn;
+}): SQL<string> {
+  return sql<string>`${s.playthroughId} || CASE WHEN cardinality(${s.players}) > 1 THEN '' ELSE ':' || ${s.userId} END`;
+}
 
 export const userView = {
   get userName() {
@@ -170,8 +185,9 @@ export async function getUser(db: DbConnection, userId: UserId) {
 
   return {
     user_info: {
-      ...user,
       created_on: user.created_on.toISOString(),
+      user_id: user.user_id,
+      user_name: user.user_name,
     },
     saves: eu4Saves.map(toApiSave),
     eu5_saves: eu5Saves.map((save) => ({

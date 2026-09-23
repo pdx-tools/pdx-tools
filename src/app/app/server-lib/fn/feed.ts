@@ -1,10 +1,9 @@
-import { dbDifficulty, table, userView } from "@/server-lib/db";
+import { campaignKey, dbDifficulty, table, userView } from "@/server-lib/db";
 import type { Eu5Save, Save } from "@/server-lib/db";
 import { userId } from "@/lib/auth";
 import { and, count, desc, eq, gt, inArray, lt, notExists, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { DbConnection } from "../db/connection";
 
@@ -26,6 +25,8 @@ export const FeedSchema = z.object({
     .nullish()
     .transform((x) => (x ? new Date(x) : undefined)),
   game: FeedGame.nullish(),
+  /** Filter to campaigns this user uploaded to. */
+  user: z.string().transform(userId).nullish(),
 });
 
 export type FeedParams = z.infer<typeof FeedSchema>;
@@ -40,28 +41,12 @@ export type FeedContributor = z.infer<typeof Contributor>;
 
 type SaveTable = typeof table.eu4Saves | typeof table.eu5Saves;
 
-type SaveColumns = {
-  playthroughId: AnyPgColumn;
-  players: AnyPgColumn;
-  userId: AnyPgColumn;
-};
-
 type GameConfig = {
   game: FeedGame;
   table: SaveTable;
   /** Position of a save within its campaign, on `table`. */
   ordinal: SQL;
 };
-
-/**
- * A campaign is one playthrough id. Saves from different uploaders belong
- * to the same campaign only when the save is multiplayer; a single-player
- * campaign is scoped to its uploader so that two solo players who share a
- * playthrough id stay apart.
- */
-function campaignKey(s: SaveColumns): SQL<string> {
-  return sql<string>`${s.playthroughId} || CASE WHEN cardinality(${s.players}) > 1 THEN '' ELSE ':' || ${s.userId} END`;
-}
 
 /** The playthrough id that a campaign key was built from. */
 function keyPlaythrough(key: string): string {
@@ -77,8 +62,8 @@ const eu4: GameConfig = {
 const eu5: GameConfig = {
   game: "eu5",
   table: table.eu5Saves,
-  // EU5 dates are `y.m.d` strings.
-  ordinal: sql`split_part(${table.eu5Saves.date}, '.', 1)::int * 10000 + split_part(${table.eu5Saves.date}, '.', 2)::int * 100 + split_part(${table.eu5Saves.date}, '.', 3)::int`,
+  // ISO 8601 dates sort in date order as text.
+  ordinal: sql`${table.eu5Saves.date}`,
 };
 
 const games = { eu4, eu5 };
@@ -95,7 +80,7 @@ const games = { eu4, eu5 };
 function latestSaves(
   db: DbConnection,
   { game, table: saves }: GameConfig,
-  { pageSize, cursor }: FeedParams,
+  { pageSize, cursor, user }: FeedParams,
 ) {
   const s = alias(saves, "s");
   const newer = alias(saves, "newer");
@@ -112,6 +97,7 @@ function latestSaves(
     .where(
       and(
         cursor && lt(s.createdOn, cursor),
+        user ? eq(s.userId, user) : undefined,
         notExists(
           db
             .select({ one: sql`1` })
@@ -120,6 +106,7 @@ function latestSaves(
               and(
                 eq(newer.playthroughId, s.playthroughId),
                 eq(campaignKey(newer), campaignKey(s)),
+                user ? eq(newer.userId, user) : undefined,
                 gt(newer.createdOn, s.createdOn),
               ),
             ),

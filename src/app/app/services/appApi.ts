@@ -119,11 +119,12 @@ export type SavePatchProps = {
   leaderboard_qualified?: boolean;
 };
 
-export type FeedQuery = { game?: FeedGame; pageSize?: number };
+export type FeedQuery = { game?: FeedGame; user?: string; pageSize?: number };
 
 export function fetchFeedPage(params: FeedQuery, cursor?: string) {
   const search = new URLSearchParams();
   if (params.game) search.set("game", params.game);
+  if (params.user) search.set("user", params.user);
   if (params.pageSize) search.set("pageSize", String(params.pageSize));
   if (cursor) search.set("cursor", cursor);
   const query = search.size > 0 ? `?${search}` : "";
