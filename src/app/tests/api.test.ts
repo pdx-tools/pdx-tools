@@ -316,7 +316,7 @@ test("same playthrough id", async () => {
   expect(newest.campaigns[0]).toMatchObject({
     game: "eu4",
     save_count: 2,
-    latest: { game_difficulty: "Normal" },
+    furthest: { game_difficulty: "Normal" },
   });
 });
 
