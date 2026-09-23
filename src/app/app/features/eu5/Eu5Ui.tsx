@@ -41,6 +41,7 @@ import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
+import { GameThemeProvider } from "@/components/GameThemeProvider";
 
 type Eu5UiProps = {
   save: Eu5SaveInput;
@@ -64,7 +65,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
   }, [error]);
 
   return (
-    <>
+    <GameThemeProvider theme="eu5">
       <div className="absolute inset-0 bg-game-page" />
 
       {/* Canvas layer — always present, always fills viewport */}
@@ -90,7 +91,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       ) : null}
 
       {error !== null ? <Eu5ErrorDisplay error={error} /> : null}
-    </>
+    </GameThemeProvider>
   );
 };
 
@@ -123,7 +124,7 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
 };
 
 function saveFilename(save: Eu5SaveInput): string {
-  return save.kind === "handle" ? save.name : save.file.name;
+  return save.kind === "file" ? save.file.name : save.name;
 }
 
 /** Keep the loader mounted through its fade-out. */

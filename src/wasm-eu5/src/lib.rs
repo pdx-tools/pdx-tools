@@ -27,7 +27,7 @@ use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope, WorldSummary};
 use eu5app::{
     CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, UiCountryIdx,
 };
-use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
+use eu5app::{Eu5AnySaveLoader, Eu5LoadedSave};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
 use eu5save::{FailedResolveStrategy, MeltOptions};
@@ -412,10 +412,7 @@ impl Eu5MetaParser {
 
     #[wasm_bindgen]
     pub fn init(self, save: Vec<u8>) -> Result<SaveLoader, JsError> {
-        let file = eu5save::Eu5File::from_slice(save)
-            .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
-
-        let parser = Eu5SaveLoader::open(file, self.base_resolver)
+        let parser = Eu5AnySaveLoader::open(save, self.base_resolver)
             .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
 
         Ok(SaveLoader { parser })
@@ -425,7 +422,7 @@ impl Eu5MetaParser {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct SaveLoader {
-    parser: Eu5SaveLoader<Cursor<Vec<u8>>, &'static FlatResolver<'static>>,
+    parser: Eu5AnySaveLoader<Vec<u8>, &'static FlatResolver<'static>>,
 }
 
 #[wasm_bindgen]
@@ -1291,8 +1288,21 @@ impl BufferParts {
 }
 
 fn _melt(data: &[u8]) -> Result<Vec<u8>, eu5save::Eu5Error> {
-    let file = eu5save::Eu5File::from_slice(data).map_err(Eu5ErrorKind::from)?;
     let mut out = Cursor::new(Vec::new());
+
+    // A Zstd stream holds an uncompressed text save, and a text save melts
+    // to itself, so the decoded stream is the melted save.
+    if pdx_zstd::is_zstd_compressed(data) {
+        pdx_zstd::copy_decode(data, &mut out).map_err(|error| {
+            eu5save::Eu5Error::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                error.to_string(),
+            ))
+        })?;
+        return Ok(out.into_inner());
+    }
+
+    let file = eu5save::Eu5File::from_slice(data).map_err(Eu5ErrorKind::from)?;
     let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
     (&file).melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())

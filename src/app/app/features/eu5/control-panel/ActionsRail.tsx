@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cx } from "class-variance-authority";
-import { CameraIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, CameraIcon } from "@heroicons/react/24/outline";
 import { FireIcon } from "@heroicons/react/24/solid";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { focusRing } from "@/components/game/focusRing";
@@ -15,7 +15,14 @@ import {
   useSaveFilename,
   useEu5TimelineMapDate,
   useEu5PlaythroughName,
+  useEu5SaveInput,
 } from "../store";
+import { useSession } from "@/features/account";
+import { hasFeature } from "@/lib/auth";
+import { pdxApi } from "@/services/appApi";
+import { Dialog } from "@/components/Dialog";
+import { Button } from "@/components/Button";
+import { Link } from "@/components/Link";
 
 type ActionDef = {
   id: string;
@@ -26,10 +33,14 @@ type ActionDef = {
 const ACTION_DEFS: ActionDef[] = [
   { id: "screenshot", label: "Capture screenshot", hint: "shift · full res" },
   { id: "melt", label: "Melt save file", hint: "binary → plaintext" },
+  { id: "upload", label: "Upload save", hint: "public permalink" },
 ];
 
 export function ActionsRail() {
   const [hoveredAction, setHoveredAction] = useState<ActionDef | null>(null);
+  const session = useSession();
+  const save = useEu5SaveInput();
+  const canUpload = save.kind !== "server" && hasFeature(session, "eu5-upload");
 
   return (
     <div className="shrink-0">
@@ -47,8 +58,88 @@ export function ActionsRail() {
       <div className="flex h-12 items-center justify-center gap-2 border-t border-game-line">
         <ScreenshotButton def={ACTION_DEFS[0]} onHover={setHoveredAction} />
         <MeltButton def={ACTION_DEFS[1]} onHover={setHoveredAction} />
+        {canUpload ? <UploadButton def={ACTION_DEFS[2]} onHover={setHoveredAction} /> : null}
       </div>
     </div>
+  );
+}
+
+function UploadButton({
+  def,
+  onHover,
+}: {
+  def: ActionDef;
+  onHover: (d: ActionDef | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const save = useEu5SaveInput();
+  const filename = useSaveFilename();
+  const upload = pdxApi.eu5Saves.useAdd();
+
+  const startUpload = () => {
+    setProgress(0);
+    upload.mutate({ save, filename, dispatch: setProgress });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <ActionButton
+        def={def}
+        onHover={onHover}
+        isLoading={upload.isPending}
+        onClick={() => setOpen(true)}
+      >
+        <ArrowUpTrayIcon className="h-4 w-4" />
+      </ActionButton>
+      <Dialog.Content className="border-game-line-strong bg-game-panel font-game-ui text-game-ink-100">
+        <Dialog.Header>
+          <Dialog.Title>Upload {filename}</Dialog.Title>
+          <Dialog.Description className="text-game-ink-300">
+            This save and its permalink will be public. The file is recompressed with zstd before it
+            leaves your browser.
+          </Dialog.Description>
+        </Dialog.Header>
+
+        {upload.isPending ? (
+          <div className="space-y-2">
+            <div className="h-2 overflow-hidden rounded bg-game-line">
+              <div
+                className="h-full bg-game-accent-300 transition-[width]"
+                style={{ width: `${Math.max(2, progress)}%` }}
+              />
+            </div>
+            <p className="text-xs text-game-ink-500">{Math.round(progress)}%</p>
+          </div>
+        ) : null}
+
+        {upload.error ? (
+          <p className="text-sm text-red-400">{getErrorMessage(upload.error)}</p>
+        ) : null}
+
+        {upload.data ? (
+          <p className="text-sm">
+            Save uploaded.{" "}
+            <Link href={`/eu5/saves/${upload.data.save_id}`} className="font-semibold">
+              Open permalink
+            </Link>
+          </p>
+        ) : null}
+
+        <Dialog.Footer>
+          <Dialog.Close asChild>
+            <Button variant="default" disabled={upload.isPending}>
+              Close
+            </Button>
+          </Dialog.Close>
+          {!upload.data ? (
+            <Button variant="primary" disabled={upload.isPending} onClick={startUpload}>
+              Upload
+            </Button>
+          ) : null}
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
   );
 }
 

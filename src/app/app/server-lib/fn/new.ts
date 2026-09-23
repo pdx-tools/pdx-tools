@@ -20,22 +20,22 @@ export async function getSaves(db: DbConnection, params: z.infer<typeof NewSchem
         },
       }),
     )
-    .from(table.saves)
-    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
+    .from(table.eu4Saves)
+    .innerJoin(table.users, eq(table.users.userId, table.eu4Saves.userId));
 
   const cursorQuery = params.cursor
     ? query.where(
         lt(
-          table.saves.createdOn,
+          table.eu4Saves.createdOn,
           db
-            .select({ createdOn: table.saves.createdOn })
-            .from(table.saves)
-            .where(eq(table.saves.id, params.cursor)),
+            .select({ createdOn: table.eu4Saves.createdOn })
+            .from(table.eu4Saves)
+            .where(eq(table.eu4Saves.id, params.cursor)),
         ),
       )
     : query;
 
-  const saves = await cursorQuery.orderBy(desc(table.saves.createdOn)).limit(params.pageSize);
+  const saves = await cursorQuery.orderBy(desc(table.eu4Saves.createdOn)).limit(params.pageSize);
   const result = saves.map(({ user, save }) => ({
     ...user,
     ...toApiSave(save),

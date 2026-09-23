@@ -5,11 +5,13 @@ import type { StoreApi } from "zustand";
 import { isTimelineLive } from "../ui-engine";
 import type { AppEngine, AppState } from "../ui-engine";
 import type { Eu5DateComponents, Eu5PlayerData, WorldSummary } from "@/wasm/wasm_eu5";
+import type { Eu5ParsedSave } from "./types";
 
 type Eu5State = {
   engine: AppEngine;
   appState: AppState;
   filename: string;
+  saveInput: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
@@ -31,6 +33,7 @@ export const Eu5Context = createContext<Eu5Store | null>(null);
 
 export const createEu5Store = (
   engine: AppEngine,
+  saveInput: Eu5ParsedSave,
   filename: string,
   saveDate: Eu5DateComponents,
   playthroughName: string,
@@ -39,6 +42,7 @@ export const createEu5Store = (
 ): Eu5Store => {
   const store = createStore<Eu5State>()((set) => ({
     engine,
+    saveInput,
     appState: engine.getState(),
     filename,
     saveDate,
@@ -83,6 +87,7 @@ export const useEu5PaletteGradients = () => useEu5Store((x) => x.appState.palett
 export const useEu5BoxSelectRect = () => useEu5Store((x) => x.appState.boxSelectRect);
 export const useEu5CursorHint = () => useEu5Store((x) => x.appState.cursorHint);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
+export const useEu5SaveInput = () => useEu5Store((x) => x.saveInput);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5World = () => useEu5Store((x) => x.world);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);

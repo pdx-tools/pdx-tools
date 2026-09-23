@@ -35,8 +35,7 @@ describe("session refresh", () => {
   it("gives admins every feature", () => {
     const admin = pdxUser({ ...session, account: "admin" });
     const user = pdxUser(session);
-    // No features are defined yet, so probe with a placeholder name.
-    const probe = "probe" as never;
+    const probe = "eu5-upload";
     expect(hasFeature(admin, probe)).toBe(true);
     expect(hasFeature(user, probe)).toBe(false);
     expect(hasFeature({ ...user, features: [probe] }, probe)).toBe(true);

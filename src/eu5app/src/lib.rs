@@ -10,6 +10,7 @@ mod models;
 pub(crate) mod overlay;
 pub mod population;
 pub mod presentation;
+pub mod save_hash;
 mod selection;
 mod session;
 mod subject_color;
@@ -26,9 +27,9 @@ pub use selection::{
     SelectionSummary, single_entity_scope,
 };
 pub use session::{
-    Eu5DateComponents, Eu5LoadError, Eu5LoadedSave, Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace,
-    LocalizedEu5Workspace, MapChange, MapDirty, Player, TimelineNote, TimelineSummary,
-    humanize_note_key,
+    Eu5AnySaveLoader, Eu5DateComponents, Eu5DebugSaveLoader, Eu5LoadError, Eu5LoadedSave,
+    Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace, LocalizedEu5Workspace, MapChange, MapDirty,
+    Player, TimelineNote, TimelineSummary, humanize_note_key,
 };
 
 pub use color::Srgb;
@@ -36,3 +37,4 @@ pub use map::*;
 pub use models::*;
 pub(crate) use overlay::OverlayBodyConfigSource;
 pub use overlay::{OverlayBodyConfig, OverlayTable, TableCell};
+pub use save_hash::SaveCheckSummer;

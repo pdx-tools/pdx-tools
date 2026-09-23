@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
+import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
-import { saves, users } from "@/server-lib/db/schema";
+import { eu4Saves, eu5Saves, users } from "@/server-lib/db/schema";
 import type { UserSaves } from "@/server-lib/db";
 import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
@@ -17,7 +18,8 @@ const dbConnection = "postgres://app_user:mercantilismbaby@localhost:5433/postgr
 
 beforeEach(async () => {
   await oneshotDb(dbConnection, async (db) => {
-    await db.delete(saves);
+    await db.delete(eu5Saves);
+    await db.delete(eu4Saves);
     await db.delete(users);
   });
 });
@@ -93,6 +95,28 @@ class HttpClient {
     return await this.uploadSaveCore(filepath);
   }
 
+  /** Upload an EU5 save as a bare zstd body with the metadata in headers. */
+  async uploadEu5SaveReq(filepath: string, filename = "myfile.eu5") {
+    const data = zstdCompressSync(await fetchEu5Save(filepath));
+    return await fetch(pdxUrl("/api/eu5/saves"), {
+      method: "POST",
+      body: new Blob([data]),
+      headers: {
+        "Content-Type": "application/zstd",
+        "pdx-tools-filename": encodeURIComponent(filename),
+        cookie: this.cookies,
+      },
+    });
+  }
+
+  public async uploadEu5Save(filepath: string, filename?: string) {
+    const resp = await this.uploadEu5SaveReq(filepath, filename);
+    if (!resp.ok) {
+      throw new Error(`failed to upload (${resp.status}): ${await resp.text()}`);
+    }
+    return (await resp.json()) as SavePostResponse;
+  }
+
   public async getReq(path: string) {
     return await fetch(pdxUrl(path), {
       headers: {
@@ -161,6 +185,26 @@ async function logEu4Fixture(save: string) {
   const log = process.env.PDX_FIXTURES_LOG;
   if (log) {
     await fs.appendFile(log, `eu4/${save}\n`);
+  }
+}
+
+function eu5SaveLocation(save: string) {
+  return `../../assets/saves/eu5/${save}`;
+}
+
+async function fetchEu5Save(save: string) {
+  const fp = eu5SaveLocation(save);
+  try {
+    return await fs.readFile(fp);
+  } catch {
+    const resp = await fetch(`https://cdn-dev.pdx.tools/eu5-saves/${save}`);
+    if (!resp.ok) {
+      throw new Error(`unable to retrieve: ${save}`);
+    }
+    const buf = Buffer.from(await resp.arrayBuffer());
+    await fs.mkdir("../../assets/saves/eu5", { recursive: true });
+    await fs.writeFile(fp, buf);
+    return buf;
   }
 }
 
@@ -295,6 +339,33 @@ test("reject duplicate uploads", async () => {
   expect(tatarUpload.save_id).toBeDefined();
 
   await expect(client.uploadSave(tatarPath)).rejects.toThrow("save already exists");
+});
+
+test("eu5 upload, file download, and delete", async () => {
+  // The test user is an admin, which passes the eu5-upload feature gate.
+  const client = await HttpClient.create();
+  const upload = await client.uploadEu5Save("debug-1.0.eu5", "Ostsiedlung ünd Co.eu5");
+  expect(upload.save_id).toBeDefined();
+
+  const file = await fetch(pdxUrl(`/api/eu5/saves/${upload.save_id}/file`));
+  expect(file.status).toBe(200);
+  expect(file.headers.get("content-type")).toBe("application/zstd");
+  const stored = zstdDecompressSync(Buffer.from(await file.arrayBuffer()));
+  expect(stored.equals(await fetchEu5Save("debug-1.0.eu5"))).toBe(true);
+
+  const profile = await client.get<UserSaves>("/api/users/100");
+  expect(profile.eu5_saves).toHaveLength(1);
+  expect(profile.eu5_saves[0].filename).toBe("Ostsiedlung ünd Co.eu5");
+
+  const duplicate = await client.uploadEu5SaveReq("debug-1.0.eu5");
+  expect(duplicate.status).toBe(400);
+  expect(await duplicate.json()).toMatchObject({ msg: "save already exists" });
+
+  await client.delete(`/api/eu5/saves/${upload.save_id}`);
+  const gone = await client.getReq(`/api/eu5/saves/${upload.save_id}`);
+  expect(gone.status).toBe(404);
+  const after = await client.get<UserSaves>("/api/users/100");
+  expect(after.eu5_saves).toEqual([]);
 });
 
 test("delete save", async () => {

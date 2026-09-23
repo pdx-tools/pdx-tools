@@ -43,6 +43,13 @@
       "when": 1789867922247,
       "tag": "0006_keen_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789873534650,
+      "tag": "0007_jazzy_betty_ross",
+      "breakpoints": true
     }
   ]
 }

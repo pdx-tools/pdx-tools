@@ -50,14 +50,13 @@ afterEach(() => {
 describe("googleIdToken", () => {
   it("posts a correctly signed assertion and returns the id token", async () => {
     const audience = "https://api-abc.a.run.app";
+    const idToken = fakeIdToken(Math.floor(Date.now() / 1000) + 3600);
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        Response.json({ id_token: fakeIdToken(Math.floor(Date.now() / 1000) + 3600) }),
-      );
+      .mockResolvedValue(Response.json({ id_token: idToken }));
 
     const token = await googleIdToken(keyJson, audience);
-    expect(token).toBe(fakeIdToken(Math.floor(Date.now() / 1000) + 3600));
+    expect(token).toBe(idToken);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];

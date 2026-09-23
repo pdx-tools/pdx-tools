@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "arena-serde"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "arena-serde-derive",
  "bumpalo",
@@ -187,7 +187,7 @@ dependencies = [
 [[package]]
 name = "arena-serde-derive"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -575,7 +575,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "jomini",
  "serde",
@@ -1077,7 +1077,7 @@ version = "0.1.0"
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "flate2",
  "jomini",
@@ -1097,6 +1097,7 @@ version = "0.1.0"
 dependencies = [
  "arena-serde",
  "attohttpc",
+ "base64",
  "bumpalo",
  "bytemuck",
  "eu5app",
@@ -1106,6 +1107,7 @@ dependencies = [
  "insta",
  "jomini",
  "pdx-map",
+ "pdx-save-codec",
  "pdx-zstd",
  "postcard",
  "rawzip",
@@ -1143,7 +1145,7 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "arena-serde",
  "bumpalo",
@@ -1565,7 +1567,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "jomini",
  "serde",
@@ -1826,7 +1828,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "jomini",
  "serde",
@@ -1990,8 +1992,10 @@ dependencies = [
  "itoa",
  "jomini_derive",
  "rawzip",
+ "ruzstd",
  "serde",
  "serde_json",
+ "zstd",
 ]
 
 [[package]]
@@ -3013,7 +3017,10 @@ dependencies = [
  "eu4game",
  "eu4game-data",
  "eu4save",
+ "eu5app",
+ "eu5save",
  "image",
+ "jomini",
  "pdx-map",
  "pdx-zstd",
  "schemas",
@@ -3043,12 +3050,20 @@ dependencies = [
  "applib",
  "axum",
  "bytemuck",
+ "eu5app",
+ "eu5save",
+ "jomini",
  "mimalloc",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "pdx-assets",
  "pdx-map",
+ "pdx-save-codec",
  "pdx-screenshot",
+ "pdx-zstd",
+ "schemas",
+ "serde",
  "thiserror 2.0.18",
  "tokio",
  "tower-http",
@@ -4668,7 +4683,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vic3save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "getrandom 0.3.4",
  "jomini",
@@ -4899,6 +4914,7 @@ dependencies = [
  "arena-serde",
  "bumpalo",
  "eu5save",
+ "jomini",
  "pdx-zstd",
  "schemas",
  "wasm-bindgen",
