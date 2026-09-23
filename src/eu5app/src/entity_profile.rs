@@ -150,9 +150,10 @@ pub struct HeadlineStats {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryOverviewSection {
-    /// Gold on hand minus outstanding loan principal. Negative when a country
-    /// is leveraged beyond its treasury, so a loan-funded war chest no longer
-    /// reads as wealth.
+    /// Gold on hand, plus loan principal lent to other countries, minus
+    /// outstanding loan principal. Negative when a country is leveraged beyond
+    /// its treasury and receivables, so a loan-funded war chest does not read
+    /// as wealth.
     pub net_gold: f64,
     pub manpower: f64,
     pub stability: f64,
