@@ -10,6 +10,7 @@ CREATE TABLE "eu4_achievement_bests" (
 DROP INDEX "idx_eu4_save_achieve_ids";--> statement-breakpoint
 ALTER TABLE "eu4_achievement_bests" ADD CONSTRAINT "eu4_achievement_bests_save_id_eu4_saves_id_fk" FOREIGN KEY ("save_id") REFERENCES "public"."eu4_saves"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "idx_eu4_achievement_bests_rank" ON "eu4_achievement_bests" USING btree ("achieve_id","score_days","created_on");--> statement-breakpoint
+CREATE INDEX "idx_eu4_achievement_bests_save" ON "eu4_achievement_bests" USING btree ("save_id");--> statement-breakpoint
 -- Recompute the best save of each (achievement, playthrough) pair given.
 -- A pair that no longer has a qualified save loses its row.
 CREATE OR REPLACE FUNCTION eu4_rebuild_achievement_bests(boards integer[], playthroughs text[])
@@ -77,17 +78,35 @@ BEGIN
   RETURN NULL;
 END $$;
 --> statement-breakpoint
+-- Only a change to a column that the bests table reads causes a rebuild.
+-- Other updates, such as a reprocess that writes the same values again,
+-- change nothing here.
 CREATE OR REPLACE FUNCTION eu4_achievement_bests_on_update() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  changed bigint;
 BEGIN
-  IF (SELECT count(*) FROM new_rows) > 1000 THEN
+  SELECT count(*) INTO changed
+  FROM old_rows o JOIN new_rows n USING (id)
+  WHERE (o.achieve_ids, o.playthrough_id, o.score_days, o.leaderboard_qualified, o.created_on)
+    IS DISTINCT FROM
+    (n.achieve_ids, n.playthrough_id, n.score_days, n.leaderboard_qualified, n.created_on);
+
+  IF changed = 0 THEN
+    RETURN NULL;
+  ELSIF changed > 1000 THEN
     PERFORM eu4_rebuild_all_achievement_bests();
   ELSE
-    PERFORM eu4_rebuild_achievement_bests(array_agg(a), array_agg(r.playthrough_id))
-    FROM (
-      SELECT achieve_ids, playthrough_id FROM old_rows
+    PERFORM eu4_rebuild_achievement_bests(array_agg(r.achieve_id), array_agg(r.playthrough_id))
+    FROM old_rows o
+    JOIN new_rows n USING (id)
+    CROSS JOIN LATERAL (
+      SELECT a, o.playthrough_id FROM unnest(o.achieve_ids) AS a
       UNION ALL
-      SELECT achieve_ids, playthrough_id FROM new_rows
-    ) r, unnest(r.achieve_ids) AS a;
+      SELECT a, n.playthrough_id FROM unnest(n.achieve_ids) AS a
+    ) r(achieve_id, playthrough_id)
+    WHERE (o.achieve_ids, o.playthrough_id, o.score_days, o.leaderboard_qualified, o.created_on)
+      IS DISTINCT FROM
+      (n.achieve_ids, n.playthrough_id, n.score_days, n.leaderboard_qualified, n.created_on);
   END IF;
   RETURN NULL;
 END $$;

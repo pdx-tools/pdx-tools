@@ -1,10 +1,18 @@
-import { Suspense } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { Await } from "react-router";
+import { HydrationBoundary } from "@tanstack/react-query";
+import type { DehydratedState } from "@tanstack/react-query";
 import { FeedList } from "@/features/saves/FeedList";
 import { Link } from "@/components/Link";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorCatcher, ErrorDisplay } from "@/features/errors";
 import { HubHeader } from "@/features/games/HubHeader";
-import { AchievementWall } from "./components/AchievementWall";
+import {
+  AchievementRequest,
+  AchievementSearch,
+  AchievementWall,
+  matchAchievements,
+} from "./components/AchievementWall";
 import { PodiumFinishes } from "./components/PodiumFinishes";
 import { startSaves } from "./startSaves";
 import { formatInt } from "@/lib/format";
@@ -14,8 +22,8 @@ import type { PodiumFinish } from "@/server-lib/fn/achievement";
 /** The EU4 hub shows the newest campaigns; the feed page has the rest. */
 export const HUB_FEED_QUERY = { game: "eu4", pageSize: 3 } as const;
 
-/** How many of the newest podium finishes the hub shows. */
-export const PODIUM_LIMIT = 5;
+/** How many of the newest podium finishes the hub shows: two full rows of three. */
+export const PODIUM_LIMIT = 6;
 
 /**
  * The 1444 start of one patch. Borders barely move between versions, so a
@@ -34,46 +42,87 @@ function StartSaveChip({ patch, saveId }: { patch: string; saveId: string }) {
   );
 }
 
+/** The newest podium finishes, with `children` in place of the list. */
+function PodiumSection({ children }: { children: React.ReactNode }) {
+  return (
+    <section aria-labelledby="podium" className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <h2 id="podium" className="text-2xl font-bold tracking-tight">
+          Recent podium finishes
+        </h2>
+        <p className="max-w-prose text-gray-700 dark:text-gray-300">
+          The newest runs to hold a top-three place on an achievement leaderboard. Places are live:
+          a faster run or a new patch can take a medal away.
+        </p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The hub renders at once. The podium and the recent uploads come from the
+ * database, so each streams into its section when it is ready.
+ */
 export const Eu4GamePage = ({
   achievements,
+  feed,
   podium,
 }: {
   achievements: Achievement[];
+  /** The recent uploads, to hydrate the feed query. */
+  feed: Promise<DehydratedState>;
   /** Null when the podium failed to load. */
-  podium: PodiumFinish[] | null;
+  podium: Promise<PodiumFinish[] | null>;
 }) => {
+  const [query, setQuery] = useState("");
+  const matches = useMemo(() => matchAchievements(achievements, query), [achievements, query]);
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-16 p-5 md:p-9">
       <HubHeader title="Europa Universalis IV" />
 
-      {/* No section is better than an empty one: the wall below leads to every leaderboard. */}
-      {podium && podium.length > 0 && (
-        <section aria-labelledby="podium" className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1">
-            <h2 id="podium" className="text-2xl font-bold tracking-tight">
-              Recent podium finishes
-            </h2>
-            <p className="max-w-prose text-gray-700 dark:text-gray-300">
-              The newest runs to hold a top-three place on an achievement leaderboard. Places are
-              live: a faster run or a new patch can take a medal away.
-            </p>
-          </div>
-          <PodiumFinishes finishes={podium} />
-        </section>
-      )}
+      <Suspense
+        fallback={
+          <PodiumSection>
+            <LoadingState />
+          </PodiumSection>
+        }
+      >
+        <Await resolve={podium}>
+          {/* No section is better than an empty one: the wall below leads to every leaderboard. */}
+          {(finishes) =>
+            finishes && finishes.length > 0 ? (
+              <PodiumSection>
+                <PodiumFinishes finishes={finishes} />
+              </PodiumSection>
+            ) : null
+          }
+        </Await>
+      </Suspense>
 
       <section aria-labelledby="achievements" className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1">
-          <h2 id="achievements" className="text-2xl font-bold tracking-tight">
-            Achievements
-          </h2>
-          <p className="max-w-prose text-gray-700 dark:text-gray-300">
-            {formatInt(achievements.length)} achievements have a speedrun leaderboard, ranked by
-            in-game days and taxed 10% for every patch a run is behind the latest. Open one to see
-            who holds it.
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 id="achievements" className="text-2xl font-bold tracking-tight">
+              Achievements
+            </h2>
+            <p className="max-w-prose text-gray-700 dark:text-gray-300">
+              {formatInt(achievements.length)} achievements have a speedrun leaderboard, ranked by
+              in-game days and taxed 10% for every patch a run is behind the latest.
+            </p>
+          </div>
+          <AchievementSearch
+            value={query}
+            onChange={setQuery}
+            matches={matches}
+            total={achievements.length}
+          />
         </div>
-        <AchievementWall achievements={achievements} />
+        {/* A search that finds nothing names itself; otherwise the request sits under the wall. */}
+        {matches?.size === 0 && <AchievementRequest query={query.trim()} />}
+        <AchievementWall achievements={achievements} matches={matches} />
+        {matches?.size !== 0 && <AchievementRequest />}
       </section>
 
       <section aria-labelledby="start-saves" className="flex flex-col gap-5">
@@ -104,7 +153,13 @@ export const Eu4GamePage = ({
               <ErrorDisplay {...args} className="m-8" title="Failed to load recent EU4 saves" />
             )}
           >
-            <FeedList query={HUB_FEED_QUERY} infinite={false} compact />
+            <Await resolve={feed}>
+              {(state) => (
+                <HydrationBoundary state={state}>
+                  <FeedList query={HUB_FEED_QUERY} infinite={false} compact />
+                </HydrationBoundary>
+              )}
+            </Await>
           </ErrorCatcher>
         </Suspense>
       </section>

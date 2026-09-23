@@ -1,7 +1,11 @@
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import achievementData from "@/images/eu4/achievements/achievements.json";
 
-export function AchievementWall() {
+/**
+ * Decorative rows of achievement icons for the landing page. The searchable
+ * wall is on the EU4 hub.
+ */
+export function AchievementMarquee() {
   const data = Object.keys(achievementData);
   const slice = data.length / 3;
   const [fst, snd, thrd] = [data.slice(0, slice), data.slice(slice, -slice), data.slice(-slice)];

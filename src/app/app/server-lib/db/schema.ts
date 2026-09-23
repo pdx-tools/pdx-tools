@@ -86,6 +86,8 @@ export const eu4Saves = pgTable(
   ],
 );
 export type Save = InferSelectModel<typeof eu4Saves>;
+export type NewSave = InferInsertModel<typeof eu4Saves>;
+export type GameDifficulty = Save["gameDifficulty"];
 
 /**
  * This table stores the best qualified save for each achievement and playthrough.
@@ -105,10 +107,10 @@ export const eu4AchievementBests = pgTable(
   (bests) => [
     primaryKey({ columns: [bests.achieveId, bests.playthroughId] }),
     index("idx_eu4_achievement_bests_rank").on(bests.achieveId, bests.scoreDays, bests.createdOn),
+    // The cascade from a deleted save looks up its rows here.
+    index("idx_eu4_achievement_bests_save").on(bests.saveId),
   ],
 );
-export type NewSave = InferInsertModel<typeof eu4Saves>;
-export type GameDifficulty = Save["gameDifficulty"];
 
 export const eu5Saves = pgTable(
   "eu5_saves",

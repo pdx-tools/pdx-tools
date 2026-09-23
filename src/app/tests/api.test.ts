@@ -3,10 +3,11 @@ import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { userId } from "@/lib/auth";
-import { eu4Saves, eu5Saves, users } from "@/server-lib/db/schema";
+import { eu4AchievementBests, eu4Saves, eu5Saves, users } from "@/server-lib/db/schema";
 import type { NewEu5Save, NewSave, UserSaves } from "@/server-lib/db";
 import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { SavePostResponse } from "@/server-lib/models";
 import { pdxFns } from "@/server-lib/functions";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
@@ -16,6 +17,7 @@ import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { NewKeyResponse } from "@/services/appApi";
 import type { UserFeaturesResponse } from "@/routes/api.admin.users.$userId.features";
+import type { LatestPodium } from "@/server-lib/fn/achievement";
 
 const dbConnection = "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
 
@@ -698,4 +700,150 @@ test("leaderboard disqualification", async () => {
   // Verify save detail reflects re-qualification
   saveDetail = await client.get<SaveResponse>(`/api/saves/${upload.save_id}`);
   expect(saveDetail.leaderboard_qualified).toBe(true);
+});
+
+/** Achievement 18 is a real leaderboard, so its API route resolves. */
+const BOARD = 18;
+
+/**
+ * A qualified EU4 save of `BOARD`, written to the database directly. The
+ * leaderboard reads only these columns, so no save file is needed.
+ */
+function boardSave(id: string, playthroughId: string, scoreDays: number, minute: number): NewSave {
+  return {
+    id,
+    createdOn: new Date(Date.UTC(2026, 0, 1, 0, minute)),
+    filename: `${id}.eu4`,
+    userId: userId("u1"),
+    hash: id,
+    date: "1500-01-01",
+    days: scoreDays,
+    scoreDays,
+    playerTag: "FRA",
+    saveVersionFirst: 1,
+    saveVersionSecond: 37,
+    saveVersionThird: 0,
+    saveVersionFourth: 0,
+    achieveIds: [BOARD],
+    players: ["a"],
+    gameDifficulty: "normal",
+    playthroughId,
+  };
+}
+
+async function insertBoardSaves(saves: NewSave[]) {
+  await oneshotDb(dbConnection, async (db) => {
+    await db.insert(users).values({ userId: userId("u1"), steamId: "s1", steamName: "Alice" });
+    await db.insert(eu4Saves).values(saves);
+  });
+}
+
+async function boardIds(client: HttpClient) {
+  const board = await client.get<AchievementApiResponse>(`/api/achievements/${BOARD}`);
+  return board.saves.map((x) => x.id);
+}
+
+test("achievement bests follow deletes, ties, and updates", async () => {
+  await insertBoardSaves([
+    // One playthrough: the best of its three saves takes the place.
+    boardSave("p1-early", "p1", 100, 0),
+    boardSave("p1-late", "p1", 100, 1),
+    boardSave("p1-slow", "p1", 200, 2),
+    // Equal days: the earlier upload goes first, then the lower id.
+    boardSave("p3", "p3", 150, 4),
+    boardSave("p4", "p4", 150, 3),
+    boardSave("p2", "p2", 150, 3),
+  ]);
+
+  const client = await HttpClient.create();
+  expect(await boardIds(client)).toEqual(["p1-early", "p2", "p4", "p3"]);
+
+  // A deleted best gives its place to the next save of the playthrough.
+  await client.delete("/api/saves/p1-early");
+  expect(await boardIds(client)).toEqual(["p1-late", "p2", "p4", "p3"]);
+  await client.delete("/api/saves/p1-late");
+  expect(await boardIds(client)).toEqual(["p2", "p4", "p3", "p1-slow"]);
+
+  // An update to a column the leaderboard does not read leaves the rows as
+  // they are. A row that the trigger wrote again would have a new xmin.
+  const versions = () =>
+    oneshotDb(dbConnection, (db) =>
+      db
+        .select({ save: eu4AchievementBests.saveId, xmin: sql<string>`xmin::text` })
+        .from(eu4AchievementBests)
+        .orderBy(asc(eu4AchievementBests.saveId)),
+    );
+  const before = await versions();
+  await oneshotDb(dbConnection, (db) =>
+    db.update(eu4Saves).set({ filename: "renamed.eu4", aar: "notes" }),
+  );
+  expect(await versions()).toEqual(before);
+
+  // A faster run and a disqualification both move the board.
+  await oneshotDb(dbConnection, async (db) => {
+    await db.update(eu4Saves).set({ scoreDays: 50 }).where(eq(eu4Saves.id, "p3"));
+    await db
+      .update(eu4Saves)
+      .set({ leaderboardQualified: false })
+      .where(inArray(eu4Saves.id, ["p2", "p1-slow"]));
+  });
+  expect(await boardIds(client)).toEqual(["p3", "p4"]);
+});
+
+test("achievement bests rebuild after a bulk update", async () => {
+  // More rows than the per-pair rebuild takes, so the trigger rebuilds the
+  // whole table.
+  const count = 1001;
+  const ids = Array.from({ length: count }, (_, i) => `bulk${String(i).padStart(4, "0")}`);
+  await insertBoardSaves(ids.map((id, i) => boardSave(id, id, 1000 + i, 0)));
+
+  const client = await HttpClient.create();
+  expect(await boardIds(client)).toEqual(ids);
+
+  // Reverse the order of the board in one statement.
+  await oneshotDb(dbConnection, (db) =>
+    db.update(eu4Saves).set({ scoreDays: sql`${3000} - ${eu4Saves.scoreDays}` }),
+  );
+  expect(await boardIds(client)).toEqual(ids.toReversed());
+});
+
+test("latest podium needs three places", async () => {
+  const client = await HttpClient.create();
+  expect(await client.get<LatestPodium | null>("/api/achievements/latest-podium")).toBeNull();
+
+  await insertBoardSaves([boardSave("gold", "p1", 100, 0), boardSave("silver", "p2", 200, 1)]);
+  const partial = await client.getReq("/api/achievements/latest-podium");
+  expect(partial.headers.get("cache-control")).toContain("max-age=");
+  expect(await partial.json()).toBeNull();
+
+  await oneshotDb(dbConnection, (db) =>
+    db.insert(eu4Saves).values(boardSave("bronze", "p3", 300, 2)),
+  );
+  const full = await client.get<LatestPodium>("/api/achievements/latest-podium");
+  expect(full.achievement.id).toBe(BOARD);
+  expect(full.saves.map((x) => x.id)).toEqual(["gold", "silver", "bronze"]);
+  expect(full.newSaveId).toBe("bronze");
+
+  // A newer run off the podium does not count as the latest finish.
+  await oneshotDb(dbConnection, (db) =>
+    db.insert(eu4Saves).values(boardSave("fourth", "p4", 400, 3)),
+  );
+  const after = await client.get<LatestPodium>("/api/achievements/latest-podium");
+  expect(after.newSaveId).toBe("bronze");
+
+  // A newer run that takes a place does.
+  await oneshotDb(dbConnection, (db) =>
+    db.insert(eu4Saves).values(boardSave("new-gold", "p5", 50, 4)),
+  );
+  const moved = await client.get<LatestPodium>("/api/achievements/latest-podium");
+  expect(moved.saves.map((x) => x.id)).toEqual(["new-gold", "gold", "silver"]);
+  expect(moved.newSaveId).toBe("new-gold");
+});
+
+test("achievement index redirects to the hub", async () => {
+  const resp = await fetch(pdxUrl("/eu4/achievements"), { redirect: "manual" });
+  expect(resp.status).toBe(301);
+  expect(new URL(check(resp.headers.get("location")), pdxUrl("/")).href).toBe(
+    pdxUrl("/eu4#achievements"),
+  );
 });

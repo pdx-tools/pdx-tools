@@ -70,7 +70,10 @@ export const games: readonly Game[] = [
     tier: "melt",
     since: "1.0",
   },
-] as const;
+];
 
 export const analysisGames = games.filter((x) => x.tier === "analysis");
 export const meltGames = games.filter((x) => x.tier === "melt");
+
+/** The short name of a game, as in a menu row. */
+export const gameLabel = (id: GameId) => games.find((x) => x.id === id)?.label ?? id;

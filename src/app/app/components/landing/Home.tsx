@@ -15,9 +15,10 @@ import classes from "./Home.module.css";
 import { ImageGallery } from "./ImageGallery";
 import { CreatorReel } from "./CreatorReel";
 import { HomeLeaderboard } from "./HomeLeaderboard";
-import { AchievementWall } from "./AchievementWall";
+import { AchievementMarquee } from "./AchievementMarquee";
 import { cx } from "class-variance-authority";
 import { analysisGames, meltGames } from "@/lib/games";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 import type { Game } from "@/lib/games";
 
 // Band colors are explicit so a row can be added without shifting the ones below it.
@@ -168,10 +169,10 @@ export const Home = ({ subtitle }: HomeProps) => {
           </h2>
           <p className="mt-3 mb-6 max-w-prose text-center text-xl">
             Go for gold! Uploaded saves are tagged with{" "}
-            <Link href="/eu4/achievements">supported achievements</Link>. Competition kept fresh
+            <Link href="/eu4#achievements">supported achievements</Link>. Competition kept fresh
             with saves on the latest patch prioritized.
           </p>
-          <AchievementWall />
+          <AchievementMarquee />
           <HomeLeaderboard />
         </div>
       </div>
@@ -211,11 +212,10 @@ export const Home = ({ subtitle }: HomeProps) => {
       </div>
 
       <div
-        id="games"
         className={cx(
           classes.row,
           classes.reverse,
-          "flex scroll-mt-4 justify-center px-5 py-16 text-lg md:px-9",
+          "flex justify-center px-5 py-16 text-lg md:px-9",
           whiteBand,
         )}
       >
@@ -248,7 +248,7 @@ export const Home = ({ subtitle }: HomeProps) => {
             <p>PDX Tools is powered by community use and feedback</p>
             <p>
               Have ideas, questions, or bug reports? Join the{" "}
-              <Link variant="light" href="https://discord.gg/rCpNWQW">
+              <Link variant="light" href={DISCORD_INVITE_URL}>
                 discord!
               </Link>
             </p>

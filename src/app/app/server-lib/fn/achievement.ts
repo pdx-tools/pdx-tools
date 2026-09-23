@@ -9,8 +9,9 @@ import type { DbConnection } from "../db/connection";
 export async function fetchAchievement(
   db: DbConnection,
   achievement: ReturnType<typeof findAchievement>,
+  limit?: number,
 ) {
-  const data = await getAchievementDb(db, achievement);
+  const data = await getAchievementDb(db, achievement, limit);
   return {
     ...data,
     saves: data.saves.map((x, i) => ({ ...x, rank: i + 1 })),
@@ -36,22 +37,22 @@ const PodiumMedals = z.array(
 );
 
 /**
- * A leaderboard needs this many entries before its top three count as
- * medals. With fewer, the first upload takes gold with no one to beat.
- */
-const MEDAL_FLOOR = 3;
-
-/**
  * The newest uploads that hold a top-three place on an achievement
- * leaderboard now, each with every medal it holds. Ranks are live: a
- * rebalance or a faster run can take a medal away, and the save then drops
- * out of this list.
+ * leaderboard now, each with every medal it holds. A board with fewer than
+ * three entries counts too: its free places are an opening for the next
+ * run. Set `minPlaces` to show only boards with at least that many places
+ * filled. Ranks are live: a rebalance or a faster run can take a medal
+ * away, and the save then drops out of this list.
  *
  * One statement, so one round trip. Each leaderboard is a three-row index
  * scan of `eu4_achievement_bests`, so the cost does not grow with the
  * number of saves.
  */
-export async function getPodiumFinishes(db: DbConnection, limit: number) {
+export async function getPodiumFinishes(
+  db: DbConnection,
+  limit: number,
+  minPlaces: Medal["rank"] = 1,
+) {
   const achievements = loadAchievements();
   // One array literal, bound as one parameter. Drizzle would spread a JS
   // array into a row of parameters, which cannot be cast to int[].
@@ -65,7 +66,7 @@ export async function getPodiumFinishes(db: DbConnection, limit: number) {
     CROSS JOIN LATERAL (
       SELECT b.save_id, b.created_on,
         row_number() OVER (ORDER BY b.score_days, b.created_on, b.save_id) AS rank,
-        count(*) OVER () AS entries
+        count(*) OVER () AS places
       FROM (
         SELECT * FROM ${table.eu4AchievementBests} b
         WHERE b.achieve_id = board.achieve_id
@@ -73,7 +74,7 @@ export async function getPodiumFinishes(db: DbConnection, limit: number) {
         LIMIT 3
       ) b
     ) top
-    WHERE top.entries >= ${MEDAL_FLOOR}
+    WHERE top.places >= ${minPlaces}
     GROUP BY top.save_id
     ORDER BY latest DESC
     LIMIT ${limit}
@@ -101,3 +102,27 @@ export async function getPodiumFinishes(db: DbConnection, limit: number) {
 }
 
 export type PodiumFinish = Awaited<ReturnType<typeof getPodiumFinishes>>[number];
+
+/**
+ * The podium of the leaderboard that changed last: the newest run to take
+ * a top-three place, shown on the board where it placed highest. Only full
+ * podiums count, so all three places are filled. With no full podium yet,
+ * the result is null.
+ */
+export async function getLatestPodium(db: DbConnection) {
+  const [finish] = await getPodiumFinishes(db, 1, 3);
+  const medal = finish?.medals.at(0);
+  const achievement = medal && getAchievement(medal.id);
+  if (!finish || !medal || !achievement) {
+    return null;
+  }
+
+  const { saves } = await fetchAchievement(db, achievement, 3);
+  return {
+    achievement: { id: achievement.id, name: achievement.name },
+    saves,
+    newSaveId: finish.save.id,
+  };
+}
+
+export type LatestPodium = NonNullable<Awaited<ReturnType<typeof getLatestPodium>>>;

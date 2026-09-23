@@ -1,5 +1,4 @@
 import { WebPage } from "@/components/layout/WebPage";
-import { LoadingState } from "@/components/LoadingState";
 import { Eu4GamePage, HUB_FEED_QUERY, PODIUM_LIMIT } from "@/features/eu4/Eu4GamePage";
 import { seo } from "@/lib/seo";
 import { mediaPreconnectLinks } from "@/lib/media";
@@ -10,9 +9,8 @@ import { getPodiumFinishes } from "@/server-lib/fn/achievement";
 import { withCore } from "@/server-lib/middleware";
 import { log } from "@/server-lib/logging";
 import { pdxKeys } from "@/services/appApi";
-import { Await, useLoaderData } from "react-router";
-import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
-import { Suspense } from "react";
+import { useLoaderData } from "react-router";
+import { dehydrate, QueryClient } from "@tanstack/react-query";
 import type { Route } from "./+types/eu4._index";
 
 export const meta = () =>
@@ -27,22 +25,22 @@ export const links = () => mediaPreconnectLinks;
 export const loader = withCore(async ({ context }: Route.LoaderArgs) => {
   const { db, close } = usingDb(context);
   const queryClient = new QueryClient();
-  // The two queries run side by side, so the podium adds no round trip.
-  const prefetch = Promise.all([
-    queryClient.fetchInfiniteQuery({
+  // The two queries run side by side and stream in apart, so the page and
+  // its achievement wall do not wait for them.
+  const feed = queryClient
+    .fetchInfiniteQuery({
       queryKey: pdxKeys.feed(HUB_FEED_QUERY),
       queryFn: () => getFeed(db, { ...HUB_FEED_QUERY, cursor: undefined }),
       retry: false,
       initialPageParam: undefined,
-    }),
-    // The hub stands without the podium, as it stands without the feed.
-    getPodiumFinishes(db, PODIUM_LIMIT).catch((error: unknown) => {
-      log.exception(error, { msg: "failed to load podium finishes" });
-      return null;
-    }),
-  ])
-    .then(([, podium]) => ({ dehydratedState: dehydrate(queryClient), podium }))
-    .finally(() => close());
+    })
+    .then(() => dehydrate(queryClient));
+  // The hub stands without the podium, as it stands without the feed.
+  const podium = getPodiumFinishes(db, PODIUM_LIMIT).catch((error: unknown) => {
+    log.exception(error, { msg: "failed to load podium finishes" });
+    return null;
+  });
+  void Promise.allSettled([feed, podium]).finally(() => close());
 
   const achievements = loadAchievements().map((achievement) => ({
     id: achievement.id,
@@ -51,26 +49,15 @@ export const loader = withCore(async ({ context }: Route.LoaderArgs) => {
     difficulty: achievement.difficulty,
   }));
 
-  return {
-    achievements,
-    prefetch,
-  };
+  return { achievements, feed, podium };
 });
 
 export default function Eu4Route() {
-  const { achievements, prefetch } = useLoaderData<typeof loader>();
+  const { achievements, feed, podium } = useLoaderData<typeof loader>();
 
   return (
     <WebPage>
-      <Suspense fallback={<LoadingState />}>
-        <Await resolve={prefetch}>
-          {({ dehydratedState, podium }) => (
-            <HydrationBoundary state={dehydratedState}>
-              <Eu4GamePage achievements={achievements} podium={podium} />
-            </HydrationBoundary>
-          )}
-        </Await>
-      </Suspense>
+      <Eu4GamePage achievements={achievements} feed={feed} podium={podium} />
     </WebPage>
   );
 }

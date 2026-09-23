@@ -4,6 +4,7 @@ import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/Button";
 import { Collapsible } from "@/components/Collapsible";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 import { Link } from "@/components/Link";
 import { DiscordIcon, GithubIcon } from "@/components/icons";
 import { AppSvg } from "@/components/icons/AppIcon";
@@ -24,7 +25,7 @@ type ErrorDisplayProps = {
 
 const SUPPORT_LINKS = [
   {
-    href: "https://discord.gg/rCpNWQW",
+    href: DISCORD_INVITE_URL,
     label: "Join Discord",
     icon: DiscordIcon,
   },

@@ -1,6 +1,7 @@
 import { campaignKey, dbDifficulty, table, userView } from "@/server-lib/db";
 import type { Eu5Save, Save } from "@/server-lib/db";
 import { userId } from "@/lib/auth";
+import { loadAchievements } from "@/server-lib/game";
 import { and, count, desc, eq, gt, inArray, lt, notExists, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
@@ -203,6 +204,20 @@ function feedQuery(db: DbConnection, params: FeedParams) {
 
 type FeedRow = Awaited<ReturnType<typeof feedQuery>>[number];
 
+let achievementNames: Map<number, string> | undefined;
+
+/**
+ * The achievements of a save, each with its name for the icon's alt text.
+ * An id without a known achievement has no leaderboard, so it is dropped.
+ */
+function namedAchievements(ids: readonly number[]) {
+  achievementNames ??= new Map(loadAchievements().map((x) => [x.id, x.name]));
+  return ids.flatMap((id) => {
+    const name = achievementNames?.get(id);
+    return name === undefined ? [] : [{ id, name }];
+  });
+}
+
 export function toEu4Save(save: Save, userName: string) {
   return {
     game: "eu4" as const,
@@ -217,7 +232,7 @@ export function toEu4Save(save: Save, userName: string) {
     player_start_tag_name: save.playerStartTagName,
     patch: `${save.saveVersionFirst}.${save.saveVersionSecond}.${save.saveVersionThird}.${save.saveVersionFourth}`,
     game_difficulty: dbDifficulty(save.gameDifficulty),
-    achievements: save.achieveIds,
+    achievements: namedAchievements(save.achieveIds),
     leaderboard_qualified: save.leaderboardQualified,
     players: save.players.length,
     user_id: save.userId,
