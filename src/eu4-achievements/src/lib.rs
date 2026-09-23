@@ -53,6 +53,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 173,
+            name: String::from("Kushite Restoration"),
+            description: String::from(
+                "As a Nubian culture nation, own or have a non-tributary subject own the entire Egyptian region.",
+            ),
+            difficulty: Difficulty::Hard,
+        },
+        Achievement {
             id: 47,
             name: String::from("Ruina Imperii"),
             description: String::from("Dismantle the Holy Roman Empire."),
