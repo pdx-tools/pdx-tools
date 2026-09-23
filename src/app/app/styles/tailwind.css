@@ -130,6 +130,8 @@
   --game-accent-soft: rgba(212, 160, 90, 0.14);
   --game-accent-line: rgba(212, 160, 90, 0.55);
   --game-accent-focus: oklch(72% 0.12 78);
+  /* Text selection: brass means selected, so selected text is brass too. */
+  --game-accent-selection: rgba(212, 160, 90, 0.35);
 
   --game-commit: var(--game-accent-300);
   --game-commit-hover: var(--game-accent-500);
@@ -185,6 +187,7 @@
   --game-accent-soft: rgba(14, 165, 233, 0.14);
   --game-accent-line: rgba(14, 165, 233, 0.55);
   --game-accent-focus: oklch(75% 0.16 233);
+  --game-accent-selection: rgba(14, 165, 233, 0.35);
 
   /* The same fill as the app's primary button (`Button variant="primary"`). */
   --game-commit: var(--color-sky-600);
@@ -198,4 +201,10 @@
   --font-game-ui: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
   --font-game-num: "IBM Plex Mono", ui-monospace, monospace;
   font-family: var(--font-game-ui);
+}
+
+/* Selected text inside a game surface takes the game's accent; the browser's
+   own selection color belongs to no world. */
+[data-game-theme] ::selection {
+  background: var(--game-accent-selection);
 }

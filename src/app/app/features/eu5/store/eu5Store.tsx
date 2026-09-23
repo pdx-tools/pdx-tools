@@ -25,6 +25,13 @@ type Eu5State = {
   /** Height of the timeline bar over the map, so overlays can sit above it. */
   timelineBarHeight: number;
   setTimelineBarHeight: (height: number) => void;
+  /**
+   * The permalink id once this save is shared. A save opened from a
+   * permalink is shared from the start; a local file becomes shared when the
+   * upload lands, and the share button keeps offering the link after that.
+   */
+  sharedSaveId: string | null;
+  setSharedSaveId: (id: string) => void;
 };
 
 export type Eu5Store = StoreApi<Eu5State>;
@@ -55,6 +62,8 @@ export const createEu5Store = (
     setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
     setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
     setTimelineBarHeight: (height) => set({ timelineBarHeight: height }),
+    sharedSaveId: saveInput.kind === "server" ? saveInput.saveId : null,
+    setSharedSaveId: (id) => set({ sharedSaveId: id }),
   }));
 
   engine.subscribe((appState) => {
@@ -107,3 +116,5 @@ export const useEu5Timelapse = () => useEu5Store((x) => x.appState.timelapse);
 export const useEu5MapViewport = () => useEu5Store((x) => x.appState.mapViewport);
 export const useEu5TimelineBarHeight = () => useEu5Store((x) => x.timelineBarHeight);
 export const useSetEu5TimelineBarHeight = () => useEu5Store((x) => x.setTimelineBarHeight);
+export const useEu5SharedSaveId = () => useEu5Store((x) => x.sharedSaveId);
+export const useSetEu5SharedSaveId = () => useEu5Store((x) => x.setSharedSaveId);

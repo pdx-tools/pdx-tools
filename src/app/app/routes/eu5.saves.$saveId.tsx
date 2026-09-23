@@ -1,5 +1,6 @@
 import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { GameButton } from "@/components/game";
+import { FullscreenPage } from "@/features/engine/GameView";
 import Eu5Ui from "@/features/eu5/Eu5Ui";
 import { mediaPreconnectLinks, ogImageUrl } from "@/lib/media";
 import { seo } from "@/lib/seo";
@@ -37,7 +38,11 @@ export const links = () => mediaPreconnectLinks;
 export default function Eu5SaveRoute() {
   const { save } = useLoaderData<typeof loader>();
   if (!save) return <Eu5SaveNotFound />;
-  return <Eu5Ui save={{ kind: "server", saveId: save.id, name: save.filename }} />;
+  return (
+    <FullscreenPage slideIn={false}>
+      <Eu5Ui save={{ kind: "server", saveId: save.id, name: save.filename }} />
+    </FullscreenPage>
+  );
 }
 
 const Eu5SaveNotFound = () => (
