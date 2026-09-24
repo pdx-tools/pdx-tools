@@ -1,45 +1,48 @@
 import { WebPage } from "@/components/layout/WebPage";
 import { LoadingState } from "@/components/LoadingState";
-import { Eu4GamePage, HUB_FEED_QUERY } from "@/features/eu4/Eu4GamePage";
+import { SavesFeedPage } from "@/features/saves/SavesFeedPage";
 import { seo } from "@/lib/seo";
 import { mediaPreconnectLinks } from "@/lib/media";
 import { usingDb } from "@/server-lib/db/connection";
-import { getFeed } from "@/server-lib/fn/feed";
+import { FeedGame, getFeed } from "@/server-lib/fn/feed";
 import { withCore } from "@/server-lib/middleware";
 import { pdxKeys } from "@/services/appApi";
 import { Await, useLoaderData } from "react-router";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { Suspense } from "react";
-import type { Route } from "./+types/eu4._index";
+import type { Route } from "./+types/saves";
 
 export const meta = () =>
   seo({
-    title: "EU4 - PDX Tools",
-    description: "Recent EU4 saves, the 1444 start of every patch, and the achievement leaderboard",
+    title: "Shared saves - PDX Tools",
+    description: "EU4 and EU5 campaigns shared by players, newest first",
   });
 
 export const links = () => mediaPreconnectLinks;
 
-export const loader = withCore(async ({ context }: Route.LoaderArgs) => {
+const PAGE_SIZE = 25;
+
+export const loader = withCore(async ({ request, context }: Route.LoaderArgs) => {
+  const parsed = FeedGame.safeParse(new URL(request.url).searchParams.get("game"));
+  const game = parsed.success ? parsed.data : undefined;
+
   const { db, close } = usingDb(context);
   const queryClient = new QueryClient();
   const prefetch = queryClient
     .fetchInfiniteQuery({
-      queryKey: pdxKeys.feed(HUB_FEED_QUERY),
-      queryFn: () => getFeed(db, { ...HUB_FEED_QUERY, cursor: undefined }),
+      queryKey: pdxKeys.feed({ game }),
+      queryFn: () => getFeed(db, { game, pageSize: PAGE_SIZE, cursor: undefined }),
       retry: false,
       initialPageParam: undefined,
     })
     .then(() => dehydrate(queryClient))
     .finally(() => close());
 
-  return {
-    prefetch,
-  };
+  return { game, prefetch };
 });
 
-export default function Eu4Route() {
-  const { prefetch } = useLoaderData<typeof loader>();
+export default function SavesRoute() {
+  const { game, prefetch } = useLoaderData<typeof loader>();
 
   return (
     <WebPage>
@@ -47,7 +50,7 @@ export default function Eu4Route() {
         <Await resolve={prefetch}>
           {(dehydratedState) => (
             <HydrationBoundary state={dehydratedState}>
-              <Eu4GamePage />
+              <SavesFeedPage game={game} />
             </HydrationBoundary>
           )}
         </Await>

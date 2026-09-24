@@ -9,7 +9,7 @@ import { beforeEach, expect, test } from "vitest";
 import type { SavePostResponse } from "@/server-lib/models";
 import { pdxFns } from "@/server-lib/functions";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
-import type { NewestSaveResponse } from "@/routes/api.new";
+import type { FeedResponse } from "@/routes/api.feed";
 import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { NewKeyResponse } from "@/services/appApi";
@@ -310,9 +310,14 @@ test("same playthrough id", async () => {
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(shahansha.save_id);
 
-  const newest = await client.get<NewestSaveResponse>("/api/new");
-  expect(newest.saves).toHaveLength(2);
-  expect(newest.saves[0].game_difficulty).toBe("Normal");
+  const newest = await client.get<FeedResponse>("/api/feed");
+  // Both uploads belong to one playthrough by one user: one campaign.
+  expect(newest.campaigns).toHaveLength(1);
+  expect(newest.campaigns[0]).toMatchObject({
+    game: "eu4",
+    save_count: 2,
+    furthest: { game_difficulty: "Normal" },
+  });
 });
 
 test("same playthrough disjoint set", async () => {
@@ -463,8 +468,8 @@ test("get profile with api key", async () => {
     },
   });
 
-  const newest = await client.get<NewestSaveResponse>("/api/new");
-  expect(newest.saves).toHaveLength(0);
+  const newest = await client.get<FeedResponse>("/api/feed");
+  expect(newest.campaigns).toHaveLength(0);
 });
 
 test("admin grants and revokes a feature", async () => {

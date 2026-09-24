@@ -27,7 +27,7 @@ const HeaderMenu = () => {
             <NavigationMenu.Content className="bg-slate-900 p-4">
               <NavigationMenu.Link variant="button" asChild>
                 <Link variant="ghost" to="/eu4">
-                  Recent saves
+                  Overview
                 </Link>
               </NavigationMenu.Link>
               <NavigationMenu.Link variant="button" asChild>
@@ -36,6 +36,13 @@ const HeaderMenu = () => {
                 </Link>
               </NavigationMenu.Link>
             </NavigationMenu.Content>
+          </NavigationMenu.Item>
+          <NavigationMenu.Item>
+            <NavigationMenu.Link variant="button" asChild>
+              <Link variant="ghost" to="/saves">
+                Saves
+              </Link>
+            </NavigationMenu.Link>
           </NavigationMenu.Item>
           <NavigationMenu.Item>
             <NavigationMenu.Trigger className="px-4 py-2">About</NavigationMenu.Trigger>

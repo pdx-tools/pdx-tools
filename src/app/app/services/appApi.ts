@@ -12,7 +12,9 @@ import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
 import { createCompressionWorker } from "@/features/compress";
 import type { PdxSession } from "@/server-lib/auth/session";
-import type { NewestSaveResponse } from "@/routes/api.new";
+import type { FeedResponse } from "@/routes/api.feed";
+import type { CampaignResponse } from "@/routes/api.campaign";
+import type { FeedGame } from "@/server-lib/fn/feed";
 import type { UserSaves } from "@/server-lib/db";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
@@ -117,10 +119,24 @@ export type SavePatchProps = {
   leaderboard_qualified?: boolean;
 };
 
+export type FeedQuery = { game?: FeedGame; user?: string; pageSize?: number };
+
+export function fetchFeedPage(params: FeedQuery, cursor?: string) {
+  const search = new URLSearchParams();
+  if (params.game) search.set("game", params.game);
+  if (params.user) search.set("user", params.user);
+  if (params.pageSize) search.set("pageSize", String(params.pageSize));
+  if (cursor) search.set("cursor", cursor);
+  const query = search.size > 0 ? `?${search}` : "";
+  return fetchOkJson<FeedResponse>(`/api/feed${query}`);
+}
+
 export const pdxKeys = {
   all: ["pdx"] as const,
   profile: () => [...pdxKeys.all, "profile"] as const,
-  newSaves: () => [...pdxKeys.all, "new-saves"] as const,
+  feeds: () => [...pdxKeys.all, "feed"] as const,
+  feed: (params: FeedQuery) => [...pdxKeys.feeds(), params] as const,
+  campaign: (game: FeedGame, key: string) => [...pdxKeys.feeds(), "campaign", game, key] as const,
   saves: () => [...pdxKeys.all, "saves"] as const,
   save: (id: string) => [...pdxKeys.saves(), id] as const,
   achievements: () => [...pdxKeys.all, "achievements"] as const,
@@ -159,20 +175,20 @@ export const pdxApi = {
   },
 
   saves: {
-    useNewest: () =>
+    useFeed: (params: FeedQuery) =>
       useSuspenseInfiniteQuery({
-        queryKey: pdxKeys.newSaves(),
-        queryFn: ({ pageParam }) =>
-          fetchOkJson<NewestSaveResponse>(
-            "/api/new" +
-              (!pageParam
-                ? ""
-                : `?${new URLSearchParams({
-                    cursor: pageParam,
-                  })}`),
-          ),
+        queryKey: pdxKeys.feed(params),
+        queryFn: ({ pageParam }) => fetchFeedPage(params, pageParam),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage, _pages) => lastPage.cursor,
+      }),
+
+    useCampaign: (game: FeedGame, key: string, enabled: boolean) =>
+      useQuery({
+        queryKey: pdxKeys.campaign(game, key),
+        queryFn: () =>
+          fetchOkJson<CampaignResponse>(`/api/campaign?${new URLSearchParams({ game, key })}`),
+        enabled,
       }),
 
     useRebalance: () => {
@@ -388,7 +404,7 @@ export const pdxApi = {
 };
 
 export const invalidateSaves = (queryClient: QueryClient) => () => {
-  queryClient.invalidateQueries({ queryKey: pdxKeys.newSaves() });
+  queryClient.invalidateQueries({ queryKey: pdxKeys.feeds() });
   queryClient.invalidateQueries({ queryKey: pdxKeys.saves() });
   queryClient.invalidateQueries({ queryKey: pdxKeys.achievements() });
   queryClient.invalidateQueries({ queryKey: pdxKeys.users() });
