@@ -367,13 +367,20 @@ impl<'bump> Eu5Workspace<'bump> {
         country_idx: eu5save::models::CountryIdx,
     ) -> Option<CountryOverviewSection> {
         let data = self.gamestate.countries.index(country_idx).data()?;
-        let mut loan_totals: FnvHashMap<CountryIdx, f64> = FnvHashMap::default();
+        // Principal lent out minus principal borrowed. A loan from an estate or
+        // bank has no lender, so only the borrower side is recorded.
+        let mut loan_balances: FnvHashMap<CountryIdx, f64> = FnvHashMap::default();
         for loan in self.gamestate.loan_manager.database.iter() {
             if let Some(idx) = self.gamestate.countries.get(loan.borrower) {
-                *loan_totals.entry(idx).or_insert(0.0) += loan.amount;
+                *loan_balances.entry(idx).or_insert(0.0) -= loan.amount;
+            }
+            if !loan.lender.is_dummy()
+                && let Some(idx) = self.gamestate.countries.get(loan.lender)
+            {
+                *loan_balances.entry(idx).or_insert(0.0) += loan.amount;
             }
         }
-        let loan_total_for = |idx: CountryIdx| loan_totals.get(&idx).copied().unwrap_or(0.0);
+        let loan_balance_for = |idx: CountryIdx| loan_balances.get(&idx).copied().unwrap_or(0.0);
         #[derive(Default, Clone, Copy)]
         struct CountryTerritoryAgg {
             wealth: f64,
@@ -408,7 +415,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let territory_for =
             |idx: CountryIdx| territory_by_country.get(&idx).copied().unwrap_or_default();
 
-        let net_gold = data.currency_data.gold - loan_total_for(country_idx);
+        let net_gold = data.currency_data.gold + loan_balance_for(country_idx);
         let manpower = data.currency_data.manpower;
         let stability = data.currency_data.stability;
         let prestige = data.currency_data.prestige;
@@ -458,7 +465,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 continue;
             }
             cohort += 1;
-            let other_net_gold = other.currency_data.gold - loan_total_for(entry.idx());
+            let other_net_gold = other.currency_data.gold + loan_balance_for(entry.idx());
             let other_territory = territory_for(entry.idx());
             let other_wealth = other_territory.wealth;
             let other_tax_base = other_territory.tax_base;
