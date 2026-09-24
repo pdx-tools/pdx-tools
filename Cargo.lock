@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "arena-serde"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "arena-serde-derive",
  "bumpalo",
@@ -187,7 +187,7 @@ dependencies = [
 [[package]]
 name = "arena-serde-derive"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -575,7 +575,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "jomini",
  "serde",
@@ -1036,7 +1036,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1077,7 +1077,7 @@ version = "0.1.0"
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "flate2",
  "jomini",
@@ -1143,7 +1143,7 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "arena-serde",
  "bumpalo",
@@ -1565,7 +1565,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "jomini",
  "serde",
@@ -1826,7 +1826,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "jomini",
  "serde",
@@ -1982,9 +1982,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.36.1"
+version = "0.37.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22859b7991714f9b194a3e35321a29d9068c9901647ec523d3bad60dfbbf6fe7"
+checksum = "ab6b0735f2ab0de85c7927c1d579b1f9b904cdf0279f6280f4253a98527c3cd4"
 dependencies = [
  "flate2",
  "itoa",
@@ -3700,7 +3700,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3757,7 +3757,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3786,9 +3786,9 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
 name = "ruzstd"
-version = "0.8.2"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5ff0cc5e135c8870a775d3320910cd9b564ec036b4dc0b8741629020be63f01"
+checksum = "a252f5e20f038fe7b4ea53e073e65398d652c864cc162fc77c56c2f13717b888"
 dependencies = [
  "twox-hash",
 ]
@@ -4213,7 +4213,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4658,7 +4658,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vic3save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#e27f87b6bd245602a6f324b35838321abe46986a"
+source = "git+https://github.com/rakaly/jomini.git#09286ab1fe195e22a14807bacb187d423d05fc06"
 dependencies = [
  "getrandom 0.3.4",
  "jomini",
@@ -5343,7 +5343,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5879,27 +5879,27 @@ checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
 [[package]]
 name = "zstd"
-version = "0.13.3"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e91ee311a569c327171651566e07972200e76fcfe2242a4fa446149a3881c08a"
+checksum = "bf06bd8162af0734b344780deb55b42a2429ae430870d13fcc12f238e880fe6e"
 dependencies = [
  "zstd-safe",
 ]
 
 [[package]]
 name = "zstd-safe"
-version = "7.2.4"
+version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f49c4d5f0abb602a93fb8736af2a4f4dd9512e36f7f570d66e65ff867ed3b9d"
+checksum = "ae42c0555055784c70058d19ba8e275528e8a99a706684868ace5da4e716a4ab"
 dependencies = [
  "zstd-sys",
 ]
 
 [[package]]
 name = "zstd-sys"
-version = "2.0.16+zstd.1.5.7"
+version = "2.1.0+zstd.1.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91e19ebc2adc8f83e43039e79776e3fda8ca919132d68a1fed6a5faca2683748"
+checksum = "0ef0a8027ec3ee71300ab3bcbcd0393f434aa72b91ca6d635a39941deae8eea0"
 dependencies = [
  "cc",
  "pkg-config",
