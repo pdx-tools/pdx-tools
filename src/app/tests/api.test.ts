@@ -13,6 +13,7 @@ import type { NewestSaveResponse } from "@/routes/api.new";
 import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { NewKeyResponse } from "@/services/appApi";
+import type { UserFeaturesResponse } from "@/routes/api.admin.users.$userId.features";
 
 const dbConnection = "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
 
@@ -156,6 +157,10 @@ class HttpClient {
         Cookie: this.cookies,
       },
     });
+  }
+
+  public get cookieHeader() {
+    return this.cookies;
   }
 
   public static async create() {
@@ -460,6 +465,41 @@ test("get profile with api key", async () => {
 
   const newest = await client.get<NewestSaveResponse>("/api/new");
   expect(newest.saves).toHaveLength(0);
+});
+
+test("admin grants and revokes a feature", async () => {
+  const client = await HttpClient.create();
+
+  const before = await client.get<UserFeaturesResponse>("/api/admin/users/100/features");
+  expect(before.features).toEqual([]);
+
+  await client.patch("/api/admin/users/100/features", { feature: "eu5-upload", enabled: true });
+  // Granting twice lands in the same state.
+  await client.patch("/api/admin/users/100/features", { feature: "eu5-upload", enabled: true });
+  const granted = await client.get<UserFeaturesResponse>("/api/admin/users/100/features");
+  expect(granted.features).toEqual(["eu5-upload"]);
+
+  await client.patch("/api/admin/users/100/features", { feature: "eu5-upload", enabled: false });
+  const revoked = await client.get<UserFeaturesResponse>("/api/admin/users/100/features");
+  expect(revoked.features).toEqual([]);
+
+  const unknown = await fetch(pdxUrl("/api/admin/users/100/features"), {
+    method: "PATCH",
+    body: JSON.stringify({ feature: "not-a-feature", enabled: true }),
+    headers: { "Content-Type": "application/json", Cookie: client.cookieHeader },
+  });
+  expect(unknown.status).toBe(400);
+
+  const missing = await fetch(pdxUrl("/api/admin/users/does-not-exist/features"), {
+    headers: { Cookie: client.cookieHeader },
+  });
+  expect(missing.status).toBe(404);
+});
+
+test("user page lists eu5 saves", async () => {
+  const client = await HttpClient.create();
+  const profile = await client.get<UserSaves>("/api/users/100");
+  expect(profile.eu5_saves).toEqual([]);
 });
 
 test("admin rebalance", async () => {

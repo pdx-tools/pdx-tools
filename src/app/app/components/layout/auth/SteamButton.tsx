@@ -28,6 +28,19 @@ function steamLoginUrl(returnTo?: string) {
   return steamUrl;
 }
 
+/**
+ * Where a plain link sends a visitor to sign in. Production goes through
+ * Steam; a dev build without an external address takes the callback's
+ * shortcut, the same request the form below makes.
+ */
+export function steamLoginHref(returnTo?: string): string {
+  const steamUrl = steamLoginUrl(returnTo);
+  if (steamUrl) return steamUrl.toString();
+  const params = new URLSearchParams(returnTo ? { returnTo } : {});
+  const query = params.toString();
+  return query ? `/api/login/steam-callback?${query}` : "/api/login/steam-callback";
+}
+
 function SteamImage() {
   return (
     <img

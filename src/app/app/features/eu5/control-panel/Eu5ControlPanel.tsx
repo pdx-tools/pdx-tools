@@ -1,7 +1,8 @@
 import { PanelHeader } from "./PanelHeader";
 import { MapModesSection } from "./MapModesSection";
 import { RenderBar } from "./RenderBar";
-import { ActionsRail } from "./ActionsRail";
+import { ShareRow } from "./ShareSave";
+import { ExportRow } from "./ExportRow";
 
 export const Eu5ControlPanel = () => {
   return (
@@ -11,7 +12,8 @@ export const Eu5ControlPanel = () => {
         <MapModesSection />
         <div className="flex-1 overflow-hidden" />
         <RenderBar />
-        <ActionsRail />
+        <ShareRow />
+        <ExportRow />
       </aside>
     </div>
   );

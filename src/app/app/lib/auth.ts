@@ -14,18 +14,23 @@ export type Role = "admin" | "user" | "guest";
 export type User = { roles: Role[]; id?: UserId; features: Feature[] };
 export type LoggedInUser = { roles: Role[]; id: UserId; features: Feature[] };
 
-// Features that can be enabled for individual users. Add an entry here and then
-// enable it for a user with:
+// Features that can be enabled for individual users. Add an entry here and an
+// admin can grant it from the user's page (`/users/<id>`), or by hand with:
 //
 //   UPDATE users SET features = array_append(features, '<name>') WHERE user_id = '<id>';
 //
 // The change is visible to the user within the session refresh interval, no
 // re-login is necessary.
+export const FEATURE_LIST = ["eu5-upload"] as const;
+export type Feature = (typeof FEATURE_LIST)[number];
+export type FeatureDefinition = { name: string; description: string };
+
 export const FEATURES = {
-  "eu5-upload": { description: "Upload and share EU5 save files" },
-} as const satisfies Record<string, FeatureDefinition>;
-export type FeatureDefinition = { description: string };
-export type Feature = keyof typeof FEATURES;
+  "eu5-upload": {
+    name: "EU5 sharing",
+    description: "Upload EU5 saves to a public permalink and manage them from the saves page.",
+  },
+} as const satisfies Record<Feature, FeatureDefinition>;
 
 export function isFeature(x: string): x is Feature {
   return Object.hasOwn(FEATURES, x);
@@ -65,6 +70,9 @@ type PdxPermissions =
     }
   | {
       kind: "savefile:leaderboard-qualification";
+    }
+  | {
+      kind: "user:features";
     };
 
 type PermissionFunction<K> = K extends { data: infer D }
@@ -89,6 +97,7 @@ const ROLES: RolePermissionsMapping = {
     "leaderboard:rebalance": true,
     "savefile:og-request": true,
     "savefile:leaderboard-qualification": true,
+    "user:features": true,
   },
   user: {
     "savefile:create": true,
