@@ -9,6 +9,7 @@ import { useSession } from "@/features/account";
 import { steamLoginHref } from "@/components/layout/auth/SteamButton";
 import { hasFeature } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 import { toast } from "@/lib/toast";
 import { pdxApi } from "@/services/appApi";
 import {
@@ -19,8 +20,6 @@ import {
 } from "../store";
 import { footLabel, footRow } from "./footRow";
 import styles from "./ShareSave.module.css";
-
-const DISCORD = "https://discord.gg/rCpNWQW";
 
 /**
  * What the share row can be, in the order a player meets them: a guest who
@@ -244,7 +243,7 @@ function ClosedBeta() {
     <>
       <ClosedBetaStatus />
       <GameButton variant="default" asChild>
-        <a href={DISCORD} target="_blank" rel="noreferrer">
+        <a href={DISCORD_INVITE_URL} target="_blank" rel="noreferrer">
           Ask on Discord
         </a>
       </GameButton>

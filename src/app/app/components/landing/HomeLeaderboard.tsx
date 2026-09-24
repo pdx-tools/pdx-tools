@@ -11,24 +11,24 @@ import { ErrorCatcher } from "@/features/errors";
 let globalShow = false;
 
 const HomeLeaderboardImpl = () => {
-  const achievementId = "348";
-  const achievementQuery = pdxApi.achievement.useGet(achievementId);
-  if (achievementQuery.data.saves.length < 3) {
+  const { data: podium } = pdxApi.achievement.useLatestPodium();
+  if (podium === null) {
     return null;
   }
+
+  const { achievement, newSaveId } = podium;
+  const newestPlaced = podium.saves.some((save) => save.id === newSaveId);
 
   return (
     <>
       <h3 className="flex flex-col items-center gap-3 text-2xl font-bold">
-        <p>Featured leaderboard:</p>
-        <div className="flex items-center gap-2">
-          <AchievementAvatar size={40} id={achievementQuery.data.achievement.id} />
-          <Link to={`/eu4/achievements/${achievementId}`}>
-            {achievementQuery.data.achievement.name}
-          </Link>
-        </div>
+        <span>Latest podium update:</span>
+        <span className="flex items-center gap-2">
+          <AchievementAvatar size={40} id={achievement.id} />
+          <Link to={`/eu4/achievements/${achievement.id}`}>{achievement.name}</Link>
+        </span>
       </h3>
-      <AchievementPodium saves={achievementQuery.data.saves} />
+      <AchievementPodium saves={podium.saves} newSaveId={newestPlaced ? newSaveId : undefined} />
     </>
   );
 };

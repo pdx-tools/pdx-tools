@@ -1,6 +1,7 @@
 import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { GameButton } from "@/components/game";
 import { FullscreenPage } from "@/features/engine/GameView";
+import { formatGameDate } from "@/features/saves/gameDate";
 import Eu5Ui from "@/features/eu5/Eu5Ui";
 import { mediaPreconnectLinks, ogImageUrl } from "@/lib/media";
 import { seo } from "@/lib/seo";
@@ -28,7 +29,7 @@ export const meta = ({ loaderData, params }: Route.MetaArgs) => {
   return seo({
     title: save ? `${save.playthrough_name} - EU5 Save` : `EU5 Save: ${params.saveId}`,
     description: save
-      ? `${save.playthrough_name}, an EU5 ${save.version_major}.${save.version_minor}.${save.version_patch} save from ${save.date}.`
+      ? `${save.playthrough_name}, an EU5 ${save.version_major}.${save.version_minor}.${save.version_patch} save from ${formatGameDate(save.date)}.`
       : "View an uploaded EU5 save.",
     image: ogImageUrl(params.saveId, "eu5"),
   });

@@ -1,5 +1,6 @@
 import React from "react";
 import { NavigationMenu as NavigationMenuPrimitive } from "radix-ui";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 
@@ -54,7 +55,8 @@ const navigationMenuTriggerStyle = cva(
     variants: {
       variant: {
         default: "",
-        button: "px-4 py-2 cursor-pointer",
+        // Tighter on phones so the bar keeps to one row beside the mark.
+        button: "px-2 sm:px-4 py-2 cursor-pointer",
       },
     },
     defaultVariants: {
@@ -66,20 +68,29 @@ const navigationMenuTriggerStyle = cva(
 const NavigationMenuTrigger = React.forwardRef<
   React.ComponentRef<typeof NavigationMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger>
->(function NavigationMenuTrigger({ className, children, ...props }, ref) {
+>(function NavigationMenuTrigger({ className, children, asChild, ...props }, ref) {
+  // `asChild` hands the trigger its own element, which must stay a single
+  // child, so only a plain trigger carries the chevron that tells a menu
+  // apart from a link. Below 360px the chevron gives its width to the
+  // sign-in button, which must stay in view.
   return (
     <NavigationMenuPrimitive.Trigger
       ref={ref}
-      className={cx(navigationMenuTriggerStyle(), "group", className)}
+      className={cx(!asChild && navigationMenuTriggerStyle(), "group", className)}
+      asChild={asChild}
       {...props}
     >
-      {children}
-      {/* <DownOutlined
-    width={4}
-    height={4}
-      className="relative top-px ml-2 h-3 w-3 transition duration-200 group-data-[state=open]:rotate-180"
-      aria-hidden="true"
-    /> */}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {children}
+          <ChevronDownIcon
+            className="relative top-px ml-1.5 h-3 w-3 opacity-65 transition-transform duration-200 group-data-[state=open]:rotate-180 max-[359px]:hidden"
+            aria-hidden="true"
+          />
+        </>
+      )}
     </NavigationMenuPrimitive.Trigger>
   );
 });
