@@ -25,7 +25,8 @@ use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope, WorldSummary};
 use eu5app::{
-    CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, UiCountryIdx,
+    CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, OpeningView,
+    UiCountryIdx,
 };
 use eu5app::{Eu5AnySaveLoader, Eu5LoadedSave};
 use eu5save::models::Gamestate;
@@ -538,15 +539,10 @@ impl Eu5WasmWorkspace {
         js_sys::Uint32Array::from(raw.as_slice())
     }
 
-    /// Center color id for the player's capital, when present.
+    /// Where the map opens for this save.
     #[wasm_bindgen]
-    pub fn get_starting_coordinates(&self) -> Result<Option<Ts<CapitalColorId>>, JsError> {
-        let Some(color_id) = self.app.player_capital_color_id() else {
-            return Ok(None);
-        };
-        option_into_ts(Some(CapitalColorId {
-            color_id: color_id.value(),
-        }))
+    pub fn opening_view(&self) -> Result<Ts<OpeningView>, JsError> {
+        into_ts(self.app.opening_view())
     }
 
     /// Join a localization bundle to produce the final localized [`Eu5App`].
@@ -597,16 +593,6 @@ impl Eu5App {
                 })
                 .collect(),
         })
-    }
-
-    #[wasm_bindgen]
-    pub fn get_starting_coordinates(&self) -> Result<Option<Ts<CapitalColorId>>, JsError> {
-        let Some(color_id) = self.app().player_capital_color_id() else {
-            return Ok(None);
-        };
-        option_into_ts(Some(CapitalColorId {
-            color_id: color_id.value(),
-        }))
     }
 
     #[wasm_bindgen]
@@ -1248,11 +1234,6 @@ impl Eu5App {
         let idx = eu5save::models::LocationIdx::new(anchor_location_idx);
         option_into_ts(self.localized().presenter().diplomacy_section_for(idx))
     }
-}
-
-#[derive(Debug, Clone, Copy, tsify::Tsify, Serialize)]
-pub struct CapitalColorId {
-    color_id: u16,
 }
 
 #[wasm_bindgen]

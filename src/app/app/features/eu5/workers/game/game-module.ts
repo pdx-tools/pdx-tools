@@ -140,10 +140,7 @@ export const createGame = async (
   }
   const map = mapEndpoint;
 
-  const startingLocation = workspace.get_starting_coordinates();
-  if (startingLocation) {
-    map.center_at_color_id(startingLocation.color_id);
-  }
+  map.open_view(workspace.opening_view());
 
   const syncInitialLocationData = () => {
     const buffer = workspace.location_arrays();

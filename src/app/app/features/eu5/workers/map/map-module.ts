@@ -7,7 +7,7 @@ import init, {
   location_borders_at_zoom,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
-import type { CanvasDisplay, LogLevel } from "../../../../wasm/wasm_eu5_map";
+import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm_eu5_map";
 import wasmPath from "../../../../wasm/wasm_eu5_map_bg.wasm?url";
 import { proxy, expose } from "comlink";
 import { formatInt } from "@/lib/format";
@@ -115,9 +115,9 @@ const mapGameEndpoint = () => {
       renderOrQueue();
     },
 
-    async center_at_color_id(color_id: number) {
+    async open_view(view: OpeningView) {
       const app = await appTask;
-      timeSync("Centering map over capital", () => app.center_at_color_id(color_id));
+      timeSync(`Opening map view: ${view.type}`, () => app.open_view(view));
     },
 
     onLocationHoverUpdate: (callback: (event: LocationHoverChangeEvent) => void) => {

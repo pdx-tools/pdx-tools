@@ -186,6 +186,7 @@ mod selection_ops;
 mod terrain_fill;
 mod timeline;
 
+pub use self::selection_ops::OpeningView;
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
 
 impl<'bump> Eu5Workspace<'bump> {
