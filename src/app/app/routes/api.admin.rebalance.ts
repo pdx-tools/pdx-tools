@@ -17,11 +17,11 @@ export const action = withCore(
       latestEu4MinorPatch();
 
     await db
-      .update(table.saves)
+      .update(table.eu4Saves)
       .set({
         scoreDays: sql`days * (10 + (${+patch} - LEAST(save_version_second, ${+patch}))) / 10`,
       })
-      .where(isNotNull(table.saves.scoreDays));
+      .where(isNotNull(table.eu4Saves.scoreDays));
 
     return Response.json({ msg: "done" });
   }),

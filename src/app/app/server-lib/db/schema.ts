@@ -46,8 +46,8 @@ export const users = pgTable(
 export type User = InferSelectModel<typeof users>;
 export type Account = User["account"];
 
-export const saves = pgTable(
-  "saves",
+export const eu4Saves = pgTable(
+  "eu4_saves",
   {
     id: text("id").primaryKey(),
     createdOn: timestampColumn(),
@@ -77,13 +77,51 @@ export const saves = pgTable(
     leaderboardQualified: boolean("leaderboard_qualified").notNull().default(true),
   },
   (saves) => [
-    index("idx_save_achieve_ids").on(saves.achieveIds),
-    index("idx_save_creation").on(saves.createdOn),
-    uniqueIndex("idx_save_hash").on(saves.hash),
-    index("idx_save_players").on(saves.players),
-    index("idx_saves_playthrough_id").on(saves.playthroughId),
+    index("idx_eu4_save_achieve_ids").on(saves.achieveIds),
+    index("idx_eu4_save_creation").on(saves.createdOn),
+    uniqueIndex("idx_eu4_save_hash").on(saves.hash),
+    index("idx_eu4_save_players").on(saves.players),
+    index("idx_eu4_saves_playthrough_id").on(saves.playthroughId),
+    index("idx_eu4_saves_user_created").on(saves.userId, saves.createdOn.desc()),
   ],
 );
-export type Save = InferSelectModel<typeof saves>;
-export type NewSave = InferInsertModel<typeof saves>;
+export type Save = InferSelectModel<typeof eu4Saves>;
+export type NewSave = InferInsertModel<typeof eu4Saves>;
 export type GameDifficulty = Save["gameDifficulty"];
+
+export const eu5Saves = pgTable(
+  "eu5_saves",
+  {
+    id: text("id").primaryKey(),
+    createdOn: timestampColumn(),
+    filename: text("filename").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .$type<UserId>()
+      .references(() => users.userId),
+    hash: text("hash").notNull(),
+    date: text("date").notNull(),
+    /** The game's own campaign id, shared by every save of the campaign. */
+    playthroughId: text("playthrough_id").notNull(),
+    playthroughName: text("playthrough_name").notNull(),
+    /** Human player names. More than one means a multiplayer save. */
+    players: text("players").array().notNull(),
+    /** Country tag for a single-player save. */
+    playerTag: text("player_tag"),
+    /** Flag key for the player's country. */
+    playerFlag: text("player_flag"),
+    /** Country name from the save. */
+    playerCountryName: text("player_country_name"),
+    versionMajor: integer("version_major").notNull(),
+    versionMinor: integer("version_minor").notNull(),
+    versionPatch: integer("version_patch").notNull(),
+  },
+  (saves) => [
+    index("idx_eu5_save_creation").on(saves.createdOn),
+    uniqueIndex("idx_eu5_save_hash").on(saves.hash),
+    index("idx_eu5_saves_user_created").on(saves.userId, saves.createdOn.desc()),
+    index("idx_eu5_saves_playthrough_id").on(saves.playthroughId),
+  ],
+);
+export type Eu5Save = InferSelectModel<typeof eu5Saves>;
+export type NewEu5Save = InferInsertModel<typeof eu5Saves>;

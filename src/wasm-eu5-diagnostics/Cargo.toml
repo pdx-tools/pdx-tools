@@ -18,6 +18,7 @@ crate-type = ["cdylib", "rlib"]
 bumpalo = { workspace = true }
 arena-serde = { workspace = true }
 eu5save = { workspace = true }
+jomini = { workspace = true }
 pdx-zstd = { workspace = true, default-features = false }
 schemas = { workspace = true }
 wasm-bindgen = { workspace = true }

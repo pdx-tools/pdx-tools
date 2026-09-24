@@ -4,8 +4,8 @@ WORKDIR /work
 COPY . .
 
 # The cache mounts keep the cargo registry and build output between builds.
-# The build scripts read ./assets/tokens and ./assets/game/eu4, so those
-# directories must be in the build context. The tokenize step uses the
+# The build scripts read ./assets/tokens, ./assets/game/eu4 and
+# ./assets/game/eu5, so those directories must be in the build context. The tokenize step uses the
 # release profile so that it shares compiled dependencies with the api.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \

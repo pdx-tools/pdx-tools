@@ -8,14 +8,16 @@ default = ["zstd_rust"]
 game-install = ["dep:image", "dep:regex", "dep:walkdir"]
 track-parse = []
 tsify = ["dep:tsify", "dep:wasm-bindgen"]
-zstd_c = ["pdx-zstd/zstd_c"]
-zstd_rust = ["pdx-zstd/zstd_rust"]
+zstd_c = ["pdx-zstd/zstd_c", "jomini/zstd_c"]
+zstd_rust = ["pdx-zstd/zstd_rust", "jomini/zstd_rust"]
 
 [dependencies]
 bumpalo = { workspace = true }
 arena-serde = { workspace = true }
+base64 = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
 eu5save = { workspace = true }
+highway = { workspace = true }
 image = { workspace = true, features = ["png"], optional = true }
 jomini =  { workspace = true }
 pdx-map = { workspace = true, default-features = false }
@@ -38,8 +40,8 @@ path = "tests/it/main.rs"
 attohttpc = { workspace = true }
 bytemuck = { workspace = true }
 eu5app = { path = ".", default-features = false, features = ["game-install", "track-parse"] }
-highway = { workspace = true }
 insta = { workspace = true, features = ["glob"] }
 rstest = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
+pdx-save-codec = { workspace = true, features = ["zstd_rust"] }

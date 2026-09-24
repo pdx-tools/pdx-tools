@@ -160,7 +160,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
     const { db, close } = usingDb(context);
     try {
       await db.transaction(async (tx) => {
-        await tx.insert(table.saves).values(newSave);
+        await tx.insert(table.eu4Saves).values(newSave);
         await uploadTask;
       });
     } finally {

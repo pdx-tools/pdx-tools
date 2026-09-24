@@ -86,6 +86,35 @@ export const uploadMetadata = z
 
 export type UploadMetadaInput = z.input<typeof uploadMetadata>;
 export type UploadMetadata = z.infer<typeof uploadMetadata>;
+
+/**
+ * Metadata for an EU5 upload, carried in request headers so that the body is
+ * the bare save and can be streamed. The filename is percent-encoded because
+ * header values cannot hold characters outside ISO-8859-1.
+ */
+export const eu5HeaderMetadata = z
+  .object({
+    "pdx-tools-filename": z
+      .string()
+      .transform((value, ctx) => {
+        try {
+          return decodeURIComponent(value);
+        } catch {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "invalid filename encoding" });
+          return z.NEVER;
+        }
+      })
+      .pipe(
+        filename().refine((value) => value.toLowerCase().endsWith(".eu5"), {
+          message: "EU5 uploads must use the .eu5 extension",
+        }),
+      ),
+    "content-type": contentType(),
+  })
+  .transform((val) => ({ filename: val["pdx-tools-filename"], uploadType: val["content-type"] }));
+
+export type Eu5HeaderMetadata = z.infer<typeof eu5HeaderMetadata>;
+
 export interface SavePostResponse {
   save_id: string;
 }

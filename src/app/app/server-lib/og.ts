@@ -6,13 +6,23 @@ import { parseApiFromEnv, pdxFns } from "./functions";
 import { getCloudflare } from "./cloudflare-context";
 import type { PdxRouteContext } from "./cloudflare-context";
 
-export const pdxOg = ({ storage, context }: { storage: PdxStorage; context: PdxRouteContext }) => {
+export const pdxOg = ({
+  storage,
+  context,
+  game = "eu4",
+}: {
+  storage: PdxStorage;
+  context: PdxRouteContext;
+  game?: "eu4" | "eu5";
+}) => {
   const parseApi = parseApiFromEnv(getCloudflare(context).env);
   return {
     enabled: !!parseApi.endpoint,
+    // Without `saveData`, the save is streamed out of storage so that the
+    // Worker does not hold it in memory.
     generateOgIntoStorage: async (saveId: string, saveData?: ArrayBuffer) => {
       const metrics = pdxMetrics(context);
-      let data: ArrayBuffer;
+      let data: BodyInit;
       if (saveData) {
         data = saveData;
       } else {
@@ -20,10 +30,13 @@ export const pdxOg = ({ storage, context }: { storage: PdxStorage; context: PdxR
         if (!object) {
           throw new Error(`save ${saveId} not found in storage`);
         }
-        data = await object.arrayBuffer();
+        data = object.body;
       }
 
-      const result = await timeit(() => pdxFns(parseApi).renderScreenshot(data)).catch((err) => {
+      const renderer = pdxFns(parseApi);
+      const result = await timeit(() =>
+        game === "eu5" ? renderer.renderEu5Screenshot(data) : renderer.renderScreenshot(data),
+      ).catch((err) => {
         metrics.record({
           domain: "parse_api",
           operation: "render_screenshot",

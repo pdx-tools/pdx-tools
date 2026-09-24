@@ -22,13 +22,31 @@ eu4 = [
     "pdx-map?/date-layer",
     "pdx-map?/tracing",
 ]
+eu5 = [
+    "dep:eu5app",
+    "dep:eu5save",
+    "dep:image",
+    "dep:jomini",
+    "dep:pdx-map",
+    "dep:pdx-zstd",
+    "dep:schemas",
+    "dep:webp",
+    "eu5app?/zstd_c",
+    "jomini?/zstd_c",
+    "pdx-map?/render",
+    "pdx-map?/date-layer",
+    "pdx-map?/tracing",
+]
 
 [dependencies]
 bytemuck = { workspace = true, optional = true }
 eu4game = { workspace = true, optional = true, default-features = false, features = ["embedded", "zstd_c"] }
 eu4game-data = { workspace = true, optional = true, default-features = false, features = ["embedded", "embedded-screenshot"] }
 eu4save = { workspace = true, optional = true, default-features = false, features = ["zstd_c"] }
+eu5app = { workspace = true, optional = true, default-features = false }
+eu5save = { workspace = true, optional = true, default-features = false }
 image = { workspace = true, optional = true, default-features = false }
+jomini = { workspace = true, optional = true }
 pdx-map = { workspace = true, optional = true }
 pdx-zstd = { workspace = true, optional = true, default-features = false, features = ["zstd_c"] }
 schemas = { workspace = true, optional = true, features = ["inline"] }

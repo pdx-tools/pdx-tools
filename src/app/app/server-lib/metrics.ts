@@ -10,6 +10,7 @@ import type { PdxRouteContext } from "./cloudflare-context";
 //   blob2   = cache_result  (cache_hit/cache_miss/HIT/MISS/n/a)
 //   blob3   = outcome       (success/error)
 //   blob4   = status        (HTTP status, or "error"/"n/a")
+//   blob5   = game          (eu4/eu5, or "n/a")
 //   double1 = count         (always 1, for SUM(_sample_interval * double1))
 //   double2 = elapsed_ms    (latency of the operation)
 //   double3 = bytes         (payload size; 0 only on an early error)
@@ -25,6 +26,7 @@ export type MetricOperation =
 
 export type Metric = {
   domain: MetricDomain;
+  game?: "eu4" | "eu5";
   operation: MetricOperation;
   outcome: "success" | "error";
   cacheResult?: string;
@@ -37,7 +39,13 @@ export const pdxMetrics = (context: PdxRouteContext) => ({
   record: (m: Metric) => {
     getCloudflare(context).env.PDX_METRICS.writeDataPoint({
       indexes: [m.domain],
-      blobs: [m.operation, m.cacheResult ?? "n/a", m.outcome, String(m.status ?? "n/a")],
+      blobs: [
+        m.operation,
+        m.cacheResult ?? "n/a",
+        m.outcome,
+        String(m.status ?? "n/a"),
+        m.game ?? "n/a",
+      ],
       doubles: [1, m.elapsedMs, m.bytes ?? 0],
     });
   },

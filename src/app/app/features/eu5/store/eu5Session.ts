@@ -45,7 +45,11 @@ class Eu5Session {
         });
       },
       onStore: (store) => {
-        emitEvent({ kind: "Save parsed", game: "eu5", source: "local" });
+        emitEvent({
+          kind: "Save parsed",
+          game: "eu5",
+          source: this.save.kind === "server" ? "remote" : "local",
+        });
         this.updateSnapshot({
           data: store,
           error: null,

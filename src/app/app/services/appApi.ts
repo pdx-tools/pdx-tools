@@ -17,8 +17,84 @@ import type { UserSaves } from "@/server-lib/db";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import { log } from "@/lib/log";
+import type { Eu5ParsedSave } from "@/features/eu5/store/types";
 export type { GameDifficulty } from "@/server-lib/save-parsing-types";
 export type { Achievement, Difficulty as AchievementDifficulty };
+
+/**
+ * Read the file that was parsed. The read fails when the file changed on disk
+ * after the parse, so an upload never sends a save that the user did not see.
+ */
+async function readParsedFile(file: File) {
+  try {
+    return await file.arrayBuffer();
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "NotReadableError") {
+      throw new Error("The save file changed on disk after it was opened. Open the save again.");
+    }
+    throw error;
+  }
+}
+
+/**
+ * POST a save with XMLHttpRequest, as fetch does not report upload progress.
+ * `onProgress` receives the uploaded portion, from 0 to 1.
+ */
+function xhrUpload({
+  url,
+  body,
+  headers = {},
+  signal,
+  onProgress,
+}: {
+  url: string;
+  body: XMLHttpRequestBodyInit;
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+  onProgress: (portion: number) => void;
+}) {
+  return new Promise<SavePostResponse>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", url);
+    for (const [name, value] of Object.entries(headers)) {
+      request.setRequestHeader(name, value);
+    }
+
+    request.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) onProgress(event.loaded / event.total);
+    });
+
+    request.addEventListener("load", () => {
+      if (request.status >= 200 && request.status < 300) {
+        resolve(JSON.parse(request.response) as SavePostResponse);
+        return;
+      }
+
+      try {
+        reject(new Error(JSON.parse(request.response).msg));
+      } catch (e) {
+        log("Failed to parse upload error response", e);
+        reject(new Error(`Upload failed (${request.status}): ${request.response}`));
+      }
+    });
+
+    const onError = () => reject(new Error("upload request errored"));
+    const onAbort = () => reject(new Error("upload request aborted"));
+    const onTimeout = () => reject(new Error("upload request timed out"));
+    request.addEventListener("error", onError);
+    request.upload.addEventListener("error", onError);
+    request.addEventListener("abort", onAbort);
+    request.upload.addEventListener("abort", onAbort);
+    request.addEventListener("timeout", onTimeout);
+
+    if (signal?.aborted) {
+      reject(new Error("upload request aborted"));
+      return;
+    }
+    signal?.addEventListener("abort", () => request.abort(), { once: true });
+    request.send(body);
+  });
+}
 
 export type PublicUserInfo = {
   user_id: string;
@@ -156,51 +232,62 @@ export const pdxApi = {
             data.append("file", blob);
             data.append("metadata", metadata);
 
-            return new Promise<SavePostResponse>((resolve, reject) => {
-              const request = new XMLHttpRequest();
-              request.open("POST", "/api/saves");
+            return await xhrUpload({
+              url: "/api/saves",
+              body: data,
+              signal,
+              onProgress: (portion) => dispatch({ kind: "progress", progress: 50 + portion * 50 }),
+            });
+          } finally {
+            compression.release();
+          }
+        },
+      });
+    },
+  },
 
-              request.upload.addEventListener("progress", function (e) {
-                const percent_complete = (e.loaded / e.total) * 100;
-                dispatch({
-                  kind: "progress",
-                  progress: 50 + percent_complete / 2,
-                });
-              });
+  eu5Saves: {
+    useAdd: () => {
+      const queryClient = useQueryClient();
+      return useMutation({
+        onSuccess: invalidateSaves(queryClient),
+        mutationFn: async ({
+          save,
+          filename,
+          dispatch,
+          signal,
+        }: {
+          save: Eu5ParsedSave;
+          filename: string;
+          dispatch: (progress: number) => void;
+          signal?: AbortSignal;
+        }) => {
+          if (save.kind === "server") throw new Error("This EU5 save is already uploaded");
+          const compression = createCompressionWorker();
+          try {
+            dispatch(5);
+            const source = new Uint8Array(await readParsedFile(save.file));
+            dispatch(10);
+            const compressed = await compression.compress(source, (portion) =>
+              dispatch(10 + portion * 40),
+            );
+            if (compressed.data.byteLength > 90 * 1024 * 1024) {
+              throw new Error("Compressed save exceeds the 90 MiB upload limit");
+            }
 
-              request.addEventListener("load", function () {
-                if (request.status >= 200 && request.status < 300) {
-                  const response: SavePostResponse = JSON.parse(request.response);
-                  resolve(response);
-                } else {
-                  try {
-                    const err = JSON.parse(request.response).msg;
-                    reject(new Error(err));
-                  } catch (e) {
-                    log("Failed to parse upload error response", e);
-                    reject(new Error(`unknown error: ${request.response}`));
-                  }
-                }
-              });
+            // The save is the bare request body so that the server can stream
+            // it into storage. The metadata travels in headers.
+            const body = new Blob([compressed.data], { type: compressed.contentType });
 
-              signal?.addEventListener("abort", () => {
-                request.abort();
-              });
-
-              const onError = () => {
-                reject(new Error("upload request errored"));
-              };
-
-              const onAbort = () => {
-                reject(new Error("upload request aborted"));
-              };
-
-              request.addEventListener("error", onError);
-              request.upload.addEventListener("error", onError);
-              request.addEventListener("abort", onAbort);
-              request.upload.addEventListener("abort", onAbort);
-
-              request.send(data);
+            return await xhrUpload({
+              url: "/api/eu5/saves",
+              body,
+              headers: {
+                "Content-Type": compressed.contentType,
+                "pdx-tools-filename": encodeURIComponent(filename),
+              },
+              signal,
+              onProgress: (portion) => dispatch(50 + portion * 50),
             });
           } finally {
             compression.release();

@@ -14,7 +14,6 @@ tmp
 # Large inputs that the api build does not read
 assets/saves
 assets/game-bundles
-assets/game/eu5
 assets/steam
 dev/infra
 src/app/build

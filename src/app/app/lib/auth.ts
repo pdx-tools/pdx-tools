@@ -21,7 +21,9 @@ export type LoggedInUser = { roles: Role[]; id: UserId; features: Feature[] };
 //
 // The change is visible to the user within the session refresh interval, no
 // re-login is necessary.
-export const FEATURES = {} as const satisfies Record<string, FeatureDefinition>;
+export const FEATURES = {
+  "eu5-upload": { description: "Upload and share EU5 save files" },
+} as const satisfies Record<string, FeatureDefinition>;
 export type FeatureDefinition = { description: string };
 export type Feature = keyof typeof FEATURES;
 
@@ -32,6 +34,12 @@ export function isFeature(x: string): x is Feature {
 // Admins have access to every feature.
 export function hasFeature(user: User, feature: Feature) {
   return user.roles.includes("admin") || user.features.includes(feature);
+}
+
+export function ensureFeature(user: User, feature: Feature) {
+  if (!hasFeature(user, feature)) {
+    throw new AuthorizationError();
+  }
 }
 
 type PdxPermissions =
