@@ -52,7 +52,7 @@ const targets: BundleTarget[] = [
   { game: "eu5", branch: "1.2.5", version: "1.2" },
   { game: "eu5", branch: "1.3.11", version: "1.3" },
   { game: "ck3", version: "1.19.0.6" },
-  { game: "hoi4", version: "1.19.2" },
+  { game: "hoi4", version: "1.19.3" },
   { game: "imperator", version: "2.0.5" },
   { game: "vic3", branch: "1.14-openbeta", version: "1.14" },
 ];
