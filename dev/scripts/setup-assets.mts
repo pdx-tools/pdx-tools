@@ -104,7 +104,27 @@ const findLatestBundle = async (game: string) => {
   return null;
 };
 
-const copyDirectoryRecursive = async (src: string, dest: string) => {
+/**
+ * Copies `src` to `dest` only when their bytes differ. Cargo build scripts
+ * watch the asset directories, so a new modification time on an unchanged
+ * file causes a long release rebuild.
+ */
+const copyIfChanged = async (src: string, dest: string) => {
+  const [srcStat, destStat] = await Promise.all([stat(src), stat(dest).catch(() => null)]);
+  if (destStat && srcStat.size === destStat.size) {
+    const [a, b] = await Promise.all([readFile(src), readFile(dest)]);
+    if (a.equals(b)) {
+      return;
+    }
+  }
+  await copyFile(src, dest);
+};
+
+/**
+ * Copies `src` into `dest` with `copyIfChanged`. With `prune`, entries in
+ * `dest` that are not in `src` are removed.
+ */
+const syncDirectory = async (src: string, dest: string, { prune = false } = {}) => {
   await mkdir(dest, { recursive: true });
   const entries = await readdir(src, { withFileTypes: true });
 
@@ -113,9 +133,18 @@ const copyDirectoryRecursive = async (src: string, dest: string) => {
     const destPath = join(dest, entry.name);
 
     if (entry.isDirectory()) {
-      await copyDirectoryRecursive(srcPath, destPath);
+      await syncDirectory(srcPath, destPath, { prune });
     } else {
-      await copyFile(srcPath, destPath);
+      await copyIfChanged(srcPath, destPath);
+    }
+  }
+
+  if (prune) {
+    const names = new Set(entries.map((entry) => entry.name));
+    for (const name of await readdir(dest)) {
+      if (!names.has(name)) {
+        await rm(join(dest, name), { recursive: true, force: true });
+      }
     }
   }
 };
@@ -141,15 +170,13 @@ const updateCommonImages = async (game: string) => {
     if (entry.isDirectory()) {
       const srcPath = join(bundleImagesDir, entry.name);
       const destPath = join(commonImagesDir, entry.name);
-      // EU5 flag shards are authoritative. Replace that directory so a newer
+      // EU5 flag shards are authoritative. Prune that directory so a newer
       // bundle with fewer shards cannot leave stale indexes behind. Other
       // common image directories contain checked-in fallbacks that an asset
       // bundle may not include, so they must remain additive.
-      if (game === "eu5" && entry.name === "flags") {
-        await rm(destPath, { recursive: true, force: true });
-      }
-      await copyDirectoryRecursive(srcPath, destPath);
-      console.log(`  📁 Copied directory: ${entry.name}`);
+      const prune = game === "eu5" && entry.name === "flags";
+      await syncDirectory(srcPath, destPath, { prune });
+      console.log(`  📁 Synced directory: ${entry.name}`);
     }
   }
 
@@ -178,7 +205,7 @@ async function setupAssets() {
   const rebDest = join(projectRoot, "assets/game/eu4/common/images/flags/REB.png");
   if (await exists(rebSource)) {
     await mkdir(dirname(rebDest), { recursive: true });
-    await copyFile(rebSource, rebDest);
+    await copyIfChanged(rebSource, rebDest);
   }
 
   // Create empty token files for devs without them (touch equivalent)
