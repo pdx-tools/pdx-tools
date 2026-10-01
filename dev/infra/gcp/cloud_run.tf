@@ -39,7 +39,11 @@ resource "google_cloud_run_v2_service" "api" {
       name  = "api-1"
       image = "${var.artifact_region}-docker.pkg.dev/${var.gcp_project}/docker/api:nightly"
 
+      # Use HTTP/2 end-to-end (h2c). HTTP/1 requests to Cloud Run have a
+      # 32 MiB body limit, and EU5 saves can be larger. The api accepts
+      # HTTP/1 and h2c on the same port, so the probes continue to work.
       ports {
+        name           = "h2c"
         container_port = 8080
       }
 
