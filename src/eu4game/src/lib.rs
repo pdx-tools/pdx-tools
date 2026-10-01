@@ -3,6 +3,7 @@ mod errors;
 mod ext;
 pub mod game;
 mod models;
+pub mod province_control;
 mod save_game_query;
 pub mod shared;
 
