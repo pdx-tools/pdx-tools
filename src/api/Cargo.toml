@@ -10,7 +10,7 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 applib = { workspace = true, default-features = false, features = ["zstd_c"] }
-axum = { workspace = true }
+axum = { workspace = true, features = ["http2"] }
 bytemuck = { workspace = true, features = ["derive"] }
 eu5app = { workspace = true, default-features = false, features = ["zstd_c"] }
 eu5save = { workspace = true, default-features = false }
