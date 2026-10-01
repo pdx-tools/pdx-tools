@@ -7,7 +7,7 @@ set -euxo pipefail
 . dev/.env.app.$usage_environment
 
 ssh pdx-tools-$usage_environment '/opt/pdx-tools/docker-compose.sh exec -T --user postgres db pg_dump --exclude-table=\*prisma\* --data-only' > db-$usage_environment.dump
-ssh pdx-tools-$usage_environment '/opt/pdx-tools/docker-compose.sh exec -T --user postgres db psql --command "\COPY saves TO STDOUT CSV HEADER"' > db-$usage_environment-saves.csv
+ssh pdx-tools-$usage_environment '/opt/pdx-tools/docker-compose.sh exec -T --user postgres db psql --command "\COPY eu4_saves TO STDOUT CSV HEADER"' > db-$usage_environment-saves.csv
 
 export RCLONE_CONFIG_PDX_ACCESS_KEY_ID="$S3_ACCESS_KEY"
 export RCLONE_CONFIG_PDX_SECRET_ACCESS_KEY="$S3_SECRET_KEY"
