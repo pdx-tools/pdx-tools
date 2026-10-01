@@ -1,0 +1,19 @@
+{
+  "sections": {
+    "improvements": [
+      "EU5 political timelapse",
+      "EU5 uploads (ask in discord for access)",
+      "EU5 1.4 savefile support",
+      "EU5 wastelands are now filled when surrounded by single owner (or color)",
+      "EU5 refined map graphics with clearer edges and borders",
+      "EU4 Kushite Restoration achievement",
+      "Refreshed game hubs, achievement pages, and save feed to be more focused on campaigns",
+      "Open EU5 observer and multiplayer saves on the whole world"
+    ],
+    "fixes": [
+      "Fix EU5 net gold calculation to include lent principal",
+      "Fix stale occupations after a tag switch in the EU4 political timelapse",
+      "Fix errors when loading HOI4 1.19.3 saves"
+    ]
+  }
+}
