@@ -321,17 +321,14 @@ impl<'a> AchievementHunter<'a> {
     }
 
     fn owns_or_non_sovereign_subject_of_province(&self, province: &Province) -> bool {
-        province
-            .owner
-            .as_ref()
-            .is_some_and(|owner| {
-                owner == &self.tag
-                    || (self.self_and_subjects.contains(owner)
-                        && self
-                            .query
-                            .country(owner)
-                            .is_some_and(|country| country.tribute_type.is_none()))
-            })
+        province.owner.as_ref().is_some_and(|owner| {
+            owner == &self.tag
+                || (self.self_and_subjects.contains(owner)
+                    && self
+                        .query
+                        .country(owner)
+                        .is_some_and(|country| country.tribute_type.is_none()))
+        })
     }
 
     fn owns_or_non_sovereign_subject_of_id(&self, id: ProvinceId) -> bool {
