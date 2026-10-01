@@ -96,8 +96,9 @@ export function PlayedAsValue({ played }: { played: PlayedAs }) {
 
 /**
  * The date as text, laid over the date that the preview image carries. At
- * the size the feed shows a preview, the image's own date is too small to
- * read.
+ * the size of a hub tile, the image's own date is too small to read. A feed
+ * entry shows the image large enough to read its date, and does not use
+ * this label.
  *
  * The screenshot renderer (`pdx-map/src/layers/date_layer.rs`) draws that
  * date flush with the bottom-left corner, 174 × 54 px on the 1200 × 630

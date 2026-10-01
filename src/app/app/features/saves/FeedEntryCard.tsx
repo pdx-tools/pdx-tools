@@ -1,11 +1,9 @@
 import { useId, useState } from "react";
-import { cx } from "class-variance-authority";
 import { ArrowRightIcon, CheckIcon, LinkIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/Button";
 import { IconButton } from "@/components/IconButton";
 import { Link } from "@/components/Link";
 import { TimeAgo } from "@/components/TimeAgo";
-import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { useSession } from "@/features/account";
 import { AchievementAvatar, hasAchievementIcon } from "@/features/eu4/components/avatars";
 import { hasPermission } from "@/lib/auth";
@@ -13,11 +11,11 @@ import { formatInt } from "@/lib/format";
 import { ogImageSize, ogImageUrl } from "@/lib/media";
 import { pdxApi } from "@/services/appApi";
 import type { FeedCampaign, FeedContributor, FeedSave } from "@/server-lib/fn/feed";
+import { CampaignReel } from "./CampaignReel";
 import { DeleteSave } from "./DeleteSave";
 import { SaveTile } from "./SaveTile";
 import { formatGameDate } from "./gameDate";
 import {
-  DateLabel,
   GameMark,
   PlayedAsValue,
   PatchValue,
@@ -33,7 +31,7 @@ const ogImageStyle = { aspectRatio: `${ogImageSize.width} / ${ogImageSize.height
  * Open the save, or copy its link. The uploader got a link to share when
  * they uploaded, so a reader of the feed rarely needs one: copy is the small
  * second control. The uploader of the save, and an admin, can also delete
- * it; in a campaign, that is whichever save the filmstrip has selected.
+ * it; in a campaign, that is whichever save the reel shows.
  */
 function SaveButtons({ save, onDeleted }: { save: FeedSave; onDeleted: () => void }) {
   const path = savePath(save);
@@ -72,110 +70,6 @@ function SaveButtons({ save, onDeleted }: { save: FeedSave; onDeleted: () => voi
         />
       )}
     </div>
-  );
-}
-
-/**
- * The saves of a campaign as a row of maps, oldest game date first. A frame
- * selects its save into the entry above it, so a reader can move through the
- * run and find the moment they want before they leave the feed. The strip
- * opens on its oldest frame: the furthest save is already large above it,
- * and a frame cut at the right edge shows that the row scrolls.
- *
- * The feed sends a sample of up to eight saves. A longer campaign offers the
- * rest on request; the entry holds that request, because the save it shows
- * can come from either list.
- */
-function Filmstrip({
-  campaign,
-  saves,
-  selected,
-  onSelect,
-  onShowAll,
-  loading,
-  failed,
-}: {
-  campaign: FeedCampaign;
-  saves: readonly FeedSave[];
-  selected: FeedSave;
-  onSelect: (save: FeedSave) => void;
-  /** Absent once every save is shown or on the way. */
-  onShowAll: (() => void) | undefined;
-  loading: boolean;
-  failed: boolean;
-}) {
-  const sampled = campaign.save_count > saves.length;
-  const showUploader = campaign.contributors.length > 1;
-
-  return (
-    <section aria-label="Saves in this campaign" className="flex min-w-0 flex-col gap-2">
-      <div className="flex flex-wrap items-baseline gap-x-3 text-sm text-gray-600 dark:text-gray-400">
-        <span className="tabular-nums">
-          {sampled
-            ? `${formatInt(saves.length)} of ${formatInt(campaign.save_count)} saves`
-            : `${formatInt(saves.length)} saves`}
-        </span>
-        {sampled && onShowAll && (
-          <button
-            type="button"
-            className="cursor-pointer rounded font-medium text-sky-700 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-sky-600 dark:text-sky-400"
-            onClick={onShowAll}
-          >
-            Show all {formatInt(campaign.save_count)}
-          </button>
-        )}
-        {loading && <LoadingIcon className="h-4 w-4 self-center" />}
-        {failed && <span className="text-rose-700 dark:text-rose-400">Failed to load saves</span>}
-      </div>
-
-      <ol className="flex snap-x gap-3 overflow-x-auto pb-2">
-        {saves.map((save) => {
-          const isSelected = save.id === selected.id;
-          const gameDate = formatGameDate(save.date);
-          return (
-            <li key={save.id} className="w-40 shrink-0 snap-start sm:w-52 lg:w-40">
-              <button
-                type="button"
-                aria-pressed={isSelected}
-                aria-label={`Show the save from ${gameDate}`}
-                onClick={() => onSelect(save)}
-                className="group/frame flex w-full cursor-pointer flex-col gap-1.5 rounded text-left ring-offset-2 ring-offset-white outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:ring-offset-slate-900"
-              >
-                <img
-                  className={cx(
-                    "w-full rounded-sm border bg-slate-900 object-contain transition-colors",
-                    isSelected
-                      ? "border-sky-500 ring-2 ring-sky-500"
-                      : "border-gray-400/50 group-hover/frame:border-sky-600",
-                  )}
-                  style={ogImageStyle}
-                  alt=""
-                  width={ogImageSize.width}
-                  height={ogImageSize.height}
-                  src={ogImageUrl(save.id, save.game)}
-                  loading="lazy"
-                />
-                <span
-                  className={cx(
-                    "text-xs tabular-nums",
-                    isSelected
-                      ? "font-semibold text-gray-900 dark:text-white"
-                      : "text-gray-600 dark:text-gray-400",
-                  )}
-                >
-                  {gameDate}
-                </span>
-                {showUploader && (
-                  <span className="truncate text-xs text-gray-600 dark:text-gray-400">
-                    {save.user_name}
-                  </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
   );
 }
 
@@ -270,14 +164,14 @@ function oldestFirst(saves: readonly FeedSave[]): FeedSave[] {
 }
 
 /**
- * One campaign in the feed: its map on the left, and on the right what that
- * save is, in the order of a hub tile, with the saves of the run as a
- * filmstrip under it. The entry has no
- * visible title. The map is its face and carries the date, and the details
- * lead with who played. A heading for assistive technology names the entry. The entry opens on
- * the save that got the furthest, not on the newest upload, so a campaign
- * uploaded back to front still shows where it reached. A frame of the strip
- * selects another save into the map and the details.
+ * One campaign in the feed: a header with what the save is, in the order of
+ * a hub tile, and the map under it at the full width of the feed. The
+ * details lead with who played, and a heading for assistive technology
+ * names the entry. The entry opens on the save that got the furthest, not
+ * on the newest upload, so a campaign uploaded back to front still shows
+ * where it reached. A single save and a campaign have one layout. A
+ * campaign shows its map as a reel, with a ruler under it: the reader
+ * scrubs through the run, and the header follows the save that shows.
  *
  * `showGame` marks the map with its game, for a feed that mixes games.
  * `showNames` adds the names a player typed: the EU5 campaign name as a
@@ -295,7 +189,7 @@ export function FeedEntryCard({
 }) {
   const [selectedId, setSelectedId] = useState(campaign.furthest.id);
   const [showAll, setShowAll] = useState(false);
-  // A deleted save leaves the strip at once, and does not wait for the feed
+  // A deleted save leaves the reel at once, and does not wait for the feed
   // to load again.
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(new Set());
   const all = pdxApi.saves.useCampaign({
@@ -326,48 +220,36 @@ export function FeedEntryCard({
   return (
     <article
       aria-labelledby={headingId}
-      className="grid gap-x-6 gap-y-4 border-b border-gray-400/40 pb-8 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]"
+      className="flex flex-col gap-4 border-b border-gray-400/40 pb-8"
     >
-      <Link
-        to={savePath(selected)}
-        variant="ghost"
-        className="group/map @container relative block self-start overflow-hidden rounded border border-gray-400/50 ring-offset-2 ring-offset-white outline-none hover:border-sky-600 focus-visible:ring-2 focus-visible:ring-sky-600 dark:ring-offset-slate-900"
-      >
-        <img
-          className="w-full bg-slate-900 object-contain"
-          style={ogImageStyle}
-          alt={`Map on ${gameDate}`}
-          width={ogImageSize.width}
-          height={ogImageSize.height}
-          src={ogImageUrl(selected.id, selected.game)}
-          loading="lazy"
-        />
-        <DateLabel date={selected.date} />
-        {showGame && <GameMark game={campaign.game} className="absolute top-2 left-2 shadow-md" />}
-      </Link>
+      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          {title ? (
+            <h2 id={headingId} className="min-w-0 truncate text-xl leading-tight font-semibold">
+              {title}
+            </h2>
+          ) : (
+            <h2 id={headingId} className="sr-only">
+              {entryLabel(campaign, selected)}
+            </h2>
+          )}
 
-      <div className="flex min-w-0 flex-col gap-4">
-        {title ? (
-          <h2 id={headingId} className="min-w-0 truncate text-xl leading-tight font-semibold">
-            {title}
-          </h2>
-        ) : (
-          <h2 id={headingId} className="sr-only">
-            {entryLabel(campaign, selected)}
-          </h2>
-        )}
-
-        {/* The same order as a tile: who played and the patch, then the upload. */}
-        <div className="flex min-w-0 flex-col gap-1.5 text-sm">
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="min-w-0 text-base font-semibold">
+          {/* Who played, on which date and patch, then the upload. The image carries
+              the date too, but too small to read on a narrow screen. */}
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <div className="min-w-0 text-lg leading-tight font-semibold">
               {played ? <PlayedAsValue played={played} /> : gameDate}
             </div>
-            <span className="shrink-0 text-gray-600 dark:text-gray-400">
+            {played && (
+              <span className="text-lg leading-tight text-gray-700 tabular-nums dark:text-gray-300">
+                {gameDate}
+              </span>
+            )}
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               <PatchValue save={selected} detailed />
             </span>
           </div>
-          <div className="flex min-w-0 flex-wrap gap-x-1.5 text-gray-600 dark:text-gray-400">
+          <div className="flex min-w-0 flex-wrap gap-x-1.5 text-sm text-gray-600 dark:text-gray-400">
             <Link to={`/users/${selected.user_id}`} className="min-w-0 truncate">
               {selected.user_name}
             </Link>
@@ -375,47 +257,64 @@ export function FeedEntryCard({
               ·
             </span>
             <TimeAgo date={selected.upload_time} />
+            {showNames && (
+              <>
+                <span aria-hidden className="text-gray-400">
+                  ·
+                </span>
+                <span className="min-w-0 truncate">{selected.filename}</span>
+              </>
+            )}
           </div>
-          {showNames && (
-            <div className="min-w-0 truncate text-gray-600 dark:text-gray-400">
-              {selected.filename}
-            </div>
-          )}
-          {campaign.save_count > 1 && (
-            <div className="text-gray-600 tabular-nums dark:text-gray-400">
-              Campaign {formatGameDate(campaign.first_date)} –{" "}
-              {formatGameDate(campaign.latest_date)}
-            </div>
+
+          {achievements.length > 0 && (
+            <ul aria-label="Achievements" className="mt-2 flex flex-wrap gap-1.5">
+              {achievements.map((x) => (
+                <li key={x.id}>
+                  <AchievementAvatar size={40} id={x.id} name={x.name} className="block" />
+                </li>
+              ))}
+            </ul>
           )}
         </div>
-
-        {achievements.length > 0 && (
-          <ul aria-label="Achievements" className="flex flex-wrap gap-1.5">
-            {achievements.map((x) => (
-              <li key={x.id}>
-                <AchievementAvatar size={40} id={x.id} name={x.name} className="block" />
-              </li>
-            ))}
-          </ul>
-        )}
 
         <SaveButtons
           save={selected}
           onDeleted={() => setDeleted((prev) => new Set(prev).add(selected.id))}
         />
+      </header>
 
-        {campaign.save_count > 1 && (
-          <Filmstrip
-            campaign={campaign}
-            saves={saves}
-            selected={selected}
-            onSelect={(save) => setSelectedId(save.id)}
-            onShowAll={showAll ? undefined : () => setShowAll(true)}
-            loading={showAll && !all.data && !all.error}
-            failed={!!all.error}
+      {campaign.save_count > 1 ? (
+        <CampaignReel
+          campaign={campaign}
+          saves={saves}
+          selected={selected}
+          onSelect={(save) => setSelectedId(save.id)}
+          onShowAll={showAll ? undefined : () => setShowAll(true)}
+          loading={showAll && !all.data && !all.error}
+          failed={!!all.error}
+          showGame={showGame}
+        />
+      ) : (
+        <Link
+          to={savePath(selected)}
+          variant="ghost"
+          className="group/map @container relative block overflow-hidden rounded border border-gray-400/50 ring-offset-2 ring-offset-white outline-none hover:border-sky-600 focus-visible:ring-2 focus-visible:ring-sky-600 dark:ring-offset-slate-900"
+        >
+          <img
+            className="w-full bg-slate-900 object-contain"
+            style={ogImageStyle}
+            alt={`Map on ${gameDate}`}
+            width={ogImageSize.width}
+            height={ogImageSize.height}
+            src={ogImageUrl(selected.id, selected.game)}
+            loading="lazy"
           />
-        )}
-      </div>
+          {showGame && (
+            <GameMark game={campaign.game} className="absolute top-2 left-2 shadow-md" />
+          )}
+        </Link>
+      )}
     </article>
   );
 }

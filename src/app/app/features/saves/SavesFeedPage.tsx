@@ -50,10 +50,6 @@ export function SavesFeedPage({ game }: { game: FeedGame | undefined }) {
         <h1 className="text-3xl font-extrabold tracking-tight text-balance md:text-4xl">
           Shared saves
         </h1>
-        <p className="max-w-prose text-lg text-gray-700 dark:text-gray-300">
-          Campaigns players shared, most recent upload first. Every save of a run sits under one
-          entry, however many times and by whomever it was uploaded.
-        </p>
         <GameFilter game={game} />
       </header>
       <Suspense fallback={<LoadingState />}>
