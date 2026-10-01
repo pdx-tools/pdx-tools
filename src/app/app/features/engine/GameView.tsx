@@ -1,11 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import type { ComponentProps, ComponentType } from "react";
-import { GameThemeProvider } from "@/components/GameThemeProvider";
-import { WebPage } from "@/components/layout";
+import { FullscreenPage, WebPage } from "@/components/layout";
 import { PageDropOverlay } from "./components/PageDropOverlay";
 import { useEngineActions, useSaveFileInput, useSaveInputId } from "./engineStore";
 import type { SaveGameInput } from "./engineStore";
-import classes from "./GameView.module.css";
 import type Eu4Ui from "@/features/eu4/Eu4Ui";
 import type Eu5Ui from "@/features/eu5/Eu5Ui";
 import type Ck3Ui from "@/features/ck3/Ck3Ui";
@@ -66,11 +64,9 @@ const gameRenderer = (savegame: SaveGameInput | null, inputId: number) => {
       return {
         kind: "full-screen",
         component: () => (
-          <GameThemeProvider theme="eu5">
-            <Suspense fallback={null}>
-              <DynamicEu5 key={inputId} save={savegame.data} />
-            </Suspense>
-          </GameThemeProvider>
+          <Suspense fallback={null}>
+            <DynamicEu5 key={inputId} save={savegame.data} />
+          </Suspense>
         ),
       } as const;
     case "ck3":
@@ -110,26 +106,6 @@ const gameRenderer = (savegame: SaveGameInput | null, inputId: number) => {
         ),
       } as const;
   }
-};
-
-const FullscreenPage = ({ children }: React.PropsWithChildren) => {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    document.body.classList.toggle("overflow-hidden");
-    return () => {
-      document.body.classList.toggle("overflow-hidden");
-    };
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={`fixed inset-0 z-200 bg-white dark:bg-slate-900 ${classes["slide-in"]}`}
-    >
-      {children}
-    </div>
-  );
 };
 
 type GameViewProps = {

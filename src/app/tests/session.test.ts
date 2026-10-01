@@ -1,10 +1,5 @@
-import {
-  isSessionStale,
-  knownFeatures,
-  SESSION_REFRESH_MS,
-  sessionPayload,
-} from "@/server-lib/auth/payload";
-import { hasFeature, pdxUser, userId } from "@/lib/auth";
+import { isSessionStale, knownFeatures, sessionPayload } from "@/server-lib/auth/payload";
+import { hasFeature, pdxUser, SESSION_REFRESH_MS, userId } from "@/lib/auth";
 import { describe, expect, it } from "vitest";
 
 describe("session refresh", () => {
@@ -35,8 +30,7 @@ describe("session refresh", () => {
   it("gives admins every feature", () => {
     const admin = pdxUser({ ...session, account: "admin" });
     const user = pdxUser(session);
-    // No features are defined yet, so probe with a placeholder name.
-    const probe = "probe" as never;
+    const probe = "eu5-upload";
     expect(hasFeature(admin, probe)).toBe(true);
     expect(hasFeature(user, probe)).toBe(false);
     expect(hasFeature({ ...user, features: [probe] }, probe)).toBe(true);

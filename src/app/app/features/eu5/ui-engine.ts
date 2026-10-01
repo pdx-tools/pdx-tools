@@ -27,7 +27,7 @@ import type {
   TimelinePlayback,
   TimelineStepUnit,
 } from "@/features/timeline/controller";
-import type { Eu5SaveInput } from "./store/types";
+import type { Eu5ParsedSave, Eu5SaveInput } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
   MapMode,
@@ -751,6 +751,7 @@ export async function createLoadedEngine(
   onProgress?: (increment: number, stage: string) => void,
 ): Promise<{
   engine: Eu5UIEngine;
+  save: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
@@ -758,6 +759,10 @@ export async function createLoadedEngine(
   world: WorldSummary;
 }> {
   const { offscreen, display, inputConfig } = canvas;
+  const save: Eu5ParsedSave =
+    saveInput.kind === "handle"
+      ? { kind: "file", file: await saveInput.file.getFile() }
+      : saveInput;
 
   const workers = Eu5GameAdapter.create();
   const gameInstance = await workers.newSave(
@@ -765,7 +770,7 @@ export async function createLoadedEngine(
       canvas: offscreen,
       display,
       inputConfig,
-      save: saveInput,
+      save,
     },
     onProgress,
   );
@@ -779,6 +784,7 @@ export async function createLoadedEngine(
   const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients, timeline);
   return {
     engine,
+    save,
     saveDate: metadata.date,
     playthroughName: metadata.playthroughName,
     players: metadata.players,

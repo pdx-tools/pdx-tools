@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { getErrorMessage } from "@/lib/getErrorMessage";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 import { DiscordIcon, GithubIcon } from "@/components/icons";
 import { useEngineActions } from "@/features/engine";
 import { GameButton } from "./components";
@@ -10,7 +11,7 @@ interface Eu5ErrorDisplayProps {
 }
 
 const SUPPORT_LINKS = [
-  { href: "https://discord.gg/rCpNWQW", label: "Ask on Discord", icon: DiscordIcon },
+  { href: DISCORD_INVITE_URL, label: "Ask on Discord", icon: DiscordIcon },
   {
     href: "https://github.com/pdx-tools/pdx-tools/issues/new",
     label: "Report it",

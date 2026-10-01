@@ -330,6 +330,11 @@ impl InteractionController {
         self.pan_animation.is_some()
     }
 
+    /// Show the whole map, as large as the zoom limits allow.
+    pub fn fit_map(&mut self) {
+        self.viewport.fit_map();
+    }
+
     /// Center on world point.
     pub fn center_on(&mut self, world: WorldPoint<f32>) {
         let canvas_size = self.viewport_bounds().rect.size;

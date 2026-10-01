@@ -1,4 +1,5 @@
 import { Link } from "@/components/Link";
+import { DISCORD_INVITE_URL } from "@/lib/links";
 
 export const UploadFaq = () => {
   return (
@@ -38,7 +39,7 @@ export const UploadFaq = () => {
       <dd>
         Not all achievements are implemented in PDX Tools. Just like how the game devs have to
         implement logic to check if achievement conditions have been satisfied, so does PDX Tools.
-        Here's <Link href="/eu4/achievements">a list of all implemented achievements</Link>. The
+        Here's <Link href="/eu4#achievements">a list of all implemented achievements</Link>. The
         good news is that community input greatly impacts what achievements get implemented and
         custom achievements can be made too! Note that achievements are not backdated, so
         achievements that are gained but then "lost" (ie: tag switching, vassal annexation, etc)
@@ -56,8 +57,8 @@ export const UploadFaq = () => {
       <dd>No, all uploaded files are public.</dd>
       <dt className="mt-4 font-bold">I have a suggestion or a question that isn't answered here</dt>
       <dd>
-        Feel free to get in contact via <Link href="https://discord.gg/rCpNWQW">Discord</Link> or
-        email hi [(at)] pdx.tools
+        Feel free to get in contact via <Link href={DISCORD_INVITE_URL}>Discord</Link> or email hi
+        [(at)] pdx.tools
       </dd>
     </dl>
   );

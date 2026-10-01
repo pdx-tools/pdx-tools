@@ -9,15 +9,15 @@ export async function getSave(db: DbConnection, params: { saveId: string }) {
     .select(
       saveView({
         save: {
-          aar: table.saves.aar,
-          filename: table.saves.filename,
+          aar: table.eu4Saves.aar,
+          filename: table.eu4Saves.filename,
           players: sql<number>`cardinality(players)`,
         },
       }),
     )
-    .from(table.saves)
-    .where(eq(table.saves.id, params.saveId))
-    .innerJoin(table.users, eq(table.users.userId, table.saves.userId));
+    .from(table.eu4Saves)
+    .where(eq(table.eu4Saves.id, params.saveId))
+    .innerJoin(table.users, eq(table.users.userId, table.eu4Saves.userId));
 
   const save = saves.at(0);
   if (save === undefined) {

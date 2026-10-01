@@ -2,6 +2,7 @@ import { useEffect, forwardRef, memo } from "react";
 import { Eu4CanvasOverlay } from "./Eu4CanvasOverlay";
 import { AppLoading } from "@/components/AppLoading";
 import { ProgressBar } from "@/components/ProgressBar";
+import { SavePreviewUnderlay } from "@/components/SavePreviewUnderlay";
 import { developerLog } from "@/lib/log";
 import { useLoadEu4, Eu4StoreProvider } from "./store";
 import type { Eu4SaveInput } from "./store";
@@ -38,13 +39,13 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
     data === null ? (
       save.kind === "server" ? (
         <div className="absolute inset-0">
-          <div
-            className="absolute inset-0 bg-cover blur-md brightness-75"
-            style={{
-              backgroundImage: `url('${ogImageUrl(save.saveId)}')`,
-            }}
+          <SavePreviewUnderlay
+            src={ogImageUrl(save.saveId)}
+            groundClassName="text-white dark:text-slate-900"
           />
-          <AppLoading />
+          <div className="relative h-full">
+            <AppLoading />
+          </div>
         </div>
       ) : (
         <div className="absolute inset-0">

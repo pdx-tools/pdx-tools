@@ -74,8 +74,16 @@ export const createGame = async (
   },
 ) => {
   const readFile = async () => {
-    const file = save.kind === "handle" ? await save.file.getFile() : save.file;
-    return await file.arrayBuffer();
+    switch (save.kind) {
+      case "handle":
+        return (await save.file.getFile()).arrayBuffer();
+      case "file":
+        return save.file.arrayBuffer();
+      case "server":
+        return fetchOk(`/api/eu5/saves/${save.saveId}/file`).then((response) =>
+          response.arrayBuffer(),
+        );
+    }
   };
 
   const saveDataTask = timeAsync("Read Save File", () => readFile());
@@ -132,10 +140,11 @@ export const createGame = async (
   }
   const map = mapEndpoint;
 
-  const startingLocation = workspace.get_starting_coordinates();
-  if (startingLocation) {
-    map.center_at_color_id(startingLocation.color_id);
-  }
+  // Do not wait: the map worker can still be loading its textures, and the
+  // parse does not need the view. A failure keeps the default view.
+  map.open_view(workspace.opening_view()).catch((error: unknown) => {
+    console.warn("Failed to open the map view", error);
+  });
 
   const syncInitialLocationData = () => {
     const buffer = workspace.location_arrays();

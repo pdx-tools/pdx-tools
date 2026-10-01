@@ -17,10 +17,8 @@ pub enum ScreenshotError {
     CreateRenderer(#[source] pdx_map::RenderError),
     #[error("failed to capture viewport")]
     CaptureViewport(#[source] pdx_map::RenderError),
-    #[error("invalid RGBA image buffer")]
-    InvalidImageBuffer,
-    #[error("failed to create WebP encoder: {0}")]
-    WebpEncode(String),
+    #[error(transparent)]
+    Encode(#[from] crate::encode::EncodeError),
 }
 
 struct PatchScreenshotAssets {
@@ -45,29 +43,10 @@ pub async fn render(gpu: &GpuContext, data: &[u8]) -> Result<Vec<u8>, Screenshot
     )
     .await?;
 
-    encode_webp(image_buffer)
-}
-
-#[tracing::instrument(
-    level = "info",
-    name = "screenshot.encode_webp",
-    skip(image_buffer),
-    fields(
-        input_bytes = image_buffer.len(),
-        output_bytes = tracing::field::Empty,
-    )
-)]
-fn encode_webp(image_buffer: Vec<u8>) -> Result<Vec<u8>, ScreenshotError> {
-    let output_size = viewport::OUTPUT_IMAGE_SIZE;
-    let img = image::RgbaImage::from_raw(output_size.width, output_size.height, image_buffer)
-        .ok_or(ScreenshotError::InvalidImageBuffer)?;
-    let dynamic_img = image::DynamicImage::from(img);
-
-    let encoder = webp::Encoder::from_image(&dynamic_img)
-        .map_err(|e| ScreenshotError::WebpEncode(e.to_string()))?;
-    let webp = encoder.encode_lossless().to_vec();
-    tracing::Span::current().record("output_bytes", webp.len());
-    Ok(webp)
+    Ok(crate::encode::encode_webp(
+        image_buffer,
+        viewport::OUTPUT_IMAGE_SIZE,
+    )?)
 }
 
 fn load_patch_assets(

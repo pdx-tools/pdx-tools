@@ -60,10 +60,10 @@ export const action = withCore(
 
         await db.transaction(async (tx) => {
           const rows = await tx
-            .update(table.saves)
+            .update(table.eu4Saves)
             .set(updates)
-            .where(eq(table.saves.id, params.saveId))
-            .returning({ userId: table.saves.userId });
+            .where(eq(table.eu4Saves.id, params.saveId))
+            .returning({ userId: table.eu4Saves.userId });
 
           ensurePermissions(session, "savefile:update", rows.at(0));
         });
@@ -83,9 +83,9 @@ export const action = withCore(
         const storage = pdxStorage({ context });
         await db.transaction(async (tx) => {
           const saves = await tx
-            .delete(table.saves)
-            .where(eq(table.saves.id, params.saveId))
-            .returning({ userId: table.saves.userId });
+            .delete(table.eu4Saves)
+            .where(eq(table.eu4Saves.id, params.saveId))
+            .returning({ userId: table.eu4Saves.userId });
           ensurePermissions(session, "savefile:delete", saves.at(0));
           await Promise.all([
             storage.saves.delete(params.saveId),

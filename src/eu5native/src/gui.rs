@@ -730,13 +730,19 @@ fn apply_workspace(
         .renderer_mut()
         .update_locations(workspace.location_arrays());
 
-    if let Some(color_id) = workspace.player_capital_color_id() {
-        let center = world.center_of(pdx_map::R16::new(color_id.value()));
-        let center_world = WorldPoint::new(center.x as f32, center.y as f32);
-        input_controller.center_on(center_world);
-
-        // Transfer viewport to render controller
-        let bounds = input_controller.viewport_bounds();
-        controller.set_viewport_bounds(bounds);
+    match workspace.opening_view() {
+        eu5app::OpeningView::Capital { color_id } => {
+            let center = world.center_of(pdx_map::R16::new(color_id.value()));
+            let center_world = WorldPoint::new(center.x as f32, center.y as f32);
+            input_controller.center_on(center_world);
+        }
+        eu5app::OpeningView::World => input_controller.fit_map(),
     }
+
+    // Transfer viewport to render controller
+    let bounds = input_controller.viewport_bounds();
+    controller.set_viewport_bounds(bounds);
+    controller
+        .renderer_mut()
+        .set_location_borders(should_highlight_individual_locations(bounds.zoom_level));
 }

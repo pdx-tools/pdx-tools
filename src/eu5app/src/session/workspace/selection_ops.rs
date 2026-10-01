@@ -423,24 +423,6 @@ impl<'bump> Eu5Workspace<'bump> {
         self.gpu_indices[location_idx].map(|gpu_idx| crate::ColorIdx::new(gpu_idx.value()))
     }
 
-    /// Get the color ID of the player's capital location for map centering.
-    /// Returns None if no player country, no capital, or capital has no map presence.
-    pub fn player_capital_color_id(&self) -> Option<crate::ColorIdx> {
-        let country_idx = self.players().next()?.country;
-        let capital_id = self
-            .gamestate
-            .countries
-            .index(country_idx)
-            .data()?
-            .capital?;
-
-        // Look up capital in gpu_indices (already mapped during initialization)
-        let capital_idx = self.gamestate.locations.get(capital_id)?;
-        let gpu_idx = self.gpu_indices[capital_idx]?;
-
-        Some(crate::ColorIdx::new(gpu_idx.value()))
-    }
-
     /// Returns the `CountryIdx` of the best default country to display in the
     /// political map mode. When a multi-country selection is active, the
     /// candidate set is limited to countries inside that selection.

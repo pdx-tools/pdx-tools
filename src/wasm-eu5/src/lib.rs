@@ -25,9 +25,10 @@ use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope, WorldSummary};
 use eu5app::{
-    CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, UiCountryIdx,
+    CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, OpeningView,
+    UiCountryIdx,
 };
-use eu5app::{Eu5LoadedSave, Eu5SaveLoader};
+use eu5app::{Eu5AnySaveLoader, Eu5LoadedSave};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
 use eu5save::{FailedResolveStrategy, MeltOptions};
@@ -412,10 +413,7 @@ impl Eu5MetaParser {
 
     #[wasm_bindgen]
     pub fn init(self, save: Vec<u8>) -> Result<SaveLoader, JsError> {
-        let file = eu5save::Eu5File::from_slice(save)
-            .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
-
-        let parser = Eu5SaveLoader::open(file, self.base_resolver)
+        let parser = Eu5AnySaveLoader::open(save, self.base_resolver)
             .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
 
         Ok(SaveLoader { parser })
@@ -425,7 +423,7 @@ impl Eu5MetaParser {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct SaveLoader {
-    parser: Eu5SaveLoader<Cursor<Vec<u8>>, &'static FlatResolver<'static>>,
+    parser: Eu5AnySaveLoader<Vec<u8>, &'static FlatResolver<'static>>,
 }
 
 #[wasm_bindgen]
@@ -541,15 +539,10 @@ impl Eu5WasmWorkspace {
         js_sys::Uint32Array::from(raw.as_slice())
     }
 
-    /// Center color id for the player's capital, when present.
+    /// Where the map opens for this save.
     #[wasm_bindgen]
-    pub fn get_starting_coordinates(&self) -> Result<Option<Ts<CapitalColorId>>, JsError> {
-        let Some(color_id) = self.app.player_capital_color_id() else {
-            return Ok(None);
-        };
-        option_into_ts(Some(CapitalColorId {
-            color_id: color_id.value(),
-        }))
+    pub fn opening_view(&self) -> Result<Ts<OpeningView>, JsError> {
+        into_ts(self.app.opening_view())
     }
 
     /// Join a localization bundle to produce the final localized [`Eu5App`].
@@ -600,16 +593,6 @@ impl Eu5App {
                 })
                 .collect(),
         })
-    }
-
-    #[wasm_bindgen]
-    pub fn get_starting_coordinates(&self) -> Result<Option<Ts<CapitalColorId>>, JsError> {
-        let Some(color_id) = self.app().player_capital_color_id() else {
-            return Ok(None);
-        };
-        option_into_ts(Some(CapitalColorId {
-            color_id: color_id.value(),
-        }))
     }
 
     #[wasm_bindgen]
@@ -1253,11 +1236,6 @@ impl Eu5App {
     }
 }
 
-#[derive(Debug, Clone, Copy, tsify::Tsify, Serialize)]
-pub struct CapitalColorId {
-    color_id: u16,
-}
-
 #[wasm_bindgen]
 pub fn setup_eu5_wasm(level: Ts<wasm_pdx_core::log_level::LogLevel>) -> Result<(), JsError> {
     let level = level.to_rust()?;
@@ -1291,8 +1269,21 @@ impl BufferParts {
 }
 
 fn _melt(data: &[u8]) -> Result<Vec<u8>, eu5save::Eu5Error> {
-    let file = eu5save::Eu5File::from_slice(data).map_err(Eu5ErrorKind::from)?;
     let mut out = Cursor::new(Vec::new());
+
+    // A Zstd stream holds an uncompressed text save, and a text save melts
+    // to itself, so the decoded stream is the melted save.
+    if pdx_zstd::is_zstd_compressed(data) {
+        pdx_zstd::copy_decode(data, &mut out).map_err(|error| {
+            eu5save::Eu5Error::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                error.to_string(),
+            ))
+        })?;
+        return Ok(out.into_inner());
+    }
+
+    let file = eu5save::Eu5File::from_slice(data).map_err(Eu5ErrorKind::from)?;
     let options = MeltOptions::new().on_failed_resolve(FailedResolveStrategy::Ignore);
     (&file).melt(options, tokens::get_tokens(), &mut out)?;
     Ok(out.into_inner())

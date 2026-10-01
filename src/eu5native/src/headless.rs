@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::Args;
 use eu5app::{
-    Eu5SaveLoader, Eu5Workspace, MapMode,
+    Eu5SaveLoader, Eu5Workspace, MapMode, OpeningView,
     game_data::{TextureProvider, game_install::Eu5GameInstall},
 };
 use eu5save::{BasicTokenResolver, Eu5File};
@@ -31,7 +31,7 @@ fn validate_dimensions(
     }
 }
 
-/// Calculate viewport bounds centered on player's capital (or world center as fallback)
+/// Calculate viewport bounds centered on the save's opening view
 /// Returns (x_offset, y_offset)
 fn calculate_viewport_bounds(
     map_app: &Eu5Workspace,
@@ -41,14 +41,14 @@ fn calculate_viewport_bounds(
 ) -> (u32, u32) {
     let hemisphere = eu5app::hemisphere_size();
 
-    // Get player capital or fallback to world center
-    let (capital_x, capital_y) = map_app
-        .player_capital_color_id()
-        .map(|color_id| {
+    // Center on the player's capital, or on the world center
+    let (capital_x, capital_y) = match map_app.opening_view() {
+        OpeningView::Capital { color_id } => {
             let center = world.center_of(pdx_map::R16::new(color_id.value()));
             (center.x as u16, center.y as u16)
-        })
-        .unwrap_or((hemisphere.width as u16, hemisphere.height as u16 / 2));
+        }
+        OpeningView::World => (hemisphere.width as u16, hemisphere.height as u16 / 2),
+    };
 
     // Center horizontally with proper wraparound handling
     let x_centered = capital_x as i32 - (width / 2) as i32;

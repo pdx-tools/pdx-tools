@@ -1,23 +1,30 @@
 import fs from "node:fs/promises";
+import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
-import { saves, users } from "@/server-lib/db/schema";
-import type { UserSaves } from "@/server-lib/db";
+import { userId } from "@/lib/auth";
+import { eu4AchievementBests, eu4Saves, eu5Saves, users } from "@/server-lib/db/schema";
+import type { NewEu5Save, NewSave, UserSaves } from "@/server-lib/db";
 import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { SavePostResponse } from "@/server-lib/models";
 import { pdxFns } from "@/server-lib/functions";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
-import type { NewestSaveResponse } from "@/routes/api.new";
+import type { FeedResponse } from "@/routes/api.feed";
+import type { CampaignResponse } from "@/routes/api.campaign";
 import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { NewKeyResponse } from "@/services/appApi";
+import type { UserFeaturesResponse } from "@/routes/api.admin.users.$userId.features";
+import type { LatestPodium } from "@/server-lib/fn/achievement";
 
 const dbConnection = "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
 
 beforeEach(async () => {
   await oneshotDb(dbConnection, async (db) => {
-    await db.delete(saves);
+    await db.delete(eu5Saves);
+    await db.delete(eu4Saves);
     await db.delete(users);
   });
 });
@@ -93,6 +100,28 @@ class HttpClient {
     return await this.uploadSaveCore(filepath);
   }
 
+  /** Upload an EU5 save as a bare zstd body with the metadata in headers. */
+  async uploadEu5SaveReq(filepath: string, filename = "myfile.eu5") {
+    const data = zstdCompressSync(await fetchEu5Save(filepath));
+    return await fetch(pdxUrl("/api/eu5/saves"), {
+      method: "POST",
+      body: new Blob([data]),
+      headers: {
+        "Content-Type": "application/zstd",
+        "pdx-tools-filename": encodeURIComponent(filename),
+        cookie: this.cookies,
+      },
+    });
+  }
+
+  public async uploadEu5Save(filepath: string, filename?: string) {
+    const resp = await this.uploadEu5SaveReq(filepath, filename);
+    if (!resp.ok) {
+      throw new Error(`failed to upload (${resp.status}): ${await resp.text()}`);
+    }
+    return (await resp.json()) as SavePostResponse;
+  }
+
   public async getReq(path: string) {
     return await fetch(pdxUrl(path), {
       headers: {
@@ -134,6 +163,10 @@ class HttpClient {
     });
   }
 
+  public get cookieHeader() {
+    return this.cookies;
+  }
+
   public static async create() {
     const cookie = await getNewCookies();
     return new HttpClient(cookie.substring(0, cookie.indexOf(";") + 1));
@@ -161,6 +194,26 @@ async function logEu4Fixture(save: string) {
   const log = process.env.PDX_FIXTURES_LOG;
   if (log) {
     await fs.appendFile(log, `eu4/${save}\n`);
+  }
+}
+
+function eu5SaveLocation(save: string) {
+  return `../../assets/saves/eu5/${save}`;
+}
+
+async function fetchEu5Save(save: string) {
+  const fp = eu5SaveLocation(save);
+  try {
+    return await fs.readFile(fp);
+  } catch {
+    const resp = await fetch(`https://cdn-dev.pdx.tools/eu5-saves/${save}`);
+    if (!resp.ok) {
+      throw new Error(`unable to retrieve: ${save}`);
+    }
+    const buf = Buffer.from(await resp.arrayBuffer());
+    await fs.mkdir("../../assets/saves/eu5", { recursive: true });
+    await fs.writeFile(fp, buf);
+    return buf;
   }
 }
 
@@ -261,9 +314,114 @@ test("same playthrough id", async () => {
   expect(achievementLeaderboard.saves).toHaveLength(1);
   expect(achievementLeaderboard.saves[0].id).toEqual(shahansha.save_id);
 
-  const newest = await client.get<NewestSaveResponse>("/api/new");
-  expect(newest.saves).toHaveLength(2);
-  expect(newest.saves[0].game_difficulty).toBe("Normal");
+  const newest = await client.get<FeedResponse>("/api/feed");
+  // Both uploads belong to one playthrough by one user: one campaign.
+  expect(newest.campaigns).toHaveLength(1);
+  expect(newest.campaigns[0]).toMatchObject({
+    game: "eu4",
+    save_count: 2,
+    furthest: { game_difficulty: "Normal" },
+  });
+});
+
+test("campaign feed folds, splits, and pages campaigns", async () => {
+  // Rows go into the database directly: the feed only reads them, and saves
+  // from more than one uploader need more than the one test login.
+  const at = (minute: number) => new Date(Date.UTC(2026, 0, 1, 0, minute));
+  const eu4 = (
+    id: string,
+    user: string,
+    playthroughId: string,
+    players: string[],
+    date: string,
+    minute: number,
+  ): NewSave => ({
+    id,
+    createdOn: at(minute),
+    filename: `${id}.eu4`,
+    userId: userId(user),
+    hash: id,
+    date,
+    days: 0,
+    playerTag: "FRA",
+    saveVersionFirst: 1,
+    saveVersionSecond: 37,
+    saveVersionThird: 0,
+    saveVersionFourth: 0,
+    achieveIds: [],
+    players,
+    gameDifficulty: "normal",
+    playthroughId,
+  });
+  const eu5 = (id: string, date: string, minute: number): NewEu5Save => ({
+    id,
+    createdOn: at(minute),
+    filename: `${id}.eu5`,
+    userId: userId("u1"),
+    hash: id,
+    date,
+    playthroughId: "e",
+    playthroughName: "Castile",
+    players: ["a"],
+    versionMajor: 1,
+    versionMinor: 0,
+    versionPatch: 0,
+  });
+
+  await oneshotDb(dbConnection, async (db) => {
+    await db.insert(users).values([
+      { userId: userId("u1"), steamId: "s1", steamName: "Alice" },
+      { userId: userId("u2"), steamId: "s2", steamName: "Bob" },
+    ]);
+    await db.insert(eu4Saves).values([
+      // Multiplayer: one campaign across both uploaders.
+      eu4("mp1", "u1", "mp", ["a", "b"], "1445-01-01", 1),
+      eu4("mp2", "u2", "mp", ["a", "b"], "1450-01-01", 3),
+      // Single player with a shared playthrough id: one campaign per uploader.
+      eu4("solo1", "u1", "solo", ["a"], "1500-01-01", 2),
+      eu4("solo2", "u2", "solo", ["b"], "1500-01-01", 4),
+    ]);
+    // The newest upload is not the furthest save.
+    await db.insert(eu5Saves).values([eu5("e1", "1400-01-01", 0), eu5("e2", "1340-01-01", 5)]);
+  });
+
+  const client = await HttpClient.create();
+  const first = await client.get<FeedResponse>("/api/feed?pageSize=2");
+  expect(first.campaigns.map((x) => x.key)).toEqual(["e:u1", "solo:u2"]);
+  expect(first.campaigns[0]).toMatchObject({
+    save_count: 2,
+    first_date: "1340-01-01",
+    latest_date: "1400-01-01",
+    furthest: { id: "e1" },
+  });
+  expect(first.cursor).toBeDefined();
+
+  const cursor = encodeURIComponent(first.cursor ?? "");
+  const second = await client.get<FeedResponse>(`/api/feed?pageSize=2&cursor=${cursor}`);
+  expect(second.campaigns.map((x) => x.key)).toEqual(["mp", "solo:u1"]);
+  expect(second.campaigns[0]).toMatchObject({
+    save_count: 2,
+    multiplayer: true,
+    furthest: { id: "mp2" },
+    contributors: [
+      { user_id: "u2", user_name: "Bob" },
+      { user_id: "u1", user_name: "Alice" },
+    ],
+  });
+  expect(second.cursor).toBeUndefined();
+
+  const eu5Only = await client.get<FeedResponse>("/api/feed?game=eu5");
+  expect(eu5Only.campaigns.map((x) => x.key)).toEqual(["e:u1"]);
+
+  const bob = await client.get<FeedResponse>("/api/feed?user=u2");
+  expect(bob.campaigns.map((x) => x.key)).toEqual(["solo:u2", "mp"]);
+
+  const campaign = await client.get<CampaignResponse>("/api/campaign?game=eu4&key=mp");
+  expect(campaign.saves.map((x) => x.id)).toEqual(["mp2", "mp1"]);
+  expect(campaign.truncated).toBe(false);
+
+  const badCursor = await client.getReq("/api/feed?cursor=yesterday");
+  expect(badCursor.status).toBe(400);
 });
 
 test("same playthrough disjoint set", async () => {
@@ -295,6 +453,33 @@ test("reject duplicate uploads", async () => {
   expect(tatarUpload.save_id).toBeDefined();
 
   await expect(client.uploadSave(tatarPath)).rejects.toThrow("save already exists");
+});
+
+test("eu5 upload, file download, and delete", async () => {
+  // The test user is an admin, which passes the eu5-upload feature gate.
+  const client = await HttpClient.create();
+  const upload = await client.uploadEu5Save("debug-1.0.eu5", "Ostsiedlung ünd Co.eu5");
+  expect(upload.save_id).toBeDefined();
+
+  const file = await fetch(pdxUrl(`/api/eu5/saves/${upload.save_id}/file`));
+  expect(file.status).toBe(200);
+  expect(file.headers.get("content-type")).toBe("application/zstd");
+  const stored = zstdDecompressSync(Buffer.from(await file.arrayBuffer()));
+  expect(stored.equals(await fetchEu5Save("debug-1.0.eu5"))).toBe(true);
+
+  const profile = await client.get<UserSaves>("/api/users/100");
+  expect(profile.eu5_saves).toHaveLength(1);
+  expect(profile.eu5_saves[0].filename).toBe("Ostsiedlung ünd Co.eu5");
+
+  const duplicate = await client.uploadEu5SaveReq("debug-1.0.eu5");
+  expect(duplicate.status).toBe(400);
+  expect(await duplicate.json()).toMatchObject({ msg: "save already exists" });
+
+  await client.delete(`/api/eu5/saves/${upload.save_id}`);
+  const gone = await client.getReq(`/api/eu5/saves/${upload.save_id}`);
+  expect(gone.status).toBe(404);
+  const after = await client.get<UserSaves>("/api/users/100");
+  expect(after.eu5_saves).toEqual([]);
 });
 
 test("delete save", async () => {
@@ -387,8 +572,57 @@ test("get profile with api key", async () => {
     },
   });
 
-  const newest = await client.get<NewestSaveResponse>("/api/new");
-  expect(newest.saves).toHaveLength(0);
+  const newest = await client.get<FeedResponse>("/api/feed");
+  expect(newest.campaigns).toHaveLength(0);
+});
+
+test("admin grants and revokes a feature", async () => {
+  const client = await HttpClient.create();
+
+  const before = await client.get<UserFeaturesResponse>("/api/admin/users/100/features");
+  expect(before.features).toEqual([]);
+
+  await client.patch("/api/admin/users/100/features", { feature: "eu5-upload", enabled: true });
+  // Granting twice lands in the same state.
+  await client.patch("/api/admin/users/100/features", { feature: "eu5-upload", enabled: true });
+  const granted = await client.get<UserFeaturesResponse>("/api/admin/users/100/features");
+  expect(granted.features).toEqual(["eu5-upload"]);
+
+  await client.patch("/api/admin/users/100/features", { feature: "eu5-upload", enabled: false });
+  const revoked = await client.get<UserFeaturesResponse>("/api/admin/users/100/features");
+  expect(revoked.features).toEqual([]);
+
+  const unknown = await fetch(pdxUrl("/api/admin/users/100/features"), {
+    method: "PATCH",
+    body: JSON.stringify({ feature: "not-a-feature", enabled: true }),
+    headers: { "Content-Type": "application/json", Cookie: client.cookieHeader },
+  });
+  expect(unknown.status).toBe(400);
+
+  const malformed = await fetch(pdxUrl("/api/admin/users/100/features"), {
+    method: "PATCH",
+    body: "{",
+    headers: { "Content-Type": "application/json", Cookie: client.cookieHeader },
+  });
+  expect(malformed.status).toBe(400);
+
+  const missing = await fetch(pdxUrl("/api/admin/users/does-not-exist/features"), {
+    headers: { Cookie: client.cookieHeader },
+  });
+  expect(missing.status).toBe(404);
+
+  const missingChange = await fetch(pdxUrl("/api/admin/users/does-not-exist/features"), {
+    method: "PATCH",
+    body: JSON.stringify({ feature: "eu5-upload", enabled: true }),
+    headers: { "Content-Type": "application/json", Cookie: client.cookieHeader },
+  });
+  expect(missingChange.status).toBe(404);
+});
+
+test("user page lists eu5 saves", async () => {
+  const client = await HttpClient.create();
+  const profile = await client.get<UserSaves>("/api/users/100");
+  expect(profile.eu5_saves).toEqual([]);
 });
 
 test("admin rebalance", async () => {
@@ -466,4 +700,150 @@ test("leaderboard disqualification", async () => {
   // Verify save detail reflects re-qualification
   saveDetail = await client.get<SaveResponse>(`/api/saves/${upload.save_id}`);
   expect(saveDetail.leaderboard_qualified).toBe(true);
+});
+
+/** Achievement 18 is a real leaderboard, so its API route resolves. */
+const BOARD = 18;
+
+/**
+ * A qualified EU4 save of `BOARD`, written to the database directly. The
+ * leaderboard reads only these columns, so no save file is needed.
+ */
+function boardSave(id: string, playthroughId: string, scoreDays: number, minute: number): NewSave {
+  return {
+    id,
+    createdOn: new Date(Date.UTC(2026, 0, 1, 0, minute)),
+    filename: `${id}.eu4`,
+    userId: userId("u1"),
+    hash: id,
+    date: "1500-01-01",
+    days: scoreDays,
+    scoreDays,
+    playerTag: "FRA",
+    saveVersionFirst: 1,
+    saveVersionSecond: 37,
+    saveVersionThird: 0,
+    saveVersionFourth: 0,
+    achieveIds: [BOARD],
+    players: ["a"],
+    gameDifficulty: "normal",
+    playthroughId,
+  };
+}
+
+async function insertBoardSaves(saves: NewSave[]) {
+  await oneshotDb(dbConnection, async (db) => {
+    await db.insert(users).values({ userId: userId("u1"), steamId: "s1", steamName: "Alice" });
+    await db.insert(eu4Saves).values(saves);
+  });
+}
+
+async function boardIds(client: HttpClient) {
+  const board = await client.get<AchievementApiResponse>(`/api/achievements/${BOARD}`);
+  return board.saves.map((x) => x.id);
+}
+
+test("achievement bests follow deletes, ties, and updates", async () => {
+  await insertBoardSaves([
+    // One playthrough: the best of its three saves takes the place.
+    boardSave("p1-early", "p1", 100, 0),
+    boardSave("p1-late", "p1", 100, 1),
+    boardSave("p1-slow", "p1", 200, 2),
+    // Equal days: the earlier upload goes first, then the lower id.
+    boardSave("p3", "p3", 150, 4),
+    boardSave("p4", "p4", 150, 3),
+    boardSave("p2", "p2", 150, 3),
+  ]);
+
+  const client = await HttpClient.create();
+  expect(await boardIds(client)).toEqual(["p1-early", "p2", "p4", "p3"]);
+
+  // A deleted best gives its place to the next save of the playthrough.
+  await client.delete("/api/saves/p1-early");
+  expect(await boardIds(client)).toEqual(["p1-late", "p2", "p4", "p3"]);
+  await client.delete("/api/saves/p1-late");
+  expect(await boardIds(client)).toEqual(["p2", "p4", "p3", "p1-slow"]);
+
+  // An update to a column the leaderboard does not read leaves the rows as
+  // they are. A row that the trigger wrote again would have a new xmin.
+  const versions = () =>
+    oneshotDb(dbConnection, (db) =>
+      db
+        .select({ save: eu4AchievementBests.saveId, xmin: sql<string>`xmin::text` })
+        .from(eu4AchievementBests)
+        .orderBy(asc(eu4AchievementBests.saveId)),
+    );
+  const before = await versions();
+  await oneshotDb(dbConnection, (db) =>
+    db.update(eu4Saves).set({ filename: "renamed.eu4", aar: "notes" }),
+  );
+  expect(await versions()).toEqual(before);
+
+  // A faster run and a disqualification both move the board.
+  await oneshotDb(dbConnection, async (db) => {
+    await db.update(eu4Saves).set({ scoreDays: 50 }).where(eq(eu4Saves.id, "p3"));
+    await db
+      .update(eu4Saves)
+      .set({ leaderboardQualified: false })
+      .where(inArray(eu4Saves.id, ["p2", "p1-slow"]));
+  });
+  expect(await boardIds(client)).toEqual(["p3", "p4"]);
+});
+
+test("achievement bests rebuild after a bulk update", async () => {
+  // More rows than the per-pair rebuild takes, so the trigger rebuilds the
+  // whole table.
+  const count = 1001;
+  const ids = Array.from({ length: count }, (_, i) => `bulk${String(i).padStart(4, "0")}`);
+  await insertBoardSaves(ids.map((id, i) => boardSave(id, id, 1000 + i, 0)));
+
+  const client = await HttpClient.create();
+  expect(await boardIds(client)).toEqual(ids);
+
+  // Reverse the order of the board in one statement.
+  await oneshotDb(dbConnection, (db) =>
+    db.update(eu4Saves).set({ scoreDays: sql`${3000} - ${eu4Saves.scoreDays}` }),
+  );
+  expect(await boardIds(client)).toEqual(ids.toReversed());
+});
+
+test("latest podium needs three places", async () => {
+  const client = await HttpClient.create();
+  expect(await client.get<LatestPodium | null>("/api/achievements/latest-podium")).toBeNull();
+
+  await insertBoardSaves([boardSave("gold", "p1", 100, 0), boardSave("silver", "p2", 200, 1)]);
+  const partial = await client.getReq("/api/achievements/latest-podium");
+  expect(partial.headers.get("cache-control")).toContain("max-age=");
+  expect(await partial.json()).toBeNull();
+
+  await oneshotDb(dbConnection, (db) =>
+    db.insert(eu4Saves).values(boardSave("bronze", "p3", 300, 2)),
+  );
+  const full = await client.get<LatestPodium>("/api/achievements/latest-podium");
+  expect(full.achievement.id).toBe(BOARD);
+  expect(full.saves.map((x) => x.id)).toEqual(["gold", "silver", "bronze"]);
+  expect(full.newSaveId).toBe("bronze");
+
+  // A newer run off the podium does not count as the latest finish.
+  await oneshotDb(dbConnection, (db) =>
+    db.insert(eu4Saves).values(boardSave("fourth", "p4", 400, 3)),
+  );
+  const after = await client.get<LatestPodium>("/api/achievements/latest-podium");
+  expect(after.newSaveId).toBe("bronze");
+
+  // A newer run that takes a place does.
+  await oneshotDb(dbConnection, (db) =>
+    db.insert(eu4Saves).values(boardSave("new-gold", "p5", 50, 4)),
+  );
+  const moved = await client.get<LatestPodium>("/api/achievements/latest-podium");
+  expect(moved.saves.map((x) => x.id)).toEqual(["new-gold", "gold", "silver"]);
+  expect(moved.newSaveId).toBe("new-gold");
+});
+
+test("achievement index redirects to the hub", async () => {
+  const resp = await fetch(pdxUrl("/eu4/achievements"), { redirect: "manual" });
+  expect(resp.status).toBe(301);
+  expect(new URL(check(resp.headers.get("location")), pdxUrl("/")).href).toBe(
+    pdxUrl("/eu4#achievements"),
+  );
 });

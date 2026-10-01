@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cx } from "class-variance-authority";
+import { SavePreviewUnderlay } from "@/components/SavePreviewUnderlay";
 import type { Eu5LoadingState } from "./store";
 
 const STAGE_DISCLOSURE_MS = 2500;
@@ -10,9 +11,11 @@ type Eu5LoadingProps = {
   loading: Eu5LoadingState | null;
   filename: string;
   done: boolean;
+  /** Set for a shared save: its preview image tints the wait. */
+  preview?: string;
 };
 
-export function Eu5Loading({ loading, filename, done }: Eu5LoadingProps) {
+export function Eu5Loading({ loading, filename, done, preview }: Eu5LoadingProps) {
   const { percent, stage } = useLatchedLoading(loading);
   const slow = useSlowParse(done);
 
@@ -26,7 +29,9 @@ export function Eu5Loading({ loading, filename, done }: Eu5LoadingProps) {
       style={{ transitionDuration: `${LOADING_DISSOLVE_MS}ms` }}
       aria-hidden={done || undefined}
     >
-      <div className="w-full max-w-[520px] pb-[8vh]">
+      {preview ? <SavePreviewUnderlay src={preview} groundClassName="text-game-page" /> : null}
+
+      <div className="relative w-full max-w-[520px] pb-[8vh]">
         <div className="flex items-baseline justify-between gap-4">
           <p className="min-w-0 truncate text-[17px] leading-tight font-medium text-game-ink-100">
             {filename}
@@ -64,7 +69,9 @@ export function Eu5Loading({ loading, filename, done }: Eu5LoadingProps) {
         </div>
 
         <p className="mt-3 text-[11px] leading-[1.4] text-game-ink-500">
-          Parsing locally in your browser.
+          {preview
+            ? "Downloading, then parsing in your browser."
+            : "Parsing locally in your browser."}
         </p>
       </div>
     </div>

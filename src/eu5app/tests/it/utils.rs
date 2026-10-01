@@ -99,6 +99,11 @@ static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
     resolver
 });
 
+/// The EU5 binary token resolver, empty when the token file is not present.
+pub fn tokens() -> &'static BasicTokenResolver {
+    &TOKENS
+}
+
 pub struct LoadedWorkspace {
     pub workspace: Eu5Workspace<'static>,
     pub localization: Localization,
@@ -109,7 +114,7 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
     let file = request_file(save_name);
     let file = Eu5File::from_file(file).unwrap_or_else(|e| panic!("{save_name}: {e}"));
     let is_binary = file.header().kind().is_binary();
-    let resolver = &*TOKENS;
+    let resolver = tokens();
     if is_binary && resolver.is_empty() {
         eprintln!("{save_name}: EU5 binary tokens not loaded");
         return None;

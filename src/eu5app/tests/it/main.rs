@@ -2,8 +2,10 @@ mod utils;
 
 use std::collections::BTreeMap;
 
-use eu5app::{Eu5Workspace, MapMode};
+use eu5app::{Eu5SaveLoader, Eu5Workspace, MapMode};
 use eu5save::models::LocationIdx;
+use eu5save::{Eu5File, JominiFileKind};
+use jomini::binary::TokenResolver;
 
 const ALL_MAP_MODES: [MapMode; 12] = [
     MapMode::Political,
@@ -280,4 +282,35 @@ fn incremental_timeline_steps_match_a_full_repaint() {
             "{save_name}: incremental steps drift from a full repaint"
         );
     });
+}
+
+/// The browser uploads saves after `pdx-save-codec` remuxes the zip entries to
+/// zstd. The permalink page opens that upload with the same feature set as
+/// this crate's defaults, so the zstd zip path must work without the C
+/// backend.
+#[test]
+fn opens_a_zstd_remuxed_zip_save() {
+    let mut file = utils::request_file("Clandeboye.eu5");
+    let mut data = Vec::new();
+    std::io::Read::read_to_end(&mut file, &mut data).unwrap();
+    let original = Eu5File::from_slice(data.clone()).unwrap();
+    assert!(
+        matches!(original.kind(), JominiFileKind::Zip(_)),
+        "fixture must be a zip save for this test to cover the remux path"
+    );
+
+    let compressed = pdx_save_codec::compress(data).expect("remux EU5 fixture");
+    assert!(!pdx_zstd::is_zstd_compressed(&compressed));
+
+    let file = Eu5File::from_slice(compressed).unwrap();
+    assert!(matches!(file.kind(), JominiFileKind::Zip(_)));
+    let loader = Eu5SaveLoader::open(file, utils::tokens()).unwrap();
+    assert_eq!(loader.meta().version.major, 1);
+    assert!(!loader.meta().playthrough_name.is_empty());
+    if utils::tokens().is_empty() {
+        eprintln!("EU5 binary tokens not loaded; skipping gamestate parse");
+        return;
+    }
+    let mut loaded = loader.parse().unwrap();
+    assert!(loaded.take_gamestate().locations.iter().next().is_some());
 }

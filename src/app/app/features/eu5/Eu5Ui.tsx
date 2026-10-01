@@ -20,6 +20,7 @@ import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel, MAP_MODE_TITLES } from "./Eu5InsightPanel";
 import { Eu5Loading, LOADING_DISSOLVE_MS } from "./Eu5Loading";
 import { developerLog } from "@/lib/log";
+import { ogImageUrl } from "@/lib/media";
 import {
   useLoadEu5,
   Eu5StoreProvider,
@@ -41,6 +42,7 @@ import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
+import { GameThemeProvider } from "@/components/GameThemeProvider";
 
 type Eu5UiProps = {
   save: Eu5SaveInput;
@@ -64,7 +66,7 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
   }, [error]);
 
   return (
-    <>
+    <GameThemeProvider theme="eu5">
       <div className="absolute inset-0 bg-game-page" />
 
       {/* Canvas layer — always present, always fills viewport */}
@@ -86,11 +88,16 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       ) : null}
 
       {showLoading ? (
-        <Eu5Loading loading={loading} filename={saveFilename(save)} done={settled} />
+        <Eu5Loading
+          loading={loading}
+          filename={saveFilename(save)}
+          done={settled}
+          preview={save.kind === "server" ? ogImageUrl(save.saveId, "eu5") : undefined}
+        />
       ) : null}
 
       {error !== null ? <Eu5ErrorDisplay error={error} /> : null}
-    </>
+    </GameThemeProvider>
   );
 };
 
@@ -123,7 +130,7 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
 };
 
 function saveFilename(save: Eu5SaveInput): string {
-  return save.kind === "handle" ? save.name : save.file.name;
+  return save.kind === "file" ? save.file.name : save.name;
 }
 
 /** Keep the loader mounted through its fade-out. */

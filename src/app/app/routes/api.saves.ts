@@ -83,6 +83,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
     (put) =>
       metrics.record({
         domain: "save_file",
+        game: "eu4",
         operation: "save_file_put",
         outcome: "success",
         status: 200,
@@ -92,6 +93,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
     () =>
       metrics.record({
         domain: "save_file",
+        game: "eu4",
         operation: "save_file_put",
         outcome: "error",
         status: "error",
@@ -106,6 +108,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
     ).catch((err) => {
       metrics.record({
         domain: "parse_api",
+        game: "eu4",
         operation: "parse_save",
         outcome: "error",
         status: "error",
@@ -117,6 +120,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
     const out = parsed.data;
     metrics.record({
       domain: "parse_api",
+      game: "eu4",
       operation: "parse_save",
       outcome: "success",
       status: 200,
@@ -160,7 +164,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
     const { db, close } = usingDb(context);
     try {
       await db.transaction(async (tx) => {
-        await tx.insert(table.saves).values(newSave);
+        await tx.insert(table.eu4Saves).values(newSave);
         await uploadTask;
       });
     } finally {
@@ -171,6 +175,7 @@ export const action = withCore(async ({ request, context }: Route.ActionArgs) =>
       userId: session.id,
       event: "Save created",
       key: saveId,
+      game: "eu4",
     });
 
     const response: SavePostResponse = {

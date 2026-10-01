@@ -1,56 +1,168 @@
-import { Suspense } from "react";
-import { Button } from "@/components/Button";
-import { NewestSavesTable } from "./components/NewestSavesTable";
-import { DropdownMenu } from "@/components/DropdownMenu";
+import { Suspense, useMemo, useState } from "react";
+import { Await } from "react-router";
+import { HydrationBoundary } from "@tanstack/react-query";
+import type { DehydratedState } from "@tanstack/react-query";
+import { FeedList } from "@/features/saves/FeedList";
 import { Link } from "@/components/Link";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorCatcher, ErrorDisplay } from "@/features/errors";
+import { HubHeader } from "@/features/games/HubHeader";
+import {
+  AchievementRequest,
+  AchievementSearch,
+  AchievementWall,
+  matchAchievements,
+} from "./components/AchievementWall";
+import { PodiumFinishes } from "./components/PodiumFinishes";
+import { startSaves } from "./startSaves";
+import { formatInt } from "@/lib/format";
+import type { Achievement } from "@/services/appApi";
+import type { PodiumFinish } from "@/server-lib/fn/achievement";
 
-const saves = [
-  ["1.29", "/eu4/saves/10loz22jqw1l"],
-  ["1.30", "/eu4/saves/zvqrv7lo87g9"],
-  ["1.31", "/eu4/saves/s6u655fwi12i"],
-  ["1.32", "/eu4/saves/wa9sqd1flyy2"],
-  ["1.33", "/eu4/saves/o22v44qsdhif"],
-  ["1.34", "/eu4/saves/6h5y5wra5lco"],
-  ["1.35", "/eu4/saves/9364azxkhger"],
-  ["1.36", "/eu4/saves/2y02s2d41qa2"],
-  ["1.37", "/eu4/saves/o0w8pdyw9otf"],
-] as const;
+/** The EU4 hub shows the newest campaigns; the feed page has the rest. */
+export const HUB_FEED_QUERY = { game: "eu4", pageSize: 3 } as const;
 
-export const Eu4GamePage = () => {
+/** How many of the newest podium finishes the hub shows: two full rows of three. */
+export const PODIUM_LIMIT = 6;
+
+/**
+ * The 1444 start of one patch. Borders barely move between versions, so a
+ * row of map previews would read as one map nine times; the patch number is
+ * the whole of what tells these saves apart.
+ */
+function StartSaveChip({ patch, saveId }: { patch: string; saveId: string }) {
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-12 p-5">
-      <div className="flex flex-col gap-8 md:flex-row">
-        <h1 className="text-4xl">Latest EU4 Saves</h1>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenu.Trigger asChild>
-              <Button>1444 saves</Button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Content className="w-24">
-              {saves.map(([patch, url]) => (
-                <DropdownMenu.Item key={patch} asChild>
-                  <Link target="_blank" href={url} className="justify-center">
-                    {patch}
-                  </Link>
-                </DropdownMenu.Item>
-              ))}
-            </DropdownMenu.Content>
-          </DropdownMenu>
-        </div>
+    <Link
+      to={`/eu4/saves/${saveId}`}
+      variant="ghost"
+      className="inline-flex h-8 items-center rounded-sm border border-gray-400/60 px-3 font-mono text-sm font-semibold tabular-nums ring-offset-2 ring-offset-white transition-colors outline-none hover:border-sky-600 hover:bg-sky-600 hover:text-white focus-visible:ring-2 focus-visible:ring-sky-600 dark:border-gray-600 dark:ring-offset-slate-900"
+    >
+      {patch}
+    </Link>
+  );
+}
+
+/** The newest podium finishes, with `children` in place of the list. */
+function PodiumSection({ children }: { children: React.ReactNode }) {
+  return (
+    <section aria-labelledby="podium" className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <h2 id="podium" className="text-2xl font-bold tracking-tight">
+          Recent podium finishes
+        </h2>
+        <p className="max-w-prose text-gray-700 dark:text-gray-300">
+          The newest runs to hold a top-three place on an achievement leaderboard. Places are live:
+          a faster run or a new patch can take a medal away.
+        </p>
       </div>
-      <div className="flex flex-col gap-2">
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The hub renders at once. The podium and the recent uploads come from the
+ * database, so each streams into its section when it is ready.
+ */
+export const Eu4GamePage = ({
+  achievements,
+  feed,
+  podium,
+}: {
+  achievements: Achievement[];
+  /** The recent uploads, to hydrate the feed query. */
+  feed: Promise<DehydratedState>;
+  /** Null when the podium failed to load. */
+  podium: Promise<PodiumFinish[] | null>;
+}) => {
+  const [query, setQuery] = useState("");
+  const matches = useMemo(() => matchAchievements(achievements, query), [achievements, query]);
+
+  return (
+    <div className="mx-auto flex max-w-5xl flex-col gap-16 p-5 md:p-9">
+      <HubHeader title="Europa Universalis IV" />
+
+      <Suspense
+        fallback={
+          <PodiumSection>
+            <LoadingState />
+          </PodiumSection>
+        }
+      >
+        <Await resolve={podium}>
+          {/* No section is better than an empty one: the wall below leads to every leaderboard. */}
+          {(finishes) =>
+            finishes && finishes.length > 0 ? (
+              <PodiumSection>
+                <PodiumFinishes finishes={finishes} />
+              </PodiumSection>
+            ) : null
+          }
+        </Await>
+      </Suspense>
+
+      <section aria-labelledby="achievements" className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 id="achievements" className="text-2xl font-bold tracking-tight">
+              Achievements
+            </h2>
+            <p className="max-w-prose text-gray-700 dark:text-gray-300">
+              {formatInt(achievements.length)} achievements have a speedrun leaderboard, ranked by
+              in-game days and taxed 10% for every patch a run is behind the latest.
+            </p>
+          </div>
+          <AchievementSearch
+            value={query}
+            onChange={setQuery}
+            matches={matches}
+            total={achievements.length}
+          />
+        </div>
+        {/* A search that finds nothing names itself; otherwise the request sits under the wall. */}
+        {matches?.size === 0 && <AchievementRequest query={query.trim()} />}
+        <AchievementWall achievements={achievements} matches={matches} />
+        {matches?.size !== 0 && <AchievementRequest />}
+      </section>
+
+      <section aria-labelledby="start-saves" className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
+          <h2 id="start-saves" className="text-2xl font-bold tracking-tight">
+            The starting world across patches
+          </h2>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {startSaves.map((save) => (
+            <li key={save.patch}>
+              <StartSaveChip patch={save.patch} saveId={save.saveId} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="recent-saves" className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2 id="recent-saves" className="text-2xl font-bold tracking-tight">
+            Recent uploads
+          </h2>
+          <Link to="/saves?game=eu4">All EU4 campaigns</Link>
+        </div>
         <Suspense fallback={<LoadingState />}>
           <ErrorCatcher
             fallback={(args) => (
-              <ErrorDisplay {...args} className="m-8" title="Failed to load latest EU4 saves" />
+              <ErrorDisplay {...args} className="m-8" title="Failed to load recent EU4 saves" />
             )}
           >
-            <NewestSavesTable />
+            <Await resolve={feed}>
+              {(state) => (
+                <HydrationBoundary state={state}>
+                  <FeedList query={HUB_FEED_QUERY} infinite={false} compact />
+                </HydrationBoundary>
+              )}
+            </Await>
           </ErrorCatcher>
         </Suspense>
-      </div>
+      </section>
     </div>
   );
 };

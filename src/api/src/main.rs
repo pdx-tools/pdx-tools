@@ -15,6 +15,7 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan, prelude::*};
 
+mod eu5;
 mod screenshot;
 
 // Avoid musl's default allocator due to lackluster performance
@@ -102,9 +103,11 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", post(upload))
+        .route("/eu5", post(eu5::metadata))
         .route("/healthz", get(health))
         .route("/screenshot", post(screenshot::endpoint))
-        .layer(DefaultBodyLimit::max(50 * 1024 * 1024))
+        .route("/eu5/screenshot", post(screenshot::eu5_endpoint))
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))

@@ -13,15 +13,13 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["zstd_rust"]
-zstd_c = ["pdx-zstd/zstd_c"]
-zstd_rust = ["pdx-zstd/zstd_rust"]
-zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto"]
+zstd_c = ["pdx-save-codec/zstd_c"]
+zstd_rust = ["pdx-save-codec/zstd_rust"]
+zstd_c_fat_lto = ["pdx-save-codec/zstd_c_fat_lto"]
 
 [dependencies]
-flate2 = { default-features = false, features = ["zlib-rs"] , workspace = true }
 js-sys = { workspace = true }
-pdx-zstd = { workspace = true }
-rawzip = { workspace = true }
+pdx-save-codec = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
 wasm-bindgen = { workspace = true }

@@ -5,11 +5,13 @@ import type { StoreApi } from "zustand";
 import { isTimelineLive } from "../ui-engine";
 import type { AppEngine, AppState } from "../ui-engine";
 import type { Eu5DateComponents, Eu5PlayerData, WorldSummary } from "@/wasm/wasm_eu5";
+import type { Eu5ParsedSave } from "./types";
 
 type Eu5State = {
   engine: AppEngine;
   appState: AppState;
   filename: string;
+  saveInput: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
@@ -23,6 +25,14 @@ type Eu5State = {
   /** Height of the timeline bar over the map, so overlays can sit above it. */
   timelineBarHeight: number;
   setTimelineBarHeight: (height: number) => void;
+  /**
+   * The permalink id of a local save that this session uploaded. It is in
+   * the store and not in the share row, so the row keeps offering the link
+   * if it remounts. A save opened from its permalink has its id in
+   * `saveInput`.
+   */
+  uploadedSaveId: string | null;
+  setUploadedSaveId: (id: string) => void;
 };
 
 export type Eu5Store = StoreApi<Eu5State>;
@@ -31,6 +41,7 @@ export const Eu5Context = createContext<Eu5Store | null>(null);
 
 export const createEu5Store = (
   engine: AppEngine,
+  saveInput: Eu5ParsedSave,
   filename: string,
   saveDate: Eu5DateComponents,
   playthroughName: string,
@@ -39,6 +50,7 @@ export const createEu5Store = (
 ): Eu5Store => {
   const store = createStore<Eu5State>()((set) => ({
     engine,
+    saveInput,
     appState: engine.getState(),
     filename,
     saveDate,
@@ -51,6 +63,8 @@ export const createEu5Store = (
     setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
     setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
     setTimelineBarHeight: (height) => set({ timelineBarHeight: height }),
+    uploadedSaveId: null,
+    setUploadedSaveId: (id) => set({ uploadedSaveId: id }),
   }));
 
   engine.subscribe((appState) => {
@@ -83,6 +97,7 @@ export const useEu5PaletteGradients = () => useEu5Store((x) => x.appState.palett
 export const useEu5BoxSelectRect = () => useEu5Store((x) => x.appState.boxSelectRect);
 export const useEu5CursorHint = () => useEu5Store((x) => x.appState.cursorHint);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
+export const useEu5SaveInput = () => useEu5Store((x) => x.saveInput);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5World = () => useEu5Store((x) => x.world);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
@@ -102,3 +117,5 @@ export const useEu5Timelapse = () => useEu5Store((x) => x.appState.timelapse);
 export const useEu5MapViewport = () => useEu5Store((x) => x.appState.mapViewport);
 export const useEu5TimelineBarHeight = () => useEu5Store((x) => x.timelineBarHeight);
 export const useSetEu5TimelineBarHeight = () => useEu5Store((x) => x.setTimelineBarHeight);
+export const useEu5UploadedSaveId = () => useEu5Store((x) => x.uploadedSaveId);
+export const useSetEu5UploadedSaveId = () => useEu5Store((x) => x.setUploadedSaveId);

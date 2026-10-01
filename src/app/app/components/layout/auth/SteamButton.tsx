@@ -28,6 +28,18 @@ function steamLoginUrl(returnTo?: string) {
   return steamUrl;
 }
 
+/**
+ * Where a link sends a visitor to sign in. Production goes through Steam; a
+ * dev build without an external address goes directly to the callback.
+ */
+export function steamLoginHref(returnTo?: string): string {
+  const steamUrl = steamLoginUrl(returnTo);
+  if (steamUrl) return steamUrl.toString();
+  const params = new URLSearchParams(returnTo ? { returnTo } : {});
+  const query = params.toString();
+  return query ? `/api/login/steam-callback?${query}` : "/api/login/steam-callback";
+}
+
 function SteamImage() {
   return (
     <img
@@ -40,30 +52,12 @@ function SteamImage() {
   );
 }
 
-function SteamForm({ returnTo }: { returnTo?: string }) {
-  return (
-    <form method="GET" action="/api/login/steam-callback">
-      {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
-      <button type="submit">
-        <SteamImage />
-      </button>
-    </form>
-  );
-}
-
-export const SteamButton = ({ returnTo }: { returnTo?: string }) => {
-  const steamUrl = steamLoginUrl(returnTo);
-  if (steamUrl) {
-    return (
-      <Link
-        href={`${steamUrl}`}
-        className="hover:outline-initial border-none bg-transparent"
-        target="_self"
-      >
-        <SteamImage />
-      </Link>
-    );
-  } else {
-    return <SteamForm returnTo={returnTo} />;
-  }
-};
+export const SteamButton = ({ returnTo }: { returnTo?: string }) => (
+  <Link
+    href={steamLoginHref(returnTo)}
+    className="hover:outline-initial border-none bg-transparent"
+    target="_self"
+  >
+    <SteamImage />
+  </Link>
+);

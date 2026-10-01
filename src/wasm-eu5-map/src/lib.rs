@@ -1,5 +1,6 @@
 use eu5app::{
-    GroupId, GroupingTable, game_data::OptimizedMapBundle, should_highlight_individual_locations,
+    GroupId, GroupingTable, OpeningView, game_data::OptimizedMapBundle,
+    should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
@@ -315,11 +316,16 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn on_scroll(&mut self, scroll_lines: f32) {
         self.input.on_scroll(scroll_lines);
+        self.apply_zoomed_viewport();
+    }
 
+    /// Send the input viewport to the renderer, and show location borders
+    /// only at zoom levels where they are legible. Call this after a change
+    /// to the zoom level.
+    fn apply_zoomed_viewport(&mut self) {
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
 
-        // Update location borders based on zoom level
         let show_borders = should_highlight_individual_locations(bounds.zoom_level);
         self.controller
             .renderer_mut()
@@ -441,6 +447,19 @@ impl Eu5WasmMapRenderer {
 
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Open the map on the view the save calls for.
+    #[wasm_bindgen]
+    pub fn open_view(&mut self, view: Ts<OpeningView>) -> Result<(), JsError> {
+        match view.to_rust()? {
+            OpeningView::Capital { color_id } => self.center_at_color_id(color_id.value()),
+            OpeningView::World => {
+                self.input.fit_map();
+                self.apply_zoomed_viewport();
+            }
+        }
+        Ok(())
     }
 
     /// Center the viewport at a location by its color ID (R16 texture index).

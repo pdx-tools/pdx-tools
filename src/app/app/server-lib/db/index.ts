@@ -1,13 +1,41 @@
-import { saves, users } from "./schema";
+import { eu4AchievementBests, eu4Saves, eu5Saves, users } from "./schema";
 import type { GameDifficulty, Save } from "./schema";
 import type { ParsedFile } from "../functions";
-import { sql, eq, desc, and, isNotNull, inArray, asc } from "drizzle-orm";
+import { sql, eq, asc, desc } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { NotFoundError } from "../errors";
 import type { Achievement } from "@/wasm/wasm_app";
 import { eu4DaysToDate } from "../game";
 import type { DbConnection } from "./connection";
 import type { UserId } from "@/lib/auth";
-export { type User, type Save, type GameDifficulty, type NewSave } from "./schema";
+export {
+  type User,
+  type Save,
+  type GameDifficulty,
+  type NewSave,
+  type Eu5Save,
+  type NewEu5Save,
+} from "./schema";
+
+/**
+ * A campaign has one playthrough ID.
+ * A multiplayer campaign can include saves from more than one user.
+ * A single-player campaign belongs to the user who uploaded it.
+ *
+ * The key comes from one save only, so that the feed can find a campaign
+ * through the playthrough index. Thus a save that lists one player goes to
+ * the campaign of its uploader, also when the other saves of its playthrough
+ * are multiplayer. This is intentional: such a save is the same as a
+ * single-player save that continues a shared file.
+ */
+export function campaignKey(s: {
+  playthroughId: AnyPgColumn;
+  players: AnyPgColumn;
+  userId: AnyPgColumn;
+}): SQL<string> {
+  return sql<string>`${s.playthroughId} || CASE WHEN cardinality(${s.players}) > 1 THEN '' ELSE ':' || ${s.userId} END`;
+}
 
 export const userView = {
   get userName() {
@@ -17,17 +45,17 @@ export const userView = {
 
 export function saveView<S, U>(opts?: { save?: S; user?: U }) {
   const saveColumns = {
-    id: table.saves.id,
-    upload_time: table.saves.createdOn,
-    date: table.saves.date,
-    player_tag: table.saves.playerTag,
-    player_tag_name: table.saves.playerTagName,
-    player_start_tag: table.saves.playerStartTag,
-    player_start_tag_name: table.saves.playerStartTagName,
-    patch: sql<string>`CONCAT(${table.saves.saveVersionFirst}, '.', ${table.saves.saveVersionSecond}, '.', ${table.saves.saveVersionThird}, '.', ${table.saves.saveVersionFourth})`,
-    difficulty: table.saves.gameDifficulty,
-    achievements: table.saves.achieveIds,
-    leaderboard_qualified: table.saves.leaderboardQualified,
+    id: table.eu4Saves.id,
+    upload_time: table.eu4Saves.createdOn,
+    date: table.eu4Saves.date,
+    player_tag: table.eu4Saves.playerTag,
+    player_tag_name: table.eu4Saves.playerTagName,
+    player_start_tag: table.eu4Saves.playerStartTag,
+    player_start_tag_name: table.eu4Saves.playerStartTagName,
+    patch: sql<string>`CONCAT(${table.eu4Saves.saveVersionFirst}, '.', ${table.eu4Saves.saveVersionSecond}, '.', ${table.eu4Saves.saveVersionThird}, '.', ${table.eu4Saves.saveVersionFourth})`,
+    difficulty: table.eu4Saves.gameDifficulty,
+    achievements: table.eu4Saves.achieveIds,
+    leaderboard_qualified: table.eu4Saves.leaderboardQualified,
     ...opts?.save,
   } as const;
 
@@ -108,84 +136,103 @@ export const fromParsedSave = (save: Partial<ParsedFile>): Partial<Save> => {
 
 export const table = {
   users,
-  saves,
+  eu4Saves,
+  eu4AchievementBests,
+  eu5Saves,
 };
 
-export type UserSaves = Awaited<ReturnType<typeof getUser>>;
-export async function getUser(db: DbConnection, userId: UserId) {
-  const userSaves = await db
-    .select(
-      saveView({
-        save: {
-          filename: table.saves.filename,
-          playthrough_id: table.saves.playthroughId,
-          days: table.saves.days,
-          players: sql<number>`cardinality(players)`,
-        },
-        user: {
-          created_on: table.users.createdOn,
-        },
-      }),
-    )
-    .from(table.saves)
-    .rightJoin(table.users, eq(table.users.userId, table.saves.userId))
-    .where(eq(table.users.userId, userId))
-    .orderBy(desc(table.saves.createdOn));
+/** The user, without their saves. */
+export async function getUserInfo(db: DbConnection, userId: UserId) {
+  const [user] = await db
+    .select({
+      created_on: table.users.createdOn,
+      user_id: table.users.userId,
+      user_name: userView.userName,
+    })
+    .from(table.users)
+    .where(eq(table.users.userId, userId));
 
-  const firstRow = userSaves.at(0);
-  if (firstRow === undefined) {
+  if (user === undefined) {
     throw new NotFoundError("user");
   }
 
-  const saves = userSaves
-    .map((x) => x.save)
-    .filter((x) => x !== null)
-    .map(toApiSave);
+  return { ...user, created_on: user.created_on.toISOString() };
+}
+
+export type UserSaves = Awaited<ReturnType<typeof getUser>>;
+
+/** The user and every save they shared, newest first. */
+export async function getUser(db: DbConnection, userId: UserId) {
+  // The three queries run at the same time, so the request waits about as
+  // long as for one query.
+  const [userInfo, eu4Saves, eu5Saves] = await Promise.all([
+    getUserInfo(db, userId),
+    db
+      .select(
+        saveView({
+          save: {
+            filename: table.eu4Saves.filename,
+            playthrough_id: table.eu4Saves.playthroughId,
+            days: table.eu4Saves.days,
+            players: sql<number>`cardinality(${table.eu4Saves.players})`,
+          },
+        }).save,
+      )
+      .from(table.eu4Saves)
+      .where(eq(table.eu4Saves.userId, userId))
+      .orderBy(desc(table.eu4Saves.createdOn)),
+    db
+      .select({
+        id: table.eu5Saves.id,
+        upload_time: table.eu5Saves.createdOn,
+        filename: table.eu5Saves.filename,
+        date: table.eu5Saves.date,
+        playthrough_id: table.eu5Saves.playthroughId,
+        playthrough_name: table.eu5Saves.playthroughName,
+        version_major: table.eu5Saves.versionMajor,
+        version_minor: table.eu5Saves.versionMinor,
+        version_patch: table.eu5Saves.versionPatch,
+      })
+      .from(table.eu5Saves)
+      .where(eq(table.eu5Saves.userId, userId))
+      .orderBy(desc(table.eu5Saves.createdOn)),
+  ]);
 
   return {
-    user_info: {
-      created_on: new Date(firstRow.user.created_on).toISOString(),
-      user_id: firstRow.user.user_id,
-      user_name: firstRow.user.user_name,
-    },
-    saves,
+    user_info: userInfo,
+    saves: eu4Saves.map(toApiSave),
+    eu5_saves: eu5Saves.map((save) => ({
+      ...save,
+      upload_time: save.upload_time.toISOString(),
+    })),
   };
 }
 
-export async function getAchievementDb(db: DbConnection, achievement: Achievement) {
-  // saves with achievement
-  const saves = db
-    .select({
-      id: table.saves.id,
-      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY playthrough_id ORDER BY score_days)`.as("rn"),
-    })
-    .from(table.saves)
-    .where(
-      and(
-        sql`${table.saves.achieveIds} @> Array[${[achievement.id]}]::int[]`,
-        isNotNull(table.saves.scoreDays),
-        eq(table.saves.leaderboardQualified, true),
-      ),
-    )
-    .as("ranked");
-
-  // best save in a given playthrough
-  const top = db.select({ id: saves.id }).from(saves).where(eq(saves.rn, 1));
-
-  const result = await db
+/**
+ * The leaderboard of an achievement, in rank order. Set `limit` to get only
+ * the top places.
+ */
+export async function getAchievementDb(db: DbConnection, achievement: Achievement, limit?: number) {
+  // The best save of each playthrough is kept by the database, so the
+  // leaderboard is an index range scan in rank order.
+  const bests = table.eu4AchievementBests;
+  const query = db
     .select(
       saveView({
         save: {
-          scoreDays: table.saves.scoreDays,
-          days: table.saves.days,
-          patch: sql<string>`CONCAT(${table.saves.saveVersionFirst}, '.', ${table.saves.saveVersionSecond})`,
+          scoreDays: table.eu4Saves.scoreDays,
+          days: table.eu4Saves.days,
+          patch: sql<string>`CONCAT(${table.eu4Saves.saveVersionFirst}, '.', ${table.eu4Saves.saveVersionSecond})`,
         },
       }),
     )
-    .from(table.saves)
-    .innerJoin(table.users, eq(table.users.userId, table.saves.userId))
-    .where(inArray(table.saves.id, top))
-    .orderBy(asc(table.saves.scoreDays), asc(table.saves.createdOn));
+    .from(bests)
+    .innerJoin(table.eu4Saves, eq(table.eu4Saves.id, bests.saveId))
+    .innerJoin(table.users, eq(table.users.userId, table.eu4Saves.userId))
+    .where(eq(bests.achieveId, achievement.id))
+    .orderBy(asc(bests.scoreDays), asc(bests.createdOn), asc(bests.saveId))
+    .$dynamic();
+  const result = await (limit === undefined ? query : query.limit(limit));
 
   const leaderboard = result.map(({ save: { scoreDays, days, ...save }, user }) => ({
     ...user,
