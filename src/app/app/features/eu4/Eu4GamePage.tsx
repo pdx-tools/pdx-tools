@@ -46,15 +46,9 @@ function StartSaveChip({ patch, saveId }: { patch: string; saveId: string }) {
 function PodiumSection({ children }: { children: React.ReactNode }) {
   return (
     <section aria-labelledby="podium" className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1">
-        <h2 id="podium" className="text-2xl font-bold tracking-tight">
-          Recent podium finishes
-        </h2>
-        <p className="max-w-prose text-gray-700 dark:text-gray-300">
-          The newest runs to hold a top-three place on an achievement leaderboard. Places are live:
-          a faster run or a new patch can take a medal away.
-        </p>
-      </div>
+      <h2 id="podium" className="text-2xl font-bold tracking-tight">
+        Recent podium finishes
+      </h2>
       {children}
     </section>
   );
@@ -126,11 +120,9 @@ export const Eu4GamePage = ({
       </section>
 
       <section aria-labelledby="start-saves" className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1">
-          <h2 id="start-saves" className="text-2xl font-bold tracking-tight">
-            The starting world across patches
-          </h2>
-        </div>
+        <h2 id="start-saves" className="text-2xl font-bold tracking-tight">
+          The starting world across patches
+        </h2>
         <ul className="flex flex-wrap gap-2">
           {startSaves.map((save) => (
             <li key={save.patch}>
