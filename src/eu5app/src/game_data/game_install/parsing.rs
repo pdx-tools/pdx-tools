@@ -181,47 +181,52 @@ pub fn parse_goods(
 
 #[derive(Debug, Deserialize)]
 struct MapModeColors {
-    colors: FxHashMap<String, ClauseColor>,
+    colors: FxHashMap<String, NamedColor>,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct ClauseColor([u8; 3]);
-
-#[derive(Deserialize)]
-enum ColorKind {
-    #[serde(rename = "rgb")]
-    Rgb,
-    #[serde(rename = "hsv")]
-    Hsv,
-    #[serde(rename = "hsv360")]
-    Hsv360,
+/// A named color entry. An entry is a color clause (`rgb { 146 134 57 }`) or
+/// the name of a different entry (`subject_familial_governor = map_tunis`).
+#[derive(Debug, Clone)]
+enum NamedColor {
+    Color([u8; 3]),
+    Alias(String),
 }
 
-impl<'de> Deserialize<'de> for ClauseColor {
+impl<'de> Deserialize<'de> for NamedColor {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_seq(ClauseColorVisitor)
+        // A tagged color and a bare name both start with a scalar token. The
+        // seq gives that token first and reads the clause only on request.
+        deserializer.deserialize_seq(NamedColorVisitor)
     }
 }
 
-struct ClauseColorVisitor;
+struct NamedColorVisitor;
 
-impl<'de> Visitor<'de> for ClauseColorVisitor {
-    type Value = ClauseColor;
+impl<'de> Visitor<'de> for NamedColorVisitor {
+    type Value = NamedColor;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("a tagged rgb/hsv/hsv360 color")
+        formatter.write_str("a tagged rgb/hsv/hsv360 color or a named color alias")
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
-        let kind: ColorKind = seq
+        let head: String = seq
             .next_element()?
             .ok_or_else(|| de::Error::custom("missing color kind"))?;
+
+        let kind = match head.as_str() {
+            "rgb" => ColorKind::Rgb,
+            "hsv" => ColorKind::Hsv,
+            "hsv360" => ColorKind::Hsv360,
+            _ => return Ok(NamedColor::Alias(head)),
+        };
+
         let (a, b, c): (f32, f32, f32) = seq
             .next_element()?
             .ok_or_else(|| de::Error::custom("missing color values"))?;
@@ -260,8 +265,14 @@ impl<'de> Visitor<'de> for ClauseColorVisitor {
             }
         };
 
-        Ok(ClauseColor(rgb))
+        Ok(NamedColor::Color(rgb))
     }
+}
+
+enum ColorKind {
+    Rgb,
+    Hsv,
+    Hsv360,
 }
 
 fn float_component(value: f32) -> u8 {
@@ -273,11 +284,42 @@ pub fn parse_map_mode_colors(data: &str) -> Result<FxHashMap<String, [u8; 3]>, G
     let raw: MapModeColors = jomini::text::de::TextDeserializer::from_utf8_reader(reader)
         .deserialize()
         .map_err(|e| GameDataError::Jomini(e, "named_colors"))?;
-    Ok(raw
-        .colors
-        .into_iter()
-        .map(|(name, color)| (name, color.0))
-        .collect())
+    resolve_named_colors(&raw.colors)
+}
+
+/// Resolve each alias to the color at the end of its chain. An alias to a
+/// missing name or an alias chain that loops is an error.
+fn resolve_named_colors(
+    colors: &FxHashMap<String, NamedColor>,
+) -> Result<FxHashMap<String, [u8; 3]>, GameDataError> {
+    colors
+        .iter()
+        .map(|(name, entry)| {
+            let mut current = entry;
+            let mut chain = vec![name.as_str()];
+            loop {
+                match current {
+                    NamedColor::Color(rgb) => return Ok((name.clone(), *rgb)),
+                    NamedColor::Alias(target) => {
+                        if chain.contains(&target.as_str()) {
+                            chain.push(target);
+                            return Err(GameDataError::MissingData(format!(
+                                "named color alias cycle: {}",
+                                chain.join(" -> ")
+                            )));
+                        }
+                        current = colors.get(target).ok_or_else(|| {
+                            GameDataError::MissingData(format!(
+                                "named color '{}' references unknown color '{target}'",
+                                chain.last().unwrap_or(&name.as_str())
+                            ))
+                        })?;
+                        chain.push(target);
+                    }
+                }
+            }
+        })
+        .collect()
 }
 
 pub fn resolve_goods(
@@ -323,6 +365,59 @@ pub fn parse_localization(data: &str) -> impl Iterator<Item = (&str, &str)> + '_
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_map_mode_colors_resolves_aliases() {
+        let data = r#"
+colors = {
+    map_tunis = rgb { 146 134 57 }
+    subject_familial_governor = map_tunis
+    second_hop = subject_familial_governor
+    unit_red = rgb { 1.0 0.0 0.0 }
+}
+"#;
+        let colors = parse_map_mode_colors(data).unwrap();
+        assert_eq!(colors["map_tunis"], [146, 134, 57]);
+        assert_eq!(colors["subject_familial_governor"], [146, 134, 57]);
+        assert_eq!(colors["second_hop"], [146, 134, 57]);
+        assert_eq!(colors["unit_red"], [255, 0, 0]);
+        assert_eq!(colors.len(), 4);
+    }
+
+    #[test]
+    fn test_parse_map_mode_colors_rejects_missing_alias() {
+        let data = r#"
+colors = {
+    subject_familial_governor = map_unknown
+}
+"#;
+        let err = parse_map_mode_colors(data).unwrap_err().to_string();
+        assert!(err.contains("unknown color 'map_unknown'"), "{err}");
+    }
+
+    #[test]
+    fn test_parse_map_mode_colors_rejects_alias_cycle() {
+        let data = r#"
+colors = {
+    a = b
+    b = c
+    c = a
+}
+"#;
+        let err = parse_map_mode_colors(data).unwrap_err().to_string();
+        assert!(err.contains("alias cycle"), "{err}");
+    }
+
+    #[test]
+    fn test_parse_map_mode_colors_rejects_self_alias() {
+        let data = r#"
+colors = {
+    a = a
+}
+"#;
+        let err = parse_map_mode_colors(data).unwrap_err().to_string();
+        assert!(err.contains("alias cycle: a -> a"), "{err}");
+    }
 
     #[test]
     fn test_parse_localization() {
