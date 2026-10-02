@@ -1,3 +1,4 @@
+use hoi4app::{Hoi4World, ProvinceDetails};
 use hoi4save::{
     CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File, MeltOptions, models::Hoi4Save,
 };
@@ -9,7 +10,7 @@ mod log;
 mod tokens;
 pub use tokens::*;
 
-use crate::models::{CountryDetails, Hoi4Metadata};
+use crate::models::{CountryDetails, Hoi4Metadata, LandedCountries};
 mod models;
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -19,6 +20,7 @@ const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
 pub struct SaveFileImpl {
     save: Hoi4Save,
     encoding: Encoding,
+    world: Option<Hoi4World>,
 }
 
 #[wasm_bindgen]
@@ -34,9 +36,63 @@ impl SaveFile {
     pub fn country_details(&self, tag: String) -> Result<Ts<CountryDetails>, JsError> {
         Ok(self.0.country_details(tag).into_ts()?)
     }
+
+    /// Load the game data of the asset bundle (game.zip) so that the save
+    /// can describe and color the map.
+    pub fn load_game_bundle(&mut self, data: &[u8]) -> Result<(), JsError> {
+        let game = hoi4app::read_game_bundle(data)
+            .map_err(|e| JsError::new(&format!("Failed to open game bundle: {e}")))?;
+        self.0.world = Some(Hoi4World::new(&self.0.save, game));
+        Ok(())
+    }
+
+    /// The location arrays that color the map by owner and controller
+    pub fn location_arrays(&self) -> Result<js_sys::Uint32Array, JsError> {
+        let arrays = self.0.world()?.political_location_arrays();
+        Ok(js_sys::Uint32Array::from(arrays.as_data()))
+    }
+
+    /// The flags of each location with the provinces of `tag` highlighted
+    pub fn location_flags(&self, tag: Option<String>) -> Result<js_sys::Uint32Array, JsError> {
+        let tag = tag.map(|x| x.parse::<CountryTag>()).transpose()?;
+        let flags: Vec<u32> = self
+            .0
+            .world()?
+            .location_flags(tag)
+            .into_iter()
+            .map(|x| x.bits())
+            .collect();
+        Ok(js_sys::Uint32Array::from(flags.as_slice()))
+    }
+
+    pub fn province_details(
+        &self,
+        province_id: u32,
+    ) -> Result<Option<Ts<ProvinceDetails>>, JsError> {
+        let details = self.0.world()?.province(province_id);
+        Ok(details.map(|x| x.into_ts()).transpose()?)
+    }
+
+    /// The countries that own land, with their names and colors
+    pub fn landed_countries(&self) -> Result<Ts<LandedCountries>, JsError> {
+        let countries = self.0.world()?.landed_countries();
+        Ok(LandedCountries { countries }.into_ts()?)
+    }
+
+    /// A province in the capital of the country
+    pub fn capital_province(&self, tag: String) -> Result<Option<u32>, JsError> {
+        let tag = tag.parse::<CountryTag>()?;
+        Ok(self.0.world()?.capital_province(tag))
+    }
 }
 
 impl SaveFileImpl {
+    fn world(&self) -> Result<&Hoi4World, JsError> {
+        self.world
+            .as_ref()
+            .ok_or_else(|| JsError::new("game bundle is not loaded"))
+    }
+
     pub fn metadata(&self) -> Hoi4Metadata {
         let mut countries: Vec<_> = self.save.countries.iter().map(|(tag, _)| *tag).collect();
         countries.sort_unstable();
@@ -45,6 +101,12 @@ impl SaveFileImpl {
             is_meltable: self.is_meltable(),
             player: self.save.player.clone(),
             countries,
+            version: self.save.version.clone(),
+            bundle_version: self
+                .save
+                .version
+                .as_deref()
+                .and_then(hoi4app::bundle_version),
         }
     }
 
@@ -96,6 +158,7 @@ fn _parse_save(data: &[u8]) -> Result<SaveFile, Hoi4Error> {
     Ok(SaveFile(SaveFileImpl {
         save,
         encoding: file.encoding(),
+        world: None,
     }))
 }
 
