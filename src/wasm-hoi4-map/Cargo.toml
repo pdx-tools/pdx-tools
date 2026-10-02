@@ -1,0 +1,29 @@
+[package]
+name = "wasm-hoi4-map"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["zstd_rust"]
+zstd_c = ["hoi4app/zstd_c"]
+zstd_c_fat_lto = ["zstd_c", "pdx-zstd/zstd_c_fat_lto"]
+zstd_rust = ["hoi4app/zstd_rust"]
+
+[dependencies]
+hoi4app = { workspace = true }
+js-sys = { workspace = true }
+pdx-map = { workspace = true, features = ["tracing", "interaction"] }
+pdx-zstd = { workspace = true, default-features = false }
+tsify = { workspace = true, default-features = false, features = ["js"] }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+wasm-pdx-core = { workspace = true }
+wasm-pdx-map = { workspace = true }
+web-sys = { workspace = true, features = ["OffscreenCanvas"] }
