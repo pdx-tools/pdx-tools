@@ -1,4 +1,4 @@
-use pdx_save_codec::{Compression, ContentType, compress, decompress};
+use pdx_save_codec::{Compression, ContentType, compress, download};
 use rawzip::CompressionMethod;
 use std::io::{Read, Write};
 
@@ -68,7 +68,7 @@ fn test_recompression_plaintext() {
     let compressed = compression.compress().unwrap();
     assert!(pdx_zstd::is_zstd_compressed(&compressed));
     assert_eq!(unzstd(&compressed), data);
-    assert_eq!(decompress(compressed).unwrap(), data);
+    assert_eq!(download(compressed).unwrap(), data);
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn test_recompression_zip() {
         [("test.txt".to_string(), b"aaaaaaaaaa\n".to_vec())]
     );
 
-    let original = decompress(compressed).unwrap();
+    let original = download(compressed).unwrap();
     let entries = read_zip(&original, CompressionMethod::DEFLATE, inflate);
     assert_eq!(
         entries,
@@ -107,7 +107,7 @@ fn test_zip_prelude_survives_round_trip() {
         ]
     );
 
-    let restored = decompress(compressed).unwrap();
+    let restored = download(compressed).unwrap();
     assert!(restored.starts_with(prelude));
     let entries = read_zip(&restored, CompressionMethod::DEFLATE, inflate);
     assert_eq!(
@@ -126,15 +126,15 @@ fn test_zip_directory_entries_are_dropped() {
     let entries = read_zip(&compressed, CompressionMethod::ZSTD, unzstd);
     assert_eq!(entries, [("dir/file".to_string(), b"content".to_vec())]);
 
-    let restored = decompress(compressed).unwrap();
+    let restored = download(compressed).unwrap();
     let entries = read_zip(&restored, CompressionMethod::DEFLATE, inflate);
     assert_eq!(entries, [("dir/file".to_string(), b"content".to_vec())]);
 }
 
 #[test]
-fn test_decompress_passes_through_unknown_data() {
+fn test_download_passes_through_uncompressed_data() {
     let data = b"not a zip, not zstd".to_vec();
-    assert_eq!(decompress(data.clone()).unwrap(), data);
+    assert_eq!(download(data.clone()).unwrap(), data);
 }
 
 fn assert_progress(reports: &[f64]) {
@@ -160,8 +160,14 @@ fn test_progress_reports_end_at_one() {
 
         let mut reports = Vec::new();
         let restored =
-            pdx_save_codec::decompress_with_progress(compressed, |p| reports.push(p)).unwrap();
+            pdx_save_codec::download_with_progress(compressed, |p| reports.push(p)).unwrap();
         assert_progress(&reports);
         assert_eq!(restored.len(), data.len());
     }
+}
+
+#[test]
+fn test_download_passes_through_deflate_zip() {
+    let data = deflate_zip(b"EU5txt\n", &[("gamestate", b"state"), ("meta", b"meta")]);
+    assert_eq!(download(data.clone()).unwrap(), data);
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cx } from "class-variance-authority";
-import { CheckIcon, LinkIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, CheckIcon, LinkIcon } from "@heroicons/react/24/outline";
 import { useCopyLink } from "@/features/saves/useCopyLink";
 import { Link } from "@/components/Link";
 import { Tooltip } from "@/components/Tooltip";
@@ -11,6 +11,8 @@ import { steamLoginHref } from "@/components/layout/auth/SteamButton";
 import { hasFeature } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { DISCORD_INVITE_URL } from "@/lib/links";
+import { downloadData } from "@/lib/downloadData";
+import { emitEvent } from "@/lib/events";
 import { toast } from "@/lib/toast";
 import { pdxApi } from "@/services/appApi";
 import {
@@ -169,13 +171,17 @@ function Shared({ saveId, origin }: { saveId: string; origin: "session" | "perma
   );
 
   // On the permalink page the visitor is already on the link and did not
-  // share the save, so the row offers a quiet copy and no commit.
+  // share the save, so the row offers a quiet copy and no commit. The
+  // visitor does not have the file, so the row also offers it.
   if (origin === "permalink") {
     return (
-      <GameButton variant="ghost" className="px-2" onClick={copy} aria-live="polite">
-        {copied ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
-        {copied ? "Copied" : "Copy link"}
-      </GameButton>
+      <>
+        <GameButton variant="ghost" className="px-2" onClick={copy} aria-live="polite">
+          {copied ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+          {copied ? "Copied" : "Copy link"}
+        </GameButton>
+        <DownloadSave saveId={saveId} />
+      </>
     );
   }
 
@@ -198,6 +204,70 @@ function Shared({ saveId, origin }: { saveId: string; origin: "session" | "perma
       >
         {copyLabel}
       </GameButton>
+    </>
+  );
+}
+
+/**
+ * Download the shared save. While the file downloads and the original format
+ * is restored, the row's hairline is the track, as it is for an upload. The
+ * button shows the percent in place of its label.
+ */
+function DownloadSave({ saveId }: { saveId: string }) {
+  const filename = useSaveFilename();
+  const download = pdxApi.eu5Saves.useDownload();
+  const [progress, setProgress] = useState(0);
+  const percent = Math.round(progress);
+
+  const start = () => {
+    if (download.isPending) return;
+    setProgress(0);
+    download.mutate(
+      // Round the progress, so that React renders only when the percent changes.
+      { saveId, dispatch: (value) => setProgress(Math.round(value)) },
+      {
+        onSuccess: (data) => {
+          emitEvent({ kind: "Save downloaded", game: "eu5" });
+          downloadData(data, filename);
+        },
+        onError: (error) =>
+          toast.error("Could not download the save", {
+            description: getErrorMessage(error),
+            duration: Infinity,
+            closeButton: true,
+          }),
+      },
+    );
+  };
+
+  return (
+    <>
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {!download.isPending ? "" : progress < 50 ? "Downloading" : "Preparing the save"}
+      </span>
+      <GameButton
+        variant="ghost"
+        className="min-w-[6.5rem] justify-start px-2"
+        onClick={start}
+        aria-disabled={download.isPending}
+        aria-label={download.isPending ? `Downloading, ${percent} percent done` : undefined}
+      >
+        <ArrowDownTrayIcon className="h-4 w-4" />
+        {download.isPending ? (
+          <span className="font-game-num text-[12px] text-game-ink-100 tabular-nums">
+            {percent}%
+          </span>
+        ) : (
+          "Download"
+        )}
+      </GameButton>
+      {download.isPending && (
+        <span
+          aria-hidden
+          className={cx("absolute -top-px left-0 h-px w-full bg-game-accent-300", styles.track)}
+          style={{ transform: `scaleX(${Math.max(0.02, progress / 100)})` }}
+        />
+      )}
     </>
   );
 }

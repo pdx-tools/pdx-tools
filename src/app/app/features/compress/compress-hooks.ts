@@ -1,6 +1,5 @@
 import { wrap, transfer, releaseProxy, proxy } from "comlink";
 import { trackWorker } from "@/lib/sentryWorker";
-import { useEffect, useMemo, useRef } from "react";
 import type { ProgressCb } from "./compress-worker";
 import type * as CompressWorkerModule from "./compress-worker";
 
@@ -23,26 +22,9 @@ export function createCompressionWorker() {
       return workerApi.compress(transfer(data, [data.buffer]), proxy(cb));
     },
 
-    transform: async (data: Uint8Array<ArrayBuffer>) => {
+    download: async (data: Uint8Array<ArrayBuffer>, cb?: ProgressCb) => {
       await workerApi.loadWasm();
-      return workerApi.transform(transfer(data, [data.buffer]));
+      return workerApi.download(transfer(data, [data.buffer]), cb && proxy(cb));
     },
   };
 }
-
-export const useCompression = () => {
-  const worker = useRef<ReturnType<typeof createCompressionWorker>>(undefined);
-
-  useEffect(() => {
-    const current = worker.current;
-    return () => current?.release();
-  }, []);
-
-  return useMemo(
-    () => ({
-      transform: async (data: Uint8Array<ArrayBuffer>) =>
-        (worker.current ??= createCompressionWorker()).transform(data),
-    }),
-    [],
-  );
-};
