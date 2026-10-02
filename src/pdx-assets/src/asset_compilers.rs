@@ -87,3 +87,24 @@ impl GameAssetCompiler for Eu5AssetCompiler {
         Ok(CompilationOutput { game_version })
     }
 }
+
+pub struct Hoi4AssetCompiler;
+
+impl GameAssetCompiler for Hoi4AssetCompiler {
+    fn compile_assets<P: FileProvider, I: ImageProcessor>(
+        &self,
+        provider: &P,
+        _imaging: &I,
+        out_dir: &Path,
+        options: &PackageOptions,
+    ) -> Result<CompilationOutput> {
+        let game_version = match options.game_version.clone() {
+            Some(version) => version,
+            None => crate::hoi4::compiler::extract_game_version(provider)
+                .context("Unable to extract hoi4 game version")?,
+        };
+
+        crate::hoi4::compiler::compile_game_bundle(provider, out_dir, &game_version, options)?;
+        Ok(CompilationOutput { game_version })
+    }
+}

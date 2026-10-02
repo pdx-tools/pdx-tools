@@ -8,6 +8,7 @@ pub mod eu4;
 pub mod eu5;
 mod file_provider;
 mod file_tracker;
+pub mod hoi4;
 pub mod http;
 pub mod images;
 pub mod launcher;
@@ -102,6 +103,10 @@ impl Game {
             return Ok(*game);
         }
 
+        if let Some(game_id) = launcher::game_id(provider)? {
+            return game_id.parse();
+        }
+
         // Asset bundles hold game data only, so the executable is absent and a
         // known data file identifies the game.
         if provider.file_exists("game/in_game/map_data/named_locations/00_default.txt") {
@@ -162,6 +167,7 @@ impl FromStr for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write as _;
 
     fn install_with(files: &[&str]) -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
@@ -176,6 +182,22 @@ mod tests {
     fn detect_dir(files: &[&str]) -> Result<Game> {
         let dir = install_with(files);
         Game::detect(&DirectoryProvider::new(dir.path()))
+    }
+
+    fn detect_zip(files: &[(&str, &[u8])]) -> Result<Game> {
+        let mut zip = tempfile::Builder::new().suffix(".zip").tempfile().unwrap();
+        let mut archive = rawzip::ZipArchiveWriter::new(&mut zip);
+        for (path, contents) in files {
+            let (entry, config) = archive.new_file(path).start().unwrap();
+            let mut writer = config.wrap(entry);
+            writer.write_all(contents).unwrap();
+            let (entry, output) = writer.finish().unwrap();
+            entry.finish(output).unwrap();
+        }
+        archive.finish().unwrap();
+
+        let provider = ZipProvider::new(zip.path()).unwrap();
+        Game::detect(&provider)
     }
 
     #[test]
@@ -206,6 +228,38 @@ mod tests {
         assert_eq!(
             detect_dir(&["common/country_tags/00_countries.txt"]).unwrap(),
             Game::Eu4
+        );
+    }
+
+    #[test]
+    fn detects_game_from_launcher_settings() {
+        let dir = install_with(&[
+            "launcher-settings.json",
+            "common/country_tags/00_countries.txt",
+        ]);
+        std::fs::write(
+            dir.path().join("launcher-settings.json"),
+            br#"{"gameId": "eu4", "rawVersion": "1.37.5.0"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            Game::detect(&DirectoryProvider::new(dir.path())).unwrap(),
+            Game::Eu4
+        );
+    }
+
+    #[test]
+    fn detects_hoi4_zip_bundle_from_launcher_game_id() {
+        assert_eq!(
+            detect_zip(&[
+                ("common/country_tags/00_countries.txt", b"test"),
+                (
+                    "launcher-settings.json",
+                    br#"{"gameId":"hoi4","rawVersion":"1.19.0.6"}"#,
+                ),
+            ])
+            .unwrap(),
+            Game::Hoi4
         );
     }
 

@@ -51,12 +51,12 @@ const execCommand = async (command: string, args: string[] = [], options = {}) =
   });
 };
 
-type Game = "eu4" | "eu5";
+type Game = "eu4" | "eu5" | "hoi4";
 
 const gameFromMise = (): Game | undefined => {
   const game = process.env.usage_game;
   if (game === undefined || game === "") return undefined;
-  if (game === "eu4" || game === "eu5") return game;
+  if (game === "eu4" || game === "eu5" || game === "hoi4") return game;
   throw new Error(`Invalid usage_game from mise: ${game}`);
 };
 

@@ -1,5 +1,5 @@
 use crate::asset_compilers::{
-    Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, PackageOptions,
+    Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, Hoi4AssetCompiler, PackageOptions,
 };
 use crate::bundler::{AssetBundler, AssetManifest};
 use crate::images::RustImageProcessor;
@@ -21,7 +21,7 @@ pub struct BundleArgs {
     #[clap(value_parser)]
     out_directory: Option<PathBuf>,
 
-    /// Game to bundle (eu4 or eu5). If not specified, attempts to auto-detect from source
+    /// Game to bundle (eu4, eu5, or hoi4). If not specified, attempts to auto-detect from source
     #[clap(long)]
     game: Option<String>,
 
@@ -102,11 +102,30 @@ impl BundleArgs {
                         &options,
                     )?
                 }
+                Game::Hoi4 => {
+                    let game_compiler = Hoi4AssetCompiler;
+                    game_compiler.compile_assets(
+                        &tracking_provider,
+                        &imaging,
+                        &out_dir,
+                        &options,
+                    )?
+                }
                 game => anyhow::bail!(
                     "Asset bundling is not supported for {}. Use fetch-game to download it",
                     game
                 ),
             };
+
+            // Keep the HOI4 game ID in the bundle when --version is given.
+            if game == Game::Hoi4 {
+                let game_id = crate::launcher::game_id(&tracking_provider)?
+                    .context("HOI4 bundles require launcher-settings.json with gameId")?;
+                anyhow::ensure!(
+                    game_id == "hoi4",
+                    "HOI4 launcher-settings.json has unexpected gameId: {game_id}"
+                );
+            }
 
             let zip_filename = format!("{}-{}.zip", game, compilation_output.game_version);
 
