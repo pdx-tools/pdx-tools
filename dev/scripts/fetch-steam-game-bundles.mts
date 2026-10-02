@@ -11,7 +11,7 @@ const games = ["eu4", "eu5", "ck3", "hoi4", "imperator", "vic3"] as const;
 type Game = (typeof games)[number];
 
 /** Games that the asset pipeline can turn into a compiled bundle */
-const bundledGames: Game[] = ["eu4", "eu5"];
+const bundledGames: Game[] = ["eu4", "eu5", "hoi4"];
 
 /**
  * `branch` is the Steam beta branch to download; omit it for `public`.
@@ -37,11 +37,11 @@ const pdxAssetsBinary = join(
   isWindows ? "pdx-assets.exe" : "pdx-assets",
 );
 
-import { readAssetCatalog } from "./asset-catalog.mts";
+import { catalogGames, readAssetCatalog } from "./asset-catalog.mts";
 
 const assetCatalog = await readAssetCatalog();
 const targets: BundleTarget[] = [
-  ...(["eu4", "eu5"] as const).flatMap((game) =>
+  ...catalogGames.flatMap((game) =>
     assetCatalog.games[game].releases.map((release) => ({
       game,
       branch: release.branch === "public" ? undefined : release.branch,
@@ -49,7 +49,6 @@ const targets: BundleTarget[] = [
     })),
   ),
   { game: "ck3", version: "1.20.0.3" },
-  { game: "hoi4", version: "1.19.3" },
   { game: "imperator", version: "2.0.5" },
   { game: "vic3", branch: "1.14-openbeta", version: "1.14" },
 ];

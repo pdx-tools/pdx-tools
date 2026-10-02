@@ -16,6 +16,7 @@ eu4-achievements = { workspace = true }
 eu4save = { default-features = false , workspace = true, features = ["zstd_c"] }
 eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
 eu5save = { workspace = true, default-features = false }
+hoi4app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 image = { workspace = true, features = ["bmp", "png", "tga"] }
 image-extras = { workspace = true, default-features = false, features = ["dds"] }
