@@ -1,5 +1,5 @@
 use crate::asset_compilers::{
-    Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, PackageOptions,
+    Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, Hoi4AssetCompiler, PackageOptions,
 };
 use crate::images::RustImageProcessor;
 use crate::{Game, create_provider, steam};
@@ -25,11 +25,11 @@ pub struct CompileArgs {
     #[clap(long, short)]
     output: Option<PathBuf>,
 
-    /// Game to compile (eu4 or eu5). If not specified, attempts to auto-detect from source
+    /// Game to compile (eu4, eu5, or hoi4). If not specified, attempts to auto-detect from source
     #[clap(long)]
     game: Option<String>,
 
-    /// Game version (e.g. 1.2). Required for EU5.
+    /// Game version (e.g. 1.2). Required for EU5. HOI4 reads it from the launcher settings when absent.
     #[clap(long)]
     version: Option<String>,
 }
@@ -96,6 +96,10 @@ impl CompileArgs {
                 }
                 Game::Eu5 => {
                     let asset_compiler = Eu5AssetCompiler;
+                    asset_compiler.compile_assets(&provider, &imaging, &base_output, &options)?
+                }
+                Game::Hoi4 => {
+                    let asset_compiler = Hoi4AssetCompiler;
                     asset_compiler.compile_assets(&provider, &imaging, &base_output, &options)?
                 }
                 game => anyhow::bail!(
