@@ -26,7 +26,11 @@ export const pdxSession = ({
     cookie: {
       name: cloudflare.env.SESSION_COOKIE_NAME ?? "sid",
       secrets: [check(cloudflare.env.SESSION_SECRET, "missing session secret")],
-      sameSite: "strict",
+      // Use "lax" so that the browser sends the cookie when a user follows a
+      // link from a different site. With "strict", such a page loads as a
+      // guest page. Lax does not send the cookie on a cross-site POST, so
+      // actions keep their CSRF protection.
+      sameSite: "lax",
       httpOnly: true,
       secure: true,
       maxAge: 60 * 60 * 24 * 30,
