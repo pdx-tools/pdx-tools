@@ -18,13 +18,13 @@ struct Args {
     /// Path to location data CSV file, or use '-' for stdin.
     ///
     /// CSV format (no header):
-    ///   rgb_key,primary_color,secondary_color,owner_color,flags
+    ///   rgb_key,primary_color,secondary_color,border_color,flags
     ///
     /// Columns:
     ///   rgb_key          - Hex color key from the map (e.g., FF0000 for red)
     ///   primary_color    - Primary hex color to fill in the location
     ///   secondary_color  - Secondary hex color to stripe the location (optional, blank defaults to primary)
-    ///   owner_color      - Hex color for location owner (optional, blank defaults to primary)
+    ///   border_color     - Hex color for political borders (optional, blank defaults to primary)
     ///   flags            - Bitflags as integer (0=none, 1=NO_LOCATION_BORDERS, 2=HIGHLIGHTED)
     ///
     /// Example input for Denmark controlling Stockholm from Sweden in EU4:
@@ -52,7 +52,7 @@ struct LocationRecord {
     rgb_key: pdx_map::Rgb,
     primary_color: pdx_map::Rgb,
     secondary_color: pdx_map::Rgb,
-    owner_color: pdx_map::Rgb,
+    border_color: pdx_map::Rgb,
     flags: u32,
 }
 
@@ -107,12 +107,12 @@ fn parse_csv_line(line: &str, line_num: usize) -> Result<LocationRecord> {
             .with_context(|| format!("Line {}: Invalid secondary_color", line_num))?
     };
 
-    // Owner color defaults to primary if empty
-    let owner_color = if parts[3].trim().is_empty() {
+    // Border color defaults to primary if empty
+    let border_color = if parts[3].trim().is_empty() {
         primary_color
     } else {
         parse_hex_color(parts[3])
-            .with_context(|| format!("Line {}: Invalid owner_color", line_num))?
+            .with_context(|| format!("Line {}: Invalid border_color", line_num))?
     };
 
     let flags = parts[4]
@@ -124,7 +124,7 @@ fn parse_csv_line(line: &str, line_num: usize) -> Result<LocationRecord> {
         rgb_key,
         primary_color,
         secondary_color,
-        owner_color,
+        border_color,
         flags,
     })
 }
@@ -165,8 +165,8 @@ fn build_location_arrays(
         .map(|x, r16| GpuColor::from(x.map(|r| r.primary_color).unwrap_or_else(|| r16.as_rgb())));
     let secondary_colors = record_palette
         .map(|x, r16| GpuColor::from(x.map(|r| r.secondary_color).unwrap_or_else(|| r16.as_rgb())));
-    let owner_colors = record_palette
-        .map(|x, r16| GpuColor::from(x.map(|r| r.owner_color).unwrap_or_else(|| r16.as_rgb())));
+    let border_colors = record_palette
+        .map(|x, r16| GpuColor::from(x.map(|r| r.border_color).unwrap_or_else(|| r16.as_rgb())));
     let flags = record_palette.map(|x, _| {
         x.map(|r| pdx_map::LocationFlags::from_bits(r.flags))
             .unwrap_or_default()
@@ -175,7 +175,7 @@ fn build_location_arrays(
     let mut location = pdx_map::LocationArrays::allocate(palette.len());
     location.set_primary_colors(primary_colors.as_slice());
     location.set_secondary_colors(secondary_colors.as_slice());
-    location.set_owner_colors(owner_colors.as_slice());
+    location.set_border_colors(border_colors.as_slice());
     location.set_flags(flags.as_slice());
 
     Ok(location)
@@ -352,7 +352,7 @@ mod tests {
             rgb_key: pdx_map::Rgb::new(255, 0, 0),
             primary_color: pdx_map::Rgb::new(0, 255, 0),
             secondary_color: pdx_map::Rgb::new(0, 0, 255),
-            owner_color: pdx_map::Rgb::new(255, 255, 0),
+            border_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 0,
         }
     )]
@@ -362,7 +362,7 @@ mod tests {
             rgb_key: pdx_map::Rgb::new(255, 0, 0),
             primary_color: pdx_map::Rgb::new(0, 255, 0),
             secondary_color: pdx_map::Rgb::new(0, 255, 0),
-            owner_color: pdx_map::Rgb::new(255, 255, 0),
+            border_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 0,
         }
     )]
@@ -372,7 +372,7 @@ mod tests {
             rgb_key: pdx_map::Rgb::new(255, 0, 0),
             primary_color: pdx_map::Rgb::new(0, 255, 0),
             secondary_color: pdx_map::Rgb::new(0, 0, 255),
-            owner_color: pdx_map::Rgb::new(0, 255, 0),
+            border_color: pdx_map::Rgb::new(0, 255, 0),
             flags: 0,
         }
     )]
@@ -382,7 +382,7 @@ mod tests {
             rgb_key: pdx_map::Rgb::new(255, 0, 0),
             primary_color: pdx_map::Rgb::new(0, 255, 0),
             secondary_color: pdx_map::Rgb::new(0, 255, 0),
-            owner_color: pdx_map::Rgb::new(0, 255, 0),
+            border_color: pdx_map::Rgb::new(0, 255, 0),
             flags: 0,
         }
     )]
@@ -392,7 +392,7 @@ mod tests {
             rgb_key: pdx_map::Rgb::new(255, 0, 0),
             primary_color: pdx_map::Rgb::new(0, 255, 0),
             secondary_color: pdx_map::Rgb::new(0, 0, 255),
-            owner_color: pdx_map::Rgb::new(255, 255, 0),
+            border_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 3,
         }
     )]
@@ -402,7 +402,7 @@ mod tests {
             rgb_key: pdx_map::Rgb::new(255, 0, 0),
             primary_color: pdx_map::Rgb::new(0, 255, 0),
             secondary_color: pdx_map::Rgb::new(0, 0, 255),
-            owner_color: pdx_map::Rgb::new(255, 255, 0),
+            border_color: pdx_map::Rgb::new(255, 255, 0),
             flags: 1,
         }
     )]

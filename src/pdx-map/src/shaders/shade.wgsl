@@ -56,7 +56,7 @@ struct ShadeUniforms {
 @group(0) @binding(1) var<uniform> uniforms: ShadeUniforms;
 @group(0) @binding(2) var<storage, read> location_primary_colors: array<u32>;
 @group(0) @binding(3) var<storage, read> location_states: array<u32>;
-@group(0) @binding(4) var<storage, read> location_owner_colors: array<u32>;
+@group(0) @binding(4) var<storage, read> location_border_colors: array<u32>;
 @group(0) @binding(5) var<storage, read> location_secondary_colors: array<u32>;
 
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
@@ -161,8 +161,8 @@ fn get_primary_color_by_index(location_idx: u32) -> u32 {
     return location_primary_colors[location_idx];
 }
 
-fn get_owner_color_by_index(location_idx: u32) -> u32 {
-    return location_owner_colors[location_idx];
+fn get_border_color_by_index(location_idx: u32) -> u32 {
+    return location_border_colors[location_idx];
 }
 
 fn get_secondary_color_by_index(location_idx: u32) -> u32 {
@@ -275,7 +275,7 @@ struct EdgeDistances {
     terrain: i32,
 }
 
-fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: u32, center_owner_color: u32, center_terrain: u32, max_r: i32) -> EdgeDistances {
+fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: u32, center_border_color: u32, center_terrain: u32, max_r: i32) -> EdgeDistances {
     var result = EdgeDistances(max_r + 1, max_r + 1, max_r + 1);
     // Unowned land draws no edge from this scan, so skip it
     if (uniforms.enable_owner_borders == 0u || center_terrain == TERRAIN_UNOWNED) {
@@ -310,8 +310,8 @@ fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: 
                         result.owner = min(result.owner, d);
                     }
                 } else if (center_terrain == TERRAIN_LAND) {
-                    let neighbor_value = get_owner_color_by_index(neighbor_location_idx);
-                    if (neighbor_value != center_owner_color) {
+                    let neighbor_value = get_border_color_by_index(neighbor_location_idx);
+                    if (neighbor_value != center_border_color) {
                         result.owner = min(result.owner, d);
                     }
                 }
@@ -381,10 +381,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let in_secondary_zone = has_stripes && stripe_blend > 0.5;
 
     let center_terrain = terrain_class(state_flags);
-    let center_owner_color = get_owner_color_by_index(location_idx);
+    let center_border_color = get_border_color_by_index(location_idx);
     let owner_r = i32(uniforms.owner_border_radius);
     let glow_r = i32(uniforms.owner_glow_radius);
-    let edges = edge_distances(screen, location_idx, primary_color, center_owner_color, center_terrain, owner_r + glow_r);
+    let edges = edge_distances(screen, location_idx, primary_color, center_border_color, center_terrain, owner_r + glow_r);
     let is_location_border = is_location_border_pixel(screen, location_idx, in_secondary_zone, secondary_color);
 
     var fill_color: vec4<f32>;
@@ -447,7 +447,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
         }
     } else if (edges.owner <= owner_r) {
-        rgb = shift_lightness(unpack_color(center_owner_color), -OWNER_BORDER_DARKEN * uniforms.edge_strength);
+        rgb = shift_lightness(unpack_color(center_border_color), -OWNER_BORDER_DARKEN * uniforms.edge_strength);
     } else {
         if (min(edges.owner, edges.coast) <= owner_r + glow_r) {
             rgb = lighten(rgb, OWNER_GLOW_LIGHTEN);

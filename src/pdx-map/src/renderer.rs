@@ -505,7 +505,7 @@ pub struct MapResources {
 
     // Storage buffers
     primary_colors: wgpu::Buffer,
-    owner_colors: wgpu::Buffer,
+    border_colors: wgpu::Buffer,
     secondary_colors: wgpu::Buffer,
     states: wgpu::Buffer,
 
@@ -520,7 +520,7 @@ impl Clone for MapResources {
             west_texture: self.west_texture.clone(),
             east_texture: self.east_texture.clone(),
             primary_colors: self.primary_colors.clone(),
-            owner_colors: self.owner_colors.clone(),
+            border_colors: self.border_colors.clone(),
             secondary_colors: self.secondary_colors.clone(),
             states: self.states.clone(),
             generation: Cell::new(0),
@@ -533,14 +533,14 @@ impl MapResources {
     pub fn new(ctx: &GpuContext, west: MapTexture, east: MapTexture) -> Self {
         let device = &ctx.gpu.device;
 
-        let [primary_colors, owner_colors, secondary_colors, states] =
+        let [primary_colors, border_colors, secondary_colors, states] =
             Self::location_buffers(device, 1);
 
         Self {
             west_texture: west,
             east_texture: east,
             primary_colors,
-            owner_colors,
+            border_colors,
             secondary_colors,
             states,
             generation: Cell::new(0),
@@ -569,9 +569,9 @@ impl MapResources {
             bytemuck::cast_slice(buffers.primary_colors()),
         );
         queue.write_buffer(
-            &self.owner_colors,
+            &self.border_colors,
             0,
-            bytemuck::cast_slice(buffers.owner_colors()),
+            bytemuck::cast_slice(buffers.border_colors()),
         );
         queue.write_buffer(
             &self.secondary_colors,
@@ -593,11 +593,11 @@ impl MapResources {
     }
 
     fn ensure_capacity(&mut self, device: &wgpu::Device, locations: usize) {
-        if locations > (self.owner_colors.size() as usize / std::mem::size_of::<u32>()) {
-            let [primary_colors, owner_colors, secondary_colors, states] =
+        if locations > (self.border_colors.size() as usize / std::mem::size_of::<u32>()) {
+            let [primary_colors, border_colors, secondary_colors, states] =
                 Self::location_buffers(device, locations as u64);
             self.primary_colors = primary_colors;
-            self.owner_colors = owner_colors;
+            self.border_colors = border_colors;
             self.secondary_colors = secondary_colors;
             self.states = states;
             self.generation.set(self.generation.get() + 1);
@@ -607,7 +607,7 @@ impl MapResources {
     fn location_buffers(device: &wgpu::Device, locations: u64) -> [wgpu::Buffer; 4] {
         [
             "Location Primary Colors Buffer",
-            "Location Owner Colors Buffer",
+            "Location Border Colors Buffer",
             "Location Secondary Colors Buffer",
             "Location States Buffer",
         ]
@@ -679,7 +679,7 @@ impl MapPipelines {
                 storage_entry(2),
                 // Binding 3: Location states buffer
                 storage_entry(3),
-                // Binding 4: Location owner colors buffer
+                // Binding 4: Location border colors buffer
                 storage_entry(4),
                 // Binding 5: Location secondary colors buffer
                 storage_entry(5),
@@ -1046,7 +1046,7 @@ impl MapRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: resources.owner_colors.as_entire_binding(),
+                    resource: resources.border_colors.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
