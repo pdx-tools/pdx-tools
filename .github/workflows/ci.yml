@@ -194,10 +194,14 @@ jobs:
             # The host path in PDX_FIXTURES_LOG does not exist in the
             # container; the checkout is bind-mounted at the current directory.
             export PDX_FIXTURES_LOG="$PWD/fixtures.log"
-            mise run admin:assets:sync && \
-            mise run admin:assets:compile:all && \
-            mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
-            ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
+            mise run admin:assets:sync
+            mise run admin:assets:compile:all
+            if [ "${{ matrix.with_tokens }}" = "true" ]; then
+              PDX_REQUIRE_TEST_ASSETS=1 mise run test:cargo && \
+              mise run test:app ::: typecheck
+            else
+              mise run test:wasm
+            fi
             mise run build:app
           fi
 
@@ -368,9 +372,19 @@ jobs:
         run: |
           mise run admin:assets:sync
           mise run admin:assets:compile:all
-      - run: |
-          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
-          ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
+      - name: Run tests and build with tokens
+        if: matrix.with_tokens
+        env:
+          PDX_REQUIRE_TEST_ASSETS: '1'
+        run: |
+          mise run test:cargo
+          mise run test:app ::: typecheck
+          mise run build:app
+
+      - name: Run tests and build without tokens
+        if: ${{ !matrix.with_tokens }}
+        run: |
+          mise run test:wasm
           mise run build:app
 
       - name: Check fixture lists

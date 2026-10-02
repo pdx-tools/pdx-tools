@@ -310,8 +310,18 @@ run = "pnpm run typecheck"
 
 [tasks."admin:assets:sync"]
 env._.file = { path = ".env", redact = true }
-run = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
-run_windows = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key=%ASSETS_SECRET_KEY% --s3-access-key-id=%ASSETS_ACCESS_KEY% copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
+run = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" sync --delete-after :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
+run_windows = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key=%ASSETS_SECRET_KEY% --s3-access-key-id=%ASSETS_ACCESS_KEY% sync --delete-after :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
+
+[tasks."admin:assets:publish"]
+description = "Publish local game bundles to S3"
+usage = '''
+flag "--all" help="Publish all local bundles"
+flag "--dry-run" help="Preview uploads without writing. This is the default"
+flag "--apply" help="Upload the selected bundle or bundles"
+arg "[bundle]" help="Publish one bundle"
+'''
+run = "node ./dev/scripts/publish-game-bundles.mts {% if usage.all %}--all {% endif %}{% if usage.dry_run %}--dry-run {% endif %}{% if usage.apply %}--apply {% endif %}{% if usage.bundle %}{{ usage.bundle | quote }}{% endif %}"
 
 [tasks."admin:assets:compile:all"]
 description = "Compile all downloaded game asset bundles"

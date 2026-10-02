@@ -308,6 +308,10 @@ fn opens_a_zstd_remuxed_zip_save() {
     assert_eq!(loader.meta().version.major, 1);
     assert!(!loader.meta().playthrough_name.is_empty());
     if utils::tokens().is_empty() {
+        assert!(
+            !utils::require_test_assets(),
+            "EU5 binary tokens are required for this test run"
+        );
         eprintln!("EU5 binary tokens not loaded; skipping gamestate parse");
         return;
     }
