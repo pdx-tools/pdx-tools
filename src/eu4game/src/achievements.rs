@@ -463,6 +463,7 @@ impl<'a> AchievementHunter<'a> {
             self.terra_mariana(),
             self.draculas_revenge(),
             self.an_unlikely_candidate(),
+            self.sunset_invasion(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1841,6 +1842,20 @@ impl<'a> AchievementHunter<'a> {
             formed_al_andalus,
             "currently Al-Andalus",
         ));
+        result
+    }
+
+    pub fn sunset_invasion(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(54);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.tag == "AZT",
+            "currently the Aztecs",
+        ));
+        for id in [227, 217, 183, 236, 97, 118] {
+            result.and(self.owns_core_province_condition(ProvinceId::from(id)));
+        }
         result
     }
 
