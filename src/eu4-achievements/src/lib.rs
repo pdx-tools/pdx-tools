@@ -297,6 +297,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 211,
+            name: String::from("Where the heart is"),
+            description: String::from(
+                "As Dahomey, force all non-Fetishist nations out of Niger and Sahel by 1500.",
+            ),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

@@ -476,6 +476,7 @@ impl<'a> AchievementHunter<'a> {
             self.great_perm(),
             self.the_great_khan(),
             self.saladins_legacy(),
+            self.where_the_heart_is(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -2073,6 +2074,35 @@ impl<'a> AchievementHunter<'a> {
             result.and(AchievementCondition::new(
                 owns_area,
                 format!("directly owns all provinces in {}", area),
+            ));
+        }
+        result
+    }
+
+    pub fn where_the_heart_is(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(211);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "DAH",
+            "started as Dahomey",
+        ));
+        result.and(AchievementCondition::new(
+            self.save.meta.date < Eu4Date::from_ymd(1500, 1, 1),
+            "completed before 1500",
+        ));
+        for region in ["niger_region", "sahel_region"] {
+            let provinces_empty_or_shamanist = result.completed()
+                && self.all_provs_in_region(region, |province, _| {
+                    province.owner.is_none_or(|owner| {
+                        self.query
+                            .country(&owner)
+                            .is_some_and(|country| country.religion.as_deref() == Some("shamanism"))
+                    })
+                });
+            result.and(AchievementCondition::new(
+                provinces_empty_or_shamanist,
+                format!("{} is empty or held by a Shamanist country", region),
             ));
         }
         result
