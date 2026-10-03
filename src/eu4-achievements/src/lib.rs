@@ -291,6 +291,12 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::Hard,
         },
         Achievement {
+            id: 238,
+            name: String::from("Saladins Legacy"),
+            description: String::from("Playing as Hisn Kayfa, reforge the Ayyubid Empire."),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

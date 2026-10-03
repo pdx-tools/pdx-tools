@@ -475,6 +475,7 @@ impl<'a> AchievementHunter<'a> {
             self.philippine_tiger(),
             self.great_perm(),
             self.the_great_khan(),
+            self.saladins_legacy(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -2034,6 +2035,44 @@ impl<'a> AchievementHunter<'a> {
             result.and(AchievementCondition::new(
                 owns_region,
                 format!("owns or has a non-tributary subject in {}", region),
+            ));
+        }
+        result
+    }
+
+    pub fn saladins_legacy(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(238);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "HSN",
+            "started as Hisn Kayfa",
+        ));
+        for region in ["egypt_region", "mashriq_region"] {
+            let owns_region = result.completed()
+                && self.all_provs_in_region(region, |province, _| province.owner == Some(self.tag));
+            result.and(AchievementCondition::new(
+                owns_region,
+                format!("directly owns all provinces in {}", region),
+            ));
+        }
+        for area in [
+            "aleppo_area",
+            "tabuk_area",
+            "medina_area",
+            "mecca_area",
+            "asir_area",
+            "tihama_al_yemen_area",
+            "upper_yemen_area",
+            "yemen_area",
+            "hadramut_area",
+            "north_kurdistan_area",
+        ] {
+            let owns_area = result.completed()
+                && self.all_provs_in_area(area, |province, _| province.owner == Some(self.tag));
+            result.and(AchievementCondition::new(
+                owns_area,
+                format!("directly owns all provinces in {}", area),
             ));
         }
         result
