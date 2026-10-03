@@ -32,7 +32,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 
 USER vscode
 
-RUN curl https://mise.run | MISE_VERSION=v2026.4.5 sh && \
+RUN curl https://mise.run | MISE_VERSION=v2026.9.17 sh && \
     /bin/bash -c 'echo "eval \"\$(~/.local/bin/mise activate bash --shims)\"" >> ~/.bashrc'
 
 EXPOSE 3001 3003
