@@ -305,6 +305,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 179,
+            name: String::from("Choson One"),
+            description: String::from(
+                "As Korea, own or have a subject own all Shinto, Confucian and Buddhist provinces in the world.",
+            ),
+            difficulty: Difficulty::Hard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

@@ -405,6 +405,12 @@ impl<'a> AchievementHunter<'a> {
         self.country.flags.iter().any(|(name, _)| name == flag)
     }
 
+    fn is_religion_in_group(&self, religion: &str, group: &str) -> bool {
+        self.game
+            .religion(religion)
+            .is_some_and(|entry| entry.group == Some(group))
+    }
+
     fn is_wasteland_or_empty_province(&self, prov: &Province) -> bool {
         prov.owner.is_none()
     }
@@ -477,6 +483,7 @@ impl<'a> AchievementHunter<'a> {
             self.the_great_khan(),
             self.saladins_legacy(),
             self.where_the_heart_is(),
+            self.choson_one(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -2105,6 +2112,28 @@ impl<'a> AchievementHunter<'a> {
                 format!("{} is empty or held by a Shamanist country", region),
             ));
         }
+        result
+    }
+
+    pub fn choson_one(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(179);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "KOR",
+            "started as Korea",
+        ));
+        let owns_all_eastern_religions = result.completed()
+            && self.save.game.provinces.values().all(|province| {
+                province.religion.as_deref().is_none_or(|religion| {
+                    !self.is_religion_in_group(religion, "eastern")
+                        || self.owns_or_non_sovereign_subject_of_province(province)
+                })
+            });
+        result.and(AchievementCondition::new(
+            owns_all_eastern_religions,
+            "owns or has a non-tributary subject in every Eastern religion province",
+        ));
         result
     }
 

@@ -17,6 +17,7 @@ pub struct LocalizedCountry {
 pub struct GameReligion<'a> {
     pub index: usize,
     pub id: &'a str,
+    pub group: Option<&'a str>,
     pub name: &'a str,
     pub color: [u8; 3],
     pub allowed_conversions: Vec<&'a str>,
@@ -174,6 +175,7 @@ impl<'a> Game<'a> {
         Some(GameReligion {
             index: idx,
             id: res.key(),
+            group: res.group(),
             name: res.name(),
             color: res.color().0,
             allowed_conversions: res.allowed_conversion().iter().flatten().collect(),
