@@ -6,47 +6,47 @@
         {
           "branch": "1.29.6",
           "game_version": "1.29.6",
-          "sha256": "99ced3db253e9881d126bcc9fbae7ce37aaba207023f4146a3ee1f409e8919fb"
+          "sha256": "fd3fd72e3bf62dc0805b36a537d375653379751092729e7f8f52ee1d6f9fa464"
         },
         {
           "branch": "1.30.6",
           "game_version": "1.30.6",
-          "sha256": "2526161721e70ddee3d39e6571f906a9e68ea05a599f9eadc1b3512262e96e8a"
+          "sha256": "3fbab4e63edb81107d7672a5564d599a3e19729a2b39ada58878ea11aa20fd42"
         },
         {
           "branch": "1.31.6",
           "game_version": "1.31.6",
-          "sha256": "c6c550a48f6129dbeeb64d17da5decf8943d8db713c90b8ff45422da6fcbaae5"
+          "sha256": "ece6ce68bb6cedb1dc1886000521734c726b22ac168028c06b5e3cd548f62175"
         },
         {
           "branch": "1.32.2",
           "game_version": "1.32.2",
-          "sha256": "edfd3edc9befe37aaec1908f492d54b8589dc278928a018572dafedeaf2bb4f0"
+          "sha256": "b3ec0d1094dbf292eed94a9269717c88c421497cd8e73eeaa93ea29412529150"
         },
         {
           "branch": "1.33.3",
           "game_version": "1.33.3",
-          "sha256": "9d1a3d067a030dfc92c73b45fe110d3eeb7d017fa5831b392e44b574705bb070"
+          "sha256": "6b1a77f2766144b9b94e7b1e5388ea0810d95d9b2bc52f8702663a0661b5868f"
         },
         {
           "branch": "1.34.5",
           "game_version": "1.34.5",
-          "sha256": "4a39cbf5b08659888323207f864b353a6e33e21eb9f0f36d7133e45c6d33d3e1"
+          "sha256": "75f8691ff099541106192d94b5365ea08e7cbcc891491f397379b4de5cd06076"
         },
         {
           "branch": "1.35.6",
           "game_version": "1.35.6",
-          "sha256": "2f39e59fe951ec4aebda2556baa52af36c8e47ab9d1f05e9048855817ff01fe9"
+          "sha256": "b9b3a17d8ba567f8d7a8446f4a38a18c977a927e46223a1b6dc057fee688743e"
         },
         {
           "branch": "1.36.2",
           "game_version": "1.36.2",
-          "sha256": "5c6d0946947d39a762903825c43477d7d0f6740052be55287778e973dff7eecd"
+          "sha256": "d763967640794f84d3ec0b351ecc3d3cf4833d484a0409356671b448ed4c6ed5"
         },
         {
           "branch": "public",
           "game_version": "1.37.5",
-          "sha256": "7c307a9f9bfb2b8d84d142524471d584799d96378768751f0688bf18ef4b1e95"
+          "sha256": "cb0c2918df43e87365ad2224dc5334a5b17bdf0282431bb6655a92013cf6950f"
         }
       ]
     },
