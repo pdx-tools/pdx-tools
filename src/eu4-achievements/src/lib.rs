@@ -239,6 +239,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::Hard,
         },
         Achievement {
+            id: 54,
+            name: String::from("Sunset Invasion"),
+            description: String::from(
+                "Own and have cores on Lisbon, Madrid, Paris, London, Amsterdam and Rome as the Aztecs.",
+            ),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(
