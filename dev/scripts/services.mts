@@ -37,19 +37,7 @@ const execCommand = async (command: string, options = {}) => {
   });
 };
 
-async function main() {
-  const env = process.env.SERVICES_ENV ?? "test";
-  if (env !== "dev" && env !== "test") {
-    throw new Error(`SERVICES_ENV must be either "dev" or "test", got "${env}"`);
-  }
-  const remainingArgs = process.argv.slice(2);
-
-  const envPrefix = `mise run env:${env} --`;
-
-  await execCommand(`${envPrefix} build`);
-  await execCommand(`${envPrefix} up --no-start`);
-  await execCommand(`${envPrefix} up --wait db`);
-
+async function migrate(env: "dev" | "test") {
   const appEnvFile = env === "dev" ? ".env.development" : ".env.test";
   const appEnv = parseEnv(await readFile(resolve(projectRoot, "src/app", appEnvFile), "utf8"));
   const servicesEnv = parseEnv(await readFile(resolve(projectRoot, "dev", `.env.${env}`), "utf8"));
@@ -70,6 +58,27 @@ async function main() {
     cwd: resolve(projectRoot, "src/app"),
     env: { ...process.env, DATABASE_URL: databaseUrl.toString() },
   });
+}
+
+async function main() {
+  const env = process.env.SERVICES_ENV ?? "test";
+  if (env !== "dev" && env !== "test") {
+    throw new Error(`SERVICES_ENV must be either "dev" or "test", got "${env}"`);
+  }
+  const remainingArgs = process.argv.slice(2);
+
+  // The "migrate" mode applies the migrations to a database that is already running.
+  if (remainingArgs[0] === "migrate") {
+    await migrate(env);
+    return;
+  }
+
+  const envPrefix = `mise run env:${env} --`;
+
+  await execCommand(`${envPrefix} build`);
+  await execCommand(`${envPrefix} up --no-start`);
+  await execCommand(`${envPrefix} up --wait db`);
+  await migrate(env);
 
   const upArgs = remainingArgs.length > 0 ? ` ${remainingArgs.join(" ")}` : "";
   await execCommand(`${envPrefix} up${upArgs}`);

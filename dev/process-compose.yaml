@@ -1,0 +1,47 @@
+# The processes of the development stack. Start it with `mise run dev`, which
+# prepares the build artifacts first.
+#
+# The stack is all-or-nothing: when a long-running process stops, or a setup
+# step fails, process-compose stops all of the other processes.
+version: "0.5"
+ordered_shutdown: true
+
+processes:
+  db:
+    command: mise run env:dev -- up --build db
+    readiness_probe:
+      exec:
+        command: mise run env:dev -- exec -T db pg_isready -h 127.0.0.1 -U postgres
+      period_seconds: 1
+      failure_threshold: 60
+    shutdown:
+      command: mise run env:dev -- stop db
+      timeout_seconds: 30
+    availability:
+      exit_on_end: true
+
+  migrate:
+    command: node ./dev/scripts/services.mts migrate
+    environment:
+      - SERVICES_ENV=dev
+    depends_on:
+      db:
+        condition: process_healthy
+    availability:
+      restart: exit_on_failure
+      exit_on_skipped: true
+
+  app:
+    command: mise run --skip-deps dev:app
+    availability:
+      exit_on_end: true
+
+  docs:
+    command: mise run --skip-deps dev:docs
+    availability:
+      exit_on_end: true
+
+  api:
+    command: mise run --skip-deps serve:api:dev
+    availability:
+      exit_on_end: true

@@ -3,6 +3,7 @@
 "rust" = { version = "1.98.1" } # update in rust-toolchain.toml too!
 "github:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "github:docker/compose" = { version = "2.33.1", rename_exe = "docker-compose" }
+"github:F1bonacc1/process-compose" = { version = "1.122.0" }
 "github:google/flatbuffers" = { version = "25.2.10", matching = "clang", exe = "flatc" }
 "github:llvm/llvm-project" = { version = "llvmorg-19.1.7", matching = "LLVM-", strip_components = 1, bin_path = "bin", os = ["macos"] }
 "github:pnpm/pnpm" = { version = "12.4.1" }
@@ -176,11 +177,28 @@ run = "pnpm run dev"
 description = "Run the docs"
 depends = ["pnpm-install", "docs:setup:changelog"]
 dir = "./src/docs"
-run = "pnpm exec astro dev --port {{ get_env(name='PDX_DEV_DOCS_PORT', default='4321') }}"
+# process-compose must own the docs server process, so keep it in the
+# foreground. When Astro finds an AI agent, it starts the server in a child
+# process in the background. Astro sets ASTRO_DEV_BACKGROUND in that child.
+# When this variable is set, Astro does not look for an AI agent. This
+# variable is internal to Astro, so make sure that it works after an upgrade.
+# The --ignore-lock flag lets the docs server of `mise run dev:2` start,
+# because the lock file permits only one docs server for each checkout.
+env.ASTRO_DEV_BACKGROUND = "1"
+run = "pnpm exec astro dev --ignore-lock --port {{ get_env(name='PDX_DEV_DOCS_PORT', default='4321') }}"
+
+[tasks."dev:preflight"]
+description = "Make sure that the dev server ports are available"
+run = "node ./dev/scripts/check-ports.mts"
+hide = true
 
 [tasks.dev]
 description = "Run complete development setup (backend and frontend)"
-depends = ["build:wasm", "dev:app", "dev:docs", "start:services:dev", "serve:api:dev"]
+depends = ["dev:preflight", "pnpm-install", "build:wasm", "dev:app:setup:**", "docs:setup:changelog", "tokenize"]
+raw = true
+# The process-compose TUI needs a terminal. Without a terminal, for example in
+# CI or when an AI agent runs the stack, set PC_DISABLE_TUI=1.
+run = "process-compose up --no-server --config ./dev/process-compose.yaml"
 
 [tasks."dev:2"]
 description = "Run a second isolated development stack"
@@ -267,11 +285,6 @@ run = "cargo run --release --package pdx-assets -- bundle"
 [tasks."assets:compile"]
 description = "Compile a game asset bundle"
 run = "cargo run --release --package pdx-assets -- compile"
-
-[tasks."start:services:dev"]
-description = "Run services for development"
-env.SERVICES_ENV = "dev"
-run = ["node ./dev/scripts/services.mts"]
 
 [tasks."start:services:test"]
 description = "Run services for testing"
