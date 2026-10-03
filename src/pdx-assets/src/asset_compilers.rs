@@ -105,3 +105,24 @@ impl GameAssetCompiler for Hoi4AssetCompiler {
         Ok(CompilationOutput { game_version })
     }
 }
+
+pub struct Vic3AssetCompiler;
+
+impl GameAssetCompiler for Vic3AssetCompiler {
+    fn compile_assets<P: FileProvider, I: ImageProcessor>(
+        &self,
+        provider: &P,
+        _imaging: &I,
+        out_dir: &Path,
+        options: &PackageOptions,
+    ) -> Result<CompilationOutput> {
+        let game_version = match options.game_version.clone() {
+            Some(version) => version,
+            None => crate::vic3::compiler::extract_game_version(provider)
+                .context("Unable to extract vic3 game version")?,
+        };
+
+        crate::vic3::compiler::compile_game_bundle(provider, out_dir, &game_version, options)?;
+        Ok(CompilationOutput { game_version })
+    }
+}

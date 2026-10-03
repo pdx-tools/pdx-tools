@@ -10,14 +10,24 @@ type Vic3StateProps = {
     filename: string;
   };
 };
-type Vic3State = Vic3StateProps;
+type Vic3State = Vic3StateProps & {
+  /** The country that the panel describes and the map highlights */
+  selectedTag: string;
+  actions: {
+    selectCountry: (tag: string) => void;
+  };
+};
 
 export type Vic3Store = StoreApi<Vic3State>;
 export const Vic3SaveContext = createContext<Vic3Store | null>(null);
 
 export const createVic3Store = async ({ save }: Vic3StateProps) => {
-  return create<Vic3State>()((_set, _get) => ({
+  return create<Vic3State>()((set) => ({
     save,
+    selectedTag: save.meta.lastPlayedTag,
+    actions: {
+      selectCountry: (tag) => set({ selectedTag: tag }),
+    },
   }));
 };
 
@@ -29,3 +39,5 @@ const useVic3Store = <T>(selector: (state: Vic3State) => T): T =>
   useStore(useVic3Context(), selector);
 export const useVic3Meta = () => useVic3Store((x) => x.save.meta);
 export const useSaveFilename = () => useVic3Store((x) => x.save.filename);
+export const useSelectedTag = () => useVic3Store((x) => x.selectedTag);
+export const useVic3Actions = () => useVic3Store((x) => x.actions);

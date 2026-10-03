@@ -80,10 +80,10 @@ const gameRenderer = (savegame: SaveGameInput | null, inputId: number) => {
       } as const;
     case "vic3":
       return {
-        kind: "in-screen",
+        kind: "full-screen",
         component: () => (
           <Suspense fallback={null}>
-            <DynamicVic3 save={savegame.data} />
+            <DynamicVic3 key={inputId} save={savegame.data} />
           </Suspense>
         ),
       } as const;

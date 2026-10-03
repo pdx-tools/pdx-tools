@@ -12,6 +12,7 @@ pub mod http;
 pub mod images;
 pub mod launcher;
 pub mod steam;
+pub mod vic3;
 
 pub use cli::*;
 pub use file_provider::*;
@@ -103,7 +104,7 @@ impl Game {
         }
 
         if let Some(game_id) = launcher::game_id(provider)? {
-            return game_id.parse();
+            return Game::from_launcher_id(&game_id);
         }
 
         // Asset bundles hold game data only, so the executable is absent and a
@@ -117,6 +118,15 @@ impl Game {
                 "Could not auto-detect game type. Please specify --game with one of: {}",
                 Game::names()
             ))
+        }
+    }
+
+    /// The game of a `gameId` in the launcher settings. Most games use their
+    /// short name, but Vic3 uses "victoria3".
+    pub fn from_launcher_id(game_id: &str) -> Result<Self> {
+        match game_id {
+            "victoria3" => Ok(Game::Vic3),
+            game_id => game_id.parse(),
         }
     }
 
@@ -259,6 +269,21 @@ mod tests {
             ])
             .unwrap(),
             Game::Hoi4
+        );
+    }
+
+    #[test]
+    fn detects_vic3_zip_bundle_from_launcher_game_id() {
+        assert_eq!(
+            detect_zip(&[
+                ("game/map_data/default.map", b"test"),
+                (
+                    "launcher/launcher-settings.json",
+                    br#"{"gameId":"victoria3","rawVersion":"1.14.0"}"#,
+                ),
+            ])
+            .unwrap(),
+            Game::Vic3
         );
     }
 
