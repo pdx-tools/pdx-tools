@@ -261,6 +261,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::Hard,
         },
         Achievement {
+            id: 176,
+            name: String::from("The Animal Kingdom"),
+            description: String::from(
+                "As Manipur, unite the Bengal region and convert it to Animism.",
+            ),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

@@ -471,6 +471,7 @@ impl<'a> AchievementHunter<'a> {
             self.sunset_invasion(),
             self.mets_hayk(),
             self.pandya_empire(),
+            self.animal_kingdom(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1893,6 +1894,26 @@ impl<'a> AchievementHunter<'a> {
                 format!("owns all provinces in {}", area),
             ));
         }
+        result
+    }
+
+    pub fn animal_kingdom(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(176);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "MLB",
+            "started as Manipur",
+        ));
+        let owns_animist_bengal = result.completed()
+            && self.all_provs_in_region("bengal_region", |province, _| {
+                self.owns_or_non_sovereign_subject_of_province(province)
+                    && province.religion.as_deref() == Some("animism")
+            });
+        result.and(AchievementCondition::new(
+            owns_animist_bengal,
+            "owns or has a non-tributary subject in animist Bengal",
+        ));
         result
     }
 
