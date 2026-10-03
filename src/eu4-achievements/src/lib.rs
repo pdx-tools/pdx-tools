@@ -231,6 +231,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 362,
+            name: String::from("The Last Crusade"),
+            description: String::from(
+                "Starting as Byzantium, control Venezia, and make sure that the country Venice doesn't exist.",
+            ),
+            difficulty: Difficulty::Hard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

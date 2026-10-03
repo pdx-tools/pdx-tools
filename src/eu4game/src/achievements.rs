@@ -401,6 +401,10 @@ impl<'a> AchievementHunter<'a> {
         }
     }
 
+    fn has_country_flag(&self, flag: &str) -> bool {
+        self.country.flags.iter().any(|(name, _)| name == flag)
+    }
+
     fn is_wasteland_or_empty_province(&self, prov: &Province) -> bool {
         prov.owner.is_none()
     }
@@ -463,6 +467,7 @@ impl<'a> AchievementHunter<'a> {
             self.terra_mariana(),
             self.draculas_revenge(),
             self.an_unlikely_candidate(),
+            self.the_last_crusade(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1764,6 +1769,34 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(
             formed_al_andalus,
             "currently Al-Andalus",
+        ));
+        result
+    }
+
+    pub fn the_last_crusade(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(362);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "BYZ",
+            "started as Byzantium",
+        ));
+        result.and(AchievementCondition::new(
+            self.tag == "BYZ" || self.tag == "ROM",
+            "currently Byzantium or the Roman Empire",
+        ));
+        result.and(self.owns_core_province_condition(ProvinceId::from(112)));
+        let venice_is_gone = self
+            .query
+            .country(&"VEN".parse().unwrap())
+            .is_none_or(|country| country.num_of_cities == 0);
+        result.and(AchievementCondition::new(
+            venice_is_gone,
+            "Venice does not exist",
+        ));
+        result.and(AchievementCondition::new(
+            !self.has_country_flag("byz_dishonoring_justinian"),
+            "has not formed the Latin Empire",
         ));
         result
     }
