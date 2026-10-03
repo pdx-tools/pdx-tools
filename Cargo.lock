@@ -4999,6 +4999,7 @@ dependencies = [
 name = "wasm-hoi4"
 version = "0.1.0"
 dependencies = [
+ "hoi4app",
  "hoi4save",
  "js-sys",
  "pdx-zstd",
@@ -5006,6 +5007,22 @@ dependencies = [
  "serde",
  "tsify",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "wasm-hoi4-map"
+version = "0.1.0"
+dependencies = [
+ "hoi4app",
+ "js-sys",
+ "pdx-map",
+ "pdx-zstd",
+ "tsify",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-pdx-core",
+ "wasm-pdx-map",
+ "web-sys",
 ]
 
 [[package]]

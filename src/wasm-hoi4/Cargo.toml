@@ -12,14 +12,15 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["zstd_rust"]
-zstd_c = ["pdx-zstd/zstd_c"]
+zstd_c = ["pdx-zstd/zstd_c", "hoi4app/zstd_c"]
 zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto"]
-zstd_rust = ["pdx-zstd/zstd_rust"]
+zstd_rust = ["pdx-zstd/zstd_rust", "hoi4app/zstd_rust"]
 
 [dependencies]
 schemas = { workspace = true }
 wasm-bindgen = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
+hoi4app = { workspace = true, features = ["tsify"] }
 hoi4save = { workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }
