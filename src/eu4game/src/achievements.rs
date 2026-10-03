@@ -491,6 +491,7 @@ impl<'a> AchievementHunter<'a> {
             self.where_the_heart_is(),
             self.choson_one(),
             self.gothic_invasion(),
+            self.all_blue(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -2177,6 +2178,49 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(
             owns_all_germanic_europe,
             "directly owns all Germanic culture provinces in Europe",
+        ));
+        result
+    }
+
+    pub fn all_blue(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(351);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "POR",
+            "started as Portugal",
+        ));
+        result.and(AchievementCondition::new(
+            self.tag == "POR",
+            "currently Portugal",
+        ));
+        const ALLOWED_TAGS: &[&str] = &[
+            "POR", "FRA", "SPI", "VEN", "LBV", "BAV", "PRU", "TRY", "FLA", "GLG", "IME", "BOU",
+            "BRE", "SWE", "NOR", "OKA", "HRZ", "ING", "UBV", "PRO", "DTT", "MKL", "HES", "PAL",
+            "THU", "SZO", "RVA", "LOR", "URB", "AVR", "TRE", "KAR", "PGA", "NAX", "KNI",
+        ];
+        let europe_owned_by_allowed_countries = result.completed()
+            && self
+                .game
+                .continent_provinces("europe")
+                .is_some_and(|mut provinces| {
+                    provinces.all(|id| {
+                        let Some(province) = self.save.game.provinces.get(&id) else {
+                            return false;
+                        };
+                        let is_sea_or_wasteland = self
+                            .game
+                            .get_province(&id)
+                            .is_some_and(|game_province| !game_province.is_habitable());
+                        let allowed_owner = province
+                            .owner
+                            .is_some_and(|owner| ALLOWED_TAGS.contains(&owner.as_str()));
+                        is_sea_or_wasteland || allowed_owner
+                    })
+                });
+        result.and(AchievementCondition::new(
+            europe_owned_by_allowed_countries,
+            "all European provinces are unowned or held by an allowed country",
         ));
         result
     }

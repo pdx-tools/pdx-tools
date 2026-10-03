@@ -321,6 +321,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 351,
+            name: String::from("All Blue"),
+            description: String::from(
+                "As Portugal, all of Europe is owned by you or blue European countries that exist in 1444.",
+            ),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(
