@@ -474,6 +474,7 @@ impl<'a> AchievementHunter<'a> {
             self.animal_kingdom(),
             self.philippine_tiger(),
             self.great_perm(),
+            self.the_great_khan(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1995,6 +1996,36 @@ impl<'a> AchievementHunter<'a> {
             "cascadia_region",
             "hudson_bay_region",
             "canada_region",
+        ] {
+            let owns_region = result.completed()
+                && self.all_provs_in_region(region, |province, _| {
+                    self.owns_or_non_sovereign_subject_of_province(province)
+                });
+            result.and(AchievementCondition::new(
+                owns_region,
+                format!("owns or has a non-tributary subject in {}", region),
+            ));
+        }
+        result
+    }
+
+    pub fn the_great_khan(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(66);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "KHA" || self.starting_country == "GOL",
+            "started as Great Horde or Chagatai",
+        ));
+        for region in [
+            "russia_region",
+            "ural_region",
+            "crimea_region",
+            "south_china_region",
+            "xinan_region",
+            "north_china_region",
+            "persia_region",
+            "khorasan_region",
         ] {
             let owns_region = result.completed()
                 && self.all_provs_in_region(region, |province, _| {

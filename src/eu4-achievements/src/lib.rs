@@ -283,6 +283,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 66,
+            name: String::from("The Great Khan"),
+            description: String::from(
+                "Starting as Mongolia or Great Horde, own or have a subject own the Chinese, Russian and Persian regions.",
+            ),
+            difficulty: Difficulty::Hard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(
