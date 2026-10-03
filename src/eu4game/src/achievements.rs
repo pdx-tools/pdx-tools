@@ -472,6 +472,7 @@ impl<'a> AchievementHunter<'a> {
             self.mets_hayk(),
             self.pandya_empire(),
             self.animal_kingdom(),
+            self.philippine_tiger(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1913,6 +1914,60 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(
             owns_animist_bengal,
             "owns or has a non-tributary subject in animist Bengal",
+        ));
+        result
+    }
+
+    pub fn philippine_tiger(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(265);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        for region in ["coromandel_region"] {
+            let owns_region = result.completed()
+                && self.all_provs_in_region(region, |province, _| {
+                    self.owns_or_non_sovereign_subject_of_province(province)
+                });
+            result.and(AchievementCondition::new(
+                owns_region,
+                format!("owns or has a non-tributary subject in {}", region),
+            ));
+        }
+        for area in [
+            "malabar_area",
+            "mysore_area",
+            "rayalaseema_area",
+            "orissa_area",
+            "west_bengal_area",
+            "east_bengal_area",
+            "arakan_area",
+            "lower_burma_area",
+            "north_tenasserim_area",
+            "tenasserim_area",
+            "malaya_area",
+            "malacca_area",
+            "central_thai_area",
+            "kalimantan_area",
+            "north_sumatra_area",
+            "batak_area",
+            "minangkabau_area",
+            "west_java_area",
+            "south_sumatra_area",
+        ] {
+            let owns_area = result.completed()
+                && self.all_provs_in_area(area, |province, _| {
+                    self.owns_or_non_sovereign_subject_of_province(province)
+                });
+            result.and(AchievementCondition::new(
+                owns_area,
+                format!("owns or has a non-tributary subject in {}", area),
+            ));
+        }
+        for id in [2379, 604, 2380, 2376, 2377, 2029] {
+            result.and(self.owns_or_non_sovereign_subject_of_id_condition(ProvinceId::from(id)));
+        }
+        result.and(AchievementCondition::new(
+            self.tag == "CEB",
+            "currently Cebu",
         ));
         result
     }
