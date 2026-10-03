@@ -247,6 +247,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 358,
+            name: String::from("Mets Hayk"),
+            description: String::from(
+                "Starting as Karabakh, own, core, and convert to Coptic the borders of Great Armenia.",
+            ),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

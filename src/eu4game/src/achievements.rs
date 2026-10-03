@@ -469,6 +469,7 @@ impl<'a> AchievementHunter<'a> {
             self.an_unlikely_candidate(),
             self.the_last_crusade(),
             self.sunset_invasion(),
+            self.mets_hayk(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1812,6 +1813,57 @@ impl<'a> AchievementHunter<'a> {
         ));
         for id in [227, 217, 183, 236, 97, 118] {
             result.and(self.owns_core_province_condition(ProvinceId::from(id)));
+        }
+        result
+    }
+
+    pub fn mets_hayk(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(358);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "MLK",
+            "started as Karabakh",
+        ));
+        result.and(AchievementCondition::new(
+            self.country.religion.as_deref() == Some("coptic"),
+            "country religion is Coptic",
+        ));
+        for id in [331, 419, 2202, 2205, 2305, 2307, 2306, 4302, 327] {
+            let owns_core_coptic = self
+                .save
+                .game
+                .provinces
+                .get(&ProvinceId::from(id))
+                .is_some_and(|province| {
+                    province.owner == Some(self.tag)
+                        && province.cores.contains(&self.tag)
+                        && province.religion.as_deref() == Some("coptic")
+                });
+            result.and(AchievementCondition::new(
+                owns_core_coptic,
+                format!("owns and cores Coptic province {}", id),
+            ));
+        }
+        for area in [
+            "tabriz_area",
+            "shahrizor_area",
+            "al_jazira_area",
+            "dulkadir_area",
+            "aleppo_area",
+            "syria_area",
+            "syrian_desert_area",
+        ] {
+            let owns_all_core_coptic = result.completed()
+                && self.all_provs_in_area(area, |province, _| {
+                    province.owner == Some(self.tag)
+                        && province.cores.contains(&self.tag)
+                        && province.religion.as_deref() == Some("coptic")
+                });
+            result.and(AchievementCondition::new(
+                owns_all_core_coptic,
+                format!("owns and cores all Coptic provinces in {}", area),
+            ));
         }
         result
     }
