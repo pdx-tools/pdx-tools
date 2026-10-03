@@ -470,6 +470,7 @@ impl<'a> AchievementHunter<'a> {
             self.the_last_crusade(),
             self.sunset_invasion(),
             self.mets_hayk(),
+            self.pandya_empire(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1863,6 +1864,33 @@ impl<'a> AchievementHunter<'a> {
             result.and(AchievementCondition::new(
                 owns_all_core_coptic,
                 format!("owns and cores all Coptic provinces in {}", area),
+            ));
+        }
+        result
+    }
+
+    pub fn pandya_empire(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(245);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "MAD",
+            "started as Madurai",
+        ));
+        let coromandel = result.completed()
+            && self.all_provs_in_region("coromandel_region", |province, _| {
+                province.owner == Some(self.tag)
+            });
+        result.and(AchievementCondition::new(
+            coromandel,
+            "owns all provinces in Coromandel",
+        ));
+        for area in ["malabar_area", "mysore_area", "rayalaseema_area"] {
+            let owns_area = result.completed()
+                && self.all_provs_in_area(area, |province, _| province.owner == Some(self.tag));
+            result.and(AchievementCondition::new(
+                owns_area,
+                format!("owns all provinces in {}", area),
             ));
         }
         result
