@@ -97,8 +97,20 @@ const pressedKeys = new Set<string>();
 
 const mapGameEndpoint = () => {
   return {
-    async syncLocationData(locationArray: Uint32Array) {
-      newLocations = locationArray;
+    /**
+     * All location data and the grouping table of a save, applied on the
+     * same frame. A new save replaces the one on the map with this.
+     */
+    async syncSave({
+      locations,
+      groupingTable,
+    }: {
+      locations: Uint32Array;
+      groupingTable: Uint32Array;
+    }) {
+      newLocations = locations;
+      newGroupingTable = groupingTable;
+      newMapData = null;
       renderOrQueue();
     },
 
@@ -499,6 +511,11 @@ export const createMapEngine = async (
       hasLocationInformation = true;
       app.sync_location_array(newLocations);
       newLocations = null;
+
+      // The location under the cursor can belong to another save now, so
+      // the next pointer move reports it again.
+      lastKnownLocationId = null;
+      lastProcessedWorldCoordinates = null;
     }
     if (newMapData) {
       if (newMapData.colors) {
@@ -736,6 +753,11 @@ export const createMapEngine = async (
           }
         }
       }
+    },
+
+    /** Show the world rectangle of another view, such as that of another save. */
+    fitWorldRect: (rect: { x: number; y: number; width: number; height: number }) => {
+      app.fit_world_rect(rect.x, rect.y, rect.width, rect.height);
     },
 
     pan_to_color_id: (

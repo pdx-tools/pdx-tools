@@ -1,7 +1,14 @@
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
-import type { Eu5MapEndpoint, MapDataSync } from "../map/map-module";
-import type { Eu5SaveInput } from "../../store/types";
+import type {
+  Eu5MapEndpoint,
+  LocationClickChangeEvent,
+  LocationHoverChangeEvent,
+  MapDataSync,
+} from "../map/map-module";
+import type { BoxSelectCommitEvent } from "../../types/box-select";
+import { eu5SaveFileUrl } from "../../store/types";
+import type { Eu5ParsedSave } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
@@ -55,46 +62,127 @@ const initialized = (async () => {
   return { memory: result.memory };
 })();
 
-export const createGame = async (
+/** Set once, before the first parse; every parse reads binary tokens. */
+const tokensReady = Promise.all([initialized, tokensTask]).then(([, tokens]) =>
+  timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens))),
+);
+
+/** Where a load gets the bundles of the save's patch. */
+type GameBundleSource = {
+  /**
+   * Choose the bundles for the patch of the save. Resolves the version of
+   * the bundles to use, or null when the map shows the bundles of another
+   * patch. Such a save needs new workers.
+   */
+  selectVersion: (version: string) => Promise<string | null>;
+  fetch: () => Promise<Uint8Array>;
+  fetchLocalization: () => Promise<Uint8Array>;
+};
+
+type OpenedBundles = {
+  game: Promise<wasm_eu5.Eu5WasmGameBundle>;
+  localization: Promise<wasm_eu5.Eu5WasmLocalizationBundle>;
+};
+
+/**
+ * The bundles of the patch that this worker serves. The first save
+ * chooses the patch. A save of another patch gets new workers. Thus the
+ * bundles open one time, and the next saves of the campaign use them again.
+ */
+let bundles: OpenedBundles | null = null;
+
+function openBundles(source: GameBundleSource): OpenedBundles {
+  if (bundles !== null) {
+    return bundles;
+  }
+
+  const opened: OpenedBundles = {
+    game: source
+      .fetch()
+      .then((data) => timeSync("Create game bundle", () => wasm_eu5.Eu5WasmGameBundle.open(data))),
+    localization: source
+      .fetchLocalization()
+      .then((data) =>
+        timeSync("Create localization bundle", () => wasm_eu5.Eu5WasmLocalizationBundle.open(data)),
+      ),
+  };
+
+  // A bundle that failed to open must not stay for the next save.
+  const forget = () => {
+    if (bundles === opened) bundles = null;
+  };
+  opened.game.catch(forget);
+  opened.localization.catch(forget);
+
+  bundles = opened;
+  return opened;
+}
+
+/** Map input for the open save. */
+type MapEvents = {
+  hover: (event: LocationHoverChangeEvent) => void;
+  click: (event: LocationClickChangeEvent) => void;
+  boxSelect: (event: BoxSelectCommitEvent) => Promise<void>;
+};
+
+/** The save that this worker serves. */
+type OpenSave = {
+  /** Null until the map shows this save, so input goes to the save on screen. */
+  events: MapEvents | null;
+  close: () => void;
+};
+
+let openSave: OpenSave | null = null;
+
+function closeSave() {
+  const save = openSave;
+  openSave = null;
+  save?.close();
+}
+
+/**
+ * Parse a save and serve it. The save that was open closes first. The
+ * caller reads the bytes of the save, so a save that cannot be read never
+ * closes the open one.
+ *
+ * With `hold`, the map keeps the previous save until a call to `show`.
+ * Thus the caller can set the map mode and selection first, and the map
+ * changes one time.
+ */
+export const loadSave = async (
   {
     save,
+    data: saveData,
+    hold,
   }: {
-    save: Eu5SaveInput;
+    save: Eu5ParsedSave;
+    data: ArrayBuffer;
+    hold: boolean;
   },
   {
     gameBundle,
     onProgress,
   }: {
-    gameBundle: {
-      selectVersion: (version: string) => void;
-      fetch: () => Promise<Uint8Array>;
-      fetchLocalization: () => Promise<Uint8Array>;
-    };
+    gameBundle: GameBundleSource;
     onProgress?: (increment: number, stage: string) => void;
   },
 ) => {
-  const readFile = async () => {
-    switch (save.kind) {
-      case "handle":
-        return (await save.file.getFile()).arrayBuffer();
-      case "file":
-        return save.file.arrayBuffer();
-      case "server":
-        return fetchOk(`/api/eu5/saves/${save.saveId}/file`).then((response) =>
-          response.arrayBuffer(),
-        );
-    }
-  };
+  // Wasm memory does not shrink, so the open save goes before this one is
+  // parsed. Two gamestates at once would raise the memory of the page for
+  // the rest of the session.
+  closeSave();
 
-  const saveDataTask = timeAsync("Read Save File", () => readFile());
+  // Melt reads the save again, so that the worker does not keep a large
+  // file in memory.
+  const readFile = async () =>
+    save.kind === "file"
+      ? save.file.arrayBuffer()
+      : fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
 
-  const [wasm, tokens] = await Promise.all([initialized, tokensTask]);
-  timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens)));
+  const [wasm, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
   onProgress?.(5, "Reading save file");
 
   const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
-
-  const saveData = await saveDataTask;
   onProgress?.(10, "Parsing gamestate");
 
   const saveParser = timeSync("Initialize Save Parser", () =>
@@ -103,13 +191,11 @@ export const createGame = async (
 
   const metadata = saveParser.meta();
   const version = `${metadata.version.major}.${metadata.version.minor}`;
-  gameBundle.selectVersion(version);
-  const gameDataTask = gameBundle.fetch();
-  const localizationTask = gameBundle
-    .fetchLocalization()
-    .then((data) =>
-      timeSync("Create localization bundle", () => wasm_eu5.Eu5WasmLocalizationBundle.open(data)),
-    );
+  if ((await gameBundle.selectVersion(version)) === null) {
+    saveParser.free();
+    return null;
+  }
+  const { game: gameBundleTask, localization: localizationTask } = openBundles(gameBundle);
 
   const gamestate = await (async () => {
     try {
@@ -122,10 +208,7 @@ export const createGame = async (
   })();
   onProgress?.(30, "Loading game data");
 
-  const gameBundleData = await gameDataTask;
-  const gameBundleWasm = timeSync("Create game bundle", () =>
-    wasm_eu5.Eu5WasmGameBundle.open(gameBundleData),
-  );
+  const gameBundleWasm = await gameBundleTask;
   onProgress?.(5, "Building workspace");
 
   // Build the workspace first so the map worker can begin syncing
@@ -140,36 +223,39 @@ export const createGame = async (
   }
   const map = mapEndpoint;
 
-  // Do not wait: the map worker can still be loading its textures, and the
-  // parse does not need the view. A failure keeps the default view.
-  map.open_view(workspace.opening_view()).catch((error: unknown) => {
-    console.warn("Failed to open the map view", error);
-  });
-
-  const syncInitialLocationData = () => {
-    const buffer = workspace.location_arrays();
+  // Send all location data and the grouping table in one message. Then the
+  // map never draws the locations of one save with the groups of a different save.
+  const syncSave = (source: wasm_eu5.Eu5WasmWorkspace | wasm_eu5.Eu5App) => {
+    const buffer = source.location_arrays();
     const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
 
     // Making a clone in the web worker instead of having the channel do a
     // structured clone is 100x faster on firefox. Decreased latency from 600ms
     // to 6ms.
-    const cloned = new Uint32Array(locationArray);
-    return map.syncLocationData(transfer(cloned, [cloned.buffer]));
+    const locations = new Uint32Array(locationArray);
+    const groupingTable = source.grouping_table();
+    return map.syncSave(
+      transfer({ locations, groupingTable }, [locations.buffer, groupingTable.buffer]),
+    );
   };
 
-  const syncInitialGroupingTable = () => {
-    const raw = workspace.grouping_table();
-    return map.syncGroupingTable(transfer(raw, [raw.buffer]));
-  };
+  if (!hold) {
+    // Do not wait: the map worker can still be loading its textures, and the
+    // parse does not need the view. A failure keeps the default view.
+    map.open_view(workspace.opening_view()).catch((error: unknown) => {
+      console.warn("Failed to open the map view", error);
+    });
 
-  await syncInitialLocationData();
-  syncInitialGroupingTable();
+    // The map uploads the buffers while this worker localizes.
+    await syncSave(workspace);
+  }
   onProgress?.(5, "Localizing");
 
   const localizationBundle = await localizationTask;
   onProgress?.(2, "Building indexes");
 
   const app = timeSync("Localize app", () => workspace.localize(localizationBundle));
+  let held = hold;
 
   // Build search indexes once after initialization.
   const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
@@ -187,8 +273,10 @@ export const createGame = async (
     return new Uint32Array(values);
   };
 
-  // Send the stale location buffers to the map worker in one message.
+  // Send the stale location buffers to the map worker in one message. While
+  // the map holds the previous save, `show` sends all of them instead.
   const syncMapData = (data: MapDataSync) => {
+    if (held) return Promise.resolve();
     const buffers = [data.colors?.buffer, data.flags?.buffer].filter((x) => x !== undefined);
     return map.syncMapData(transfer(data, buffers));
   };
@@ -206,6 +294,7 @@ export const createGame = async (
   };
 
   const syncGroupingTable = () => {
+    if (held) return Promise.resolve();
     const raw = app.grouping_table();
     return map.syncGroupingTable(transfer(raw, [raw.buffer]));
   };
@@ -230,8 +319,8 @@ export const createGame = async (
     return p;
   };
 
-  map.onLocationHoverUpdate(
-    proxy((event) => {
+  const events: MapEvents = {
+    hover: (event) => {
       // Hover resolution is synchronous and worker messages are ordered. If
       // this handler becomes asynchronous, carry a generation through it.
       app.clear_highlights();
@@ -244,11 +333,9 @@ export const createGame = async (
       }
 
       syncFlagData();
-    }),
-  );
+    },
 
-  map.onLocationClickUpdate(
-    proxy((event) => {
+    click: (event) => {
       let change: MapChangeData;
       if (event.kind === "update") {
         const mods = event.modifiers;
@@ -263,11 +350,9 @@ export const createGame = async (
         change = app.clear_focus_or_selection();
       }
       afterMutation(change);
-    }),
-  );
+    },
 
-  map.onBoxSelectCommit(
-    proxy((event) => {
+    boxSelect: (event) => {
       let change: MapChangeData;
       switch (event.operation) {
         case "add":
@@ -281,10 +366,23 @@ export const createGame = async (
           break;
       }
       return afterMutation(change);
-    }),
-  );
+    },
+  };
+
+  const opened: OpenSave = {
+    events: held ? null : events,
+    close: () => app.free(),
+  };
+  openSave = opened;
 
   return proxy({
+    /** Show this save on the map, after a load with `hold`. */
+    show: async (): Promise<void> => {
+      if (!held || openSave !== opened) return;
+      held = false;
+      await syncSave(app);
+      opened.events = events;
+    },
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       const change = app.set_map_mode(mode);
       await syncAll(change);
@@ -481,7 +579,15 @@ let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) 
   null;
 
 export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
-  mapEndpoint = wrap<Eu5MapEndpoint>(port);
+  const map = wrap<Eu5MapEndpoint>(port);
+  mapEndpoint = map;
+
+  // Map input goes to whichever save is open, so a new save does not
+  // register its handlers again.
+  map.onLocationHoverUpdate(proxy((event) => openSave?.events?.hover(event)));
+  map.onLocationClickUpdate(proxy((event) => openSave?.events?.click(event)));
+  map.onBoxSelectCommit(proxy((event) => openSave?.events?.boxSelect(event)));
+
   await initialized;
   timeSync("Setup EU5 Wasm", () => wasm_eu5.setup_eu5_wasm(level));
 }

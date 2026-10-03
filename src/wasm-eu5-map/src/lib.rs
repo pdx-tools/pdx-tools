@@ -7,7 +7,8 @@ use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
     LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
-    R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, default_clock,
+    R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
+    default_clock,
 };
 use std::time::Duration;
 use tsify::Ts;
@@ -447,6 +448,16 @@ impl Eu5WasmMapRenderer {
 
         let bounds = self.input.viewport_bounds();
         self.controller.set_viewport_bounds(bounds);
+    }
+
+    /// Show the world rectangle that another save of the campaign showed, so
+    /// that a change of save keeps the camera in the same place. The units
+    /// are the ones that `viewport_world_rect` returns.
+    #[wasm_bindgen]
+    pub fn fit_world_rect(&mut self, x: u32, y: u32, width: u32, height: u32) {
+        let rect = WorldRect::new(WorldPoint::new(x, y), WorldSize::new(width, height));
+        self.input.fit(rect);
+        self.apply_zoomed_viewport();
     }
 
     /// Open the map on the view the save calls for.

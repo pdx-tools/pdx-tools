@@ -469,6 +469,29 @@ pub fn parse_meta(data: &[u8]) -> Result<Ts<eu4save::models::Meta>, JsError> {
     into_ts(meta)
 }
 
+#[derive(Debug, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaythroughMetadata {
+    pub playthrough_id: String,
+    pub date: Eu4DateComponents,
+}
+
+/// The stable identity of a local campaign. EU4's metadata campaign_id can
+/// change between saves, so this needs the same gamestate fingerprint as uploads.
+#[wasm_bindgen]
+pub fn parse_playthrough(data: &[u8]) -> Result<Ts<PlaythroughMetadata>, JsError> {
+    wasm_pdx_core::console_error_panic_hook::set_once();
+    let save = Eu4Parser::new()
+        .parse_with(data, tokens::get_tokens())
+        .map_err(JsError::from)?
+        .save;
+    let query = Query::from_save(save);
+    into_ts(PlaythroughMetadata {
+        playthrough_id: eu4game::shared::playthrough_id(&query),
+        date: query.save().meta.date.into(),
+    })
+}
+
 #[wasm_bindgen]
 pub fn parse_save(
     save_data: Vec<u8>,

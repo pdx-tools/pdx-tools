@@ -1,42 +1,29 @@
-import { useCallback, useEffect, useEffectEvent, useRef } from "react";
-import type { CanvasCourierController } from "./types";
+import { useCallback, useLayoutEffect, useRef } from "react";
+import type { CanvasCourierHost } from "./host";
 
-export function useCanvasCourierSurface({ controller }: { controller: CanvasCourierController }) {
+/**
+ * Show the canvas of a host in a container. When the component unmounts,
+ * the canvas leaves the container and the host stays. Thus the next
+ * component that shows the canvas continues where this one stopped.
+ */
+export function useCanvasCourierSurface(host: CanvasCourierHost | null) {
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const offscreenRef = useRef<OffscreenCanvas | null>(null);
 
-  const attachSurface = useEffectEvent((canvas: HTMLCanvasElement, offscreen: OffscreenCanvas) => {
-    controller.attachSurface({ canvas, offscreen });
-  });
-
-  const focus = useCallback(() => {
-    canvasRef.current?.focus({ preventScroll: true });
-  }, []);
-
-  const blur = useCallback(() => {
-    canvasRef.current?.blur();
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
+  // A layout effect, so that a canvas that moves from another container
+  // is in place before the first paint.
+  useLayoutEffect(() => {
     const container = surfaceRef.current;
-    if (!canvas || !container) {
+    if (!container || !host) {
       return;
     }
 
-    if (offscreenRef.current === null) {
-      offscreenRef.current = canvas.transferControlToOffscreen();
-      attachSurface(canvas, offscreenRef.current);
-    }
+    host.attach(container);
+    return () => host.detach(container);
+  }, [host]);
 
-    // No cleanup as transferring is a one-way operation
-  }, []);
+  const focus = useCallback(() => {
+    host?.canvas?.focus({ preventScroll: true });
+  }, [host]);
 
-  return {
-    surfaceRef,
-    canvasRef,
-    focus,
-    blur,
-  };
+  return { surfaceRef, focus };
 }

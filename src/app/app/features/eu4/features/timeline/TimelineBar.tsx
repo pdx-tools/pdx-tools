@@ -7,17 +7,22 @@ import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import { useEu4MapMode, dateEnabledMapMode } from "../../store";
 import { useTimelineController } from "./useTimelineController";
+import { CampaignStepper } from "@/features/campaign/CampaignStepper";
+import { useTimelineCampaign } from "@/features/campaign/SaveMarks";
 
 export function TimelineBar() {
   const controller = useTimelineController();
+  const campaign = useTimelineCampaign(controller?.timeline.start);
   const mapMode = useEu4MapMode();
   const timelineVisible = dateEnabledMapMode(mapMode);
   useTimelineKeyboard(timelineVisible ? controller : null);
-  // The map settings and screenshots have no other home, so they stay when
-  // the save has no history to scrub (its date is its start date).
+  // The map settings, screenshots, and campaign steps have no other home.
+  // Thus they stay when the save has no history to scrub (its date is its
+  // start date).
   if (!timelineVisible || controller === null) {
     return (
-      <div className="pointer-events-auto absolute bottom-4 left-4 z-20 flex items-center rounded-panel border border-game-line-strong bg-game-overlay p-1.5 text-game-ink-100 shadow-xl backdrop-blur-md">
+      <div className="pointer-events-auto absolute bottom-4 left-4 z-20 flex items-center gap-1 rounded-panel border border-game-line-strong bg-game-overlay p-1.5 text-game-ink-100 shadow-xl backdrop-blur-md">
+        <CampaignStepper />
         <MapSettingsControl />
         <CameraControl />
       </div>
@@ -30,8 +35,9 @@ export function TimelineBar() {
         <TimelineTransport controller={controller} />
         <TimelineReadout controller={controller} className="shrink-0" />
         <div className="min-w-0 flex-1 basis-64">
-          <TimelineScrubber controller={controller} />
+          <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
+        <CampaignStepper />
         <MapSettingsControl />
         <CameraControl />
         <TimelapseExport controller={controller} />

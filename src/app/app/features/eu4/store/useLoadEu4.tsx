@@ -16,11 +16,11 @@ import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
 import { check } from "@/lib/isPresent";
 import { captureException } from "@/lib/captureException";
+import { takeCampaignCarry } from "@/features/campaign/carry";
+import { toPlaythroughId } from "@/features/campaign/types";
+import type { LocalSaveRef } from "@/features/campaign/types";
 
-export type Eu4SaveInput =
-  | { kind: "file"; file: File }
-  | { kind: "handle"; file: FileSystemFileHandle; name: string }
-  | { kind: "server"; saveId: string };
+export type Eu4SaveInput = LocalSaveRef | { kind: "server"; saveId: string };
 
 type Eu4LoadState = {
   loading: {
@@ -281,7 +281,11 @@ async function loadEu4Save(
   const map = await mapControllerTask;
   map.updateProvinceColors(primary, secondary, { country: primary });
 
-  if (!meta.multiplayer) {
+  // A step from another save of the campaign keeps its view.
+  const carry = takeCampaignCarry("eu4", toPlaythroughId(meta.playthroughId));
+  if (carry?.camera) {
+    map.setCamera(carry.camera);
+  } else if (!meta.multiplayer) {
     map.setScaleOfMax(0.25);
     map.moveCameraTo({ x: mapPosition[0], y: mapPosition[1] });
   }
@@ -296,6 +300,8 @@ async function loadEu4Save(
     initialPoliticalMapColors,
     defaultSelectedCountry: defaultSelectedTag,
     saveInfo,
+    input: save,
+    carry,
   };
 }
 
@@ -334,7 +340,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
       controller.signal,
       settings.renderTerrain,
     )
-      .then(async ({ map, ...rest }) => {
+      .then(async ({ map, carry, ...rest }) => {
         storeRef.current?.getState().map.dispose?.();
 
         const store = await createEu4Store({
@@ -342,6 +348,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
           save: rest,
           map,
           settings,
+          carry,
         });
 
         map.attachDOMHandlers();
