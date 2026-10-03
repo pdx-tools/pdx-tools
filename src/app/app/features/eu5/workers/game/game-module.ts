@@ -55,6 +55,29 @@ const initialized = (async () => {
   return { memory: result.memory };
 })();
 
+let tokensSet = false;
+
+/**
+ * The campaign and date of a save file, read from its header without a
+ * parse of the gamestate. A campaign lists other saves with this.
+ */
+export async function readSaveMeta(file: File) {
+  const data = await file.arrayBuffer();
+  await initialized;
+  if (!tokensSet) {
+    wasm_eu5.set_tokens(new Uint8Array(await tokensTask));
+    tokensSet = true;
+  }
+
+  const loader = wasm_eu5.Eu5MetaParser.create().init(new Uint8Array(data));
+  try {
+    const meta = loader.meta();
+    return { campaignId: meta.playthroughId, date: meta.date };
+  } finally {
+    loader.free();
+  }
+}
+
 export const createGame = async (
   {
     save,
@@ -90,6 +113,7 @@ export const createGame = async (
 
   const [wasm, tokens] = await Promise.all([initialized, tokensTask]);
   timeSync("Set EU5 Tokens", () => wasm_eu5.set_tokens(new Uint8Array(tokens)));
+  tokensSet = true;
   onProgress?.(5, "Reading save file");
 
   const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());

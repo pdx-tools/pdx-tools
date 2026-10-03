@@ -229,6 +229,10 @@ export interface AppTriggers {
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
   ): Promise<void>;
+  /** Show this world rectangle, such as the view of another save of the campaign. */
+  fitWorldRect(rect: MapViewport["viewport"]): Promise<void>;
+  /** The campaign and date of another save file, without a parse of its gamestate. */
+  readSaveHeader(file: File): Promise<{ campaignId: string; date: Eu5DateComponents }>;
 }
 
 /** Only ownership has a history in the save, so only the political map can show a past date. */
@@ -373,6 +377,8 @@ export class Eu5UIEngine implements AppEngine {
     clearMapHoverHighlight: () => this.gameInstance.clearMapHoverHighlight(),
     searchEntities: (query) => this.handleSearchEntities(query),
     panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
+    fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
+    readSaveHeader: (file) => this.workers.readSaveMeta(file),
   };
 
   get state(): AppState {
@@ -753,6 +759,7 @@ export async function createLoadedEngine(
   engine: Eu5UIEngine;
   save: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
+  playthroughId: string;
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
@@ -786,6 +793,7 @@ export async function createLoadedEngine(
     engine,
     save,
     saveDate: metadata.date,
+    playthroughId: metadata.playthroughId,
     playthroughName: metadata.playthroughName,
     players: metadata.players,
     world: metadata.world,

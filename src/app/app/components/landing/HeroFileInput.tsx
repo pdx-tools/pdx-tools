@@ -94,8 +94,8 @@ export const HeroFileInput = () => {
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.currentTarget.files && e.currentTarget.files[0]) {
-      publishFile({ kind: "file", file: e.currentTarget.files[0] });
+    if (e.currentTarget.files && e.currentTarget.files.length > 0) {
+      publishFile([...e.currentTarget.files].map((file) => ({ kind: "file", file }) as const));
       e.currentTarget.value = "";
     }
   };
@@ -140,6 +140,7 @@ export const HeroFileInput = () => {
         id="analyze-box-file-input"
         ref={fileInputRef}
         type="file"
+        multiple
         className="peer absolute opacity-0"
         onChange={handleChange}
         accept={acceptedFiles.join(",")}
@@ -153,10 +154,12 @@ export const HeroFileInput = () => {
     <button
       className={className}
       onClick={async () => {
-        let fileHandle: FileSystemFileHandle;
+        let fileHandles: FileSystemFileHandle[];
         try {
-          const result = await window.showOpenFilePicker({
-            multiple: false,
+          // Several saves of one campaign open the latest, and the timeline
+          // can step to the others.
+          fileHandles = await window.showOpenFilePicker({
+            multiple: true,
             types: [
               {
                 description: "PDX Files",
@@ -166,13 +169,12 @@ export const HeroFileInput = () => {
               },
             ],
           });
-          fileHandle = result[0];
         } catch (e) {
           console.debug("File selection error, user may have cancelled", e);
           return;
         }
 
-        publishFile({ kind: "handle", file: fileHandle });
+        publishFile(fileHandles.map((file) => ({ kind: "handle", file }) as const));
       }}
     >
       {children}

@@ -361,6 +361,20 @@ export function proportionScale(_map: MapToken, proportion: number) {
   map.scale = map.maxScale * proportion;
 }
 
+/** Where the camera is, so that another map can open at the same place. */
+export type MapCamera = { scale: number; focusPoint: [number, number] };
+
+export function getCamera(_map: MapToken): MapCamera {
+  const map = state.map!;
+  return { scale: map.scale, focusPoint: [map.focusPoint[0], map.focusPoint[1]] };
+}
+
+export function setCamera(_map: MapToken, camera: MapCamera) {
+  const map = state.map!;
+  map.scale = camera.scale;
+  map.focusPoint = [camera.focusPoint[0], camera.focusPoint[1]];
+}
+
 export function getViewport(_map: MapToken) {
   const map = state.map!;
   return {

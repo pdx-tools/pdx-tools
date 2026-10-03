@@ -738,6 +738,11 @@ export const createMapEngine = async (
       }
     },
 
+    /** Show the world rectangle of another view, such as that of another save. */
+    fitWorldRect: (rect: { x: number; y: number; width: number; height: number }) => {
+      app.fit_world_rect(rect.x, rect.y, rect.width, rect.height);
+    },
+
     pan_to_color_id: (
       colorId: number,
       insets: { left: number; right: number; top: number; bottom: number },

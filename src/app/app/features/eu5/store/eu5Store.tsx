@@ -13,6 +13,8 @@ type Eu5State = {
   filename: string;
   saveInput: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
+  /** The id that every save of the campaign carries. */
+  playthroughId: string;
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
@@ -44,9 +46,12 @@ export const createEu5Store = (
   saveInput: Eu5ParsedSave,
   filename: string,
   saveDate: Eu5DateComponents,
+  playthroughId: string,
   playthroughName: string,
   players: Eu5PlayerData[],
   world: WorldSummary,
+  /** The insight panel as the previous save of the campaign left it. */
+  insightPanel?: { open: boolean; width: number },
 ): Eu5Store => {
   const store = createStore<Eu5State>()((set) => ({
     engine,
@@ -54,11 +59,12 @@ export const createEu5Store = (
     appState: engine.getState(),
     filename,
     saveDate,
+    playthroughId,
     playthroughName,
     players,
     world,
-    insightPanelOpen: false,
-    insightPanelWidth: 640,
+    insightPanelOpen: insightPanel?.open ?? false,
+    insightPanelWidth: insightPanel?.width ?? 640,
     timelineBarHeight: 0,
     setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
     setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
@@ -100,6 +106,7 @@ export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveInput = () => useEu5Store((x) => x.saveInput);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5World = () => useEu5Store((x) => x.world);
+export const useEu5PlaythroughId = () => useEu5Store((x) => x.playthroughId);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5Players = () => useEu5Store((x) => x.players);
 export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);

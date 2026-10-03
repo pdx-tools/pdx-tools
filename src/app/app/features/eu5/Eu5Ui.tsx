@@ -43,6 +43,7 @@ import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
+import { Eu5CampaignProvider } from "./campaign";
 
 type Eu5UiProps = {
   save: Eu5SaveInput;
@@ -83,7 +84,9 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       {/* UI layer — only when data loaded */}
       {data !== null ? (
         <Eu5StoreProvider store={data}>
-          <Eu5UiContent cursorRef={cursorRef} canvasRef={canvasRef} />
+          <Eu5CampaignProvider input={save}>
+            <Eu5UiContent cursorRef={cursorRef} canvasRef={canvasRef} />
+          </Eu5CampaignProvider>
         </Eu5StoreProvider>
       ) : null}
 

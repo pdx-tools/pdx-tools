@@ -265,6 +265,11 @@ export class Eu5GameAdapter {
     return saveWorker(saveEngine, mapEngine);
   }
 
+  /** The campaign and date of a save file, without a parse of the gamestate. */
+  readSaveMeta(file: File) {
+    return this.eu5Worker.readSaveMeta(file);
+  }
+
   terminate(): void {
     this.eu5RawWorker.terminate();
     this.mapRawWorker.terminate();
@@ -314,6 +319,7 @@ export function saveWorker(
 
   return {
     getZoom: () => mapEngine.get_zoom(),
+    fitWorldRect: (rect: MapViewport["viewport"]) => mapEngine.fitWorldRect(rect),
     getPaletteGradients: async (): Promise<PaletteGradients> => {
       return await saveEngine.getPaletteGradients();
     },

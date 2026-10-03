@@ -6,6 +6,9 @@ import type { Eu5Store } from "./store/eu5Store";
 import type { Eu5SaveInput } from "./store/types";
 import { captureException } from "@/lib/captureException";
 import { isWebGPUSupported } from "@/lib/compatibility";
+import { takeCampaignCarry } from "@/features/campaign/carry";
+import { applyEu5Carry } from "./campaignCarry";
+import type { Eu5Carry } from "./campaignCarry";
 
 export class Eu5SurfaceController implements CanvasCourierController {
   private transport: CanvasCourierTransport | null = null;
@@ -48,16 +51,38 @@ export class Eu5SurfaceController implements CanvasCourierController {
       },
       this.callbacks.onProgress,
     )
-      .then(({ engine, save, saveDate, playthroughName, players, world }) => {
+      .then(async ({ engine, save, saveDate, playthroughId, playthroughName, players, world }) => {
         if (generation !== this.loadGeneration) {
           engine.destroy();
           return;
         }
 
         this.dispose = () => engine.destroy();
+
+        // A step from another save of the campaign keeps its view.
+        const carry = takeCampaignCarry<Eu5Carry>("eu5", playthroughId);
+        if (carry !== null) {
+          try {
+            await applyEu5Carry(engine, carry);
+          } catch (error) {
+            captureException(error, { tags: { msg: "campaign-carry" } });
+          }
+          if (generation !== this.loadGeneration) return;
+        }
+
         const filename = save.kind === "file" ? save.file.name : save.name;
         this.callbacks.onStore(
-          createEu5Store(engine, save, filename, saveDate, playthroughName, players, world),
+          createEu5Store(
+            engine,
+            save,
+            filename,
+            saveDate,
+            playthroughId,
+            playthroughName,
+            players,
+            world,
+            carry?.insightPanel,
+          ),
         );
       })
       .catch((error) => {

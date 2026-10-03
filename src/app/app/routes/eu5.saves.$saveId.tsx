@@ -46,7 +46,8 @@ export default function Eu5SaveRoute() {
   if (!input) return <Eu5SaveNotFound />;
   return (
     <FullscreenPage slideIn={false}>
-      <Eu5Ui save={input} />
+      {/* A step to another save of the campaign is a new map surface. */}
+      <Eu5Ui key={input.saveId} save={input} />
     </FullscreenPage>
   );
 }

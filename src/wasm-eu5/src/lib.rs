@@ -340,6 +340,9 @@ pub struct Eu5PlayerData {
 pub struct Eu5AppMetadata {
     pub version: eu5save::models::GameVersion,
     pub date: Eu5DateComponents,
+    /// The id the game gives a campaign when it starts. Every save of the
+    /// campaign carries it, whichever player wrote the save.
+    pub playthrough_id: String,
     pub playthrough_name: String,
     /// Human players in save order. Empty for observer games.
     pub players: Vec<Eu5PlayerData>,
@@ -582,6 +585,7 @@ impl Eu5App {
         into_ts(Eu5AppMetadata {
             version: self.meta.version,
             date: self.meta.date.clone(),
+            playthrough_id: self.meta.playthrough_id.clone(),
             playthrough_name: self.meta.playthrough_name.clone(),
             world: self.app.world_summary(),
             players: self
