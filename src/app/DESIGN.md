@@ -524,6 +524,14 @@ The campaign's history as a bar along the bottom edge of the map (`features/eu5/
 - **Overlays share the edge by measurement, not by guess.** The bar publishes its measured height to the store; the selection pill and any other overlay on the bottom edge read it and stand clear, and settle together with it as it leaves.
 - **Export rides on the bar.** The timelapse control is the bar's last button; it opens a 288px `panel/95` + `backdrop-blur-xl` + `shadow-2xl` popover that states the film's length and size before a minute of encoding is spent. Once recording, the popover is gone and the button itself carries progress as an 18px ring around the glyph (180ms eased per frame); while the file is assembled and there is no progress to report, the full ring breathes at 1.4s rather than claiming to advance.
 
+### The Campaign View (Game world)
+The saves of one campaign, compared (`features/eu5/compare/`). It is a view on the political map, not a map mode of its own: the control panel lists it under **Campaign** beside the map modes, and the toolbar names it ("Campaign · 4 saves") once the session knows of a second save, so the reader never has to look for it. Choosing a map mode ends it.
+
+- **World first, country second.** The panel opens on the whole map: a readout line of counts, the land that changed hands (old owner → new owner, locations, population), and the countries that changed most, players first. A country row opens the country ledger; "The whole world" returns.
+- **The map is the second half of the panel.** It dims every location that did not change owner, and shows owners on the comparison's end date. A transfer row in brass marks only its land. When the end is later than the open save's history, a note says which date the map shows and offers to open the later save.
+- **The strip is the spine.** The snapshot strip and its brass endpoints head every state; other saves and uploads of the campaign sit in a disclosure under it, open only while there is nothing to compare yet.
+- **Identity is the tag.** Snapshots are aligned to the open save's country ids by tag, so a civil war that moves a tag to a new id does not read as a conquest.
+
 ### The Panel Foot (Game world)
 
 The control panel ends in three rows that share one grammar (`control-panel/footRow.ts`): a 36px row, a hairline above, a 9.5px mono uppercase label in a fixed 48px column, then the row's controls. **View** holds the render toggles, **Share** holds the save's one public act, **Export** holds the actions that write a file to disk (screenshot, melt) as labelled ghost buttons with the detail a player may not know — the shift modifier, what melting is — in a tooltip. Nothing at the foot needs a hover to be read.
