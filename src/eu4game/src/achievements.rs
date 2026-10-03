@@ -411,6 +411,12 @@ impl<'a> AchievementHunter<'a> {
             .is_some_and(|entry| entry.group == Some(group))
     }
 
+    fn is_culture_in_group(&self, culture: &str, group: &str) -> bool {
+        self.game
+            .culture_group_cultures(group)
+            .is_some_and(|mut cultures| cultures.any(|candidate| candidate == culture))
+    }
+
     fn is_wasteland_or_empty_province(&self, prov: &Province) -> bool {
         prov.owner.is_none()
     }
@@ -484,6 +490,7 @@ impl<'a> AchievementHunter<'a> {
             self.saladins_legacy(),
             self.where_the_heart_is(),
             self.choson_one(),
+            self.gothic_invasion(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -2133,6 +2140,43 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(
             owns_all_eastern_religions,
             "owns or has a non-tributary subject in every Eastern religion province",
+        ));
+        result
+    }
+
+    pub fn gothic_invasion(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(101);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "FEO",
+            "started as Theodoro",
+        ));
+        result.and(self.has_not_switched_nation());
+        result.and(AchievementCondition::new(
+            matches!(
+                self.country.primary_culture.as_deref(),
+                Some("goths" | "gothic_ger")
+            ),
+            "primary culture is Gothic",
+        ));
+        let owns_all_germanic_europe = result.completed()
+            && self
+                .game
+                .continent_provinces("europe")
+                .is_some_and(|provinces| {
+                    provinces
+                        .filter_map(|id| self.save.game.provinces.get(&id))
+                        .all(|province| {
+                            province.culture.as_deref().is_none_or(|culture| {
+                                !self.is_culture_in_group(culture, "germanic")
+                                    || province.owner.is_some_and(|owner| owner.as_str() == "FEO")
+                            })
+                        })
+                });
+        result.and(AchievementCondition::new(
+            owns_all_germanic_europe,
+            "directly owns all Germanic culture provinces in Europe",
         ));
         result
     }

@@ -313,6 +313,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::Hard,
         },
         Achievement {
+            id: 101,
+            name: String::from("Gothic Invasion"),
+            description: String::from(
+                "Start as Theodoro and conquer all Germanic culture provinces in Europe.",
+            ),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(
