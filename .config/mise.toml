@@ -309,9 +309,14 @@ depends = ["pnpm-install"]
 run = "pnpm run typecheck"
 
 [tasks."admin:assets:sync"]
+description = "Download the game bundles that assets/game-bundles.sha256 lists"
 env._.file = { path = ".env", redact = true }
-run = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key="${ASSETS_SECRET_KEY}" --s3-access-key-id="${ASSETS_ACCESS_KEY}" copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
-run_windows = 'rclone --verbose --s3-provider=AWS --s3-endpoint s3.us-west-002.backblazeb2.com --s3-secret-access-key=%ASSETS_SECRET_KEY% --s3-access-key-id=%ASSETS_ACCESS_KEY% copy :s3:pdx-tools-build/game-bundles assets/game-bundles/.'
+run = "node ./dev/scripts/game-bundles.mts sync"
+
+[tasks."admin:assets:publish"]
+description = "Upload the local game bundles and write assets/game-bundles.sha256"
+env._.file = { path = ".env", redact = true }
+run = "node ./dev/scripts/game-bundles.mts publish"
 
 [tasks."admin:assets:compile:all"]
 description = "Compile all downloaded game asset bundles"

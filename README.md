@@ -185,7 +185,13 @@ Generate game bundle for repo:
 mise run assets:bundle
 ```
 
-Upload the new entry in assets/game-bundles to the game-bundles directory in the pdx-tools-build S3 bucket
+Publish the new entry in assets/game-bundles. This uploads the local bundles and writes `assets/game-bundles.sha256`, which you then commit:
+
+```bash
+mise run admin:assets:publish
+```
+
+The manifest lists each bundle with its SHA-256. `mise run admin:assets:sync` downloads the bundles that it lists and checks them, and CI uses it as the cache key. Publish uploads every local bundle, so first make sure that your local bundles are current.
 
 Finally:
  - Update achievement detection logic with any changes

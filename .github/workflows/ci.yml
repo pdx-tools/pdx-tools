@@ -125,14 +125,15 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
-    # Restore the newest asset cache by prefix. This job only restores.
+    # Restore the bundle cache for this manifest, or the newest one. The sync
+    # step then downloads only what the cache lacks. This job only restores.
     - name: Restore assets
       if: matrix.arch == 'amd64'
       uses: actions/cache/restore@v6
       with:
         path: ${{ env.ASSET_CACHE_PATHS }}
-        key: asset-cache-v3-
-        restore-keys: asset-cache-v3-
+        key: game-bundles-v2-${{ hashFiles('assets/game-bundles.sha256') }}
+        restore-keys: game-bundles-v2-
         enableCrossOsArchive: true # shares one cache with the build job
 
     - name: Restore EU4 save fixtures
@@ -184,6 +185,7 @@ jobs:
           CI
           GITHUB_TOKEN
         runCmd: |
+          set -e
           if [ "${{ matrix.arch }}" = "arm64" ]; then
             mise install --verbose --jobs 1
             mise --version
@@ -194,8 +196,9 @@ jobs:
             # The host path in PDX_FIXTURES_LOG does not exist in the
             # container; the checkout is bind-mounted at the current directory.
             export PDX_FIXTURES_LOG="$PWD/fixtures.log"
-            mise run admin:assets:sync && \
-            mise run admin:assets:compile:all && \
+            export PDX_REQUIRE_TEST_ASSETS=${{ matrix.with_tokens && '1' || '0' }}
+            mise run admin:assets:sync
+            mise run admin:assets:compile:all
             mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
             ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
             mise run build:app
@@ -298,10 +301,11 @@ jobs:
       - uses: actions/checkout@v7
       # See the note on the devcontainer job's restore step.
       - name: Restore assets
+        id: bundles
         uses: actions/cache/restore@v6
         with:
-          key: asset-cache-v3-
-          restore-keys: asset-cache-v3-
+          key: game-bundles-v2-${{ hashFiles('assets/game-bundles.sha256') }}
+          restore-keys: game-bundles-v2-
           enableCrossOsArchive: true # shared cache between OSes
           path: ${{ env.ASSET_CACHE_PATHS }}
 
@@ -361,6 +365,7 @@ jobs:
             ${{ runner.os }}-pnpm-store
   
       - name: Asset pipeline
+        id: asset-pipeline
         if: matrix.with_tokens # if tokens are enabled, process game bundles
         env:
           ASSETS_ACCESS_KEY: ${{ matrix.with_tokens && secrets.ASSETS_ACCESS_KEY || '' }}
@@ -368,7 +373,9 @@ jobs:
         run: |
           mise run admin:assets:sync
           mise run admin:assets:compile:all
-      - run: |
+      - env:
+          PDX_REQUIRE_TEST_ASSETS: ${{ matrix.with_tokens && '1' || '0' }}
+        run: |
           mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
           ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
           mise run build:app
@@ -407,22 +414,15 @@ jobs:
           key: save-fixtures-v1-eu5-${{ hashFiles('src/eu5app/tests/it/fixtures.txt') }}
           enableCrossOsArchive: true
 
-      # The one saver. Keyed on the directory listing, so a new entry is
-      # written only when this run fetched a fixture the cache lacked; a
-      # literal key never re-saves after the first hit. Only a tokens leg
-      # has game-bundles, so a token-less leg must never save.
-      - name: Hash asset listing
-        id: assets
-        if: always() && matrix.os == 'ubuntu-latest' && matrix.with_tokens
-        shell: bash
-        run: |
-          hash=$(find $ASSET_CACHE_PATHS -type f 2>/dev/null | LC_ALL=C sort | sha256sum | cut -c1-16)
-          echo "hash=$hash" >> "$GITHUB_OUTPUT"
-
+      # The one saver. The key is the manifest hash, so a new entry is
+      # saved only when the manifest changes. Save even when the tests
+      # fail, but only after a complete sync.
       - name: Save assets
-        if: always() && matrix.os == 'ubuntu-latest' && matrix.with_tokens
+        if: |
+          !cancelled() && matrix.os == 'ubuntu-latest' && matrix.with_tokens &&
+          steps.asset-pipeline.outcome == 'success' && steps.bundles.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ env.ASSET_CACHE_PATHS }}
-          key: asset-cache-v3-${{ steps.assets.outputs.hash }}
+          key: game-bundles-v2-${{ hashFiles('assets/game-bundles.sha256') }}
           enableCrossOsArchive: true

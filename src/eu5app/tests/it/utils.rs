@@ -17,6 +17,10 @@ use pdx_map::LocationArrays;
 
 static DATA: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
+pub fn require_test_assets() -> bool {
+    std::env::var("PDX_REQUIRE_TEST_ASSETS").as_deref() == Ok("1")
+}
+
 fn log_access(name: &str) {
     let Some(path) = std::env::var_os("PDX_FIXTURES_LOG") else {
         return;
@@ -116,7 +120,11 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
     let is_binary = file.header().kind().is_binary();
     let resolver = tokens();
     if is_binary && resolver.is_empty() {
-        eprintln!("{save_name}: EU5 binary tokens not loaded");
+        let message = format!("{save_name}: EU5 binary tokens not loaded");
+        if require_test_assets() {
+            panic!("{message}");
+        }
+        eprintln!("{message}");
         return None;
     }
 
@@ -130,10 +138,14 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
         .join("game-bundles")
         .join(format!("eu5-{}.{}.zip", version.major, version.minor));
     if !bundle_path.exists() {
-        eprintln!(
-            "{save_name}: missing {}; run mise run admin:assets:sync to fetch",
+        let message = format!(
+            "{save_name}: missing {}; run mise run admin:assets:sync, or add the bundle with mise run admin:assets:publish",
             bundle_path.display()
         );
+        if require_test_assets() {
+            panic!("{message}");
+        }
+        eprintln!("{message}");
         return None;
     }
 
