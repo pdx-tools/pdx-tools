@@ -275,6 +275,14 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::Hard,
         },
         Achievement {
+            id: 156,
+            name: String::from("Great Perm"),
+            description: String::from(
+                "As Perm, own or have a subject own the Russian, Siberian, Scandinavian, Canadian, Hudson Bay and Cascadian Regions.",
+            ),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

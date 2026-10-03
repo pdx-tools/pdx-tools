@@ -473,6 +473,7 @@ impl<'a> AchievementHunter<'a> {
             self.pandya_empire(),
             self.animal_kingdom(),
             self.philippine_tiger(),
+            self.great_perm(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1969,6 +1970,41 @@ impl<'a> AchievementHunter<'a> {
             self.tag == "CEB",
             "currently Cebu",
         ));
+        result
+    }
+
+    pub fn great_perm(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(156);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+        result.and(AchievementCondition::new(
+            self.starting_country == "PRM",
+            "started as Perm",
+        ));
+        result.and(AchievementCondition::new(
+            self.tag == "PRM",
+            "currently Perm",
+        ));
+        result.and(self.has_not_switched_nation());
+        for region in [
+            "russia_region",
+            "ural_region",
+            "scandinavia_region",
+            "west_siberia_region",
+            "east_siberia_region",
+            "cascadia_region",
+            "hudson_bay_region",
+            "canada_region",
+        ] {
+            let owns_region = result.completed()
+                && self.all_provs_in_region(region, |province, _| {
+                    self.owns_or_non_sovereign_subject_of_province(province)
+                });
+            result.and(AchievementCondition::new(
+                owns_region,
+                format!("owns or has a non-tributary subject in {}", region),
+            ));
+        }
         result
     }
 
