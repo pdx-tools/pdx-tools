@@ -475,6 +475,10 @@ const main = async () => {
       );
     }
   }
+
+  if (selectedTargets.some((t) => bundledGames.includes(t.game)) && !options.check) {
+    console.log("\nRun mise run admin:assets:publish to share new bundles with CI");
+  }
 };
 
 const isEntryPoint = () => {

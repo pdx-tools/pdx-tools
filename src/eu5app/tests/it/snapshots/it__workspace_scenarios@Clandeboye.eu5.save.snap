@@ -1,5 +1,6 @@
 ---
 source: src/eu5app/tests/it/main.rs
+assertion_line: 168
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
@@ -16,18 +17,18 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     }
   ],
   "map_mode_colors": {
-    "building_levels": "0x7c64384bb46c8410c34626a565dcff9853d926af4de6c8de32fa5ac339f0dbf2",
-    "control": "0x57d66db3d6527d6134b6058d7b21a12cd495f463e0c63223f3075bda2845f835",
-    "development": "0xb2a2cc4ec976bde38a54b7bd3207da3cdbe2001c5512fa7a689ae0fd55fb5cc8",
-    "markets": "0x8e87c0c3438591772abb0c08fb6710baf328242550dc37faa55fd29f1fd290f6",
-    "political": "0x3584d2390b15a299072be66a845149b35797d3b58fd28d14831b51f31a407e1c",
-    "population": "0x25be4dfd3e4017746c4a29c2ee48c11c9d626f28f793be5362e7fca8475bba7f",
-    "population_growth": "0x7b8646d8f85b7437b7879c4bd1d82d8aa21b9286372cc28a5142882235185d71",
-    "religion": "0x92f475731dc448cd88e7782ce39eb3a2c9d424854d915a3de8adfcaebaea18d9",
-    "rgo_level": "0x8b3218f798a1f123d7276d65e43725955b81ee7ad2368735fb5c662888cd6225",
-    "state_efficacy": "0xd1a7ad91314a2aaffb366bf6dc51ed438021a52ca55e03b324b0038f29154f55",
-    "unrealized_tax_base": "0x58fc94d94808c7542881ac03f2b1d74897a5fcef3fd05929a5f2dd015cfb90fa",
-    "wealth": "0x15960bcfada61522a1ff9eeffbcf57542060492c556dd040768562d2e66fb29c"
+    "building_levels": "0xd4b8f795d335c4aec5194d4482c6f02455b17dd7ea8e33a1d1dbe4e1ed05ae8c",
+    "control": "0x2bbcf3b7426d76e466a1e4e7c7dbaeba427a3be374a704d8a5be29eed37422bb",
+    "development": "0x82694288e30cf5f95053ad88c5cdfabbc74d2395b9e89e1aac90de76c7e92553",
+    "markets": "0x98120b9f56e78283794f1d85fb868e95b1954d7cff61823fdaebdf99ff677b8f",
+    "political": "0x3493b568ee45bb28fa0198dd4b09f8d254657e9c914a0005c864ccd175b9b468",
+    "population": "0xf75eaf53a76969efa1ee572db89f36cc95a1e25d34319a73ece5cea9360034e5",
+    "population_growth": "0x13410b9a458ff1e5118fe7c59e4175a5047f3d938080e99f03fe1dbd69dea7b5",
+    "religion": "0x2966b950bca9c12730e764833bc3928320f01d073aabae4d0370fee399eadde1",
+    "rgo_level": "0xe188e3e4b0e32ac9729c26c7f7195847ef2b6c2714928ecf9ff012d3952a5a03",
+    "state_efficacy": "0x423e2ae90ed861574bee92d6ad4024ce58cfe23ab4f7b33cb4cd4e60414e8e1d",
+    "unrealized_tax_base": "0x9cb610c8eba40283619129ca05338f5d48a2117c333453705d774d4a82228819",
+    "wealth": "0x64edc96ca5ec6a9210917add6affa29a0a0b51f48dc020a989c295584c689625"
   },
   "save_version": "1.0.4",
   "selection_counts": {
