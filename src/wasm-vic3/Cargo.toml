@@ -12,9 +12,9 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["zstd_rust"]
-zstd_c = ["pdx-zstd/zstd_c"]
+zstd_c = ["pdx-zstd/zstd_c", "vic3app/zstd_c"]
 zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto"]
-zstd_rust = ["pdx-zstd/zstd_rust"]
+zstd_rust = ["pdx-zstd/zstd_rust", "vic3app/zstd_rust"]
 
 [dependencies]
 jomini = { workspace = true }
@@ -22,7 +22,11 @@ schemas = { workspace = true }
 wasm-bindgen = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
+vic3app = { workspace = true, features = ["tsify"] }
 vic3save = { workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }
 tsify = { default-features = false, features = ["js"] , workspace = true }
+
+[dev-dependencies]
+pdx-map = { workspace = true, default-features = false }

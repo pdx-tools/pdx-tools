@@ -1,5 +1,6 @@
 use crate::asset_compilers::{
     Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, Hoi4AssetCompiler, PackageOptions,
+    Vic3AssetCompiler,
 };
 use crate::bundler::{AssetBundler, AssetManifest};
 use crate::images::RustImageProcessor;
@@ -21,7 +22,7 @@ pub struct BundleArgs {
     #[clap(value_parser)]
     out_directory: Option<PathBuf>,
 
-    /// Game to bundle (eu4, eu5, or hoi4). If not specified, attempts to auto-detect from source
+    /// Game to bundle (eu4, eu5, hoi4, or vic3). If not specified, attempts to auto-detect from source
     #[clap(long)]
     game: Option<String>,
 
@@ -111,6 +112,15 @@ impl BundleArgs {
                         &options,
                     )?
                 }
+                Game::Vic3 => {
+                    let game_compiler = Vic3AssetCompiler;
+                    game_compiler.compile_assets(
+                        &tracking_provider,
+                        &imaging,
+                        &out_dir,
+                        &options,
+                    )?
+                }
                 game => anyhow::bail!(
                     "Asset bundling is not supported for {}. Use fetch-game to download it",
                     game
@@ -124,6 +134,16 @@ impl BundleArgs {
                 anyhow::ensure!(
                     game_id == "hoi4",
                     "HOI4 launcher-settings.json has unexpected gameId: {game_id}"
+                );
+            }
+
+            // Keep the Vic3 game ID in the bundle when --version is given.
+            if game == Game::Vic3 {
+                let game_id = crate::launcher::game_id(&tracking_provider)?
+                    .context("Vic3 bundles require launcher-settings.json with gameId")?;
+                anyhow::ensure!(
+                    game_id == "victoria3",
+                    "Vic3 launcher-settings.json has unexpected gameId: {game_id}"
                 );
             }
 

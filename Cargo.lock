@@ -2995,6 +2995,7 @@ dependencies = [
  "tempfile",
  "tracing",
  "tracing-subscriber",
+ "vic3app",
  "walkdir",
  "webp",
  "zstd",
@@ -4740,6 +4741,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
+name = "vic3app"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "image",
+ "jomini",
+ "pdx-map",
+ "pdx-zstd",
+ "postcard",
+ "rawzip",
+ "serde",
+ "thiserror 2.0.18",
+ "tsify",
+ "vic3app",
+ "vic3save",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "vic3save"
 version = "0.1.0"
 source = "git+https://github.com/rakaly/jomini.git#0e142acea73fb809e6f8fdf5db4019910e8341c4"
@@ -5079,13 +5099,31 @@ version = "0.1.0"
 dependencies = [
  "jomini",
  "js-sys",
+ "pdx-map",
  "pdx-zstd",
  "schemas",
  "serde",
  "serde-wasm-bindgen",
  "tsify",
+ "vic3app",
  "vic3save",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "wasm-vic3-map"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "pdx-map",
+ "pdx-zstd",
+ "tsify",
+ "vic3app",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-pdx-core",
+ "wasm-pdx-map",
+ "web-sys",
 ]
 
 [[package]]
