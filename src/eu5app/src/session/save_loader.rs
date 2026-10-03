@@ -16,7 +16,7 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct Eu5DateComponents {
@@ -391,6 +391,52 @@ impl<D: AsRef<[u8]>, RES: TokenResolver, W: Write> Eu5AnySaveLoader<D, RES, W> {
             Eu5AnySaveLoader::File(loader) => loader.parse(),
         }
     }
+}
+
+/// The number of bytes at the start of a save file that hold its header
+/// and metadata. `start` is the first bytes of the file; a header is never
+/// longer than [`SAVE_HEADER_MAX_LEN`].
+///
+/// Returns `None` when the file does not start with a save header, such as
+/// a compressed debug save, or when the header gives no metadata length.
+/// Read the whole file for such a save.
+pub fn metadata_prefix_len(start: &[u8]) -> Option<usize> {
+    let header = eu5save::SaveHeader::from_slice(start).ok()?;
+    let meta_len = usize::try_from(header.metadata_len()).ok()?;
+    (meta_len > 0).then(|| header.header_len() + meta_len)
+}
+
+/// The most bytes that a save header can have.
+pub const SAVE_HEADER_MAX_LEN: usize = 33;
+
+/// Read the metadata of a save from the start of its file, as
+/// [`metadata_prefix_len`] measures it. The rest of the file is not needed,
+/// so a caller does not read a large save in full to list it.
+pub fn read_metadata_prefix<RES: TokenResolver>(
+    prefix: &[u8],
+    resolver: RES,
+) -> Result<Eu5SaveMetadata, Eu5LoadError> {
+    let header = eu5save::SaveHeader::from_slice(prefix).map_err(Eu5LoadError::Header)?;
+    let start = header.header_len();
+    let end = usize::try_from(header.metadata_len())
+        .ok()
+        .and_then(|len| start.checked_add(len))
+        .filter(|&end| end <= prefix.len())
+        .ok_or_else(|| Eu5LoadError::MetaRead(std::io::ErrorKind::UnexpectedEof.into()))?;
+    let data = &prefix[start..end];
+
+    let arena = bumpalo::Bump::new();
+    let meta = if header.kind().is_text() {
+        let mut text = SaveMetadata::<eu5save::TextEncoding, _>::new(data, header);
+        ZipPrelude::deserialize_in_arena(&mut text.deserializer(), &arena)
+    } else {
+        let mut bin = SaveMetadata::<eu5save::BinaryEncoding, _>::new(data, header);
+        let mut deser = bin.deserializer(&resolver);
+        ZipPrelude::deserialize_in_arena(&mut deser, &arena)
+    };
+
+    let meta = meta.map_err(Eu5LoadError::MetaDeserialization)?;
+    Ok(Eu5SaveMetadata::from(&meta.metadata))
 }
 
 #[derive(Debug)]

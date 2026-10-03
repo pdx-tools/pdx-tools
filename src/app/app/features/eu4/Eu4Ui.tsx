@@ -13,6 +13,7 @@ import { ogImageUrl } from "@/lib/media";
 import { Eu4CursorTooltip } from "./features/map/Eu4CursorTooltip";
 import { TimelineBar } from "./features/timeline/TimelineBar";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
+import { Eu4CampaignProvider } from "./campaign";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -66,13 +67,15 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
 
       {data !== null ? (
         <Eu4StoreProvider store={data}>
-          <GameThemeProvider theme="eu4">
-            <TimelineBar />
-            <div className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
-              <Eu4CanvasOverlay />
-            </div>
-            <Eu4CursorTooltip />
-          </GameThemeProvider>
+          <Eu4CampaignProvider loadError={error}>
+            <GameThemeProvider theme="eu4">
+              <TimelineBar />
+              <div className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">
+                <Eu4CanvasOverlay />
+              </div>
+              <Eu4CursorTooltip />
+            </GameThemeProvider>
+          </Eu4CampaignProvider>
         </Eu4StoreProvider>
       ) : null}
 

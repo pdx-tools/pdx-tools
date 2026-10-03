@@ -35,6 +35,8 @@ import type {
   TimelineStepUnit,
 } from "@/features/timeline/controller";
 import { log } from "@/lib/log";
+import type { Eu4Carry } from "../campaignCarry";
+import type { Eu4SaveInput } from "./useLoadEu4";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
   players: "none",
@@ -58,6 +60,8 @@ type Eu4StateProps = {
     countries: EnhancedCountryInfo[];
     defaultSelectedCountry: string;
     saveInfo: { kind: "sync"; data: string } | { kind: "async"; saveId: string };
+    /** The save as the page got it, which a file watcher can later re-read. */
+    input: Eu4SaveInput;
     initialPoliticalMapColors: Uint8Array;
   };
   map: MapController;
@@ -131,10 +135,20 @@ export type Eu4Store = StoreApi<Eu4State>;
 type Eu4StoreInit = Eu4StateProps & {
   store: Eu4Store | null;
   settings: PersistedMapSettings;
+  /** The view that the previous save of the campaign left. */
+  carry?: Eu4Carry | null;
 };
 export const Eu4SaveContext = createContext<Eu4Store | null>(null);
 
-export const createEu4Store = async ({ store: prevStore, save, map, settings }: Eu4StoreInit) => {
+export const createEu4Store = async ({
+  store: prevStore,
+  save,
+  map,
+  settings,
+  carry,
+}: Eu4StoreInit) => {
+  const carriedTag =
+    carry && save.countries.some((x) => x.tag === carry.selectedTag) ? carry.selectedTag : null;
   const worker = getEu4Worker();
   const politicalTimeline = await worker.eu4GetTimeline("political");
   let playbackFrame: number | null = null;
@@ -214,7 +228,11 @@ export const createEu4Store = async ({ store: prevStore, save, map, settings }: 
     save,
     map,
     ...settings,
-    selectedTag: save.defaultSelectedCountry,
+    selectedTag: carriedTag ?? save.defaultSelectedCountry,
+    ...(carry && {
+      mapMode: carry.mapMode,
+      countryDrawerVisible: carry.countryDrawerVisible && carriedTag !== null,
+    }),
     timelines: { political: politicalTimeline },
     requestedDay: save.meta.total_days,
     mapDayOffset: save.meta.total_days,
@@ -548,6 +566,7 @@ export const selectShowCountryBorders = (x: Eu4State) =>
 export const useShowMapModeBorders = () => useEu4Store((x) => x.showMapModeBorders);
 export const usePaintSubjectInOverlordHue = () => useEu4Store((x) => x.paintSubjectInOverlordHue);
 export const useEu4Meta = () => useEu4Store((x) => x.save.meta);
+export const useEu4SaveInput = () => useEu4Store((x) => x.save.input);
 export const useAchievements = () => useEu4Store((x) => x.save.achievements);
 export const useSelectedTag = () => useEu4Store((x) => x.selectedTag);
 export const useTagFilter = () => useEu4Store((x) => x.countryFilter);

@@ -6,6 +6,8 @@ import { fetchOk } from "@/lib/fetch";
 import type { Eu4SaveInput } from "../store";
 import { captureException } from "@/lib/captureException";
 import { resetTimelineCursor } from "./timeline";
+import { parseDate } from "@/features/timeline/date";
+import { toCampaignId } from "@/features/campaign/types";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(save: Eu4SaveInput) {
@@ -42,6 +44,21 @@ export function eu4GameParse(gameData: Uint8Array, provinceIdToColorIndex: Uint1
   const achievements = wasm.save.get_achievements();
   const defaultSelectedTag = eu4DefaultSelectedTag(meta);
   return { meta, achievements, defaultSelectedTag };
+}
+
+/**
+ * The campaign and date of a save file, read from its header without a
+ * parse of the gamestate. A campaign lists other saves with this.
+ */
+export async function readSaveMeta(file: File) {
+  const data = new Uint8Array(await file.arrayBuffer());
+  await wasm.initializeModule();
+  const meta = wasm.module.parse_meta(data);
+  const date = parseDate(meta.date);
+  if (date === null) {
+    throw new Error(`unexpected save date: ${meta.date}`);
+  }
+  return { campaignId: toCampaignId(meta.campaign_id), date };
 }
 
 export function parseMeta() {

@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { getEu5Session } from "./eu5Session";
 import type { Eu5SaveInput } from "./types";
 
@@ -12,5 +12,8 @@ export function useLoadEu5(save: Eu5SaveInput) {
     session.getSnapshot,
   );
 
-  return { controller: session.controller, ...snapshot };
+  // This page shows the save, so a step that held the session for it is done.
+  useEffect(() => session.claim(), [session, save]);
+
+  return { host: session.host, ...snapshot };
 }

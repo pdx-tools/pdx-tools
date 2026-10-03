@@ -16,6 +16,9 @@ import { dataUrls, gameVersion } from "@/lib/game_gen";
 import { pdxAbortController } from "@/lib/abortController";
 import { check } from "@/lib/isPresent";
 import { captureException } from "@/lib/captureException";
+import { takeCampaignCarry } from "@/features/campaign/carry";
+import { toCampaignId } from "@/features/campaign/types";
+import type { Eu4Carry } from "../campaignCarry";
 
 export type Eu4SaveInput =
   | { kind: "file"; file: File }
@@ -281,7 +284,11 @@ async function loadEu4Save(
   const map = await mapControllerTask;
   map.updateProvinceColors(primary, secondary, { country: primary });
 
-  if (!meta.multiplayer) {
+  // A step from another save of the campaign keeps its view.
+  const carry = takeCampaignCarry<Eu4Carry>("eu4", toCampaignId(meta.campaign_id));
+  if (carry?.camera) {
+    map.setCamera(carry.camera);
+  } else if (!meta.multiplayer) {
     map.setScaleOfMax(0.25);
     map.moveCameraTo({ x: mapPosition[0], y: mapPosition[1] });
   }
@@ -296,6 +303,8 @@ async function loadEu4Save(
     initialPoliticalMapColors,
     defaultSelectedCountry: defaultSelectedTag,
     saveInfo,
+    input: save,
+    carry,
   };
 }
 
@@ -334,7 +343,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
       controller.signal,
       settings.renderTerrain,
     )
-      .then(async ({ map, ...rest }) => {
+      .then(async ({ map, carry, ...rest }) => {
         storeRef.current?.getState().map.dispose?.();
 
         const store = await createEu4Store({
@@ -342,7 +351,14 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
           save: rest,
           map,
           settings,
+          carry,
         });
+
+        // The map got political colors with the save. A map mode that the
+        // previous save or the campaign kept needs its own.
+        if (store.getState().mapMode !== "political") {
+          await store.getState().actions.updateProvinceColors();
+        }
 
         map.attachDOMHandlers();
 
