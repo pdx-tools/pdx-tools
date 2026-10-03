@@ -29,15 +29,21 @@ export const CountryStatsTable = ({ stats }: CountryStatsProps) => {
     }),
     columnHelper.accessor("gdpc", {
       sortFn: "basic",
-      cell: (info) => formatFloat(info.getValue()),
+      cell: (info) => {
+        const value = info.getValue();
+        return value == null ? "—" : formatFloat(value);
+      },
       meta: { className: "text-right" },
       header: ({ column }) => <Table.ColumnHeader column={column} title="GDP/c" />,
     }),
     columnHelper.accessor("gdpcGrowth", {
       sortFn: "basic",
-      cell: (info) => formatFloat(info.getValue() * 100, 2) + "%",
+      cell: (info) => {
+        const value = info.getValue();
+        return value == null ? "—" : formatFloat(value * 100, 2) + "%";
+      },
       meta: { className: "text-right" },
-      header: ({ column }) => <Table.ColumnHeader column={column} title="GDP growth" />,
+      header: ({ column }) => <Table.ColumnHeader column={column} title="GDP/c growth" />,
     }),
     columnHelper.accessor("sol", {
       sortFn: "basic",

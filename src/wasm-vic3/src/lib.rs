@@ -128,8 +128,35 @@ impl SaveFileImpl {
 
     fn country_stats(&self, country: &Vic3Country) -> Vec<Vic3GraphData> {
         let gdp_line = || country.gdp.iter();
-        let sol_line = country.avgsoltrend.iter();
         let pop_line = || country.pop_statistics.trend_population.iter();
+
+        if Vic3CountryStatsRateIter::new(pop_line(), 365)
+            .next()
+            .is_none()
+        {
+            let annual_gdp_line =
+                || gdp_line().zip_aligned(Vic3CountryStatsRateIter::new(gdp_line(), 365));
+
+            return annual_gdp_line()
+                .zip_aligned(country.avgsoltrend.iter())
+                .zip_aligned(country.gdp.gdp_growth())
+                .map(
+                    |(date, (((gdp, _gdp_growth_marker), sol), gdp_growth))| Vic3GraphData {
+                        gdp: gdp / 1_000_000.0,
+                        gdpc: None,
+                        pop: None,
+                        date: Date::from_ymd(date.year(), date.month(), date.day())
+                            .iso_8601()
+                            .to_string(),
+                        sol,
+                        gdp_growth,
+                        gdpc_growth: None,
+                    },
+                )
+                .collect();
+        }
+
+        let sol_line = country.avgsoltrend.iter();
         let gdpc_line = || {
             pop_line()
                 .zip_aligned(gdp_line())
@@ -148,14 +175,14 @@ impl SaveFileImpl {
             .map(
                 |(date, [gdp, sol, gdpc, gdp_growth, gdpc_growth, _pop_growth])| Vic3GraphData {
                     gdp: gdp / 1000000.0,
-                    gdpc,
-                    pop: gdp / gdpc,
+                    gdpc: Some(gdpc),
+                    pop: Some(gdp / gdpc),
                     date: Date::from_ymd(date.year(), date.month(), date.day())
                         .iso_8601()
                         .to_string(),
                     sol,
                     gdp_growth,
-                    gdpc_growth,
+                    gdpc_growth: Some(gdpc_growth),
                 },
             )
             .collect()

@@ -39,10 +39,10 @@ pub struct Vic3GraphData {
     pub date: String,
     pub gdp: f64,
     pub sol: f64,
-    pub pop: f64,
-    pub gdpc: f64,
+    pub pop: Option<f64>,
+    pub gdpc: Option<f64>,
     pub gdp_growth: f64,
-    pub gdpc_growth: f64,
+    pub gdpc_growth: Option<f64>,
 }
 
 #[derive(Tsify, Debug, Serialize)]

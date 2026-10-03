@@ -8,14 +8,14 @@ import { EChart } from "@/components/viz/EChart";
 
 export interface CountryChartProps {
   stats: Vic3GraphData[];
-  type: keyof Vic3GraphData;
+  type: "gdp" | "gdpc";
 }
 
 const typeMap = {
   gdp: "GDP (M)",
   gdpc: "GDP/c",
-  gdpcGrowth: "GDP inc (%)",
-  gdpGrowth: "GDP/c inc (%)",
+  gdpcGrowth: "GDP/c growth (%)",
+  gdpGrowth: "GDP growth (%)",
 };
 
 export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
@@ -25,7 +25,7 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
         ...obj,
         date: obj.date.slice(0, 4),
         gdpGrowth: obj.gdpGrowth * 100,
-        gdpcGrowth: obj.gdpcGrowth * 100,
+        gdpcGrowth: obj.gdpcGrowth == null ? null : obj.gdpcGrowth * 100,
       })),
     [stats],
   );
@@ -35,8 +35,8 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
     const growthKey = `${type}Growth` as keyof Vic3GraphData;
     const growthSeriesKey = growthKey as keyof typeof typeMap;
     const xAxisData = data.map((item) => item.date);
-    const primarySeries = data.map((item) => item[type] as number);
-    const growthSeries = data.map((item) => item[growthKey] as number);
+    const primarySeries = data.map((item) => item[type] as number | null);
+    const growthSeries = data.map((item) => item[growthKey] as number | null);
     const isDark = isDarkMode();
 
     return {
@@ -56,9 +56,8 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
               const isGrowth =
                 param.seriesName === typeMap.gdpcGrowth || param.seriesName === typeMap.gdpGrowth;
               const suffix = isGrowth ? "%" : "";
-              return `${param.marker}${escapeEChartsHtml(
-                param.seriesName,
-              )}: ${formatFloat(+(rawValue ?? 0), 2)}${suffix}`;
+              const value = rawValue == null ? "—" : `${formatFloat(+rawValue, 2)}${suffix}`;
+              return `${param.marker}${escapeEChartsHtml(param.seriesName)}: ${value}`;
             })
             .join("<br />");
         },
@@ -147,6 +146,18 @@ export const CountryGDPChart = ({ stats, type }: CountryChartProps) => {
       ],
     } satisfies EChartsOption;
   }, [data, type]);
+
+  if (!stats.some((item) => item[type] != null)) {
+    const message =
+      type === "gdpc"
+        ? "GDP per capita data is not available in this save."
+        : "GDP data is not available in this save.";
+    return (
+      <div className="flex h-[400px] items-center justify-center text-sm text-slate-500">
+        {message}
+      </div>
+    );
+  }
 
   return <EChart option={option} />;
 };
