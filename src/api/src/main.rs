@@ -1,3 +1,4 @@
+use anyhow::Context;
 use applib::parser::{ParseResult, parse_save_data};
 use axum::{
     Json, Router,
@@ -97,7 +98,9 @@ async fn main() -> anyhow::Result<()> {
     let tracer_provider = init_tracing();
 
     let port = match std::env::var("PORT") {
-        Ok(x) => x.parse::<u16>().unwrap(),
+        Ok(x) => x
+            .parse::<u16>()
+            .with_context(|| format!("PORT must be a valid TCP port, got {x:?}"))?,
         Err(_) => 8080,
     };
 
@@ -114,8 +117,10 @@ async fn main() -> anyhow::Result<()> {
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         );
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let listener = TcpListener::bind(addr).await.expect("to bind to port");
-    tracing::info!("listening on {}", addr);
+    let listener = TcpListener::bind(addr)
+        .await
+        .with_context(|| format!("Failed to bind API server to {addr}"))?;
+    tracing::info!("listening on {}", listener.local_addr()?);
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
