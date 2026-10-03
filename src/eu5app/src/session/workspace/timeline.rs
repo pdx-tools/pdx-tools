@@ -190,7 +190,7 @@ impl<'bump> Eu5Workspace<'bump> {
             let color = self.location_political_color(self.political_fill_source(location_idx));
             let unowned = self.owner_at_timeline_date(location_idx).is_dummy();
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_owner_color(color);
+            gpu_location.set_border_color(color);
             super::map_render::set_unowned_flag(gpu_location.flags_mut(), unowned);
         }
         touched

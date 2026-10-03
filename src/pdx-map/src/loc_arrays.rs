@@ -130,11 +130,14 @@ impl LocationData {
         bytemuck::cast_slice_mut(self.sub_array_mut::<0>())
     }
 
-    pub fn owner_colors(&self) -> &[GpuColor] {
+    /// The colors that decide the political borders. A political border is
+    /// drawn where two neighbors have different border colors. The border
+    /// line is this color, darkened. The value does not change the fill.
+    pub fn border_colors(&self) -> &[GpuColor] {
         bytemuck::cast_slice(self.sub_array::<1>())
     }
 
-    pub fn owner_colors_mut(&mut self) -> &mut [GpuColor] {
+    pub fn border_colors_mut(&mut self) -> &mut [GpuColor] {
         bytemuck::cast_slice_mut(self.sub_array_mut::<1>())
     }
 
@@ -178,10 +181,10 @@ impl LocationData {
         }
     }
 
-    pub fn owner_color_mut(&mut self, index: GpuLocationIdx) -> &mut GpuColor {
+    pub fn border_color_mut(&mut self, index: GpuLocationIdx) -> &mut GpuColor {
         unsafe {
             self.as_mut()
-                .owner_colors
+                .border_colors
                 .get_unchecked_mut(index.0 as usize)
         }
     }
@@ -201,13 +204,13 @@ impl LocationData {
     fn as_mut(&mut self) -> LocationMutData<'_> {
         let chunk = self.chunk();
         let (primary_colors, rest) = unsafe { self.data.split_at_mut_unchecked(chunk) };
-        let (owner_colors, rest) = unsafe { rest.split_at_mut_unchecked(chunk) };
+        let (border_colors, rest) = unsafe { rest.split_at_mut_unchecked(chunk) };
         let (secondary_colors, rest) = unsafe { rest.split_at_mut_unchecked(chunk) };
         let (state_flags, location_ids) = unsafe { rest.split_at_mut_unchecked(chunk) };
 
         LocationMutData {
             primary_colors: bytemuck::cast_slice_mut(primary_colors),
-            owner_colors: bytemuck::cast_slice_mut(owner_colors),
+            border_colors: bytemuck::cast_slice_mut(border_colors),
             secondary_colors: bytemuck::cast_slice_mut(secondary_colors),
             state_flags: bytemuck::cast_slice_mut(state_flags),
             location_ids: bytemuck::cast_slice_mut(location_ids),
@@ -217,7 +220,7 @@ impl LocationData {
 
 struct LocationMutData<'a> {
     primary_colors: &'a mut [GpuColor],
-    owner_colors: &'a mut [GpuColor],
+    border_colors: &'a mut [GpuColor],
     secondary_colors: &'a mut [GpuColor],
     state_flags: &'a mut [LocationFlags],
     location_ids: &'a mut [LocationId],
@@ -297,12 +300,12 @@ impl LocationArrays {
         self.data.secondary_colors_mut().copy_from_slice(colors);
     }
 
-    pub fn set_owner_colors(&mut self, colors: &[GpuColor]) {
+    pub fn set_border_colors(&mut self, colors: &[GpuColor]) {
         assert!(
             colors.len() == self.len(),
             "Colors length must match existing array length"
         );
-        self.data.owner_colors_mut().copy_from_slice(colors);
+        self.data.border_colors_mut().copy_from_slice(colors);
     }
 
     pub fn set_flags(&mut self, flags: &[LocationFlags]) {
@@ -446,13 +449,13 @@ impl<'a> LocationState<'a> {
         }
     }
 
-    /// Get owner color
-    pub fn owner_color(&self) -> GpuColor {
+    /// Get border color
+    pub fn border_color(&self) -> GpuColor {
         // SAFETY: Index is guaranteed to be in bounds
         unsafe {
             *self
                 .data
-                .owner_colors()
+                .border_colors()
                 .get_unchecked(self.index.0 as usize)
         }
     }
@@ -482,8 +485,9 @@ impl<'a> LocationState<'a> {
         *self.data.primary_color_mut(self.index) = color;
     }
 
-    pub fn set_owner_color(&mut self, color: GpuColor) {
-        *self.data.owner_color_mut(self.index) = color;
+    /// Set border color
+    pub fn set_border_color(&mut self, color: GpuColor) {
+        *self.data.border_color_mut(self.index) = color;
     }
 
     pub fn set_secondary_color(&mut self, color: GpuColor) {
@@ -534,7 +538,7 @@ mod tests {
         let buffers = arrays.buffers();
 
         assert_eq!(buffers.primary_colors().len(), arrays.len());
-        assert_eq!(buffers.owner_colors().len(), arrays.len());
+        assert_eq!(buffers.border_colors().len(), arrays.len());
         assert_eq!(buffers.secondary_colors().len(), arrays.len());
         assert_eq!(buffers.state_flags().len(), arrays.len());
     }
@@ -564,7 +568,7 @@ mod tests {
 
         assert_eq!(location.location_id(), LocationId::new(42));
         assert_eq!(location.primary_color(), GpuColor::EMPTY);
-        assert_eq!(location.owner_color(), GpuColor::EMPTY);
+        assert_eq!(location.border_color(), GpuColor::EMPTY);
         assert_eq!(location.secondary_color(), GpuColor::EMPTY);
         assert_eq!(location.flags(), LocationFlags::empty());
     }
@@ -582,11 +586,11 @@ mod tests {
         let secondary = GpuColor::from_rgb(150, 150, 150);
 
         location.set_primary_color(primary);
-        location.set_owner_color(owner);
+        location.set_border_color(owner);
         location.set_secondary_color(secondary);
 
         assert_eq!(location.primary_color(), primary);
-        assert_eq!(location.owner_color(), owner);
+        assert_eq!(location.border_color(), owner);
         assert_eq!(location.secondary_color(), secondary);
     }
 

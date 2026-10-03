@@ -167,7 +167,7 @@ pub fn hash_location_arrays(arrays: &LocationArrays) -> String {
     let buffers = arrays.buffers();
     h.append(bytemuck::cast_slice(buffers.primary_colors()));
     h.append(bytemuck::cast_slice(buffers.secondary_colors()));
-    h.append(bytemuck::cast_slice(buffers.owner_colors()));
+    h.append(bytemuck::cast_slice(buffers.border_colors()));
     h.append(bytemuck::cast_slice(buffers.state_flags()));
     let result = writer.into_inner().unwrap().finalize256();
     format!(

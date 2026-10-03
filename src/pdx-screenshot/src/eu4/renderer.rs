@@ -93,7 +93,7 @@ pub async fn render_screenshot(
             secondary_color[1],
             secondary_color[2],
         ));
-        gpu_location.set_owner_color(GpuColor::from_rgb(
+        gpu_location.set_border_color(GpuColor::from_rgb(
             primary_color[0],
             primary_color[1],
             primary_color[2],

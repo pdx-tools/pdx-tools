@@ -107,7 +107,7 @@ impl PdxMapRenderer {
         let init_colors = image.palette.map(|_, x| GpuColor::from(x.as_rgb()));
         location_arrays.set_primary_colors(init_colors.as_slice());
         location_arrays.set_secondary_colors(init_colors.as_slice());
-        location_arrays.set_owner_colors(init_colors.as_slice());
+        location_arrays.set_border_colors(init_colors.as_slice());
 
         let controller = MapViewController::new(renderer);
 

@@ -640,7 +640,7 @@ impl<'bump> Eu5Workspace<'bump> {
             // drawn like the edge of impassable terrain, not as a coast.
             if terrain.is_water() {
                 gpu_location.set_primary_color(GpuColor::WATER);
-                gpu_location.set_owner_color(GpuColor::WATER);
+                gpu_location.set_border_color(GpuColor::WATER);
                 gpu_location.set_secondary_color(GpuColor::WATER);
                 gpu_location
                     .flags_mut()
@@ -655,13 +655,13 @@ impl<'bump> Eu5Workspace<'bump> {
 
             if !terrain.is_passable() {
                 gpu_location.set_primary_color(GpuColor::IMPASSABLE);
-                gpu_location.set_owner_color(GpuColor::IMPASSABLE);
+                gpu_location.set_border_color(GpuColor::IMPASSABLE);
                 gpu_location.set_secondary_color(GpuColor::IMPASSABLE);
                 gpu_location.flags_mut().set(LocationFlags::IMPASSABLE);
                 continue;
             }
 
-            gpu_location.set_owner_color(owner_color);
+            gpu_location.set_border_color(owner_color);
             set_unowned_flag(gpu_location.flags_mut(), unowned);
         }
 

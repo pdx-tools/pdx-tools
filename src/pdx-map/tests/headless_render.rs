@@ -52,7 +52,7 @@ fn location_arrays(flags: [LocationFlags; LOCATIONS]) -> LocationArrays {
     arrays.set_secondary_colors(&colors);
     // Locations 0 and 1 share an owner so the diagonal is a location border
     // only. Locations 2 and 3 have their own owners.
-    arrays.set_owner_colors(&[colors[0], colors[0], colors[2], colors[3]]);
+    arrays.set_border_colors(&[colors[0], colors[0], colors[2], colors[3]]);
     arrays.set_flags(&flags);
     arrays
 }
