@@ -225,6 +225,12 @@ pub fn achievements() -> Vec<Achievement> {
             difficulty: Difficulty::VeryHard,
         },
         Achievement {
+            id: 292,
+            name: String::from("An Unlikely Candidate"),
+            description: String::from("Starting as Mzab, Touggourt or Djerid, reform Al-Andalus."),
+            difficulty: Difficulty::VeryHard,
+        },
+        Achievement {
             id: 150,
             name: String::from("One Faith!"),
             description: String::from(

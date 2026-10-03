@@ -462,6 +462,7 @@ impl<'a> AchievementHunter<'a> {
             self.stern_des_sudens(),
             self.terra_mariana(),
             self.draculas_revenge(),
+            self.an_unlikely_candidate(),
             self.ultimate_military(),
             self.where_are_the_penguins(),
             self.khaaaaaan(),
@@ -1743,6 +1744,26 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(
             has_all_provinces,
             "owns Hungary as Avaria",
+        ));
+        result
+    }
+
+    pub fn an_unlikely_candidate(&self) -> AchievementResult {
+        let mut result = AchievementResult::new(292);
+        result.and(self.no_custom_nations());
+        result.and(self.normal_start_date());
+
+        let started_as_eligible_nation =
+            matches!(self.starting_country.as_str(), "MZB" | "TGT" | "GHD");
+        result.and(AchievementCondition::new(
+            started_as_eligible_nation,
+            "started as Mzab, Touggourt, or Djerid",
+        ));
+
+        let formed_al_andalus = self.tag == "ADU";
+        result.and(AchievementCondition::new(
+            formed_al_andalus,
+            "currently Al-Andalus",
         ));
         result
     }
