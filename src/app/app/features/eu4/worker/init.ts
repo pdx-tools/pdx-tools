@@ -7,6 +7,7 @@ import type { Eu4SaveInput } from "../store";
 import { captureException } from "@/lib/captureException";
 import { resetTimelineCursor } from "./timeline";
 import { parseDate } from "@/features/timeline/date";
+import { toCampaignId } from "@/features/campaign/types";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(save: Eu4SaveInput) {
@@ -57,7 +58,7 @@ export async function readSaveMeta(file: File) {
   if (date === null) {
     throw new Error(`unexpected save date: ${meta.date}`);
   }
-  return { campaignId: meta.campaign_id, date };
+  return { campaignId: toCampaignId(meta.campaign_id), date };
 }
 
 export function parseMeta() {

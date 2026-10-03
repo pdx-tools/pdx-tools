@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { cx } from "class-variance-authority";
 import { SavePreviewUnderlay } from "@/components/SavePreviewUnderlay";
 import type { Eu5LoadingState } from "./store";
+import styles from "./Eu5Loading.module.css";
 
 const STAGE_DISCLOSURE_MS = 2500;
 
@@ -74,6 +75,22 @@ export function Eu5Loading({ loading, filename, done, preview }: Eu5LoadingProps
             : "Parsing locally in your browser."}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The hairline over the map while the next save of the campaign loads. The
+ * map and the panels of the open save stay under it.
+ */
+export function Eu5StepProgress() {
+  return (
+    <div
+      role="progressbar"
+      aria-label="Opening save"
+      className={cx("pointer-events-none absolute inset-x-0 top-0 z-30 h-0.5", styles.step)}
+    >
+      <div className={cx("h-full w-full bg-game-accent-300", styles.stepBar)} />
     </div>
   );
 }

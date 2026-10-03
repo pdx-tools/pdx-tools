@@ -218,7 +218,7 @@ function SaveRow({
           disabled={nav.opening !== null}
           onClick={async () => {
             // A save that cannot be opened keeps the card, which then says why.
-            if (await nav.open(save)) onOpen();
+            if ((await nav.open(save)).kind === "opened") onOpen();
           }}
         >
           {opening ? "Opening" : "Open save"}

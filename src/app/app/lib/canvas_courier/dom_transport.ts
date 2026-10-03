@@ -188,6 +188,12 @@ export class CanvasCourierTransport {
         : undefined;
       const nextSize = canvasPhysicalSize(rect.width, rect.height, scaleFactor, devicePixels);
 
+      // A canvas out of the document has no size. The worker keeps the last
+      // size until the canvas is back.
+      if (nextSize.width === 0 || nextSize.height === 0) {
+        return;
+      }
+
       this.canvasSize = nextSize;
       this.inputQueue.writer.enqueueResize(nextSize);
     });
@@ -200,6 +206,15 @@ export class CanvasCourierTransport {
     }
 
     this.inputQueue.writer.enqueueVisibility(document.hidden);
+  }
+
+  /**
+   * Stop reading input from the canvas, such as when it leaves the
+   * document. The size and the input queue stay for the next attach.
+   */
+  detachSurface(): void {
+    this.activeSurface = undefined;
+    this.releaseSurfaceBindings();
   }
 
   dispose(): void {

@@ -1,0 +1,40 @@
+/* A step to the next save of the campaign shows nothing at first, so that a
+   quick step changes the map with nothing in between. */
+.step {
+  animation: step-in 200ms ease-out 300ms both;
+}
+
+/* A step has no progress to report, so a full hairline breathes instead of
+   claiming to advance. */
+.stepBar {
+  animation: sheen 1.4s ease-in-out infinite;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheen {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step {
+    animation-duration: 1ms;
+  }
+
+  .stepBar {
+    animation: none;
+  }
+}

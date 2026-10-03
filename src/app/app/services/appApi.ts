@@ -16,7 +16,6 @@ import type { FeedResponse } from "@/routes/api.feed";
 import type { CampaignResponse } from "@/routes/api.campaign";
 import type { FeedGame } from "@/server-lib/fn/feed";
 import type { SaveResponse } from "@/server-lib/fn/save";
-import type { getEu5Save } from "@/server-lib/fn/eu5-save";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import type { LatestPodium } from "@/server-lib/fn/achievement";
 import { log } from "@/lib/log";
@@ -186,8 +185,6 @@ export const pdxKeys = {
   userFeatures: (id: string) => [...pdxKeys.user(id), "features"] as const,
 };
 
-type Eu5SaveResponse = Awaited<ReturnType<typeof getEu5Save>>;
-
 export const pdxApi = {
   achievement: {
     useGet: (id: string) =>
@@ -315,13 +312,6 @@ export const pdxApi = {
   },
 
   eu5Saves: {
-    useGet: (id: string, opts?: Partial<{ enabled?: boolean }>) =>
-      useQuery({
-        queryKey: [...pdxKeys.saves(), "eu5", id] as const,
-        queryFn: () => fetchOkJson<Eu5SaveResponse>(`/api/eu5/saves/${id}`),
-        enabled: opts?.enabled ?? true,
-      }),
-
     useAdd: () => {
       const queryClient = useQueryClient();
       return useMutation({

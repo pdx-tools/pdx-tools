@@ -318,3 +318,50 @@ fn opens_a_zstd_remuxed_zip_save() {
     let mut loaded = loader.parse().unwrap();
     assert!(loaded.take_gamestate().locations.iter().next().is_some());
 }
+
+#[test]
+fn metadata_prefix_matches_the_full_file() {
+    insta::glob!("saves.d/*.save", |path| {
+        let save_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .expect("pointer file stem is UTF-8");
+        let resolver = utils::tokens();
+        let mut file = utils::request_file(save_name);
+        let full = Eu5File::from_file(file.try_clone().unwrap())
+            .unwrap_or_else(|e| panic!("{save_name}: {e}"));
+        if full.header().kind().is_binary() && resolver.is_empty() {
+            assert!(
+                !utils::require_test_assets(),
+                "{save_name}: EU5 binary tokens not loaded"
+            );
+            return;
+        }
+        let expected = Eu5SaveLoader::open(full, resolver)
+            .unwrap_or_else(|e| panic!("{save_name}: {e}"))
+            .meta();
+
+        // The clone shares the position of the file, which the full read moved.
+        std::io::Seek::rewind(&mut file).unwrap();
+        let mut start = vec![0u8; eu5app::SAVE_HEADER_MAX_LEN];
+        std::io::Read::read_exact(&mut file, &mut start).unwrap();
+        let len = eu5app::metadata_prefix_len(&start)
+            .unwrap_or_else(|| panic!("{save_name}: no metadata length"));
+        let mut prefix = vec![0u8; len];
+        std::io::Seek::rewind(&mut file).unwrap();
+        std::io::Read::read_exact(&mut file, &mut prefix).unwrap();
+
+        let actual = eu5app::read_metadata_prefix(&prefix, resolver)
+            .unwrap_or_else(|e| panic!("{save_name}: {e}"));
+        assert_eq!(
+            actual.playthrough_id, expected.playthrough_id,
+            "{save_name}"
+        );
+        assert_eq!(
+            actual.playthrough_name, expected.playthrough_name,
+            "{save_name}"
+        );
+        assert_eq!(actual.date, expected.date, "{save_name}");
+        assert_eq!(actual.version, expected.version, "{save_name}");
+    });
+}

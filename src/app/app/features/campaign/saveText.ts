@@ -1,5 +1,5 @@
 import { formatLongDate } from "@/features/timeline/date";
-import type { CampaignSave, LocalSaveProblem } from "./types";
+import type { CampaignSave, LocalSaveProblem, OpenFailure } from "./types";
 
 /** Where a save comes from, as one short line. */
 export function saveSourceText(save: CampaignSave): string {
@@ -21,6 +21,15 @@ export function saveProblemText(problem: LocalSaveProblem): string {
       return "This file now holds another campaign.";
     case "moved":
       return `The game wrote a later save over this file, so its mark moved here from ${formatLongDate(problem.from)}.`;
+  }
+}
+
+export function openFailureText(failure: OpenFailure): string {
+  switch (failure.kind) {
+    case "local":
+      return saveProblemText(failure.problem);
+    case "unavailable":
+      return "The save could not be read. Try again later.";
   }
 }
 

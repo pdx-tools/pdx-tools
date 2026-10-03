@@ -1,6 +1,7 @@
 import { dayNumber, parseDate } from "@/features/timeline/date";
 import type { FeedSave } from "@/server-lib/fn/feed";
 import type { LocalSaveEntry } from "./localSaves";
+import { sameCampaign } from "./types";
 import type { CampaignSave, OpenSave } from "./types";
 
 /**
@@ -38,13 +39,19 @@ export function mergeCampaignSaves({
       date,
       name: save.filename,
       isOpen: isOpenUpload(save.id),
-      source: { kind: "upload", saveId: save.id, userName: save.user_name },
+      source: {
+        kind: "upload",
+        saveId: save.id,
+        uploaderId: save.user_id,
+        userName: save.user_name,
+      },
       problem: null,
     });
   }
 
   for (const entry of entries) {
-    if (entry.game !== game || entry.header?.campaignId !== open.campaignId) continue;
+    if (entry.game !== game || entry.header === null) continue;
+    if (!sameCampaign(entry.header.campaignId, open.campaignId)) continue;
     const day = dayNumber(entry.header.date);
     const current = byDay.get(day);
     const isOpen = entry === openEntry;
@@ -74,7 +81,12 @@ export function mergeCampaignSaves({
       isOpen: true,
       source:
         open.source.kind === "upload"
-          ? { kind: "upload", saveId: open.source.saveId, userName: "" }
+          ? {
+              kind: "upload",
+              saveId: open.source.saveId,
+              uploaderId: open.source.uploaderId,
+              userName: "",
+            }
           : { kind: "local", entryId: openEntry?.id ?? "", uploadedBy: null },
       problem: null,
     });

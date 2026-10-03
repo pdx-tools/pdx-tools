@@ -40,14 +40,20 @@ export const links = () => mediaPreconnectLinks;
 export default function Eu5SaveRoute() {
   const { save } = useLoaderData<typeof loader>();
   const input = useMemo(
-    () => save && { kind: "server" as const, saveId: save.id, name: save.filename },
+    () =>
+      save && {
+        kind: "server" as const,
+        saveId: save.id,
+        name: save.filename,
+        uploaderId: save.user_id,
+      },
     [save],
   );
   if (!input) return <Eu5SaveNotFound />;
   return (
     <FullscreenPage slideIn={false}>
-      {/* A step to another save of the campaign is a new map surface. */}
-      <Eu5Ui key={input.saveId} save={input} />
+      {/* A step to another save of the campaign loads into the same map. */}
+      <Eu5Ui save={input} />
     </FullscreenPage>
   );
 }

@@ -140,7 +140,10 @@ export function TimelineScrubber({
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || locked) return;
-    if (event.target instanceof Element && event.target.closest("button")) return;
+    // React events also bubble out of portals, such as the card of a save
+    // mark, which are not part of the track.
+    if (!(event.target instanceof Element) || !event.currentTarget.contains(event.target)) return;
+    if (event.target.closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus({ preventScroll: true });
     setDragging(true);
@@ -159,7 +162,9 @@ export function TimelineScrubber({
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (locked) return;
+    // Keys steer the playhead only when the slider has the focus. A marker
+    // or the card of a save mark, which is in a portal, keeps its own keys.
+    if (locked || event.target !== event.currentTarget) return;
     if (handleTimelineKey(controller, event)) event.preventDefault();
   };
 

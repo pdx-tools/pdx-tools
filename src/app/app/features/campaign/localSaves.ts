@@ -122,11 +122,9 @@ export function setLocalSaveProblem(id: string, problem: LocalSaveProblem | null
   updateEntry(id, { problem });
 }
 
-/** The game wrote a later save over the file; the entry moves to its date. */
-export function moveLocalSave(id: string, header: SaveHeader): void {
-  const entry = useLocalSavesStore.getState().entries.find((x) => x.id === id);
-  const from = entry?.header?.date;
-  updateEntry(id, { header, problem: from ? { kind: "moved", from } : null });
+/** The game wrote a later save over the file; the entry moves to the date of `header`. */
+export function moveLocalSave(id: string, header: SaveHeader, problem: LocalSaveProblem): void {
+  updateEntry(id, { header, problem });
 }
 
 export function getLocalSave(id: string): LocalSaveEntry | undefined {

@@ -1,5 +1,5 @@
-import { Eu5GameAdapter } from "./game-adapter";
 import type {
+  Eu5GameAdapter,
   BoxSelectOverlayRect,
   CursorHint,
   GameInstance,
@@ -27,7 +27,9 @@ import type {
   TimelinePlayback,
   TimelineStepUnit,
 } from "@/features/timeline/controller";
-import type { Eu5ParsedSave, Eu5SaveInput } from "./store/types";
+import { eu5SaveFileUrl } from "./store/types";
+import type { Eu5ParsedSave, Eu5SaveData, Eu5SaveInput } from "./store/types";
+import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
   MapMode,
@@ -55,8 +57,8 @@ import type {
   Eu5DateComponents,
   Eu5PlayerData,
 } from "@/wasm/wasm_eu5";
-import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import { log } from "@/lib/log";
+import type { SaveHeader } from "@/features/campaign/types";
 import { formatInt } from "@/lib/format";
 
 type TimelapsePhase = "date" | "render" | "encode" | "hop" | "pace" | "finish";
@@ -232,7 +234,7 @@ export interface AppTriggers {
   /** Show this world rectangle, such as the view of another save of the campaign. */
   fitWorldRect(rect: MapViewport["viewport"]): Promise<void>;
   /** The campaign and date of another save file, without a parse of its gamestate. */
-  readSaveHeader(file: File): Promise<{ campaignId: string; date: Eu5DateComponents }>;
+  readSaveHeader(file: File): Promise<SaveHeader>;
 }
 
 /** Only ownership has a history in the save, so only the political map can show a past date. */
@@ -266,6 +268,7 @@ export class Eu5UIEngine implements AppEngine {
   private rewindTimer: ReturnType<typeof setTimeout> | null = null;
   /** Set by `stopTimelapse`, read between frames of a recording. */
   private timelapseStopped = false;
+  private destroyed = false;
 
   constructor(
     private gameInstance: GameInstance,
@@ -394,10 +397,22 @@ export class Eu5UIEngine implements AppEngine {
     return this.state;
   }
 
+  /**
+   * Stop the use of this save. The workers stay, as the next save of the
+   * campaign loads into them; the session terminates them.
+   */
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.handlePauseTimeline();
+    if (this.isTimelapseRunning()) {
+      // The recording loop waits on this save, which goes now, so the map
+      // discards the film here.
+      this.timelapseStopped = true;
+      void this.gameInstance.endTimelapseRecording();
+    }
     this.gameInstance.stopHoverTracking();
-    this.workers.terminate();
+    this.gameInstance.release();
     this.listeners.clear();
   }
 
@@ -746,52 +761,46 @@ export class Eu5UIEngine implements AppEngine {
   }
 }
 
-// Factory function for creating a loaded engine after save loading
-export async function createLoadedEngine(
-  saveInput: Eu5SaveInput,
-  canvas: {
-    offscreen: OffscreenCanvas;
-    display: CanvasSize;
-    inputConfig: SharedCanvasInputConfig;
-  },
-  onProgress?: (increment: number, stage: string) => void,
-): Promise<{
+/** A save that the workers loaded, and what the page shows of it. */
+export type OpenedSave = {
   engine: Eu5UIEngine;
-  save: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
   playthroughId: string;
   playthroughName: string;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
   world: WorldSummary;
-}> {
-  const { offscreen, display, inputConfig } = canvas;
+};
+
+/**
+ * Read a save in full. A file handle is read once into a `File`, so that
+ * the save is parsed and later uploaded from one snapshot.
+ */
+export async function readSaveData(input: Eu5SaveInput): Promise<Eu5SaveData> {
   const save: Eu5ParsedSave =
-    saveInput.kind === "handle"
-      ? { kind: "file", file: await saveInput.file.getFile() }
-      : saveInput;
+    input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input;
+  const data =
+    save.kind === "file"
+      ? await save.file.arrayBuffer()
+      : await fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
+  return { save, data };
+}
 
-  const workers = Eu5GameAdapter.create();
-  const gameInstance = await workers.newSave(
-    {
-      canvas: offscreen,
-      display,
-      inputConfig,
-      save,
-    },
-    onProgress,
-  );
-
+/** Build the engine of a save that the workers loaded. */
+export async function openEngine(
+  gameInstance: GameInstance,
+  workers: Eu5GameAdapter,
+  initialState?: Partial<AppState>,
+): Promise<OpenedSave> {
   const [metadata, paletteGradients, timeline] = await Promise.all([
     gameInstance.getSaveMetadata(),
     gameInstance.getPaletteGradients(),
     gameInstance.getTimeline(),
   ]);
 
-  const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients, timeline);
+  const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients, timeline, initialState);
   return {
     engine,
-    save,
     saveDate: metadata.date,
     playthroughId: metadata.playthroughId,
     playthroughName: metadata.playthroughName,

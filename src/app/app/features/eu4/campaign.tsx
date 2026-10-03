@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { CampaignProvider } from "@/features/campaign/CampaignProvider";
 import type { CampaignAdapter } from "@/features/campaign/useCampaignNav";
+import { toCampaignId } from "@/features/campaign/types";
 import type { LocalSaveRef, OpenSave } from "@/features/campaign/types";
 import { parseDate } from "@/features/timeline/date";
 import { captureEu4Carry } from "./campaignCarry";
@@ -39,10 +40,11 @@ function useEu4OpenSave(): OpenSave | null {
     const date = parseDate(meta.date);
     // Local files are grouped by the header's campaign id; uploads by the
     // playthrough id, which only the parsed gamestate gives.
-    if (date === null || (meta.campaign_id === "" && meta.playthoughId === "")) return null;
+    const campaignId = toCampaignId(meta.campaign_id);
+    if (date === null || (campaignId === null && meta.playthoughId === "")) return null;
     return {
       game: "eu4",
-      campaignId: meta.campaign_id,
+      campaignId,
       playthroughId: meta.playthoughId,
       multiplayer: Object.keys(meta.players).length > 1,
       date,
@@ -56,7 +58,14 @@ function useEu4OpenSave(): OpenSave | null {
 }
 
 /** The campaign of the open EU4 save, for the timeline. */
-export function Eu4CampaignProvider({ children }: { children: React.ReactNode }) {
+export function Eu4CampaignProvider({
+  loadError,
+  children,
+}: {
+  /** A save that fails to load keeps the store of the open save, and this error. */
+  loadError: unknown;
+  children: React.ReactNode;
+}) {
   const store = useEu4Context();
   const open = useEu4OpenSave();
   const adapter = useMemo(
@@ -74,7 +83,7 @@ export function Eu4CampaignProvider({ children }: { children: React.ReactNode })
   );
 
   return (
-    <CampaignProvider open={open} adapter={adapter}>
+    <CampaignProvider open={open} adapter={adapter} loadError={loadError}>
       {children}
     </CampaignProvider>
   );

@@ -3,12 +3,19 @@ import type { FeedSave } from "@/server-lib/fn/feed";
 import { campaignKeyFor } from "./campaignKey";
 import { mergeCampaignSaves } from "./campaignSaves";
 import type { LocalSaveEntry } from "./localSaves";
-import type { OpenSave } from "./types";
+import { toCampaignId } from "./types";
+import type { CampaignId, OpenSave } from "./types";
+
+const CAMPAIGN = "camp" as CampaignId;
 
 const upload = (id: string, date: string, user = "Alice"): FeedSave =>
   ({ game: "eu5", id, date, filename: `${id}.eu5`, user_name: user }) as unknown as FeedSave;
 
-const entry = (id: string, date: string | null, campaignId = "camp"): LocalSaveEntry => {
+const entry = (
+  id: string,
+  date: string | null,
+  campaignId: CampaignId | null = CAMPAIGN,
+): LocalSaveEntry => {
   const [year, month, day] = (date ?? "1-1-1").split("-").map(Number);
   return {
     id,
@@ -25,7 +32,7 @@ const openUpload = (saveId: string, date: string): OpenSave => {
   const [year, month, day] = date.split("-").map(Number);
   return {
     game: "eu5",
-    campaignId: "camp",
+    campaignId: CAMPAIGN,
     playthroughId: "camp",
     multiplayer: false,
     date: { year, month, day },
@@ -77,11 +84,22 @@ describe("mergeCampaignSaves", () => {
     const saves = mergeCampaignSaves({
       open: openLocal("1400-01-01"),
       uploads: [],
-      entries: [local, entry("other", "1410-01-01", "else"), entry("pending", null)],
+      entries: [local, entry("other", "1410-01-01", "else" as CampaignId), entry("pending", null)],
       openEntry: local,
     });
     expect(saves.map((x) => x.key)).toEqual(["local:open"]);
     expect(saves[0].isOpen).toBe(true);
+  });
+
+  it("groups no files when the saves have no campaign id", () => {
+    const local = entry("open", "1400-01-01", null);
+    const saves = mergeCampaignSaves({
+      open: { ...openLocal("1400-01-01"), campaignId: toCampaignId("") },
+      uploads: [],
+      entries: [local, entry("other", "1410-01-01", null)],
+      openEntry: local,
+    });
+    expect(saves.map((x) => x.key)).toEqual(["open"]);
   });
 
   it("adds the open save when no list has it", () => {

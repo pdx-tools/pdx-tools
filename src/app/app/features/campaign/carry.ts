@@ -1,4 +1,4 @@
-import type { CampaignGame } from "./types";
+import type { CampaignGame, CampaignId } from "./types";
 
 /**
  * What a change of save keeps: the map mode, the camera, the selection.
@@ -8,7 +8,7 @@ import type { CampaignGame } from "./types";
  */
 type Carry = {
   game: CampaignGame;
-  campaignId: string;
+  campaignId: CampaignId;
   payload: unknown;
   /** Time of the write, so a load that fails does not leave it for later. */
   at: number;
@@ -19,15 +19,20 @@ const CARRY_TTL_MS = 5 * 60 * 1000;
 
 let carry: Carry | null = null;
 
-export function setCampaignCarry<T>(game: CampaignGame, campaignId: string, payload: T): void {
+export function setCampaignCarry<T>(game: CampaignGame, campaignId: CampaignId, payload: T): void {
   carry = { game, campaignId, payload, at: Date.now() };
+}
+
+/** Drop the carry of a change of save that did not happen. */
+export function dropCampaignCarry(): void {
+  carry = null;
 }
 
 /**
  * The state that the previous save of this campaign left for this one. The
  * caller gets it once; the next call returns null.
  */
-export function takeCampaignCarry<T>(game: CampaignGame, campaignId: string): T | null {
+export function takeCampaignCarry<T>(game: CampaignGame, campaignId: CampaignId | null): T | null {
   const value = carry;
   carry = null;
   if (value === null || value.game !== game || value.campaignId !== campaignId) return null;

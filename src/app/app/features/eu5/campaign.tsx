@@ -1,18 +1,37 @@
 import { useMemo } from "react";
 import { CampaignProvider } from "@/features/campaign/CampaignProvider";
 import type { CampaignAdapter } from "@/features/campaign/useCampaignNav";
-import type { LocalSaveRef, OpenSave } from "@/features/campaign/types";
-import { pdxApi } from "@/services/appApi";
+import { toCampaignId } from "@/features/campaign/types";
+import type { CampaignStepTarget, LocalSaveRef, OpenSave } from "@/features/campaign/types";
 import { captureEu5Carry } from "./campaignCarry";
 import {
+  stepEu5Session,
   useEu5Context,
   useEu5Engine,
+  useEu5Input,
   useEu5PlaythroughId,
   useEu5Players,
   useEu5SaveDate,
   useSaveFilename,
 } from "./store";
 import type { Eu5SaveInput } from "./store/types";
+
+/** The input of a save of the campaign, as the page that opens it builds it. */
+function stepInput(target: CampaignStepTarget): Eu5SaveInput {
+  if (target.kind === "upload") {
+    return {
+      kind: "server",
+      saveId: target.saveId,
+      name: target.name,
+      uploaderId: target.uploaderId,
+    };
+  }
+
+  const { ref } = target;
+  return ref.kind === "handle"
+    ? { kind: "handle", file: ref.handle, name: ref.name }
+    : { kind: "file", file: ref.file };
+}
 
 function localRef(save: Eu5SaveInput): LocalSaveRef | null {
   switch (save.kind) {
@@ -31,46 +50,41 @@ function useEu5OpenSave(input: Eu5SaveInput): OpenSave | null {
   const players = useEu5Players();
   const date = useEu5SaveDate();
   const name = useSaveFilename();
-  const saveId = input.kind === "server" ? input.saveId : "";
-  const upload = pdxApi.eu5Saves.useGet(saveId, { enabled: saveId !== "" });
-  const uploaderId = upload.data?.user_id ?? null;
 
   return useMemo((): OpenSave | null => {
-    if (playthroughId === "") return null;
+    const campaignId = toCampaignId(playthroughId);
+    if (campaignId === null) return null;
     return {
       game: "eu5",
-      campaignId: playthroughId,
+      campaignId,
       playthroughId,
       multiplayer: players.length > 1,
       date,
       name,
       source:
         input.kind === "server"
-          ? { kind: "upload", saveId: input.saveId, uploaderId }
+          ? { kind: "upload", saveId: input.saveId, uploaderId: input.uploaderId }
           : { kind: "local", ref: localRef(input) },
     };
-  }, [playthroughId, players.length, date, name, input, uploaderId]);
+  }, [playthroughId, players.length, date, name, input]);
 }
 
 /**
  * The campaign of the open EU5 save, for the timeline and the control
- * panel. `input` is the save as the page got it: a file handle stays a
+ * panel. The store has the save as the page got it: a file handle stays a
  * handle, so that the campaign can tell which of its files is open.
  */
-export function Eu5CampaignProvider({
-  input,
-  children,
-}: {
-  input: Eu5SaveInput;
-  children: React.ReactNode;
-}) {
+export function Eu5CampaignProvider({ children }: { children: React.ReactNode }) {
   const store = useEu5Context();
   const engine = useEu5Engine();
+  const input = useEu5Input();
   const open = useEu5OpenSave(input);
   const adapter = useMemo(
     (): CampaignAdapter => ({
       readHeader: (file) => engine.trigger.readSaveHeader(file),
       captureCarry: () => captureEu5Carry(store),
+      // The next save loads into the map on screen.
+      handOff: (target) => stepEu5Session(stepInput(target)),
     }),
     [engine, store],
   );

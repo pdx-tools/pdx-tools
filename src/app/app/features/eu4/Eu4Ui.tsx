@@ -67,7 +67,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
 
       {data !== null ? (
         <Eu4StoreProvider store={data}>
-          <Eu4CampaignProvider>
+          <Eu4CampaignProvider loadError={error}>
             <GameThemeProvider theme="eu4">
               <TimelineBar />
               <div className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500">

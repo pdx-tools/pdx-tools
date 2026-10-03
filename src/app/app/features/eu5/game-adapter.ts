@@ -1,4 +1,4 @@
-import { wrap, transfer, proxy } from "comlink";
+import { wrap, transfer, proxy, releaseProxy } from "comlink";
 import type { Remote } from "comlink";
 import type {
   GradientConfig,
@@ -29,9 +29,10 @@ import type {
   TimelineChange,
   TimelineData,
 } from "@/wasm/wasm_eu5";
-import type { Eu5SaveInput } from "./store/types";
+import type { Eu5SaveData } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import { fetchOk } from "@/lib/fetch";
+import { check } from "@/lib/isPresent";
 import { getLogLevel } from "@/lib/isDeveloper";
 import { trackWorker } from "@/lib/sentryWorker";
 import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
@@ -122,9 +123,22 @@ function resolveBundleVersion(requested: string): string {
   return latest;
 }
 
-function getBundleUrls(version: string): { game: string; map: string; loc: string } {
-  const resolved = resolveBundleVersion(version);
+type BundleUrls = { game: string; map: string; loc: string };
+type BundleParts = {
+  game: Promise<Uint8Array>;
+  map: Promise<Uint8Array>;
+  loc: Promise<Uint8Array>;
+};
+
+/** The bundle URLs of a version that `resolveBundleVersion` returned. */
+function getBundleUrls(resolved: string): BundleUrls {
   return completeBundles.get(resolved)!;
+}
+
+async function fetchPart(url: string): Promise<Uint8Array> {
+  const response = await fetchOk(url);
+  const arrayBuffer = await response.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
 }
 
 // Worker types
@@ -169,7 +183,20 @@ export class Eu5GameAdapter {
     return new Eu5GameAdapter(eu5RawWorker, mapRawWorker, eu5Worker, eu5MapWorker);
   }
 
-  async newSave(
+  /** The bundle version that the map shows. The first save chooses it. */
+  private bundleVersion: string | null = null;
+  private mapEngine: MapEngine | null = null;
+
+  /** True once the map runs, so that the next save can load into it. */
+  get mapStarted(): boolean {
+    return this.mapEngine !== null;
+  }
+
+  /**
+   * Start the map on the canvas and load the first save into it. The save
+   * chooses the bundles of its patch for both workers.
+   */
+  async start(
     config: {
       canvas: OffscreenCanvas;
       display: {
@@ -178,10 +205,11 @@ export class Eu5GameAdapter {
         scaleFactor: number;
       };
       inputConfig: SharedCanvasInputConfig;
-      save: Eu5SaveInput;
+      /** The first save, which the map can start without. */
+      save: Promise<Eu5SaveData>;
     },
     onProgress?: (increment: number, stage: string) => void,
-  ) {
+  ): Promise<GameInstance> {
     // Coordinate part fetching on the main thread. The game worker calls
     // `gameBundle.selectVersion(version)` after parsing save metadata, which
     // eagerly kicks off `game.zip`, `map.zip`, and `loc-en.zip` fetches against
@@ -189,43 +217,24 @@ export class Eu5GameAdapter {
     // the map worker awaits `map.zip`; the game worker awaits `game.zip` to
     // build the workspace and sync map buffers, then awaits
     // `loc-en.zip` to localize before exposing presentation endpoints.
-    let resolvedVersion: string | null = null;
-    let resolveBundles: (b: {
-      game: Promise<Uint8Array>;
-      map: Promise<Uint8Array>;
-      loc: Promise<Uint8Array>;
-    }) => void;
-
-    const bundlesPromise = new Promise<{
-      game: Promise<Uint8Array>;
-      map: Promise<Uint8Array>;
-      loc: Promise<Uint8Array>;
-    }>((resolve) => {
+    let resolveBundles: (b: BundleParts) => void;
+    const bundlesPromise = new Promise<BundleParts>((resolve) => {
       resolveBundles = resolve;
     });
 
-    const fetchPart = async (url: string): Promise<Uint8Array> => {
-      const response = await fetchOk(url);
-      const arrayBuffer = await response.arrayBuffer();
-      return new Uint8Array(arrayBuffer);
-    };
-
-    const selectVersion = (version: string) => {
-      if (resolvedVersion !== null) {
-        if (resolvedVersion !== version) {
-          throw new Error(
-            `selectVersion called with ${version} after already resolving ${resolvedVersion}`,
-          );
-        }
-        return;
+    const selectVersion = async (version: string) => {
+      if (this.bundleVersion !== null) {
+        throw new Error(`selectVersion called with ${version} after the map chose a version`);
       }
-      resolvedVersion = version;
-      const urls = getBundleUrls(version);
+      const resolved = resolveBundleVersion(version);
+      this.bundleVersion = resolved;
+      const urls = getBundleUrls(resolved);
       resolveBundles({
         game: fetchPart(urls.game),
         map: fetchPart(urls.map),
         loc: fetchPart(urls.loc),
       });
+      return resolved;
     };
 
     const gameBundleApi = {
@@ -239,12 +248,14 @@ export class Eu5GameAdapter {
     };
 
     const [saveEngine, mapEngine] = await Promise.all([
-      this.eu5Worker.createGame(
-        { save: config.save },
-        proxy({
-          gameBundle: gameBundleApi,
-          onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
-        }),
+      config.save.then(({ save, data }) =>
+        this.eu5Worker.loadSave(
+          transfer({ save, data, hold: false }, [data]),
+          proxy({
+            gameBundle: gameBundleApi,
+            onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
+          }),
+        ),
       ),
       this.eu5MapWorker.createMapEngine(
         transfer(
@@ -262,7 +273,53 @@ export class Eu5GameAdapter {
       ),
     ]);
 
+    this.mapEngine = mapEngine;
+    if (saveEngine === null) {
+      throw new Error("The first save did not choose the bundles of the map");
+    }
     return saveWorker(saveEngine, mapEngine);
+  }
+
+  /**
+   * Load another save into the running map. The map keeps the previous
+   * save until `show` is called on the result. Resolves null when the save
+   * needs the bundles of another patch than the map shows; the save that
+   * was open is closed all the same.
+   */
+  async load(
+    { save, data }: Eu5SaveData,
+    onProgress?: (increment: number, stage: string) => void,
+  ): Promise<GameInstance | null> {
+    const mapEngine = this.mapEngine;
+    if (mapEngine === null) {
+      throw new Error("The map has not started");
+    }
+
+    let urls: BundleUrls | null = null;
+    const selectVersion = async (version: string) => {
+      const resolved = resolveBundleVersion(version);
+      if (resolved !== this.bundleVersion) return null;
+      urls = getBundleUrls(resolved);
+      return resolved;
+    };
+
+    // The game worker keeps the bundles of the previous save, so these run
+    // only when it no longer has them.
+    const gameBundleApi = {
+      selectVersion,
+      fetch: () => fetchPart(check(urls, "bundle version not selected").game),
+      fetchLocalization: () => fetchPart(check(urls, "bundle version not selected").loc),
+    };
+
+    const saveEngine = await this.eu5Worker.loadSave(
+      transfer({ save, data, hold: true }, [data]),
+      proxy({
+        gameBundle: gameBundleApi,
+        onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
+      }),
+    );
+
+    return saveEngine === null ? null : saveWorker(saveEngine, mapEngine);
   }
 
   /** The campaign and date of a save file, without a parse of the gamestate. */
@@ -276,10 +333,10 @@ export class Eu5GameAdapter {
   }
 }
 
-export function saveWorker(
-  saveEngine: Awaited<ReturnType<Eu5Worker["createGame"]>>,
-  mapEngine: Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>,
-) {
+type SaveEngine = NonNullable<Awaited<ReturnType<Eu5Worker["loadSave"]>>>;
+type MapEngine = Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>;
+
+function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
   let hoverDisplayCallback: ((data: DisplayData) => void) | null = null;
   let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
     null;
@@ -318,6 +375,10 @@ export function saveWorker(
   );
 
   return {
+    /** Show this save on the map, after a load that kept the previous one. */
+    show: () => saveEngine.show(),
+    /** Stop the use of this save. Later calls on it reject. */
+    release: () => saveEngine[releaseProxy](),
     getZoom: () => mapEngine.get_zoom(),
     fitWorldRect: (rect: MapViewport["viewport"]) => mapEngine.fitWorldRect(rect),
     getPaletteGradients: async (): Promise<PaletteGradients> => {

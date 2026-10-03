@@ -13,21 +13,41 @@ export type LocalSaveRef =
   | { kind: "handle"; handle: FileSystemFileHandle; name: string }
   | { kind: "file"; file: File };
 
+/** The save that a step through the campaign opens. */
+export type CampaignStepTarget =
+  | { kind: "upload"; saveId: string; name: string; uploaderId: string | null }
+  | { kind: "local"; ref: LocalSaveRef };
+
+/**
+ * The id the game writes in the header of every save of a campaign: the
+ * EU4 `campaign_id` or the EU5 playthrough id. Local files are grouped
+ * with it, as it needs no parse of the gamestate. It is never empty; make
+ * one with `toCampaignId`.
+ */
+export type CampaignId = string & { readonly __brand: "CampaignId" };
+
+/** The campaign id of a header value. Older saves have an empty one, which is no campaign. */
+export function toCampaignId(raw: string): CampaignId | null {
+  return raw === "" ? null : (raw as CampaignId);
+}
+
+/** True when both saves have a campaign id and it is the same. */
+export function sameCampaign(a: CampaignId | null, b: CampaignId | null): boolean {
+  return a !== null && a === b;
+}
+
 /** What a save's header says about it. */
 export type SaveHeader = {
-  /**
-   * The id the game writes in the header of every save of a campaign: the
-   * EU4 `campaign_id` or the EU5 playthrough id. Local files are grouped
-   * with it, as it needs no parse of the gamestate.
-   */
-  campaignId: string;
+  /** Null for a save without a campaign id, which no campaign can hold. */
+  campaignId: CampaignId | null;
   date: DateComponents;
 };
 
 /** The save that is open, as the campaign sees it. */
 export type OpenSave = {
   game: CampaignGame;
-  campaignId: string;
+  /** Null when the header has none; the campaign then holds only uploads. */
+  campaignId: CampaignId | null;
   /**
    * The id that the server indexes uploads by. For EU5 it is the same as
    * `campaignId`; for EU4 it is a hash that needs the parsed gamestate.
@@ -50,7 +70,7 @@ export type CampaignSaveSource =
       /** The name of the player who also uploaded a save of this date, if any. */
       uploadedBy: string | null;
     }
-  | { kind: "upload"; saveId: string; userName: string };
+  | { kind: "upload"; saveId: string; uploaderId: string | null; userName: string };
 
 /** Why a local save cannot be opened. */
 export type LocalSaveProblem =
@@ -59,6 +79,19 @@ export type LocalSaveProblem =
   | { kind: "other-campaign" }
   /** The game wrote a later save over the file. */
   | { kind: "moved"; from: DateComponents };
+
+/** Why a save of the campaign did not open. */
+export type OpenFailure =
+  /** A local file that no longer holds the save of its mark. */
+  | { kind: "local"; problem: LocalSaveProblem }
+  /** The save could not be read, such as an upload that did not download. */
+  | { kind: "unavailable" };
+
+export type OpenResult =
+  | { kind: "opened" }
+  /** The save is open already, or another save is opening. */
+  | { kind: "busy" }
+  | { kind: "failed"; failure: OpenFailure };
 
 /** One save of the campaign: one point on its timeline. */
 export type CampaignSave = {

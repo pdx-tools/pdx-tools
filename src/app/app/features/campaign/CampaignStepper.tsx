@@ -8,8 +8,8 @@ import { formatLongDate } from "@/features/timeline/date";
 import { toast } from "@/lib/toast";
 import { useCampaign } from "./CampaignProvider";
 import type { CampaignNav } from "./useCampaignNav";
-import { saveProblemText, saveSourceText } from "./saveText";
-import type { CampaignSave } from "./types";
+import { openFailureText, saveProblemText, saveSourceText } from "./saveText";
+import type { CampaignSave, OpenFailure } from "./types";
 
 type Direction = "previous" | "next";
 
@@ -41,14 +41,19 @@ function useCampaignKeys(step: (direction: Direction) => void) {
 }
 
 /**
- * Step to a neighbor of the open save. Resolves to the save that could not
- * be opened, so that the caller can say why.
+ * Step to a neighbor of the open save. The caller gets the failure of each
+ * step, or null when the save opened, so that it can say why.
  */
-function useStep(nav: CampaignNav, onFail: (save: CampaignSave) => void) {
+function useStep(
+  nav: CampaignNav,
+  onResult: (save: CampaignSave, failure: OpenFailure | null) => void,
+) {
   const step = async (direction: Direction) => {
     const save = direction === "previous" ? nav.previous : nav.next;
     if (save === null) return;
-    if (!(await nav.open(save))) onFail(save);
+    const result = await nav.open(save);
+    // A busy step is a key that repeats while a step runs, not a failure.
+    if (result.kind !== "busy") onResult(save, result.kind === "failed" ? result.failure : null);
   };
   useCampaignKeys(step);
   return step;
@@ -90,11 +95,26 @@ export function CampaignSection({ className }: { className?: string }) {
   return <CampaignSectionContent nav={nav} className={className} />;
 }
 
+type FailedStep = { save: CampaignSave; failure: OpenFailure };
+
+/** The note on a step that failed, while its reason holds. */
+function failedStepNote(nav: CampaignNav, { save, failure }: FailedStep): string | null {
+  if (failure.kind === "unavailable") {
+    return `${formatLongDate(save.date)}: ${openFailureText(failure)}`;
+  }
+
+  // The mark of a moved file is at its new date, and a file that the
+  // player gave again can open now.
+  const current = nav.saves.find((x) => x.key === save.key);
+  if (!current?.problem) return null;
+  return `${formatLongDate(current.date)}: ${saveProblemText(current.problem)}`;
+}
+
 function CampaignSectionContent({ nav, className }: { nav: CampaignNav; className?: string }) {
   const titleId = useId();
-  const [failed, setFailed] = useState<string | null>(null);
-  const step = useStep(nav, (save) => setFailed(save.key));
-  const failedSave = nav.saves.find((x) => x.key === failed && x.problem !== null);
+  const [failed, setFailed] = useState<FailedStep | null>(null);
+  const step = useStep(nav, (save, failure) => setFailed(failure && { save, failure }));
+  const failedNote = failed && failedStepNote(nav, failed);
   const notes = campaignNotes(nav);
 
   return (
@@ -142,9 +162,9 @@ function CampaignSectionContent({ nav, className }: { nav: CampaignNav; classNam
         </div>
       )}
 
-      {failedSave?.problem && (
+      {failedNote && (
         <p role="status" className="mt-2 text-[11px] leading-[1.4] text-game-warn">
-          {formatLongDate(failedSave.date)}: {saveProblemText(failedSave.problem)}
+          {failedNote}
         </p>
       )}
 
@@ -170,10 +190,10 @@ export function CampaignStepper() {
 }
 
 function CampaignStepperContent({ nav }: { nav: CampaignNav }) {
-  const step = useStep(nav, (save) => {
-    if (save.problem !== null) {
+  const step = useStep(nav, (save, failure) => {
+    if (failure !== null) {
       toast.error(`Could not open the save of ${formatLongDate(save.date)}`, {
-        description: saveProblemText(save.problem),
+        description: openFailureText(failure),
       });
     }
   });

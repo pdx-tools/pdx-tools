@@ -17,6 +17,7 @@ import { pdxAbortController } from "@/lib/abortController";
 import { check } from "@/lib/isPresent";
 import { captureException } from "@/lib/captureException";
 import { takeCampaignCarry } from "@/features/campaign/carry";
+import { toCampaignId } from "@/features/campaign/types";
 import type { Eu4Carry } from "../campaignCarry";
 
 export type Eu4SaveInput =
@@ -284,7 +285,7 @@ async function loadEu4Save(
   map.updateProvinceColors(primary, secondary, { country: primary });
 
   // A step from another save of the campaign keeps its view.
-  const carry = takeCampaignCarry<Eu4Carry>("eu4", meta.campaign_id);
+  const carry = takeCampaignCarry<Eu4Carry>("eu4", toCampaignId(meta.campaign_id));
   if (carry?.camera) {
     map.setCamera(carry.camera);
   } else if (!meta.multiplayer) {

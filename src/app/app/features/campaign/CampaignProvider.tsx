@@ -5,16 +5,20 @@ import type { OpenSave } from "./types";
 
 const CampaignContext = createContext<CampaignNav | null>(null);
 
+type CampaignProviderProps = {
+  adapter: CampaignAdapter;
+  /** The error of the latest load, so that a step to a save that failed ends. */
+  loadError?: unknown;
+  children: React.ReactNode;
+};
+
 function CampaignNavProvider({
   open,
   adapter,
+  loadError,
   children,
-}: {
-  open: OpenSave;
-  adapter: CampaignAdapter;
-  children: React.ReactNode;
-}) {
-  const nav = useCampaignNav(open, adapter);
+}: CampaignProviderProps & { open: OpenSave }) {
+  const nav = useCampaignNav(open, adapter, loadError);
   return <CampaignContext.Provider value={nav}>{children}</CampaignContext.Provider>;
 }
 
@@ -26,15 +30,12 @@ function CampaignNavProvider({
 export function CampaignProvider({
   open,
   adapter,
+  loadError,
   children,
-}: {
-  open: OpenSave | null;
-  adapter: CampaignAdapter;
-  children: React.ReactNode;
-}) {
+}: CampaignProviderProps & { open: OpenSave | null }) {
   if (open === null) return children;
   return (
-    <CampaignNavProvider open={open} adapter={adapter}>
+    <CampaignNavProvider open={open} adapter={adapter} loadError={loadError}>
       {children}
     </CampaignNavProvider>
   );
