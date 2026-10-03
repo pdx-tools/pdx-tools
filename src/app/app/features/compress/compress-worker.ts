@@ -39,9 +39,10 @@ export const obj = {
     );
   },
 
-  transform(data: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+  /** Restore the compression used before upload. */
+  download(data: Uint8Array<ArrayBuffer>, cb?: ProgressCb): Uint8Array<ArrayBuffer> {
     // wasm-bindgen ensures that the returned Uint8Array is not a SharedArrayBuffer
-    const out = wasmModule.download_transformation(data) as Uint8Array<ArrayBuffer>;
+    const out = wasmModule.download_save(data, cb) as Uint8Array<ArrayBuffer>;
     return transfer(out, [out.buffer]);
   },
 };

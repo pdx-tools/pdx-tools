@@ -43,6 +43,44 @@ async function readParsedFile(file: File) {
 }
 
 /**
+ * Read a response body to the end. `onProgress` receives the read portion,
+ * from 0 to 1, when the response states its length. An encoded response
+ * states the encoded length, but the read counts decoded bytes. Thus the read
+ * does not report progress for an encoded response.
+ */
+async function readWithProgress(
+  response: Response,
+  onProgress: (portion: number) => void,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const encoding = response.headers.get("content-encoding");
+  const encoded = encoding !== null && encoding !== "identity";
+  const total = encoded ? 0 : Number(response.headers.get("content-length")) || 0;
+  if (total === 0 || response.body === null) {
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  // Write the chunks into one buffer of the stated length. This keeps one
+  // copy of the body in memory, not two.
+  let out = new Uint8Array(total);
+  let read = 0;
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (read + value.length > out.length) {
+      const grown = new Uint8Array(Math.max(read + value.length, out.length * 2));
+      grown.set(out.subarray(0, read));
+      out = grown;
+    }
+    out.set(value, read);
+    read += value.length;
+    onProgress(Math.min(1, read / total));
+  }
+
+  return read === out.length ? out : out.slice(0, read);
+}
+
+/**
  * POST a save with XMLHttpRequest, as fetch does not report upload progress.
  * `onProgress` receives the uploaded portion, from 0 to 1.
  */
@@ -321,6 +359,36 @@ export const pdxApi = {
         },
       });
     },
+
+    /**
+     * Download a shared save. Restore the compression used before upload.
+     */
+    useDownload: () =>
+      useMutation({
+        mutationFn: async ({
+          saveId,
+          dispatch,
+        }: {
+          saveId: string;
+          dispatch: (progress: number) => void;
+        }) => {
+          const compression = createCompressionWorker();
+          try {
+            dispatch(0);
+            // Load the wasm module while the save downloads.
+            const [stored] = await Promise.all([
+              fetchOk(`/api/eu5/saves/${saveId}/file`).then((response) =>
+                readWithProgress(response, (portion) => dispatch(portion * 50)),
+              ),
+              compression.workerApi.loadWasm(),
+            ]);
+            dispatch(50);
+            return await compression.download(stored, (portion) => dispatch(50 + portion * 50));
+          } finally {
+            compression.release();
+          }
+        },
+      }),
   },
 
   admin: {

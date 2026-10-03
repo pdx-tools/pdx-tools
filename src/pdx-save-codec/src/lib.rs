@@ -1,8 +1,8 @@
 //! Re-encode save files between the compression the game writes and the
 //! smaller, faster compression that the browser uploads.
 //!
-//! [`Compression`] encodes a save for upload and [`decompress`] restores it
-//! for download. The two are inverses:
+//! [`Compression`] encodes a save for upload and [`download`] restores it
+//! for download, in a form that the game loads:
 //!
 //! - A Deflate ZIP archive is remuxed to a Zstd ZIP archive and back.
 //! - Any other data is encoded as a Zstd stream and decoded again.
@@ -189,7 +189,7 @@ impl ContentType {
 /// - Remux Deflate ZIP archives with Zstd.
 /// - Otherwise, return the data compressed as a Zstd stream.
 ///
-/// [`decompress`] restores the original encoding.
+/// [`download`] restores a form that the game loads.
 #[derive(Debug)]
 pub struct Compression {
     source: Source,
@@ -279,35 +279,12 @@ pub fn compress_with_progress(data: Vec<u8>, progress: impl FnMut(f64)) -> Resul
     Compression::new(data)?.compress_with_progress(progress)
 }
 
-/// Undoes [`compress`], so that the save file can be loaded into the game.
-///
-/// - Remux Zstd ZIP archives with Deflate.
-/// - Decode Zstd streams.
-/// - Return any other data unchanged.
-pub fn decompress(data: Vec<u8>) -> Result<Vec<u8>, Error> {
-    decompress_with_progress(data, |_| {})
-}
-
-/// Undoes [`compress`]. `progress` receives the fraction of the data that
-/// has been decoded, from 0 to 1. For a zip archive the fraction is over the
-/// uncompressed entry sizes, not the size of the archive.
-pub fn decompress_with_progress(
-    data: Vec<u8>,
-    mut progress: impl FnMut(f64),
+/// Remuxes a Zstd ZIP archive with Deflate and keeps the prelude.
+fn remux_deflate(
+    zip: &rawzip::ZipSliceArchive<Vec<u8>>,
+    progress: &mut impl FnMut(f64),
 ) -> Result<Vec<u8>, Error> {
-    if pdx_zstd::is_zstd_compressed(&data) {
-        let mut out = Vec::with_capacity(data.len() * 4);
-        let reader = ProgressReader::new(data.as_slice(), &mut progress, 0, data.len() as u64);
-        pdx_zstd::Decoder::new(reader)?.read_to_end(&mut out)?;
-        return Ok(out);
-    }
-
-    let zip = match locate_zip(data) {
-        Ok(zip) => zip,
-        Err(data) => return Ok(data),
-    };
-
-    let scan = scan_entries(&zip, rawzip::CompressionMethod::ZSTD)?;
+    let scan = scan_entries(zip, rawzip::CompressionMethod::ZSTD)?;
     let prelude = &zip.get_ref()[..scan.prelude_len];
     let mut out_zip = start_archive(prelude, zip.get_ref().len() * 2)?;
 
@@ -324,7 +301,7 @@ pub fn decompress_with_progress(
         let reader = pdx_zstd::Decoder::new(entry.data())?;
         let reader = entry.verifying_reader(reader);
         let mut reader =
-            ProgressReader::new(reader, &mut progress, current, scan.uncompressed_size);
+            ProgressReader::new(reader, &mut *progress, current, scan.uncompressed_size);
         let written = std::io::copy(&mut reader, &mut writer)?;
         let (_, output) = writer.finish()?;
         out_file.finish(output)?;
@@ -332,4 +309,43 @@ pub fn decompress_with_progress(
     }
 
     Ok(out_zip.finish()?.into_inner())
+}
+
+/// Restore a save for download. See [`download_with_progress`].
+pub fn download(data: Vec<u8>) -> Result<Vec<u8>, Error> {
+    download_with_progress(data, |_| {})
+}
+
+/// Restore the compression used before upload. Keep the save header and contents.
+///
+/// - Replace Zstd compression in ZIP entries with Deflate.
+/// - Return a Deflate ZIP archive unchanged.
+/// - Decode Zstd streams.
+/// - Return other data unchanged.
+///
+/// `progress` receives the fraction of the work that is done, from 0 to 1.
+/// For a ZIP archive, the fraction uses the uncompressed entry sizes.
+pub fn download_with_progress(
+    data: Vec<u8>,
+    mut progress: impl FnMut(f64),
+) -> Result<Vec<u8>, Error> {
+    if pdx_zstd::is_zstd_compressed(&data) {
+        let mut out = Vec::with_capacity(data.len() * 4);
+        let reader = ProgressReader::new(data.as_slice(), &mut progress, 0, data.len() as u64);
+        pdx_zstd::Decoder::new(reader)?.read_to_end(&mut out)?;
+        return Ok(out);
+    }
+
+    match locate_zip(data) {
+        // A Deflate archive was not converted at upload. The game reads it as is.
+        Ok(zip) if scan_entries(&zip, rawzip::CompressionMethod::DEFLATE).is_ok() => {
+            progress(1.0);
+            Ok(zip.into_inner())
+        }
+        Ok(zip) => remux_deflate(&zip, &mut progress),
+        Err(data) => {
+            progress(1.0);
+            Ok(data)
+        }
+    }
 }

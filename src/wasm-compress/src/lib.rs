@@ -27,12 +27,7 @@ impl Compression {
 
     /// Compress the data. `f` is called with the progress from 0 to 1.
     pub fn compress_cb(self, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsError> {
-        match f {
-            Some(cb) => Ok(self.0.compress_with_progress(|progress| {
-                let _ = cb.call1(&JsValue::null(), &JsValue::from_f64(progress));
-            })?),
-            None => Ok(self.0.compress()?),
-        }
+        Ok(self.0.compress_with_progress(progress_fn(f))?)
     }
 }
 
@@ -58,9 +53,22 @@ impl Serialize for ContentType {
     }
 }
 
-/// Undoes the compress function, so that the save file can be loaded into
-/// the game. See [`pdx_save_codec::decompress`].
+/// Restore the compression used before upload.
+/// `f` is called with the progress from 0 to 1. See
+/// [`pdx_save_codec::download`].
 #[wasm_bindgen]
-pub fn download_transformation(data: Vec<u8>) -> Result<Vec<u8>, JsError> {
-    Ok(pdx_save_codec::decompress(data)?)
+pub fn download_save(data: Vec<u8>, f: Option<js_sys::Function>) -> Result<Vec<u8>, JsError> {
+    Ok(pdx_save_codec::download_with_progress(
+        data,
+        progress_fn(f),
+    )?)
+}
+
+/// Turn an optional JavaScript callback into a progress function.
+fn progress_fn(f: Option<js_sys::Function>) -> impl FnMut(f64) {
+    move |progress| {
+        if let Some(cb) = &f {
+            let _ = cb.call1(&JsValue::null(), &JsValue::from_f64(progress));
+        }
+    }
 }
