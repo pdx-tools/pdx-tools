@@ -269,12 +269,14 @@ run = ["docker-compose -f ./docker-compose.test.yml --env-file ../src/app/.env.t
 [tasks."serve:api:dev"]
 depends = ["tokenize"]
 description = "Run the API backend (eg: save parsing) for development"
+env.HOST = "127.0.0.1"
 env.PORT = "{{ get_env(name='PDX_DEV_API_PORT', default='8082') }}"
 run = ["cargo run -p pdx-tools-api"]
 
 [tasks."serve:api:test"]
 depends = ["tokenize"]
 description = "Run the API backend (eg: save parsing) for tests"
+env.HOST = "127.0.0.1"
 env.PORT = 8081
 run = ["cargo run -p pdx-tools-api"]
 
