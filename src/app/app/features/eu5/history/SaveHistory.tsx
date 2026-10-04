@@ -107,7 +107,10 @@ export function SaveHistory({
     };
   }, []);
 
-  const groups = [...new Set(history.snapshots.map(campaignKey))];
+  const groups = useMemo(
+    () => [...new Set(history.snapshots.map(campaignKey))],
+    [history.snapshots],
+  );
   const activeGroup = groups.includes(group) ? group : groups[0];
   const dates = useMemo(
     () => history.snapshots.filter((s) => campaignKey(s) === activeGroup),
@@ -128,16 +131,27 @@ export function SaveHistory({
   }, [currentSnapshot?.hash, history.snapshots]);
   const selected = dates[Math.min(dateIndex, Math.max(0, dates.length - 1))];
   const isMarket = mapMode === "markets";
-  const goods = [...new Set(dates.flatMap((s) => s.markets.map((m) => m.good)))].sort();
+  const goods = useMemo(
+    () => (isMarket ? [...new Set(dates.flatMap((s) => s.markets.map((m) => m.good)))].sort() : []),
+    [dates, isMarket],
+  );
   const activeGood = goods.includes(good)
     ? good
     : (goods.find((g) => g === "wheat" || g === "grain") ?? goods[0]);
-  const labels: Record<string, string> = {};
-  for (const s of dates)
-    for (const m of s.markets)
-      labels[m.center] = s.marketLabels[m.center]
-        ? human(s.marketLabels[m.center])
-        : `Location ${m.center}`;
+  const labels = useMemo(() => {
+    const result: Record<string, string> = {};
+    if (!isMarket) return result;
+    for (const snapshot of dates) {
+      // A market has one label, shared by all of its goods.
+      for (const [center, name] of Object.entries(snapshot.marketLabels)) {
+        result[center] = name ? human(name) : `Location ${center}`;
+      }
+      for (const market of snapshot.markets) {
+        result[market.center] ??= `Location ${market.center}`;
+      }
+    }
+    return result;
+  }, [dates, isMarket]);
   const focusCenters = focusTag
     ? new Set(
         dates
@@ -160,7 +174,19 @@ export function SaveHistory({
     : marketIds.length
       ? [marketIds.find((id) => labels[id].toLowerCase() === "london") ?? marketIds[0]]
       : [];
-  const countries = [...new Set(dates.flatMap((s) => s.countries.map((c) => c.tag)))].sort();
+  const countries = useMemo(
+    () => [...new Set(dates.flatMap((s) => s.countries.map((c) => c.tag)))].sort(),
+    [dates],
+  );
+  const countryOptions = useMemo(
+    () =>
+      countries.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      )),
+    [countries],
+  );
   const activeCountry = focusTag ?? (countries.includes(country) ? country : "world");
   const entities = isMarket ? activeMarkets : [activeCountry];
   const seriesKey = entities.join("|");
@@ -557,11 +583,7 @@ export function SaveHistory({
                   Country
                   <select value={activeCountry} onChange={(e) => setCountry(e.target.value)}>
                     <option value="world">World · owned locations</option>
-                    {countries.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
+                    {countryOptions}
                   </select>
                 </label>
               ) : (
