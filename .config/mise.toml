@@ -1,3 +1,5 @@
+min_version = "2026.9.17"
+
 [tools]
 "node" = { version = "24.18.0" }
 "rust" = { version = "1.98.1" } # update in rust-toolchain.toml too!
@@ -22,9 +24,18 @@ windows-x64 = { asset_pattern = "Windows.flatc.binary.zip" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["rust"]
+lockfile = true
 
 [env]
 _.path = ['{{config_root}}/.config/bin', '{{config_root}}/node_modules/.bin']
+PDX_DEV_DATABASE_HOST = """
+{%- set docker_host = env?.DOCKER_HOST or '' -%}
+{%- if docker_host is matching(pat='^(ssh|tcp)://') -%}
+{{ env?.PDX_DEV_DATABASE_HOST or (docker_host | regex_replace(pattern='^(ssh|tcp)://(?:[^@/]+@)?(\\\\[[^\\\\]]+\\\\]|[^:/]+).*$', rep='$2')) }}
+{%- else -%}
+{{ env?.PDX_DEV_DATABASE_HOST or '127.0.0.1' }}
+{%- endif -%}
+"""
 
 [tasks."build:cargo-wasm"]
 depends = ["setup:wasm"]
@@ -174,6 +185,11 @@ hide = true
 description = "Run pdx.tools frontend development"
 depends = ["pnpm-install", "dev:app:setup:**", "tokenize", "build:wasm"]
 dir = "./src/app"
+env._.file = { path = "src/app/.env.development" }
+env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB = """
+{%- set connection = 'postgres://' ~ (get_env(name='DATABASE_USER', default=env.DATABASE_USER) | urlencode_strict) ~ ':' ~ (get_env(name='DATABASE_PASSWORD', default=env.DATABASE_PASSWORD) | urlencode_strict) ~ '@' ~ env.PDX_DEV_DATABASE_HOST ~ ':' ~ (env?.PDX_DEV_DATABASE_PORT or '5432') ~ '/postgres' -%}
+{{- get_env(name='CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB', default=connection) -}}
+"""
 run = ["pnpm exec react-router dev --port {{ get_env(name='PDX_DEV_APP_PORT', default='3001') }} --strictPort"]
 
 [tasks."dev:map"]
