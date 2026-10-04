@@ -10,7 +10,7 @@ use axum::{
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 use std::io::IsTerminal;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
@@ -103,6 +103,12 @@ async fn main() -> anyhow::Result<()> {
             .with_context(|| format!("PORT must be a valid TCP port, got {x:?}"))?,
         Err(_) => 8080,
     };
+    let host = match std::env::var("HOST") {
+        Ok(x) => x
+            .parse::<IpAddr>()
+            .with_context(|| format!("HOST must be a valid IP address, got {x:?}"))?,
+        Err(_) => IpAddr::from([0, 0, 0, 0]),
+    };
 
     let app = Router::new()
         .route("/", post(upload))
@@ -116,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         );
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let addr = SocketAddr::new(host, port);
     let listener = TcpListener::bind(addr)
         .await
         .with_context(|| format!("Failed to bind API server to {addr}"))?;

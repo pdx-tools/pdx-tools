@@ -83,6 +83,12 @@ mise run dev
 
 Docker will be required to run backend services.
 
+The local API listens on `127.0.0.1:8082`. Use `mise run dev:2` to start a
+second stack with the API on `127.0.0.1:8182`. The API test task uses
+`127.0.0.1:8081`. Outside these tasks, the API uses `HOST` to select the IP
+address and `PORT` to select the port. The defaults are `0.0.0.0` and `8080`
+for Cloud Run.
+
 ### Binary / Ironman saves
 
 By default, ironman and binary files will be unparsable. If you are in possession of a binary token file, you can unlock processing binary saves by placing the token file under the assets directory:
