@@ -1,0 +1,68 @@
+import { create } from "zustand";
+import type { MapMode, ActiveProfileIdentity } from "@/wasm/wasm_eu5";
+import type { Snapshot } from "./types";
+
+type HistoryState = {
+  viewedProfile: ActiveProfileIdentity | null;
+  setViewedProfile: (profile: ActiveProfileIdentity | null) => void;
+  snapshots: Snapshot[];
+  files: Record<string, File>;
+  selectedHash: string | null;
+  mapMode: MapMode;
+  panelOpen: boolean;
+  insightOpen: boolean;
+  rememberPanel: (open: boolean) => void;
+  playing: boolean;
+  switching: boolean;
+  switchError: string | null;
+  lastSwitch: { milliseconds: number; cacheHit: boolean } | null;
+  setSwitching: (busy: boolean) => void;
+  setSwitchError: (error: string) => void;
+  setTiming: (milliseconds: number, cacheHit: boolean) => void;
+  setPlaying: (playing: boolean) => void;
+  timelineSource: "snapshots" | "ownership";
+  showPanel: (open: boolean) => void;
+  setTimelineSource: (source: "snapshots" | "ownership") => void;
+  add: (snapshots: Snapshot[], files?: Record<string, File>) => void;
+  select: (hash: string) => void;
+  rememberMode: (mode: MapMode) => void;
+  clear: () => void;
+};
+
+export const useHistory = create<HistoryState>()((set) => ({
+  viewedProfile: null,
+  setViewedProfile: (viewedProfile) => set({ viewedProfile }),
+  snapshots: [],
+  files: {},
+  selectedHash: null,
+  mapMode: "political",
+  panelOpen: false,
+  insightOpen: false,
+  rememberPanel: (insightOpen) => set({ insightOpen }),
+  playing: false,
+  switching: false,
+  switchError: null,
+  lastSwitch: null,
+  setSwitching: (switching) => set({ switching, ...(switching ? { switchError: null } : {}) }),
+  setSwitchError: (switchError) => set({ switchError }),
+  setTiming: (milliseconds, cacheHit) => set({ lastSwitch: { milliseconds, cacheHit } }),
+  setPlaying: (playing) => set({ playing }),
+  timelineSource: "snapshots",
+  showPanel: (panelOpen) => set({ panelOpen }),
+  setTimelineSource: (timelineSource) => set({ timelineSource }),
+  add: (snapshots, files = {}) =>
+    set((state) => {
+      const byHash = new Map(state.snapshots.map((s) => [s.hash, s]));
+      for (const s of snapshots) if (s.schemaVersion === 3) byHash.set(s.hash, s);
+      return {
+        snapshots: [...byHash.values()].sort(
+          (a, b) => a.dateSort - b.dateSort || a.hash.localeCompare(b.hash),
+        ),
+        files: { ...state.files, ...files },
+      };
+    }),
+  select: (selectedHash) => set({ selectedHash }),
+  rememberMode: (mapMode) => set({ mapMode }),
+  clear: () =>
+    set({ snapshots: [], files: {}, selectedHash: null, mapMode: "political", playing: false }),
+}));

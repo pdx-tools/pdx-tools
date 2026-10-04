@@ -143,7 +143,12 @@ export function PopulationHistoryChart({
       <SectionTitle>
         {scopeIsEmpty ? "Great power population over time" : "Population over time"}
       </SectionTitle>
-      <EChart option={option} style={{ height: "260px", width: "100%" }} onInit={handleInit} />
+      <EChart
+        mergeUpdates
+        option={option}
+        style={{ height: "260px", width: "100%" }}
+        onInit={handleInit}
+      />
     </section>
   );
 }

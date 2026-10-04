@@ -9,6 +9,7 @@ export default defineConfig(() => ({
     tsconfigPaths: true,
   },
   server: {
+    hmr: process.env.PDX_DISABLE_HMR === "1" ? false : undefined,
     headers: {
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin",

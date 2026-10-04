@@ -44,7 +44,7 @@ const webKeyCodeToString = Object.fromEntries(
 ) as Record<number, string>;
 
 const initialized = (async () => {
-  await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
+  return await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
 })();
 
 let appResolve: (value: Eu5WasmMapRenderer | PromiseLike<Eu5WasmMapRenderer>) => void;
@@ -97,6 +97,12 @@ const pressedKeys = new Set<string>();
 
 const mapGameEndpoint = () => {
   return {
+    async syncSnapshot(locationArray: Uint32Array, groupingTable: Uint32Array) {
+      newLocations = locationArray;
+      newGroupingTable = groupingTable;
+      newMapData = null;
+      renderOrQueue();
+    },
     async syncLocationData(locationArray: Uint32Array) {
       newLocations = locationArray;
       renderOrQueue();
@@ -486,15 +492,18 @@ export const createMapEngine = async (
     }
   };
 
-  // You would think that we should only render when dirty, but for some reason
-  // firefox trips over itself and the clear color bleeds through. So for now we
-  // just render every frame.
+  // Firefox needs continuous drawing to avoid its clear-color bleed. Other
+  // browsers keep the last GPU frame while idle. Input polling remains live.
+  let continuousRender = /Firefox\//.test(navigator.userAgent);
   let hasLocationInformation = false;
+  let renderedFrames = 0;
+  let polledFrames = 0;
 
   // Location and grouping data arrive from the game worker between frames
   // and reach the GPU here, at the next use: the top of the render loop, or
   // a recorded frame, which cannot wait for the loop.
   const applyPendingSync = () => {
+    if (newLocations || newMapData || newGroupingTable) _dirtyRender = true;
     if (newLocations) {
       hasLocationInformation = true;
       app.sync_location_array(newLocations);
@@ -516,6 +525,7 @@ export const createMapEngine = async (
   };
 
   const rafRender = async () => {
+    polledFrames++;
     // Sync location data before draining events so that updateCursorWorldPosition
     // always has valid location arrays available when it calls gpu_loc_to_app.
     applyPendingSync();
@@ -550,8 +560,10 @@ export const createMapEngine = async (
     }
     publishViewport();
 
-    if (hasLocationInformation) {
+    if (hasLocationInformation && (continuousRender || _dirtyRender)) {
+      _dirtyRender = false;
       app.render();
+      renderedFrames++;
     }
     requestAnimationFrame(rafRender);
   };
@@ -564,6 +576,7 @@ export const createMapEngine = async (
       return;
     }
     const [worldWidth, worldHeight] = app.world_size();
+    _dirtyRender = true;
     lastViewport = {
       world: { width: worldWidth, height: worldHeight },
       viewport: { x, y, width, height },
@@ -583,6 +596,18 @@ export const createMapEngine = async (
   rafRender();
 
   return proxy({
+    setContinuousRenderForProfiling: (enabled: boolean) => {
+      if (!import.meta.env.DEV)
+        throw new Error("Rendering override is available only in development.");
+      continuousRender = enabled;
+      renderOrQueue();
+    },
+    getRenderDiagnostics: async () => ({
+      continuousRender,
+      renderedFrames,
+      polledFrames,
+      wasmCapacityBytes: (await initialized).memory.buffer.byteLength,
+    }),
     get_zoom: () => {
       return app.get_zoom();
     },

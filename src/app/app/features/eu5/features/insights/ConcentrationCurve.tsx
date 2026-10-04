@@ -90,5 +90,5 @@ export function ConcentrationCurve({
     };
   }, [points, metric, formatValue]);
 
-  return <EChart option={option} style={{ height: "260px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "260px", width: "100%" }} />;
 }

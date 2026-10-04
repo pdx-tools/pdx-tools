@@ -39,7 +39,7 @@ PDX_DEV_DATABASE_HOST = """
 
 [tasks."build:cargo-wasm"]
 depends = ["setup:wasm"]
-run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
+run = ["cargo build --release --no-default-features --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
 run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
 hide = true
 

@@ -138,6 +138,7 @@ impl From<Eu5MapMode> for MapMode {
     }
 }
 
+mod snapshot;
 mod tokens;
 pub use tokens::set_tokens;
 
@@ -428,6 +429,17 @@ pub struct SaveLoader {
 
 #[wasm_bindgen]
 impl SaveLoader {
+    /// Extract dated market and country observations without creating a GPU map.
+    #[wasm_bindgen]
+    pub fn parse_snapshot(self) -> Result<Ts<snapshot::SaveSnapshot>, JsError> {
+        let mut loaded = self
+            .parser
+            .parse()
+            .map_err(|e| JsError::new(&format!("Failed to parse snapshot: {e}")))?;
+        let game = loaded.take_gamestate();
+        into_ts(snapshot::extract(&game))
+    }
+
     #[wasm_bindgen]
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
@@ -551,7 +563,7 @@ impl Eu5WasmWorkspace {
         Eu5App {
             _loaded_save: self._loaded_save,
             app: self.app,
-            localization: localization.localization,
+            localization: Rc::new(localization.localization),
             meta: self.meta,
         }
     }
@@ -562,12 +574,42 @@ impl Eu5WasmWorkspace {
 pub struct Eu5App {
     _loaded_save: Eu5LoadedSave,
     app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
-    localization: Localization,
+    localization: Rc<Localization>,
     meta: Eu5SaveMetadataHandle,
 }
 
 #[wasm_bindgen]
 impl Eu5App {
+    /// Allocated save arena; excludes workspace vectors and shared game assets.
+    #[wasm_bindgen]
+    pub fn used_save_bytes(&mut self) -> usize {
+        self._loaded_save.arena_used_bytes()
+    }
+
+    #[wasm_bindgen]
+    pub fn retained_save_bytes(&self) -> usize {
+        self._loaded_save.arena().allocated_bytes()
+    }
+
+    /// Prepare a dated save without rebuilding immutable assets or the renderer.
+    #[wasm_bindgen]
+    pub fn for_save(&self, mut gamestate: Eu5WasmGamestate) -> Result<Eu5App, JsError> {
+        let meta = gamestate.meta;
+        let game = gamestate.parsed_save.take_gamestate();
+        // The owning save stays in the returned app, as in Eu5WasmWorkspace::init.
+        let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
+        let app = self
+            .app
+            .for_save(game)
+            .map_err(|e| JsError::new(&format!("Failed to prepare saved date: {e}")))?;
+        Ok(Eu5App {
+            _loaded_save: gamestate.parsed_save,
+            app,
+            localization: self.localization.clone(),
+            meta,
+        })
+    }
+
     fn app(&self) -> &eu5app::Eu5Workspace<'_> {
         &self.app
     }
@@ -1038,6 +1080,26 @@ impl Eu5App {
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.
+    #[wasm_bindgen]
+    pub fn market_center_id(&self, market_id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .market_manager
+            .get(eu5save::models::MarketId::new(market_id))
+            .map(|m| m.center.value())
+    }
+
+    #[wasm_bindgen]
+    pub fn market_id_at_center(&self, center_id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .market_manager
+            .database
+            .iter_with_id()
+            .find(|(_, m)| m.center.value() == center_id)
+            .map(|(id, _)| id.value())
+    }
+
     #[wasm_bindgen]
     pub fn get_market_profile(&self, market_id: u32) -> Result<Option<Ts<MarketProfile>>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);

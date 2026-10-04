@@ -208,5 +208,12 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <EChart
+      mergeUpdates
+      option={option}
+      style={{ height: "420px", width: "100%" }}
+      onInit={handleInit}
+    />
+  );
 }

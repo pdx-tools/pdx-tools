@@ -68,7 +68,7 @@ pub struct Player<'a> {
 /// and manages rendering state including map modes and GPU data structures.
 pub struct Eu5Workspace<'bump> {
     gamestate: Gamestate<'bump>,
-    game_data: Box<GameData>,
+    game_data: std::sync::Arc<GameData>,
 
     // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
@@ -196,8 +196,21 @@ impl<'bump> Eu5Workspace<'bump> {
         gamestate: Gamestate<'bump>,
         game_data: GameData,
     ) -> Result<Self, crate::game_data::GameDataError> {
-        let game_data = Box::new(game_data);
+        Self::with_shared_data(gamestate, std::sync::Arc::new(game_data))
+    }
 
+    /// Build another dated workspace while sharing immutable game assets.
+    pub fn for_save(
+        &self,
+        gamestate: Gamestate<'bump>,
+    ) -> Result<Self, crate::game_data::GameDataError> {
+        Self::with_shared_data(gamestate, self.game_data.clone())
+    }
+
+    fn with_shared_data(
+        gamestate: Gamestate<'bump>,
+        game_data: std::sync::Arc<GameData>,
+    ) -> Result<Self, crate::game_data::GameDataError> {
         let mut overlord_of = gamestate.countries.create_index(None);
         for dep in gamestate.diplomacy_manager.dependencies() {
             let Some(second_idx) = gamestate.countries.get(dep.second) else {

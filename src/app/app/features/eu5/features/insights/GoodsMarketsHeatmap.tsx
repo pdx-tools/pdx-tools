@@ -176,6 +176,11 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
   const height = topGoods.length * 22 + 200;
 
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <EChart
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+      onInit={handleInit}
+    />
   );
 }

@@ -1,5 +1,6 @@
+import { useHistory } from "../../history/store";
 import type React from "react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, useEffect } from "react";
 import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { useEu5SelectionRevision } from "../../store";
 
@@ -93,29 +94,51 @@ export function PanelNavProvider({ children }: { children: React.ReactNode }) {
   const [profileTabs, setProfileTabs] = useState<ProfileTabs>(DEFAULT_PROFILE_TABS);
 
   const selectionRevision = useEu5SelectionRevision();
+  const switchingSave = useHistory((s) => s.switching);
   const [previousSelectionRevision, setPreviousSelectionRevision] = useState(selectionRevision);
   const selectionChanged = previousSelectionRevision !== selectionRevision;
-  const effectiveStack = selectionChanged ? EMPTY_STACK : stack;
-  const effectiveRootLabel = selectionChanged ? undefined : rootLabel;
+  const resetForSelection = selectionChanged && !switchingSave;
+  const remappedProfile = useHistory((s) => s.viewedProfile);
+  const effectiveStack = resetForSelection
+    ? EMPTY_STACK
+    : remappedProfile && stack.length
+      ? stack.map((entry, i) =>
+          i === stack.length - 1 && entry.profile.kind === remappedProfile.kind
+            ? ({ ...entry, profile: remappedProfile } as PanelNavEntry)
+            : entry,
+        )
+      : stack;
+  useEffect(() => {
+    if (!stack.length) useHistory.getState().setViewedProfile(null);
+  }, [stack.length]);
+  const effectiveRootLabel = resetForSelection ? undefined : rootLabel;
 
   if (selectionChanged) {
     setPreviousSelectionRevision(selectionRevision);
-    setStack([]);
-    setRootLabel(undefined);
+    if (!switchingSave) {
+      setStack([]);
+      setRootLabel(undefined);
+    }
   }
 
   const pushMany = useCallback((entries: PanelNavEntry[], nextRootLabel?: string) => {
     if (nextRootLabel != null) {
       setRootLabel(nextRootLabel);
     }
+    useHistory.getState().setViewedProfile(entries.at(-1)?.profile ?? null);
     setStack((s) => [...s, ...entries]);
   }, []);
 
-  const popTo = useCallback((length: number) => {
-    setStack((s) => s.slice(0, length));
-  }, []);
+  const popTo = useCallback(
+    (length: number) => {
+      useHistory.getState().setViewedProfile(stack.slice(0, length).at(-1)?.profile ?? null);
+      setStack((s) => s.slice(0, length));
+    },
+    [stack],
+  );
 
   const reset = useCallback(() => {
+    useHistory.getState().setViewedProfile(null);
     setStack([]);
     setRootLabel(undefined);
   }, []);

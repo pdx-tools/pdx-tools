@@ -1,5 +1,14 @@
+import { AnimatedValue } from "./components/AnimatedValue";
+import { ContextGraphs } from "./history/ContextGraphs";
+import { campaignKey } from "./history/types";
+import { useSnapshotSwitch } from "./history/useSnapshotSwitch";
+import { useEu5SaveInput } from "./store";
+import { PerformanceDetails } from "./history/PerformanceDetails";
+import { SaveHistory } from "./history/SaveHistory";
+import { useHistory } from "./history/store";
+import { GameButton } from "@/components/game/Button";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { formatCompact, formatInt } from "@/lib/format";
@@ -33,6 +42,11 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
+  const switchSnapshot = useSnapshotSwitch();
+  const saveInput = useEu5SaveInput();
+  const historyOpen = useHistory((s) => s.panelOpen);
+  const showHistory = useHistory((s) => s.showPanel);
+  const mapMode = useEu5MapMode();
   const setInsightPanelWidth = useSetEu5InsightPanelWidth();
   const handleWidthChange = useCallback(
     (width: number) => setInsightPanelWidth(width),
@@ -58,14 +72,138 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         <ResizablePanel.Header className="border-b border-game-line">
           <ResizablePanel.CloseButton className={btnCx} />
           <div className="min-w-0 flex-1">
-            <InsightPanelTitle />
+            {historyOpen ? (
+              <span className="font-game-ui text-sm font-semibold text-game-ink-300">
+                Campaign history
+              </span>
+            ) : (
+              <InsightPanelTitle />
+            )}
           </div>
           <ResizablePanel.MaximizeButton className={btnCx} />
         </ResizablePanel.Header>
-        {/* Don't render panel content until open as panels can be very expensive to render with large charts */}
-        <ResizablePanel.Content>{open ? <PanelContentInner /> : null}</ResizablePanel.Content>
+        <div className="flex gap-1 border-b border-game-line px-3 py-2">
+          <GameButton
+            variant={historyOpen ? "ghost" : "default"}
+            onClick={() => showHistory(false)}
+          >
+            Current date
+          </GameButton>
+          <GameButton variant={historyOpen ? "default" : "ghost"} onClick={() => showHistory(true)}>
+            Over time
+          </GameButton>
+        </div>
+        <ResizablePanel.Content>
+          {open && !historyOpen ? (
+            <>
+              <PanelContentInner />
+              <InlineHistory />
+            </>
+          ) : null}
+          <div hidden={!open || !historyOpen}>
+            <PanelSaveHistory
+              embedded
+              visible={open && historyOpen}
+              mapMode={mapMode}
+              currentFile={saveInput.kind === "file" ? saveInput.file : undefined}
+              onChoose={switchSnapshot}
+              performancePanel={<PerformanceDetails />}
+            />
+          </div>
+        </ResizablePanel.Content>
       </ResizablePanel.Root>
     </PanelNavProvider>
+  );
+}
+
+function useHistoryContext(
+  mapMode: React.ComponentProps<typeof SaveHistory>["mapMode"],
+  enabled = true,
+) {
+  const nav = usePanelNav();
+  const selection = useEu5SelectionState();
+  const identity = nav.top?.profile ?? selection?.activeProfile;
+  const kind = identity?.kind;
+  const key =
+    identity?.kind === "country"
+      ? identity.country.key
+      : identity?.kind === "market"
+        ? identity.market.key
+        : null;
+  const { data: focus } = useEu5Trigger(
+    async (engine) => {
+      if (!enabled || key == null) return null;
+      if (kind === "country") {
+        const profile = await engine.trigger.getCountryProfile(key);
+        return profile ? { tag: profile.header.tag ?? undefined, name: profile.header.name } : null;
+      }
+      if (kind === "market") {
+        const profile = await engine.trigger.getMarketProfile(key);
+        return profile ? { center: profile.centerId, name: profile.header.name } : null;
+      }
+      return null;
+    },
+    [kind, key, enabled],
+  );
+  const tab = nav.profileTabs.country;
+  const mode =
+    kind === "country" && tab === "religion"
+      ? "religion"
+      : kind === "country" && tab === "population"
+        ? "population"
+        : kind === "country" && tab === "diplomacy"
+          ? "political"
+          : kind === "market"
+            ? "markets"
+            : mapMode;
+  return { mode, focus };
+}
+
+function PanelSaveHistory(props: React.ComponentProps<typeof SaveHistory>) {
+  const { mode, focus } = useHistoryContext(props.mapMode, props.visible);
+  return (
+    <SaveHistory
+      {...props}
+      mapMode={mode}
+      focusTag={focus && "tag" in focus ? focus.tag : undefined}
+      focusName={focus?.name}
+      focusMarketCenter={focus && "center" in focus ? focus.center : undefined}
+    />
+  );
+}
+
+function InlineHistory() {
+  const [expanded, setExpanded] = useState(false);
+  const mode = useEu5MapMode();
+  const { mode: contextMode, focus } = useHistoryContext(mode, expanded);
+  const snapshots = useHistory((s) => s.snapshots);
+  const selectedHash = useHistory((s) => s.selectedHash);
+  const selected = snapshots.find((s) => s.hash === selectedHash);
+  const showPanel = useHistory((s) => s.showPanel);
+  if (!selected || contextMode === "markets") return null;
+  const dates = snapshots.filter((s) => campaignKey(s) === campaignKey(selected));
+  return (
+    <details
+      className="mx-4 my-3 rounded-(--radius-panel) border border-game-line-strong bg-game-panel p-3"
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
+      <summary className="cursor-pointer font-game-ui text-xs text-game-ink-300">
+        {focus?.name ?? MAP_MODE_TITLES[mode]} · evolution over {dates.length} saved dates
+      </summary>
+      {expanded && (
+        <div className="mt-3">
+          <ContextGraphs
+            dates={dates}
+            mode={contextMode ?? mode}
+            country={focus && "tag" in focus ? focus.tag : "world"}
+            selectedHash={selectedHash}
+          />
+          <GameButton variant="ghost" onClick={() => showPanel(true)}>
+            Open history controls
+          </GameButton>
+        </div>
+      )}
+    </details>
   );
 }
 
@@ -83,9 +221,7 @@ function PanelContentInner() {
   } else if (top?.kind === "profile") {
     content = <EntityProfileRoot identity={top.profile} />;
   } else if (activeProfile != null) {
-    content = (
-      <EntityProfileRoot key={profileIdentityKey(activeProfile)} identity={activeProfile} />
-    );
+    content = <EntityProfileRoot key={activeProfile.kind} identity={activeProfile} />;
   } else if (currentMapMode === "political") {
     content = <PoliticalInsight />;
   } else if (currentMapMode === "control") {
@@ -126,12 +262,6 @@ function PanelContentInner() {
   }
 
   return <>{content}</>;
-}
-
-function profileIdentityKey(profile: ActiveProfileIdentity) {
-  if (profile.kind === "location") return `location:${profile.location.key}`;
-  if (profile.kind === "country") return `country:${profile.country.key}`;
-  return `market:${profile.market.key}`;
 }
 
 function EmptyInsightState() {
@@ -307,7 +437,7 @@ function HeadlineStat({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex items-baseline gap-1">
       <span className="font-game-num text-[13px] font-medium text-game-ink-100 tabular-nums">
-        {value}
+        <AnimatedValue value={value} />
       </span>
       <span className="text-[10px] tracking-[0.06em] text-game-ink-500 uppercase">{label}</span>
     </span>

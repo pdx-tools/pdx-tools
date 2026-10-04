@@ -6,6 +6,7 @@ import { timeAsync, timeSync } from "@/lib/timeit";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
   MapMode,
+  ActiveProfileIdentity,
   DisplayData,
   GradientConfig,
   GradientPalette,
@@ -73,14 +74,15 @@ export const createGame = async (
     onProgress?: (increment: number, stage: string) => void;
   },
 ) => {
+  let activeSave = save;
   const readFile = async () => {
-    switch (save.kind) {
+    switch (activeSave.kind) {
       case "handle":
-        return (await save.file.getFile()).arrayBuffer();
+        return (await activeSave.file.getFile()).arrayBuffer();
       case "file":
-        return save.file.arrayBuffer();
+        return activeSave.file.arrayBuffer();
       case "server":
-        return fetchOk(`/api/eu5/saves/${save.saveId}/file`).then((response) =>
+        return fetchOk(`/api/eu5/saves/${activeSave.saveId}/file`).then((response) =>
           response.arrayBuffer(),
         );
     }
@@ -169,11 +171,77 @@ export const createGame = async (
   const localizationBundle = await localizationTask;
   onProgress?.(2, "Building indexes");
 
-  const app = timeSync("Localize app", () => workspace.localize(localizationBundle));
+  let app = timeSync("Localize app", () => workspace.localize(localizationBundle));
 
   // Build search indexes once after initialization.
-  const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
-  const locationIndex = timeSync("Build location index", () => app.get_locations().locations);
+  let countryIndex = timeSync("Build country index", () => app.get_countries().countries);
+  let locationIndex = timeSync("Build location index", () => app.get_locations().locations);
+
+  // At most two dated apps: active plus one prepared neighbour. Assets are shared in Rust.
+  const initialHash = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", saveData)),
+    (b) => b.toString(16).padStart(2, "0"),
+  ).join("");
+  let activeHash = initialHash;
+  const prepared = new Map<string, wasm_eu5.Eu5App>([[activeHash, app]]);
+  const describe = (item: wasm_eu5.Eu5App) => ({
+    metadata: item.meta(),
+    timeline: item.get_timeline(),
+    countries: item.get_countries().countries,
+    locations: item.get_locations().locations,
+  });
+  const preparedInfo = new Map([
+    [
+      initialHash,
+      {
+        metadata: app.meta(),
+        timeline: app.get_timeline(),
+        countries: countryIndex,
+        locations: locationIndex,
+      },
+    ],
+  ]);
+  let snapshotQueue: Promise<unknown> = Promise.resolve();
+  const queued = <T>(action: () => Promise<T>): Promise<T> => {
+    const task = snapshotQueue.then(action, action);
+    snapshotQueue = task.catch(() => undefined);
+    return task;
+  };
+  let lastPrepare: { readMs: number; parseMs: number; workspaceMs: number } | null = null;
+  const prepare = async (file: File, hash: string) => {
+    const cached = prepared.get(hash);
+    if (cached) return { app: cached, cacheHit: true };
+    // Release the previous standby before allocating another large gamestate.
+    for (const [key, old] of prepared)
+      if (key !== activeHash) {
+        prepared.delete(key);
+        preparedInfo.delete(key);
+        old.free();
+      }
+    const begin = performance.now();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const readEnd = performance.now();
+    const parser = wasm_eu5.Eu5MetaParser.create().init(bytes);
+    const nextMeta = parser.meta();
+    if (
+      nextMeta.playthroughId !== metadata.playthroughId ||
+      JSON.stringify(nextMeta.version) !== JSON.stringify(metadata.version)
+    ) {
+      parser.free();
+      throw new Error("Saved-date playback requires the same campaign and full game version.");
+    }
+    const state = parser.parse_gamestate();
+    const parseEnd = performance.now();
+    const next = app.for_save(state);
+    lastPrepare = {
+      readMs: readEnd - begin,
+      parseMs: parseEnd - readEnd,
+      workspaceMs: performance.now() - parseEnd,
+    };
+    preparedInfo.set(hash, describe(next));
+    prepared.set(hash, next);
+    return { app: next, cacheHit: false };
+  };
 
   // Render each palette into a CSS gradient string once. The palette stops
   // come from Rust (single source of truth with the shader); the FE only ever
@@ -285,6 +353,105 @@ export const createGame = async (
   );
 
   return proxy({
+    getSnapshotDiagnostics: () => ({
+      wasmCapacityBytes: wasm.memory.buffer.byteLength,
+      cachedStates: prepared.size,
+      saveArenaUsedBytes: [...prepared.values()].reduce(
+        (sum, item) => sum + (item.used_save_bytes?.() ?? 0),
+        0,
+      ),
+      saveArenaBytes: [...prepared.values()].reduce(
+        (sum, item) => sum + item.retained_save_bytes(),
+        0,
+      ),
+      lastPrepare,
+    }),
+    prepareSnapshot: (file: File, hash: string) =>
+      queued(async () => {
+        const start = performance.now();
+        const result = await prepare(file, hash);
+        return { cacheHit: result.cacheHit, milliseconds: performance.now() - start };
+      }),
+    switchSnapshot: (
+      file: File,
+      hash: string,
+      mode: MapMode,
+      viewed?: ActiveProfileIdentity | null,
+    ) =>
+      queued(async () => {
+        const start = performance.now();
+        const before = app.get_selection_summary();
+        const identity = before.activeProfile;
+        const countryTag =
+          identity?.kind === "country"
+            ? countryIndex.find((c) => c.country.key === identity.country.key)?.tag
+            : undefined;
+        const marketCenter =
+          identity?.kind === "market" ? app.market_center_id(identity.market.key) : undefined;
+        const locationName = identity?.kind === "location" ? identity.location.name : undefined;
+        const viewedTag =
+          viewed?.kind === "country"
+            ? countryIndex.find((c) => c.country.key === viewed.country.key)?.tag
+            : undefined;
+        const viewedCenter =
+          viewed?.kind === "market" ? app.market_center_id(viewed.market.key) : undefined;
+        const result = await prepare(file, hash);
+        const next = result.app;
+        next.clear_selection();
+        next.clear_highlights();
+        next.set_map_mode(mode);
+        const info = preparedInfo.get(hash)!;
+        const countries = info.countries;
+        const locations = info.locations;
+        const country = countryTag ? countries.find((c) => c.tag === countryTag) : undefined;
+        const location = locationName
+          ? locations.find((l) => l.location.name === locationName)
+          : undefined;
+        if (country) next.select_country(country.country.key);
+        if (location) next.set_focused_location(location.location.key);
+        if (marketCenter !== undefined) {
+          const marketId = next.market_id_at_center(marketCenter);
+          if (marketId != null) next.select_market(marketId);
+        }
+        // One worker message replaces all dynamic buffers; the camera and textures stay alive.
+        const change = next.set_map_mode(mode);
+        const colors = cloneBuffer(next.location_arrays());
+        const groups = next.grouping_table();
+        await map.syncSnapshot(
+          transfer(colors, [colors.buffer]),
+          transfer(groups, [groups.buffer]),
+        );
+        let viewedProfile: ActiveProfileIdentity | null = null;
+        if (viewedTag) {
+          const match = countries.find((c) => c.tag === viewedTag);
+          if (match) viewedProfile = { kind: "country", country: match.country };
+        } else if (viewed?.kind === "location") {
+          const match = locations.find((l) => l.location.name === viewed.location.name);
+          if (match) viewedProfile = { kind: "location", location: match.location };
+        } else if (viewedCenter != null) {
+          const marketId = next.market_id_at_center(viewedCenter);
+          if (marketId != null) {
+            const header = next.get_market_profile(marketId)?.header;
+            if (header)
+              viewedProfile = { kind: "market", market: { key: marketId, name: header.name } };
+          }
+        }
+        app = next;
+        activeHash = hash;
+        activeSave = { kind: "file", file };
+        countryIndex = countries;
+        locationIndex = locations;
+        pushSelection(change.gradient ?? undefined);
+        hoverDisplayCallback?.({ kind: "clear" });
+        return {
+          viewedProfile,
+          metadata: info.metadata,
+          timeline: info.timeline,
+          change,
+          cacheHit: result.cacheHit,
+          milliseconds: performance.now() - start,
+        };
+      }),
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       const change = app.set_map_mode(mode);
       await syncAll(change);
@@ -311,7 +478,7 @@ export const createGame = async (
       return app.get_map_mode();
     },
     getPaletteGradients: () => paletteGradients,
-    getSaveMetadata: () => app.meta(),
+    getSaveMetadata: () => preparedInfo.get(activeHash)!.metadata,
     canHighlightLocation: (locationId: number) => {
       return app.can_highlight_location(locationId);
     },

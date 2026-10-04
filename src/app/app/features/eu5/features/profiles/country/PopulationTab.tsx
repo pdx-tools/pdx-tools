@@ -121,7 +121,7 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
   return (
     <section>
       <SectionTitle>How has population changed over time?</SectionTitle>
-      <EChart option={option} style={{ height: "200px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "200px", width: "100%" }} />
     </section>
   );
 }

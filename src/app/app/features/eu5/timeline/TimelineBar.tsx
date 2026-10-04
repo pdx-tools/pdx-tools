@@ -1,3 +1,7 @@
+import { GameButton } from "@/components/game/Button";
+import { useHistory } from "../history/store";
+import { useHasSnapshotTimeline } from "../history/SnapshotBar";
+import { useSetEu5InsightPanelOpen } from "../store";
 import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { TimelapseExport } from "./TimelapseExport";
@@ -37,6 +41,9 @@ function usePresence(open: boolean) {
  * rises with it.
  */
 export function TimelineBar() {
+  const history = useHistory();
+  const hasSnapshots = useHasSnapshotTimeline();
+  const setPanelOpen = useSetEu5InsightPanelOpen();
   const controller = useTimelineController();
   const mapMode = useEu5MapMode();
   const insets = useViewportInsets();
@@ -72,6 +79,18 @@ export function TimelineBar() {
         </div>
 
         <TimelapseExport controller={controller} />
+        <GameButton
+          variant="ghost"
+          onClick={() => {
+            if (hasSnapshots) history.setTimelineSource("snapshots");
+            else {
+              history.showPanel(true);
+              setPanelOpen(true);
+            }
+          }}
+        >
+          {hasSnapshots ? "Saved dates" : "Add saved dates"}
+        </GameButton>
       </div>
 
       <TimelineAnnouncer controller={controller} />

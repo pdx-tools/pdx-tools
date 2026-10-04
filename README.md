@@ -20,6 +20,11 @@ Ready to explore maps, timelapses, and charts?
 - Share and compete: Upload saves and compete in the global achievement speedrun board that favors recent patches, keeping the leaderboard evergreen and fresh.
 - Extensible: Support already stretches beyond EU4 to [EU5](https://en.wikipedia.org/wiki/Europa_Universalis_V), [CK3](https://en.wikipedia.org/wiki/Crusader_Kings_III), [HOI4](https://en.wikipedia.org/wiki/Hearts_of_Iron_IV), [Victoria 3](https://en.wikipedia.org/wiki/Victoria_3), and [Imperator](https://en.wikipedia.org/wiki/Imperator:_Rome). Every adapter melts binary saves into human readable files, and are ripe for contributions!
 
+## EU5 multi-save history
+
+This fork includes an integrated saved-date timeline and economic history charts.
+See [EU5 campaign history](EU5_TIMELINE.md) for usage, caching and local profiling.
+
 ## Contributor Guide
 
 If you'd like to contribute, you've come to the right place! This README should hopefully get you started on your journey. If you get stuck or have a bug report you can [file it here](issues) or chat about it [on the discord](https://discord.gg/rCpNWQW)

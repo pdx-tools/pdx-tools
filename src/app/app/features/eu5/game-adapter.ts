@@ -5,6 +5,7 @@ import type {
   GradientPalette,
   DisplayData,
   MapMode,
+  ActiveProfileIdentity,
   SelectionSummaryData,
   CountryPopulationProfile,
   CountryProfile,
@@ -313,6 +314,19 @@ export function saveWorker(
   );
 
   return {
+    setContinuousRenderForProfiling: (enabled: boolean) =>
+      mapEngine.setContinuousRenderForProfiling(enabled),
+    getSnapshotDiagnostics: async () => ({
+      game: await saveEngine.getSnapshotDiagnostics(),
+      map: await mapEngine.getRenderDiagnostics(),
+    }),
+    prepareSnapshot: (file: File, hash: string) => saveEngine.prepareSnapshot(file, hash),
+    switchSnapshot: (
+      file: File,
+      hash: string,
+      mode: MapMode,
+      viewed?: ActiveProfileIdentity | null,
+    ) => saveEngine.switchSnapshot(file, hash, mode, viewed),
     getZoom: () => mapEngine.get_zoom(),
     getPaletteGradients: async (): Promise<PaletteGradients> => {
       return await saveEngine.getPaletteGradients();

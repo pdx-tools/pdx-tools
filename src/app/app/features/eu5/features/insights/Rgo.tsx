@@ -188,7 +188,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
     };
   }, [scatterData, maxLocCount]);
 
-  return <EChart option={option} style={{ height: "320px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "320px", width: "100%" }} />;
 }
 
 function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDelta[] }) {
@@ -282,7 +282,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
   }, [data]);
 
   const height = data.length * 22 + 52;
-  return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: `${height}px`, width: "100%" }} />;
 }
 
 const topLocColHelper = createColumnHelper<RgoTopLocation>();
