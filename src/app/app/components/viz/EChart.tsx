@@ -112,7 +112,8 @@ function animatedOption(option: EChartsOption): EChartsOption {
   const datasets = list(option.dataset);
   return {
     ...option,
-    animation: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    animation:
+      option.animation !== false && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     animationDurationUpdate: 800,
     animationEasingUpdate: "cubicInOut",
     dataset: datasets.map((dataset) => {
@@ -194,41 +195,89 @@ export const EChart = memo(function EChart({
     onInit?.(chart);
   });
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const chart = echarts.init(containerRef.current);
-    chartRef.current = chart;
-    onInitEvent(chart);
-
-    let rafId: ReturnType<typeof requestAnimationFrame> | undefined;
-    const resizeObserver = new ResizeObserver(() => {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        chart.resize();
-      });
-    });
-
-    resizeObserver.observe(containerRef.current);
-
-    return () => {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      resizeObserver.disconnect();
-      chart.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
+  const visibleRef = useRef(!mergeUpdates);
+  const appliedRef = useRef<EChartsOption | null>(null);
+  const applyOption = useEffectEvent(() => {
     const chart = chartRef.current;
-    if (!chart) return;
-
+    if (!chart || !visibleRef.current || appliedRef.current === option) return;
     const previousSankey = mergeUpdates ? captureSankey(chart) : undefined;
     chart.setOption(mergeUpdates ? animatedOption(option) : option, {
       notMerge: !mergeUpdates,
       ...(mergeUpdates ? { replaceMerge: ["series"] } : {}),
     });
+    appliedRef.current = option;
     if (previousSankey) animateSankey(chart, previousSankey);
+  });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    let rafId: number | undefined;
+    let size = { width: 0, height: 0 };
+    const resize = () => {
+      const chart = chartRef.current;
+      if (!chart || !visibleRef.current) return;
+      const width = container.clientWidth,
+        height = container.clientHeight;
+      if (width === size.width && height === size.height) return;
+      size = { width, height };
+      chart.resize();
+    };
+    const activate = () => {
+      if (!chartRef.current) {
+        const chart = echarts.init(container, undefined, { useDirtyRect: mergeUpdates });
+        chartRef.current = chart;
+        if (mergeUpdates) {
+          // Canvas text painting dominated the profile on a 180 Hz display.
+          // Advance chart animations at at most 60 Hz, retaining their wall-clock duration.
+          // Explicit synchronous updates (setOption/resize) must run immediately.
+          const animation = chart.getZr().animation;
+          const update = animation.update.bind(animation);
+          let lastFrame = -Infinity;
+          animation.update = (synchronous) => {
+            const now = performance.now();
+            if (!synchronous && now - lastFrame < 1000 / 60 - 0.5) return;
+            lastFrame = now;
+            update(synchronous);
+          };
+        }
+        size = { width: container.clientWidth, height: container.clientHeight };
+        onInitEvent(chart);
+      } else {
+        chartRef.current.getZr().animation.start();
+        resize();
+      }
+      applyOption();
+    };
+    // EU5 charts keep the latest option while clipped by a scroll panel or hidden.
+    // They are created only when visible, then retained for subsequent animated updates.
+    const visibility = mergeUpdates
+      ? new IntersectionObserver(([entry]) => {
+          visibleRef.current = entry.isIntersecting;
+          if (entry.isIntersecting) activate();
+          else chartRef.current?.getZr().animation.stop();
+        })
+      : null;
+    visibleRef.current = !visibility;
+    if (visibility) visibility.observe(container);
+    else activate();
+    const resizeObserver = new ResizeObserver(() => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(resize);
+    });
+    resizeObserver.observe(container);
+    return () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      visibility?.disconnect();
+      resizeObserver.disconnect();
+      chartRef.current?.dispose();
+      chartRef.current = null;
+      appliedRef.current = null;
+    };
+  }, [mergeUpdates]);
+
+  useEffect(() => {
+    applyOption();
   }, [option, mergeUpdates]);
 
   return (

@@ -97,6 +97,8 @@ export const createGame = async (
   const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
 
   const saveData = await saveDataTask;
+  // Hashing runs alongside parsing/localization instead of delaying the ready view.
+  const saveHashTask = crypto.subtle.digest("SHA-256", saveData);
   onProgress?.(10, "Parsing gamestate");
 
   const saveParser = timeSync("Initialize Save Parser", () =>
@@ -178,9 +180,8 @@ export const createGame = async (
   let locationIndex = timeSync("Build location index", () => app.get_locations().locations);
 
   // At most two dated apps: active plus one prepared neighbour. Assets are shared in Rust.
-  const initialHash = Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", saveData)),
-    (b) => b.toString(16).padStart(2, "0"),
+  const initialHash = Array.from(new Uint8Array(await saveHashTask), (b) =>
+    b.toString(16).padStart(2, "0"),
   ).join("");
   let activeHash = initialHash;
   const prepared = new Map<string, wasm_eu5.Eu5App>([[activeHash, app]]);

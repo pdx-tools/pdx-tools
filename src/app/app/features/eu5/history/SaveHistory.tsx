@@ -3,14 +3,9 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { wrap } from "comlink";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
-import { EChart } from "@/components/viz";
+import { HistoryPlot } from "./HistoryPlot";
 import type { EChartsOption } from "@/components/viz";
-import {
-  chartTooltip,
-  getEChartsTheme,
-  seriesColors,
-  selectionColor,
-} from "@/components/viz/echartsTheme";
+import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/echartsTheme";
 import type { MapMode } from "@/wasm/wasm_eu5";
 import { useSaveFileInput } from "@/features/engine/engineStore";
 import { useEngineActions } from "@/features/engine/engineStore";
@@ -220,7 +215,7 @@ export function SaveHistory({
   const option = useMemo(
     (): EChartsOption => ({
       useUTC: true,
-      animation: true,
+      animation: false,
       animationDuration: 250,
       animationDurationUpdate: 750,
       animationEasingUpdate: "cubicInOut",
@@ -263,7 +258,7 @@ export function SaveHistory({
           borderColor: theme.axisColor,
         },
       ],
-      series: series.flatMap((s, slot) => {
+      series: series.map((s, slot) => {
         const baseline = s.raw.find((v) => v != null && Number.isFinite(v));
         const line = {
           id: `history/${metric}/${s.name}`,
@@ -274,16 +269,6 @@ export function SaveHistory({
           connectNulls: false,
           symbolSize: 7,
           showSymbol: true,
-          markLine:
-            currentSnapshot && campaignKey(currentSnapshot) === activeGroup
-              ? {
-                  silent: true,
-                  symbol: "none" as const,
-                  label: { show: false },
-                  lineStyle: { color: selectionColor, type: "dashed" as const },
-                  data: [{ xAxis: Date.parse(`${currentSnapshot.date}T00:00:00Z`) }],
-                }
-              : undefined,
           data: s.raw.map((v, i) => [
             Date.parse(`${dates[i].date}T00:00:00Z`),
             v == null || !Number.isFinite(v)
@@ -295,24 +280,10 @@ export function SaveHistory({
                 : v,
           ]),
         };
-        const currentIndex = dates.findIndex((d) => d.hash === currentSnapshot?.hash);
-        const point = line.data[currentIndex];
-        return [
-          line,
-          {
-            id: `playhead/${metric}/${s.name}`,
-            name: s.name,
-            type: "scatter" as const,
-            color: seriesColors[slot],
-            symbolSize: 13,
-            z: 10,
-            itemStyle: { borderColor: theme.labelColor, borderWidth: 1.5 },
-            data: point && point[1] != null ? [point] : [],
-          },
-        ];
+        return line;
       }),
     }),
-    [dates, series, indexed, currentSnapshot?.hash, metric],
+    [dates, series, indexed, metric],
   );
 
   const importFiles = async (list: FileList | null) => {
@@ -340,7 +311,10 @@ export function SaveHistory({
         setProgress(`${i + 1}/${files.length} · ${file.name}`);
         try {
           if (!file.name.toLowerCase().endsWith(".eu5")) throw new Error("Not an EU5 save");
-          const snapshot = await Promise.race([parser.parseSnapshot(file), cancelled]);
+          const { snapshot, cacheHit } = await Promise.race([
+            parser.parseSnapshot(file),
+            cancelled,
+          ]);
           if (currentGeneration !== generation.current) break;
           const conflict = useHistory
             .getState()
@@ -369,7 +343,7 @@ export function SaveHistory({
             history.select(snapshot.hash);
           }
           try {
-            await cacheSnapshot(snapshot);
+            if (!cacheHit) await cacheSnapshot(snapshot);
           } catch {
             if (!cacheWarning) {
               cacheWarning = true;
@@ -630,10 +604,30 @@ export function SaveHistory({
                     </p>
                   )}
                   {visible ? (
-                    <EChart
-                      mergeUpdates
+                    <HistoryPlot
                       option={option}
-                      style={{ height: "300px", width: "100%" }}
+                      date={
+                        currentSnapshot && campaignKey(currentSnapshot) === activeGroup
+                          ? currentSnapshot.date
+                          : undefined
+                      }
+                      values={series.map((s) => {
+                        const value =
+                          s.raw[dates.findIndex((d) => d.hash === currentSnapshot?.hash)];
+                        const baseline = s.raw.find((v) => v != null && Number.isFinite(v));
+                        return value == null
+                          ? null
+                          : indexed
+                            ? baseline != null && baseline > 0
+                              ? (value / baseline) * 100
+                              : null
+                            : value;
+                      })}
+                      height={300}
+                      top={55}
+                      bottom={85}
+                      left={78}
+                      right={25}
                     />
                   ) : null}
                   <p className={styles.help}>

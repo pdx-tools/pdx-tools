@@ -53,11 +53,23 @@ export const useHistory = create<HistoryState>()((set) => ({
   add: (snapshots, files = {}) =>
     set((state) => {
       const byHash = new Map(state.snapshots.map((s) => [s.hash, s]));
-      for (const s of snapshots) if (s.schemaVersion === 3) byHash.set(s.hash, s);
+      let changed = false;
+      for (const s of snapshots) {
+        if (s.schemaVersion !== 3) continue;
+        const previous = byHash.get(s.hash);
+        // Matching content hashes and schemas are the same immutable observation.
+        // Reattaching source files must not rebuild every historical series.
+        if (!previous || previous.fileName !== s.fileName) {
+          byHash.set(s.hash, s);
+          changed = true;
+        }
+      }
       return {
-        snapshots: [...byHash.values()].sort(
-          (a, b) => a.dateSort - b.dateSort || a.hash.localeCompare(b.hash),
-        ),
+        snapshots: changed
+          ? [...byHash.values()].sort(
+              (a, b) => a.dateSort - b.dateSort || a.hash.localeCompare(b.hash),
+            )
+          : state.snapshots,
         files: { ...state.files, ...files },
       };
     }),

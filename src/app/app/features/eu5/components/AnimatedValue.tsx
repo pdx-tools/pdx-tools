@@ -1,5 +1,6 @@
 import { memo, useRef, useLayoutEffect, type ReactNode } from "react";
 import NumberFlow from "@number-flow/react";
+import { useElementVisible } from "./useElementVisible";
 
 const locale = new Intl.NumberFormat().resolvedOptions().locale;
 const separators = new Intl.NumberFormat(locale).formatToParts(1234.5);
@@ -27,6 +28,7 @@ export const AnimatedValue = memo(function AnimatedValue({ value }: { value: Rea
   const scaled = numeric * (suffix === "K" ? 1000 : suffix === "M" ? 1_000_000 : 1);
   return (
     <RollingNumber
+      fallback={value}
       numeric={numeric}
       actual={compact ? scaled : numeric}
       precision={precision}
@@ -39,6 +41,7 @@ export const AnimatedValue = memo(function AnimatedValue({ value }: { value: Rea
 });
 
 function RollingNumber({
+  fallback,
   numeric,
   actual,
   precision,
@@ -47,6 +50,7 @@ function RollingNumber({
   grouped,
   positiveSign,
 }: {
+  fallback: ReactNode;
   numeric: number;
   actual: number;
   precision: number;
@@ -55,36 +59,43 @@ function RollingNumber({
   grouped: boolean;
   positiveSign: boolean;
 }) {
+  const { ref, visible } = useElementVisible();
   const previous = useRef(actual);
   const trend = Math.sign(actual - previous.current);
   useLayoutEffect(() => {
     previous.current = actual;
   }, [actual]);
   return (
-    <NumberFlow
-      value={numeric}
-      locales={locale}
-      prefix={prefix || undefined}
-      suffix={suffix || undefined}
-      format={{
-        minimumFractionDigits: precision,
-        maximumFractionDigits: precision,
-        useGrouping: grouped,
-        ...(positiveSign ? { signDisplay: "always" } : {}),
-      }}
-      trend={trend}
-      transformTiming={timing}
-      spinTiming={timing}
-      opacityTiming={{ duration: 250, easing: "ease-out" }}
-      willChange={false}
-      respectMotionPreference
-      className="tabular-nums"
-      style={
-        {
-          "--number-flow-mask-height": "0.08em",
-          "--number-flow-mask-width": "0.1em",
-        } as React.CSSProperties
-      }
-    />
+    <span ref={ref}>
+      {visible ? (
+        <NumberFlow
+          value={numeric}
+          locales={locale}
+          prefix={prefix || undefined}
+          suffix={suffix || undefined}
+          format={{
+            minimumFractionDigits: precision,
+            maximumFractionDigits: precision,
+            useGrouping: grouped,
+            ...(positiveSign ? { signDisplay: "always" } : {}),
+          }}
+          trend={trend}
+          transformTiming={timing}
+          spinTiming={timing}
+          opacityTiming={{ duration: 250, easing: "ease-out" }}
+          willChange={false}
+          respectMotionPreference
+          className="tabular-nums"
+          style={
+            {
+              "--number-flow-mask-height": "0.08em",
+              "--number-flow-mask-width": "0.1em",
+            } as React.CSSProperties
+          }
+        />
+      ) : (
+        fallback
+      )}
+    </span>
   );
 }

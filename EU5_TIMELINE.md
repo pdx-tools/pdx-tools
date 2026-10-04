@@ -156,3 +156,8 @@ bar and Sankey shapes had active update animators during the country preview.
 A location preview retained ten unique pop-group rows when reselected and recorded
 68 concurrent rolling-digit animations during a dated update.
 These are local observations, not a cross-hardware guarantee.
+
+## Targeted playback and loading optimization
+
+See [EU5_PERFORMANCE.md](EU5_PERFORMANCE.md) for the controlled before/after
+measurements and the retained rendering, profile-cache, and cached-import changes.

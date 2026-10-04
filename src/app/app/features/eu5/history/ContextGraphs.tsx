@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { EChart, type EChartsOption } from "@/components/viz";
+import { type EChartsOption } from "@/components/viz";
+import { HistoryPlot } from "./HistoryPlot";
 import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/echartsTheme";
 import type { CountryObservation, MapMode } from "@/wasm/wasm_eu5";
 import { formatCompact } from "@/lib/format";
@@ -139,9 +140,10 @@ function HistoryChart({
 }) {
   const option = useMemo((): EChartsOption => {
     const theme = getEChartsTheme();
-    const selected = dates.findIndex((s) => s.hash === selectedHash);
+
     return {
       useUTC: true,
+      animation: false,
       color: [...seriesColors],
       textStyle: { color: theme.labelColor, fontFamily: theme.numFamily },
       tooltip: { ...chartTooltip, trigger: "axis", confine: true },
@@ -158,47 +160,24 @@ function HistoryChart({
         axisLabel: { color: theme.tickColor, formatter: (v: number) => formatCompact(v, 1) },
         splitLine: { lineStyle: { color: theme.gridLineColor } },
       },
-      series: lines.flatMap((line, i) => {
-        const data = line.values.map((v, j) => [dates[j].date, v]);
-        return [
-          {
-            id: `history/${title}/${line.name}`,
-            name: line.name,
-            type: "line" as const,
-            data,
-            showSymbol: true,
-            symbolSize: 4,
-            connectNulls: false,
-            lineStyle: { width: 2 },
-            itemStyle: { color: seriesColors[i % seriesColors.length] },
-            ...(i === 0 && selected >= 0
-              ? {
-                  markLine: {
-                    silent: true,
-                    symbol: "none",
-                    label: { show: false },
-                    lineStyle: { color: theme.tickColor, type: "dashed" as const },
-                    data: [{ xAxis: dates[selected].date }],
-                  },
-                }
-              : {}),
-          },
-          {
-            id: `cursor/${title}/${line.name}`,
-            name: line.name,
-            type: "scatter" as const,
-            symbolSize: 10,
-            itemStyle: { color: seriesColors[i % seriesColors.length] },
-            data:
-              selected >= 0 && line.values[selected] != null
-                ? [{ id: line.name, value: data[selected] }]
-                : [],
-            tooltip: { show: false },
-          },
-        ];
-      }),
+      series: lines.map((line, i) => ({
+        id: `history/${title}/${line.name}`,
+        name: line.name,
+        type: "line" as const,
+        data: line.values.map((v, j) => [dates[j].date, v]),
+        showSymbol: true,
+        symbolSize: 4,
+        connectNulls: false,
+        lineStyle: { width: 2 },
+        itemStyle: { color: seriesColors[i % seriesColors.length] },
+      })),
     };
-  }, [title, dates, lines, selectedHash]);
+  }, [title, dates, lines]);
+  const selected = dates.findIndex((s) => s.hash === selectedHash);
+  const values = useMemo(
+    () => lines.map((line) => line.values[selected] ?? null),
+    [lines, selected],
+  );
   const exportCsv = () => {
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const rows = [
@@ -235,7 +214,16 @@ function HistoryChart({
         </button>
       </div>
       <p className="mt-1 font-game-num text-[11px] text-game-ink-500">{unit}</p>
-      <EChart mergeUpdates option={option} style={{ height: 240, width: "100%" }} />
+      <HistoryPlot
+        option={option}
+        date={dates[selected]?.date}
+        values={values}
+        height={240}
+        top={40}
+        bottom={40}
+        left={65}
+        right={22}
+      />
     </section>
   );
 }
