@@ -120,7 +120,7 @@ pub fn parse_steam_builds(output: &str, games: &[Game]) -> SteamBuilds {
 /// quoted value or a braced block. Unquoted lines (SteamCMD log output) are
 /// ignored.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Vdf {
+pub(crate) enum Vdf {
     Str(String),
     Obj(Vec<(String, Vdf)>),
 }
@@ -133,27 +133,27 @@ enum Token {
 }
 
 impl Vdf {
-    fn parse(text: &str) -> Vdf {
+    pub(crate) fn parse(text: &str) -> Vdf {
         let tokens = tokenize(text);
         let mut pos = 0;
         Vdf::Obj(parse_entries(&tokens, &mut pos))
     }
 
-    fn entries(&self) -> Option<&[(String, Vdf)]> {
+    pub(crate) fn entries(&self) -> Option<&[(String, Vdf)]> {
         match self {
             Vdf::Obj(entries) => Some(entries),
             Vdf::Str(_) => None,
         }
     }
 
-    fn get(&self, key: &str) -> Option<&Vdf> {
+    pub(crate) fn get(&self, key: &str) -> Option<&Vdf> {
         self.entries()?
             .iter()
             .find(|(k, _)| k == key)
             .map(|(_, v)| v)
     }
 
-    fn as_str(&self) -> Option<&str> {
+    pub(crate) fn as_str(&self) -> Option<&str> {
         match self {
             Vdf::Str(s) => Some(s),
             Vdf::Obj(_) => None,

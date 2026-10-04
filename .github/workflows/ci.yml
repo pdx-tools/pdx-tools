@@ -132,7 +132,7 @@ jobs:
       uses: actions/cache/restore@v6
       with:
         path: ${{ env.ASSET_CACHE_PATHS }}
-        key: game-bundles-v2-${{ hashFiles('assets/game-bundles.sha256') }}
+        key: game-bundles-v2-${{ hashFiles('assets/catalog.json') }}
         restore-keys: game-bundles-v2-
         enableCrossOsArchive: true # shares one cache with the build job
 
@@ -304,7 +304,7 @@ jobs:
         id: bundles
         uses: actions/cache/restore@v6
         with:
-          key: game-bundles-v2-${{ hashFiles('assets/game-bundles.sha256') }}
+          key: game-bundles-v2-${{ hashFiles('assets/catalog.json') }}
           restore-keys: game-bundles-v2-
           enableCrossOsArchive: true # shared cache between OSes
           path: ${{ env.ASSET_CACHE_PATHS }}
@@ -424,5 +424,5 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ env.ASSET_CACHE_PATHS }}
-          key: game-bundles-v2-${{ hashFiles('assets/game-bundles.sha256') }}
+          key: game-bundles-v2-${{ hashFiles('assets/catalog.json') }}
           enableCrossOsArchive: true

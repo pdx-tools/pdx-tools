@@ -1,4 +1,5 @@
 mod asset_compilers;
+mod asset_source;
 mod bundler;
 mod cli;
 pub mod coat_of_arms;

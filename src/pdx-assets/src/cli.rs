@@ -1,10 +1,10 @@
-mod build_info;
+pub(crate) mod build_info;
 mod bundle;
 mod compile;
 mod fetch_game;
 mod images;
 mod pack;
-mod steam_builds;
+pub(crate) mod steam_builds;
 
 pub use build_info::*;
 pub use bundle::*;
