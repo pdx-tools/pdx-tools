@@ -51,6 +51,7 @@ async function migrate(env: "dev" | "test") {
   }
 
   const databaseUrl = new URL("postgresql://postgres@127.0.0.1/postgres");
+  databaseUrl.hostname = process.env.PDX_DEV_DATABASE_HOST ?? "127.0.0.1";
   databaseUrl.port = port;
   databaseUrl.password = password;
   databaseUrl.searchParams.set("options", "-c client_min_messages=warning");
