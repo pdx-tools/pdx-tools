@@ -22,6 +22,7 @@ windows-x64 = { asset_pattern = "Windows.flatc.binary.zip" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["rust"]
+lockfile = true
 
 [env]
 _.path = ['{{config_root}}/.config/bin', '{{config_root}}/node_modules/.bin']
