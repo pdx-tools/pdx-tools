@@ -289,6 +289,76 @@ fn incremental_timeline_steps_match_a_full_repaint() {
 /// this crate's defaults, so the zstd zip path must work without the C
 /// backend.
 #[test]
+fn good_producers_add_up_to_market_production() {
+    insta::glob!("saves.d/*.save", |path| {
+        let save_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .expect("pointer file stem is UTF-8");
+        let Some(mut loaded) = utils::build_workspace(save_name) else {
+            return;
+        };
+        let ws = &mut loaded.workspace;
+        ws.clear_selection();
+
+        let markets: Vec<_> = ws
+            .gamestate()
+            .market_manager
+            .database
+            .iter_with_id()
+            .map(|(id, market)| (id, market.center))
+            .collect();
+        let goods: Vec<String> = ws
+            .gamestate()
+            .market_manager
+            .produced_goods
+            .iter()
+            .map(|(good, _)| good.to_str().to_string())
+            .collect();
+
+        let localized = ws.localized(&loaded.localization);
+        let presenter = localized.presenter();
+        for good in &goods {
+            let world = presenter.calculate_good_producers(good, None);
+            let sources = world.raw_material_units + world.building_units + world.other_units;
+            assert!(
+                (world.total_units - sources).abs() < 1e-6 * world.total_units.max(1.0),
+                "{save_name}: {good} sources {sources} do not add up to {}",
+                world.total_units
+            );
+            let attributed: f64 = world.countries.iter().map(|c| c.units).sum();
+            assert!(
+                attributed <= world.total_units * (1.0 + 1e-9) + 1e-9,
+                "{save_name}: {good} attributes {attributed} of {}",
+                world.total_units
+            );
+            assert!(
+                world
+                    .countries
+                    .windows(2)
+                    .all(|pair| pair[0].units >= pair[1].units),
+                "{save_name}: {good} producers are not sorted"
+            );
+
+            // The world is the sum of its markets.
+            let by_market: f64 = markets
+                .iter()
+                .map(|(id, _)| {
+                    presenter
+                        .calculate_good_producers(good, Some(*id))
+                        .total_units
+                })
+                .sum();
+            assert!(
+                (by_market - world.total_units).abs() < 1e-6 * world.total_units.max(1.0),
+                "{save_name}: {good} markets sum to {by_market}, world is {}",
+                world.total_units
+            );
+        }
+    });
+}
+
+#[test]
 fn opens_a_zstd_remuxed_zip_save() {
     let mut file = utils::request_file("Clandeboye.eu5");
     let mut data = Vec::new();

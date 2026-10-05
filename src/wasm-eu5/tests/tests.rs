@@ -47,6 +47,7 @@ fn scoped_good_summary() -> ScopedGoodSummary {
         market_count: 1,
         producing_location_count: 1,
         default_market_price: Some(2.0),
+        production: 1.0,
     }
 }
 

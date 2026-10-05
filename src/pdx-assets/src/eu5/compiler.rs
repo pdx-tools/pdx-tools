@@ -5,7 +5,7 @@ use crate::images::{
 use crate::{FileProvider, ImageProcessor};
 use anyhow::Result;
 use eu5app::game_data::{
-    GoodsData, LocalizationsData,
+    GoodsData, LocalizationsData, ProductionMethodsData,
     game_install::{GameFileSource, RawGameData},
     optimized::WorldMetadata,
 };
@@ -149,6 +149,13 @@ where
             },
         )?;
         write_entry(&mut archive, "topology.bin", &topology)?;
+        write_entry(
+            &mut archive,
+            "production_methods.bin",
+            ProductionMethodsData {
+                methods: raw_game_data.production_methods,
+            },
+        )?;
         archive.finish()?
     };
 

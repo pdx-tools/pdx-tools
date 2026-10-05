@@ -1,6 +1,6 @@
 use crate::color::Srgb;
 use crate::color::{Hsv, UnitRgb};
-use crate::game_data::{GameDataError, GoodData};
+use crate::game_data::{GameDataError, GoodData, ProductionMethodData};
 use crate::models::Terrain;
 use eu5save::hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
@@ -149,6 +149,58 @@ pub fn parse_building_keys(data: &str) -> Result<FxHashSet<String>, GameDataErro
             .deserialize()
             .map_err(|e| GameDataError::Jomini(e, "building_types"))?;
     Ok(buildings.into_keys().collect())
+}
+
+#[derive(Debug, Deserialize)]
+struct RawProductionMethod {
+    produced: Option<String>,
+    output: Option<f64>,
+}
+
+fn producing_methods(
+    methods: FxHashMap<String, RawProductionMethod>,
+) -> impl Iterator<Item = (String, ProductionMethodData)> {
+    methods.into_iter().filter_map(|(name, method)| {
+        let produced = method.produced?;
+        let output = method.output?;
+        Some((name, ProductionMethodData { produced, output }))
+    })
+}
+
+/// Parse the production methods that a building type file defines in
+/// `unique_production_methods`.
+pub fn parse_building_production_methods(
+    data: &str,
+) -> Result<FxHashMap<String, ProductionMethodData>, GameDataError> {
+    // A building type can declare `unique_production_methods` more than once.
+    #[derive(Debug, jomini::JominiDeserialize)]
+    struct RawBuilding {
+        #[jomini(duplicated)]
+        unique_production_methods: Vec<FxHashMap<String, RawProductionMethod>>,
+    }
+
+    let reader = jomini::text::TokenReader::new(data.as_bytes());
+    let buildings: FxHashMap<String, RawBuilding> =
+        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
+            .deserialize()
+            .map_err(|e| GameDataError::Jomini(e, "building_types"))?;
+    Ok(buildings
+        .into_values()
+        .flat_map(|building| building.unique_production_methods)
+        .flat_map(producing_methods)
+        .collect())
+}
+
+/// Parse a file of the shared `production_methods` directory.
+pub fn parse_production_methods(
+    data: &str,
+) -> Result<FxHashMap<String, ProductionMethodData>, GameDataError> {
+    let reader = jomini::text::TokenReader::new(data.as_bytes());
+    let methods: FxHashMap<String, RawProductionMethod> =
+        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
+            .deserialize()
+            .map_err(|e| GameDataError::Jomini(e, "production_methods"))?;
+    Ok(producing_methods(methods).collect())
 }
 
 pub fn parse_religion_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
@@ -670,5 +722,65 @@ unknown = {
         let raw_goods = parse_goods(goods_data, "goods.txt").unwrap();
         let colors = parse_map_mode_colors("colors = {}").unwrap();
         assert!(resolve_goods(raw_goods, &colors).is_err());
+    }
+
+    #[test]
+    fn parse_building_production_methods_keeps_producing_methods() {
+        let data = r#"
+cloth_guild = {
+    pop_type = burghers
+    possible_production_methods = { rural_blacksmith }
+    unique_production_methods = {
+        wool_cloth_guild_maintenance = {
+            icon_type = goods
+            wool = 1.0
+            produced = cloth
+            output = 1
+            category = guild_input
+        }
+        fiber_crops_cloth_guild_maintenance = {
+            fiber_crops = 1.0
+            produced = cloth
+            output = 0.8
+        }
+    }
+    modifier = { }
+}
+temple = {
+    unique_production_methods = {
+        temple_maintenance = { incense = 0.1 }
+    }
+    unique_production_methods = {
+        temple_candles = { produced = beeswax output = 0.1 }
+    }
+}
+"#;
+        let methods = parse_building_production_methods(data).unwrap();
+        assert_eq!(methods.len(), 3);
+        assert_eq!(methods["temple_candles"].produced, "beeswax");
+        let wool = &methods["wool_cloth_guild_maintenance"];
+        assert_eq!(wool.produced, "cloth");
+        assert_eq!(wool.output, 1.0);
+        assert_eq!(methods["fiber_crops_cloth_guild_maintenance"].output, 0.8);
+    }
+
+    #[test]
+    fn parse_production_methods_reads_shared_methods() {
+        let data = r#"
+rural_pottery_maker = {
+    icon_type = goods
+    produced = pottery
+    output = 0.2
+    clay = 0.333
+    category = building_maintenance
+}
+village_granary_maintenance = {
+    wheat = 0.1
+}
+"#;
+        let methods = parse_production_methods(data).unwrap();
+        assert_eq!(methods.len(), 1);
+        assert_eq!(methods["rural_pottery_maker"].produced, "pottery");
+        assert_eq!(methods["rural_pottery_maker"].output, 0.2);
     }
 }

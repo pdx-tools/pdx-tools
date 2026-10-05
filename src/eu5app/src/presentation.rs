@@ -28,7 +28,7 @@ use crate::insights::buildings::presentation::BuildingLevelsInsightData;
 use crate::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
 use crate::insights::development::presentation::DevelopmentInsightData;
 use crate::insights::markets::presentation::{
-    MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
+    GoodProducersData, MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
 };
 use crate::insights::population::presentation::PopulationInsightData;
 use crate::insights::population_growth::presentation::PopulationGrowthInsightData;
@@ -62,6 +62,16 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
 
     pub fn calculate_market_insight(&self) -> MarketInsightData {
         self.workspace.calculate_market_insight().present(&self.ctx)
+    }
+
+    pub fn calculate_good_producers(
+        &self,
+        good: &str,
+        market: Option<MarketId>,
+    ) -> GoodProducersData {
+        self.workspace
+            .calculate_good_producers(good, market)
+            .present(&self.ctx)
     }
 
     pub fn calculate_development_insight(&self) -> DevelopmentInsightData {

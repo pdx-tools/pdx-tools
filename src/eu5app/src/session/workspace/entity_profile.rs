@@ -726,6 +726,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     taken_breakdown: market_good_breakdown_entries(good.taken),
                     default_market_price: good_data.map(|g| g.default_market_price),
                     market_count: 1,
+                    production: super::production::market_good_production(good),
                     producing_location_count: producing_location_counts
                         .get(&good.good)
                         .copied()

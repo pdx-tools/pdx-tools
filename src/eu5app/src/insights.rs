@@ -408,6 +408,8 @@ pub mod markets {
             market_count: u32,
             producing_location_count: u32,
             default_market_price: Option<f64>,
+            // Monthly production in the scoped markets, from all sources.
+            production: f64,
         }
 
         pub ScopedMarketSummary {
@@ -455,6 +457,31 @@ pub mod markets {
             total_taken: f64,
             balance_ratio: f64,
             imbalance_value: f64,
+        }
+
+        // One country's estimated production of a good in the scoped
+        // markets, in units for each month.
+        pub GoodProducer {
+            country: crate::presentation::CountryRefSource => CountryRef,
+            units: f64,
+            raw_material_units: f64,
+            building_units: f64,
+            location_count: u32,
+        }
+
+        // Who makes a good in the scoped markets. The totals come from the
+        // market records and are exact. The country split is an estimate.
+        pub GoodProducersData<'a> {
+            good: crate::presentation::GoodRefSource<'a> => crate::presentation::GoodRef,
+            base_price: Option<f64>,
+            market_count: u32,
+            total_units: f64,
+            world_units: f64,
+            raw_material_units: f64,
+            building_units: f64,
+            // Production from sources that no location gets (`Base`).
+            other_units: f64,
+            countries: Vec<workspace::GoodProducer> => Vec<presentation::GoodProducer>,
         }
 
         pub MarketInsightData<'a> {

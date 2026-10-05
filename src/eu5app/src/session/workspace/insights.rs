@@ -841,6 +841,7 @@ impl<'bump> Eu5Workspace<'bump> {
             stockpile: f64,
             market_count: u32,
             producing_location_count: u32,
+            production: f64,
         }
 
         struct MarketAgg<'a> {
@@ -897,6 +898,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 agg.supply += good.supply;
                 agg.demand += good.demand;
                 agg.total_taken += good.total_taken;
+                agg.production += super::production::market_good_production(good);
                 agg.price_weighted_numer += good.price * good.total_taken;
                 agg.price_weighted_denom += good.total_taken;
                 agg.shortage += shortage;
@@ -1030,6 +1032,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     taken_breakdown: Vec::new(),
                     market_count: agg.market_count,
                     producing_location_count: agg.producing_location_count,
+                    production: agg.production,
                 }
             })
             .collect();
