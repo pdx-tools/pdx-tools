@@ -411,6 +411,11 @@ mod tests {
         );
         write_test_entry(&mut archive, "game_data.bin", goods);
         write_test_entry(&mut archive, "topology.bin", empty_topology());
+        write_test_entry(
+            &mut archive,
+            "production_methods.bin",
+            ProductionMethodsData::default(),
+        );
         archive.finish().unwrap().into_inner()
     }
 
