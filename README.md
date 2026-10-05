@@ -177,23 +177,19 @@ One could make the argument that the database could be even easier to manage if 
 
 Uploaded files are sent to S3 through the backend. This may be surprising, as when talking about uploading user content to a bucket, the default recommendation is to always use a presigned URL so that the user uploads directly, bypassing the backend. However, the simplicity of sending files through the backend to be parsed and persisted to the database in the same step as the upload should not be underestimated. Even though this required splitting Next.js hosting between providers to avoid the Vercel body limit, this compromise has still been worth it. Read the [dedicated article](https://nickb.dev/blog/split-nextjs-across-hosting-providers-and-advocate-for-direct-s3-uploads/) for more information.
 
-## EU4 new dlc instructions
+## Asset releases
 
-Generate game bundle for repo:
+`assets/catalog.json` lists the supported releases of each game in ascending sequence, with their Steam branch, game version, and bundle checksum. The bundle name comes from the game version: `1.37.5` gives `eu4-1.37.zip`. The latest release supplies the shared images and the default version of the application.
 
-```bash
-mise run assets:bundle
-```
+For a new release:
 
-Publish the new entry in assets/game-bundles. This uploads the local bundles and writes `assets/game-bundles.sha256`, which you then commit:
+1. Add its entry to the end of the releases in `assets/catalog.json`. Set `sha256` to an empty string until publication.
+2. Run `mise run assets:steam:bundle -- --game eu5 --version 1.4` to download and bundle the release. This maintainer task requires SteamCMD and a Steam account that owns the game.
+3. Run `mise run admin:assets:compile:all -- --game eu5` to compile the local bundles, and examine the compiled assets.
+4. Run `mise run admin:assets:publish`. This task uploads the bundles and writes their checksums to `assets/catalog.json`. Commit the file.
 
-```bash
-mise run admin:assets:publish
-```
+To bundle the game files that Steam installed, run `mise run assets:bundle`. If the bundler cannot find the game version, supply it with `--game-version`.
 
-The manifest lists each bundle with its SHA-256. `mise run admin:assets:sync` downloads the bundles that it lists and checks them, and CI uses it as the cache key. Publish uploads every local bundle, so first make sure that your local bundles are current.
+`mise run admin:assets:sync` downloads the bundles that the catalog lists and checks their SHA-256 values. It requires bucket credentials. CI uses the catalog as the cache key for the bundles.
 
-Finally:
- - Update achievement detection logic with any changes
- - Add new 1444 entry for patch
- - Generate binary tokens
+For a new EU4 DLC, also update achievement detection, add the new 1444 entry, and generate binary tokens.

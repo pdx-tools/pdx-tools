@@ -1,23 +1,21 @@
 #!/usr/bin/env node
 
-// Keep assets/game-bundles in agreement with assets/game-bundles.sha256.
+// Keep assets/game-bundles in agreement with assets/catalog.json. The
+// bucket stores each bundle by name.
 //
-// The manifest uses the sha256sum format, so `sha256sum -c` can also check
-// it. The bucket stores each bundle by name.
-//
-//   sync     Download the bundles that the manifest lists, then check them.
-//   publish  Upload the local bundles and write the manifest from them.
+//   sync     Download the bundles that the catalog lists, then check them.
+//   publish  Upload the catalog bundles and write their checksums.
 
 import { spawnSync } from "child_process";
 import { createHash } from "crypto";
 import { createReadStream } from "fs";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { catalogPath, readAssetCatalog, serializeAssetCatalog } from "./asset-catalog.mts";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const manifestPath = join(projectRoot, "assets", "game-bundles.sha256");
 const bundlesDir = join(projectRoot, "assets", "game-bundles");
 const remoteDir = ":s3:pdx-tools-build/game-bundles-v2";
 
@@ -46,10 +44,15 @@ const hashFile = async (path: string) => {
 };
 
 const sync = async () => {
-  const manifest = (await readFile(manifestPath, "utf8"))
-    .split("\n")
-    .filter((line) => line.trim())
-    .map((line) => ({ sha256: line.slice(0, 64), name: line.slice(66) }));
+  const catalog = await readAssetCatalog();
+  const manifest = Object.values(catalog.games).flatMap((game) =>
+    game.releases
+      .filter((release) => release.sha256)
+      .map((release) => ({
+        sha256: release.sha256,
+        name: release.bundle,
+      })),
+  );
 
   // --checksum skips a file only when it is the same as the remote file.
   const listDir = await mkdtemp(join(tmpdir(), "game-bundles-"));
@@ -72,27 +75,34 @@ const sync = async () => {
   }
   if (failures.length > 0) {
     throw new Error(
-      `These bundles are not the same as the manifest:\n${failures.join("\n")}\n` +
+      `These bundles are not the same as the catalog:\n${failures.join("\n")}\n` +
         "If the bucket has a different bundle, run mise run admin:assets:publish where the bundle was made",
     );
   }
-  console.log(`All ${manifest.length} game bundles agree with the manifest`);
+  console.log(`All ${manifest.length} game bundles agree with the catalog`);
 };
 
 const publish = async () => {
-  const names = (await readdir(bundlesDir))
-    .filter((name) => name.endsWith(".zip"))
-    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
-  const lines = [];
-  for (const name of names) lines.push(`${await hashFile(join(bundlesDir, name))}  ${name}`);
+  const catalog = await readAssetCatalog();
+  const releases = Object.values(catalog.games).flatMap((game) => game.releases);
+  const names = (await readdir(bundlesDir)).filter((name) => name.endsWith(".zip"));
+  for (const name of names) {
+    if (!releases.some((release) => release.bundle === name)) {
+      throw new Error(`Bundle ${name} has no catalog release`);
+    }
+  }
+  for (const release of releases) {
+    if (!names.includes(release.bundle)) throw new Error(`Missing bundle: ${release.bundle}`);
+    release.sha256 = await hashFile(join(bundlesDir, release.bundle));
+  }
 
   rclone(
     ["copy", "--checksum", "--include", "*.zip", bundlesDir, remoteDir],
     process.env.ASSETS_UPLOAD_ACCESS_KEY,
     process.env.ASSETS_UPLOAD_SECRET_KEY,
   );
-  await writeFile(manifestPath, `${lines.join("\n")}\n`);
-  console.log("Updated assets/game-bundles.sha256. Commit it with your change");
+  await writeFile(catalogPath, serializeAssetCatalog(catalog));
+  console.log("Updated assets/catalog.json. Commit it with your change");
 };
 
 const command = process.argv[2];

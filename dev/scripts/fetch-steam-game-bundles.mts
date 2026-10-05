@@ -37,21 +37,17 @@ const pdxAssetsBinary = join(
   isWindows ? "pdx-assets.exe" : "pdx-assets",
 );
 
+import { readAssetCatalog } from "./asset-catalog.mts";
+
+const assetCatalog = await readAssetCatalog();
 const targets: BundleTarget[] = [
-  { game: "eu4", branch: "1.29.6", version: "1.29" },
-  { game: "eu4", branch: "1.30.6", version: "1.30" },
-  { game: "eu4", branch: "1.31.6", version: "1.31" },
-  { game: "eu4", branch: "1.32.2", version: "1.32" },
-  { game: "eu4", branch: "1.33.3", version: "1.33" },
-  { game: "eu4", branch: "1.34.5", version: "1.34" },
-  { game: "eu4", branch: "1.35.6", version: "1.35" },
-  { game: "eu4", branch: "1.36.2", version: "1.36" },
-  { game: "eu4", version: "1.37.5" },
-  { game: "eu5", branch: "1.0.11", version: "1.0" },
-  { game: "eu5", branch: "1.1.10", version: "1.1" },
-  { game: "eu5", branch: "1.2.5", version: "1.2" },
-  { game: "eu5", branch: "1.3.11", version: "1.3" },
-  { game: "eu5", branch: "1.4-open-beta", version: "1.4" },
+  ...(["eu4", "eu5"] as const).flatMap((game) =>
+    assetCatalog.games[game].releases.map((release) => ({
+      game,
+      branch: release.branch === "public" ? undefined : release.branch,
+      version: release.game_version,
+    })),
+  ),
   { game: "ck3", version: "1.20.0.3" },
   { game: "hoi4", version: "1.19.3" },
   { game: "imperator", version: "2.0.5" },
@@ -166,9 +162,6 @@ const labelFor = (target: BundleTarget) => target.branch ?? "public";
 
 const archiveLabelFor = (target: BundleTarget) => target.branch ?? target.version;
 
-/** The asset pipeline keys compiled output by major.minor */
-const bundleVersionFor = (target: BundleTarget) => target.version.split(".").slice(0, 2).join(".");
-
 /** Is `prefix` equal to `version` or a leading run of its dotted components? */
 const isVersionPrefix = (prefix: string, version: string) =>
   version === prefix || version.startsWith(`${prefix}.`);
@@ -262,17 +255,15 @@ const archiveBuildFor = async (target: BundleTarget, archiveZipPath: string) => 
  */
 const verifyDownloadedVersion = async (target: BundleTarget, installDir: string) => {
   const info = await buildInfoFor(target, installDir);
-  if (info.game_version === null) {
-    console.log(`Downloaded build ${info.build_id} (no launcher version to check)`);
-    return;
-  }
-
-  console.log(`Downloaded build ${info.build_id}, launcher version ${info.game_version}`);
-  if (!isVersionPrefix(target.version, info.game_version)) {
+  if (info.game_version !== null && !isVersionPrefix(target.version, info.game_version)) {
     throw new Error(
-      `${target.game} ${labelFor(target)} downloaded as version ${info.game_version}, but the target list names it ${target.version}. Update the target list and run again.`,
+      `${target.game} ${labelFor(target)} downloaded as version ${info.game_version}, but the catalog names it ${target.version}. Update the catalog and run again.`,
     );
   }
+  if (info.branch !== labelFor(target)) {
+    throw new Error(`Downloaded Steam branch ${info.branch}, expected ${labelFor(target)}`);
+  }
+  console.log(`Downloaded build ${info.build_id}, launcher version ${info.game_version ?? "none"}`);
 };
 
 /** Output of `pdx-assets steam-builds`: build IDs keyed by game, then branch */
@@ -402,8 +393,8 @@ const main = async () => {
             "bundle",
             "--game",
             target.game,
-            "--version",
-            bundleVersionFor(target),
+            "--game-version",
+            target.version,
             installDir,
             gameBundlesDir,
           ],
@@ -466,8 +457,8 @@ const main = async () => {
           "bundle",
           "--game",
           target.game,
-          "--version",
-          bundleVersionFor(target),
+          "--game-version",
+          target.version,
           archiveZipPath,
           gameBundlesDir,
         ],

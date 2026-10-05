@@ -4,6 +4,8 @@ import { spawn } from "child_process";
 import { readdir, access } from "fs/promises";
 import { join, resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { readAssetCatalog } from "./asset-catalog.mts";
+import type { AssetRelease } from "./asset-catalog.mts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -72,100 +74,29 @@ async function packageAll() {
     process.exit(1);
   }
 
-  // Get all zip files in game-bundles directory
-  const allFiles = await readdir(gameBundlesDir);
-  const zipBundles = allFiles
-    .filter((file) => file.endsWith(".zip"))
-    .sort((a, b) => {
-      // Natural sort for version numbers
-      const aMatch = a.match(/(\d+)\.(\d+)/);
-      const bMatch = b.match(/(\d+)\.(\d+)/);
-
-      if (aMatch && bMatch) {
-        const aMajor = parseInt(aMatch[1] ?? "0", 10);
-        const aMinor = parseInt(aMatch[2] ?? "0", 10);
-        const bMajor = parseInt(bMatch[1] ?? "0", 10);
-        const bMinor = parseInt(bMatch[2] ?? "0", 10);
-
-        if (aMajor !== bMajor) {
-          return aMajor - bMajor;
-        }
-        return aMinor - bMinor;
-      }
-
-      // Fallback to lexical sort
-      return a.localeCompare(b);
-    });
-
-  console.log(`📦 Found ${zipBundles.length} bundles to process`);
-
-  // Group bundles by game (e.g. "eu4", "eu5") based on filename prefix
-  const gameGroups = new Map<string, string[]>();
-  for (const bundle of zipBundles) {
-    const match = bundle.match(/^([a-z0-9]+)-/);
-    const game = match?.[1] ?? "unknown";
-    if (filterGame !== undefined && game !== filterGame) continue;
-    const group = gameGroups.get(game) ?? [];
-    group.push(bundle);
-    gameGroups.set(game, group);
-  }
-
-  // EU4 and EU5 support --minimal to skip shared UI assets for older patches.
-  // The latest bundle per game gets a full compile; earlier ones get --minimal.
-  const gamesWithMinimal = ["eu4", "eu5"];
-
-  // Bundle filenames are {game}-{major}.{minor}.zip — extract the version portion.
-  const versionOf = (bundle: string) => bundle.slice(bundle.indexOf("-") + 1, -4);
-
-  // For each game that supports --minimal, process the latest bundle first.
-  for (const game of gamesWithMinimal) {
-    const bundles = gameGroups.get(game) ?? [];
-    const latest = bundles.pop();
-    if (latest !== undefined) {
-      const bundlePath = join(gameBundlesDir, latest);
-      console.log(`Processing ${latest} (latest ${game} bundle)`);
-      await execCommand(pdxAssetsBinary, [
-        "compile",
-        "--version",
-        versionOf(latest),
-        ...opts,
-        bundlePath,
-      ]);
-    }
-  }
-
-  // Process older bundles with --minimal and all remaining games in parallel
+  const catalog = await readAssetCatalog();
+  const files = new Set(await readdir(gameBundlesDir));
   const remainingTasks: Promise<unknown>[] = [];
+  for (const game of ["eu4", "eu5"] as const) {
+    if (filterGame !== undefined && game !== filterGame) continue;
+    // An unpublished release has no bundle, thus use the latest bundle that is
+    // present. It supplies the shared images. Older releases skip them.
+    const releases = catalog.games[game].releases.filter((release) => files.has(release.bundle));
+    const latest = releases.at(-1);
+    if (latest === undefined) continue;
 
-  for (const game of gamesWithMinimal) {
-    for (const bundle of gameGroups.get(game) ?? []) {
-      const bundlePath = join(gameBundlesDir, bundle);
-      remainingTasks.push(
-        execCommand(pdxAssetsBinary, [
-          "compile",
-          "--minimal",
-          "--version",
-          versionOf(bundle),
-          ...opts,
-          bundlePath,
-        ]),
-      );
-    }
-  }
-
-  for (const [game, bundles] of gameGroups) {
-    if (gamesWithMinimal.includes(game)) continue;
-    for (const bundle of bundles) {
-      const bundlePath = join(gameBundlesDir, bundle);
-      remainingTasks.push(
-        execCommand(pdxAssetsBinary, [
-          "compile",
-          "--version",
-          versionOf(bundle),
-          ...opts,
-          bundlePath,
-        ]),
-      );
+    const compileArgs = (release: AssetRelease) => [
+      "compile",
+      ...(release === latest ? [] : ["--minimal"]),
+      "--game-version",
+      release.game_version,
+      ...opts,
+      join(gameBundlesDir, release.bundle),
+    ];
+    await execCommand(pdxAssetsBinary, compileArgs(latest));
+    for (const release of releases) {
+      if (release === latest) continue;
+      remainingTasks.push(execCommand(pdxAssetsBinary, compileArgs(release)));
     }
   }
 

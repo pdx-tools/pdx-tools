@@ -25,13 +25,17 @@ pub struct BundleArgs {
     #[clap(long)]
     game: Option<String>,
 
-    /// Game version (e.g. 1.2). Required for EU5.
-    #[clap(long)]
+    /// Version of the source game files. Use only if detection is not possible.
+    #[clap(long = "game-version", alias = "version")]
     version: Option<String>,
 }
 
 impl BundleArgs {
     pub fn run(&self) -> Result<ExitCode> {
+        anyhow::ensure!(
+            self.version.is_none() || self.game_directory.is_some() || self.game.is_some(),
+            "Use --game or a source path with --game-version"
+        );
         let imaging = RustImageProcessor::create()?;
         let out_dir = match self.out_directory.as_ref() {
             Some(dir) => dir.clone(),
@@ -68,8 +72,15 @@ impl BundleArgs {
             let provider = create_provider(&game_directory)?;
             let tracking_provider = FileAccessTracker::new(provider);
 
+            let version = crate::asset_source::detect_version(
+                &tracking_provider,
+                &game_directory,
+                game,
+                self.version.as_deref(),
+            )?
+            .context("Unable to detect the source game version. Use --game-version")?;
             let options = PackageOptions {
-                game_version: self.version.clone(),
+                game_version: Some(version),
                 ..PackageOptions::dry_run()
             };
             let compilation_output = match game {

@@ -77,7 +77,16 @@ pub fn parse_app_manifest(manifest: &str) -> Result<SteamBuildInfo> {
         .context("buildid missing")?
         .parse()
         .context("buildid is not a number")?;
-    let branch = vdf_value(manifest, "BetaKey")
+    let vdf = crate::cli::steam_builds::Vdf::parse(manifest);
+    let state = vdf.get("AppState");
+    let branch = state
+        .and_then(|state| {
+            state
+                .get("MountedConfig")
+                .or_else(|| state.get("UserConfig"))
+        })
+        .and_then(|config| config.get("BetaKey"))
+        .and_then(|value| value.as_str())
         .unwrap_or("public")
         .to_owned();
 
@@ -89,7 +98,7 @@ pub fn parse_app_manifest(manifest: &str) -> Result<SteamBuildInfo> {
 }
 
 /// Find the string value of the first `"key" "value"` pair with the given key
-fn vdf_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
+pub(crate) fn vdf_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     let quoted = format!("\"{key}\"");
     text.lines()
         .map(str::trim)
@@ -142,6 +151,13 @@ mod tests {
         let info = parse_app_manifest(manifest).unwrap();
         assert_eq!(info.branch, "public");
         assert_eq!(info.build_id, 15_918_133);
+    }
+
+    #[test]
+    fn uses_the_mounted_branch_during_a_branch_change() {
+        let manifest = MANIFEST.replace("\"1.14-openbeta\"", "\"1.13.2\"");
+        let manifest = manifest.replacen("\"1.13.2\"", "\"1.15-openbeta\"", 1);
+        assert_eq!(parse_app_manifest(&manifest).unwrap().branch, "1.13.2");
     }
 
     #[test]
