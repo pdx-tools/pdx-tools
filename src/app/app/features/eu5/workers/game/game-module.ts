@@ -29,6 +29,7 @@ import type {
   UnrealizedTaxBaseInsightData,
   UnrealizedTaxBaseScope,
   MarketInsightData,
+  GoodProducersData,
   ScopedGoodSummary,
   PopulationInsightData,
   PopulationGrowthInsightData,
@@ -487,6 +488,9 @@ export const loadSave = async (
     },
     getMarketInsight: (): MarketInsightData => {
       return app.get_market_insight();
+    },
+    getGoodProducers: (good: string, marketId?: number): GoodProducersData => {
+      return app.get_good_producers(good, marketId);
     },
     getPopulationInsight: (): PopulationInsightData => {
       return app.get_population_insight();

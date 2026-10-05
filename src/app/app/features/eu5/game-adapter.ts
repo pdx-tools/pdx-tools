@@ -319,6 +319,7 @@ export type SaveQueries = Pick<
   | "getUnrealizedTaxBaseInsight"
   | "getUnrealizedTaxBaseScope"
   | "getMarketInsight"
+  | "getGoodProducers"
   | "getPopulationInsight"
   | "getPopulationGrowthInsight"
   | "getBuildingLevelsInsight"
