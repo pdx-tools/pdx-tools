@@ -8,6 +8,7 @@ pub mod eu4;
 pub mod eu5;
 mod file_provider;
 mod file_tracker;
+pub mod hoi4;
 pub mod http;
 pub mod images;
 pub mod launcher;
@@ -81,7 +82,7 @@ impl Game {
 
     /// Is the game a part of the asset pipeline (bundle and compile)?
     pub fn has_asset_pipeline(self) -> bool {
-        matches!(self, Game::Eu4 | Game::Eu5)
+        matches!(self, Game::Eu4 | Game::Eu5 | Game::Hoi4)
     }
 
     /// Is the provider an installation of this game?
@@ -102,11 +103,26 @@ impl Game {
             return Ok(*game);
         }
 
+        // An unknown game ID or a launcher file that is not valid does not
+        // stop the detection, as a data file can identify the game.
+        if let Some(game) = launcher::game_id(provider)
+            .ok()
+            .flatten()
+            .and_then(|game_id| game_id.parse().ok())
+        {
+            return Ok(game);
+        }
+
         // Asset bundles hold game data only, so the executable is absent and a
-        // known data file identifies the game.
+        // known data file identifies the game. The asset compiler of the game
+        // must read the file, so that the file is in the bundle. The file must
+        // also be unique to the game: EU4 and HOI4 both have
+        // `common/country_tags/00_countries.txt`, for example.
         if provider.file_exists("game/in_game/map_data/named_locations/00_default.txt") {
             Ok(Game::Eu5)
-        } else if provider.file_exists("common/country_tags/00_countries.txt") {
+        } else if provider.file_exists("common/countries/colors.txt") {
+            Ok(Game::Hoi4)
+        } else if provider.file_exists("map/area.txt") {
             Ok(Game::Eu4)
         } else {
             Err(anyhow!(
@@ -162,6 +178,7 @@ impl FromStr for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write as _;
 
     fn install_with(files: &[&str]) -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
@@ -176,6 +193,22 @@ mod tests {
     fn detect_dir(files: &[&str]) -> Result<Game> {
         let dir = install_with(files);
         Game::detect(&DirectoryProvider::new(dir.path()))
+    }
+
+    fn detect_zip(files: &[(&str, &[u8])]) -> Result<Game> {
+        let mut zip = tempfile::Builder::new().suffix(".zip").tempfile().unwrap();
+        let mut archive = rawzip::ZipArchiveWriter::new(&mut zip);
+        for (path, contents) in files {
+            let (entry, config) = archive.new_file(path).start().unwrap();
+            let mut writer = config.wrap(entry);
+            writer.write_all(contents).unwrap();
+            let (entry, output) = writer.finish().unwrap();
+            entry.finish(output).unwrap();
+        }
+        archive.finish().unwrap();
+
+        let provider = ZipProvider::new(zip.path()).unwrap();
+        Game::detect(&provider)
     }
 
     #[test]
@@ -204,8 +237,60 @@ mod tests {
             Game::Eu5
         );
         assert_eq!(
-            detect_dir(&["common/country_tags/00_countries.txt"]).unwrap(),
+            detect_dir(&["common/country_tags/00_countries.txt", "map/area.txt"]).unwrap(),
             Game::Eu4
+        );
+        assert_eq!(
+            detect_dir(&[
+                "common/country_tags/00_countries.txt",
+                "common/countries/colors.txt"
+            ])
+            .unwrap(),
+            Game::Hoi4
+        );
+    }
+
+    #[test]
+    fn unknown_or_invalid_launcher_settings_fall_back_to_data_files() {
+        for settings in [&br#"{"gameId": "victoria3"}"#[..], b"not json"] {
+            let dir = install_with(&["launcher-settings.json", "map/area.txt"]);
+            std::fs::write(dir.path().join("launcher-settings.json"), settings).unwrap();
+            assert_eq!(
+                Game::detect(&DirectoryProvider::new(dir.path())).unwrap(),
+                Game::Eu4
+            );
+        }
+    }
+
+    #[test]
+    fn detects_game_from_launcher_settings() {
+        let dir = install_with(&[
+            "launcher-settings.json",
+            "common/country_tags/00_countries.txt",
+        ]);
+        std::fs::write(
+            dir.path().join("launcher-settings.json"),
+            br#"{"gameId": "eu4", "rawVersion": "1.37.5.0"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            Game::detect(&DirectoryProvider::new(dir.path())).unwrap(),
+            Game::Eu4
+        );
+    }
+
+    #[test]
+    fn detects_hoi4_zip_bundle_from_launcher_game_id() {
+        assert_eq!(
+            detect_zip(&[
+                ("common/country_tags/00_countries.txt", b"test"),
+                (
+                    "launcher-settings.json",
+                    br#"{"gameId":"hoi4","rawVersion":"1.19.0.6"}"#,
+                ),
+            ])
+            .unwrap(),
+            Game::Hoi4
         );
     }
 
