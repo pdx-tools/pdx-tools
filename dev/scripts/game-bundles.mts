@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 // Keep assets/game-bundles in agreement with assets/catalog.json. The
-// bucket stores each bundle by name.
+// bucket stores each bundle by name and checksum, for example
+// eu5-1.4-<sha256>.zip. Thus, an upload adds an object and does not
+// change an object that another branch uses.
 //
 //   sync     Download the bundles that the catalog lists, then check them.
 //   publish  Upload the catalog bundles and write their checksums.
@@ -9,15 +11,19 @@
 import { spawnSync } from "child_process";
 import { createHash } from "crypto";
 import { createReadStream } from "fs";
-import { mkdtemp, readdir, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
+import { link, mkdir, mkdtemp, readdir, rename, rm, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import type { AssetRelease } from "./asset-catalog.mts";
 import { catalogPath, readAssetCatalog, serializeAssetCatalog } from "./asset-catalog.mts";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const bundlesDir = join(projectRoot, "assets", "game-bundles");
-const remoteDir = ":s3:pdx-tools-build/game-bundles-v2";
+const remoteDir = ":s3:pdx-tools-build/game-bundles";
+
+/** Object name in the bucket for a release bundle */
+const remoteName = (release: AssetRelease) =>
+  release.bundle.replace(/\.zip$/, `-${release.sha256}.zip`);
 
 const rclone = (args: string[], accessKey?: string, secretKey?: string) => {
   if (!accessKey || !secretKey) {
@@ -43,43 +49,64 @@ const hashFile = async (path: string) => {
   return hash.digest("hex");
 };
 
+const localHash = (release: AssetRelease) =>
+  hashFile(join(bundlesDir, release.bundle)).catch(() => "missing");
+
+/** Run fn with a temporary directory in bundlesDir, so rename and link work */
+const withStagingDir = async <T,>(fn: (dir: string) => Promise<T>) => {
+  await mkdir(bundlesDir, { recursive: true });
+  const dir = await mkdtemp(join(bundlesDir, ".staging-"));
+  try {
+    return await fn(dir);
+  } finally {
+    await rm(dir, { force: true, recursive: true });
+  }
+};
+
 const sync = async () => {
   const catalog = await readAssetCatalog();
-  const manifest = Object.values(catalog.games).flatMap((game) =>
-    game.releases
-      .filter((release) => release.sha256)
-      .map((release) => ({
-        sha256: release.sha256,
-        name: release.bundle,
-      })),
+  const releases = Object.values(catalog.games).flatMap((game) =>
+    game.releases.filter((release) => release.sha256),
   );
 
-  // --checksum skips a file only when it is the same as the remote file.
-  const listDir = await mkdtemp(join(tmpdir(), "game-bundles-"));
-  try {
-    const listPath = join(listDir, "files.txt");
-    await writeFile(listPath, manifest.map(({ name }) => name).join("\n"));
-    rclone(
-      ["copy", "--checksum", "--files-from", listPath, remoteDir, bundlesDir],
-      process.env.ASSETS_ACCESS_KEY ?? process.env.ASSETS_UPLOAD_ACCESS_KEY,
-      process.env.ASSETS_SECRET_KEY ?? process.env.ASSETS_UPLOAD_SECRET_KEY,
-    );
-  } finally {
-    await rm(listDir, { force: true, recursive: true });
+  // Download only the bundles that are missing or different. The CI cache
+  // can supply bundles from a different catalog.
+  const stale: AssetRelease[] = [];
+  for (const release of releases) {
+    if ((await localHash(release)) !== release.sha256) stale.push(release);
+  }
+
+  if (stale.length > 0) {
+    await withStagingDir(async (dir) => {
+      const listPath = join(dir, "files.txt");
+      await writeFile(listPath, stale.map(remoteName).join("\n"));
+      rclone(
+        ["copy", "--files-from", listPath, remoteDir, dir],
+        process.env.ASSETS_ACCESS_KEY ?? process.env.ASSETS_UPLOAD_ACCESS_KEY,
+        process.env.ASSETS_SECRET_KEY ?? process.env.ASSETS_UPLOAD_SECRET_KEY,
+      );
+      for (const release of stale) {
+        await rename(join(dir, remoteName(release)), join(bundlesDir, release.bundle)).catch(
+          () => {},
+        );
+      }
+    });
   }
 
   const failures: string[] = [];
-  for (const { sha256, name } of manifest) {
-    const actual = await hashFile(join(bundlesDir, name)).catch(() => "missing");
-    if (actual !== sha256) failures.push(`${name}: expected ${sha256}, found ${actual}`);
+  for (const release of stale) {
+    const actual = await localHash(release);
+    if (actual !== release.sha256) {
+      failures.push(`${release.bundle}: expected ${release.sha256}, found ${actual}`);
+    }
   }
   if (failures.length > 0) {
     throw new Error(
       `These bundles are not the same as the catalog:\n${failures.join("\n")}\n` +
-        "If the bucket has a different bundle, run mise run admin:assets:publish where the bundle was made",
+        "If the bucket does not have a bundle, run mise run admin:assets:publish where the bundle was made",
     );
   }
-  console.log(`All ${manifest.length} game bundles agree with the catalog`);
+  console.log(`All ${releases.length} game bundles agree with the catalog`);
 };
 
 const publish = async () => {
@@ -96,11 +123,18 @@ const publish = async () => {
     release.sha256 = await hashFile(join(bundlesDir, release.bundle));
   }
 
-  rclone(
-    ["copy", "--checksum", "--include", "*.zip", bundlesDir, remoteDir],
-    process.env.ASSETS_UPLOAD_ACCESS_KEY,
-    process.env.ASSETS_UPLOAD_SECRET_KEY,
-  );
+  // Link each bundle to its object name. The bucket can already have an
+  // object with this name. Its content is then the same, so do not upload it.
+  await withStagingDir(async (dir) => {
+    for (const release of releases) {
+      await link(join(bundlesDir, release.bundle), join(dir, remoteName(release)));
+    }
+    rclone(
+      ["copy", "--ignore-existing", dir, remoteDir],
+      process.env.ASSETS_UPLOAD_ACCESS_KEY,
+      process.env.ASSETS_UPLOAD_SECRET_KEY,
+    );
+  });
   await writeFile(catalogPath, serializeAssetCatalog(catalog));
   console.log("Updated assets/catalog.json. Commit it with your change");
 };

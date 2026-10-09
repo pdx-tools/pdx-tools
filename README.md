@@ -192,4 +192,6 @@ To bundle the game files that Steam installed, run `mise run assets:bundle`. If 
 
 `mise run admin:assets:sync` downloads the bundles that the catalog lists and checks their SHA-256 values. It requires bucket credentials. CI uses the catalog as the cache key for the bundles.
 
+The bucket stores each bundle by name and checksum, for example `eu5-1.4-<sha256>.zip`. Publication adds objects and does not replace them. Thus, a branch can publish new bundles and the other branches continue to use the bundles that their catalog lists.
+
 For a new EU4 DLC, also update achievement detection, add the new 1444 entry, and generate binary tokens.
