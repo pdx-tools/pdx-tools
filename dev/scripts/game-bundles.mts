@@ -14,12 +14,8 @@ import { createReadStream } from "fs";
 import { link, mkdir, mkdtemp, readdir, rename, rm, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import {
-  type AssetRelease,
-  catalogPath,
-  readAssetCatalog,
-  serializeAssetCatalog,
-} from "./asset-catalog.mts";
+import type { AssetRelease } from "./asset-catalog.mts";
+import { catalogPath, readAssetCatalog, serializeAssetCatalog } from "./asset-catalog.mts";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const bundlesDir = join(projectRoot, "assets", "game-bundles");
