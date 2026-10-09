@@ -15,7 +15,7 @@ use eu5app::insights::buildings::presentation::BuildingLevelsInsightData;
 use eu5app::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
 use eu5app::insights::development::presentation::DevelopmentInsightData;
 use eu5app::insights::markets::presentation::{
-    MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
+    GoodProducersData, MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
 };
 use eu5app::insights::population::presentation::PopulationInsightData;
 use eu5app::insights::population_growth::presentation::PopulationGrowthInsightData;
@@ -1119,6 +1119,23 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_market_insight(&self) -> Result<Ts<MarketInsightData>, JsError> {
         into_ts(self.localized().presenter().calculate_market_insight())
+    }
+
+    /// The producers of one good in one market, or in the markets of the
+    /// current filter when no market is given. The totals are exact and the
+    /// country split is an estimate.
+    #[wasm_bindgen]
+    pub fn get_good_producers(
+        &self,
+        good: &str,
+        market_id: Option<u32>,
+    ) -> Result<Ts<GoodProducersData>, JsError> {
+        let market = market_id.map(eu5save::models::MarketId::new);
+        into_ts(
+            self.localized()
+                .presenter()
+                .calculate_good_producers(good, market),
+        )
     }
 
     /// Population insight data: scoped country population, concentration curve,

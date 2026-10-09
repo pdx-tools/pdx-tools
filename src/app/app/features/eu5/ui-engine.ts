@@ -43,6 +43,7 @@ import type {
   UnrealizedTaxBaseInsightData,
   UnrealizedTaxBaseScope,
   MarketInsightData,
+  GoodProducersData,
   ScopedGoodSummary,
   PopulationInsightData,
   PopulationGrowthInsightData,
@@ -203,6 +204,7 @@ export interface AppTriggers {
   getUnrealizedTaxBaseInsight(): Promise<UnrealizedTaxBaseInsightData>;
   getUnrealizedTaxBaseScope(): Promise<UnrealizedTaxBaseScope>;
   getMarketInsight(): Promise<MarketInsightData>;
+  getGoodProducers(good: string, marketId?: number): Promise<GoodProducersData>;
   getPopulationInsight(): Promise<PopulationInsightData>;
   getPopulationGrowthInsight(): Promise<PopulationGrowthInsightData>;
   getBuildingLevelsInsight(): Promise<BuildingLevelsInsightData>;
@@ -350,6 +352,7 @@ export class Eu5UIEngine implements AppEngine {
     getUnrealizedTaxBaseInsight: () => this.gameInstance.getUnrealizedTaxBaseInsight(),
     getUnrealizedTaxBaseScope: () => this.gameInstance.getUnrealizedTaxBaseScope(),
     getMarketInsight: () => this.gameInstance.getMarketInsight(),
+    getGoodProducers: (good, marketId) => this.gameInstance.getGoodProducers(good, marketId),
     getPopulationInsight: () => this.gameInstance.getPopulationInsight(),
     getPopulationGrowthInsight: () => this.gameInstance.getPopulationGrowthInsight(),
     getBuildingLevelsInsight: () => this.gameInstance.getBuildingLevelsInsight(),

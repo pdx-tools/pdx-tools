@@ -1,9 +1,12 @@
 use super::parsing::{
-    parse_building_keys, parse_culture_keys, parse_default_map, parse_goods, parse_locations_data,
-    parse_map_mode_colors, parse_named_locations, parse_religion_keys, resolve_goods,
+    parse_building_keys, parse_building_production_methods, parse_culture_keys, parse_default_map,
+    parse_goods, parse_locations_data, parse_map_mode_colors, parse_named_locations,
+    parse_production_methods, parse_religion_keys, resolve_goods,
 };
 use crate::game_data::game_install::parsing::LocationTerrain;
-use crate::game_data::{GameData, GameDataError, GoodData, Localization, TextureProvider};
+use crate::game_data::{
+    GameData, GameDataError, GoodData, Localization, ProductionMethodData, TextureProvider,
+};
 use crate::{ColorIdx, GameLocation, hemisphere_size};
 use eu5save::hash::{FnvHashMap, FxHashMap, FxHashSet};
 use pdx_map::{Hemisphere, HemisphereLength, R16, R16Palette, Rgb, World, WorldLength, WorldSize};
@@ -190,6 +193,9 @@ where
 pub trait Eu5GameFileSourceExt: GameFileSource {
     fn parse_goods(&self) -> Result<FxHashMap<String, GoodData>, GameDataError>;
     fn parse_building_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
+    fn parse_production_methods(
+        &self,
+    ) -> Result<FxHashMap<String, ProductionMethodData>, GameDataError>;
     fn parse_religion_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
     fn parse_culture_keys(&self) -> Result<FxHashSet<String>, GameDataError>;
     fn load_blessed_localizations(
@@ -238,6 +244,38 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
         }
 
         Ok(building_keys)
+    }
+
+    fn parse_production_methods(
+        &self,
+    ) -> Result<FxHashMap<String, ProductionMethodData>, GameDataError> {
+        let mut methods = FxHashMap::default();
+        let mut read_dir =
+            |dir: &str,
+             parse: fn(&str) -> Result<FxHashMap<String, ProductionMethodData>, GameDataError>|
+             -> Result<(), GameDataError> {
+                for path in self.walk_directory(dir, &[".txt"])? {
+                    let Some(file_name) = path.rsplit('/').next() else {
+                        continue;
+                    };
+                    if file_name.to_ascii_lowercase().contains("readme") {
+                        continue;
+                    }
+                    let data = self.read_to_string(&path)?;
+                    methods.extend(parse(&data)?);
+                }
+                Ok(())
+            };
+        read_dir(
+            "game/in_game/common/building_types",
+            parse_building_production_methods,
+        )?;
+        read_dir(
+            "game/in_game/common/production_methods",
+            parse_production_methods,
+        )?;
+
+        Ok(methods)
     }
 
     fn parse_religion_keys(&self) -> Result<FxHashSet<String>, GameDataError> {
@@ -544,6 +582,7 @@ pub struct RawGameData {
     pub locations: Vec<LocationTerrain>,
     pub localizations: FxHashMap<String, String>,
     pub goods: FxHashMap<String, GoodData>,
+    pub production_methods: FxHashMap<String, ProductionMethodData>,
 }
 
 impl RawGameData {
@@ -562,6 +601,7 @@ impl RawGameData {
 
         let goods = fs.parse_goods()?;
         let building_keys = fs.parse_building_keys()?;
+        let production_methods = fs.parse_production_methods()?;
         let religion_keys = fs.parse_religion_keys()?;
         let culture_keys = fs.parse_culture_keys()?;
         let goods_keys: FxHashSet<String> = goods.keys().cloned().collect();
@@ -576,6 +616,7 @@ impl RawGameData {
             locations: locations.collect(),
             localizations,
             goods,
+            production_methods,
         };
 
         let builder = RawTextureBuilder {
@@ -594,6 +635,7 @@ impl RawGameData {
             GameData {
                 locations,
                 goods: self.goods,
+                production_methods: self.production_methods,
                 topology,
             },
             localization,

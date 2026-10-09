@@ -25,6 +25,7 @@ import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { MarketProductionLocations } from "./MarketProductionLocations";
 import { GoodsMarketsHeatmap } from "./GoodsMarketsHeatmap";
+import { GoodProducers, producedGoods } from "./GoodProducers";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -168,10 +169,20 @@ function MarketsScopeHeader({ data }: { data?: MarketScopeSummary }) {
 export function MarketsInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getMarketInsight());
 
-  const goods = insightQuery.data?.goods ?? [];
+  const goods = useMemo(() => insightQuery.data?.goods ?? [], [insightQuery.data]);
   const markets = insightQuery.data?.markets ?? [];
   const cells = insightQuery.data?.goodMarketCells ?? [];
   const topProduction = insightQuery.data?.topProductionLocations ?? [];
+
+  // The good the producers section shows. Until the user picks one, it is
+  // the good with the most production value in scope.
+  const [pickedGoodKey, setPickedGoodKey] = useState<string | undefined>(undefined);
+  const produced = useMemo(() => producedGoods(goods), [goods]);
+  const producerGoodKey = pickedGoodKey ?? produced[0]?.good.key;
+  const producerGoods = useMemo(() => {
+    const picked = goods.find((good) => good.good.key === pickedGoodKey);
+    return picked && !produced.includes(picked) ? [...produced, picked] : produced;
+  }, [goods, produced, pickedGoodKey]);
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -185,7 +196,22 @@ export function MarketsInsight() {
           {goods.length > 0 && (
             <section>
               <SectionTitle>Shortage and surplus by good</SectionTitle>
-              <GoodsPressureChart goods={goods} />
+              <GoodsPressureChart
+                goods={goods}
+                selectedGoodKey={producerGoodKey}
+                onGoodSelect={(good) => setPickedGoodKey(good.good.key)}
+              />
+            </section>
+          )}
+
+          {producerGoodKey != null && (
+            <section>
+              <SectionTitle>Producers by country</SectionTitle>
+              <GoodProducers
+                goods={producerGoods}
+                goodKey={producerGoodKey}
+                onGoodChange={setPickedGoodKey}
+              />
             </section>
           )}
 

@@ -17,6 +17,7 @@ import type {
   UnrealizedTaxBaseInsightData,
   UnrealizedTaxBaseScope,
   MarketInsightData,
+  GoodProducersData,
   ScopedGoodSummary,
   PopulationInsightData,
   PopulationGrowthInsightData,
@@ -475,6 +476,9 @@ export function saveWorker(
     },
     getMarketInsight: async (): Promise<MarketInsightData> => {
       return await saveEngine.getMarketInsight();
+    },
+    getGoodProducers: async (good: string, marketId?: number): Promise<GoodProducersData> => {
+      return await saveEngine.getGoodProducers(good, marketId);
     },
     getPopulationInsight: async (): Promise<PopulationInsightData> => {
       return await saveEngine.getPopulationInsight();

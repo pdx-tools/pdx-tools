@@ -136,7 +136,18 @@ url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/22808
 [[tools."github:google/flatbuffers"]]
 version = "25.2.10"
 backend = "github:google/flatbuffers"
-specifiers = ["25.2.10"]
+
+[tools."github:google/flatbuffers".options]
+asset_pattern = "Windows.flatc.binary.zip"
+matching = "clang"
+
+[tools."github:google/flatbuffers"."platforms.windows-x64"]
+url = "https://github.com/google/flatbuffers/releases/download/v25.2.10/Windows.flatc.binary.zip"
+url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/228083068"
+
+[[tools."github:google/flatbuffers"]]
+version = "25.2.10"
+backend = "github:google/flatbuffers"
 
 [tools."github:google/flatbuffers".options]
 asset_pattern = "Mac.flatc.binary.zip"
@@ -149,7 +160,6 @@ url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/22808
 [[tools."github:google/flatbuffers"]]
 version = "25.2.10"
 backend = "github:google/flatbuffers"
-specifiers = ["25.2.10"]
 
 [tools."github:google/flatbuffers".options]
 asset_pattern = "MacIntel.flatc.binary.zip"
@@ -158,19 +168,6 @@ matching = "clang"
 [tools."github:google/flatbuffers"."platforms.macos-x64"]
 url = "https://github.com/google/flatbuffers/releases/download/v25.2.10/MacIntel.flatc.binary.zip"
 url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/228082633"
-
-[[tools."github:google/flatbuffers"]]
-version = "25.2.10"
-backend = "github:google/flatbuffers"
-specifiers = ["25.2.10"]
-
-[tools."github:google/flatbuffers".options]
-asset_pattern = "Windows.flatc.binary.zip"
-matching = "clang"
-
-[tools."github:google/flatbuffers"."platforms.windows-x64"]
-url = "https://github.com/google/flatbuffers/releases/download/v25.2.10/Windows.flatc.binary.zip"
-url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/228083068"
 
 [[tools."github:llvm/llvm-project"]]
 version = "llvmorg-19.1.7"
@@ -320,11 +317,3 @@ url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-win-x64.zip"
 version = "1.98.1"
 backend = "core:rust"
 specifiers = ["1.98.1"]
-
-[[tools.rust]]
-version = "1.98.1"
-backend = "core:rust"
-specifiers = ["1.98.1"]
-
-[tools.rust.options]
-targets = "wasm32-unknown-unknown"
