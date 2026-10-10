@@ -1,11 +1,32 @@
+import { useHistory } from "../../history/store";
 import type React from "react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, useEffect } from "react";
 import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { useEu5SelectionRevision } from "../../store";
 
 export type PanelNavEntry =
   | { kind: "profile"; profile: ActiveProfileIdentity; label: string }
   | { kind: "focus"; profile: Extract<ActiveProfileIdentity, { kind: "location" }>; label: string };
+
+/** Remapped identities retain their breadcrumb positions and replace stored save indices. */
+export function remapProfileStack(
+  stack: PanelNavEntry[],
+  profiles: ActiveProfileIdentity[],
+): PanelNavEntry[] {
+  const result: PanelNavEntry[] = [];
+  for (const [i, entry] of stack.entries()) {
+    const profile = profiles[i];
+    if (!profile || profile.kind !== entry.profile.kind) break;
+    const label =
+      profile.kind === "country"
+        ? profile.country.name
+        : profile.kind === "market"
+          ? profile.market.name
+          : profile.location.name;
+    result.push({ ...entry, profile, label } as PanelNavEntry);
+  }
+  return result;
+}
 
 type ProfileTabKind = ActiveProfileIdentity["kind"];
 type ProfileTabs = Record<ProfileTabKind, string>;
@@ -93,29 +114,59 @@ export function PanelNavProvider({ children }: { children: React.ReactNode }) {
   const [profileTabs, setProfileTabs] = useState<ProfileTabs>(DEFAULT_PROFILE_TABS);
 
   const selectionRevision = useEu5SelectionRevision();
+  const switchingSave = useHistory((s) => s.switching);
   const [previousSelectionRevision, setPreviousSelectionRevision] = useState(selectionRevision);
   const selectionChanged = previousSelectionRevision !== selectionRevision;
-  const effectiveStack = selectionChanged ? EMPTY_STACK : stack;
-  const effectiveRootLabel = selectionChanged ? undefined : rootLabel;
+  const resetForSelection = selectionChanged && !switchingSave;
+  const remapRevision = useHistory((s) => s.remapRevision);
+  const remappedProfiles = useHistory((s) => s.viewedProfiles);
+  const [previousRemapRevision, setPreviousRemapRevision] = useState(remapRevision);
+  const saveChanged = previousRemapRevision !== remapRevision;
+  const effectiveStack = resetForSelection
+    ? EMPTY_STACK
+    : saveChanged
+      ? remapProfileStack(stack, remappedProfiles)
+      : stack;
+  const effectiveRootLabel =
+    resetForSelection || (saveChanged && !effectiveStack.length) ? undefined : rootLabel;
+  useEffect(() => {
+    if (!stack.length) useHistory.getState().setViewedProfiles([]);
+  }, [stack.length]);
 
+  if (saveChanged) {
+    setPreviousRemapRevision(remapRevision);
+    setStack(effectiveStack);
+    setRootLabel(effectiveRootLabel);
+  }
   if (selectionChanged) {
     setPreviousSelectionRevision(selectionRevision);
-    setStack([]);
-    setRootLabel(undefined);
+    if (!switchingSave) {
+      setStack([]);
+      setRootLabel(undefined);
+    }
   }
 
-  const pushMany = useCallback((entries: PanelNavEntry[], nextRootLabel?: string) => {
-    if (nextRootLabel != null) {
-      setRootLabel(nextRootLabel);
-    }
-    setStack((s) => [...s, ...entries]);
-  }, []);
+  const pushMany = useCallback(
+    (entries: PanelNavEntry[], nextRootLabel?: string) => {
+      if (nextRootLabel != null) {
+        setRootLabel(nextRootLabel);
+      }
+      useHistory.getState().setViewedProfiles([...stack, ...entries].map((entry) => entry.profile));
+      setStack((s) => [...s, ...entries]);
+    },
+    [stack],
+  );
 
-  const popTo = useCallback((length: number) => {
-    setStack((s) => s.slice(0, length));
-  }, []);
+  const popTo = useCallback(
+    (length: number) => {
+      useHistory.getState().setViewedProfiles(stack.slice(0, length).map((entry) => entry.profile));
+      setStack((s) => s.slice(0, length));
+    },
+    [stack],
+  );
 
   const reset = useCallback(() => {
+    useHistory.getState().setViewedProfiles([]);
     setStack([]);
     setRootLabel(undefined);
   }, []);

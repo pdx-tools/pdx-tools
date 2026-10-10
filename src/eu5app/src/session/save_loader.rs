@@ -95,7 +95,7 @@ impl Eu5SaveLoader<(), ()> {
         resolver: RES,
         mut observer: W,
     ) -> Result<Eu5SaveLoader<R, RES, W>, Eu5LoadError> {
-        let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
+        let arena = bumpalo::Bump::with_capacity(4 * 1024 * 1024);
         let meta = {
             let meta = match file.meta().map_err(Eu5LoadError::MetaExtraction)? {
                 SaveMetadataKind::Text(text) => {
@@ -288,7 +288,7 @@ impl Eu5DebugSaveLoader<()> {
             .and_then(|_| observer.write_all(&meta_bytes))
             .map_err(Eu5LoadError::MetaRead)?;
 
-        let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
+        let arena = bumpalo::Bump::with_capacity(4 * 1024 * 1024);
         let meta = {
             let mut text =
                 SaveMetadata::<eu5save::TextEncoding, _>::new(meta_bytes.as_slice(), header);

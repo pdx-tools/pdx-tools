@@ -31,6 +31,7 @@ import type { Eu5ParsedSave, Eu5SaveInput } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
   MapMode,
+  ActiveProfileIdentity,
   StateEfficacyInsightData,
   CountryPopulationProfile,
   CountryProfile,
@@ -129,6 +130,7 @@ export interface AppState {
   mapModeGradient: GradientConfig | null;
   selectionState: SelectionSummaryData | null;
   selectionRevision: number;
+  saveRevision: number;
   boxSelectRect: BoxSelectOverlayRect | null;
   cursorHint: CursorHint;
   timeline: TimelineData;
@@ -170,6 +172,17 @@ export type SearchResult =
     };
 
 export interface AppTriggers {
+  getCountryNames(): Promise<Record<string, string>>;
+  prepareSnapshot(
+    file: File,
+    hash: string,
+    distance?: number,
+  ): ReturnType<GameInstance["prepareSnapshot"]>;
+  switchSnapshot(
+    file: File,
+    hash: string,
+    viewed?: ActiveProfileIdentity[],
+  ): ReturnType<GameInstance["switchSnapshot"]>;
   selectMapMode(mode: MapMode): Promise<void>;
   /**
    * Show the map on a date. Calls coalesce: only the latest date renders.
@@ -256,6 +269,7 @@ export class Eu5UIEngine implements AppEngine {
   /** The date to send once the in-flight timeline request returns. */
   private timelineQueued: Eu5DateComponents | null = null;
   private timelineInFlight = false;
+  private switchingSnapshot = false;
   /** The date request in flight, so a recording can wait for it to settle. */
   private timelineRequest: Promise<void> | null = null;
   private playbackFrame: number | null = null;
@@ -279,6 +293,7 @@ export class Eu5UIEngine implements AppEngine {
       mapModeGradient: null,
       selectionState: null,
       selectionRevision: 0,
+      saveRevision: 0,
       boxSelectRect: null,
       cursorHint: "default",
       timeline,
@@ -300,7 +315,7 @@ export class Eu5UIEngine implements AppEngine {
     this.gameInstance.onSelectionUpdate((data, gradient) => {
       this.updateState((state) => ({
         selectionState: data,
-        selectionRevision: state.selectionRevision + 1,
+        selectionRevision: state.selectionRevision + (this.switchingSnapshot ? 0 : 1),
         mapModeGradient: gradient ?? null,
       }));
     });
@@ -324,6 +339,33 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   public readonly trigger: AppTriggers = {
+    getCountryNames: () => this.gameInstance.getCountryNames(),
+    prepareSnapshot: (file, hash, distance) =>
+      this.gameInstance.prepareSnapshot(file, hash, distance),
+    switchSnapshot: async (file, hash, viewed) => {
+      this.switchingSnapshot = true;
+      try {
+        this.handlePauseTimeline();
+        const result = await this.gameInstance.switchSnapshot(
+          file,
+          hash,
+          this._state.currentMapMode,
+          viewed,
+        );
+        this.updateState((state) => ({
+          currentMapMode: result.change.mapMode,
+          timeline: result.timeline,
+          timelineDate: result.timeline.end,
+          timelineMapDate: result.timeline.end,
+          hoverDisplayData: null,
+          saveRevision: state.saveRevision + 1,
+          mapModeGradient: result.change.gradient ?? null,
+        }));
+        return result;
+      } finally {
+        this.switchingSnapshot = false;
+      }
+    },
     selectMapMode: (mode) => this.handleSelectMapMode(mode),
     setTimelineDate: (date) => this.handleSetTimelineDate(date),
     stepTimeline: (unit, direction) => this.handleStepTimeline(unit, direction),

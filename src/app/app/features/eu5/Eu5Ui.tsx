@@ -39,6 +39,8 @@ import { Eu5Toolbar } from "./Eu5Toolbar";
 import { Eu5SelectionPill } from "./Eu5SelectionPill";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { TimelineBar } from "./timeline/TimelineBar";
+import { useHistory } from "./history/store";
+import { SnapshotBar, useHasSnapshotTimeline } from "./history/SnapshotBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
@@ -100,6 +102,19 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
     </GameThemeProvider>
   );
 };
+
+function HistoryTimeline() {
+  const hasSnapshots = useHasSnapshotTimeline();
+  const source = useHistory((s) => s.timelineSource);
+  const mode = useEu5MapMode();
+  return hasSnapshots && (source === "snapshots" || mode !== "political") ? (
+    <SnapshotBar />
+  ) : mode === "political" ? (
+    <TimelineBar />
+  ) : (
+    <SnapshotBar />
+  );
+}
 
 const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
   const mapMode = useEu5MapMode();
@@ -208,7 +223,7 @@ const Eu5UiContent = ({
       <BoxSelectOverlay />
       <Eu5CursorTooltip cursorRef={cursorRef} />
       <Eu5SelectionPill />
-      <TimelineBar />
+      <HistoryTimeline />
       <Eu5Toolbar />
     </div>
   );

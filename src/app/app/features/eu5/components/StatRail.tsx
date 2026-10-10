@@ -1,3 +1,4 @@
+import { AnimatedValue } from "./AnimatedValue";
 import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { Tooltip } from "@/components/Tooltip";
@@ -97,7 +98,7 @@ function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps
         {bar !== undefined && (
           <span className="relative h-1 w-full rounded-[1px] border border-game-line bg-game-panel-2">
             <span
-              className="absolute inset-y-0 left-0 rounded-[1px] bg-game-ink-500"
+              className="absolute inset-y-0 left-0 rounded-[1px] bg-game-ink-500 transition-[width] duration-800 ease-in-out motion-reduce:transition-none"
               style={{ width: `${Math.max(0, Math.min(1, bar)) * 100}%` }}
             />
           </span>
@@ -105,8 +106,13 @@ function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps
       </span>
 
       <span className="text-right font-game-num text-[12px] text-game-ink-100 tabular-nums">
-        {value}
-        {denom !== undefined && <span className="text-game-ink-500"> / {denom}</span>}
+        <AnimatedValue value={value} />
+        {denom !== undefined && (
+          <span className="text-game-ink-500">
+            {" "}
+            / <AnimatedValue value={denom} />
+          </span>
+        )}
       </span>
 
       {/* Rank ordinal — this country's standing for the metric among all countries.

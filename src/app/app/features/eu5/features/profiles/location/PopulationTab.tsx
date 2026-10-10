@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { LocationProfile, LocationPopRow } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
 import { createColumnHelper } from "@/lib/tanstack-table";
@@ -52,7 +53,16 @@ const columns = [
 ];
 
 export function LocationPopulationTab({ profile }: Props) {
-  const rows = profile.populationProfile;
+  const rows = useMemo(
+    () =>
+      [...profile.populationProfile].sort(
+        (a, b) =>
+          a.kind.localeCompare(b.kind) ||
+          (a.culture?.key ?? "").localeCompare(b.culture?.key ?? "") ||
+          a.religion.key.localeCompare(b.religion.key),
+      ),
+    [profile.populationProfile],
+  );
 
   if (rows.length === 0) {
     return <p className="text-sm text-game-ink-500">No population data.</p>;
@@ -61,7 +71,19 @@ export function LocationPopulationTab({ profile }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <PopulationSankey rows={rows} />
-      <Eu5DataTable columns={columns} data={rows} initialSorting={[{ id: "size", desc: true }]} />
+      <Eu5DataTable
+        tableOptions={{
+          getRowId: (row) => JSON.stringify([row.kind, row.culture?.key ?? null, row.religion.key]),
+        }}
+        columns={columns}
+        data={rows}
+        initialSorting={[
+          { id: "size", desc: true },
+          { id: "kind", desc: false },
+          { id: "culture", desc: false },
+          { id: "religion", desc: false },
+        ]}
+      />
     </div>
   );
 }

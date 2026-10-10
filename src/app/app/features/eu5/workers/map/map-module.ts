@@ -97,6 +97,12 @@ const pressedKeys = new Set<string>();
 
 const mapGameEndpoint = () => {
   return {
+    async syncSnapshot(locationArray: Uint32Array, groupingTable: Uint32Array) {
+      newLocations = locationArray;
+      newGroupingTable = groupingTable;
+      newMapData = null;
+      renderOrQueue();
+    },
     async syncLocationData(locationArray: Uint32Array) {
       newLocations = locationArray;
       renderOrQueue();
@@ -486,15 +492,16 @@ export const createMapEngine = async (
     }
   };
 
-  // You would think that we should only render when dirty, but for some reason
-  // firefox trips over itself and the clear color bleeds through. So for now we
-  // just render every frame.
+  // Firefox needs continuous drawing to avoid its clear-color bleed. Other
+  // browsers keep the last GPU frame while idle. Input polling remains live.
+  const continuousRender = /Firefox\//.test(navigator.userAgent);
   let hasLocationInformation = false;
 
   // Location and grouping data arrive from the game worker between frames
   // and reach the GPU here, at the next use: the top of the render loop, or
   // a recorded frame, which cannot wait for the loop.
   const applyPendingSync = () => {
+    if (newLocations || newMapData || newGroupingTable) _dirtyRender = true;
     if (newLocations) {
       hasLocationInformation = true;
       app.sync_location_array(newLocations);
@@ -550,7 +557,8 @@ export const createMapEngine = async (
     }
     publishViewport();
 
-    if (hasLocationInformation) {
+    if (hasLocationInformation && (continuousRender || _dirtyRender)) {
+      _dirtyRender = false;
       app.render();
     }
     requestAnimationFrame(rafRender);
@@ -564,6 +572,7 @@ export const createMapEngine = async (
       return;
     }
     const [worldWidth, worldHeight] = app.world_size();
+    _dirtyRender = true;
     lastViewport = {
       world: { width: worldWidth, height: worldHeight },
       viewport: { x, y, width, height },

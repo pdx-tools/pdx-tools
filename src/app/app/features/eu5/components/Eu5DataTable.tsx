@@ -1,4 +1,5 @@
-import React, { useId, useMemo, useState } from "react";
+import { AnimatedValue } from "./AnimatedValue";
+import React, { useId, useMemo, useState, useRef, useLayoutEffect } from "react";
 import { flexRender, useTable } from "@tanstack/react-table";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import type {
@@ -182,6 +183,46 @@ export function Eu5DataTable<TData extends RowData>({
   const table = useTable({
     ...tableOptions,
     data,
+    getRowId:
+      tableOptions?.getRowId ??
+      ((row, index) => {
+        const r = row as Record<string, unknown>;
+        if ("kind" in r && "culture" in r && "religion" in r) {
+          const culture = r.culture as { key?: string } | undefined;
+          const religion = r.religion as { key?: string };
+          return JSON.stringify([r.kind, culture?.key ?? null, religion.key]);
+        }
+        const location = r.location as { key?: number; name?: string } | undefined;
+        if (location?.key != null) return `location/${location.name ?? location.key}`;
+        const parts: [string, string | number][] = [];
+        for (const field of [
+          "country",
+          "market",
+          "religion",
+          "good",
+          "building",
+          "material",
+          "rawMaterial",
+          "buildingType",
+          "ownerCountry",
+          "kind",
+          "popType",
+        ]) {
+          const v = r[field];
+          if (v && typeof v === "object") {
+            const entity = v as {
+              tag?: string;
+              key?: number | string;
+              country?: { key?: number };
+              name?: string;
+            };
+            const id = entity.tag ?? entity.key ?? entity.country?.key ?? entity.name;
+            if (id != null) parts.push([field, id]);
+          } else if (typeof v === "string" || typeof v === "number") parts.push([field, v]);
+        }
+        if (parts.length) return JSON.stringify(parts);
+        return String(r.id ?? r.name ?? index);
+      }),
     columns: columns as unknown as AppColumnDef<TData, unknown>[],
     features: appTableFeatures,
     // TanStack's built-in default header renders the accessor key, which
@@ -200,6 +241,27 @@ export function Eu5DataTable<TData extends RowData>({
   });
 
   const rows = table.getRowModel().rows;
+  const body = useRef<HTMLTableSectionElement>(null);
+  const positions = useRef(new Map<string, number>());
+  useLayoutEffect(() => {
+    const next = new Map<string, number>();
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    body.current?.querySelectorAll<HTMLTableRowElement>("tr[data-row-key]").forEach((row) => {
+      const key = row.dataset.rowKey!;
+      // Layout coordinates exclude any animation still running from the previous date.
+      const top = row.offsetTop;
+      const previous = positions.current.get(key);
+      next.set(key, top);
+      if (!reduced && previous != null && previous !== top) {
+        row.getAnimations().forEach((animation) => animation.cancel());
+        row.animate(
+          [{ transform: `translateY(${previous - top}px)` }, { transform: "translateY(0)" }],
+          { duration: 800, easing: "cubic-bezier(.22,.61,.36,1)" },
+        );
+      }
+    });
+    positions.current = next;
+  }, [rows]);
   const filteredCount = data.length;
   const displayTotal = totalCount ?? data.length;
   const showTitleCount = totalCount !== undefined || data.length !== filteredCount;
@@ -226,7 +288,7 @@ export function Eu5DataTable<TData extends RowData>({
         <table className="w-full min-w-full table-auto border-separate border-spacing-0">
           <ColumnGroup table={table} />
           <HeaderBand table={table} />
-          <tbody>
+          <tbody ref={body}>
             {rows.length === 0 ? (
               <tr>
                 <td
@@ -252,6 +314,7 @@ export function Eu5DataTable<TData extends RowData>({
                       </tr>
                     )}
                     <tr
+                      data-row-key={row.id}
                       data-in-filter={inFilter || undefined}
                       onMouseEnter={
                         onRowHoverChange ? () => onRowHoverChange(row.original) : undefined
@@ -484,8 +547,35 @@ function BodyCell<TData extends RowData>({ cell }: { cell: AppCell<TData> }) {
   const meta = cell.column.columnDef.meta?.eu5;
   const variant: Eu5DataTableColumnVariant = meta?.variant ?? "default";
   const align = meta?.align ?? alignForVariant(variant);
+  const element = useRef<HTMLTableCellElement>(null);
+  const value = cell.getValue();
+  const previous = useRef(value);
+  useLayoutEffect(() => {
+    const old = previous.current;
+    previous.current = value;
+    if (
+      typeof old !== "number" ||
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      old === value ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    element.current?.getAnimations().forEach((animation) => animation.cancel());
+    element.current?.animate(
+      [
+        {
+          color: value > old ? "#8fcfa7" : "#ed9692",
+          backgroundColor: value > old ? "#8fcfa725" : "#ed969225",
+        },
+        { color: "", backgroundColor: "transparent" },
+      ],
+      { duration: 1000, easing: "ease-out" },
+    );
+  }, [value]);
   return (
     <td
+      ref={element}
       className={cx(cellVariants({ variant }), alignClass(align), "border-b border-game-line")}
       style={cellStyle(meta?.minWidth)}
     >
@@ -607,7 +697,7 @@ type NumericCellProps = React.HTMLAttributes<HTMLSpanElement> & {
 function NumericCell({ children, delta, className, ...rest }: NumericCellProps) {
   return (
     <span className={cx("font-game-num tabular-nums", className)} {...rest}>
-      {children}
+      <AnimatedValue value={children} />
       {delta && (
         <span
           className={cx(

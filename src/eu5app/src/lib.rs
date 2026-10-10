@@ -38,3 +38,5 @@ pub use models::*;
 pub(crate) use overlay::OverlayBodyConfigSource;
 pub use overlay::{OverlayBodyConfig, OverlayTable, TableCell};
 pub use save_hash::SaveCheckSummer;
+
+pub mod snapshot;

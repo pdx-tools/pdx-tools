@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DependencyList } from "react";
-import { useEu5Engine, useEu5SelectionRevision } from "../../store";
+import { useEu5Engine, useEu5SaveRevision, useEu5SelectionRevision } from "../../store";
 import type { AppEngine } from "../../ui-engine";
 
 export function useEu5Trigger<T>(
@@ -8,6 +8,7 @@ export function useEu5Trigger<T>(
   deps: DependencyList,
 ): { data: T | undefined; error: Error | undefined; loading: boolean } {
   const engine = useEu5Engine();
+  const saveRevision = useEu5SaveRevision();
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<Error | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -37,9 +38,10 @@ export function useEu5Trigger<T>(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, ...deps]);
+  }, [engine, saveRevision, ...deps]);
 
-  return { data, error, loading };
+  // Keep the last observation visible while the next saved date is calculated.
+  return { data, error, loading: loading && data === undefined };
 }
 
 export function useEu5SelectionTrigger<T>(

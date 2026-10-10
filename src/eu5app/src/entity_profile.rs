@@ -498,6 +498,7 @@ present_dto! {
 
 present_dto! {
     pub(crate) workspace MarketProfileSource => pub MarketProfile {
+        center_id: u32,
         header: EntityHeaderSource => EntityHeader,
         market_value: f64,
         owner_country: Option<crate::presentation::CountryRefSource> => Option<CountryRef>,

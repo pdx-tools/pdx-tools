@@ -235,7 +235,12 @@ function GrowthRateBars({
 
   const height = rows.length * 24 + 54;
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <EChart
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+      onInit={handleInit}
+    />
   );
 }
 
@@ -387,7 +392,14 @@ function GrowthScaleScatter({
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <EChart
+      mergeUpdates
+      option={option}
+      style={{ height: "420px", width: "100%" }}
+      onInit={handleInit}
+    />
+  );
 }
 
 const columnHelper = createColumnHelper<PopulationGrowthTopLocation>();

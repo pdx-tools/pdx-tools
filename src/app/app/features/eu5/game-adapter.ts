@@ -5,6 +5,7 @@ import type {
   GradientPalette,
   DisplayData,
   MapMode,
+  ActiveProfileIdentity,
   SelectionSummaryData,
   CountryPopulationProfile,
   CountryProfile,
@@ -275,6 +276,24 @@ export function saveWorker(
   saveEngine: Awaited<ReturnType<Eu5Worker["createGame"]>>,
   mapEngine: Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>,
 ) {
+  // Share in-flight and completed country profiles within one immutable saved date.
+  // Bound retained DTOs; switching dates invalidates dense country indices.
+  const countryProfiles = new Map<number, Promise<CountryProfile | null>>();
+  let pendingSwitch: Promise<unknown> | null = null;
+  const countryProfile = (id: number) => {
+    const existing = countryProfiles.get(id);
+    if (existing) return existing;
+    const result = (async () => {
+      if (pendingSwitch) await pendingSwitch;
+      return saveEngine.getCountryProfile(id);
+    })();
+    countryProfiles.set(id, result);
+    if (countryProfiles.size > 8) countryProfiles.delete(countryProfiles.keys().next().value!);
+    void result.catch(() => {
+      if (countryProfiles.get(id) === result) countryProfiles.delete(id);
+    });
+    return result;
+  };
   let hoverDisplayCallback: ((data: DisplayData) => void) | null = null;
   let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
     null;
@@ -313,6 +332,21 @@ export function saveWorker(
   );
 
   return {
+    prepareSnapshot: (file: File, hash: string, distance?: number) =>
+      saveEngine.prepareSnapshot(file, hash, distance),
+    getCountryNames: () => saveEngine.getCountryNames(),
+    switchSnapshot: (file: File, hash: string, mode: MapMode, viewed?: ActiveProfileIdentity[]) => {
+      countryProfiles.clear();
+      const task = saveEngine.switchSnapshot(file, hash, mode, viewed);
+      pendingSwitch = task;
+      void task
+        .finally(() => {
+          if (pendingSwitch === task) pendingSwitch = null;
+          // A failed switch must not retain a profile for the requested date.
+        })
+        .catch(() => countryProfiles.clear());
+      return task;
+    },
     getZoom: () => mapEngine.get_zoom(),
     getPaletteGradients: async (): Promise<PaletteGradients> => {
       return await saveEngine.getPaletteGradients();
@@ -436,7 +470,7 @@ export function saveWorker(
     },
 
     getCountryProfile: async (countryIdx: number): Promise<CountryProfile | null> => {
-      return await saveEngine.getCountryProfile(countryIdx);
+      return await countryProfile(countryIdx);
     },
     getCountryPopulationProfile: async (
       countryIdx: number,

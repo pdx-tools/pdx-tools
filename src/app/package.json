@@ -20,6 +20,7 @@
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@fontsource/public-sans": "5.3.0",
     "@heroicons/react": "2.2.0",
+    "@number-flow/react": "0.6.2",
     "@pdx.tools/map": "workspace:*",
     "@pdx.tools/timelapse": "workspace:*",
     "@sentry/cloudflare": "10.74.0",

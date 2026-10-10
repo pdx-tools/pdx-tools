@@ -112,6 +112,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .collect();
         let member_countries = self.market_member_countries_from_merchants(market);
         Some(MarketProfile {
+            center_id: market.center.value(),
             header,
             market_value,
             owner_country,
