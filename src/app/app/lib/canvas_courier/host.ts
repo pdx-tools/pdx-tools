@@ -21,7 +21,7 @@ export class CanvasCourierHost {
    * canvas is in the document, so that its size is known.
    */
   constructor(
-    private className: string,
+    private readonly className: string,
     private readonly onSurface: (
       surface: CanvasCourierSurface,
       transport: CanvasCourierTransport,
@@ -31,14 +31,6 @@ export class CanvasCourierHost {
   /** The canvas, once a container shows it. */
   get canvas(): HTMLCanvasElement | null {
     return this.element;
-  }
-
-  /** Set the canvas classes. A new canvas gets them too. */
-  setClassName(className: string): void {
-    this.className = className;
-    if (this.element !== null) {
-      this.element.className = className;
-    }
   }
 
   /** Set the cursor over the canvas. A new canvas gets it too. */

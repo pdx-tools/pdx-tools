@@ -185,7 +185,7 @@ describe("CanvasCourierHost", () => {
     host.dispose();
   });
 
-  it("updates styles without another transfer and renews with focus and a new queue", () => {
+  it("renews with the same classes, cursor, focus, and a new queue", () => {
     const onSurface = vi.fn();
     const host = new CanvasCourierHost("board", onSurface);
     const container = new TestContainer();
@@ -194,13 +194,12 @@ describe("CanvasCourierHost", () => {
     const previous = container.child!;
     const previousConfig = onSurface.mock.calls[0]![1].inputConfig;
     previous.focus();
-    host.setClassName("board hidden");
-    expect(previous.className).toBe("board hidden");
+    expect(previous.className).toBe("board");
     expect(previous.transferControlToOffscreen).toHaveBeenCalledOnce();
 
     host.renew();
     expect(container.child).not.toBe(previous);
-    expect(container.child!.className).toBe("board hidden");
+    expect(container.child!.className).toBe("board");
     expect(container.child!.style.cursor).toBe("crosshair");
     expect(testDocument.activeElement).toBe(container.child);
     expect(onSurface).toHaveBeenCalledTimes(2);
