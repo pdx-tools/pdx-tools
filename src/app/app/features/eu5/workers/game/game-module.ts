@@ -179,7 +179,8 @@ export const createGame = async (
   let countryIndex = timeSync("Build country index", () => app.get_countries().countries);
   let locationIndex = timeSync("Build location index", () => app.get_locations().locations);
 
-  // At most two dated apps: active plus one prepared neighbour. Assets are shared in Rust.
+  // Active plus at most two upcoming dates, with an estimated 768 MiB arena budget.
+  // Shared assets are excluded from this budget; Wasm capacity can remain higher.
   const initialHash = Array.from(new Uint8Array(await saveHashTask), (b) =>
     b.toString(16).padStart(2, "0"),
   ).join("");
@@ -202,19 +203,54 @@ export const createGame = async (
       },
     ],
   ]);
-  let snapshotQueue: Promise<unknown> = Promise.resolve();
-  const queued = <T>(action: () => Promise<T>): Promise<T> => {
-    const task = snapshotQueue.then(action, action);
-    snapshotQueue = task.catch(() => undefined);
-    return task;
+  const snapshotQueue: { run: () => Promise<void>; foreground: boolean }[] = [];
+  let processingSnapshot = false;
+  const drainSnapshots = async () => {
+    if (processingSnapshot) return;
+    processingSnapshot = true;
+    try {
+      while (snapshotQueue.length) {
+        const urgent = snapshotQueue.findIndex((task) => task.foreground);
+        const [task] = snapshotQueue.splice(urgent < 0 ? 0 : urgent, 1);
+        await task.run();
+      }
+    } finally {
+      processingSnapshot = false;
+    }
+  };
+  const queued = <T>(action: () => Promise<T>, foreground = false): Promise<T> => {
+    const result = new Promise<T>((resolve, reject) => {
+      snapshotQueue.push({
+        foreground,
+        run: async () => {
+          try {
+            resolve(await action());
+          } catch (error) {
+            reject(error);
+          }
+        },
+      });
+    });
+    void drainSnapshots();
+    return result;
   };
   let lastPrepare: { readMs: number; parseMs: number; workspaceMs: number } | null = null;
   const prepare = async (file: File, hash: string) => {
     const cached = prepared.get(hash);
     if (cached) return { app: cached, cacheHit: true };
-    // Release the previous standby before allocating another large gamestate.
+    // Evict oldest non-active states before parsing, allowing two-date lookahead
+    // only when the estimated arena budget permits it.
+    const estimatedBytes = app.retained_save_bytes();
+    let retainedBytes = [...prepared.values()].reduce(
+      (sum, item) => sum + item.retained_save_bytes(),
+      0,
+    );
     for (const [key, old] of prepared)
-      if (key !== activeHash) {
+      if (
+        key !== activeHash &&
+        (prepared.size >= 3 || retainedBytes + estimatedBytes > 768 * 1024 * 1024)
+      ) {
+        retainedBytes -= old.retained_save_bytes();
         prepared.delete(key);
         preparedInfo.delete(key);
         old.free();
@@ -367,8 +403,19 @@ export const createGame = async (
       ),
       lastPrepare,
     }),
-    prepareSnapshot: (file: File, hash: string) =>
+    prepareSnapshot: (file: File, hash: string, distance = 1) =>
       queued(async () => {
+        // Extra lookahead must never evict the nearer date to fit the budget.
+        const retained = [...prepared.values()].reduce(
+          (sum, item) => sum + item.retained_save_bytes(),
+          0,
+        );
+        if (
+          distance > 1 &&
+          !prepared.has(hash) &&
+          (prepared.size >= 3 || retained + app.retained_save_bytes() > 768 * 1024 * 1024)
+        )
+          return { cacheHit: false, milliseconds: 0, skipped: true };
         const start = performance.now();
         const result = await prepare(file, hash);
         return { cacheHit: result.cacheHit, milliseconds: performance.now() - start };
@@ -437,8 +484,16 @@ export const createGame = async (
               viewedProfile = { kind: "market", market: { key: marketId, name: header.name } };
           }
         }
+        const previousHash = activeHash;
         app = next;
         activeHash = hash;
+        // The old active state is behind us: reserve its slot for future dates.
+        if (previousHash !== hash) {
+          const previous = prepared.get(previousHash);
+          prepared.delete(previousHash);
+          preparedInfo.delete(previousHash);
+          previous?.free();
+        }
         activeSave = { kind: "file", file };
         countryIndex = countries;
         locationIndex = locations;
@@ -452,7 +507,7 @@ export const createGame = async (
           cacheHit: result.cacheHit,
           milliseconds: performance.now() - start,
         };
-      }),
+      }, true),
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       const change = app.set_map_mode(mode);
       await syncAll(change);

@@ -338,7 +338,8 @@ export function saveWorker(
       game: await saveEngine.getSnapshotDiagnostics(),
       map: await mapEngine.getRenderDiagnostics(),
     }),
-    prepareSnapshot: (file: File, hash: string) => saveEngine.prepareSnapshot(file, hash),
+    prepareSnapshot: (file: File, hash: string, distance?: number) =>
+      saveEngine.prepareSnapshot(file, hash, distance),
     switchSnapshot: (
       file: File,
       hash: string,

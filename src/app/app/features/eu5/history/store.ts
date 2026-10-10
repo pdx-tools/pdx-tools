@@ -13,8 +13,13 @@ type HistoryState = {
   insightOpen: boolean;
   rememberPanel: (open: boolean) => void;
   playing: boolean;
+  playbackSpeed: number;
+  setPlaybackSpeed: (speed: number) => void;
   switching: boolean;
   switchError: string | null;
+  failedSnapshots: Record<string, string>;
+  markSnapshotFailed: (hash: string, error: string) => void;
+  clearSnapshotFailure: (hash: string) => void;
   lastSwitch: { milliseconds: number; cacheHit: boolean } | null;
   setSwitching: (busy: boolean) => void;
   setSwitchError: (error: string) => void;
@@ -40,8 +45,22 @@ export const useHistory = create<HistoryState>()((set) => ({
   insightOpen: false,
   rememberPanel: (insightOpen) => set({ insightOpen }),
   playing: false,
+  playbackSpeed: 1,
+  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   switching: false,
   switchError: null,
+  failedSnapshots: {},
+  markSnapshotFailed: (hash, error) =>
+    set((state) => ({
+      failedSnapshots: { ...state.failedSnapshots, [hash]: error },
+      switchError: error,
+    })),
+  clearSnapshotFailure: (hash) =>
+    set((state) => {
+      const failedSnapshots = { ...state.failedSnapshots };
+      delete failedSnapshots[hash];
+      return { failedSnapshots };
+    }),
   lastSwitch: null,
   setSwitching: (switching) => set({ switching, ...(switching ? { switchError: null } : {}) }),
   setSwitchError: (switchError) => set({ switchError }),
@@ -76,5 +95,13 @@ export const useHistory = create<HistoryState>()((set) => ({
   select: (selectedHash) => set({ selectedHash }),
   rememberMode: (mapMode) => set({ mapMode }),
   clear: () =>
-    set({ snapshots: [], files: {}, selectedHash: null, mapMode: "political", playing: false }),
+    set({
+      snapshots: [],
+      files: {},
+      selectedHash: null,
+      mapMode: "political",
+      playing: false,
+      failedSnapshots: {},
+      switchError: null,
+    }),
 }));

@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronLeftIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
   ChevronRightIcon,
   ClockIcon,
   PauseIcon,
@@ -18,6 +20,8 @@ import {
 import { useViewportInsets } from "../useViewportInsets";
 import { useHistory } from "./store";
 import { campaignKey } from "./types";
+
+const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
 
 export function SnapshotBar() {
   const history = useHistory();
@@ -37,6 +41,9 @@ export function SnapshotBar() {
       ? history.snapshots.filter((s) => campaignKey(s) === campaignKey(selected))
       : [];
   const index = dates.findIndex((s) => s.hash === selected?.hash);
+  const speedIndex = PLAYBACK_SPEEDS.indexOf(
+    history.playbackSpeed as (typeof PLAYBACK_SPEEDS)[number],
+  );
   const [draft, setDraft] = useState(index);
   useEffect(() => {
     setDraft(index);
@@ -70,6 +77,12 @@ export function SnapshotBar() {
       setHeight(0);
     };
   }, [setHeight]);
+  const nextIndex = dates.findIndex(
+    (s, i) => i > index && !!history.files[s.hash] && !history.failedSnapshots[s.hash],
+  );
+  const previousIndex = dates.findLastIndex(
+    (s, i) => i < index && !!history.files[s.hash] && !history.failedSnapshots[s.hash],
+  );
   const choose = (i: number) => {
     const snapshot = dates[i];
     const file = snapshot && history.files[snapshot.hash];
@@ -79,22 +92,59 @@ export function SnapshotBar() {
   };
   useEffect(() => {
     if (!history.playing || !active || history.switching) return;
-    if (index >= dates.length - 1 || !history.files[dates[index + 1]?.hash]) {
+    if (nextIndex < 0) {
       history.setPlaying(false);
       return;
     }
-    const timer = setTimeout(() => choose(index + 1), 1200);
+    const timer = setTimeout(() => choose(nextIndex), 1200 / history.playbackSpeed);
     return () => clearTimeout(timer);
-  }, [history.playing, history.switching, active, index, selected?.hash, engine]);
+  }, [
+    history.playing,
+    history.playbackSpeed,
+    history.switching,
+    history.failedSnapshots,
+    nextIndex,
+    active,
+    index,
+    selected?.hash,
+    engine,
+  ]);
   useEffect(() => {
     if (!active || history.switching) return;
-    const next = dates[index + 1];
-    const file = next && history.files[next.hash];
-    if (file)
-      void engine.trigger.prepareSnapshot(file, next.hash).catch(() => {
-        // A direct switch reports parse errors and retains the current rendered state.
-      });
-  }, [engine, active, selected?.hash, dates.length, history.switching]);
+    let cancelled = false;
+    const upcoming = dates
+      .filter((s, i) => i > index && history.files[s.hash] && !history.failedSnapshots[s.hash])
+      .slice(0, history.playing && history.playbackSpeed >= 2 ? 2 : 1);
+    void (async () => {
+      for (const [offset, snapshot] of upcoming.entries()) {
+        if (cancelled) return;
+        try {
+          await engine.trigger.prepareSnapshot(
+            history.files[snapshot.hash],
+            snapshot.hash,
+            offset + 1,
+          );
+        } catch (error) {
+          if (!cancelled)
+            useHistory
+              .getState()
+              .markSnapshotFailed(snapshot.hash, `${snapshot.fileName}: ${String(error)}`);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    engine,
+    active,
+    selected?.hash,
+    dates.length,
+    history.switching,
+    history.playing,
+    history.playbackSpeed,
+    history.failedSnapshots,
+  ]);
   const openHistory = () => {
     history.showPanel(true);
     setPanelOpen(true);
@@ -120,10 +170,10 @@ export function SnapshotBar() {
               <GameButton
                 variant="icon"
                 aria-label="Previous saved snapshot"
-                disabled={history.switching || index <= 0 || !history.files[dates[index - 1]?.hash]}
+                disabled={history.switching || previousIndex < 0}
                 onClick={() => {
                   history.setPlaying(false);
-                  choose(index - 1);
+                  choose(previousIndex);
                 }}
               >
                 <ChevronLeftIcon className="h-4 w-4" />
@@ -131,7 +181,7 @@ export function SnapshotBar() {
               <GameButton
                 variant="icon"
                 aria-label={history.playing ? "Pause saved timeline" : "Play saved timeline"}
-                disabled={history.switching || dates.length < 2 || index >= dates.length - 1}
+                disabled={!history.playing && (history.switching || nextIndex < 0)}
                 onClick={() => history.setPlaying(!history.playing)}
               >
                 {history.playing ? (
@@ -143,17 +193,51 @@ export function SnapshotBar() {
               <GameButton
                 variant="icon"
                 aria-label="Next saved snapshot"
-                disabled={
-                  history.switching ||
-                  index >= dates.length - 1 ||
-                  !history.files[dates[index + 1]?.hash]
-                }
+                disabled={history.switching || nextIndex < 0}
                 onClick={() => {
                   history.setPlaying(false);
-                  choose(index + 1);
+                  choose(nextIndex);
                 }}
               >
                 <ChevronRightIcon className="h-4 w-4" />
+              </GameButton>
+            </div>
+            <div
+              className="flex items-center gap-0.5 border-l border-game-line-strong pl-2"
+              role="group"
+              aria-label="Saved timeline playback speed"
+            >
+              <GameButton
+                variant="icon"
+                aria-label="Slower timeline playback"
+                title="Slower playback"
+                disabled={speedIndex <= 0}
+                onClick={() =>
+                  history.setPlaybackSpeed(PLAYBACK_SPEEDS[Math.max(0, speedIndex - 1)])
+                }
+              >
+                <ChevronDoubleLeftIcon className="h-4 w-4" />
+              </GameButton>
+              <span
+                className="min-w-10 text-center font-game-num text-[11px] text-game-accent-100"
+                aria-live="polite"
+                aria-atomic="true"
+                title="Playback speed · 1× waits 1.2 seconds between saved dates"
+              >
+                {history.playbackSpeed}×
+              </span>
+              <GameButton
+                variant="icon"
+                aria-label="Faster timeline playback"
+                title="Faster playback"
+                disabled={speedIndex >= PLAYBACK_SPEEDS.length - 1}
+                onClick={() =>
+                  history.setPlaybackSpeed(
+                    PLAYBACK_SPEEDS[Math.min(PLAYBACK_SPEEDS.length - 1, speedIndex + 1)],
+                  )
+                }
+              >
+                <ChevronDoubleRightIcon className="h-4 w-4" />
               </GameButton>
             </div>
             <div className="shrink-0 font-game-num">
@@ -207,13 +291,13 @@ export function SnapshotBar() {
             Preparing date…
           </span>
         ) : null}
-        {history.switchError ? (
+        {Object.keys(history.failedSnapshots).length > 0 ? (
           <span
-            role="alert"
+            role="status"
             className="max-w-48 truncate text-[10px] text-game-ink-300"
-            title={history.switchError}
+            title={Object.values(history.failedSnapshots).join("\n")}
           >
-            Date unavailable
+            {Object.keys(history.failedSnapshots).length} unavailable · skipped
           </span>
         ) : null}
         <GameButton variant="ghost" onClick={openHistory}>

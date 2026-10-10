@@ -57,17 +57,17 @@ export function PerformanceDetails() {
         <dt>Map Wasm capacity</dt>
         <dd className="font-game-num">{data ? mib(data.map.wasmCapacityBytes) : "…"}</dd>
         <dt>Cached full states</dt>
-        <dd className="font-game-num">{data?.game.cachedStates ?? "…"} / 2</dd>
+        <dd className="font-game-num">{data?.game.cachedStates ?? "…"} / 3</dd>
         <dt>Last saved-date switch</dt>
         <dd className="font-game-num">
           {timing
             ? `${timing.milliseconds.toFixed(1)} ms · ${timing.cacheHit ? "prepared" : "new"}`
             : "—"}
         </dd>
-        <dt>Parse / workspace</dt>
+        <dt>Read / parse / workspace</dt>
         <dd className="font-game-num">
           {data?.game.lastPrepare
-            ? `${data.game.lastPrepare.parseMs.toFixed(0)} / ${data.game.lastPrepare.workspaceMs.toFixed(0)} ms`
+            ? `${data.game.lastPrepare.readMs.toFixed(0)} / ${data.game.lastPrepare.parseMs.toFixed(0)} / ${data.game.lastPrepare.workspaceMs.toFixed(0)} ms`
             : "—"}
         </dd>
         <dt>Map drawing</dt>

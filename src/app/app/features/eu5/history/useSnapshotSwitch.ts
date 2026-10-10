@@ -13,6 +13,7 @@ export function useSnapshotSwitch() {
       if (!file || history.switching || hash === history.selectedHash) return;
       history.setSwitching(true);
       try {
+        history.clearSnapshotFailure(hash);
         const result = await engine.trigger.switchSnapshot(file, hash, history.viewedProfile);
         const { metadata } = result;
         store.setState({
@@ -28,8 +29,8 @@ export function useSnapshotSwitch() {
         useHistory.getState().select(hash);
         useHistory.getState().setTiming(result.milliseconds, result.cacheHit);
       } catch (error) {
-        useHistory.getState().setSwitchError(String(error));
-        useHistory.getState().setPlaying(false);
+        // Keep the active canvas and selected date. Playback advances past this hash.
+        useHistory.getState().markSnapshotFailed(hash, `${file.name}: ${String(error)}`);
       } finally {
         useHistory.getState().setSwitching(false);
       }
