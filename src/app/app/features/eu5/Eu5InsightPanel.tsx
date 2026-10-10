@@ -1,7 +1,6 @@
 import { AnimatedValue } from "./components/AnimatedValue";
 import { ContextGraphs } from "./history/ContextGraphs";
 import { campaignKey } from "./history/types";
-import { useSnapshotSwitch } from "./history/useSnapshotSwitch";
 import { useEu5SaveInput } from "./store";
 import { SaveHistory } from "./history/SaveHistory";
 import { useHistory } from "./history/store";
@@ -41,7 +40,6 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
-  const switchSnapshot = useSnapshotSwitch();
   const saveInput = useEu5SaveInput();
   const historyOpen = useHistory((s) => s.panelOpen);
   const showHistory = useHistory((s) => s.showPanel);
@@ -104,7 +102,6 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
               visible={open && historyOpen}
               mapMode={mapMode}
               currentFile={saveInput.kind === "file" ? saveInput.file : undefined}
-              onChoose={switchSnapshot}
             />
           </div>
         </ResizablePanel.Content>

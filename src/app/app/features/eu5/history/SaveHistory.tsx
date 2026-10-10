@@ -13,6 +13,7 @@ import { campaignKey } from "@/features/eu5/history/types";
 import type { Snapshot } from "@/features/eu5/history/types";
 import styles from "@/features/eu5/history/Timeline.module.css";
 import { useEu5Engine, useEu5SaveRevision } from "../store";
+import { ImportProgress, type ImportProgressState } from "./ImportProgress";
 
 type Metric = "price" | "supply" | "demand" | "stockpile" | "population" | "development";
 const metricNames: Record<Metric, string> = {
@@ -43,7 +44,6 @@ export function SaveHistory({
   visible = true,
   mapMode = "markets",
   currentFile,
-  onChoose,
   focusTag,
   focusName,
   focusMarketCenter,
@@ -51,7 +51,6 @@ export function SaveHistory({
   visible?: boolean;
   mapMode?: MapMode;
   currentFile?: File;
-  onChoose: (hash: string) => Promise<void>;
   focusTag?: string;
   focusName?: string;
   focusMarketCenter?: number;
@@ -84,9 +83,8 @@ export function SaveHistory({
   const [markets, setMarkets] = useState<string[]>([]);
   const [country, setCountry] = useState("world");
   const [indexed, setIndexed] = useState(false);
-  const [dateIndex, setDateIndex] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState("");
+  const [progress, setProgress] = useState<ImportProgressState | null>(null);
   const [issues, setIssues] = useState<string[]>([]);
   const generation = useRef(0);
   const cacheReady = useRef<Promise<void>>(Promise.resolve());
@@ -119,17 +117,7 @@ export function SaveHistory({
   useEffect(() => {
     if (!currentSnapshot) return;
     setGroup(campaignKey(currentSnapshot));
-    const campaignDates = history.snapshots.filter(
-      (s) => campaignKey(s) === campaignKey(currentSnapshot),
-    );
-    setDateIndex(
-      Math.max(
-        0,
-        campaignDates.findIndex((s) => s.hash === currentSnapshot.hash),
-      ),
-    );
   }, [currentSnapshot?.hash, history.snapshots]);
-  const selected = dates[Math.min(dateIndex, Math.max(0, dates.length - 1))];
   const isMarket = mapMode === "markets";
   const goods = useMemo(
     () => (isMarket ? [...new Set(dates.flatMap((s) => s.markets.map((m) => m.good)))].sort() : []),
@@ -311,6 +299,8 @@ export function SaveHistory({
       return;
     }
     setBusy(true);
+    const startedAt = performance.now();
+    setProgress({ completed: 0, total: files.length, startedAt });
     setIssues([]);
     const currentGeneration = ++generation.current;
     const controller = new AbortController();
@@ -328,7 +318,7 @@ export function SaveHistory({
           const now = performance.now();
           if (completed === total || now - lastProgress > 150) {
             lastProgress = now;
-            setProgress(`${completed}/${total} · ${fileName}`);
+            setProgress({ completed, total, startedAt, fileName });
           }
         },
         onWarning: (warning) => {
@@ -364,16 +354,11 @@ export function SaveHistory({
       if (currentGeneration === generation.current) {
         cancelRef.current = null;
         setBusy(false);
-        setProgress("");
+        setProgress(null);
       }
     }
   };
 
-  const openMap = () => {
-    if (!selected || !history.files[selected.hash]) return;
-    history.setTimelineSource("snapshots");
-    void onChoose(selected.hash);
-  };
   const csv = () => {
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const rows = [
@@ -450,19 +435,17 @@ export function SaveHistory({
             />
           </label>
         </header>
-        {busy && (
-          <div role="status" className={styles.notice}>
-            {progress}
-            <button
-              onClick={() => {
+        {busy && progress && (
+          <div className={styles.notice}>
+            <ImportProgress
+              progress={progress}
+              onCancel={() => {
                 generation.current++;
                 cancelRef.current?.();
                 setBusy(false);
-                setProgress("");
+                setProgress(null);
               }}
-            >
-              Stop import
-            </button>
+            />
           </div>
         )}
         {issues.length > 0 && (
@@ -654,36 +637,11 @@ export function SaveHistory({
                   mode={mapMode}
                   country={activeCountry}
                   countryName={focusName ?? countryNames[activeCountry]}
-                  selectedHash={currentSnapshot?.hash ?? selected?.hash}
+                  selectedHash={currentSnapshot?.hash}
                   good={activeGood}
                   centers={activeMarkets}
                 />
               )}
-              <div className={styles.snapshot}>
-                <div>
-                  <span className={styles.eyebrow}>INSPECT A SAVED MOMENT</span>
-                  <h2>{selected?.date}</h2>
-                  <p>{selected?.fileName}</p>
-                </div>
-                <button
-                  onClick={openMap}
-                  disabled={history.switching || !selected || !history.files[selected.hash]}
-                >
-                  View this date
-                </button>
-                <input
-                  aria-label="Timeline saved date"
-                  type="range"
-                  min={0}
-                  max={dates.length - 1}
-                  value={Math.min(dateIndex, dates.length - 1)}
-                  onChange={(e) => setDateIndex(Number(e.target.value))}
-                />
-                <p className={styles.help}>
-                  The bottom timeline switches saves in every map mode. After a reload, reselect
-                  original files to enable map switching; charts stay cached.
-                </p>
-              </div>
             </section>
           </div>
         )}

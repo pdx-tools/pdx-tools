@@ -18,8 +18,7 @@
   font-weight: 600;
   margin: 4px 0;
 }
-.heading p,
-.snapshot p {
+.heading p {
   color: var(--game-ink-500);
   font-size: 12px;
 }
@@ -57,7 +56,6 @@
 }
 .panel,
 .chart,
-.snapshot,
 .empty {
   background: var(--game-panel-2);
   border: 1px solid var(--game-line);
@@ -76,7 +74,6 @@
 }
 .panel h2,
 .chart h2,
-.snapshot h2,
 .empty h2 {
   font-size: 13px;
   font-weight: 600;
@@ -114,8 +111,7 @@
   align-items: center;
   gap: 8px;
 }
-.checkbox input,
-.snapshot input {
+.checkbox input {
   accent-color: var(--game-accent-100);
 }
 .help {
@@ -155,24 +151,6 @@
 .page button:disabled {
   opacity: 0.4;
   cursor: default;
-}
-.snapshot {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
-}
-.snapshot h2 {
-  font-family: var(--font-game-num);
-  margin: 6px 0;
-}
-.snapshot p {
-  overflow-wrap: anywhere;
-}
-.snapshot input[type="range"],
-.snapshot > .help {
-  grid-column: 1/-1;
-  width: 100%;
 }
 .notice {
   background: var(--game-panel-active);

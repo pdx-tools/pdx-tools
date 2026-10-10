@@ -8,6 +8,7 @@ import militaryRank from "./military-rank.webp";
 import { cx } from "class-variance-authority";
 import { Badge } from "@/components/Badge";
 import { toast } from "sonner";
+import { ImportProgress, type ImportProgressState } from "@/features/eu5/history/ImportProgress";
 
 const emptySubscribe = () => () => {};
 const hasFileSystemAccessApi = () => "showOpenFilePicker" in window;
@@ -85,7 +86,7 @@ function Hoi4FileIcon() {
 export const HeroFileInput = () => {
   const publishFile = useFilePublisher();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState("");
+  const [progress, setProgress] = useState<ImportProgressState | null>(null);
   const importing = useRef<AbortController | null>(null);
   useEffect(() => () => importing.current?.abort(), []);
   const publishFiles = async (files: File[], folder = false) => {
@@ -100,12 +101,21 @@ export const HeroFileInput = () => {
     }
     const controller = new AbortController();
     importing.current = controller;
-    setProgress("Importing EU5 saves…");
+    const startedAt = performance.now();
+    setProgress({
+      completed: 0,
+      total: files.filter((file) => /\.eu5$/i.test(file.name)).length,
+      startedAt,
+    });
     try {
       const { importEu5Batch } = await import("@/features/eu5/history/importEu5Batch");
-      const result = await importEu5Batch(files, controller.signal, (completed, total) => {
-        setProgress(`Importing EU5 saves: ${completed}/${total}`);
-      });
+      const result = await importEu5Batch(
+        files,
+        controller.signal,
+        (completed, total, fileName) => {
+          setProgress({ completed, total, startedAt, fileName });
+        },
+      );
       if (result.issues.length)
         toast.warning(`${result.issues.length} import notices`, {
           description: result.issues.join("\n"),
@@ -115,7 +125,7 @@ export const HeroFileInput = () => {
       if (!controller.signal.aborted) toast.error(String(error));
     } finally {
       importing.current = null;
-      setProgress("");
+      setProgress(null);
     }
   };
   const { isHovering } = useFileDrop({
@@ -244,12 +254,7 @@ export const HeroFileInput = () => {
         />
       </label>
       {progress && (
-        <div role="status" className="text-sm text-white">
-          {progress}{" "}
-          <button onClick={() => importing.current?.abort()} className="ml-2 underline">
-            Stop import
-          </button>
-        </div>
+        <ImportProgress progress={progress} onCancel={() => importing.current?.abort()} light />
       )}
     </div>
   );
