@@ -3,8 +3,10 @@ import type { MapMode, ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import type { Snapshot } from "./types";
 
 type HistoryState = {
-  viewedProfile: ActiveProfileIdentity | null;
-  setViewedProfile: (profile: ActiveProfileIdentity | null) => void;
+  viewedProfiles: ActiveProfileIdentity[];
+  remapRevision: number;
+  remapViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
+  setViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
   snapshots: Snapshot[];
   files: Record<string, File>;
   selectedHash: string | null;
@@ -35,8 +37,11 @@ type HistoryState = {
 };
 
 export const useHistory = create<HistoryState>()((set) => ({
-  viewedProfile: null,
-  setViewedProfile: (viewedProfile) => set({ viewedProfile }),
+  viewedProfiles: [],
+  remapRevision: 0,
+  remapViewedProfiles: (viewedProfiles) =>
+    set((state) => ({ viewedProfiles, remapRevision: state.remapRevision + 1 })),
+  setViewedProfiles: (viewedProfiles) => set({ viewedProfiles }),
   snapshots: [],
   files: {},
   selectedHash: null,
@@ -95,7 +100,9 @@ export const useHistory = create<HistoryState>()((set) => ({
   select: (selectedHash) => set({ selectedHash }),
   rememberMode: (mapMode) => set({ mapMode }),
   clear: () =>
-    set({
+    set((state) => ({
+      viewedProfiles: [],
+      remapRevision: state.remapRevision + 1,
       snapshots: [],
       files: {},
       selectedHash: null,
@@ -103,5 +110,5 @@ export const useHistory = create<HistoryState>()((set) => ({
       playing: false,
       failedSnapshots: {},
       switchError: null,
-    }),
+    })),
 }));

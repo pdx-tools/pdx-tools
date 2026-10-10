@@ -182,7 +182,7 @@ export interface AppTriggers {
   switchSnapshot(
     file: File,
     hash: string,
-    viewed?: ActiveProfileIdentity | null,
+    viewed?: ActiveProfileIdentity[],
   ): ReturnType<GameInstance["switchSnapshot"]>;
   selectMapMode(mode: MapMode): Promise<void>;
   /**

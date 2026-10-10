@@ -1,3 +1,4 @@
+import { exportSnapshots } from "./exportSnapshots";
 import { ContextGraphs } from "./ContextGraphs";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
@@ -677,11 +678,7 @@ export function SaveHistory({
             <button
               disabled={!dates.length}
               onClick={() =>
-                download(
-                  "eu5-snapshots.json",
-                  JSON.stringify({ schemaVersion: 2, snapshots: dates }),
-                  "application/json",
-                )
+                download("eu5-snapshots.json", exportSnapshots(dates), "application/json")
               }
             >
               Export observations JSON

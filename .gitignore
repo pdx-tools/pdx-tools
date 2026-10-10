@@ -38,3 +38,7 @@ worker-configuration.d.ts
 
 # Generated docs content
 src/docs/src/pages/changelog.mdx
+
+# Local EU5 experiments and generated benchmark output
+/.local/eu5-history/
+/dev/eu5-streaming/benchmark-results/

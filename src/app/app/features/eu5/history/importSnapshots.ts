@@ -2,7 +2,7 @@ import { wrap } from "comlink";
 import { importSnapshots as streamSnapshots } from "../../../../../../dev/eu5-streaming/pool.js";
 import { cachedHashAlias, cacheSnapshots, cacheHashAlias } from "./cache";
 import { campaignKey, type Snapshot } from "./types";
-import type { parseSnapshot, sha256File } from "./snapshot-worker";
+import type { parseSnapshot, sha256File, blake3File } from "./snapshot-worker";
 
 export type ImportOptions = {
   signal: AbortSignal;
@@ -36,7 +36,11 @@ export async function importTimeline(files: File[], options: ImportOptions) {
   let legacyWorker: Worker | undefined;
   let legacyParser:
     | ReturnType<
-        typeof wrap<{ parseSnapshot: typeof parseSnapshot; sha256File: typeof sha256File }>
+        typeof wrap<{
+          parseSnapshot: typeof parseSnapshot;
+          sha256File: typeof sha256File;
+          blake3File: typeof blake3File;
+        }>
       >
     | undefined;
   let legacyQueue = Promise.resolve();
@@ -158,6 +162,22 @@ export async function importTimeline(files: File[], options: ImportOptions) {
             );
           try {
             await cacheHashAlias(snapshot.hash, previous.hash);
+          } catch {
+            warnCache();
+          }
+        }
+        snapshot = { ...previous, fileName: file.name };
+        persist = false;
+      } else if (previous.hash.startsWith("blake3:") && /^[0-9a-f]{64}$/.test(snapshot.hash)) {
+        const alias = await cachedHashAlias(previous.hash).catch(() => undefined);
+        if (alias !== snapshot.hash) {
+          const blake3 = await legacy((parser) => parser.blake3File(file), true);
+          if (blake3 !== previous.hash)
+            throw Error(
+              `A different save already occupies ${snapshot.date}. Separate alternate campaign branches before importing.`,
+            );
+          try {
+            await cacheHashAlias(previous.hash, snapshot.hash);
           } catch {
             warnCache();
           }

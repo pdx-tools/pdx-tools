@@ -340,12 +340,7 @@ export function saveWorker(
     }),
     prepareSnapshot: (file: File, hash: string, distance?: number) =>
       saveEngine.prepareSnapshot(file, hash, distance),
-    switchSnapshot: (
-      file: File,
-      hash: string,
-      mode: MapMode,
-      viewed?: ActiveProfileIdentity | null,
-    ) => {
+    switchSnapshot: (file: File, hash: string, mode: MapMode, viewed?: ActiveProfileIdentity[]) => {
       countryProfiles.clear();
       const task = saveEngine.switchSnapshot(file, hash, mode, viewed);
       pendingSwitch = task;

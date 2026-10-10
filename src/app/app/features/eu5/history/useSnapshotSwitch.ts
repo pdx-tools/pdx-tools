@@ -14,7 +14,7 @@ export function useSnapshotSwitch() {
       history.setSwitching(true);
       try {
         history.clearSnapshotFailure(hash);
-        const result = await engine.trigger.switchSnapshot(file, hash, history.viewedProfile);
+        const result = await engine.trigger.switchSnapshot(file, hash, history.viewedProfiles);
         const { metadata } = result;
         store.setState({
           saveInput: { kind: "file", file },
@@ -25,7 +25,7 @@ export function useSnapshotSwitch() {
           world: metadata.world,
           uploadedSaveId: null,
         });
-        useHistory.getState().setViewedProfile(result.viewedProfile);
+        useHistory.getState().remapViewedProfiles(result.viewedProfiles);
         useHistory.getState().select(hash);
         useHistory.getState().setTiming(result.milliseconds, result.cacheHit);
       } catch (error) {

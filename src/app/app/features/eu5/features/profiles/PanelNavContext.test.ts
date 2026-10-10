@@ -3,6 +3,8 @@ import { getBreadcrumbItems } from "./Breadcrumb";
 import {
   DEFAULT_PROFILE_TABS,
   countryProfileEntry,
+  marketProfileEntry,
+  remapProfileStack,
   locationProfileEntry,
   setProfileTabValue,
 } from "./PanelNavContext";
@@ -54,5 +56,30 @@ describe("panel navigation helpers", () => {
       market: "goods",
       location: "buildings",
     });
+  });
+});
+
+describe("saved-date breadcrumb remapping", () => {
+  const stack = [countryProfileEntry(4, "France"), marketProfileEntry(8, "Paris")];
+
+  it("replaces every stored identity so returning to a parent uses the new save", () => {
+    const profiles = [countryProfileEntry(17, "France"), marketProfileEntry(20, "Paris")].map(
+      (e) => e.profile,
+    );
+    const remapped = remapProfileStack(stack, profiles);
+    expect(remapped).toEqual([countryProfileEntry(17, "France"), marketProfileEntry(20, "Paris")]);
+    expect(remapped.slice(0, 1)[0].profile).toEqual(profiles[0]);
+    expect(stack[0]).toEqual(countryProfileEntry(4, "France"));
+  });
+
+  it("removes a vanished profile and its descendants", () => {
+    expect(remapProfileStack(stack, [countryProfileEntry(17, "France").profile])).toEqual([
+      countryProfileEntry(17, "France"),
+    ]);
+    expect(remapProfileStack(stack, [])).toEqual([]);
+  });
+
+  it("does not associate a remapped identity with a different breadcrumb kind", () => {
+    expect(remapProfileStack(stack, [locationProfileEntry(4, "Paris").profile])).toEqual([]);
   });
 });

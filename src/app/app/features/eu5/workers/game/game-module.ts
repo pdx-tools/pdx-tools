@@ -420,12 +420,7 @@ export const createGame = async (
         const result = await prepare(file, hash);
         return { cacheHit: result.cacheHit, milliseconds: performance.now() - start };
       }),
-    switchSnapshot: (
-      file: File,
-      hash: string,
-      mode: MapMode,
-      viewed?: ActiveProfileIdentity | null,
-    ) =>
+    switchSnapshot: (file: File, hash: string, mode: MapMode, viewed?: ActiveProfileIdentity[]) =>
       queued(async () => {
         const start = performance.now();
         const before = app.get_selection_summary();
@@ -437,12 +432,14 @@ export const createGame = async (
         const marketCenter =
           identity?.kind === "market" ? app.market_center_id(identity.market.key) : undefined;
         const locationName = identity?.kind === "location" ? identity.location.name : undefined;
-        const viewedTag =
-          viewed?.kind === "country"
-            ? countryIndex.find((c) => c.country.key === viewed.country.key)?.tag
-            : undefined;
-        const viewedCenter =
-          viewed?.kind === "market" ? app.market_center_id(viewed.market.key) : undefined;
+        const viewedIdentities = (viewed ?? []).map((profile) => ({
+          profile,
+          tag:
+            profile.kind === "country"
+              ? countryIndex.find((c) => c.country.key === profile.country.key)?.tag
+              : undefined,
+          center: profile.kind === "market" ? app.market_center_id(profile.market.key) : undefined,
+        }));
         const result = await prepare(file, hash);
         const next = result.app;
         next.clear_selection();
@@ -469,20 +466,26 @@ export const createGame = async (
           transfer(colors, [colors.buffer]),
           transfer(groups, [groups.buffer]),
         );
-        let viewedProfile: ActiveProfileIdentity | null = null;
-        if (viewedTag) {
-          const match = countries.find((c) => c.tag === viewedTag);
-          if (match) viewedProfile = { kind: "country", country: match.country };
-        } else if (viewed?.kind === "location") {
-          const match = locations.find((l) => l.location.name === viewed.location.name);
-          if (match) viewedProfile = { kind: "location", location: match.location };
-        } else if (viewedCenter != null) {
-          const marketId = next.market_id_at_center(viewedCenter);
-          if (marketId != null) {
-            const header = next.get_market_profile(marketId)?.header;
-            if (header)
-              viewedProfile = { kind: "market", market: { key: marketId, name: header.name } };
+        const viewedProfiles: ActiveProfileIdentity[] = [];
+        for (const { profile, tag, center } of viewedIdentities) {
+          let remapped: ActiveProfileIdentity | null = null;
+          if (profile.kind === "country" && tag) {
+            const match = countries.find((c) => c.tag === tag);
+            if (match) remapped = { kind: "country", country: match.country };
+          } else if (profile.kind === "location") {
+            const match = locations.find((l) => l.location.name === profile.location.name);
+            if (match) remapped = { kind: "location", location: match.location };
+          } else if (profile.kind === "market" && center != null) {
+            const marketId = next.market_id_at_center(center);
+            if (marketId != null) {
+              const header = next.get_market_profile(marketId)?.header;
+              if (header)
+                remapped = { kind: "market", market: { key: marketId, name: header.name } };
+            }
           }
+          // Descendants of a vanished breadcrumb cannot retain the old save's indices.
+          if (!remapped) break;
+          viewedProfiles.push(remapped);
         }
         const previousHash = activeHash;
         app = next;
@@ -500,7 +503,7 @@ export const createGame = async (
         pushSelection(change.gradient ?? undefined);
         hoverDisplayCallback?.({ kind: "clear" });
         return {
-          viewedProfile,
+          viewedProfiles,
           metadata: info.metadata,
           timeline: info.timeline,
           change,

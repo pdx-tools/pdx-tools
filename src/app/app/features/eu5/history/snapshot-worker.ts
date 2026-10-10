@@ -5,6 +5,9 @@ import tokenUrl from "../../../../../../assets/tokens/eu5.bin?url";
 import type { Snapshot } from "./types";
 import { cachedSnapshot } from "./cache";
 
+// This module runs in a dedicated worker; the app's shared TS config uses DOM types.
+declare const FileReaderSync: { new (): { readAsArrayBuffer(blob: Blob): ArrayBuffer } };
+
 let ready: Promise<void> | undefined;
 const initialize = () =>
   (ready ??= (async () => {
@@ -21,6 +24,31 @@ export async function sha256File(file: File): Promise<string> {
   // Release the large backing store immediately, before another migration job starts.
   bytes.transfer(0);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Verify a BLAKE3 identity when streaming is unavailable in the current context. */
+export async function blake3File(file: File): Promise<string> {
+  const module = await import("../../../../../../dev/eu5-streaming/pkg-blake3/eu5_streaming.js");
+  await module.default();
+  const reader = new FileReaderSync();
+  let chunk: ArrayBuffer | undefined;
+  try {
+    const result = module.stream_snapshot(
+      (offset: number, length: number) => {
+        chunk?.transfer(0);
+        const bytes = reader.readAsArrayBuffer(file.slice(offset, offset + length));
+        chunk = bytes;
+        return new Uint8Array(bytes);
+      },
+      8 * 1024 * 1024,
+      true,
+      true,
+    );
+    if (result.bytesRead !== file.size || !result.hash) throw Error("Incomplete save verification");
+    return `blake3:${result.hash}`;
+  } finally {
+    chunk?.transfer(0);
+  }
 }
 
 export async function parseSnapshot(
@@ -51,4 +79,4 @@ export async function parseSnapshot(
   return { snapshot: { ...snapshot, hash, fileName: file.name, marketLabels }, cacheHit: false };
 }
 
-expose({ parseSnapshot, sha256File });
+expose({ parseSnapshot, sha256File, blake3File });
