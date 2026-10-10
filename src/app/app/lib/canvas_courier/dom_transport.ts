@@ -205,6 +205,11 @@ export class CanvasCourierTransport {
       this.observeDevicePixelRatio(surface);
     }
 
+    if (document.activeElement === surface.canvas) {
+      this.inputQueue.writer.enqueueFocus(performance.now());
+    } else {
+      this.inputQueue.writer.enqueueBlur(performance.now());
+    }
     this.inputQueue.writer.enqueueVisibility(document.hidden);
   }
 
@@ -213,6 +218,11 @@ export class CanvasCourierTransport {
    * document. The size and the input queue stay for the next attach.
    */
   detachSurface(): void {
+    if (!this.activeSurface) return;
+
+    // Clear held keys and stop the worker while the canvas is detached.
+    this.inputQueue.writer.enqueueBlur(performance.now());
+    this.inputQueue.writer.enqueueVisibility(true);
     this.activeSurface = undefined;
     this.releaseSurfaceBindings();
   }

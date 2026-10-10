@@ -231,6 +231,7 @@ export const createMapEngine = async (
   let lastProcessedWorldCoordinates: { x: number; y: number } | null = null;
   let boxDrag: BoxSelectDrag | null = null;
   let boxDragDirty = false;
+  let paused = false;
 
   let _dirtyRender: boolean = false;
   renderOrQueue = () => {
@@ -347,6 +348,24 @@ export const createMapEngine = async (
     boxDrag = null;
     boxDragDirty = false;
     boxSelectRectCallback?.(null);
+  };
+
+  const clearInput = () => {
+    for (const code of pressedKeys) {
+      app.on_key_up(code);
+    }
+    pressedKeys.clear();
+    cancelBoxSelect();
+    app.on_mouse_button(0, false);
+    mouseDownPos = null;
+    lastCursorPosition = null;
+    lastProcessedWorldCoordinates = null;
+    if (lastKnownLocationId !== null) {
+      hoverEventCallback?.({ kind: "clear" });
+    }
+    lastKnownLocationId = null;
+    emitCursor("default");
+    renderOrQueue();
   };
 
   const processInputEvent = (event: SharedCanvasDecodedEvent) => {
@@ -484,6 +503,15 @@ export const createMapEngine = async (
         renderOrQueue();
         break;
       }
+      case SharedCanvasEventType.FocusChange: {
+        if (event.action === SharedCanvasEventAction.Blur) clearInput();
+        break;
+      }
+      case SharedCanvasEventType.Visibility: {
+        paused = event.action === SharedCanvasEventAction.Hidden;
+        if (paused) clearInput();
+        break;
+      }
       case SharedCanvasEventType.Resize: {
         newDimensions = {
           width: event.width,
@@ -539,6 +567,10 @@ export const createMapEngine = async (
 
     // Drain canvas_courier input events before ticking
     inputReader.drain(processInputEvent);
+    if (paused) {
+      requestAnimationFrame(rafRender);
+      return;
+    }
     if (boxDrag !== null && boxDragDirty) {
       updateBoxSelect(boxDrag);
       boxDragDirty = false;
