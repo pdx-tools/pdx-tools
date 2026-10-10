@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ReactModule from "react";
 import { useHistory } from "./store";
 
 const mocks = vi.hoisted(() => ({ switchSnapshot: vi.fn(), setState: vi.fn() }));
 vi.mock("react", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react")>()),
+  ...(await importOriginal<typeof ReactModule>()),
   useCallback: (callback: unknown) => callback,
 }));
 vi.mock("../store", () => ({

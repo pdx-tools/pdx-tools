@@ -41,7 +41,7 @@ export function ImportProgress({
   const { percent, etaSeconds } = importProgressStats(
     progress.completed,
     progress.total,
-    Math.max(now, performance.now()) - progress.startedAt,
+    Math.max(now, progress.startedAt) - progress.startedAt,
   );
   return (
     <div className={`w-full min-w-0 text-xs ${light ? "text-white" : "text-game-ink-300"}`}>

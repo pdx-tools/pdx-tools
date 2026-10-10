@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeftIcon,
   ChevronDoubleLeftIcon,
@@ -36,23 +36,27 @@ export function SnapshotBar() {
   const barRef = useRef<HTMLDivElement>(null);
   const selected = history.snapshots.find((s) => s.hash === history.selectedHash);
   const active = !!selected && input.kind === "file" && history.files[selected.hash] === input.file;
-  const dates =
-    active && selected
-      ? history.snapshots.filter((s) => campaignKey(s) === campaignKey(selected))
-      : [];
+  const dates = useMemo(
+    () =>
+      active && selected
+        ? history.snapshots.filter((s) => campaignKey(s) === campaignKey(selected))
+        : [],
+    [active, selected, history.snapshots],
+  );
   const index = dates.findIndex((s) => s.hash === selected?.hash);
   const speedIndex = PLAYBACK_SPEEDS.indexOf(
     history.playbackSpeed as (typeof PLAYBACK_SPEEDS)[number],
   );
-  const [draft, setDraft] = useState(index);
-  useEffect(() => {
-    setDraft(index);
-  }, [index]);
+  const [draftState, setDraftState] = useState({ index, value: index });
+  const draft = draftState.index === index ? draftState.value : index;
+  const setDraft = (value: number) => setDraftState({ index, value });
+  if (draftState.index !== index) setDraftState({ index, value: index });
   useEffect(() => {
     if (!active) return;
-    setPanelOpen(history.insightOpen);
+    const remembered = useHistory.getState();
+    setPanelOpen(remembered.insightOpen);
     let alive = true;
-    void engine.trigger.selectMapMode(history.mapMode).then(() => {
+    void engine.trigger.selectMapMode(remembered.mapMode).then(() => {
       if (alive) {
         restored.current = true;
         useHistory.getState().rememberMode(engine.getState().currentMapMode);
@@ -61,10 +65,11 @@ export function SnapshotBar() {
     return () => {
       alive = false;
     };
-  }, [engine, active]);
+  }, [engine, active, setPanelOpen]);
+  const rememberMode = history.rememberMode;
   useEffect(() => {
-    if (active && restored.current) history.rememberMode(mode);
-  }, [mode, active, history.rememberMode]);
+    if (active && restored.current) rememberMode(mode);
+  }, [mode, active, rememberMode]);
   useLayoutEffect(() => {
     const el = barRef.current;
     if (!el) return;
@@ -83,17 +88,20 @@ export function SnapshotBar() {
   const previousIndex = dates.findLastIndex(
     (s, i) => i < index && !!history.files[s.hash] && !history.failedSnapshots[s.hash],
   );
-  const choose = (i: number) => {
-    const snapshot = dates[i];
-    const file = snapshot && history.files[snapshot.hash];
-    if (!file || snapshot.hash === selected?.hash) return;
-    if (history.switching) return;
-    void switchSnapshot(snapshot.hash);
-  };
+  const choose = useCallback(
+    (i: number) => {
+      const snapshot = dates[i];
+      const file = snapshot && history.files[snapshot.hash];
+      if (!file || snapshot.hash === selected?.hash) return;
+      if (history.switching) return;
+      void switchSnapshot(snapshot.hash);
+    },
+    [dates, history.files, history.switching, selected?.hash, switchSnapshot],
+  );
   useEffect(() => {
     if (!history.playing || !active || history.switching) return;
     if (nextIndex < 0) {
-      history.setPlaying(false);
+      useHistory.getState().setPlaying(false);
       return;
     }
     const timer = setTimeout(() => choose(nextIndex), 1200 / history.playbackSpeed);
@@ -102,7 +110,7 @@ export function SnapshotBar() {
     history.playing,
     history.playbackSpeed,
     history.switching,
-    history.failedSnapshots,
+    choose,
     nextIndex,
     active,
     index,
@@ -139,7 +147,9 @@ export function SnapshotBar() {
     engine,
     active,
     selected?.hash,
-    dates.length,
+    dates,
+    index,
+    history.files,
     history.switching,
     history.playing,
     history.playbackSpeed,

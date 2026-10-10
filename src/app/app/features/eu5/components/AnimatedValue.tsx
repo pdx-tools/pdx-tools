@@ -1,4 +1,5 @@
-import { memo, useRef, useLayoutEffect, type ReactNode } from "react";
+import { memo, useState } from "react";
+import type { ReactNode } from "react";
 import NumberFlow from "@number-flow/react";
 import { useElementVisible } from "./useElementVisible";
 
@@ -60,11 +61,9 @@ function RollingNumber({
   positiveSign: boolean;
 }) {
   const { ref, visible } = useElementVisible();
-  const previous = useRef(actual);
-  const trend = Math.sign(actual - previous.current);
-  useLayoutEffect(() => {
-    previous.current = actual;
-  }, [actual]);
+  const [previous, setPrevious] = useState({ actual, trend: 0 });
+  const trend = actual === previous.actual ? previous.trend : Math.sign(actual - previous.actual);
+  if (actual !== previous.actual) setPrevious({ actual, trend });
   return (
     <span ref={ref}>
       {visible ? (

@@ -1,6 +1,6 @@
 import { exportSnapshots } from "./exportSnapshots";
 import { ContextGraphs } from "./ContextGraphs";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { importTimeline } from "./importSnapshots";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { HistoryPlot } from "./HistoryPlot";
@@ -10,10 +10,10 @@ import type { MapMode } from "@/wasm/wasm_eu5";
 import { cachedSnapshots, clearSnapshotCache } from "@/features/eu5/history/cache";
 import { useHistory } from "@/features/eu5/history/store";
 import { campaignKey } from "@/features/eu5/history/types";
-import type { Snapshot } from "@/features/eu5/history/types";
 import styles from "@/features/eu5/history/Timeline.module.css";
 import { useEu5Engine, useEu5SaveRevision } from "../store";
-import { ImportProgress, type ImportProgressState } from "./ImportProgress";
+import { ImportProgress } from "./ImportProgress";
+import type { ImportProgressState } from "./ImportProgress";
 
 type Metric = "price" | "supply" | "demand" | "stockpile" | "population" | "development";
 const metricNames: Record<Metric, string> = {
@@ -72,13 +72,22 @@ export function SaveHistory({
     };
   }, [engine, saveRevision]);
   const currentSnapshot = history.snapshots.find((s) => s.hash === history.selectedHash);
-  const [group, setGroup] = useState(currentSnapshot ? campaignKey(currentSnapshot) : "");
-  const [metric, setMetric] = useState<Metric>(
-    mapMode === "population" || mapMode === "development" ? mapMode : "price",
-  );
-  useEffect(() => {
-    setMetric(mapMode === "population" || mapMode === "development" ? mapMode : "price");
-  }, [mapMode]);
+  const selectedHash = currentSnapshot?.hash;
+  const defaultGroup = currentSnapshot ? campaignKey(currentSnapshot) : "";
+  const [group, setGroup] = useState(defaultGroup);
+  const [previousHash, setPreviousHash] = useState(selectedHash);
+  if (previousHash !== selectedHash) {
+    setPreviousHash(selectedHash);
+    setGroup(defaultGroup);
+  }
+  const defaultMetric = mapMode === "population" || mapMode === "development" ? mapMode : "price";
+  const [metricState, setMetricState] = useState<{ mode: MapMode; value: Metric }>({
+    mode: mapMode,
+    value: defaultMetric,
+  });
+  const metric = metricState.mode === mapMode ? metricState.value : defaultMetric;
+  if (metricState.mode !== mapMode) setMetricState({ mode: mapMode, value: defaultMetric });
+  const setMetric = (value: Metric) => setMetricState({ mode: mapMode, value });
   const [good, setGood] = useState("");
   const [markets, setMarkets] = useState<string[]>([]);
   const [country, setCountry] = useState("world");
@@ -91,6 +100,10 @@ export function SaveHistory({
   const generation = useRef(0);
   const cacheReady = useRef<Promise<void>>(Promise.resolve());
   const cancelRef = useRef<(() => void) | null>(null);
+  const cancelImport = useEffectEvent(() => {
+    generation.current++;
+    cancelRef.current?.();
+  });
   useEffect(() => {
     let alive = true;
     cacheReady.current = cachedSnapshots()
@@ -102,8 +115,7 @@ export function SaveHistory({
       });
     return () => {
       alive = false;
-      generation.current++;
-      cancelRef.current?.();
+      cancelImport();
     };
   }, []);
 
@@ -116,10 +128,6 @@ export function SaveHistory({
     () => history.snapshots.filter((s) => campaignKey(s) === activeGroup),
     [history.snapshots, activeGroup],
   );
-  useEffect(() => {
-    if (!currentSnapshot) return;
-    setGroup(campaignKey(currentSnapshot));
-  }, [currentSnapshot?.hash, history.snapshots]);
   const isMarket = mapMode === "markets";
   const goods = useMemo(
     () => (isMarket ? [...new Set(dates.flatMap((s) => s.markets.map((m) => m.good)))].sort() : []),
@@ -142,28 +150,31 @@ export function SaveHistory({
     }
     return result;
   }, [dates, isMarket]);
-  const focusCenters = focusTag
-    ? new Set(
-        dates
-          .flatMap((s) => s.countries.find((c) => c.tag === focusTag)?.marketCenters ?? [])
-          .map(String),
+  const { marketIds, activeMarkets } = useMemo(() => {
+    const focusCenters = focusTag
+      ? new Set(
+          dates
+            .flatMap((s) => s.countries.find((c) => c.tag === focusTag)?.marketCenters ?? [])
+            .map(String),
+        )
+      : null;
+    const marketIds = Object.keys(labels)
+      .filter((id) =>
+        focusMarketCenter != null
+          ? id === String(focusMarketCenter)
+          : focusCenters
+            ? focusCenters.has(id)
+            : true,
       )
-    : null;
-  const marketIds = Object.keys(labels)
-    .filter((id) =>
-      focusMarketCenter != null
-        ? id === String(focusMarketCenter)
-        : focusCenters
-          ? focusCenters.has(id)
-          : true,
-    )
-    .sort((a, b) => labels[a].localeCompare(labels[b]));
-  const chosenMarkets = markets.filter((m) => marketIds.includes(m));
-  const activeMarkets = chosenMarkets.length
-    ? chosenMarkets
-    : marketIds.length
-      ? [marketIds.find((id) => labels[id].toLowerCase() === "london") ?? marketIds[0]]
-      : [];
+      .sort((a, b) => labels[a].localeCompare(labels[b]));
+    const chosenMarkets = markets.filter((m) => marketIds.includes(m));
+    const activeMarkets = chosenMarkets.length
+      ? chosenMarkets
+      : marketIds.length
+        ? [marketIds.find((id) => labels[id].toLowerCase() === "london") ?? marketIds[0]]
+        : [];
+    return { marketIds, activeMarkets };
+  }, [dates, focusTag, focusMarketCenter, labels, markets]);
   const countries = useMemo(
     () =>
       [...new Set(dates.flatMap((s) => s.countries.map((c) => c.tag)))].sort((a, b) =>
@@ -181,8 +192,10 @@ export function SaveHistory({
     [countries, countryNames],
   );
   const activeCountry = focusTag ?? (countries.includes(country) ? country : "world");
-  const entities = isMarket ? activeMarkets : [activeCountry];
-  const seriesKey = entities.join("|");
+  const entities = useMemo(
+    () => (isMarket ? activeMarkets : [activeCountry]),
+    [isMarket, activeMarkets, activeCountry],
+  );
   const series = useMemo(
     () =>
       entities.map((entity) => ({
@@ -205,7 +218,7 @@ export function SaveHistory({
           );
         }),
       })),
-    [dates, seriesKey, isMarket, activeGood, metric, countryNames, labels],
+    [dates, entities, isMarket, activeGood, metric, countryNames, labels],
   );
   const indexUnavailable =
     indexed &&
@@ -285,7 +298,17 @@ export function SaveHistory({
         return line;
       }),
     }),
-    [dates, series, indexed, metric],
+    [
+      dates,
+      series,
+      indexed,
+      metric,
+      theme.labelColor,
+      theme.tickColor,
+      theme.numFamily,
+      theme.axisColor,
+      theme.gridLineColor,
+    ],
   );
 
   const importFiles = async (list: FileList | null) => {

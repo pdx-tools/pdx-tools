@@ -50,7 +50,7 @@ export async function importSnapshots(
     slots.delete(slot);
   }
   const abort = () => {
-    for (const slot of [...slots]) stop(slot);
+    for (const slot of slots) stop(slot);
   };
   signal?.addEventListener("abort", abort, { once: true });
   function parse(slot, file) {
@@ -61,7 +61,8 @@ export async function importSnapshots(
       slot.worker.onmessage = ({ data }) => {
         if (data.id !== id) return;
         slot.reject = null;
-        data.error ? reject(Error(data.error)) : resolve(data);
+        if (data.error) reject(Error(data.error));
+        else resolve(data);
       };
       slot.worker.onerror = (event) => {
         slot.reject = null;

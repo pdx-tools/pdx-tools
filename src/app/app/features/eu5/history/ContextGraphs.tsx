@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { type EChartsOption } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { HistoryPlot } from "./HistoryPlot";
 import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/echartsTheme";
 import type { CountryObservation, MapMode } from "@/wasm/wasm_eu5";
@@ -328,7 +328,7 @@ export function ContextGraphs({
         });
     }
     return result;
-  }, [observations, mode, country, label, dates, good, centers?.join("|")]);
+  }, [observations, mode, country, label, dates, good, centers]);
   return (
     <div aria-label={`${mode} evolution for ${label}`}>
       <p className="mb-3 text-xs text-game-ink-500">

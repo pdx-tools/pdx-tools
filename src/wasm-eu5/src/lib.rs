@@ -599,7 +599,7 @@ impl Eu5App {
         Ok(Eu5App {
             _loaded_save: gamestate.parsed_save,
             app,
-            localization: self.localization.clone(),
+            localization: Rc::clone(&self.localization),
             meta,
         })
     }

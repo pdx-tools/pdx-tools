@@ -186,20 +186,19 @@ pub fn extract<'a>(
         if let Some(&center) = location
             .market
             .and_then(|id| market_centers.get(&id.value()))
+            && !total.market_centers.contains(&center)
         {
-            if !total.market_centers.contains(&center) {
-                total.market_centers.push(center);
-            }
+            total.market_centers.push(center);
         }
         for &id in location.population.pops {
-            if let Some(pop) = game.population.database.lookup(id) {
-                if let Some(religion) = game.religion_manager.lookup(pop.religion) {
-                    add_named(
-                        &mut total.religions,
-                        religion.key.to_str(),
-                        (pop.size * 1000.0).floor(),
-                    );
-                }
+            if let Some(pop) = game.population.database.lookup(id)
+                && let Some(religion) = game.religion_manager.lookup(pop.religion)
+            {
+                add_named(
+                    &mut total.religions,
+                    religion.key.to_str(),
+                    (pop.size * 1000.0).floor(),
+                );
             }
         }
     }

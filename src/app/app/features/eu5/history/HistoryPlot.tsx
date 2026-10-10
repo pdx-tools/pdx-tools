@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { ECharts } from "echarts/core";
-import { EChart, type EChartsOption } from "@/components/viz";
+import { EChart } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
 import { seriesColors, getEChartsTheme } from "@/components/viz/echartsTheme";
 
 /** The saved observations stay on canvas. Only these small overlays move during playback. */

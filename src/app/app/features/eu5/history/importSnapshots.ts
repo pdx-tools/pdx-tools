@@ -1,7 +1,8 @@
 import { wrap } from "comlink";
 import { importSnapshots as streamSnapshots } from "../../../../../../dev/eu5-streaming/pool.js";
 import { cachedHashAlias, cacheSnapshots, cacheHashAlias } from "./cache";
-import { campaignKey, type Snapshot } from "./types";
+import { campaignKey } from "./types";
+import type { Snapshot } from "./types";
 import type { parseSnapshot, sha256File, blake3File } from "./snapshot-worker";
 
 export type ImportOptions = {
