@@ -1,3 +1,10 @@
+/** True when an operation was cancelled. */
+export function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" && error !== null && "name" in error && error.name === "AbortError"
+  );
+}
+
 export function pdxAbortController() {
   const result = new AbortController();
 

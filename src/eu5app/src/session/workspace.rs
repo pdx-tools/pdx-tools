@@ -55,7 +55,7 @@ use eu5save::models::{
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 /// A human player and the country they control.
 #[derive(Debug, Clone, Copy)]
@@ -68,7 +68,8 @@ pub struct Player<'a> {
 /// and manages rendering state including map modes and GPU data structures.
 pub struct Eu5Workspace<'bump> {
     gamestate: Gamestate<'bump>,
-    game_data: Box<GameData>,
+    /// Shared, so that saves of the same patch reuse one copy.
+    game_data: Arc<GameData>,
 
     // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
@@ -194,9 +195,9 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Create a new workspace from loaded save data and game data provider
     pub fn new(
         gamestate: Gamestate<'bump>,
-        game_data: GameData,
+        game_data: impl Into<Arc<GameData>>,
     ) -> Result<Self, crate::game_data::GameDataError> {
-        let game_data = Box::new(game_data);
+        let game_data = game_data.into();
 
         let mut overlord_of = gamestate.countries.create_index(None);
         for dep in gamestate.diplomacy_manager.dependencies() {
@@ -283,6 +284,13 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn gamestate(&self) -> &Gamestate<'bump> {
         &self.gamestate
+    }
+
+    /// True when the save lists more than one human player. Each entry
+    /// counts, also one whose country is gone, as the server counts the
+    /// player names of an upload for its campaign key.
+    pub fn is_multiplayer(&self) -> bool {
+        self.gamestate.played_countries.len() > 1
     }
 
     /// The human players in this save, in the order the save lists them.
