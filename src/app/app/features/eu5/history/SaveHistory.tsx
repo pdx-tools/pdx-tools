@@ -485,7 +485,6 @@ export function SaveHistory({
                   value={activeGroup}
                   onChange={(e) => {
                     setGroup(e.target.value);
-                    setDateIndex(0);
                     setMarkets([]);
                   }}
                 >
