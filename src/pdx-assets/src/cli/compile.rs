@@ -29,13 +29,17 @@ pub struct CompileArgs {
     #[clap(long)]
     game: Option<String>,
 
-    /// Game version (e.g. 1.2). Required for EU5.
-    #[clap(long)]
+    /// Version of the source game files. Use only if detection is not possible.
+    #[clap(long = "game-version", alias = "version")]
     version: Option<String>,
 }
 
 impl CompileArgs {
     pub fn run(&self) -> Result<ExitCode> {
+        anyhow::ensure!(
+            self.version.is_none() || self.source_path.is_some() || self.game.is_some(),
+            "Use --game or a source path with --game-version"
+        );
         let base_output = self
             .output
             .clone()
@@ -74,11 +78,6 @@ impl CompileArgs {
         };
 
         let imaging = RustImageProcessor::create()?;
-        let options = PackageOptions {
-            dry_run: false,
-            minimal: self.minimal,
-            game_version: self.version.clone(),
-        };
 
         // Process each game
         for (game, source_path) in games_to_process {
@@ -88,6 +87,26 @@ impl CompileArgs {
             let provider = create_provider(&source_path).with_context(|| {
                 format!("Failed to create provider for: {}", source_path.display())
             })?;
+
+            let version = match crate::asset_source::detect_version(
+                &provider,
+                &source_path,
+                game,
+                self.version.as_deref(),
+            )? {
+                Some(version) => version,
+                None => {
+                    let version = crate::asset_source::latest_catalog_version(game)?;
+                    tracing::warn!(%game, %version,
+                        "The source game version is unknown. Using the latest catalog version. Use --game-version to change it");
+                    version
+                }
+            };
+            let options = PackageOptions {
+                dry_run: false,
+                minimal: self.minimal,
+                game_version: Some(version),
+            };
 
             let result = match game {
                 Game::Eu4 => {

@@ -44,8 +44,11 @@ impl GameAssetCompiler for Eu4AssetCompliler {
         out_dir: &Path,
         options: &PackageOptions,
     ) -> Result<CompilationOutput> {
-        let game_version = crate::eu4::data::game_version::extract_game_version(provider)
-            .context("Unable to extract eu4 game version")?;
+        let game_version = match &options.game_version {
+            Some(version) => version.clone(),
+            None => crate::eu4::data::game_version::extract_game_version(provider)
+                .context("Unable to extract EU4 game version")?,
+        };
         let out_dir = out_dir.join("eu4").join(&game_version);
         crate::eu4::compiler::parse_game_assets(
             provider,
@@ -71,7 +74,7 @@ impl GameAssetCompiler for Eu5AssetCompiler {
         let game_version = options
             .game_version
             .clone()
-            .context("EU5 requires --version to be specified (caesar_branch.txt no longer contains a parseable version)")?;
+            .context("EU5 asset version was not resolved")?;
 
         crate::eu5::compiler::compile_game_bundle(
             provider,

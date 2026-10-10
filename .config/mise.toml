@@ -312,11 +312,11 @@ sources = ["pnpm-lock.yaml"]
 hide = true
 
 [tasks."assets:bundle"]
-description = "Create a game asset bundle"
+description = "Bundle installed game files"
 run = "cargo run --release --package pdx-assets -- bundle"
 
 [tasks."assets:compile"]
-description = "Compile a game asset bundle"
+description = "Compile installed game files or a source bundle"
 run = "cargo run --release --package pdx-assets -- compile"
 
 [tasks."start:services:test"]
@@ -355,12 +355,12 @@ depends = ["pnpm-install"]
 run = "pnpm run typecheck"
 
 [tasks."admin:assets:sync"]
-description = "Download the game bundles that assets/game-bundles.sha256 lists"
+description = "Download the game bundles that assets/catalog.json lists"
 env._.file = { path = ".env", redact = true }
 run = "node ./dev/scripts/game-bundles.mts sync"
 
 [tasks."admin:assets:publish"]
-description = "Upload the local game bundles and write assets/game-bundles.sha256"
+description = "Upload the catalog game bundles and write their checksums to assets/catalog.json"
 env._.file = { path = ".env", redact = true }
 run = "node ./dev/scripts/game-bundles.mts publish"
 
@@ -378,11 +378,11 @@ run = [
 ]
 
 [tasks."assets:steam:fetch"]
-description = "Fetch EU4 or EU5 game files through SteamCMD into assets/steam"
+description = "Fetch supported game files through SteamCMD into assets/steam"
 run = 'cargo run --package pdx-assets -- fetch-game "$@"'
 
 [tasks."assets:steam:bundle"]
-description = "Fetch supported Steam game patches and create raw bundles. Defaults to the games that compile (eu4, eu5)"
+description = "Fetch supported Steam game patches and create raw bundles. Defaults to games supported by compilation."
 usage = '''
 flag "--username <username>" help="Steam username" env="STEAM_USERNAME"
 flag "--game <game>" help="Only process targets for one game" {

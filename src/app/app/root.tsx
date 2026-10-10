@@ -28,12 +28,15 @@ import { pdxKeys } from "./services/appApi";
 import { pdxSession } from "./server-lib/auth/session";
 import { seo } from "./lib/seo";
 import appleIconUrl from "./components/head/apple-touch-icon.png";
+import faviconSvgUrl from "./components/head/favicon.svg?no-inline";
 import social from "./components/landing/social.png";
 import { ErrorDisplay } from "@/features/errors";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: tailwind },
   { rel: "stylesheet", href: appCss },
+  { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+  { rel: "icon", type: "image/svg+xml", href: faviconSvgUrl },
   { rel: "apple-touch-icon", sizes: "180x180", href: appleIconUrl },
 ];
 

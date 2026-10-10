@@ -434,11 +434,34 @@ export const dataUrls = (x: any): any => { throw new Error(msg); }
 }
 
 async function setupAssetEu5() {
-  const versionDir = join(projectRoot, "assets", "game", "eu5", "1.0");
-  await mkdir(versionDir, { recursive: true });
-  await touchFile(join(versionDir, "game.zip"));
-  await touchFile(join(versionDir, "map.zip"));
-  await touchFile(join(versionDir, "loc-en.zip"));
+  const gameDir = join(projectRoot, "assets", "game", "eu5");
+  await mkdir(gameDir, { recursive: true });
+  const bundleFiles = ["game.zip", "map.zip", "loc-en.zip"];
+  const versions = (await readdir(gameDir)).filter((name) => /^\d+\.\d+$/.test(name));
+  let hasCompiledBundle = false;
+  const emptyVersions: string[] = [];
+  for (const version of versions) {
+    const sizes = await Promise.all(
+      bundleFiles.map((name) =>
+        stat(join(gameDir, version, name))
+          .then((info) => info.size)
+          .catch(() => null),
+      ),
+    );
+    if (sizes.every((size) => size !== null && size > 0)) hasCompiledBundle = true;
+    if (sizes.every((size) => size === 0)) emptyVersions.push(version);
+  }
+  // Empty placeholders let the app build without EU5 game data. Remove them
+  // after a compile, because the app would load them for saves of that version.
+  if (hasCompiledBundle) {
+    for (const version of emptyVersions) {
+      for (const name of bundleFiles) await rm(join(gameDir, version, name));
+    }
+  } else {
+    const versionDir = join(gameDir, "1.0");
+    await mkdir(versionDir, { recursive: true });
+    for (const name of bundleFiles) await touchFile(join(versionDir, name));
+  }
 
   // Sync compiled images (e.g. the flag atlas) from the latest versioned bundle
   // into the unversioned `common/images` dir the frontend imports from.
