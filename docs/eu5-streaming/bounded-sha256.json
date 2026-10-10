@@ -1,0 +1,1674 @@
+[
+  {
+    "elapsedMs": 14208.765000000596,
+    "success": 20,
+    "errors": [],
+    "writeMs": 543.3800000008196,
+    "storeMs": 1.4999999962747097,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "streamMs": 2325.844999998808,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 33,
+        "rpcMs": 2476.1500000003725,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2378.6699999999255,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 30,
+        "rpcMs": 2499.304999999702,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2608.2249999996275,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 35,
+        "rpcMs": 2726.0750000011176,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2633.010000001639,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 36,
+        "rpcMs": 2774.894999999553,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2203.089999999851,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 37,
+        "rpcMs": 2247.554999999702,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2294.7949999999255,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 38,
+        "rpcMs": 2328.385000001639,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2217.7900000009686,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 38,
+        "rpcMs": 2253.019999999553,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2333.980000000447,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 39,
+        "rpcMs": 2368.6699999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2321.8199999984354,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 40,
+        "rpcMs": 2355.285000000149,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2360.9300000015646,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 40,
+        "rpcMs": 2393.125,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2358.8250000011176,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 41,
+        "rpcMs": 2385.125,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2407.14999999851,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 41,
+        "rpcMs": 2437.710000000894,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2502.004999998957,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 41,
+        "rpcMs": 2532.6699999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2562.170000001788,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 42,
+        "rpcMs": 2594.6850000005215,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2509.8149999994785,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 42,
+        "rpcMs": 2547.0449999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2634.980000000447,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 43,
+        "rpcMs": 2679.609999999404,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3916.594999998808,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 43,
+        "rpcMs": 3952.269999999553,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3655.0299999993294,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 44,
+        "rpcMs": 3683.6450000014156,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3762.054999999702,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 44,
+        "rpcMs": 3794.2949999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3366.664999999106,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 45,
+        "rpcMs": 3403.015000000596,
+        "cacheHit": false
+      }
+    ],
+    "label": "bounded-4-sha256",
+    "repeat": 0,
+    "pssStartMiB": 362.7880859375,
+    "pssPeakMiB": 1270.7890625,
+    "cpuSeconds": 61.63000000000001,
+    "sampleWallSeconds": 15.220683479999934
+  },
+  {
+    "elapsedMs": 15371.849999999627,
+    "success": 20,
+    "errors": [],
+    "writeMs": 651.2750000003725,
+    "storeMs": 1.5250000040978193,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "readMs": 269.0400000009686,
+        "hashMs": 161.4550000000745,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 43.57499999925494,
+        "openMs": 45.480000000447035,
+        "parseMs": 509.06000000052154,
+        "wasmBytes": 301334528,
+        "streamReadCalls": null,
+        "rpcMs": 1114.375,
+        "cacheHit": false
+      },
+      {
+        "readMs": 309.5249999985099,
+        "hashMs": 175.7700000014156,
+        "lookupMs": 0.02499999850988388,
+        "initMs": 50.41000000014901,
+        "openMs": 32.580000000074506,
+        "parseMs": 535.5850000008941,
+        "wasmBytes": 325189632,
+        "streamReadCalls": null,
+        "rpcMs": 1193.815000001341,
+        "cacheHit": false
+      },
+      {
+        "readMs": 218.76999999955297,
+        "hashMs": 207.1749999988824,
+        "lookupMs": 0.02500000037252903,
+        "initMs": 0.005000000819563866,
+        "openMs": 19.855000000447035,
+        "parseMs": 514.8999999985099,
+        "wasmBytes": 351797248,
+        "streamReadCalls": null,
+        "rpcMs": 1003.8349999990314,
+        "cacheHit": false
+      },
+      {
+        "readMs": 189.47000000067055,
+        "hashMs": 305.10999999940395,
+        "lookupMs": 0.010000001639127731,
+        "initMs": 0.009999999776482582,
+        "openMs": 19.644999999552965,
+        "parseMs": 656.964999999851,
+        "wasmBytes": 358809600,
+        "streamReadCalls": null,
+        "rpcMs": 1232.4049999993294,
+        "cacheHit": false
+      },
+      {
+        "readMs": 176.42999999970198,
+        "hashMs": 192.910000000149,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 25.355000000447035,
+        "parseMs": 605.7050000000745,
+        "wasmBytes": 385417216,
+        "streamReadCalls": null,
+        "rpcMs": 1056.839999999851,
+        "cacheHit": false
+      },
+      {
+        "readMs": 240.9799999985844,
+        "hashMs": 193.24000000022352,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0.010000001639127731,
+        "openMs": 33.48499999940395,
+        "parseMs": 770.605000000447,
+        "wasmBytes": 392429568,
+        "streamReadCalls": null,
+        "rpcMs": 1264.3849999997765,
+        "cacheHit": false
+      },
+      {
+        "readMs": 419.7050000000745,
+        "hashMs": 220.410000000149,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0,
+        "openMs": 22.33999999985099,
+        "parseMs": 860.855000000447,
+        "wasmBytes": 385417216,
+        "streamReadCalls": null,
+        "rpcMs": 1587.120000001043,
+        "cacheHit": false
+      },
+      {
+        "readMs": 582.0099999997765,
+        "hashMs": 479.50500000081956,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 45.3899999987334,
+        "parseMs": 838.8100000005215,
+        "wasmBytes": 392429568,
+        "streamReadCalls": null,
+        "rpcMs": 1970.640000000596,
+        "cacheHit": false
+      },
+      {
+        "readMs": 634.3150000013411,
+        "hashMs": 347.1299999989569,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0,
+        "openMs": 26.740000000223517,
+        "parseMs": 568.7099999990314,
+        "wasmBytes": 385417216,
+        "streamReadCalls": null,
+        "rpcMs": 1605.6699999999255,
+        "cacheHit": false
+      },
+      {
+        "readMs": 282.81000000052154,
+        "hashMs": 330.3650000002235,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 19.28999999910593,
+        "parseMs": 755.605000000447,
+        "wasmBytes": 459669504,
+        "streamReadCalls": null,
+        "rpcMs": 1419.9900000002235,
+        "cacheHit": false
+      },
+      {
+        "readMs": 465.1699999999255,
+        "hashMs": 277.9500000011176,
+        "lookupMs": 0,
+        "initMs": 0.004999998956918716,
+        "openMs": 28.375,
+        "parseMs": 663.9150000009686,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1464.570000000298,
+        "cacheHit": false
+      },
+      {
+        "readMs": 455.32499999925494,
+        "hashMs": 334.26500000059605,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 29.625,
+        "parseMs": 698.0399999991059,
+        "wasmBytes": 459669504,
+        "streamReadCalls": null,
+        "rpcMs": 1543.285000000149,
+        "cacheHit": false
+      },
+      {
+        "readMs": 394.5,
+        "hashMs": 216.910000000149,
+        "lookupMs": 0.02500000037252903,
+        "initMs": 0,
+        "openMs": 23.84999999962747,
+        "parseMs": 706.5300000011921,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1368.0649999994785,
+        "cacheHit": false
+      },
+      {
+        "readMs": 392.10500000044703,
+        "hashMs": 217.06499999947846,
+        "lookupMs": 0.019999999552965164,
+        "initMs": 0,
+        "openMs": 26.375,
+        "parseMs": 724.0600000005215,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1388.785000000149,
+        "cacheHit": false
+      },
+      {
+        "readMs": 377.46000000089407,
+        "hashMs": 246.9349999986589,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.005000000819563866,
+        "openMs": 23.134999999776483,
+        "parseMs": 725.6999999992549,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1422.910000000149,
+        "cacheHit": false
+      },
+      {
+        "readMs": 467.0049999989569,
+        "hashMs": 347.4500000011176,
+        "lookupMs": 0.014999998733401299,
+        "initMs": 0.005000000819563866,
+        "openMs": 26.68999999947846,
+        "parseMs": 780.5600000005215,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1649.2900000009686,
+        "cacheHit": false
+      },
+      {
+        "readMs": 380.3300000000745,
+        "hashMs": 403.6349999997765,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.005000000819563866,
+        "openMs": 22.774999998509884,
+        "parseMs": 744.8300000000745,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1583.2050000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 431.85500000044703,
+        "hashMs": 391.1299999989569,
+        "lookupMs": 0,
+        "initMs": 0.010000001639127731,
+        "openMs": 18.59999999962747,
+        "parseMs": 732.3249999992549,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1607.879999998957,
+        "cacheHit": false
+      },
+      {
+        "readMs": 507.90000000037253,
+        "hashMs": 402.82499999925494,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0,
+        "openMs": 24.43999999947846,
+        "parseMs": 773.6349999997765,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1746.2050000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 423.35500000044703,
+        "hashMs": 274.125,
+        "lookupMs": 0.015000000596046448,
+        "initMs": 0,
+        "openMs": 22.595000000670552,
+        "parseMs": 693.2799999993294,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1448.440000001341,
+        "cacheHit": false
+      }
+    ],
+    "label": "full-2",
+    "repeat": 0,
+    "pssStartMiB": 350.8701171875,
+    "pssPeakMiB": 3155.798828125,
+    "cpuSeconds": 30.340000000000003,
+    "sampleWallSeconds": 16.150627958999394
+  },
+  {
+    "elapsedMs": 11414.280000001192,
+    "success": 20,
+    "errors": [],
+    "writeMs": 581.1299999989569,
+    "storeMs": 1.860000004991889,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "streamMs": 3884.565000001341,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 30,
+        "rpcMs": 4066.0449999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 4151.6699999999255,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 33,
+        "rpcMs": 4311.199999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 4483.904999999329,
+        "wasmBytes": 83230720,
+        "streamReadCalls": 38,
+        "rpcMs": 4665.140000000596,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 4766.540000000969,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 37,
+        "rpcMs": 4981.7050000000745,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 4855.200000001118,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 35,
+        "rpcMs": 5127.905000001192,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 4961.9199999999255,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 38,
+        "rpcMs": 5190.014999998733,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 4997.289999999106,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 36,
+        "rpcMs": 5262.6850000005215,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 5125.234999999404,
+        "wasmBytes": 83165184,
+        "streamReadCalls": 39,
+        "rpcMs": 5378.485000001267,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3124.4000000003725,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 40,
+        "rpcMs": 3167.9449999984354,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3129.640000000596,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 40,
+        "rpcMs": 3173.960000000894,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3199.3800000008196,
+        "wasmBytes": 83230720,
+        "streamReadCalls": 41,
+        "rpcMs": 3240.870000001043,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3057.370000001043,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 41,
+        "rpcMs": 3116.120000001043,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3121.6749999988824,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 41,
+        "rpcMs": 3175.6399999987334,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3328.359999999404,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 42,
+        "rpcMs": 3387.199999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3278.804999999702,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 42,
+        "rpcMs": 3334.2000000011176,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3277.8149999994785,
+        "wasmBytes": 83165184,
+        "streamReadCalls": 43,
+        "rpcMs": 3315.094999998808,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2942.9599999990314,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 43,
+        "rpcMs": 2980.664999999106,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2777.3499999996275,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 44,
+        "rpcMs": 2818.6500000003725,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2707.0849999990314,
+        "wasmBytes": 83230720,
+        "streamReadCalls": 44,
+        "rpcMs": 2736.679999999702,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2704.625,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 45,
+        "rpcMs": 2730.6349999997765,
+        "cacheHit": false
+      }
+    ],
+    "label": "bounded-8-sha256",
+    "repeat": 0,
+    "pssStartMiB": 319.240234375,
+    "pssPeakMiB": 1536.1201171875,
+    "cpuSeconds": 67.51,
+    "sampleWallSeconds": 13.200608178000039
+  },
+  {
+    "elapsedMs": 21812.554999999702,
+    "success": 20,
+    "errors": [],
+    "writeMs": 561.4199999999255,
+    "storeMs": 1.6500000059604645,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "readMs": 196.82000000029802,
+        "hashMs": 151.5149999987334,
+        "lookupMs": 0.015000000596046448,
+        "initMs": 33.105000000447035,
+        "openMs": 32.50499999895692,
+        "parseMs": 497.25,
+        "wasmBytes": 301334528,
+        "streamReadCalls": null,
+        "rpcMs": 993.7599999997765,
+        "cacheHit": false
+      },
+      {
+        "readMs": 201.5200000014156,
+        "hashMs": 165.910000000149,
+        "lookupMs": 0.019999999552965164,
+        "initMs": 0.009999999776482582,
+        "openMs": 18.644999999552965,
+        "parseMs": 470.89499999955297,
+        "wasmBytes": 334954496,
+        "streamReadCalls": null,
+        "rpcMs": 884.7050000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 247.7050000000745,
+        "hashMs": 174.43500000052154,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0.005000000819563866,
+        "openMs": 18.134999999776483,
+        "parseMs": 532.695000000298,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 1002.304999999702,
+        "cacheHit": false
+      },
+      {
+        "readMs": 178.1699999999255,
+        "hashMs": 184.6399999987334,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0,
+        "openMs": 23.93999999947846,
+        "parseMs": 528.9499999992549,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 947.9350000005215,
+        "cacheHit": false
+      },
+      {
+        "readMs": 214.33500000089407,
+        "hashMs": 189.22499999962747,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0,
+        "openMs": 19.845000000670552,
+        "parseMs": 535.945000000298,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 993.445000000298,
+        "cacheHit": false
+      },
+      {
+        "readMs": 208.339999999851,
+        "hashMs": 190.66499999910593,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.005000000819563866,
+        "openMs": 20.984999999403954,
+        "parseMs": 583.25,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 1031.8649999983609,
+        "cacheHit": false
+      },
+      {
+        "readMs": 246.09999999962747,
+        "hashMs": 191.83500000089407,
+        "lookupMs": 0.02500000037252903,
+        "initMs": 0,
+        "openMs": 20.949999999254942,
+        "parseMs": 551.4900000002235,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 1043.175000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 215.60000000149012,
+        "hashMs": 196.88499999977648,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 18.709999999031425,
+        "parseMs": 588.339999999851,
+        "wasmBytes": 402194432,
+        "streamReadCalls": null,
+        "rpcMs": 1048.4199999999255,
+        "cacheHit": false
+      },
+      {
+        "readMs": 226.47499999962747,
+        "hashMs": 202.63000000081956,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.009999999776482582,
+        "openMs": 20.679999999701977,
+        "parseMs": 615.8300000000745,
+        "wasmBytes": 402194432,
+        "streamReadCalls": null,
+        "rpcMs": 1089.429999999702,
+        "cacheHit": false
+      },
+      {
+        "readMs": 225.3549999985844,
+        "hashMs": 222.32000000029802,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.004999998956918716,
+        "openMs": 22.345000000670552,
+        "parseMs": 626.035000000149,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1120.855000000447,
+        "cacheHit": false
+      },
+      {
+        "readMs": 238.8950000014156,
+        "hashMs": 212.6399999987334,
+        "lookupMs": 0,
+        "initMs": 0.005000000819563866,
+        "openMs": 20.834999999031425,
+        "parseMs": 574.0500000007451,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1070.574999999255,
+        "cacheHit": false
+      },
+      {
+        "readMs": 213.34500000067055,
+        "hashMs": 203.5800000000745,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0,
+        "openMs": 20.654999999329448,
+        "parseMs": 559.5250000003725,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1023.5600000005215,
+        "cacheHit": false
+      },
+      {
+        "readMs": 227.77500000037253,
+        "hashMs": 200.86499999836087,
+        "lookupMs": 0,
+        "initMs": 0,
+        "openMs": 21.330000000074506,
+        "parseMs": 627.7900000009686,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1101.714999999851,
+        "cacheHit": false
+      },
+      {
+        "readMs": 235.03499999828637,
+        "hashMs": 207.76500000059605,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0,
+        "openMs": 21.66499999910593,
+        "parseMs": 601.1349999997765,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1091.745000001043,
+        "cacheHit": false
+      },
+      {
+        "readMs": 239.90000000037253,
+        "hashMs": 210.89499999955297,
+        "lookupMs": 0,
+        "initMs": 0,
+        "openMs": 21.06499999947846,
+        "parseMs": 587.1699999999255,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1083.3499999996275,
+        "cacheHit": false
+      },
+      {
+        "readMs": 227.09500000067055,
+        "hashMs": 222.43999999947846,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.004999998956918716,
+        "openMs": 23.625,
+        "parseMs": 633.0999999996275,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1134.890000000596,
+        "cacheHit": false
+      },
+      {
+        "readMs": 228.17500000074506,
+        "hashMs": 224.36500000022352,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0,
+        "openMs": 23.144999999552965,
+        "parseMs": 657.0850000008941,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1159.440000001341,
+        "cacheHit": false
+      },
+      {
+        "readMs": 255.68000000156462,
+        "hashMs": 220.05499999970198,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0,
+        "openMs": 20.4850000012666,
+        "parseMs": 613.2999999988824,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1135.144999999553,
+        "cacheHit": false
+      },
+      {
+        "readMs": 214.160000000149,
+        "hashMs": 219.42999999970198,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 25.709999999031425,
+        "parseMs": 654.6200000010431,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1138.304999999702,
+        "cacheHit": false
+      },
+      {
+        "readMs": 234.339999999851,
+        "hashMs": 222.59500000067055,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0,
+        "openMs": 22.554999999701977,
+        "parseMs": 651.8600000012666,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1154.3849999997765,
+        "cacheHit": false
+      }
+    ],
+    "label": "full-1",
+    "repeat": 0,
+    "pssStartMiB": 322.9912109375,
+    "pssPeakMiB": 2121.7314453125,
+    "cpuSeconds": 25.22,
+    "sampleWallSeconds": 23.358480881001014
+  },
+  {
+    "elapsedMs": 21447.070000000298,
+    "success": 20,
+    "errors": [],
+    "writeMs": 564.9500000011176,
+    "storeMs": 1.4400000050663948,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "readMs": 113.375,
+        "hashMs": 153.23000000044703,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 24.24500000104308,
+        "openMs": 28.945000000298023,
+        "parseMs": 525.0149999987334,
+        "wasmBytes": 301334528,
+        "streamReadCalls": null,
+        "rpcMs": 909.4000000003725,
+        "cacheHit": false
+      },
+      {
+        "readMs": 189.90000000037253,
+        "hashMs": 163.125,
+        "lookupMs": 0.019999999552965164,
+        "initMs": 0.009999999776482582,
+        "openMs": 17.390000000596046,
+        "parseMs": 451.7199999988079,
+        "wasmBytes": 334954496,
+        "streamReadCalls": null,
+        "rpcMs": 850.1549999993294,
+        "cacheHit": false
+      },
+      {
+        "readMs": 176.25999999977648,
+        "hashMs": 173.06000000052154,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0.005000000819563866,
+        "openMs": 21.60499999858439,
+        "parseMs": 487.0650000013411,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 888.3499999996275,
+        "cacheHit": false
+      },
+      {
+        "readMs": 177.214999999851,
+        "hashMs": 178.64000000059605,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 18.869999999180436,
+        "parseMs": 503.67500000074506,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 903.6650000009686,
+        "cacheHit": false
+      },
+      {
+        "readMs": 234.964999999851,
+        "hashMs": 184.12000000104308,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0,
+        "openMs": 22.375,
+        "parseMs": 525.7100000008941,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 994.9949999991804,
+        "cacheHit": false
+      },
+      {
+        "readMs": 185.55499999970198,
+        "hashMs": 186.4850000012666,
+        "lookupMs": 0,
+        "initMs": 0.004999998956918716,
+        "openMs": 20.915000000968575,
+        "parseMs": 519.3349999990314,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 938.1749999988824,
+        "cacheHit": false
+      },
+      {
+        "readMs": 189.69999999925494,
+        "hashMs": 187.61500000022352,
+        "lookupMs": 0.014999998733401299,
+        "initMs": 0.005000000819563866,
+        "openMs": 18.765000000596046,
+        "parseMs": 531,
+        "wasmBytes": 368574464,
+        "streamReadCalls": null,
+        "rpcMs": 952.8800000008196,
+        "cacheHit": false
+      },
+      {
+        "readMs": 180.06000000052154,
+        "hashMs": 210.660000000149,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0,
+        "openMs": 19.169999999925494,
+        "parseMs": 583.4950000010431,
+        "wasmBytes": 402194432,
+        "streamReadCalls": null,
+        "rpcMs": 1019,
+        "cacheHit": false
+      },
+      {
+        "readMs": 212.69500000029802,
+        "hashMs": 196.63000000081956,
+        "lookupMs": 0,
+        "initMs": 0.009999999776482582,
+        "openMs": 19.91000000014901,
+        "parseMs": 580.1749999988824,
+        "wasmBytes": 402194432,
+        "streamReadCalls": null,
+        "rpcMs": 1034.719999998808,
+        "cacheHit": false
+      },
+      {
+        "readMs": 239.84500000067055,
+        "hashMs": 197.9799999985844,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.004999998956918716,
+        "openMs": 21.58500000089407,
+        "parseMs": 570.4550000000745,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1064.0299999993294,
+        "cacheHit": false
+      },
+      {
+        "readMs": 211.75,
+        "hashMs": 203.7800000011921,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0,
+        "openMs": 25.390000000596046,
+        "parseMs": 642.7249999996275,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1112.1549999993294,
+        "cacheHit": false
+      },
+      {
+        "readMs": 365.5099999997765,
+        "hashMs": 205.1100000012666,
+        "lookupMs": 0,
+        "initMs": 0,
+        "openMs": 23.584999999031425,
+        "parseMs": 706.5950000006706,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1321.4199999999255,
+        "cacheHit": false
+      },
+      {
+        "readMs": 156.7949999999255,
+        "hashMs": 202.5,
+        "lookupMs": 0,
+        "initMs": 0,
+        "openMs": 18.625,
+        "parseMs": 477.3500000014901,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 888.695000000298,
+        "cacheHit": false
+      },
+      {
+        "readMs": 361.3300000000745,
+        "hashMs": 207.3449999988079,
+        "lookupMs": 0,
+        "initMs": 0.005000000819563866,
+        "openMs": 22.550000000745058,
+        "parseMs": 594.1749999988824,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1210.2649999987334,
+        "cacheHit": false
+      },
+      {
+        "readMs": 220.64999999850988,
+        "hashMs": 216.71000000089407,
+        "lookupMs": 0,
+        "initMs": 0.005000000819563866,
+        "openMs": 22.93999999947846,
+        "parseMs": 607.910000000149,
+        "wasmBytes": 469434368,
+        "streamReadCalls": null,
+        "rpcMs": 1096.3149999994785,
+        "cacheHit": false
+      },
+      {
+        "readMs": 238.3300000000745,
+        "hashMs": 215.14000000059605,
+        "lookupMs": 0,
+        "initMs": 0.009999999776482582,
+        "openMs": 22.855000000447035,
+        "parseMs": 643.730000000447,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1145.234999999404,
+        "cacheHit": false
+      },
+      {
+        "readMs": 231.1399999987334,
+        "hashMs": 216.875,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0,
+        "openMs": 22.040000000968575,
+        "parseMs": 633.3999999985099,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1134.3300000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 226.73999999836087,
+        "hashMs": 215.83500000089407,
+        "lookupMs": 0,
+        "initMs": 0,
+        "openMs": 23.234999999403954,
+        "parseMs": 610.4850000012666,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1099.6500000003725,
+        "cacheHit": false
+      },
+      {
+        "readMs": 218.28999999910593,
+        "hashMs": 222.63000000081956,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0,
+        "openMs": 22.429999999701977,
+        "parseMs": 676.75,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1165.2400000002235,
+        "cacheHit": false
+      },
+      {
+        "readMs": 236.34500000067055,
+        "hashMs": 223.70999999903142,
+        "lookupMs": 0,
+        "initMs": 0,
+        "openMs": 22.894999999552965,
+        "parseMs": 645.785000000149,
+        "wasmBytes": 536674304,
+        "streamReadCalls": null,
+        "rpcMs": 1151.480000000447,
+        "cacheHit": false
+      }
+    ],
+    "label": "full-1",
+    "repeat": 1,
+    "pssStartMiB": 325.80859375,
+    "pssPeakMiB": 2206.78515625,
+    "cpuSeconds": 24.700000000000003,
+    "sampleWallSeconds": 22.29758789100015
+  },
+  {
+    "elapsedMs": 9128.464999999851,
+    "success": 20,
+    "errors": [],
+    "writeMs": 534.1450000014156,
+    "storeMs": 1.5,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "streamMs": 2918.684999998659,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 36,
+        "rpcMs": 3113.5400000009686,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2956.195000000298,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 37,
+        "rpcMs": 3138.980000000447,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3002.0849999990314,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 30,
+        "rpcMs": 3169.2799999993294,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2937.730000000447,
+        "wasmBytes": 83230720,
+        "streamReadCalls": 38,
+        "rpcMs": 3207.085000000894,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3005.609999999404,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 35,
+        "rpcMs": 3247.265000000596,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3053.734999999404,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 38,
+        "rpcMs": 3269.710000000894,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3186.8100000005215,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 33,
+        "rpcMs": 3315.120000001043,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3109.644999999553,
+        "wasmBytes": 83165184,
+        "streamReadCalls": 39,
+        "rpcMs": 3347.5099999997765,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2765.5449999999255,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 40,
+        "rpcMs": 2822.160000000149,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2767.0950000006706,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 40,
+        "rpcMs": 2831.8650000002235,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2732.0649999994785,
+        "wasmBytes": 83230720,
+        "streamReadCalls": 41,
+        "rpcMs": 2784.254999998957,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2785.9000000003725,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 41,
+        "rpcMs": 2825.0449999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3047.2050000000745,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 41,
+        "rpcMs": 3086.4650000017136,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2952.7999999988824,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 42,
+        "rpcMs": 3001.2249999996275,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2995.8600000012666,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 42,
+        "rpcMs": 3027.910000000149,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 3085.1450000014156,
+        "wasmBytes": 83165184,
+        "streamReadCalls": 43,
+        "rpcMs": 3114.2400000002235,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2463.675000000745,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 43,
+        "rpcMs": 2488.129999998957,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2486.980000000447,
+        "wasmBytes": 83296256,
+        "streamReadCalls": 44,
+        "rpcMs": 2512.2750000003725,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2497.675000000745,
+        "wasmBytes": 83230720,
+        "streamReadCalls": 44,
+        "rpcMs": 2522.8600000012666,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2497.5600000005215,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 45,
+        "rpcMs": 2520.4599999990314,
+        "cacheHit": false
+      }
+    ],
+    "label": "bounded-8-sha256",
+    "repeat": 1,
+    "pssStartMiB": 325.9482421875,
+    "pssPeakMiB": 1603.8818359375,
+    "cpuSeconds": 64.12000000000002,
+    "sampleWallSeconds": 9.810129520999908
+  },
+  {
+    "elapsedMs": 12095.35000000149,
+    "success": 20,
+    "errors": [],
+    "writeMs": 630.3349999990314,
+    "storeMs": 1.594999996945262,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "readMs": 161.37999999895692,
+        "hashMs": 154.14000000059605,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 35.93500000052154,
+        "openMs": 34.75499999895692,
+        "parseMs": 539.7900000009686,
+        "wasmBytes": 301334528,
+        "streamReadCalls": null,
+        "rpcMs": 1002.4250000007451,
+        "cacheHit": false
+      },
+      {
+        "readMs": 188.68500000052154,
+        "hashMs": 168.23000000044703,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 35.65500000119209,
+        "openMs": 31.355000000447035,
+        "parseMs": 574.0249999985099,
+        "wasmBytes": 325189632,
+        "streamReadCalls": null,
+        "rpcMs": 1086.7000000011176,
+        "cacheHit": false
+      },
+      {
+        "readMs": 190.84999999962747,
+        "hashMs": 178.94500000029802,
+        "lookupMs": 0.015000000596046448,
+        "initMs": 0.004999998956918716,
+        "openMs": 18.740000000223517,
+        "parseMs": 499.4900000002235,
+        "wasmBytes": 351797248,
+        "streamReadCalls": null,
+        "rpcMs": 916.0300000011921,
+        "cacheHit": false
+      },
+      {
+        "readMs": 189.4699999988079,
+        "hashMs": 179.2350000012666,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0.009999999776482582,
+        "openMs": 19.994999999180436,
+        "parseMs": 526.8499999996275,
+        "wasmBytes": 358809600,
+        "streamReadCalls": null,
+        "rpcMs": 949.1899999994785,
+        "cacheHit": false
+      },
+      {
+        "readMs": 197.11999999918044,
+        "hashMs": 188.02999999932945,
+        "lookupMs": 0,
+        "initMs": 0.005000000819563866,
+        "openMs": 17.84999999962747,
+        "parseMs": 552.3650000002235,
+        "wasmBytes": 385417216,
+        "streamReadCalls": null,
+        "rpcMs": 998.5800000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 206.01500000059605,
+        "hashMs": 191.3099999986589,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0,
+        "openMs": 19.800000000745058,
+        "parseMs": 575.5800000000745,
+        "wasmBytes": 392429568,
+        "streamReadCalls": null,
+        "rpcMs": 1027.4350000005215,
+        "cacheHit": false
+      },
+      {
+        "readMs": 230.50999999977648,
+        "hashMs": 203.61999999918044,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.009999999776482582,
+        "openMs": 33.355000000447035,
+        "parseMs": 566.3149999994785,
+        "wasmBytes": 385417216,
+        "streamReadCalls": null,
+        "rpcMs": 1060.9449999984354,
+        "cacheHit": false
+      },
+      {
+        "readMs": 266.714999999851,
+        "hashMs": 211.3300000000745,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0,
+        "openMs": 25.31000000052154,
+        "parseMs": 590.25,
+        "wasmBytes": 392429568,
+        "streamReadCalls": null,
+        "rpcMs": 1122.195000000298,
+        "cacheHit": false
+      },
+      {
+        "readMs": 226.73499999940395,
+        "hashMs": 208.94999999925494,
+        "lookupMs": 0,
+        "initMs": 0.005000000819563866,
+        "openMs": 25.21499999985099,
+        "parseMs": 580.3100000005215,
+        "wasmBytes": 385417216,
+        "streamReadCalls": null,
+        "rpcMs": 1070.9199999999255,
+        "cacheHit": false
+      },
+      {
+        "readMs": 254.97000000067055,
+        "hashMs": 206.94500000029802,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0,
+        "openMs": 22.50499999895692,
+        "parseMs": 597.6500000003725,
+        "wasmBytes": 459669504,
+        "streamReadCalls": null,
+        "rpcMs": 1114.9599999990314,
+        "cacheHit": false
+      },
+      {
+        "readMs": 219.17500000074506,
+        "hashMs": 215.87999999895692,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.005000000819563866,
+        "openMs": 24.334999999031425,
+        "parseMs": 620.429999999702,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1105.890000000596,
+        "cacheHit": false
+      },
+      {
+        "readMs": 247.41500000096858,
+        "hashMs": 210.45999999903142,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0.005000000819563866,
+        "openMs": 20.989999998360872,
+        "parseMs": 636.6550000011921,
+        "wasmBytes": 459669504,
+        "streamReadCalls": null,
+        "rpcMs": 1137.879999998957,
+        "cacheHit": false
+      },
+      {
+        "readMs": 229.8950000014156,
+        "hashMs": 210.05499999970198,
+        "lookupMs": 0.03500000014901161,
+        "initMs": 0.004999998956918716,
+        "openMs": 26.980000000447035,
+        "parseMs": 643.714999999851,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1139.0950000006706,
+        "cacheHit": false
+      },
+      {
+        "readMs": 295.39499999955297,
+        "hashMs": 217.2949999999255,
+        "lookupMs": 0.015000000596046448,
+        "initMs": 0.009999999776482582,
+        "openMs": 24.875,
+        "parseMs": 654.070000000298,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1220.425000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 229.32000000029802,
+        "hashMs": 213.9199999999255,
+        "lookupMs": 0.005000000819563866,
+        "initMs": 0,
+        "openMs": 25.429999999701977,
+        "parseMs": 643.019999999553,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1137.7050000000745,
+        "cacheHit": false
+      },
+      {
+        "readMs": 236.51000000163913,
+        "hashMs": 222.81499999947846,
+        "lookupMs": 0.009999999776482582,
+        "initMs": 0.005000000819563866,
+        "openMs": 22.2649999987334,
+        "parseMs": 683.5950000006706,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1191.2649999987334,
+        "cacheHit": false
+      },
+      {
+        "readMs": 246.30499999970198,
+        "hashMs": 218.96000000089407,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.009999999776482582,
+        "openMs": 24.820000000298023,
+        "parseMs": 653.339999999851,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1171.8500000014901,
+        "cacheHit": false
+      },
+      {
+        "readMs": 238.4550000000745,
+        "hashMs": 219.01500000059605,
+        "lookupMs": 0,
+        "initMs": 0.014999998733401299,
+        "openMs": 22.52000000141561,
+        "parseMs": 682.1899999994785,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1189.199999999255,
+        "cacheHit": false
+      },
+      {
+        "readMs": 231.3449999988079,
+        "hashMs": 231.1699999999255,
+        "lookupMs": 0,
+        "initMs": 0.009999999776482582,
+        "openMs": 24.720000000670552,
+        "parseMs": 850.4700000006706,
+        "wasmBytes": 486277120,
+        "streamReadCalls": null,
+        "rpcMs": 1366.2449999991804,
+        "cacheHit": false
+      },
+      {
+        "readMs": 288.5099999997765,
+        "hashMs": 241.4550000000745,
+        "lookupMs": 0.004999998956918716,
+        "initMs": 0.005000000819563866,
+        "openMs": 22.845000000670552,
+        "parseMs": 845.3149999994785,
+        "wasmBytes": 526909440,
+        "streamReadCalls": null,
+        "rpcMs": 1424.2299999985844,
+        "cacheHit": false
+      }
+    ],
+    "label": "full-2",
+    "repeat": 1,
+    "pssStartMiB": 329.4482421875,
+    "pssPeakMiB": 3317.654296875,
+    "cpuSeconds": 26.320000000000007,
+    "sampleWallSeconds": 13.921176157000446
+  },
+  {
+    "elapsedMs": 12243.555000001565,
+    "success": 20,
+    "errors": [],
+    "writeMs": 449.80000000074506,
+    "storeMs": 1.4099999982863665,
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "first": "1338-04-01",
+    "last": "1437-04-01",
+    "costs": [
+      {
+        "streamMs": 2052.5099999997765,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 35,
+        "rpcMs": 2186.554999999702,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2057.394999999553,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 36,
+        "rpcMs": 2230.910000000149,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2136.5999999996275,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 30,
+        "rpcMs": 2251.660000000149,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2136.464999999851,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 33,
+        "rpcMs": 2274.019999999553,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2000.0099999997765,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 37,
+        "rpcMs": 2043.4749999996275,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2030.7400000002235,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 38,
+        "rpcMs": 2064.905000001192,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2014.105000000447,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 38,
+        "rpcMs": 2064.120000001043,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2114.285000000149,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 39,
+        "rpcMs": 2143.4900000002235,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2232.394999999553,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 40,
+        "rpcMs": 2266.574999999255,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2257.0999999996275,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 41,
+        "rpcMs": 2282.75,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2289.519999999553,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 40,
+        "rpcMs": 2316.179999999702,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2306.3149999994785,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 41,
+        "rpcMs": 2333.4000000003725,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2224.539999999106,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 41,
+        "rpcMs": 2247.515000000596,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2205.9199999999255,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 42,
+        "rpcMs": 2239.7249999996275,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2258.9249999988824,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 42,
+        "rpcMs": 2281.75,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2276.019999999553,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 43,
+        "rpcMs": 2307.394999999553,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2512.535000000149,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 43,
+        "rpcMs": 2612.410000000149,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2739.765000000596,
+        "wasmBytes": 83623936,
+        "streamReadCalls": 44,
+        "rpcMs": 2761.0999999996275,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2744.2599999997765,
+        "wasmBytes": 83361792,
+        "streamReadCalls": 44,
+        "rpcMs": 2763.1549999993294,
+        "cacheHit": false
+      },
+      {
+        "streamMs": 2715.3950000014156,
+        "wasmBytes": 83427328,
+        "streamReadCalls": 45,
+        "rpcMs": 2734.2099999990314,
+        "cacheHit": false
+      }
+    ],
+    "label": "bounded-4-sha256",
+    "repeat": 1,
+    "pssStartMiB": 329.0849609375,
+    "pssPeakMiB": 1192.125,
+    "cpuSeconds": 54.04999999999998,
+    "sampleWallSeconds": 13.950831465999727
+  }
+]

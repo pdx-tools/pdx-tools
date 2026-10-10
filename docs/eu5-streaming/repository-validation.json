@@ -1,0 +1,22 @@
+[
+  {
+    "algorithm": "sha256",
+    "checked": 20,
+    "success": 20,
+    "errors": [],
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "workers": 4,
+    "maxWasmBytes": 83623936
+  },
+  {
+    "algorithm": "blake3",
+    "checked": 20,
+    "success": 20,
+    "errors": [],
+    "fingerprint": "39c0c37fb4cc31a02965c8e7aec0df4dac352661f1252c346575d1909cd25c9e",
+    "resultBytes": 44992923,
+    "workers": 4,
+    "maxWasmBytes": 83623936
+  }
+]
