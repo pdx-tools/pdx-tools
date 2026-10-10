@@ -1,0 +1,21 @@
+{
+  "elapsedMs": 92371.04499999993,
+  "workers": 16,
+  "success": 336,
+  "errors": [],
+  "verifiedIndependentHashes": 0,
+  "sinkAggregateMs": 134819.13499998115,
+  "bytesParsed": 123615532040,
+  "maxWasmBytes": 83623936,
+  "totalWasmHighWaterBytes": 1337982976,
+  "first": "1338-04-01",
+  "last": "1556-04-01",
+  "totalFiles": 336,
+  "totalBytes": 123615532040,
+  "pssStartMiB": 505.517578125,
+  "pssPeakMiB": 5299.8916015625,
+  "cpuSeconds": 780.8,
+  "sampleWallSeconds": 92.85244944699843,
+  "algorithm": "blake3",
+  "chunkMiB": 8
+}

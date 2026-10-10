@@ -14,6 +14,15 @@ const initialize = () =>
     set_tokens(new Uint8Array(await response.arrayBuffer()));
   })());
 
+/** Only used to verify an existing SHA cache identity during BLAKE3 migration. */
+export async function sha256File(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  // Release the large backing store immediately, before another migration job starts.
+  bytes.transfer(0);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export async function parseSnapshot(
   file: File,
 ): Promise<{ snapshot: Snapshot; cacheHit: boolean }> {
@@ -22,9 +31,13 @@ export async function parseSnapshot(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
   const cached = await cachedSnapshot(hash).catch(() => undefined);
-  if (cached) return { snapshot: { ...cached, fileName: file.name }, cacheHit: true };
+  if (cached) {
+    bytes.buffer.transfer(0);
+    return { snapshot: { ...cached, fileName: file.name }, cacheHit: true };
+  }
   await initialize();
   const parser = Eu5MetaParser.create().init(bytes);
+  bytes.buffer.transfer(0);
   const metadata = parser.meta();
   if (!metadata.playthroughId) {
     parser.free();
@@ -38,4 +51,4 @@ export async function parseSnapshot(
   return { snapshot: { ...snapshot, hash, fileName: file.name, marketLabels }, cacheHit: false };
 }
 
-expose({ parseSnapshot });
+expose({ parseSnapshot, sha256File });

@@ -58,6 +58,16 @@ fn finite(value: f64) -> Option<f64> {
     value.is_finite().then_some(value)
 }
 
+// Reuse existing keys; entry(key.to_owned()) allocates a String for every pop/building.
+fn add_named(totals: &mut BTreeMap<String, f64>, key: &str, value: f64) {
+    if let Some(total) = totals.get_mut(key) {
+        *total += value;
+    } else {
+        // Keep the same arithmetic as or_default() += value, including signed zero.
+        totals.insert(key.to_owned(), 0.0 + value);
+    }
+}
+
 /// Copy compact observations out of one parsed save; the arena can then be freed.
 pub fn extract(game: &eu5save::models::Gamestate<'_>) -> SaveSnapshot {
     let meta = &game.metadata;
@@ -93,17 +103,17 @@ pub fn extract(game: &eu5save::models::Gamestate<'_>) -> SaveSnapshot {
         .iter_with_id()
         .map(|(id, market)| (id.value(), market.center.value()))
         .collect();
-    let mut totals = BTreeMap::<String, CountryObservation>::new();
+    let mut totals = BTreeMap::<&str, CountryObservation>::new();
     for entry in game.locations.iter() {
         let location = entry.location();
         let Some(owner) = game.countries.get_entry(location.owner) else {
             continue;
         };
-        let tag = owner.tag().to_string();
-        let total = totals.entry(tag.clone()).or_insert_with(|| {
+        let tag = owner.tag().to_str();
+        let total = totals.entry(tag).or_insert_with(|| {
             let data = owner.data();
             CountryObservation {
-                tag,
+                tag: tag.to_owned(),
                 income: data
                     .map(|d| d.estimated_monthly_income_trade_and_tax)
                     .and_then(finite)
@@ -140,10 +150,7 @@ pub fn extract(game: &eu5save::models::Gamestate<'_>) -> SaveSnapshot {
         let levels = finite(location.rgo_level).unwrap_or(0.0);
         total.rgo_levels += levels;
         if let Some(material) = location.raw_material {
-            *total
-                .materials
-                .entry(material.to_str().to_string())
-                .or_default() += levels;
+            add_named(&mut total.materials, material.to_str(), levels);
         }
         if let Some(&center) = location
             .market
@@ -156,10 +163,11 @@ pub fn extract(game: &eu5save::models::Gamestate<'_>) -> SaveSnapshot {
         for &id in location.population.pops {
             if let Some(pop) = game.population.database.lookup(id) {
                 if let Some(religion) = game.religion_manager.lookup(pop.religion) {
-                    *total
-                        .religions
-                        .entry(religion.key.to_str().to_string())
-                        .or_default() += (pop.size * 1000.0).floor();
+                    add_named(
+                        &mut total.religions,
+                        religion.key.to_str(),
+                        (pop.size * 1000.0).floor(),
+                    );
                 }
             }
         }
@@ -172,14 +180,11 @@ pub fn extract(game: &eu5save::models::Gamestate<'_>) -> SaveSnapshot {
         let Some(owner) = game.countries.get_entry(location.owner) else {
             continue;
         };
-        if let Some(total) = totals.get_mut(&owner.tag().to_string()) {
+        if let Some(total) = totals.get_mut(owner.tag().to_str()) {
             let levels = finite(building.level).unwrap_or(0.0);
             total.building_levels += levels;
             total.building_employment += finite(building.employed * 1000.0).unwrap_or(0.0);
-            *total
-                .buildings
-                .entry(building.kind.to_str().to_string())
-                .or_default() += levels;
+            add_named(&mut total.buildings, building.kind.to_str(), levels);
         }
     }
     let population = totals.values().map(|x| x.population).sum();

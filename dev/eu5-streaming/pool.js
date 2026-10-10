@@ -3,6 +3,7 @@ export async function importSnapshots(
   files,
   {
     concurrency = 4,
+    retainSnapshots = true,
     parserBudgetMiB = 768,
     estimatedWorkerMiB = 192,
     chunkSize = 8 * 1024 * 1024,
@@ -16,8 +17,8 @@ export async function importSnapshots(
   if (!["sha256", "blake3"].includes(algorithm)) throw Error("Unknown content hash algorithm");
   if (!Number.isInteger(chunkSize) || chunkSize < 64 * 1024 || chunkSize > 16 * 1024 * 1024)
     throw Error("Chunk size must be 64 KiB to 16 MiB");
-  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 8)
-    throw Error("Concurrency must be 1 to 8");
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 16)
+    throw Error("Concurrency must be 1 to 16");
   if (
     !Number.isFinite(parserBudgetMiB) ||
     !Number.isFinite(estimatedWorkerMiB) ||
@@ -87,7 +88,7 @@ export async function importSnapshots(
               // Await the sink before another save starts on this worker.
               await onSnapshot(result.snapshot, file, result.metrics);
               if (signal?.aborted) break;
-              snapshots.push(result.snapshot);
+              if (retainSnapshots) snapshots.push(result.snapshot);
               metrics.push(result.metrics);
             } catch (error) {
               if (signal?.aborted) break;

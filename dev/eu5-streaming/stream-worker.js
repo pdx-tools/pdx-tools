@@ -1,3 +1,5 @@
+import * as blakeModule from "./pkg-blake3/eu5_streaming.js";
+import * as shaModule from "./pkg-sha/eu5_streaming.js";
 import { createBridge } from "./bridge.js";
 
 const modules = new Map();
@@ -6,10 +8,7 @@ async function parser(algorithm) {
     modules.set(
       algorithm,
       (async () => {
-        const module =
-          algorithm === "sha256"
-            ? await import("./pkg-sha/eu5_streaming.js")
-            : await import("./pkg-blake3/eu5_streaming.js");
+        const module = algorithm === "sha256" ? shaModule : blakeModule;
         const exports = await module.default();
         return { module, exports };
       })(),

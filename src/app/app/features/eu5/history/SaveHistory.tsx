@@ -1,7 +1,7 @@
 import { ContextGraphs } from "./ContextGraphs";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { wrap } from "comlink";
+import { importTimeline } from "./importSnapshots";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { HistoryPlot } from "./HistoryPlot";
 import type { EChartsOption } from "@/components/viz";
@@ -9,11 +9,10 @@ import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/ec
 import type { MapMode } from "@/wasm/wasm_eu5";
 import { useSaveFileInput } from "@/features/engine/engineStore";
 import { useEngineActions } from "@/features/engine/engineStore";
-import { cachedSnapshots, cacheSnapshot, clearSnapshotCache } from "@/features/eu5/history/cache";
+import { cachedSnapshots, clearSnapshotCache } from "@/features/eu5/history/cache";
 import { useHistory } from "@/features/eu5/history/store";
 import { campaignKey } from "@/features/eu5/history/types";
 import type { Snapshot } from "@/features/eu5/history/types";
-import type { parseSnapshot } from "@/features/eu5/history/snapshot-worker";
 import styles from "@/features/eu5/history/Timeline.module.css";
 
 type Metric = "price" | "supply" | "demand" | "stockpile" | "population" | "development";
@@ -82,12 +81,12 @@ export function SaveHistory({
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [issues, setIssues] = useState<string[]>([]);
-  const workerRef = useRef<Worker | null>(null);
   const generation = useRef(0);
+  const cacheReady = useRef<Promise<void>>(Promise.resolve());
   const cancelRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     let alive = true;
-    void cachedSnapshots()
+    cacheReady.current = cachedSnapshots()
       .then((rows) => {
         if (alive) useHistory.getState().add(rows);
       })
@@ -98,7 +97,6 @@ export function SaveHistory({
       alive = false;
       generation.current++;
       cancelRef.current?.();
-      workerRef.current?.terminate();
     };
   }, []);
 
@@ -290,77 +288,65 @@ export function SaveHistory({
     if (!list || busy) return;
     const files = Array.from(list);
     if (embedded && currentFile && !files.includes(currentFile)) files.unshift(currentFile);
-    if (files.length > 200) {
-      setIssues(["Import at most 200 saves at a time."]);
+    if (files.length > 1000) {
+      setIssues(["Import at most 1000 saves at a time."]);
       return;
     }
     setBusy(true);
     setIssues([]);
     const currentGeneration = ++generation.current;
-    const worker = new Worker(new URL("./snapshot-worker.ts", import.meta.url), { type: "module" });
-    workerRef.current = worker;
-    const parser = wrap<{ parseSnapshot: typeof parseSnapshot }>(worker);
-    let cacheWarning = false;
-    const cancelled = new Promise<never>((_, reject) => {
-      cancelRef.current = () => reject(new Error("Import stopped"));
-    });
+    const controller = new AbortController();
+    cancelRef.current = () => controller.abort();
+    let lastProgress = 0;
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (currentGeneration !== generation.current) break;
-        setProgress(`${i + 1}/${files.length} · ${file.name}`);
-        try {
-          if (!file.name.toLowerCase().endsWith(".eu5")) throw new Error("Not an EU5 save");
-          const { snapshot, cacheHit } = await Promise.race([
-            parser.parseSnapshot(file),
-            cancelled,
-          ]);
-          if (currentGeneration !== generation.current) break;
-          const conflict = useHistory
-            .getState()
-            .snapshots.find(
-              (s) =>
-                campaignKey(s) === campaignKey(snapshot) &&
-                s.dateSort === snapshot.dateSort &&
-                s.hash !== snapshot.hash,
-            );
-          if (conflict)
-            throw new Error(
-              `A different save already occupies ${snapshot.date}. Separate alternate campaign branches before importing.`,
-            );
+      await cacheReady.current;
+      if (controller.signal.aborted) return;
+      const result = await importTimeline(files, {
+        signal: controller.signal,
+        existing: useHistory.getState().snapshots,
+        preferredFile:
+          currentFile ??
+          (input?.kind === "eu5" && input.data.kind === "file" ? input.data.file : undefined),
+        onProgress: (completed, total, fileName) => {
+          if (currentGeneration !== generation.current) return;
+          const now = performance.now();
+          if (completed === total || now - lastProgress > 150) {
+            lastProgress = now;
+            setProgress(`${completed}/${total} · ${fileName}`);
+          }
+        },
+        onWarning: (warning) => {
+          if (currentGeneration === generation.current) setIssues((old) => [...old, warning]);
+        },
+        onSnapshots: (snapshots, files) => {
+          if (currentGeneration !== generation.current) return;
           const state = useHistory.getState();
           const activeFile =
             currentFile ??
             (input?.kind === "eu5" && input.data.kind === "file" ? input.data.file : null);
-          const attachedFile =
-            state.selectedHash === snapshot.hash && state.files[snapshot.hash] === activeFile
-              ? activeFile
-              : file;
-          history.add([snapshot], { [snapshot.hash]: attachedFile ?? file });
-          if (activeFile === file) {
-            history.rememberMode(mapMode);
-            history.rememberPanel(true);
-            history.select(snapshot.hash);
+          for (const snapshot of snapshots) {
+            if (
+              state.selectedHash === snapshot.hash &&
+              state.files[snapshot.hash] === activeFile &&
+              activeFile
+            )
+              files[snapshot.hash] = activeFile;
           }
-          try {
-            if (!cacheHit) await cacheSnapshot(snapshot);
-          } catch {
-            if (!cacheWarning) {
-              cacheWarning = true;
-              setIssues((old) => [
-                ...old,
-                "Browser cache could not be written; this session's charts still work.",
-              ]);
-            }
+          state.add(snapshots, files);
+          const active = snapshots.find((s) => files[s.hash] === activeFile);
+          if (active) {
+            state.rememberMode(mapMode);
+            state.rememberPanel(true);
+            state.select(active.hash);
           }
-        } catch (error) {
-          if (currentGeneration === generation.current)
-            setIssues((old) => [...old, `${file.name}: ${String(error)}`]);
-        }
-      }
+        },
+      });
+      if (currentGeneration === generation.current)
+        setIssues((old) => [...old, ...result.errors.map((e) => `${e.fileName}: ${e.error}`)]);
+    } catch (error) {
+      if (!controller.signal.aborted && currentGeneration === generation.current)
+        setIssues((old) => [...old, String(error)]);
     } finally {
-      worker.terminate();
-      if (workerRef.current === worker) workerRef.current = null;
       if (currentGeneration === generation.current) {
         cancelRef.current = null;
         setBusy(false);
@@ -387,7 +373,16 @@ export function SaveHistory({
   const csv = () => {
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const rows = [
-      ["date", "campaign", "game_version", "entity", "good", "metric", "value", "save_sha256"],
+      [
+        "date",
+        "campaign",
+        "game_version",
+        "entity",
+        "good",
+        "metric",
+        "value",
+        "save_content_hash",
+      ],
     ];
     dates.forEach((s, i) =>
       series.forEach((line) =>
@@ -444,8 +439,6 @@ export function SaveHistory({
               onClick={() => {
                 generation.current++;
                 cancelRef.current?.();
-                workerRef.current?.terminate();
-                workerRef.current = null;
                 setBusy(false);
                 setProgress("");
               }}

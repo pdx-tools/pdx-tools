@@ -52,7 +52,7 @@ JS='''async ({concurrency,cold,writeBatch,discard,pipeline,recycle,stream,chunk,
  const files=[...document.querySelector('input').files];
  const workers=Array.from({length:concurrency},()=>new Worker('/app/features/eu5/history/snapshot-worker.ts?worker_file&type=module',{type:'module'}));
  const proxies=workers.map(w=>wrap(w));let next=0,completed=0;const results=[],errors=[],costs=[],pending=[];let writeMs=0,storeMs=0;
- async function write(items){const t=performance.now();if(items.length===1)await cache.cacheSnapshot(items[0]);else{await new Promise((resolve,reject)=>{const open=indexedDB.open('pdx-eu5-snapshots',3);open.onsuccess=()=>{const db=open.result;const tx=db.transaction('snapshots','readwrite');for(const s of items)tx.objectStore('snapshots').put(s);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)};open.onerror=()=>reject(open.error)});}writeMs+=performance.now()-t;}
+ async function write(items){const t=performance.now();if(items.length===1)await cache.cacheSnapshot(items[0]);else{await new Promise((resolve,reject)=>{const open=indexedDB.open('pdx-eu5-snapshots',4);open.onsuccess=()=>{const db=open.result;const tx=db.transaction('snapshots','readwrite');for(const s of items)tx.objectStore('snapshots').put(s);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)};open.onerror=()=>reject(open.error)});}writeMs+=performance.now()-t;}
  const started=performance.now();window.progress={completed,total:files.length};
  const readers=[];
  let hashPromises=[];
@@ -127,7 +127,7 @@ async def main():
   await context.route('**/snapshot-worker.ts?worker_file&type=module',route)
   await context.route('**/eu5-import-bench',lambda r:r.fulfill(status=200,headers={'Cross-Origin-Embedder-Policy':'require-corp','Cross-Origin-Opener-Policy':'same-origin'},content_type='text/html',body='<title>Isolated EU5 import benchmark</title><input type="file" multiple>'))
   results=[]
-  cases=[('full-1',1,False,0,True,False,False,False),('full-2',2,False,0,True,False,False,False),('bounded-2',2,True,8*1024*1024,True,True,False,True),('bounded-4',4,True,8*1024*1024,True,True,False,True),('bounded-8',8,True,8*1024*1024,True,True,False,True)]
+  cases=[('full-1',1,False,0,True,False,False,False),('full-2',2,False,0,True,False,False,False),('bounded-2',2,True,8*1024*1024,True,True,False,True),('bounded-4',4,True,8*1024*1024,True,True,False,True),('bounded-8',8,True,8*1024*1024,True,True,False,True),('bounded-16',16,True,8*1024*1024,True,True,False,True)]
   for repeat in range(args.repeats):
    for label,n,stream,chunk,hashSource,selective,nativeHash,bridge in (cases if repeat==0 else list(reversed(cases))):
     page=await context.new_page();await page.goto(APP+'/eu5-import-bench');cdp=await context.new_cdp_session(page)

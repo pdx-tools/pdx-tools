@@ -70,9 +70,15 @@ run = [
 ]
 hide = true
 
+[tasks."build:eu5-streaming"]
+description = "Build bounded EU5 timeline parsers"
+depends = ["setup:wasm"]
+run = ["bash dev/eu5-streaming/build.sh sha256", "bash dev/eu5-streaming/build.sh blake3"]
+
 [tasks."build:wasm"]
 description = "Build wasm"
 depends = [
+    'build:eu5-streaming',
     'build:wasm:app',
     'build:wasm:pdx_map',
     'build:wasm-bindgen wasm_ck3',

@@ -1,6 +1,12 @@
 # EU5 streaming parser measurements
 
-Measured 10 October 2026. Twenty representative, previously parseable uncompressed text saves, 1338–1437, totaling 5.81 GiB. Each final suite has two trials per method, reversing order on the second pass. The EU5 observer game remained running; comparisons use each suite’s own baseline. No 120-save iteration was run.
+## Current viewer integration
+
+The viewer now defaults to BLAKE3 streaming for text timeline imports, with up to eight parsers based on CPU count and a lower limit for devices reporting at most 4 GiB RAM. Compressed/binary saves use a serial normal-parser fallback. Existing SHA cache identities are retained through cryptographically verified BLAKE3 aliases; cache version 4 preserves existing records. The map/full detail parser is unchanged.
+
+See [the integration and memory profile](docs/eu5-streaming/INTEGRATION.md) for 4/8/16-worker comparisons, the 336-save measurements, and the bounded background write queue. The measurements below are the earlier streaming prototype experiments.
+
+Measured 10 October 2026. Twenty representative, previously parseable uncompressed text saves, 1338–1437, totaling 5.81 GiB. Each final suite has two trials per method, reversing order on the second pass. The EU5 observer game remained running; comparisons use each suite’s own baseline. No 120-save iteration was run in this earlier suite.
 
 ## Result
 
@@ -33,7 +39,7 @@ Separate run, with its own normal-parser baselines. Every source SHA-256 matches
 1. **Selective materialization.** Keep only the seven top-level sections used by the timeline. Skip war, character, unit, diplomacy and other unused sections. A compact market model excludes price histories and breakdown arrays. The normal snapshot extraction algorithm is reused. Maximum observed per-parser Wasm capacity fell from about 503 MiB to 80 MiB.
 2. **Fixed input slots and backpressure.** A dedicated producer reads `Blob.stream()` and fills two 8 MiB SharedArrayBuffer slots. A synchronous Wasm reader consumes them. The producer waits for a released slot before overwriting it. Rust reuses one 8 MiB chunk allocation. The explicitly managed input buffers are therefore 24 MiB per parser; the model and browser have additional allocations.
 3. **Avoid the extra JS array copy.** Casting a checked Uint8Array to its existing wrapper avoids `new Uint8Array(typedArray)`, which copied every chunk. The generated bindings confirmed the avoidable copy. Removing this alone did **not** solve peak memory: see the `fixed-copy` cases, which still use FileReaderSync slices. The shared-buffer input is the measured memory improvement.
-4. **Hash while parsing.** Both SHA-256 and BLAKE3 process all raw source bytes in the same pass as the parser, including header/trailing bytes. Hashing is not disabled. SHA preserves existing keys; BLAKE3 uses `blake3:` keys and needs an explicit migration or separate cache namespace before viewer use.
+4. **Hash while parsing.** Both SHA-256 and BLAKE3 process all raw source bytes in the same pass as the parser, including header/trailing bytes. Hashing is not disabled. SHA preserves existing keys; BLAKE3 uses `blake3:` keys. The integrated viewer now handles existing identities through verified aliases.
 5. **Bounded concurrency and downstream work.** The reusable pool admits at most the configured worker count and an estimated parser budget. It awaits each observation sink before starting another save on that slot. Queued work contains File references, not raw buffers.
 
 ## Correctness
@@ -65,7 +71,7 @@ Separate run, with its own normal-parser baselines. Every source SHA-256 matches
 
 ## Code and data
 
-- [Experimental parser and worker pool](dev/eu5-streaming/README.md). SHA-256 is the reusable API default; the existing viewer importer is unchanged.
+- [Parser and worker pool](dev/eu5-streaming/README.md). SHA-256 remains the reusable low-level API default; the viewer coordinator explicitly chooses BLAKE3.
 - [BLAKE3 trial data](docs/eu5-streaming/bounded-blake3.json), [SHA-256 trial data](docs/eu5-streaming/bounded-sha256.json).
 - The portable manual harness accepts at most 20 saves and can repeat these comparisons. The archive paths and manifests are machine-local and are not committed.
 
