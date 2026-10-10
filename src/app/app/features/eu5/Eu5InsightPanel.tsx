@@ -193,6 +193,7 @@ function InlineHistory() {
             dates={dates}
             mode={contextMode ?? mode}
             country={focus && "tag" in focus ? focus.tag : "world"}
+            countryName={focus?.name}
             selectedHash={selectedHash}
           />
           <GameButton variant="ghost" onClick={() => showPanel(true)}>

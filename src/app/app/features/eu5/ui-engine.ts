@@ -172,6 +172,7 @@ export type SearchResult =
     };
 
 export interface AppTriggers {
+  getCountryNames(): Promise<Record<string, string>>;
   prepareSnapshot(
     file: File,
     hash: string,
@@ -338,6 +339,7 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   public readonly trigger: AppTriggers = {
+    getCountryNames: () => this.gameInstance.getCountryNames(),
     prepareSnapshot: (file, hash, distance) =>
       this.gameInstance.prepareSnapshot(file, hash, distance),
     switchSnapshot: async (file, hash, viewed) => {

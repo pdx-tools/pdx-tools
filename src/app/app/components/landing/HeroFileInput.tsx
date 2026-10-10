@@ -1,4 +1,4 @@
-import React, { useRef, useSyncExternalStore } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DocumentIcon } from "@heroicons/react/24/solid";
 import { useFilePublisher } from "@/features/engine";
 import { useFileDrop } from "@/hooks/useFileDrop";
@@ -7,6 +7,7 @@ import queenSymbol from "./queen.webp";
 import militaryRank from "./military-rank.webp";
 import { cx } from "class-variance-authority";
 import { Badge } from "@/components/Badge";
+import { toast } from "sonner";
 
 const emptySubscribe = () => () => {};
 const hasFileSystemAccessApi = () => "showOpenFilePicker" in window;
@@ -84,8 +85,42 @@ function Hoi4FileIcon() {
 export const HeroFileInput = () => {
   const publishFile = useFilePublisher();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState("");
+  const importing = useRef<AbortController | null>(null);
+  useEffect(() => () => importing.current?.abort(), []);
+  const publishFiles = async (files: File[], folder = false) => {
+    if (!files.length || importing.current) return;
+    if (files.length === 1 && !folder) {
+      await publishFile({ kind: "file", file: files[0] });
+      return;
+    }
+    if (!folder && files.some((file) => !/\.eu5$/i.test(file.name))) {
+      toast.error("Select multiple EU5 saves, or one save from another game.");
+      return;
+    }
+    const controller = new AbortController();
+    importing.current = controller;
+    setProgress("Importing EU5 saves…");
+    try {
+      const { importEu5Batch } = await import("@/features/eu5/history/importEu5Batch");
+      const result = await importEu5Batch(files, controller.signal, (completed, total) => {
+        setProgress(`Importing EU5 saves: ${completed}/${total}`);
+      });
+      if (result.issues.length)
+        toast.warning(`${result.issues.length} import notices`, {
+          description: result.issues.join("\n"),
+        });
+      await publishFile({ kind: "file", file: result.file });
+    } catch (error) {
+      if (!controller.signal.aborted) toast.error(String(error));
+    } finally {
+      importing.current = null;
+      setProgress("");
+    }
+  };
   const { isHovering } = useFileDrop({
     onFile: (file) => publishFile(file),
+    enabled: !progress,
   });
   const fileSystemAccessApiEnabled = useSyncExternalStore(
     emptySubscribe,
@@ -94,8 +129,8 @@ export const HeroFileInput = () => {
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.currentTarget.files && e.currentTarget.files[0]) {
-      publishFile({ kind: "file", file: e.currentTarget.files[0] });
+    if (e.currentTarget.files) {
+      void publishFiles(Array.from(e.currentTarget.files));
       e.currentTarget.value = "";
     }
   };
@@ -129,7 +164,7 @@ export const HeroFileInput = () => {
       <V3FileIcon />
       <Hoi4FileIcon />
       <p className="max-w-72 text-2xl leading-relaxed text-balance opacity-75">
-        Choose file or drag and drop
+        Choose saves or drag and drop
       </p>
     </>
   );
@@ -140,6 +175,8 @@ export const HeroFileInput = () => {
         id="analyze-box-file-input"
         ref={fileInputRef}
         type="file"
+        multiple
+        disabled={!!progress}
         className="peer absolute opacity-0"
         onChange={handleChange}
         accept={acceptedFiles.join(",")}
@@ -153,10 +190,11 @@ export const HeroFileInput = () => {
     <button
       className={className}
       onClick={async () => {
-        let fileHandle: FileSystemFileHandle;
+        if (importing.current) return;
+        let handles: FileSystemFileHandle[];
         try {
           const result = await window.showOpenFilePicker({
-            multiple: false,
+            multiple: true,
             types: [
               {
                 description: "PDX Files",
@@ -166,18 +204,53 @@ export const HeroFileInput = () => {
               },
             ],
           });
-          fileHandle = result[0];
+          handles = result;
         } catch (e) {
           console.debug("File selection error, user may have cancelled", e);
           return;
         }
 
-        publishFile({ kind: "handle", file: fileHandle });
+        try {
+          if (handles.length === 1) {
+            await publishFile({ kind: "handle", file: handles[0] });
+          } else {
+            await publishFiles(await Promise.all(handles.map((handle) => handle.getFile())));
+          }
+        } catch (error) {
+          toast.error(String(error));
+        }
       }}
     >
       {children}
     </button>
   );
 
-  return <div className="flex h-[264px] leading-relaxed xl:h-80">{input}</div>;
+  return (
+    <div className="flex flex-col items-center leading-relaxed">
+      <div className="flex h-[264px] xl:h-80">{input}</div>
+      <label className="relative cursor-pointer rounded px-3 py-2 text-sm text-white underline focus-within:outline">
+        Choose EU5 save folder
+        <input
+          aria-label="Choose EU5 save folder"
+          type="file"
+          multiple
+          {...{ webkitdirectory: "" }}
+          disabled={!!progress}
+          className="absolute inset-0 w-full cursor-pointer opacity-0"
+          onChange={(e) => {
+            void publishFiles(Array.from(e.currentTarget.files ?? []), true);
+            e.currentTarget.value = "";
+          }}
+        />
+      </label>
+      {progress && (
+        <div role="status" className="text-sm text-white">
+          {progress}{" "}
+          <button onClick={() => importing.current?.abort()} className="ml-2 underline">
+            Stop import
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };

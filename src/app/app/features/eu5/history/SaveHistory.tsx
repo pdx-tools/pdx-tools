@@ -12,6 +12,7 @@ import { useHistory } from "@/features/eu5/history/store";
 import { campaignKey } from "@/features/eu5/history/types";
 import type { Snapshot } from "@/features/eu5/history/types";
 import styles from "@/features/eu5/history/Timeline.module.css";
+import { useEu5Engine, useEu5SaveRevision } from "../store";
 
 type Metric = "price" | "supply" | "demand" | "stockpile" | "population" | "development";
 const metricNames: Record<Metric, string> = {
@@ -56,6 +57,21 @@ export function SaveHistory({
   focusMarketCenter?: number;
 }) {
   const history = useHistory();
+  const engine = useEu5Engine();
+  const saveRevision = useEu5SaveRevision();
+  const [countryNames, setCountryNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let alive = true;
+    void engine.trigger
+      .getCountryNames()
+      .then((names) => {
+        if (alive) setCountryNames((previous) => ({ ...previous, ...names }));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [engine, saveRevision]);
   const currentSnapshot = history.snapshots.find((s) => s.hash === history.selectedHash);
   const [group, setGroup] = useState(currentSnapshot ? campaignKey(currentSnapshot) : "");
   const [metric, setMetric] = useState<Metric>(
@@ -159,17 +175,20 @@ export function SaveHistory({
       ? [marketIds.find((id) => labels[id].toLowerCase() === "london") ?? marketIds[0]]
       : [];
   const countries = useMemo(
-    () => [...new Set(dates.flatMap((s) => s.countries.map((c) => c.tag)))].sort(),
-    [dates],
+    () =>
+      [...new Set(dates.flatMap((s) => s.countries.map((c) => c.tag)))].sort((a, b) =>
+        (countryNames[a] ?? a).localeCompare(countryNames[b] ?? b),
+      ),
+    [dates, countryNames],
   );
   const countryOptions = useMemo(
     () =>
       countries.map((c) => (
         <option key={c} value={c}>
-          {c}
+          {countryNames[c] ?? c}
         </option>
       )),
-    [countries],
+    [countries, countryNames],
   );
   const activeCountry = focusTag ?? (countries.includes(country) ? country : "world");
   const entities = isMarket ? activeMarkets : [activeCountry];
@@ -177,7 +196,11 @@ export function SaveHistory({
   const series = useMemo(
     () =>
       entities.map((entity) => ({
-        name: isMarket ? labels[entity] : entity === "world" ? "World · owned locations" : entity,
+        name: isMarket
+          ? labels[entity]
+          : entity === "world"
+            ? "World · owned locations"
+            : (countryNames[entity] ?? entity),
         raw: dates.map((s) => {
           if (isMarket)
             return (
@@ -192,7 +215,7 @@ export function SaveHistory({
           );
         }),
       })),
-    [dates, seriesKey, isMarket, activeGood, metric],
+    [dates, seriesKey, isMarket, activeGood, metric, countryNames, labels],
   );
   const indexUnavailable =
     indexed &&
@@ -277,7 +300,11 @@ export function SaveHistory({
 
   const importFiles = async (list: FileList | null) => {
     if (!list || busy) return;
-    const files = Array.from(list);
+    const files = Array.from(list).filter((file) => /\.eu5$/i.test(file.name));
+    if (!files.length) {
+      setIssues(["No EU5 saves were found in the selection."]);
+      return;
+    }
     if (currentFile && !files.includes(currentFile)) files.unshift(currentFile);
     if (files.length > 1000) {
       setIssues(["Import at most 1000 saves at a time."]);
@@ -401,6 +428,20 @@ export function SaveHistory({
               type="file"
               accept=".eu5"
               multiple
+              disabled={busy}
+              onChange={(e) => {
+                void importFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <label className={styles.import}>
+            Add save folder
+            <input
+              aria-label="Add EU5 save folder"
+              type="file"
+              multiple
+              {...{ webkitdirectory: "" }}
               disabled={busy}
               onChange={(e) => {
                 void importFiles(e.target.files);
@@ -612,6 +653,7 @@ export function SaveHistory({
                   dates={dates}
                   mode={mapMode}
                   country={activeCountry}
+                  countryName={focusName ?? countryNames[activeCountry]}
                   selectedHash={currentSnapshot?.hash ?? selected?.hash}
                   good={activeGood}
                   centers={activeMarkets}

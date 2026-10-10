@@ -232,6 +232,7 @@ export function ContextGraphs({
   dates,
   mode,
   country = "world",
+  countryName,
   selectedHash,
   good,
   centers,
@@ -239,18 +240,20 @@ export function ContextGraphs({
   dates: Snapshot[];
   mode: MapMode;
   country?: string;
+  countryName?: string;
   selectedHash?: string | null;
   good?: string;
   centers?: string[];
 }) {
   const observations = useMemo(() => dates.map((s) => aggregate(s, country)), [dates, country]);
+  const label = country === "world" ? "World · owned locations" : (countryName ?? country);
   const graphs = useMemo(() => {
     const result = metrics[mode].map((m) => ({
       title: m.label,
       unit: m.unit,
       lines: [
         {
-          name: country === "world" ? "World · owned locations" : country,
+          name: label,
           values: observations.map((c) => (c ? m.value(c) : null)),
         },
       ],
@@ -307,7 +310,7 @@ export function ContextGraphs({
       result.push({
         title: "Great power rank",
         unit: "Lower rank is higher · absent ranks remain gaps",
-        lines: [{ name: country, values: observations.map((c) => c?.greatPowerRank ?? null) }],
+        lines: [{ name: label, values: observations.map((c) => c?.greatPowerRank ?? null) }],
       });
     if (mode === "markets" && good && centers?.length) {
       for (const metric of ["supply", "demand", "stockpile"] as const)
@@ -325,12 +328,12 @@ export function ContextGraphs({
         });
     }
     return result;
-  }, [observations, mode, country, dates, good, centers?.join("|")]);
+  }, [observations, mode, country, label, dates, good, centers?.join("|")]);
   return (
-    <div aria-label={`${mode} evolution for ${country}`}>
+    <div aria-label={`${mode} evolution for ${label}`}>
       <p className="mb-3 text-xs text-game-ink-500">
-        {country === "world" ? "World · owned locations" : country} · {dates.length} saved dates.
-        Lines connect observations; between date movement is visual only.
+        {label} · {dates.length} saved dates. Lines connect observations; between date movement is
+        visual only.
       </p>
       {graphs.map((graph) => (
         <HistoryChart key={graph.title} {...graph} dates={dates} selectedHash={selectedHash} />

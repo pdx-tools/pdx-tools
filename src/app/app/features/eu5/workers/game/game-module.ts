@@ -510,6 +510,8 @@ export const createGame = async (
     },
     getPaletteGradients: () => paletteGradients,
     getSaveMetadata: () => preparedInfo.get(activeHash)!.metadata,
+    getCountryNames: () =>
+      Object.fromEntries(countryIndex.map((entry) => [entry.tag, entry.country.name])),
     canHighlightLocation: (locationId: number) => {
       return app.can_highlight_location(locationId);
     },
