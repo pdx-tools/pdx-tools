@@ -1,4 +1,3 @@
-import { Eu5GameAdapter } from "./game-adapter";
 import type {
   BoxSelectOverlayRect,
   CursorHint,
@@ -27,7 +26,9 @@ import type {
   TimelinePlayback,
   TimelineStepUnit,
 } from "@/features/timeline/controller";
-import type { Eu5ParsedSave, Eu5SaveInput } from "./store/types";
+import { eu5SaveFileUrl } from "./store/types";
+import type { Eu5ParsedSave, Eu5SaveData, Eu5SaveInput } from "./store/types";
+import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
   MapMode,
@@ -55,7 +56,6 @@ import type {
   Eu5DateComponents,
   Eu5PlayerData,
 } from "@/wasm/wasm_eu5";
-import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import { log } from "@/lib/log";
 import { formatInt } from "@/lib/format";
 
@@ -229,6 +229,8 @@ export interface AppTriggers {
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
   ): Promise<void>;
+  /** Show this world rectangle, such as the view of another save of the campaign. */
+  fitWorldRect(rect: MapViewport["viewport"]): Promise<void>;
 }
 
 /** Only ownership has a history in the save, so only the political map can show a past date. */
@@ -262,10 +264,10 @@ export class Eu5UIEngine implements AppEngine {
   private rewindTimer: ReturnType<typeof setTimeout> | null = null;
   /** Set by `stopTimelapse`, read between frames of a recording. */
   private timelapseStopped = false;
+  private destroyed = false;
 
   constructor(
     private gameInstance: GameInstance,
-    private workers: Eu5GameAdapter,
     paletteGradients: PaletteGradients,
     timeline: TimelineData,
     initialState?: Partial<AppState>,
@@ -373,6 +375,7 @@ export class Eu5UIEngine implements AppEngine {
     clearMapHoverHighlight: () => this.gameInstance.clearMapHoverHighlight(),
     searchEntities: (query) => this.handleSearchEntities(query),
     panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
+    fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };
 
   get state(): AppState {
@@ -388,10 +391,22 @@ export class Eu5UIEngine implements AppEngine {
     return this.state;
   }
 
+  /**
+   * Stop the use of this save. The workers stay, as the next save of the
+   * campaign loads into them; the session terminates them.
+   */
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.handlePauseTimeline();
+    if (this.isTimelapseRunning()) {
+      // The recording loop waits on this save, which goes now, so the map
+      // discards the film here.
+      this.timelapseStopped = true;
+      void this.gameInstance.endTimelapseRecording();
+    }
     this.gameInstance.stopHoverTracking();
-    this.workers.terminate();
+    this.gameInstance.release();
     this.listeners.clear();
   }
 
@@ -437,7 +452,9 @@ export class Eu5UIEngine implements AppEngine {
 
   private handleSetTimelineDate(date: Eu5DateComponents): void {
     const timeline = this._state.timeline;
-    if (!timeline.available || this.isTimelapseRunning()) return;
+    // A destroyed engine stays on screen while the next save of the campaign
+    // loads, and window keys still reach it.
+    if (this.destroyed || !timeline.available || this.isTimelapseRunning()) return;
     const clamped = clampDate(date, timeline.start, timeline.end);
     if (sameDate(clamped, this._state.timelineDate) && !this.timelineInFlight) return;
     this.updateState((state) => ({
@@ -492,7 +509,14 @@ export class Eu5UIEngine implements AppEngine {
 
   private handlePlayTimeline(): void {
     const timeline = this._state.timeline;
-    if (!timeline.available || this.isTimelineRunning() || this.isTimelapseRunning()) return;
+    if (
+      this.destroyed ||
+      !timeline.available ||
+      this.isTimelineRunning() ||
+      this.isTimelapseRunning()
+    ) {
+      return;
+    }
 
     // A play from the save date first glides the playhead back to the
     // campaign start, so the eye can follow the rewind before borders move.
@@ -740,53 +764,51 @@ export class Eu5UIEngine implements AppEngine {
   }
 }
 
-// Factory function for creating a loaded engine after save loading
-export async function createLoadedEngine(
-  saveInput: Eu5SaveInput,
-  canvas: {
-    offscreen: OffscreenCanvas;
-    display: CanvasSize;
-    inputConfig: SharedCanvasInputConfig;
-  },
-  onProgress?: (increment: number, stage: string) => void,
-): Promise<{
+/** A save that the workers loaded, and what the page shows of it. */
+export type OpenedSave = {
   engine: Eu5UIEngine;
-  save: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
+  playthroughId: string;
   playthroughName: string;
+  /** More than one human player, as the server counts it for the campaign key. */
+  multiplayer: boolean;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
   world: WorldSummary;
-}> {
-  const { offscreen, display, inputConfig } = canvas;
+};
+
+/**
+ * Read a save in full. A file handle is read once into a `File`, so that
+ * the save is parsed and later uploaded from one snapshot.
+ */
+export async function readSaveData(input: Eu5SaveInput): Promise<Eu5SaveData> {
   const save: Eu5ParsedSave =
-    saveInput.kind === "handle"
-      ? { kind: "file", file: await saveInput.file.getFile() }
-      : saveInput;
+    input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input;
+  const data =
+    save.kind === "file"
+      ? await save.file.arrayBuffer()
+      : await fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
+  return { save, data };
+}
 
-  const workers = Eu5GameAdapter.create();
-  const gameInstance = await workers.newSave(
-    {
-      canvas: offscreen,
-      display,
-      inputConfig,
-      save,
-    },
-    onProgress,
-  );
-
+/** Build the engine of a save that the workers loaded. */
+export async function openEngine(
+  gameInstance: GameInstance,
+  initialState?: Partial<AppState>,
+): Promise<OpenedSave> {
   const [metadata, paletteGradients, timeline] = await Promise.all([
     gameInstance.getSaveMetadata(),
     gameInstance.getPaletteGradients(),
     gameInstance.getTimeline(),
   ]);
 
-  const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients, timeline);
+  const engine = new Eu5UIEngine(gameInstance, paletteGradients, timeline, initialState);
   return {
     engine,
-    save,
     saveDate: metadata.date,
+    playthroughId: metadata.playthroughId,
     playthroughName: metadata.playthroughName,
+    multiplayer: metadata.multiplayer,
     players: metadata.players,
     world: metadata.world,
   };

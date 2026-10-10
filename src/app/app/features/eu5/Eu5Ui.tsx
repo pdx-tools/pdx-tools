@@ -13,12 +13,12 @@ import "@fontsource/public-sans/vietnamese-700.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef } from "react";
 import { cx } from "class-variance-authority";
 import { focusRing } from "@/components/game/focusRing";
 import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
 import { Eu5InsightPanel, MAP_MODE_TITLES } from "./Eu5InsightPanel";
-import { Eu5Loading, LOADING_DISSOLVE_MS } from "./Eu5Loading";
+import { Eu5Loading, Eu5StepProgress } from "./Eu5Loading";
 import { developerLog } from "@/lib/log";
 import { ogImageUrl } from "@/lib/media";
 import {
@@ -40,24 +40,25 @@ import { Eu5SelectionPill } from "./Eu5SelectionPill";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
+import type { CanvasCourierHost } from "@/lib/canvas_courier";
 import { ChevronLeftIcon } from "@heroicons/react/24/solid";
 import type { CursorPosition } from "@/components/CursorTooltip";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
+import { Eu5CampaignProvider } from "./campaign";
 
 type Eu5UiProps = {
   save: Eu5SaveInput;
 };
 
 export const Eu5Ui = ({ save }: Eu5UiProps) => {
-  const { controller, data, error, loading } = useLoadEu5(save);
-  const { canvasRef, surfaceRef, focus } = useCanvasCourierSurface({ controller });
+  const { host, data, error, loading, stepping } = useLoadEu5(save);
+  const { surfaceRef, focus } = useCanvasCourierSurface(host);
   const cursorRef = useCursorPosition(surfaceRef);
   const settled = data !== null || error !== null;
-  const showLoading = useLoadingVisible(settled);
 
   useEffect(() => {
     focus();
-  }, [focus, controller]);
+  }, [focus]);
 
   useEffect(() => {
     if (error !== null) {
@@ -69,32 +70,27 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
     <GameThemeProvider theme="eu5">
       <div className="absolute inset-0 bg-game-page" />
 
-      {/* Canvas layer — always present, always fills viewport */}
-      <div className="absolute inset-0 overflow-hidden" ref={surfaceRef}>
-        <canvas
-          className="h-full w-full touch-none outline-none"
-          ref={canvasRef}
-          width={600}
-          height={400}
-          tabIndex={0}
-        />
-      </div>
+      {/* Canvas layer — the session's canvas, which stays from save to save */}
+      <div className="absolute inset-0 overflow-hidden" ref={surfaceRef} />
 
       {/* UI layer — only when data loaded */}
-      {data !== null ? (
+      {data !== null && host !== null ? (
         <Eu5StoreProvider store={data}>
-          <Eu5UiContent cursorRef={cursorRef} canvasRef={canvasRef} />
+          <Eu5CampaignProvider>
+            <Eu5UiContent cursorRef={cursorRef} host={host} busy={stepping} />
+          </Eu5CampaignProvider>
         </Eu5StoreProvider>
       ) : null}
 
-      {showLoading ? (
-        <Eu5Loading
-          loading={loading}
-          filename={saveFilename(save)}
-          done={settled}
-          preview={save.kind === "server" ? ogImageUrl(save.saveId, "eu5") : undefined}
-        />
-      ) : null}
+      {stepping ? <Eu5StepProgress /> : null}
+
+      {/* The server renders the loader too. */}
+      <Eu5Loading
+        loading={loading}
+        filename={saveFilename(save)}
+        done={settled}
+        preview={save.kind === "server" ? ogImageUrl(save.saveId, "eu5") : undefined}
+      />
 
       {error !== null ? <Eu5ErrorDisplay error={error} /> : null}
     </GameThemeProvider>
@@ -133,31 +129,19 @@ function saveFilename(save: Eu5SaveInput): string {
   return save.kind === "file" ? save.file.name : save.name;
 }
 
-/** Keep the loader mounted through its fade-out. */
-function useLoadingVisible(settled: boolean) {
-  const [hidden, setHidden] = useState(false);
-
-  if (!settled && hidden) setHidden(false);
-
-  useEffect(() => {
-    if (!settled) return;
-    const timer = setTimeout(() => setHidden(true), LOADING_DISSOLVE_MS);
-    return () => clearTimeout(timer);
-  }, [settled]);
-
-  return !settled || !hidden;
-}
-
 /**
  * Inner component rendered inside Eu5StoreProvider so it can access the store.
  * Manages insight panel open state and auto-opens when selection becomes non-empty.
  */
 const Eu5UiContent = ({
   cursorRef,
-  canvasRef,
+  host,
+  busy,
 }: {
   cursorRef: React.RefObject<CursorPosition>;
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  host: CanvasCourierHost;
+  /** The next save of the campaign loads, and this save no longer takes input. */
+  busy: boolean;
 }) => {
   const insightOpen = useEu5InsightPanelOpen();
   const setInsightOpen = useSetEu5InsightPanelOpen();
@@ -171,20 +155,18 @@ const Eu5UiContent = ({
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !busy) {
         void engine.trigger.clearFocusOrSelection();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [engine]);
+  }, [engine, busy]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.style.cursor = cursorHint;
-  }, [cursorHint, canvasRef]);
+    host.setCursor(cursorHint);
+  }, [cursorHint, host]);
 
   useEffect(() => {
     const isEmpty = selectionState?.isEmpty ?? true;
@@ -195,7 +177,11 @@ const Eu5UiContent = ({
   }, [selectionState, setInsightOpen]);
 
   return (
-    <div className="pointer-events-none absolute inset-0">
+    <div
+      className="pointer-events-none absolute inset-0"
+      inert={busy}
+      aria-busy={busy || undefined}
+    >
       {/* Left sidebar — always visible */}
       <Eu5ControlPanel />
 

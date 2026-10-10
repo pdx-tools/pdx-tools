@@ -321,6 +321,15 @@ export class MapController {
     return this.worker.unhighlightProvince(this.mapToken);
   }
 
+  public getCamera() {
+    return this.worker.getCamera(this.mapToken);
+  }
+
+  /** Put the camera where `getCamera` of this or another map found it. */
+  public setCamera(camera: Awaited<ReturnType<MapController["getCamera"]>>) {
+    return this.worker.setCamera(this.mapToken, camera);
+  }
+
   public setScaleOfMax(proportion: number) {
     return this.worker.proportionScale(this.mapToken, proportion);
   }

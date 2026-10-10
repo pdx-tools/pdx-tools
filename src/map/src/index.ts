@@ -1,6 +1,6 @@
 export { GLResources } from "./glResources";
 export { WebGLMap, glContextOptions, type WorldRect } from "./map";
-export type { RecordingOptions } from "./map-worker";
+export type { MapCamera, RecordingOptions } from "./map-worker";
 export { MapShader } from "./MapShader";
 export { ProvinceFinder } from "./ProvinceFinder";
 export { compileShaders } from "./shaderCompiler";

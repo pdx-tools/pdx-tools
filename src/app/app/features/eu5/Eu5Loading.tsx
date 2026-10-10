@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { cx } from "class-variance-authority";
 import { SavePreviewUnderlay } from "@/components/SavePreviewUnderlay";
 import type { Eu5LoadingState } from "./store";
+import styles from "./Eu5Loading.module.css";
 
 const STAGE_DISCLOSURE_MS = 2500;
 
@@ -16,6 +17,23 @@ type Eu5LoadingProps = {
 };
 
 export function Eu5Loading({ loading, filename, done, preview }: Eu5LoadingProps) {
+  const [visible, setVisible] = useState(!done);
+
+  if (!done && !visible) setVisible(true);
+
+  // Keep a visible loader until its fade ends.
+  useEffect(() => {
+    if (!visible || !done) return;
+    const timer = setTimeout(() => setVisible(false), LOADING_DISSOLVE_MS);
+    return () => clearTimeout(timer);
+  }, [visible, done]);
+
+  return visible ? (
+    <Eu5LoadingContent loading={loading} filename={filename} done={done} preview={preview} />
+  ) : null;
+}
+
+function Eu5LoadingContent({ loading, filename, done, preview }: Eu5LoadingProps) {
   const { percent, stage } = useLatchedLoading(loading);
   const slow = useSlowParse(done);
 
@@ -74,6 +92,22 @@ export function Eu5Loading({ loading, filename, done, preview }: Eu5LoadingProps
             : "Parsing locally in your browser."}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The hairline over the map while the next save of the campaign loads. The
+ * map and the panels of the open save stay under it.
+ */
+export function Eu5StepProgress() {
+  return (
+    <div
+      role="progressbar"
+      aria-label="Opening save"
+      className={cx("pointer-events-none absolute inset-x-0 top-0 z-30 h-0.5", styles.step)}
+    >
+      <div className={cx("h-full w-full bg-game-accent-300", styles.stepBar)} />
     </div>
   );
 }

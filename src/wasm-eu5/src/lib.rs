@@ -37,6 +37,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::sync::Arc;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
@@ -340,7 +341,13 @@ pub struct Eu5PlayerData {
 pub struct Eu5AppMetadata {
     pub version: eu5save::models::GameVersion,
     pub date: Eu5DateComponents,
+    /// The id the game gives a campaign when it starts. Every save of the
+    /// campaign carries it, whichever player wrote the save.
+    pub playthrough_id: String,
     pub playthrough_name: String,
+    /// More than one human player, as the server counts it for the
+    /// campaign key.
+    pub multiplayer: bool,
     /// Human players in save order. Empty for observer games.
     pub players: Vec<Eu5PlayerData>,
     /// The whole map, the scope of every insight when nothing is selected.
@@ -445,6 +452,29 @@ impl SaveLoader {
     }
 }
 
+/// The number of bytes at the start of a save file that hold its header
+/// and metadata. `start` is at least the first `SAVE_HEADER_MAX_LEN` bytes
+/// of the file. Undefined when the metadata needs the whole file.
+#[wasm_bindgen]
+pub fn save_metadata_prefix_len(start: &[u8]) -> Option<usize> {
+    eu5app::metadata_prefix_len(start)
+}
+
+/// The most bytes that a save header can have.
+#[wasm_bindgen]
+pub fn save_header_max_len() -> usize {
+    eu5app::SAVE_HEADER_MAX_LEN
+}
+
+/// Read the metadata of a save from the first bytes of its file, as
+/// `save_metadata_prefix_len` measures them.
+#[wasm_bindgen]
+pub fn read_save_metadata_prefix(prefix: &[u8]) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
+    let meta = eu5app::read_metadata_prefix(prefix, tokens::get_tokens())
+        .map_err(|e| JsError::new(&format!("Failed to parse save metadata: {e}")))?;
+    into_ts(Eu5SaveMetadataHandle(Rc::new(meta)))
+}
+
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct Eu5WasmGamestate {
@@ -455,7 +485,9 @@ pub struct Eu5WasmGamestate {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct Eu5WasmGameBundle {
-    game_data: GameData,
+    /// Shared with each workspace built from it, so that the saves of one
+    /// patch open the bundle once.
+    game_data: Arc<GameData>,
 }
 
 #[wasm_bindgen]
@@ -467,7 +499,9 @@ impl Eu5WasmGameBundle {
         let game_data = bundle
             .into_game_data()
             .map_err(|e| JsError::new(&format!("Failed to deserialize game data: {e}")))?;
-        Ok(Eu5WasmGameBundle { game_data })
+        Ok(Eu5WasmGameBundle {
+            game_data: Arc::new(game_data),
+        })
     }
 }
 
@@ -475,7 +509,8 @@ impl Eu5WasmGameBundle {
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct Eu5WasmLocalizationBundle {
-    localization: Localization,
+    /// Shared with each app localized from it.
+    localization: Arc<Localization>,
 }
 
 #[wasm_bindgen]
@@ -487,7 +522,9 @@ impl Eu5WasmLocalizationBundle {
         let localization = bundle
             .into_localization()
             .map_err(|e| JsError::new(&format!("Failed to deserialize localization: {e}")))?;
-        Ok(Self { localization })
+        Ok(Self {
+            localization: Arc::new(localization),
+        })
     }
 }
 
@@ -505,13 +542,13 @@ impl Eu5WasmWorkspace {
     #[wasm_bindgen]
     pub fn init(
         mut gamestate: Eu5WasmGamestate,
-        game_bundle: Eu5WasmGameBundle,
+        game_bundle: &Eu5WasmGameBundle,
     ) -> Result<Eu5WasmWorkspace, JsError> {
         let meta = gamestate.meta;
         let eu5_gamestate = gamestate.parsed_save.take_gamestate();
         let eu5_gamestate =
             unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(eu5_gamestate) };
-        let app = eu5app::Eu5Workspace::new(eu5_gamestate, game_bundle.game_data)
+        let app = eu5app::Eu5Workspace::new(eu5_gamestate, Arc::clone(&game_bundle.game_data))
             .map_err(|x| JsError::new(&format!("Failed to create EU5 app: {x}")))?;
         Ok(Eu5WasmWorkspace {
             _loaded_save: gamestate.parsed_save,
@@ -547,11 +584,11 @@ impl Eu5WasmWorkspace {
 
     /// Join a localization bundle to produce the final localized [`Eu5App`].
     #[wasm_bindgen]
-    pub fn localize(self, localization: Eu5WasmLocalizationBundle) -> Eu5App {
+    pub fn localize(self, localization: &Eu5WasmLocalizationBundle) -> Eu5App {
         Eu5App {
             _loaded_save: self._loaded_save,
             app: self.app,
-            localization: localization.localization,
+            localization: Arc::clone(&localization.localization),
             meta: self.meta,
         }
     }
@@ -562,7 +599,7 @@ impl Eu5WasmWorkspace {
 pub struct Eu5App {
     _loaded_save: Eu5LoadedSave,
     app: eu5app::Eu5Workspace<'static>, // depends on _loaded_save
-    localization: Localization,
+    localization: Arc<Localization>,
     meta: Eu5SaveMetadataHandle,
 }
 
@@ -582,7 +619,9 @@ impl Eu5App {
         into_ts(Eu5AppMetadata {
             version: self.meta.version,
             date: self.meta.date.clone(),
+            playthrough_id: self.meta.playthrough_id.clone(),
             playthrough_name: self.meta.playthrough_name.clone(),
+            multiplayer: self.app.is_multiplayer(),
             world: self.app.world_summary(),
             players: self
                 .app
