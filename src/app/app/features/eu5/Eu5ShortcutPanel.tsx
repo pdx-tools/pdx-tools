@@ -54,6 +54,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { action: "Step a month", keys: ["Shift", "+", "←", "→"] },
       { action: "Step a year", keys: ["Ctrl", "+", "←", "→"] },
       { action: "Campaign start or save date", keys: ["Home", "End"] },
+      { action: "Previous or next save of the campaign", keys: ["[", "]"] },
     ],
   },
   {

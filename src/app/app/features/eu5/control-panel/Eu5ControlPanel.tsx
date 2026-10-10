@@ -1,3 +1,4 @@
+import { CampaignSection } from "@/features/campaign/CampaignStepper";
 import { PanelHeader } from "./PanelHeader";
 import { MapModesSection } from "./MapModesSection";
 import { RenderBar } from "./RenderBar";
@@ -9,6 +10,7 @@ export const Eu5ControlPanel = () => {
     <div className="pointer-events-auto absolute inset-y-0 left-0 z-30 w-[332px]">
       <aside className="flex h-full w-full flex-col border-r border-game-line-strong bg-game-panel">
         <PanelHeader />
+        <CampaignSection className="border-b border-game-line" />
         <MapModesSection />
         <div className="flex-1 overflow-hidden" />
         <RenderBar />

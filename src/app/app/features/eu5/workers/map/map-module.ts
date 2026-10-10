@@ -97,8 +97,20 @@ const pressedKeys = new Set<string>();
 
 const mapGameEndpoint = () => {
   return {
-    async syncLocationData(locationArray: Uint32Array) {
-      newLocations = locationArray;
+    /**
+     * All location data and the grouping table of a save, applied on the
+     * same frame. A new save replaces the one on the map with this.
+     */
+    async syncSave({
+      locations,
+      groupingTable,
+    }: {
+      locations: Uint32Array;
+      groupingTable: Uint32Array;
+    }) {
+      newLocations = locations;
+      newGroupingTable = groupingTable;
+      newMapData = null;
       renderOrQueue();
     },
 
@@ -219,6 +231,7 @@ export const createMapEngine = async (
   let lastProcessedWorldCoordinates: { x: number; y: number } | null = null;
   let boxDrag: BoxSelectDrag | null = null;
   let boxDragDirty = false;
+  let paused = false;
 
   let _dirtyRender: boolean = false;
   renderOrQueue = () => {
@@ -335,6 +348,24 @@ export const createMapEngine = async (
     boxDrag = null;
     boxDragDirty = false;
     boxSelectRectCallback?.(null);
+  };
+
+  const clearInput = () => {
+    for (const code of pressedKeys) {
+      app.on_key_up(code);
+    }
+    pressedKeys.clear();
+    cancelBoxSelect();
+    app.on_mouse_button(0, false);
+    mouseDownPos = null;
+    lastCursorPosition = null;
+    lastProcessedWorldCoordinates = null;
+    if (lastKnownLocationId !== null) {
+      hoverEventCallback?.({ kind: "clear" });
+    }
+    lastKnownLocationId = null;
+    emitCursor("default");
+    renderOrQueue();
   };
 
   const processInputEvent = (event: SharedCanvasDecodedEvent) => {
@@ -472,6 +503,15 @@ export const createMapEngine = async (
         renderOrQueue();
         break;
       }
+      case SharedCanvasEventType.FocusChange: {
+        if (event.action === SharedCanvasEventAction.Blur) clearInput();
+        break;
+      }
+      case SharedCanvasEventType.Visibility: {
+        paused = event.action === SharedCanvasEventAction.Hidden;
+        if (paused) clearInput();
+        break;
+      }
       case SharedCanvasEventType.Resize: {
         newDimensions = {
           width: event.width,
@@ -499,6 +539,11 @@ export const createMapEngine = async (
       hasLocationInformation = true;
       app.sync_location_array(newLocations);
       newLocations = null;
+
+      // The location under the cursor can belong to another save now, so
+      // the next pointer move reports it again.
+      lastKnownLocationId = null;
+      lastProcessedWorldCoordinates = null;
     }
     if (newMapData) {
       if (newMapData.colors) {
@@ -522,6 +567,10 @@ export const createMapEngine = async (
 
     // Drain canvas_courier input events before ticking
     inputReader.drain(processInputEvent);
+    if (paused) {
+      requestAnimationFrame(rafRender);
+      return;
+    }
     if (boxDrag !== null && boxDragDirty) {
       updateBoxSelect(boxDrag);
       boxDragDirty = false;
@@ -736,6 +785,11 @@ export const createMapEngine = async (
           }
         }
       }
+    },
+
+    /** Show the world rectangle of another view, such as that of another save. */
+    fitWorldRect: (rect: { x: number; y: number; width: number; height: number }) => {
+      app.fit_world_rect(rect.x, rect.y, rect.width, rect.height);
     },
 
     pan_to_color_id: (

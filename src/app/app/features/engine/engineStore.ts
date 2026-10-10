@@ -35,7 +35,6 @@ export function extensionType(filename: string): DetectedDataType {
 
 type EngineState = {
   input: SaveGameInput | null;
-  inputId: number;
   actions: {
     resetSaveAnalysis: () => void;
     fileInput: (input: SaveGameInput) => void;
@@ -44,7 +43,6 @@ type EngineState = {
 
 const useEngineStore = create<EngineState>()((set, get) => ({
   input: null,
-  inputId: 0,
   actions: {
     resetSaveAnalysis: () => {
       terminateCurrentAnalysis();
@@ -52,14 +50,13 @@ const useEngineStore = create<EngineState>()((set, get) => ({
     },
     fileInput: (input: SaveGameInput) => {
       if (!dequal(input, get().input)) {
-        terminateCurrentAnalysis();
-        set({ input, inputId: get().inputId + 1 });
+        terminateCurrentAnalysis(input);
+        set({ input });
       }
     },
   },
 }));
 
 export const useSaveFileInput = () => useEngineStore((x) => x.input);
-export const useSaveInputId = () => useEngineStore((x) => x.inputId);
 export const useEngineActions = () => useEngineStore((x) => x.actions);
 export const isSaveLoaded = () => useEngineStore.getState().input !== null;

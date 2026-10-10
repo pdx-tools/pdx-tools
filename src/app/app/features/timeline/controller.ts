@@ -124,9 +124,16 @@ export function handleTimelineKey(
   }
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
+/** True when a key press goes into a field, so that a window shortcut must not take it. */
+export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return true;
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  ) {
+    return true;
+  }
   return target.isContentEditable;
 }
 
