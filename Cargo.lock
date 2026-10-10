@@ -1145,6 +1145,7 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#4461f6e41b28cf7888e2a849858029f9fe4b5a52"
 dependencies = [
  "arena-serde",
  "bumpalo",

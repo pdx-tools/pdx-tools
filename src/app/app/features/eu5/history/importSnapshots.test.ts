@@ -107,3 +107,37 @@ describe("timeline content identity migration", () => {
     expect(onSnapshots.mock.calls[0][0][0].hash).toBe(sha);
   });
 });
+
+describe("timeline parser failures", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("reports an unsupported save and continues importing later files", async () => {
+    vi.resetAllMocks();
+    vi.stubGlobal("crossOriginIsolated", false);
+    vi.stubGlobal(
+      "Worker",
+      class {
+        terminate() {}
+      },
+    );
+    mocks.cacheSnapshots.mockResolvedValue(undefined);
+    mocks.parseSnapshot
+      .mockRejectedValueOnce(Error("missing field morale"))
+      .mockResolvedValueOnce({ snapshot: snapshot(sha) });
+    const unsupported = new File(["SAV01000bad"], "unsupported.eu5");
+    const supported = new File(["SAV01000good"], "supported.eu5");
+    const onSnapshots = vi.fn();
+    const result = await importTimeline([unsupported, supported], {
+      signal: new AbortController().signal,
+      existing: [],
+      onSnapshots,
+      onProgress: vi.fn(),
+      onWarning: vi.fn(),
+    });
+    expect(result.completed).toBe(2);
+    expect(result.errors).toEqual([
+      { fileName: unsupported.name, error: "Error: missing field morale" },
+    ]);
+    expect(onSnapshots.mock.calls[0][1]).toEqual({ [sha]: supported });
+  });
+});
