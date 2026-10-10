@@ -22,10 +22,8 @@ type HistoryState = {
   failedSnapshots: Record<string, string>;
   markSnapshotFailed: (hash: string, error: string) => void;
   clearSnapshotFailure: (hash: string) => void;
-  lastSwitch: { milliseconds: number; cacheHit: boolean } | null;
   setSwitching: (busy: boolean) => void;
   setSwitchError: (error: string) => void;
-  setTiming: (milliseconds: number, cacheHit: boolean) => void;
   setPlaying: (playing: boolean) => void;
   timelineSource: "snapshots" | "ownership";
   showPanel: (open: boolean) => void;
@@ -66,10 +64,8 @@ export const useHistory = create<HistoryState>()((set) => ({
       delete failedSnapshots[hash];
       return { failedSnapshots };
     }),
-  lastSwitch: null,
   setSwitching: (switching) => set({ switching, ...(switching ? { switchError: null } : {}) }),
   setSwitchError: (switchError) => set({ switchError }),
-  setTiming: (milliseconds, cacheHit) => set({ lastSwitch: { milliseconds, cacheHit } }),
   setPlaying: (playing) => set({ playing }),
   timelineSource: "snapshots",
   showPanel: (panelOpen) => set({ panelOpen }),

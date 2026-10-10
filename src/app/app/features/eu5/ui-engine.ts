@@ -172,8 +172,6 @@ export type SearchResult =
     };
 
 export interface AppTriggers {
-  setContinuousRenderForProfiling(enabled: boolean): Promise<void>;
-  getSnapshotDiagnostics(): ReturnType<GameInstance["getSnapshotDiagnostics"]>;
   prepareSnapshot(
     file: File,
     hash: string,
@@ -340,9 +338,6 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   public readonly trigger: AppTriggers = {
-    setContinuousRenderForProfiling: (enabled) =>
-      this.gameInstance.setContinuousRenderForProfiling(enabled),
-    getSnapshotDiagnostics: () => this.gameInstance.getSnapshotDiagnostics(),
     prepareSnapshot: (file, hash, distance) =>
       this.gameInstance.prepareSnapshot(file, hash, distance),
     switchSnapshot: async (file, hash, viewed) => {

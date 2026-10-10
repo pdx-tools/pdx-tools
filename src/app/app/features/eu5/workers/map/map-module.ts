@@ -44,7 +44,7 @@ const webKeyCodeToString = Object.fromEntries(
 ) as Record<number, string>;
 
 const initialized = (async () => {
-  return await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
+  await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
 })();
 
 let appResolve: (value: Eu5WasmMapRenderer | PromiseLike<Eu5WasmMapRenderer>) => void;
@@ -494,10 +494,8 @@ export const createMapEngine = async (
 
   // Firefox needs continuous drawing to avoid its clear-color bleed. Other
   // browsers keep the last GPU frame while idle. Input polling remains live.
-  let continuousRender = /Firefox\//.test(navigator.userAgent);
+  const continuousRender = /Firefox\//.test(navigator.userAgent);
   let hasLocationInformation = false;
-  let renderedFrames = 0;
-  let polledFrames = 0;
 
   // Location and grouping data arrive from the game worker between frames
   // and reach the GPU here, at the next use: the top of the render loop, or
@@ -525,7 +523,6 @@ export const createMapEngine = async (
   };
 
   const rafRender = async () => {
-    polledFrames++;
     // Sync location data before draining events so that updateCursorWorldPosition
     // always has valid location arrays available when it calls gpu_loc_to_app.
     applyPendingSync();
@@ -563,7 +560,6 @@ export const createMapEngine = async (
     if (hasLocationInformation && (continuousRender || _dirtyRender)) {
       _dirtyRender = false;
       app.render();
-      renderedFrames++;
     }
     requestAnimationFrame(rafRender);
   };
@@ -596,18 +592,6 @@ export const createMapEngine = async (
   rafRender();
 
   return proxy({
-    setContinuousRenderForProfiling: (enabled: boolean) => {
-      if (!import.meta.env.DEV)
-        throw new Error("Rendering override is available only in development.");
-      continuousRender = enabled;
-      renderOrQueue();
-    },
-    getRenderDiagnostics: async () => ({
-      continuousRender,
-      renderedFrames,
-      polledFrames,
-      wasmCapacityBytes: (await initialized).memory.buffer.byteLength,
-    }),
     get_zoom: () => {
       return app.get_zoom();
     },

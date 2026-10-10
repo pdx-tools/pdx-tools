@@ -409,14 +409,6 @@ impl<W> Eu5LoadedSave<W> {
         }
     }
 
-    /// Bytes used by save allocations, including alignment padding.
-    pub fn arena_used_bytes(&mut self) -> usize {
-        self.arena
-            .iter_allocated_chunks()
-            .map(|chunk| chunk.len())
-            .sum()
-    }
-
     pub fn arena(&self) -> &bumpalo::Bump {
         &self.arena
     }

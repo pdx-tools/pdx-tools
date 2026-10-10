@@ -1,20 +1,17 @@
-/** Experimental text-save timeline importer. No complete raw-file buffers are queued. */
+/** Text-save timeline importer. No complete raw-file buffers are queued. */
 export async function importSnapshots(
   files,
   {
     concurrency = 4,
-    retainSnapshots = true,
     parserBudgetMiB = 768,
     estimatedWorkerMiB = 192,
     chunkSize = 8 * 1024 * 1024,
-    algorithm = "sha256",
     onSnapshot = async () => {},
     onProgress = () => {},
     signal,
   } = {},
 ) {
   if (!Array.isArray(files)) files = Array.from(files);
-  if (!["sha256", "blake3"].includes(algorithm)) throw Error("Unknown content hash algorithm");
   if (!Number.isInteger(chunkSize) || chunkSize < 64 * 1024 || chunkSize > 16 * 1024 * 1024)
     throw Error("Chunk size must be 64 KiB to 16 MiB");
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 16)
@@ -35,9 +32,7 @@ export async function importSnapshots(
   let next = 0,
     completed = 0,
     sequence = 0;
-  const snapshots = [],
-    errors = [],
-    metrics = [],
+  const errors = [],
     slots = new Set();
   const abortError = () => new DOMException("Import stopped", "AbortError");
   function makeSlot() {
@@ -72,7 +67,7 @@ export async function importSnapshots(
         slot.reject = null;
         reject(Error(event.message || "Parser worker failed"));
       };
-      slot.worker.postMessage({ id, file, algorithm, chunkSize });
+      slot.worker.postMessage({ id, file, chunkSize });
     });
   }
   try {
@@ -86,10 +81,8 @@ export async function importSnapshots(
               const result = await parse(slot, file);
               if (signal?.aborted) break;
               // Await the sink before another save starts on this worker.
-              await onSnapshot(result.snapshot, file, result.metrics);
+              await onSnapshot(result.snapshot, file);
               if (signal?.aborted) break;
-              if (retainSnapshots) snapshots.push(result.snapshot);
-              metrics.push(result.metrics);
             } catch (error) {
               if (signal?.aborted) break;
               errors.push({ fileName: file.name, error: String(error) });
@@ -104,8 +97,7 @@ export async function importSnapshots(
       }),
     );
     if (signal?.aborted) throw abortError();
-    snapshots.sort((a, b) => a.dateSort - b.dateSort || a.hash.localeCompare(b.hash));
-    return { snapshots, errors, metrics, workers: count };
+    return { errors };
   } finally {
     signal?.removeEventListener("abort", abort);
     abort();

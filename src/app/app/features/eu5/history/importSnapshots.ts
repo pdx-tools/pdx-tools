@@ -242,9 +242,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
       const result = await streamSnapshots(streaming, {
         concurrency,
         parserBudgetMiB: concurrency * 192,
-        algorithm: "blake3",
         signal,
-        retainSnapshots: false,
         onSnapshot: accept,
         onProgress: ({ fileName }) => progress(fileName),
       });

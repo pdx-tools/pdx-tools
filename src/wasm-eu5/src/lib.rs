@@ -580,12 +580,6 @@ pub struct Eu5App {
 
 #[wasm_bindgen]
 impl Eu5App {
-    /// Allocated save arena; excludes workspace vectors and shared game assets.
-    #[wasm_bindgen]
-    pub fn used_save_bytes(&mut self) -> usize {
-        self._loaded_save.arena_used_bytes()
-    }
-
     #[wasm_bindgen]
     pub fn retained_save_bytes(&self) -> usize {
         self._loaded_save.arena().allocated_bytes()

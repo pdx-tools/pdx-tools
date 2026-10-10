@@ -3,7 +3,6 @@ import { ContextGraphs } from "./history/ContextGraphs";
 import { campaignKey } from "./history/types";
 import { useSnapshotSwitch } from "./history/useSnapshotSwitch";
 import { useEu5SaveInput } from "./store";
-import { PerformanceDetails } from "./history/PerformanceDetails";
 import { SaveHistory } from "./history/SaveHistory";
 import { useHistory } from "./history/store";
 import { GameButton } from "@/components/game/Button";
@@ -102,12 +101,10 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
           ) : null}
           <div hidden={!open || !historyOpen}>
             <PanelSaveHistory
-              embedded
               visible={open && historyOpen}
               mapMode={mapMode}
               currentFile={saveInput.kind === "file" ? saveInput.file : undefined}
               onChoose={switchSnapshot}
-              performancePanel={<PerformanceDetails />}
             />
           </div>
         </ResizablePanel.Content>

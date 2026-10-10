@@ -6,6 +6,7 @@ import { isTimelineLive } from "../ui-engine";
 import type { AppEngine, AppState } from "../ui-engine";
 import type { Eu5DateComponents, Eu5PlayerData, WorldSummary } from "@/wasm/wasm_eu5";
 import type { Eu5ParsedSave } from "./types";
+import { useHistory } from "../history/store";
 
 type Eu5State = {
   engine: AppEngine;
@@ -60,7 +61,10 @@ export const createEu5Store = (
     insightPanelOpen: false,
     insightPanelWidth: 640,
     timelineBarHeight: 0,
-    setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
+    setInsightPanelOpen: (open) => {
+      set({ insightPanelOpen: open });
+      useHistory.getState().rememberPanel(open);
+    },
     setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
     setTimelineBarHeight: (height) => set({ timelineBarHeight: height }),
     uploadedSaveId: null,

@@ -8,6 +8,16 @@ import { cachedSnapshot } from "./cache";
 // This module runs in a dedicated worker; the app's shared TS config uses DOM types.
 declare const FileReaderSync: { new (): { readAsArrayBuffer(blob: Blob): ArrayBuffer } };
 
+function releaseBuffer(buffer: ArrayBuffer | undefined): void {
+  if (!buffer) return;
+  if (typeof buffer.transfer === "function") {
+    buffer.transfer(0);
+  } else if (typeof structuredClone === "function") {
+    structuredClone(buffer, { transfer: [buffer] });
+  }
+  // Older browsers without either API release the buffer through garbage collection.
+}
+
 let ready: Promise<void> | undefined;
 const initialize = () =>
   (ready ??= (async () => {
@@ -22,7 +32,7 @@ export async function sha256File(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   // Release the large backing store immediately, before another migration job starts.
-  bytes.transfer(0);
+  releaseBuffer(bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -35,19 +45,17 @@ export async function blake3File(file: File): Promise<string> {
   try {
     const result = module.stream_snapshot(
       (offset: number, length: number) => {
-        chunk?.transfer(0);
+        releaseBuffer(chunk);
         const bytes = reader.readAsArrayBuffer(file.slice(offset, offset + length));
         chunk = bytes;
         return new Uint8Array(bytes);
       },
       8 * 1024 * 1024,
-      true,
-      true,
     );
     if (result.bytesRead !== file.size || !result.hash) throw Error("Incomplete save verification");
     return `blake3:${result.hash}`;
   } finally {
-    chunk?.transfer(0);
+    releaseBuffer(chunk);
   }
 }
 
@@ -60,12 +68,12 @@ export async function parseSnapshot(
     .join("");
   const cached = await cachedSnapshot(hash).catch(() => undefined);
   if (cached) {
-    bytes.buffer.transfer(0);
+    releaseBuffer(bytes.buffer);
     return { snapshot: { ...cached, fileName: file.name }, cacheHit: true };
   }
   await initialize();
   const parser = Eu5MetaParser.create().init(bytes);
-  bytes.buffer.transfer(0);
+  releaseBuffer(bytes.buffer);
   const metadata = parser.meta();
   if (!metadata.playthroughId) {
     parser.free();

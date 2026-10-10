@@ -1,15 +1,12 @@
 import { exportSnapshots } from "./exportSnapshots";
 import { ContextGraphs } from "./ContextGraphs";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { importTimeline } from "./importSnapshots";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { HistoryPlot } from "./HistoryPlot";
 import type { EChartsOption } from "@/components/viz";
 import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/echartsTheme";
 import type { MapMode } from "@/wasm/wasm_eu5";
-import { useSaveFileInput } from "@/features/engine/engineStore";
-import { useEngineActions } from "@/features/engine/engineStore";
 import { cachedSnapshots, clearSnapshotCache } from "@/features/eu5/history/cache";
 import { useHistory } from "@/features/eu5/history/store";
 import { campaignKey } from "@/features/eu5/history/types";
@@ -42,30 +39,23 @@ function download(name: string, data: string, type: string) {
 }
 
 export function SaveHistory({
-  embedded = false,
   visible = true,
   mapMode = "markets",
   currentFile,
   onChoose,
-  performancePanel,
   focusTag,
   focusName,
   focusMarketCenter,
 }: {
-  embedded?: boolean;
   visible?: boolean;
   mapMode?: MapMode;
   currentFile?: File;
-  onChoose?: (hash: string) => Promise<void>;
-  performancePanel?: ReactNode;
+  onChoose: (hash: string) => Promise<void>;
   focusTag?: string;
   focusName?: string;
   focusMarketCenter?: number;
 }) {
   const history = useHistory();
-  const input = useSaveFileInput();
-  const navigate = useNavigate();
-  const { fileInput } = useEngineActions();
   const currentSnapshot = history.snapshots.find((s) => s.hash === history.selectedHash);
   const [group, setGroup] = useState(currentSnapshot ? campaignKey(currentSnapshot) : "");
   const [metric, setMetric] = useState<Metric>(
@@ -288,7 +278,7 @@ export function SaveHistory({
   const importFiles = async (list: FileList | null) => {
     if (!list || busy) return;
     const files = Array.from(list);
-    if (embedded && currentFile && !files.includes(currentFile)) files.unshift(currentFile);
+    if (currentFile && !files.includes(currentFile)) files.unshift(currentFile);
     if (files.length > 1000) {
       setIssues(["Import at most 1000 saves at a time."]);
       return;
@@ -305,9 +295,7 @@ export function SaveHistory({
       const result = await importTimeline(files, {
         signal: controller.signal,
         existing: useHistory.getState().snapshots,
-        preferredFile:
-          currentFile ??
-          (input?.kind === "eu5" && input.data.kind === "file" ? input.data.file : undefined),
+        preferredFile: currentFile,
         onProgress: (completed, total, fileName) => {
           if (currentGeneration !== generation.current) return;
           const now = performance.now();
@@ -322,9 +310,7 @@ export function SaveHistory({
         onSnapshots: (snapshots, files) => {
           if (currentGeneration !== generation.current) return;
           const state = useHistory.getState();
-          const activeFile =
-            currentFile ??
-            (input?.kind === "eu5" && input.data.kind === "file" ? input.data.file : null);
+          const activeFile = currentFile;
           for (const snapshot of snapshots) {
             if (
               state.selectedHash === snapshot.hash &&
@@ -358,18 +344,8 @@ export function SaveHistory({
 
   const openMap = () => {
     if (!selected || !history.files[selected.hash]) return;
-    if (embedded && onChoose) {
-      void onChoose(selected.hash);
-      return;
-    }
-    history.select(selected.hash);
     history.setTimelineSource("snapshots");
-    if (embedded) {
-      history.rememberMode(mapMode);
-      history.rememberPanel(true);
-    }
-    fileInput({ kind: "eu5", data: { kind: "file", file: history.files[selected.hash] } });
-    if (!embedded) navigate("/");
+    void onChoose(selected.hash);
   };
   const csv = () => {
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
@@ -694,7 +670,6 @@ export function SaveHistory({
               Clear cached observations
             </button>
           </div>
-          {performancePanel}
         </footer>
       </main>
     </GameThemeProvider>

@@ -44,8 +44,6 @@ describe("snapshot switching after parser failure", () => {
       .mockResolvedValueOnce({
         metadata: { date: "1338-01-01", playthroughName: "campaign", players: [], world: {} },
         viewedProfiles: [],
-        milliseconds: 10,
-        cacheHit: false,
       });
     const choose = useSnapshotSwitch();
     await choose("unsupported");

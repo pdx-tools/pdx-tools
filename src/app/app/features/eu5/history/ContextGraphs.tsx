@@ -181,7 +181,7 @@ function HistoryChart({
   const exportCsv = () => {
     const quote = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const rows = [
-      ["date", "campaign", "game_version", "metric", "entity", "value", "save_sha256"],
+      ["date", "campaign", "game_version", "metric", "entity", "value", "save_hash"],
       ...dates.flatMap((s, i) =>
         lines.map((line) => [
           s.date,

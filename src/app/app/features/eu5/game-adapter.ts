@@ -332,12 +332,6 @@ export function saveWorker(
   );
 
   return {
-    setContinuousRenderForProfiling: (enabled: boolean) =>
-      mapEngine.setContinuousRenderForProfiling(enabled),
-    getSnapshotDiagnostics: async () => ({
-      game: await saveEngine.getSnapshotDiagnostics(),
-      map: await mapEngine.getRenderDiagnostics(),
-    }),
     prepareSnapshot: (file: File, hash: string, distance?: number) =>
       saveEngine.prepareSnapshot(file, hash, distance),
     switchSnapshot: (file: File, hash: string, mode: MapMode, viewed?: ActiveProfileIdentity[]) => {

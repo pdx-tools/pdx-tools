@@ -27,7 +27,6 @@ export function useSnapshotSwitch() {
         });
         useHistory.getState().remapViewedProfiles(result.viewedProfiles);
         useHistory.getState().select(hash);
-        useHistory.getState().setTiming(result.milliseconds, result.cacheHit);
       } catch (error) {
         // Keep the active canvas and selected date. Playback advances past this hash.
         useHistory.getState().markSnapshotFailed(hash, `${file.name}: ${String(error)}`);

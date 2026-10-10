@@ -73,7 +73,7 @@ hide = true
 [tasks."build:eu5-streaming"]
 description = "Build bounded EU5 timeline parsers"
 depends = ["setup:wasm"]
-run = ["bash dev/eu5-streaming/build.sh sha256", "bash dev/eu5-streaming/build.sh blake3"]
+run = ["bash dev/eu5-streaming/build.sh"]
 
 [tasks."build:wasm"]
 description = "Build wasm"

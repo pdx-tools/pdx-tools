@@ -234,10 +234,9 @@ export const createGame = async (
     void drainSnapshots();
     return result;
   };
-  let lastPrepare: { readMs: number; parseMs: number; workspaceMs: number } | null = null;
   const prepare = async (file: File, hash: string) => {
     const cached = prepared.get(hash);
-    if (cached) return { app: cached, cacheHit: true };
+    if (cached) return cached;
     // Evict oldest non-active states before parsing, allowing two-date lookahead
     // only when the estimated arena budget permits it.
     const estimatedBytes = app.retained_save_bytes();
@@ -255,9 +254,7 @@ export const createGame = async (
         preparedInfo.delete(key);
         old.free();
       }
-    const begin = performance.now();
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const readEnd = performance.now();
     const parser = wasm_eu5.Eu5MetaParser.create().init(bytes);
     const nextMeta = parser.meta();
     if (
@@ -268,16 +265,10 @@ export const createGame = async (
       throw new Error("Saved-date playback requires the same campaign and full game version.");
     }
     const state = parser.parse_gamestate();
-    const parseEnd = performance.now();
     const next = app.for_save(state);
-    lastPrepare = {
-      readMs: readEnd - begin,
-      parseMs: parseEnd - readEnd,
-      workspaceMs: performance.now() - parseEnd,
-    };
     preparedInfo.set(hash, describe(next));
     prepared.set(hash, next);
-    return { app: next, cacheHit: false };
+    return next;
   };
 
   // Render each palette into a CSS gradient string once. The palette stops
@@ -390,19 +381,6 @@ export const createGame = async (
   );
 
   return proxy({
-    getSnapshotDiagnostics: () => ({
-      wasmCapacityBytes: wasm.memory.buffer.byteLength,
-      cachedStates: prepared.size,
-      saveArenaUsedBytes: [...prepared.values()].reduce(
-        (sum, item) => sum + (item.used_save_bytes?.() ?? 0),
-        0,
-      ),
-      saveArenaBytes: [...prepared.values()].reduce(
-        (sum, item) => sum + item.retained_save_bytes(),
-        0,
-      ),
-      lastPrepare,
-    }),
     prepareSnapshot: (file: File, hash: string, distance = 1) =>
       queued(async () => {
         // Extra lookahead must never evict the nearer date to fit the budget.
@@ -415,14 +393,11 @@ export const createGame = async (
           !prepared.has(hash) &&
           (prepared.size >= 3 || retained + app.retained_save_bytes() > 768 * 1024 * 1024)
         )
-          return { cacheHit: false, milliseconds: 0, skipped: true };
-        const start = performance.now();
-        const result = await prepare(file, hash);
-        return { cacheHit: result.cacheHit, milliseconds: performance.now() - start };
+          return;
+        await prepare(file, hash);
       }),
     switchSnapshot: (file: File, hash: string, mode: MapMode, viewed?: ActiveProfileIdentity[]) =>
       queued(async () => {
-        const start = performance.now();
         const before = app.get_selection_summary();
         const identity = before.activeProfile;
         const countryTag =
@@ -440,8 +415,7 @@ export const createGame = async (
               : undefined,
           center: profile.kind === "market" ? app.market_center_id(profile.market.key) : undefined,
         }));
-        const result = await prepare(file, hash);
-        const next = result.app;
+        const next = await prepare(file, hash);
         next.clear_selection();
         next.clear_highlights();
         next.set_map_mode(mode);
@@ -507,8 +481,6 @@ export const createGame = async (
           metadata: info.metadata,
           timeline: info.timeline,
           change,
-          cacheHit: result.cacheHit,
-          milliseconds: performance.now() - start,
         };
       }, true),
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
