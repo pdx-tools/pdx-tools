@@ -1,8 +1,12 @@
 import { create } from "zustand";
 import type { MapMode, ActiveProfileIdentity } from "@/wasm/wasm_eu5";
+import type { ImportProgressState } from "./ImportProgress";
 import type { Snapshot } from "./types";
 
 type HistoryState = {
+  batchImportProgress: ImportProgressState | null;
+  cancelBatchImport: (() => void) | null;
+  batchImportIssues: string[];
   viewedProfiles: ActiveProfileIdentity[];
   remapRevision: number;
   remapViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
@@ -35,6 +39,9 @@ type HistoryState = {
 };
 
 export const useHistory = create<HistoryState>()((set) => ({
+  batchImportProgress: null,
+  cancelBatchImport: null,
+  batchImportIssues: [],
   viewedProfiles: [],
   remapRevision: 0,
   remapViewedProfiles: (viewedProfiles) =>

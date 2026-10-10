@@ -1,8 +1,7 @@
 use crate::lean_market::MarketManager;
-use crate::snapshot::{CountryObservation, MarketObservation, SaveSnapshot};
 use arena_serde::ArenaDeserialize;
+use eu5app::snapshot::{MarketGood, SaveSnapshot, SnapshotInput};
 use eu5save::models::*;
-use std::collections::BTreeMap;
 #[derive(ArenaDeserialize)]
 pub struct ProjectedGame<'bump> {
     pub metadata: Metadata<'bump>,
@@ -13,19 +12,33 @@ pub struct ProjectedGame<'bump> {
     pub building_manager: BuildingManager<'bump>,
     pub religion_manager: ReligionManager<'bump>,
 }
-impl ProjectedGame<'_> {
-    fn location_population(&self, location: &Location<'_>) -> f64 {
-        location
-            .population
-            .pops
-            .iter()
-            .filter_map(|id| {
-                self.population
-                    .database
-                    .lookup(*id)
-                    .map(|p| (p.size * 1000.0).floor())
-            })
-            .sum()
-    }
+pub fn extract(game: &ProjectedGame<'_>) -> SaveSnapshot {
+    eu5app::snapshot::extract(
+        SnapshotInput {
+            metadata: &game.metadata,
+            population: &game.population,
+            countries: &game.countries,
+            locations: &game.locations,
+            building_manager: &game.building_manager,
+            religion_manager: &game.religion_manager,
+        },
+        game.market_manager
+            .database
+            .iter_with_id()
+            .flat_map(|(id, market)| {
+                market.goods.iter().map(move |good| MarketGood {
+                    market_id: id.value(),
+                    center: market.center.value(),
+                    name: good.good.to_str(),
+                    price: good.price,
+                    supply: good.supply,
+                    demand: good.demand,
+                    stockpile: good.stockpile,
+                })
+            }),
+        game.market_manager
+            .database
+            .iter_with_id()
+            .map(|(id, market)| (id.value(), market.center.value())),
+    )
 }
-include!(concat!(env!("OUT_DIR"), "/snapshot_extract.rs"));

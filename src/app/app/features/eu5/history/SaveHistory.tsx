@@ -83,9 +83,11 @@ export function SaveHistory({
   const [markets, setMarkets] = useState<string[]>([]);
   const [country, setCountry] = useState("world");
   const [indexed, setIndexed] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [localBusy, setBusy] = useState(false);
+  const busy = localBusy || !!history.batchImportProgress;
   const [progress, setProgress] = useState<ImportProgressState | null>(null);
-  const [issues, setIssues] = useState<string[]>([]);
+  const [localIssues, setIssues] = useState<string[]>([]);
+  const issues = [...history.batchImportIssues, ...localIssues];
   const generation = useRef(0);
   const cacheReady = useRef<Promise<void>>(Promise.resolve());
   const cancelRef = useRef<(() => void) | null>(null);
@@ -435,11 +437,15 @@ export function SaveHistory({
             />
           </label>
         </header>
-        {busy && progress && (
+        {(history.batchImportProgress || progress) && (
           <div className={styles.notice}>
             <ImportProgress
-              progress={progress}
+              progress={(history.batchImportProgress ?? progress)!}
               onCancel={() => {
+                if (history.cancelBatchImport) {
+                  history.cancelBatchImport();
+                  return;
+                }
                 generation.current++;
                 cancelRef.current?.();
                 setBusy(false);

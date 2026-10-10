@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import React, { useRef, useSyncExternalStore } from "react";
 import { DocumentIcon } from "@heroicons/react/24/solid";
 import { useFilePublisher } from "@/features/engine";
 import { useFileDrop } from "@/hooks/useFileDrop";
@@ -8,7 +8,8 @@ import militaryRank from "./military-rank.webp";
 import { cx } from "class-variance-authority";
 import { Badge } from "@/components/Badge";
 import { toast } from "sonner";
-import { ImportProgress, type ImportProgressState } from "@/features/eu5/history/ImportProgress";
+import { ImportProgress } from "@/features/eu5/history/ImportProgress";
+import { useHistory } from "@/features/eu5/history/store";
 
 const emptySubscribe = () => () => {};
 const hasFileSystemAccessApi = () => "showOpenFilePicker" in window;
@@ -86,11 +87,10 @@ function Hoi4FileIcon() {
 export const HeroFileInput = () => {
   const publishFile = useFilePublisher();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = useState<ImportProgressState | null>(null);
+  const progress = useHistory((state) => state.batchImportProgress);
   const importing = useRef<AbortController | null>(null);
-  useEffect(() => () => importing.current?.abort(), []);
   const publishFiles = async (files: File[], folder = false) => {
-    if (!files.length || importing.current) return;
+    if (!files.length || importing.current || useHistory.getState().batchImportProgress) return;
     if (files.length === 1 && !folder) {
       await publishFile({ kind: "file", file: files[0] });
       return;
@@ -101,31 +101,19 @@ export const HeroFileInput = () => {
     }
     const controller = new AbortController();
     importing.current = controller;
-    const startedAt = performance.now();
-    setProgress({
-      completed: 0,
-      total: files.filter((file) => /\.eu5$/i.test(file.name)).length,
-      startedAt,
-    });
     try {
       const { importEu5Batch } = await import("@/features/eu5/history/importEu5Batch");
-      const result = await importEu5Batch(
-        files,
-        controller.signal,
-        (completed, total, fileName) => {
-          setProgress({ completed, total, startedAt, fileName });
-        },
+      const result = await importEu5Batch(files, controller, (file) =>
+        publishFile({ kind: "file", file }),
       );
       if (result.issues.length)
         toast.warning(`${result.issues.length} import notices`, {
           description: result.issues.join("\n"),
         });
-      await publishFile({ kind: "file", file: result.file });
     } catch (error) {
       if (!controller.signal.aborted) toast.error(String(error));
     } finally {
       importing.current = null;
-      setProgress(null);
     }
   };
   const { isHovering } = useFileDrop({
@@ -254,7 +242,11 @@ export const HeroFileInput = () => {
         />
       </label>
       {progress && (
-        <ImportProgress progress={progress} onCancel={() => importing.current?.abort()} light />
+        <ImportProgress
+          progress={progress}
+          onCancel={() => useHistory.getState().cancelBatchImport?.()}
+          light
+        />
       )}
     </div>
   );

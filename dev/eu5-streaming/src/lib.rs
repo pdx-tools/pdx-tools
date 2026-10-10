@@ -7,9 +7,7 @@ mod lean_market;
 mod projection;
 use tsify::{Ts, Tsify};
 
-mod snapshot {
-    include!(concat!(env!("OUT_DIR"), "/snapshot_types.rs"));
-}
+use eu5app::snapshot;
 
 struct State {
     callback: js_sys::Function,
