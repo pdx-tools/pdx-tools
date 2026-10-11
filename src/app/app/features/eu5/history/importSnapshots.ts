@@ -286,11 +286,11 @@ export async function importTimeline(files: File[], options: ImportOptions) {
     // Chunked recording uses FileReaderSync, without requiring shared memory.
     const streamed = textFiles;
     const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
-    const budgetMiB = Math.max(640, memory * 1024 * 0.75);
+    const budgetMiB = Math.max(768, memory * 1024 * 0.75);
     const largestJobMiB = files.reduce(
       (largest, file) =>
-        Math.max(largest, streamed.has(file) ? 640 : 640 + (2 * file.size) / 1024 ** 2),
-      640,
+        Math.max(largest, streamed.has(file) ? 768 : 768 + (2 * file.size) / 1024 ** 2),
+      768,
     );
     const count = Math.min(
       files.length,

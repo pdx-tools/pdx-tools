@@ -220,7 +220,7 @@ it("prepares eight saves concurrently and stops every cache worker on cancellati
   mocks.preparePlaybackCache.mockImplementation(() => new Promise(() => {}));
   const controller = new AbortController();
   const job = importTimeline(
-    Array.from({ length: 12 }, (_, i) => new File(["save"], `${i}.eu5`)),
+    Array.from({ length: 12 }, (_, i) => new File(["SAV01000save"], `${i}.eu5`)),
     {
       signal: controller.signal,
       existing: [],
@@ -258,7 +258,7 @@ it("reduces playback concurrency on devices with limited memory", async () => {
   mocks.preparePlaybackCache.mockImplementation(() => new Promise(() => {}));
   const controller = new AbortController();
   const job = importTimeline(
-    Array.from({ length: 8 }, (_, i) => new File(["save"], `${i}.eu5`)),
+    Array.from({ length: 8 }, (_, i) => new File(["SAV01000save"], `${i}.eu5`)),
     {
       signal: controller.signal,
       existing: [],

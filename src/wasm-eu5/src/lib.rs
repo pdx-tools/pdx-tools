@@ -41,17 +41,6 @@ use std::sync::Arc;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
-/// Fast gzip keeps persistent recordings compact without the browser's default
-/// compression level. The result remains readable by DecompressionStream.
-fn compress_playback_cache(bytes: &[u8]) -> Result<Vec<u8>, JsError> {
-    use std::io::Write;
-    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
-    encoder
-        .write_all(bytes)
-        .map_err(|e| JsError::new(&e.to_string()))?;
-    encoder.finish().map_err(|e| JsError::new(&e.to_string()))
-}
-
 /// Read known text saves in chunks, retaining no complete source-file buffer.
 #[wasm_bindgen]
 pub fn stream_playback_cache(callback: js_sys::Function) -> Result<Vec<u8>, JsError> {
@@ -101,7 +90,7 @@ pub fn stream_playback_cache(callback: js_sys::Function) -> Result<Vec<u8>, JsEr
         position: 0,
     })
     .map_err(|e| JsError::new(&e))?;
-    compress_playback_cache(&recording)
+    Ok(recording)
 }
 
 fn into_ts<T>(value: T) -> Result<Ts<T>, JsError>
@@ -499,10 +488,6 @@ pub struct SaveLoader {
 
 #[wasm_bindgen]
 impl SaveLoader {
-    #[wasm_bindgen]
-    pub fn playback_cache_gzip(self) -> Result<Vec<u8>, JsError> {
-        compress_playback_cache(&self.playback_cache()?)
-    }
     /// Build a persistent viewer cache while preserving the regular parser's semantics.
     #[wasm_bindgen]
     pub fn playback_cache(self) -> Result<Vec<u8>, JsError> {

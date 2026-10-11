@@ -18,7 +18,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 eu5app = { workspace = true, default-features = false, features = ["tsify"] }
 eu5save = { workspace = true }
-flate2 = { workspace = true, features = ["rust_backend"] }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }
 schemas = { workspace = true }

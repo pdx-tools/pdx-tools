@@ -41,7 +41,6 @@ beforeEach(() => {
   mocks.init.mockReturnValue({
     meta: () => ({ playthroughId: "campaign" }),
     parse_snapshot: mocks.parse,
-    playback_cache_gzip: mocks.playback,
     playback_cache: mocks.playback,
   });
   mocks.parse.mockReturnValue({ schemaVersion: 3, markets: [] });
@@ -99,7 +98,7 @@ it("builds a playback recording once and releases buffers after persistence", as
   await preparePlaybackCache(file, "verified-hash");
   expect(mocks.cachePlayback.mock.calls[0][0]).toBe("verified-hash");
   expect(mocks.cachePlayback.mock.calls[0][1]).toBe(recording);
-  expect(mocks.cachePlayback.mock.calls[0][2]).toBe(true);
+  expect(mocks.cachePlayback.mock.calls[0]).toHaveLength(2);
   expect(bytes.byteLength).toBe(0);
   expect(recording.byteLength).toBe(0);
   mocks.hasPlaybackCache.mockResolvedValue(true);
@@ -137,14 +136,14 @@ it("records text saves from chunks without allocating a complete source buffer",
   expect(recording.byteLength).toBe(0);
   expect(mocks.cachePlayback.mock.calls[0][0]).toBe("hash");
   expect(mocks.cachePlayback.mock.calls[0][1]).toBe(recording);
-  expect(mocks.cachePlayback.mock.calls[0][2]).toBe(true);
+  expect(mocks.cachePlayback.mock.calls[0]).toHaveLength(2);
 });
 
-it("keeps uncompressed caches available in browsers without gzip stream support", async () => {
+it("prepares Zstandard caches without native gzip stream support", async () => {
   vi.stubGlobal("DecompressionStream", undefined);
   mocks.hasPlaybackCache.mockResolvedValue(false);
   const recording = new Uint8Array([1, 2, 3]);
   mocks.playback.mockReturnValue(recording);
   await preparePlaybackCache(new File(["save"], "save.eu5"), "hash");
-  expect(mocks.cachePlayback.mock.calls[0][2]).toBe(false);
+  expect(mocks.cachePlayback.mock.calls[0]).toHaveLength(2);
 });

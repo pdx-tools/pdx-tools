@@ -1,3 +1,4 @@
+import { compressPlayback, decompressPlayback, playbackCodec } from "./playbackCompression";
 import wasmUrl from "@/wasm/wasm_eu5_bg.wasm?url";
 import { parsedSaveKey } from "../saveCacheKey";
 import type { Eu5ParsedSave } from "../store/types";
@@ -40,27 +41,34 @@ export async function hasPlaybackCache(hash: string): Promise<boolean> {
   }
 }
 
+type PlaybackEntry = { blob: Blob; compressed?: boolean; codec?: string; rawSize?: number };
+
 export async function cachedPlayback(hash: string): Promise<ArrayBuffer | undefined> {
   const db = await database();
   try {
-    const entry = await new Promise<{ blob: Blob; compressed?: boolean } | undefined>(
-      (resolve, reject) => {
-        const tx = db.transaction("entries", "readwrite");
-        const store = tx.objectStore("entries");
-        const request = store.get(prefix + hash);
-        let value: { blob: Blob; compressed?: boolean } | undefined;
-        request.onsuccess = () => {
-          const entry = request.result;
-          if (entry) {
-            value = { blob: entry.blob, compressed: entry.compressed };
-            store.put({ ...entry, accessed: Date.now() });
-          }
-        };
-        tx.oncomplete = () => resolve(value);
-        tx.onerror = tx.onabort = () => reject(tx.error);
-      },
-    );
+    const entry = await new Promise<PlaybackEntry | undefined>((resolve, reject) => {
+      const tx = db.transaction("entries", "readwrite");
+      const store = tx.objectStore("entries");
+      const request = store.get(prefix + hash);
+      let value: PlaybackEntry | undefined;
+      request.onsuccess = () => {
+        const entry = request.result;
+        if (entry) {
+          value = {
+            blob: entry.blob,
+            compressed: entry.compressed,
+            codec: entry.codec,
+            rawSize: entry.rawSize,
+          };
+          store.put({ ...entry, accessed: Date.now() });
+        }
+      };
+      tx.oncomplete = () => resolve(value);
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
     if (!entry) return undefined;
+    if (entry.codec === playbackCodec) return decompressPlayback(entry.blob, entry.rawSize!);
+    if (entry.codec) throw Error("Unsupported playback cache codec");
     return entry.compressed
       ? new Response(entry.blob.stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer()
       : entry.blob.arrayBuffer();
@@ -69,21 +77,11 @@ export async function cachedPlayback(hash: string): Promise<ArrayBuffer | undefi
   }
 }
 
-export async function cachePlayback(
-  hash: string,
-  bytes: Uint8Array<ArrayBuffer>,
-  alreadyCompressed = false,
-): Promise<void> {
+export async function cachePlayback(hash: string, bytes: Uint8Array<ArrayBuffer>): Promise<void> {
   if (!bytes.byteLength || bytes.byteLength > budget)
     throw Error("Playback recording exceeds cache budget");
-  const compressed =
-    alreadyCompressed ||
-    (typeof CompressionStream !== "undefined" && typeof DecompressionStream !== "undefined");
-  const source = new Blob([bytes]);
-  const blob =
-    compressed && !alreadyCompressed
-      ? await new Response(source.stream().pipeThrough(new CompressionStream("gzip"))).blob()
-      : source;
+  const rawSize = bytes.byteLength;
+  const blob = await compressPlayback(bytes);
   const db = await database();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -107,7 +105,13 @@ export async function cachePlayback(
           store.delete(entry.key);
           total -= entry.size;
         }
-        store.put({ key: prefix + hash, blob, compressed, accessed: Date.now() });
+        store.put({
+          key: prefix + hash,
+          blob,
+          codec: playbackCodec,
+          rawSize,
+          accessed: Date.now(),
+        });
       };
       tx.oncomplete = () => resolve();
       tx.onerror = tx.onabort = () => reject(tx.error);

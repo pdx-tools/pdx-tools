@@ -96,9 +96,8 @@ export async function preparePlaybackCache(
 ): Promise<void> {
   if (await hasPlaybackCache(hash)) return;
   await initialize();
-  const gzip = typeof DecompressionStream !== "undefined";
   let recording: Uint8Array<ArrayBuffer>;
-  if (streaming && typeof FileReaderSync !== "undefined" && gzip) {
+  if (streaming && typeof FileReaderSync !== "undefined") {
     const reader = new FileReaderSync();
     let chunk: ArrayBuffer | undefined;
     try {
@@ -114,12 +113,10 @@ export async function preparePlaybackCache(
     const bytes = await file.arrayBuffer();
     const parser = Eu5MetaParser.create().init(new Uint8Array(bytes));
     releaseBuffer(bytes);
-    recording = (
-      gzip ? parser.playback_cache_gzip() : parser.playback_cache()
-    ) as Uint8Array<ArrayBuffer>;
+    recording = parser.playback_cache() as Uint8Array<ArrayBuffer>;
   }
   try {
-    await cachePlayback(hash, recording, gzip);
+    await cachePlayback(hash, recording);
   } finally {
     releaseBuffer(recording.buffer);
   }
