@@ -3,6 +3,7 @@ import init, { set_tokens, Eu5MetaParser } from "@/wasm/wasm_eu5";
 import wasmUrl from "@/wasm/wasm_eu5_bg.wasm?url";
 import tokenUrl from "../../../../../../assets/tokens/eu5.bin?url";
 import type { Snapshot } from "./types";
+import { cachePlayback, hasPlaybackCache } from "./playbackCache";
 import { cachedSnapshot } from "./cache";
 
 // This module runs in a dedicated worker; the app's shared TS config uses DOM types.
@@ -87,4 +88,19 @@ export async function parseSnapshot(
   return { snapshot: { ...snapshot, hash, fileName: file.name, marketLabels }, cacheHit: false };
 }
 
-expose({ parseSnapshot, sha256File, blake3File });
+/** The caller recycles this worker after each full parse to release WASM high-water memory. */
+export async function preparePlaybackCache(file: File, hash: string): Promise<void> {
+  if (await hasPlaybackCache(hash)) return;
+  await initialize();
+  const bytes = await file.arrayBuffer();
+  const parser = Eu5MetaParser.create().init(new Uint8Array(bytes));
+  releaseBuffer(bytes);
+  const recording = parser.playback_cache() as Uint8Array<ArrayBuffer>;
+  try {
+    await cachePlayback(hash, recording);
+  } finally {
+    releaseBuffer(recording.buffer);
+  }
+}
+
+expose({ parseSnapshot, sha256File, blake3File, preparePlaybackCache });

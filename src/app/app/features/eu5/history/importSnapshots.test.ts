@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Snapshot } from "./types";
 
 const mocks = vi.hoisted(() => ({
+  preparePlaybackCache: vi.fn(),
   parseSnapshot: vi.fn(),
   sha256File: vi.fn(),
   blake3File: vi.fn(),
@@ -144,4 +145,50 @@ describe("timeline parser failures", () => {
       { snapshot: expect.objectContaining({ hash: sha }), file: supported },
     ]);
   });
+});
+
+it("finishes playback preparation before resolving import and preserves observations on cache failure", async () => {
+  vi.resetAllMocks();
+  vi.stubGlobal("crossOriginIsolated", false);
+  vi.stubGlobal(
+    "Worker",
+    class {
+      terminate() {}
+    },
+  );
+  const file = new File(["save"], "save.eu5");
+  mocks.parseSnapshot.mockResolvedValue({ snapshot: snapshot(sha) });
+  mocks.cacheSnapshots.mockResolvedValue(undefined);
+  let finish: () => void = () => {};
+  mocks.preparePlaybackCache.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const onProgress = vi.fn();
+  const onSnapshots = vi.fn();
+  const onWarning = vi.fn();
+  let done = false;
+  const options = {
+    signal: new AbortController().signal,
+    existing: [],
+    onProgress,
+    onSnapshots,
+    onWarning,
+  };
+  const job = importTimeline([file], options).then(() => {
+    done = true;
+  });
+  await vi.waitFor(() => expect(mocks.preparePlaybackCache).toHaveBeenCalledWith(file, sha));
+  expect(onSnapshots).toHaveBeenCalledOnce();
+  expect(done).toBe(false);
+  finish();
+  await job;
+  expect(onProgress).toHaveBeenLastCalledWith(2, 2, "Preparing playback: save.eu5");
+  mocks.preparePlaybackCache.mockRejectedValue(Error("QuotaExceededError"));
+  const result = await importTimeline([file], options);
+  expect(result.errors).toEqual([]);
+  expect(onWarning).toHaveBeenCalledWith(expect.stringContaining("original save remains usable"));
+  vi.unstubAllGlobals();
 });

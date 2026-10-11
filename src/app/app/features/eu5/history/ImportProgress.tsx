@@ -46,9 +46,7 @@ export function ImportProgress({
   return (
     <div className={`w-full min-w-0 text-xs ${light ? "text-white" : "text-game-ink-300"}`}>
       <div role="status" className="mb-2 flex flex-wrap justify-between gap-2">
-        <span>
-          Importing saves · {progress.completed}/{progress.total} · {percent}%
-        </span>
+        <span>Importing campaign · {percent}%</span>
         <span>
           {etaSeconds == null
             ? "Estimating time remaining…"

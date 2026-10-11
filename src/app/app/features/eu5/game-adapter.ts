@@ -1,3 +1,4 @@
+import { hasPlaybackCache, playbackIdentity } from "./history/playbackCache";
 import type { Eu5Carry } from "./campaignCarry";
 import { parsedSaveKey } from "./saveCacheKey";
 import { wrap, transfer, proxy, releaseProxy } from "comlink";
@@ -315,7 +316,16 @@ export class Eu5GameAdapter {
     };
 
     const saveEngine = await this.eu5Worker.loadSave(
-      transfer({ save, data, hold: true, cacheKey: parsedSaveKey(save) }, [data]),
+      transfer(
+        {
+          save,
+          data,
+          hold: true,
+          cacheKey: parsedSaveKey(save),
+          playbackHash: playbackIdentity(save),
+        },
+        [data],
+      ),
       proxy({
         gameBundle: gameBundleApi,
         onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
@@ -326,6 +336,8 @@ export class Eu5GameAdapter {
   }
 
   async isPrepared(save: Eu5ParsedSave): Promise<boolean> {
+    const hash = playbackIdentity(save);
+    if (hash && (await hasPlaybackCache(hash).catch(() => false))) return true;
     return this.eu5Worker.hasPreparedSave(parsedSaveKey(save));
   }
 
@@ -336,6 +348,7 @@ export class Eu5GameAdapter {
     return this.eu5Worker.prepareSave(
       file,
       parsedSaveKey({ kind: "file", file }),
+      playbackIdentity({ kind: "file", file }),
       proxy({
         selectVersion: async (version: string) =>
           resolveBundleVersion(version) === resolved ? resolved : null,

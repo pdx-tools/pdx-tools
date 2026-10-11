@@ -1,3 +1,4 @@
+import { deletePlaybackCache } from "./playbackCache";
 import type { Snapshot } from "./types";
 
 async function database(): Promise<IDBDatabase> {
@@ -131,6 +132,7 @@ export async function cachedSnapshot(hash: string): Promise<Snapshot | undefined
 }
 
 export async function clearSnapshotCache(): Promise<void> {
+  await deletePlaybackCache();
   const db = await database();
   try {
     await new Promise<void>((resolve, reject) => {

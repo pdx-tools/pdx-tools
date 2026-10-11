@@ -1,3 +1,4 @@
+import { cachedPlayback, deletePlaybackCache } from "../../history/playbackCache";
 import { campaignIdentities, restoreCampaignView } from "./restoreCampaignView";
 import type { Eu5Carry } from "../../campaignCarry";
 import { PreparedSaves } from "./preparedSaves";
@@ -186,26 +187,30 @@ async function parseApp(
   onProgress?: (increment: number, stage: string) => void,
   beforeLocalize?: (workspace: wasm_eu5.Eu5WasmWorkspace) => Promise<void>,
   diagnose = true,
+  playback = false,
 ): Promise<wasm_eu5.Eu5App | null> {
   const [, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
-  const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
   onProgress?.(10, "Parsing gamestate");
-
-  const saveParser = timeSync("Initialize Save Parser", () =>
-    metaParser.init(new Uint8Array(saveData)),
-  );
-
-  const metadata = saveParser.meta();
+  const cachedGame = playback
+    ? timeSync("Restore playback cache", () =>
+        wasm_eu5.Eu5WasmGamestate.from_playback_cache(new Uint8Array(saveData)),
+      )
+    : undefined;
+  const saveParser = cachedGame
+    ? undefined
+    : wasm_eu5.Eu5MetaParser.create().init(new Uint8Array(saveData));
+  const metadata = cachedGame ? cachedGame.meta() : saveParser!.meta();
   const version = `${metadata.version.major}.${metadata.version.minor}`;
   if ((await gameBundle.selectVersion(version)) === null) {
-    saveParser.free();
+    cachedGame?.free();
+    saveParser?.free();
     return null;
   }
   const { game: gameBundleTask, localization: localizationTask } = openBundles(gameBundle);
-
   const gamestate = await (async () => {
+    if (cachedGame) return cachedGame;
     try {
-      return timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
+      return timeSync("Parse Gamestate", () => saveParser!.parse_gamestate());
     } catch (originalError) {
       if (!diagnose) throw originalError;
       const { diagnoseEu5Save } = await import("./eu5-diagnostics");
@@ -236,12 +241,39 @@ export const loadSave = (...args: Parameters<typeof loadSaveInner>) =>
 export const hasPreparedSave = (cacheKey: string) =>
   serialize(async () => !!prepared.get(cacheKey));
 
-export const prepareSave = (file: File, cacheKey: string, gameBundle: GameBundleSource) =>
+export const prepareSave = (
+  file: File,
+  cacheKey: string,
+  playbackHash: string | undefined,
+  gameBundle: GameBundleSource,
+) =>
   serialize(async () => {
     const existing = prepared.get(cacheKey);
     if (existing) {
       searchIndexes(existing);
       return true;
+    }
+    if (playbackHash) {
+      const bytes = await cachedPlayback(playbackHash).catch(async () => {
+        await deletePlaybackCache(playbackHash).catch(() => {});
+        return undefined;
+      });
+      if (bytes && prepared.makeRoom(bytes.byteLength * 3 + uncachedActiveBytes)) {
+        let app: wasm_eu5.Eu5App | null = null;
+        try {
+          app = await parseApp(bytes, gameBundle, undefined, undefined, false, true);
+        } catch {
+          await deletePlaybackCache(playbackHash).catch(() => {});
+        }
+        if (app) {
+          if (prepared.add(cacheKey, app, app.retained_save_bytes())) {
+            searchIndexes(app);
+            return true;
+          }
+          app.free();
+          return false;
+        }
+      }
     }
     if (!prepared.makeRoom(file.size * 2 + uncachedActiveBytes)) return false;
     const app = await parseApp(await file.arrayBuffer(), gameBundle, undefined, undefined, false);
@@ -260,11 +292,13 @@ const loadSaveInner = async (
     data: saveData,
     hold,
     cacheKey,
+    playbackHash,
   }: {
     save: Eu5ParsedSave;
     data: ArrayBuffer;
     hold: boolean;
     cacheKey?: string;
+    playbackHash?: string;
   },
   {
     gameBundle,
@@ -307,6 +341,22 @@ const loadSaveInner = async (
 
   let app = cacheKey ? prepared.get(cacheKey) : undefined;
   let retained = !!app;
+  if (!app && playbackHash) {
+    const bytes = await cachedPlayback(playbackHash).catch(async () => {
+      await deletePlaybackCache(playbackHash).catch(() => {});
+      return undefined;
+    });
+    if (bytes) {
+      prepared.makeRoom(bytes.byteLength * 2);
+      try {
+        app = (await parseApp(bytes, gameBundle, onProgress, undefined, false, true)) ?? undefined;
+      } catch (error) {
+        console.warn("Discarding unusable playback cache", error);
+        await deletePlaybackCache(playbackHash).catch(() => {});
+      }
+      if (app) retained = !!cacheKey && prepared.add(cacheKey, app, app.retained_save_bytes());
+    }
+  }
   if (!app) {
     // A prepared save may have been evicted after the main-thread cache check.
     if (saveData.byteLength === 0) saveData = await readFile();

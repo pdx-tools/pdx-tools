@@ -651,7 +651,7 @@ export function SaveHistory({
                   .catch((e) => useHistory.setState({ issues: [String(e)] }));
               }}
             >
-              Clear cached observations
+              Clear cached campaign data
             </button>
           </div>
         </footer>

@@ -60,13 +60,14 @@ export function useSnapshotTimelineController(): TimelineController | null {
   const upcomingVersion =
     upcomingEntry?.version ?? (upcomingRef?.kind === "file" ? upcomingRef.file : undefined);
   const preparationKey = upcomingEntry
-    ? `${upcomingEntry.id}:${upcomingVersion?.size}:${upcomingVersion?.lastModified}`
+    ? `${upcomingEntry.id}:${upcomingVersion?.size}:${upcomingVersion?.lastModified}:${history.sources[upcomingEntry.id]?.hash ?? "unverified"}:${history.progress ? "importing" : "ready"}`
     : undefined;
   useEffect(() => {
     if (!visible || campaign?.opening || !upcomingRef || !preparationKey) return;
     if (preparationAttempts.current.has(preparationKey)) return;
     preparationAttempts.current.add(preparationKey);
-    // Optional preparation must not retry a broken save on unrelated metadata updates.
+    // Retry once when import finishes creating playback recordings, but never
+    // retry broken saves on unrelated metadata updates.
     void prepareEu5Session(upcomingRef).catch(() => {});
   }, [visible, campaign?.opening, upcomingRef, preparationKey]);
   const start = saves[0]?.date;

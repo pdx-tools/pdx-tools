@@ -5,6 +5,13 @@ const mocks = vi.hoisted(() => ({
   cachedSnapshot: vi.fn(),
   init: vi.fn(),
   parse: vi.fn(),
+  playback: vi.fn(),
+  hasPlaybackCache: vi.fn(),
+  cachePlayback: vi.fn(),
+}));
+vi.mock("./playbackCache", () => ({
+  hasPlaybackCache: mocks.hasPlaybackCache,
+  cachePlayback: mocks.cachePlayback,
 }));
 vi.mock("comlink", () => ({ expose: vi.fn() }));
 vi.mock("./cache", () => ({ cachedSnapshot: mocks.cachedSnapshot }));
@@ -17,7 +24,7 @@ vi.mock("@/wasm/wasm_eu5", () => ({
     }),
   },
 }));
-import { parseSnapshot, sha256File } from "./snapshot-worker";
+import { parseSnapshot, sha256File, preparePlaybackCache } from "./snapshot-worker";
 
 const transferDescriptor = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, "transfer");
 
@@ -32,6 +39,7 @@ beforeEach(() => {
   mocks.init.mockReturnValue({
     meta: () => ({ playthroughId: "campaign" }),
     parse_snapshot: mocks.parse,
+    playback_cache: mocks.playback,
   });
   mocks.parse.mockReturnValue({ schemaVersion: 3, markets: [] });
 });
@@ -76,4 +84,21 @@ describe("snapshot imports without ArrayBuffer.transfer", () => {
     expect(result.snapshot.hash).toBe(hash);
     expect(mocks.parse).toHaveBeenCalledOnce();
   });
+});
+
+it("builds a playback recording once and releases buffers after persistence", async () => {
+  mocks.hasPlaybackCache.mockResolvedValue(false);
+  const bytes = new ArrayBuffer(4);
+  const recording = new Uint8Array([1, 2, 3]);
+  mocks.playback.mockReturnValue(recording);
+  mocks.cachePlayback.mockResolvedValue(undefined);
+  const file = { arrayBuffer: async () => bytes } as File;
+  await preparePlaybackCache(file, "verified-hash");
+  expect(mocks.cachePlayback.mock.calls[0][0]).toBe("verified-hash");
+  expect(mocks.cachePlayback.mock.calls[0][1]).toBe(recording);
+  expect(bytes.byteLength).toBe(0);
+  expect(recording.byteLength).toBe(0);
+  mocks.hasPlaybackCache.mockResolvedValue(true);
+  await preparePlaybackCache(file, "verified-hash");
+  expect(mocks.playback).toHaveBeenCalledOnce();
 });

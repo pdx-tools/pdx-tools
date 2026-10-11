@@ -1,3 +1,5 @@
+import { rememberPlaybackIdentity } from "./playbackCache";
+import { rememberSaveFile } from "../saveCacheKey";
 import {
   fileVersion,
   getLocalSave,
@@ -23,7 +25,7 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
   const issues: string[] = [];
   useHistory.setState({
     analysisPaused: false,
-    progress: { completed: 0, total: entries.length, startedAt },
+    progress: { completed: 0, total: entries.length * 2, startedAt },
     issues: [],
     cancel: () => {
       useHistory.setState({ analysisPaused: true });
@@ -57,15 +59,15 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
       {
         signal,
         existing: useHistory.getState().snapshots,
-        onProgress: (completed, _total, fileName) => {
+        onProgress: (completed, total, fileName) => {
           const now = performance.now();
-          if (completed === sources.length || now - lastProgress > 150) {
+          if (completed === total || now - lastProgress > 150) {
             lastProgress = now;
             useHistory.setState({
               analysisPaused: false,
               progress: {
-                completed: completed + entries.length - sources.length,
-                total: entries.length,
+                completed: completed + (entries.length - sources.length) * 2,
+                total: total + (entries.length - sources.length) * 2,
                 startedAt,
                 fileName,
               },
@@ -102,6 +104,8 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
                 },
                 fileVersion(file),
               );
+              rememberSaveFile(file, entry.ref);
+              rememberPlaybackIdentity({ kind: "file", file }, snapshot.hash);
               associations[entry.id] = { hash: snapshot.hash, version: fileVersion(file) };
             }
             if (snapshot.campaignId !== playthroughId)

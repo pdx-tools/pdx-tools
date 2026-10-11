@@ -3,7 +3,12 @@ import { importSnapshots as streamSnapshots } from "../../../../../../dev/eu5-st
 import { cachedHashAlias, cacheSnapshots, cacheHashAlias } from "./cache";
 import { campaignKey } from "./types";
 import type { Snapshot } from "./types";
-import type { parseSnapshot, sha256File, blake3File } from "./snapshot-worker";
+import type {
+  parseSnapshot,
+  sha256File,
+  blake3File,
+  preparePlaybackCache,
+} from "./snapshot-worker";
 
 export type ImportOptions = {
   signal: AbortSignal;
@@ -37,6 +42,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
   let legacyParser:
     | ReturnType<
         typeof wrap<{
+          preparePlaybackCache: typeof preparePlaybackCache;
           parseSnapshot: typeof parseSnapshot;
           sha256File: typeof sha256File;
           blake3File: typeof blake3File;
@@ -57,6 +63,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
   signal.addEventListener("abort", abort, { once: true });
   const identity = (s: Snapshot) => `${campaignKey(s)}:${s.dateSort}`;
   const occupied = new Map(options.existing.map((s) => [identity(s), s]));
+  const playback = new Map<File, string>();
   let completed = 0,
     cacheWarning = false;
   const warnCache = () => {
@@ -182,6 +189,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
     }
     if (signal.aborted) throw abortError();
     occupied.set(identity(snapshot), snapshot);
+    playback.set(file, snapshot.hash);
     if (sinkFailure) throw sinkFailure;
     const flushed = new Promise<void>((resolve, reject) => {
       unsettled++;
@@ -194,7 +202,8 @@ export async function importTimeline(files: File[], options: ImportOptions) {
     if (unsettled >= 16) await Promise.race([flushed, aborted]);
   }
   const errors: { fileName: string; error: string }[] = [];
-  const progress = (fileName: string) => options.onProgress(++completed, files.length, fileName);
+  const progress = (fileName: string) =>
+    options.onProgress(++completed, files.length * 2, fileName);
   try {
     if (signal.aborted) throw abortError();
     const streaming: File[] = [],
@@ -253,7 +262,24 @@ export async function importTimeline(files: File[], options: ImportOptions) {
     flush();
     await writes;
     if (sinkFailure) throw sinkFailure;
-    return { errors, completed };
+    // Build recordings serially after streaming workers have stopped. Keeping
+    // this in the import phase makes completion mean playback preparation is done.
+    for (const file of files) {
+      if (signal.aborted) throw abortError();
+      const hash = playback.get(file);
+      if (hash) {
+        try {
+          await legacy((parser) => parser.preparePlaybackCache(file, hash), true);
+        } catch (error) {
+          if (signal.aborted) throw abortError();
+          options.onWarning(
+            `${file.name}: playback cache unavailable; the original save remains usable. ${String(error)}`,
+          );
+        }
+      }
+      progress(`Preparing playback: ${file.name}`);
+    }
+    return { errors, completed: files.length };
   } finally {
     if (timer) clearTimeout(timer);
     for (const item of pending) item.reject(abortError());
