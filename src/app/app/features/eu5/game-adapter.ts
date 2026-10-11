@@ -1,7 +1,9 @@
+import type { Eu5Carry } from "./campaignCarry";
 import { parsedSaveKey } from "./saveCacheKey";
 import { wrap, transfer, proxy, releaseProxy } from "comlink";
 import type { Remote } from "comlink";
 import type {
+  ActiveProfileIdentity,
   GradientConfig,
   GradientPalette,
   DisplayData,
@@ -406,6 +408,9 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
     getPaletteGradients: async (): Promise<PaletteGradients> => {
       return await saveEngine.getPaletteGradients();
     },
+    getCampaignIdentities: (profiles: ActiveProfileIdentity[]) =>
+      saveEngine.getCampaignIdentities(profiles),
+    restoreCampaignView: (carry: Eu5Carry) => saveEngine.restoreCampaignView(carry),
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       return await saveEngine.setMapMode(mode);
     },

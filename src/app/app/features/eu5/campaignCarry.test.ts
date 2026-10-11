@@ -7,19 +7,14 @@ import { useHistory } from "./history/store";
 const engine = () => ({
   state: { currentMapMode: "political" },
   trigger: {
-    selectMapMode: vi.fn(),
-    selectCountry: vi.fn(),
-    selectMarket: vi.fn(),
-    setFocusedLocation: vi.fn(),
-    selectPlayers: vi.fn(),
-    fitWorldRect: vi.fn(),
-    getCountryProfile: vi.fn().mockResolvedValue({ header: { tag: "FRA" } }),
-    getMarketProfile: vi.fn().mockResolvedValue({ centerId: 100, header: { name: "Paris" } }),
-    getLocationProfile: vi.fn().mockResolvedValue({ header: { location: { name: "Paris" } } }),
-    getMarketIdAtCenter: vi.fn().mockResolvedValue(91),
-    searchEntities: vi
+    getCampaignIdentities: vi.fn().mockResolvedValue([
+      { kind: "market", center: 100 },
+      { kind: "country", tag: "FRA" },
+    ]),
+    restoreCampaignView: vi
       .fn()
-      .mockResolvedValue([{ kind: "country", id: 77, tag: "FRA", name: "France" }]),
+      .mockResolvedValue([{ kind: "country", country: { key: 77, name: "France" } }]),
+    fitWorldRect: vi.fn(),
   },
 });
 const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
@@ -51,47 +46,47 @@ describe("campaign profile carry", () => {
     expect(result.selection).toEqual({ kind: "market", center: 100 });
     expect(result.profiles).toEqual([{ kind: "country", tag: "FRA" }]);
   });
-  it("resolves changed country and market indices in the next save", async () => {
+  it("restores the view in one worker call before moving the camera", async () => {
     const next = engine();
-    const profiles = await applyEu5Carry(
-      next as unknown as AppEngine,
-      carry({
-        selection: { kind: "market", center: 100 },
-        profiles: [
-          { kind: "country", tag: "FRA" },
-          { kind: "market", center: 100 },
-        ],
-      }),
-    );
-    expect(next.trigger.selectMarket).toHaveBeenCalledWith(91);
-    expect(next.trigger.selectMapMode).toHaveBeenCalledWith("population");
-    expect(profiles).toEqual([
-      { kind: "country", country: { key: 77, name: "France" } },
-      { kind: "market", market: { key: 91, name: "Paris" } },
-    ]);
+    const view = carry({ selection: { kind: "country", tag: "FRA", focusedLocation: null } });
+    const profiles = await applyEu5Carry(next as unknown as AppEngine, view);
+    expect(next.trigger.restoreCampaignView).toHaveBeenCalledExactlyOnceWith(view);
+    expect(profiles).toEqual([{ kind: "country", country: { key: 77, name: "France" } }]);
+    expect(next.trigger.fitWorldRect).not.toHaveBeenCalled();
   });
-  it("drops descendants of a vanished breadcrumb instead of reusing old indices", async () => {
-    const next = engine();
-    next.trigger.searchEntities.mockResolvedValue([]);
-    const profiles = await applyEu5Carry(
-      next as unknown as AppEngine,
-      carry({
-        profiles: [
-          { kind: "country", tag: "FRA" },
-          { kind: "location", locationIdx: 100 },
-        ],
+  it("captures a country and its focused location with one identity lookup", async () => {
+    const previous = engine();
+    previous.trigger.getCampaignIdentities.mockResolvedValue([{ kind: "country", tag: "FRA" }]);
+    const profile = { kind: "country", country: { key: 77, name: "France" } };
+    const store = {
+      getState: () => ({
+        engine: previous,
+        appState: {
+          currentMapMode: "development",
+          selectionState: { activeProfile: profile, focusedLocation: 100 },
+        },
+        insightPanelOpen: true,
+        insightPanelWidth: 640,
       }),
-    );
-    expect(profiles).toEqual([]);
-    expect(next.trigger.getLocationProfile).not.toHaveBeenCalled();
+    } as unknown as Eu5Store;
+    expect((await captureEu5Carry(store)).selection).toEqual({
+      kind: "country",
+      tag: "FRA",
+      focusedLocation: 100,
+    });
+    expect(previous.trigger.getCampaignIdentities).toHaveBeenCalledExactlyOnceWith([profile]);
   });
-  it("leaves a vanished market unselected", async () => {
-    const next = engine();
-    next.trigger.getMarketIdAtCenter.mockResolvedValue(undefined);
-    await applyEu5Carry(
-      next as unknown as AppEngine,
-      carry({ selection: { kind: "market", center: 100 } }),
-    );
-    expect(next.trigger.selectMarket).not.toHaveBeenCalled();
+  it("does not query identities for an unselected world view", async () => {
+    const previous = engine();
+    const store = {
+      getState: () => ({
+        engine: previous,
+        appState: { currentMapMode: "development", selectionState: null },
+        insightPanelOpen: true,
+        insightPanelWidth: 640,
+      }),
+    } as unknown as Eu5Store;
+    expect((await captureEu5Carry(store)).selection).toBeNull();
+    expect(previous.trigger.getCampaignIdentities).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,5 @@
+import { campaignIdentities, restoreCampaignView } from "./restoreCampaignView";
+import type { Eu5Carry } from "../../campaignCarry";
 import { PreparedSaves } from "./preparedSaves";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
@@ -13,6 +15,7 @@ import type { Eu5ParsedSave } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
+  ActiveProfileIdentity,
   MapMode,
   DisplayData,
   GradientConfig,
@@ -141,6 +144,24 @@ function closeSave() {
   save?.close();
 }
 
+type SearchIndexes = {
+  countries: ReturnType<wasm_eu5.Eu5App["get_countries"]>["countries"];
+  locations: ReturnType<wasm_eu5.Eu5App["get_locations"]>["locations"];
+};
+// Indexes follow their parsed save without preventing eviction.
+const indexes = new WeakMap<wasm_eu5.Eu5App, SearchIndexes>();
+function searchIndexes(app: wasm_eu5.Eu5App) {
+  let index = indexes.get(app);
+  if (!index) {
+    index = {
+      countries: timeSync("Build country index", () => app.get_countries().countries),
+      locations: timeSync("Build location index", () => app.get_locations().locations),
+    };
+    indexes.set(app, index);
+  }
+  return index;
+}
+
 const prepared = new PreparedSaves<wasm_eu5.Eu5App>((app) => app.free());
 let uncachedActiveBytes = 0;
 let workQueue: Promise<unknown> = Promise.resolve();
@@ -217,11 +238,18 @@ export const hasPreparedSave = (cacheKey: string) =>
 
 export const prepareSave = (file: File, cacheKey: string, gameBundle: GameBundleSource) =>
   serialize(async () => {
-    if (prepared.get(cacheKey)) return true;
+    const existing = prepared.get(cacheKey);
+    if (existing) {
+      searchIndexes(existing);
+      return true;
+    }
     if (!prepared.makeRoom(file.size * 2 + uncachedActiveBytes)) return false;
     const app = await parseApp(await file.arrayBuffer(), gameBundle, undefined, undefined, false);
     if (!app) return false;
-    if (prepared.add(cacheKey, app, app.retained_save_bytes())) return true;
+    if (prepared.add(cacheKey, app, app.retained_save_bytes())) {
+      searchIndexes(app);
+      return true;
+    }
     app.free();
     return false;
   });
@@ -305,9 +333,8 @@ const loadSaveInner = async (
   uncachedActiveBytes = retained ? 0 : app.retained_save_bytes();
   let held = hold;
 
-  // Build search indexes once after initialization.
-  const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
-  const locationIndex = timeSync("Build location index", () => app.get_locations().locations);
+  // Preparation already built these; cold saves initialize them once here.
+  const { countries: countryIndex, locations: locationIndex } = searchIndexes(app);
 
   // Render each palette into a CSS gradient string once. The palette stops
   // come from Rust (single source of truth with the shader); the FE only ever
@@ -528,6 +555,13 @@ const loadSaveInner = async (
     },
 
     getMarketIdAtCenter: (center: number) => app.market_id_at_center(center),
+    getCampaignIdentities: (profiles: ActiveProfileIdentity[]) =>
+      campaignIdentities(app, countryIndex, profiles),
+    restoreCampaignView: async (carry: Eu5Carry) => {
+      const restored = restoreCampaignView(app, countryIndex, carry);
+      await syncAll(restored.change);
+      return restored;
+    },
     getHistoryContext: () => {
       const version = app.meta().version;
       return {

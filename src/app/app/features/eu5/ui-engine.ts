@@ -1,3 +1,4 @@
+import type { Eu5Carry, StableProfile } from "./campaignCarry";
 import { rememberSaveFile } from "./saveCacheKey";
 import type {
   BoxSelectOverlayRect,
@@ -32,6 +33,7 @@ import type { Eu5ParsedSave, Eu5SaveData, Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import type {
+  ActiveProfileIdentity,
   MapMode,
   StateEfficacyInsightData,
   CountryPopulationProfile,
@@ -171,6 +173,8 @@ export type SearchResult =
     };
 
 export interface AppTriggers {
+  getCampaignIdentities(profiles: ActiveProfileIdentity[]): Promise<(StableProfile | null)[]>;
+  restoreCampaignView(carry: Eu5Carry): Promise<ActiveProfileIdentity[]>;
   selectMapMode(mode: MapMode): Promise<void>;
   /**
    * Show the map on a date. Calls coalesce: only the latest date renders.
@@ -329,6 +333,19 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   public readonly trigger: AppTriggers = {
+    getCampaignIdentities: (profiles) => this.gameInstance.getCampaignIdentities(profiles),
+    restoreCampaignView: async (carry) => {
+      const restored = await this.gameInstance.restoreCampaignView(carry);
+      this.updateState((state) => ({
+        currentMapMode: restored.change.mapMode,
+        timelineMapDate: restored.change.date,
+        timelineDate: restored.change.date,
+        mapModeGradient: restored.change.gradient ?? null,
+        selectionState: restored.selection,
+        selectionRevision: state.selectionRevision + 1,
+      }));
+      return restored.profiles;
+    },
     selectMapMode: (mode) => this.handleSelectMapMode(mode),
     setTimelineDate: (date) => this.handleSetTimelineDate(date),
     stepTimeline: (unit, direction) => this.handleStepTimeline(unit, direction),
@@ -376,8 +393,12 @@ export class Eu5UIEngine implements AppEngine {
     clearFocusOrSelection: () => this.handleClearFocusOrSelection(),
     selectPlayers: () => this.handleSelectPlayers(),
     clearSelection: () => this.handleClearSelection(),
-    highlightMapHoverTarget: (target) => this.gameInstance.highlightMapHoverTarget(target),
-    clearMapHoverHighlight: () => this.gameInstance.clearMapHoverHighlight(),
+    // The previous save stays visible while its replacement loads. Late pointer
+    // events and effect cleanup must not reach that save's released worker proxy.
+    highlightMapHoverTarget: (target) =>
+      this.destroyed ? Promise.resolve() : this.gameInstance.highlightMapHoverTarget(target),
+    clearMapHoverHighlight: () =>
+      this.destroyed ? Promise.resolve() : this.gameInstance.clearMapHoverHighlight(),
     searchEntities: (query) => this.handleSearchEntities(query),
     panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
     fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
