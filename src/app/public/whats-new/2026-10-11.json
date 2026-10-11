@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "fixes": [
+      "Fix EU4 Baltic Crusader achievement detection for patches 1.35 and later",
+      "Fix loading EU5 saves with subunits that omit morale values"
+    ]
+  }
+}
