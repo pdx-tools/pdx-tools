@@ -444,6 +444,7 @@ export function GoodsPressureChart({
         </div>
       )}
       <EChart
+        gpuBars
         mergeUpdates
         option={option}
         style={{ height: `${height}px`, width: "100%" }}
@@ -674,6 +675,7 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
 
   return (
     <EChart
+      gpuBars
       mergeUpdates
       option={option}
       style={{ height: `${rows.length * 34 + 70}px`, width: "100%" }}

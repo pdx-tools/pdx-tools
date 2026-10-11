@@ -225,6 +225,7 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
   return (
     <EChart
       mergeUpdates
+      gpuScatter
       option={option}
       style={{ height: "420px", width: "100%" }}
       onInit={handleInit}

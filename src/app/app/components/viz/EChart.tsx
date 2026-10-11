@@ -1,4 +1,6 @@
 import { captureSankey, animateSankey } from "./sankeyTransitions";
+import { createGpuScatter, gpuScatterOption } from "./gpuScatter";
+import { createGpuBars, gpuBarOption, supportsGpuBars } from "./gpuBars";
 import { memo, useEffect, useEffectEvent, useRef } from "react";
 import * as echarts from "echarts/core";
 import {
@@ -96,6 +98,10 @@ export interface EChartProps {
   className?: string;
   /** Keep series identities for animated updates and retain chart zoom. */
   mergeUpdates?: boolean;
+  /** Render a single country scatterplot's points on the GPU. */
+  gpuScatter?: boolean;
+  /** Animate Cartesian bars on the GPU, retaining the ECharts layout and controls. */
+  gpuBars?: boolean;
 }
 
 export const escapeEChartsHtml = (value: unknown) =>
@@ -188,25 +194,59 @@ export const EChart = memo(function EChart({
   onInit,
   className,
   mergeUpdates = false,
+  gpuScatter = false,
+  gpuBars = false,
 }: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const gpuRef = useRef<ReturnType<typeof createGpuScatter>>(undefined);
+  const barsRef = useRef<ReturnType<typeof createGpuBars>>(undefined);
+  const barsFailed = useRef(false);
   const onInitEvent = useEffectEvent((chart: echarts.ECharts) => {
     onInit?.(chart);
   });
 
   const visibleRef = useRef(!mergeUpdates);
   const appliedRef = useRef<EChartsOption | null>(null);
+  const applyOptionRef = useRef<(() => void) | undefined>(undefined);
   const applyOption = useEffectEvent(() => {
     const chart = chartRef.current;
     if (!chart || !visibleRef.current || appliedRef.current === option) return;
     const previousSankey = mergeUpdates ? captureSankey(chart) : undefined;
-    chart.setOption(mergeUpdates ? animatedOption(option) : option, {
-      notMerge: !mergeUpdates,
-      ...(mergeUpdates ? { replaceMerge: ["series"] } : {}),
-    });
+    const next = mergeUpdates ? animatedOption(option) : option;
+    if (gpuBars && !barsFailed.current && !barsRef.current && supportsGpuBars(next)) {
+      barsRef.current = createGpuBars(chart, () => {
+        barsRef.current?.dispose();
+        barsRef.current = undefined;
+        barsFailed.current = true;
+        appliedRef.current = null;
+        applyOptionRef.current?.();
+      });
+      if (!barsRef.current) barsFailed.current = true;
+    }
+    if (barsRef.current && !supportsGpuBars(next)) {
+      barsRef.current.dispose();
+      barsRef.current = undefined;
+    }
+    barsRef.current?.restore();
+    chart.setOption(
+      gpuRef.current ? gpuScatterOption(next) : barsRef.current ? gpuBarOption(next) : next,
+      {
+        notMerge: !mergeUpdates,
+        ...(mergeUpdates ? { replaceMerge: ["series"] } : {}),
+      },
+    );
+    barsRef.current?.update(next);
+    gpuRef.current?.update(next);
     appliedRef.current = option;
     if (previousSankey) animateSankey(chart, previousSankey);
+  });
+
+  useEffect(() => {
+    applyOptionRef.current = applyOption;
+    return () => {
+      applyOptionRef.current = undefined;
+    };
   });
 
   useEffect(() => {
@@ -222,11 +262,23 @@ export const EChart = memo(function EChart({
       if (width === size.width && height === size.height) return;
       size = { width, height };
       chart.resize();
+      gpuRef.current?.resize();
+      barsRef.current?.resize();
     };
     const activate = () => {
       if (!chartRef.current) {
-        const chart = echarts.init(container, undefined, { useDirtyRect: mergeUpdates });
+        const chart = echarts.init(container, undefined, {
+          useDirtyRect: mergeUpdates && !gpuScatter,
+        });
         chartRef.current = chart;
+        if (gpuScatter) {
+          gpuRef.current = createGpuScatter(chart, () => {
+            gpuRef.current?.dispose();
+            gpuRef.current = undefined;
+            appliedRef.current = null;
+            applyOption();
+          });
+        }
         if (mergeUpdates) {
           // Canvas text painting dominated the profile on a 180 Hz display.
           // Advance chart animations at at most 60 Hz, retaining their wall-clock duration.
@@ -245,6 +297,8 @@ export const EChart = memo(function EChart({
         onInitEvent(chart);
       } else {
         chartRef.current.getZr().animation.start();
+        gpuRef.current?.resume();
+        barsRef.current?.resume();
         resize();
       }
       applyOption();
@@ -255,7 +309,11 @@ export const EChart = memo(function EChart({
       ? new IntersectionObserver(([entry]) => {
           visibleRef.current = entry.isIntersecting;
           if (entry.isIntersecting) activate();
-          else chartRef.current?.getZr().animation.stop();
+          else {
+            chartRef.current?.getZr().animation.stop();
+            gpuRef.current?.pause();
+            barsRef.current?.pause();
+          }
         })
       : null;
     visibleRef.current = !visibility;
@@ -270,11 +328,16 @@ export const EChart = memo(function EChart({
       if (rafId != null) cancelAnimationFrame(rafId);
       visibility?.disconnect();
       resizeObserver.disconnect();
+      barsRef.current?.dispose();
+      barsRef.current = undefined;
+      barsFailed.current = false;
+      gpuRef.current?.dispose();
+      gpuRef.current = undefined;
       chartRef.current?.dispose();
       chartRef.current = null;
       appliedRef.current = null;
     };
-  }, [mergeUpdates]);
+  }, [mergeUpdates, gpuScatter, gpuBars]);
 
   useEffect(() => {
     applyOption();
