@@ -363,6 +363,24 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store
+
+      - name: Start PostgreSQL on Windows
+        if: matrix.os == 'windows-latest' && matrix.with_tokens
+        shell: bash
+        env:
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+          PGPASSWORD: root
+        run: |
+          source src/app/.env.test
+          source dev/.env.test
+          export PGPORT="$DATABASE_PORT"
+          export DATABASE_APP_USER="$DATABASE_USER" DATABASE_APP_USER_PASSWORD="$DATABASE_PASSWORD"
+          "$PGBIN/pg_ctl.exe" -D "$PGDATA" -o "-p $PGPORT" -l "$RUNNER_TEMP/postgres.log" -w start
+          psql() { "$PGBIN/psql.exe" -v ON_ERROR_STOP=1 "$@"; }
+          source dev/sql/init-db.sh
+          echo "DATABASE_ADMIN_PASSWORD=$PGPASSWORD" >> "$GITHUB_ENV"
+          echo "PDX_TEST_DATABASE_EXTERNAL=1" >> "$GITHUB_ENV"
   
       - name: Asset pipeline
         id: asset-pipeline
@@ -373,7 +391,10 @@ jobs:
         run: |
           mise run admin:assets:sync
           mise run admin:assets:compile:all
-      - env:
+      # Bash on every OS: a multi-line PowerShell script reports only the
+      # exit code of its last command, so a failed test passed on Windows.
+      - shell: bash
+        env:
           PDX_REQUIRE_TEST_ASSETS: ${{ matrix.with_tokens && '1' || '0' }}
         run: |
           mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}

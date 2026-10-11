@@ -68,8 +68,11 @@ async function main() {
   }
   const remainingArgs = process.argv.slice(2);
 
-  // The "migrate" mode applies the migrations to a database that is already running.
-  if (remainingArgs[0] === "migrate") {
+  // Apply migrations to an existing database without Docker.
+  if (
+    remainingArgs[0] === "migrate" ||
+    (env === "test" && process.env.PDX_TEST_DATABASE_EXTERNAL === "1")
+  ) {
     await migrate(env);
     return;
   }
