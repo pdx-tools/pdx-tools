@@ -4936,6 +4936,7 @@ version = "0.1.0"
 dependencies = [
  "eu5app",
  "eu5save",
+ "flate2",
  "js-sys",
  "pdx-zstd",
  "schemas",

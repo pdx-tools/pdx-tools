@@ -584,6 +584,36 @@ impl From<PlaybackMetadata> for Eu5SaveMetadata {
 }
 
 impl Eu5LoadedSave {
+    /// Record a known uncompressed text save through a bounded reader. Callers
+    /// must exclude ZIP files, including archives with a misleading text header.
+    pub fn record_text_save(reader: impl Read) -> Result<Vec<u8>, String> {
+        let file = Eu5DebugFile::from_reader(reader).map_err(|e| e.to_string())?;
+        let arena = bumpalo::Bump::new();
+        let mut deser = TextDeserializer::from_utf8_reader(TokenReader::new(file));
+        let mut recording = super::playback::Recording::new();
+        // Keep model validation identical to the regular parser. The model can
+        // borrow the arena but is dropped before its recording leaves this call.
+        let game = Gamestate::deserialize_in_arena(
+            super::playback::Record {
+                inner: &mut deser,
+                output: &mut recording,
+                key_start: None,
+            },
+            &arena,
+        )
+        .map_err(|e| e.to_string())?;
+        if !recording.valid {
+            return Err("Save uses an unsupported cache representation".into());
+        }
+        let meta = Eu5SaveMetadata::from(&game.metadata);
+        let mut bytes = b"EU5CACHE1".to_vec();
+        bytes.extend(
+            postcard::to_stdvec(&PlaybackMetadata::from(&meta)).map_err(|e| e.to_string())?,
+        );
+        bytes.append(&mut recording.bytes);
+        Ok(bytes)
+    }
+
     pub fn from_playback_cache(bytes: &[u8]) -> Result<(Self, Rc<Eu5SaveMetadata>), String> {
         let payload = bytes
             .strip_prefix(b"EU5CACHE1")
@@ -710,6 +740,12 @@ mod playback_tests {
             .take_playback_cache(&meta)
             .expect("recordable save");
         eprintln!("Playback recording: {} bytes", cache.len());
+        let streamed = Eu5LoadedSave::record_text_save(
+            std::fs::File::open(std::env::var("EU5_PLAYBACK_TEST_SAVE").unwrap()).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(cache, streamed);
+        drop(streamed);
         let (mut restored, restored_meta) = Eu5LoadedSave::from_playback_cache(&cache).unwrap();
         assert_eq!(
             serde_json::to_value(&*meta).unwrap(),

@@ -41,6 +41,69 @@ use std::sync::Arc;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
+/// Fast gzip keeps persistent recordings compact without the browser's default
+/// compression level. The result remains readable by DecompressionStream.
+fn compress_playback_cache(bytes: &[u8]) -> Result<Vec<u8>, JsError> {
+    use std::io::Write;
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    encoder
+        .write_all(bytes)
+        .map_err(|e| JsError::new(&e.to_string()))?;
+    encoder.finish().map_err(|e| JsError::new(&e.to_string()))
+}
+
+/// Read known text saves in chunks, retaining no complete source-file buffer.
+#[wasm_bindgen]
+pub fn stream_playback_cache(callback: js_sys::Function) -> Result<Vec<u8>, JsError> {
+    struct ChunkReader {
+        callback: js_sys::Function,
+        offset: u64,
+        bytes: Vec<u8>,
+        position: usize,
+    }
+    impl std::io::Read for ChunkReader {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            if buf.is_empty() {
+                return Ok(0);
+            }
+            if self.position == self.bytes.len() {
+                const CHUNK: usize = 8 * 1024 * 1024;
+                let value = self
+                    .callback
+                    .call2(
+                        &JsValue::NULL,
+                        &JsValue::from_f64(self.offset as f64),
+                        &JsValue::from_f64(CHUNK as f64),
+                    )
+                    .map_err(|e| std::io::Error::other(format!("Chunk read failed: {e:?}")))?;
+                if !value.is_instance_of::<js_sys::Uint8Array>() {
+                    return Err(std::io::Error::other("Chunk reader must return Uint8Array"));
+                }
+                let bytes: js_sys::Uint8Array = value.unchecked_into();
+                if bytes.length() as usize > CHUNK {
+                    return Err(std::io::Error::other("Chunk reader exceeded byte budget"));
+                }
+                self.bytes.resize(bytes.length() as usize, 0);
+                bytes.copy_to(&mut self.bytes);
+                self.position = 0;
+                self.offset += self.bytes.len() as u64;
+            }
+            let count = buf.len().min(self.bytes.len() - self.position);
+            buf[..count].copy_from_slice(&self.bytes[self.position..self.position + count]);
+            self.position += count;
+            Ok(count)
+        }
+    }
+    let recording = Eu5LoadedSave::record_text_save(ChunkReader {
+        callback,
+        offset: 0,
+        bytes: Vec::new(),
+        position: 0,
+    })
+    .map_err(|e| JsError::new(&e))?;
+    compress_playback_cache(&recording)
+}
+
 fn into_ts<T>(value: T) -> Result<Ts<T>, JsError>
 where
     T: Serialize + Tsify,
@@ -436,6 +499,10 @@ pub struct SaveLoader {
 
 #[wasm_bindgen]
 impl SaveLoader {
+    #[wasm_bindgen]
+    pub fn playback_cache_gzip(self) -> Result<Vec<u8>, JsError> {
+        compress_playback_cache(&self.playback_cache()?)
+    }
     /// Build a persistent viewer cache while preserving the regular parser's semantics.
     #[wasm_bindgen]
     pub fn playback_cache(self) -> Result<Vec<u8>, JsError> {
