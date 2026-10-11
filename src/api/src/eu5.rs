@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn parses_binary_eu5_metadata() {
-        let data = fixture("Clandeboye.eu5");
+        let data = fixture("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5");
         let metadata = parse_metadata(&data).expect("parse binary EU5 metadata");
         assert_eq!(metadata.version.major, 1);
         assert!(!metadata.playthrough_name.is_empty());

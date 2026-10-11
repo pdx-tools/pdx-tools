@@ -1,0 +1,134 @@
+---
+source: src/eu5app/tests/it/main.rs
+expression: snapshot
+input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5.save
+---
+{
+  "location": [
+    {
+      "id": 1,
+      "name": "Stockholm",
+      "owner": {
+        "id": 3,
+        "name": "Scandinavia",
+        "tag": "SCA"
+      }
+    }
+  ],
+  "map_modes": {
+    "building_levels": {
+      "colors": 275,
+      "fingerprint": "0xd2b6476b32528559",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff060101 x2041"
+      ]
+    },
+    "control": {
+      "colors": 940,
+      "fingerprint": "0xf751e62120b6d97a",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "development": {
+      "colors": 615,
+      "fingerprint": "0x7675e68a5626b453",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "markets": {
+      "colors": 12541,
+      "fingerprint": "0x8e097b341d411793",
+      "top": [
+        "#ff140505 x5255",
+        "#ff455e77 x2575",
+        "#ff646464 x1818"
+      ]
+    },
+    "political": {
+      "colors": 579,
+      "fingerprint": "0xb4a9e7aecc74cc13",
+      "top": [
+        "#ff808080 x6281",
+        "#ff455e77 x5261",
+        "#ff646464 x1457"
+      ]
+    },
+    "population": {
+      "colors": 741,
+      "fingerprint": "0x563808e76a3a9a95",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "population_growth": {
+      "colors": 854,
+      "fingerprint": "0x5ec30c1ce562a826",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "religion": {
+      "colors": 221,
+      "fingerprint": "0x224757e2cefc7754",
+      "top": [
+        "#ff455e77 x5279",
+        "#ff159b61 x2900",
+        "#ffb27f00 x2709"
+      ]
+    },
+    "rgo_level": {
+      "colors": 44,
+      "fingerprint": "0xd7b2be0225547d44",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff0e0202 x2081"
+      ]
+    },
+    "state_efficacy": {
+      "colors": 578,
+      "fingerprint": "0xfbcb5592ff086093",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "unrealized_tax_base": {
+      "colors": 251,
+      "fingerprint": "0xada7502e4b696b39",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff040101 x2526"
+      ]
+    },
+    "wealth": {
+      "colors": 302,
+      "fingerprint": "0xecae01c0dd7dd569",
+      "top": [
+        "#ff808080 x6280",
+        "#ff455e77 x5709",
+        "#ff040101 x2128"
+      ]
+    }
+  },
+  "save_version": "1.4.0",
+  "selection_counts": {
+    "after_add": 524,
+    "after_remove": 42,
+    "after_select": 482
+  }
+}

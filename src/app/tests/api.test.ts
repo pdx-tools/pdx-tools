@@ -1,11 +1,8 @@
-import fs from "node:fs/promises";
-import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { fetchOk, fetchOkJson, sendJsonAs } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { userId } from "@/lib/auth";
 import { eu4AchievementBests, eu4Saves, eu5Saves, users } from "@/server-lib/db/schema";
 import type { NewEu5Save, NewSave, UserSaves } from "@/server-lib/db";
-import { oneshotDb } from "@/server-lib/db/connection";
 import { beforeEach, expect, test } from "vitest";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { SavePostResponse } from "@/server-lib/models";
@@ -13,28 +10,25 @@ import { pdxFns } from "@/server-lib/functions";
 import type { AchievementApiResponse } from "@/routes/api.achievements.$achievementId";
 import type { FeedResponse } from "@/routes/api.feed";
 import type { CampaignResponse } from "@/routes/api.campaign";
-import type { PdxSession } from "@/server-lib/auth/session";
 import type { SaveResponse } from "@/server-lib/fn/save";
 import type { NewKeyResponse } from "@/services/appApi";
 import type { UserFeaturesResponse } from "@/routes/api.admin.users.$userId.features";
 import type { LatestPodium } from "@/server-lib/fn/achievement";
+import { appUrl, parseApiUrl, readSaveFixture, resetDb, withDb } from "./support";
 
-const dbConnection = "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
+// The server rules that a browser cannot reach in a short test: leaderboard
+// and feed rules across many saves and uploaders, admin endpoints, and
+// uploads from API clients. The browser tests in `e2e/` cover what a player
+// does.
 
-beforeEach(async () => {
-  await oneshotDb(dbConnection, async (db) => {
-    await db.delete(eu5Saves);
-    await db.delete(eu4Saves);
-    await db.delete(users);
-  });
-});
+beforeEach(resetDb);
 
 // Save files live in the Worker's local R2 simulation (miniflare), which is only
 // reachable from inside the Worker. Save ids are random (genId), so leftover
 // objects can't collide across tests and an explicit per-test purge is
 // unnecessary — the db reset above is enough.
 
-const pdxUrl = (path: string) => `http://localhost:3000${path}`;
+const pdxUrl = (path: string) => `${appUrl}${path}`;
 
 async function getNewCookies(): Promise<string> {
   const resp = await fetchOk(pdxUrl("/api/login/steam-callback"), {
@@ -47,7 +41,7 @@ class HttpClient {
   private constructor(private cookies: string) {}
 
   async uploadSaveHeaders(filepath: string, headers: RequestInit["headers"]) {
-    const data = await fetchEu4Save(filepath);
+    const data = await readSaveFixture("eu4", filepath);
     const file = new Blob([data], { type: "application/octet-stream" });
 
     return await fetchOkJson<SavePostResponse>(pdxUrl("/api/saves"), {
@@ -60,9 +54,8 @@ class HttpClient {
     });
   }
 
-  async uploadSaveCore<T extends object>(filepath: string, metadata?: T) {
-    await fetchEu4Save(filepath);
-    const data = await fs.readFile(eu4SaveLocation(filepath));
+  public async uploadSave<T extends object>(filepath: string, metadata?: T) {
+    const data = await readSaveFixture("eu4", filepath);
     const file = new Blob([data], { type: "application/octet-stream" });
 
     const meta = JSON.stringify({
@@ -76,49 +69,19 @@ class HttpClient {
     formData.append("file", file);
     formData.append("metadata", meta);
 
-    return await fetch(pdxUrl("/api/saves"), {
+    const resp = await fetch(pdxUrl("/api/saves"), {
       method: "POST",
       headers: {
         cookie: this.cookies,
       },
       body: formData,
     });
-  }
-
-  public async uploadSave<T extends object>(filepath: string, metadata?: T) {
-    const resp = await this.uploadSaveCore(filepath, metadata);
 
     if (!resp.ok) {
       const body = await resp.text();
       throw new Error(`failed to upload (${resp.status}): ${body}`);
     }
 
-    return (await resp.json()) as SavePostResponse;
-  }
-
-  public async uploadSaveReq(filepath: string) {
-    return await this.uploadSaveCore(filepath);
-  }
-
-  /** Upload an EU5 save as a bare zstd body with the metadata in headers. */
-  async uploadEu5SaveReq(filepath: string, filename = "myfile.eu5") {
-    const data = zstdCompressSync(await fetchEu5Save(filepath));
-    return await fetch(pdxUrl("/api/eu5/saves"), {
-      method: "POST",
-      body: new Blob([data]),
-      headers: {
-        "Content-Type": "application/zstd",
-        "pdx-tools-filename": encodeURIComponent(filename),
-        cookie: this.cookies,
-      },
-    });
-  }
-
-  public async uploadEu5Save(filepath: string, filename?: string) {
-    const resp = await this.uploadEu5SaveReq(filepath, filename);
-    if (!resp.ok) {
-      throw new Error(`failed to upload (${resp.status}): ${await resp.text()}`);
-    }
     return (await resp.json()) as SavePostResponse;
   }
 
@@ -173,65 +136,15 @@ class HttpClient {
   }
 }
 
-const fns = pdxFns({ endpoint: `http://localhost:8081` });
+const fns = pdxFns({ endpoint: parseApiUrl });
 
 async function parseFile(path: string) {
-  const fileData = await fetchEu4Save(path);
-  const data = await fns.parseSave(fileData);
+  const data = await fns.parseSave(await readSaveFixture("eu4", path));
 
   if (data.kind !== "Parsed") {
     throw new Error("unable to parse");
   } else {
     return data;
-  }
-}
-
-function eu4SaveLocation(save: string) {
-  return `../../assets/saves/eu4/${save}`;
-}
-
-async function logEu4Fixture(save: string) {
-  const log = process.env.PDX_FIXTURES_LOG;
-  if (log) {
-    await fs.appendFile(log, `eu4/${save}\n`);
-  }
-}
-
-function eu5SaveLocation(save: string) {
-  return `../../assets/saves/eu5/${save}`;
-}
-
-async function fetchEu5Save(save: string) {
-  const fp = eu5SaveLocation(save);
-  try {
-    return await fs.readFile(fp);
-  } catch {
-    const resp = await fetch(`https://cdn-dev.pdx.tools/eu5-saves/${save}`);
-    if (!resp.ok) {
-      throw new Error(`unable to retrieve: ${save}`);
-    }
-    const buf = Buffer.from(await resp.arrayBuffer());
-    await fs.mkdir("../../assets/saves/eu5", { recursive: true });
-    await fs.writeFile(fp, buf);
-    return buf;
-  }
-}
-
-async function fetchEu4Save(save: string) {
-  await logEu4Fixture(save);
-  const fp = eu4SaveLocation(save);
-
-  try {
-    return await fs.readFile(fp);
-  } catch {
-    const resp = await fetch(`https://cdn-dev.pdx.tools/eu4-saves/${save}`);
-    if (!resp.ok) {
-      throw new Error(`unable to retrieve: ${save}`);
-    }
-    const buf = Buffer.from(await resp.arrayBuffer());
-    await fs.mkdir("../../assets/saves/eu4", { recursive: true });
-    await fs.writeFile(fp, buf);
-    return buf;
   }
 }
 
@@ -276,17 +189,6 @@ test("same campaign", async () => {
   expect(userProfile.saves[0].id).toEqual(startUpload.save_id);
   expect(userProfile.saves[1].id).toEqual(endUpload.save_id);
   expect(userProfile.saves[2].id).toEqual(midUpload.save_id);
-});
-
-test("invalid ironman", async () => {
-  const client = await HttpClient.create();
-
-  const newSave = await client.uploadSaveReq("Ruskies.eu4");
-
-  expect(newSave.status).toEqual(400);
-  const data = await newSave.json();
-  expect(data).toHaveProperty("name", "ValidationError");
-  expect(data).toHaveProperty("msg", "unsupported patch: 1.28");
 });
 
 test("same playthrough id", async () => {
@@ -368,7 +270,7 @@ test("campaign feed folds, splits, and pages campaigns", async () => {
     versionPatch: 0,
   });
 
-  await oneshotDb(dbConnection, async (db) => {
+  await withDb(async (db) => {
     await db.insert(users).values([
       { userId: userId("u1"), steamId: "s1", steamName: "Alice" },
       { userId: userId("u2"), steamId: "s2", steamName: "Bob" },
@@ -445,89 +347,6 @@ test("same playthrough disjoint set", async () => {
   expect(goldenUpload.save_id).toBeDefined();
 });
 
-test("reject duplicate uploads", async () => {
-  const client = await HttpClient.create();
-  const tatarPath = "tartartar.eu4";
-
-  const tatarUpload = await client.uploadSave(tatarPath);
-  expect(tatarUpload.save_id).toBeDefined();
-
-  await expect(client.uploadSave(tatarPath)).rejects.toThrow("save already exists");
-});
-
-test("eu5 upload, file download, and delete", async () => {
-  // The test user is an admin, which passes the eu5-upload feature gate.
-  const client = await HttpClient.create();
-  const upload = await client.uploadEu5Save("debug-1.0.eu5", "Ostsiedlung ünd Co.eu5");
-  expect(upload.save_id).toBeDefined();
-
-  const file = await fetch(pdxUrl(`/api/eu5/saves/${upload.save_id}/file`));
-  expect(file.status).toBe(200);
-  expect(file.headers.get("content-type")).toBe("application/zstd");
-  const stored = zstdDecompressSync(Buffer.from(await file.arrayBuffer()));
-  expect(stored.equals(await fetchEu5Save("debug-1.0.eu5"))).toBe(true);
-
-  const profile = await client.get<UserSaves>("/api/users/100");
-  expect(profile.eu5_saves).toHaveLength(1);
-  expect(profile.eu5_saves[0].filename).toBe("Ostsiedlung ünd Co.eu5");
-
-  const duplicate = await client.uploadEu5SaveReq("debug-1.0.eu5");
-  expect(duplicate.status).toBe(400);
-  expect(await duplicate.json()).toMatchObject({ msg: "save already exists" });
-
-  await client.delete(`/api/eu5/saves/${upload.save_id}`);
-  const gone = await client.getReq(`/api/eu5/saves/${upload.save_id}`);
-  expect(gone.status).toBe(404);
-  const after = await client.get<UserSaves>("/api/users/100");
-  expect(after.eu5_saves).toEqual([]);
-});
-
-test("delete save", async () => {
-  const client = await HttpClient.create();
-  const ita1Path = "ita1.eu4";
-  const kandyPath = "kandy2.bin.eu4";
-
-  const kandy = await client.uploadSave(kandyPath);
-  expect(kandy.save_id).toBeDefined();
-
-  const ita1 = await client.uploadSave(ita1Path);
-  expect(ita1.save_id).toBeDefined();
-
-  await client.delete(`/api/saves/${ita1.save_id}`);
-
-  let userProfile = await client.get<UserSaves>("/api/users/100");
-  expect(userProfile.saves).toHaveLength(1);
-
-  await client.delete(`/api/saves/${kandy.save_id}`);
-
-  userProfile = await client.get<UserSaves>("/api/users/100");
-  expect(userProfile.saves).toHaveLength(0);
-
-  const achievement = await client.get<AchievementApiResponse>("/api/achievements/18");
-  expect(achievement.saves).toHaveLength(0);
-
-  const kandy2 = await client.uploadSave(kandyPath);
-  expect(kandy2.save_id).not.toBe(kandy.save_id);
-});
-
-test("set aar", async () => {
-  const client = await HttpClient.create();
-  const ita1Path = "ita1.eu4";
-  const initAar = "hello world";
-  const uploadResponse = await client.uploadSave(ita1Path, { aar: initAar });
-  const uploadedSave = await client.get<SaveResponse>(`/api/saves/${uploadResponse.save_id}`);
-  expect(uploadedSave.aar).toBe(initAar);
-
-  await client.patch(`/api/saves/${uploadResponse.save_id}`, {
-    aar: "goodbye",
-    filename: "hello world.eu4",
-  });
-
-  const updatedSave = await client.get<SaveResponse>(`/api/saves/${uploadResponse.save_id}`);
-  expect(updatedSave.aar).toBe("goodbye");
-  expect(updatedSave.filename).toBe("hello world.eu4");
-});
-
 test("chinese supplementary", async () => {
   const client = await HttpClient.create();
   const path = "chinese-supplementary.eu4";
@@ -548,12 +367,6 @@ test("plain saves", async () => {
   if (save.kind == "Parsed") {
     expect(save.encoding).toBe("text");
   }
-});
-
-test("get profile", async () => {
-  const client = await HttpClient.create();
-  const profile = await client.get<PdxSession>("/api/profile");
-  expect(profile).toHaveProperty("userId", "100");
 });
 
 test("get profile with api key", async () => {
@@ -617,12 +430,6 @@ test("admin grants and revokes a feature", async () => {
     headers: { "Content-Type": "application/json", Cookie: client.cookieHeader },
   });
   expect(missingChange.status).toBe(404);
-});
-
-test("user page lists eu5 saves", async () => {
-  const client = await HttpClient.create();
-  const profile = await client.get<UserSaves>("/api/users/100");
-  expect(profile.eu5_saves).toEqual([]);
 });
 
 test("admin rebalance", async () => {
@@ -732,7 +539,7 @@ function boardSave(id: string, playthroughId: string, scoreDays: number, minute:
 }
 
 async function insertBoardSaves(saves: NewSave[]) {
-  await oneshotDb(dbConnection, async (db) => {
+  await withDb(async (db) => {
     await db.insert(users).values({ userId: userId("u1"), steamId: "s1", steamName: "Alice" });
     await db.insert(eu4Saves).values(saves);
   });
@@ -767,20 +574,18 @@ test("achievement bests follow deletes, ties, and updates", async () => {
   // An update to a column the leaderboard does not read leaves the rows as
   // they are. A row that the trigger wrote again would have a new xmin.
   const versions = () =>
-    oneshotDb(dbConnection, (db) =>
+    withDb((db) =>
       db
         .select({ save: eu4AchievementBests.saveId, xmin: sql<string>`xmin::text` })
         .from(eu4AchievementBests)
         .orderBy(asc(eu4AchievementBests.saveId)),
     );
   const before = await versions();
-  await oneshotDb(dbConnection, (db) =>
-    db.update(eu4Saves).set({ filename: "renamed.eu4", aar: "notes" }),
-  );
+  await withDb((db) => db.update(eu4Saves).set({ filename: "renamed.eu4", aar: "notes" }));
   expect(await versions()).toEqual(before);
 
   // A faster run and a disqualification both move the board.
-  await oneshotDb(dbConnection, async (db) => {
+  await withDb(async (db) => {
     await db.update(eu4Saves).set({ scoreDays: 50 }).where(eq(eu4Saves.id, "p3"));
     await db
       .update(eu4Saves)
@@ -801,7 +606,7 @@ test("achievement bests rebuild after a bulk update", async () => {
   expect(await boardIds(client)).toEqual(ids);
 
   // Reverse the order of the board in one statement.
-  await oneshotDb(dbConnection, (db) =>
+  await withDb((db) =>
     db.update(eu4Saves).set({ scoreDays: sql`${3000} - ${eu4Saves.scoreDays}` }),
   );
   expect(await boardIds(client)).toEqual(ids.toReversed());
@@ -816,34 +621,20 @@ test("latest podium needs three places", async () => {
   expect(partial.headers.get("cache-control")).toContain("max-age=");
   expect(await partial.json()).toBeNull();
 
-  await oneshotDb(dbConnection, (db) =>
-    db.insert(eu4Saves).values(boardSave("bronze", "p3", 300, 2)),
-  );
+  await withDb((db) => db.insert(eu4Saves).values(boardSave("bronze", "p3", 300, 2)));
   const full = await client.get<LatestPodium>("/api/achievements/latest-podium");
   expect(full.achievement.id).toBe(BOARD);
   expect(full.saves.map((x) => x.id)).toEqual(["gold", "silver", "bronze"]);
   expect(full.newSaveId).toBe("bronze");
 
   // A newer run off the podium does not count as the latest finish.
-  await oneshotDb(dbConnection, (db) =>
-    db.insert(eu4Saves).values(boardSave("fourth", "p4", 400, 3)),
-  );
+  await withDb((db) => db.insert(eu4Saves).values(boardSave("fourth", "p4", 400, 3)));
   const after = await client.get<LatestPodium>("/api/achievements/latest-podium");
   expect(after.newSaveId).toBe("bronze");
 
   // A newer run that takes a place does.
-  await oneshotDb(dbConnection, (db) =>
-    db.insert(eu4Saves).values(boardSave("new-gold", "p5", 50, 4)),
-  );
+  await withDb((db) => db.insert(eu4Saves).values(boardSave("new-gold", "p5", 50, 4)));
   const moved = await client.get<LatestPodium>("/api/achievements/latest-podium");
   expect(moved.saves.map((x) => x.id)).toEqual(["new-gold", "gold", "silver"]);
   expect(moved.newSaveId).toBe("new-gold");
-});
-
-test("achievement index redirects to the hub", async () => {
-  const resp = await fetch(pdxUrl("/eu4/achievements"), { redirect: "manual" });
-  expect(resp.status).toBe(301);
-  expect(new URL(check(resp.headers.get("location")), pdxUrl("/")).href).toBe(
-    pdxUrl("/eu4#achievements"),
-  );
 });

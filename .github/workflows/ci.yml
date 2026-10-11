@@ -334,6 +334,12 @@ jobs:
         run: |
           mise run admin:assets:sync
           mise run admin:assets:compile:all
+      - name: Install browser dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.suite == 'app-tests'
+        run: |
+          mise run pnpm-install
+          pnpm --dir src/app exec playwright install --with-deps chromium
+
       # Bash on every OS: a multi-line PowerShell script reports only the
       # exit code of its last command, so a failed test passed on Windows.
       - shell: bash
@@ -343,8 +349,18 @@ jobs:
           case "${{ matrix.suite }}" in
             no-tokens) mise run test:wasm; mise run build:app ;;
             rust-tests) mise run test:cargo ;;
-            app-tests) mise run test:app ::: typecheck; mise run build:app ;;
+            app-tests) mise run test:app; mise run build:app ::: typecheck ;;
           esac
+
+      - name: Upload browser test report
+        if: failure() && matrix.suite == 'app-tests'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ matrix.os }}
+          path: |
+            src/app/playwright-report
+            src/app/test-results
+          retention-days: 7
 
       - name: Check fixture lists
         if: matrix.os == 'ubuntu-latest' && matrix.with_tokens

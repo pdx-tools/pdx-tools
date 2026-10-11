@@ -25,6 +25,8 @@
     "env.d.ts",
     "app/**/*",
     "tests/**/*",
+    "e2e/**/*",
+    "playwright.config.ts",
     "server.ts",
   ],
   "exclude": [

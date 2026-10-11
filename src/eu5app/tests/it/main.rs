@@ -94,12 +94,12 @@ fn workspace_scenarios() {
         ws.clear_focus();
         ws.set_map_mode(MapMode::Political);
 
-        let mut color_hashes: BTreeMap<&'static str, String> = BTreeMap::new();
+        let mut map_modes: BTreeMap<&'static str, serde_json::Value> = BTreeMap::new();
         for mode in ALL_MAP_MODES {
             ws.set_map_mode(mode);
-            color_hashes.insert(
+            map_modes.insert(
                 mode_name(mode),
-                utils::hash_location_arrays(ws.location_arrays()),
+                utils::summarize_location_arrays(ws.location_arrays()),
             );
         }
 
@@ -148,7 +148,7 @@ fn workspace_scenarios() {
         let localized = ws.localized(&localization);
         let snapshot = serde_json::json!({
             "save_version": ws.gamestate().metadata().version.to_string(),
-            "map_mode_colors": color_hashes,
+            "map_modes": map_modes,
             "location": [{
                 "id": location.id().value(),
                 "name": localized.presenter().location_display_name(location.idx()),
@@ -309,7 +309,8 @@ fn incremental_timeline_steps_match_a_full_repaint() {
 /// backend.
 #[test]
 fn opens_a_zstd_remuxed_zip_save() {
-    let mut file = utils::request_file("Clandeboye.eu5");
+    let mut file =
+        utils::request_file("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5");
     let mut data = Vec::new();
     std::io::Read::read_to_end(&mut file, &mut data).unwrap();
     let original = Eu5File::from_slice(data.clone()).unwrap();
