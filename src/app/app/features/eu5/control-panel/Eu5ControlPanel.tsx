@@ -1,3 +1,4 @@
+import { useEu5InsightPanelOpen } from "../store";
 import { useHistory } from "../history/store";
 import { ImportProgress } from "../history/ImportProgress";
 import { CampaignSection } from "@/features/campaign/CampaignStepper";
@@ -8,6 +9,8 @@ import { ShareRow } from "./ShareSave";
 import { ExportRow } from "./ExportRow";
 
 export const Eu5ControlPanel = () => {
+  const historyOpen = useHistory((state) => state.panelOpen);
+  const insightOpen = useEu5InsightPanelOpen();
   const progress = useHistory((state) => state.progress);
   const cancel = useHistory((state) => state.cancel);
   return (
@@ -15,7 +18,7 @@ export const Eu5ControlPanel = () => {
       <aside className="flex h-full w-full flex-col border-r border-game-line-strong bg-game-panel">
         <PanelHeader />
         <CampaignSection className="border-b border-game-line" />
-        {progress && (
+        {progress && !(historyOpen && insightOpen) && (
           <div className="border-b border-game-line p-3">
             <ImportProgress progress={progress} onCancel={() => cancel?.()} />
           </div>
