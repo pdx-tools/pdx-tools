@@ -1,3 +1,8 @@
+import { useHistory } from "./history/store";
+import { ContextGraphs } from "./history/ContextGraphs";
+import { campaignKey } from "./history/types";
+import { AnimatedValue } from "./components/AnimatedValue";
+import { useEu5PlaythroughId, useEu5SaveDate } from "./store";
 import { SaveHistory } from "./history/SaveHistory";
 import { GameButton } from "@/components/game/Button";
 import type React from "react";
@@ -35,7 +40,8 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyOpen = useHistory((state) => state.panelOpen);
+  const setHistoryOpen = useHistory((state) => state.showPanel);
   const currentMapMode = useEu5MapMode();
   const setInsightPanelWidth = useSetEu5InsightPanelWidth();
   const handleWidthChange = useCallback(
@@ -90,9 +96,17 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
                   Over time
                 </GameButton>
               </div>
-              {historyOpen ? <PanelSaveHistory mapMode={currentMapMode} /> : <PanelContentInner />}
+              {!historyOpen && (
+                <>
+                  <PanelContentInner />
+                  <InlineHistory />
+                </>
+              )}
             </>
           )}
+          <div hidden={!open || !historyOpen}>
+            <PanelSaveHistory visible={open && historyOpen} mapMode={currentMapMode} />
+          </div>
         </ResizablePanel.Content>
       </ResizablePanel.Root>
     </PanelNavProvider>
@@ -143,7 +157,7 @@ function useHistoryContext(
 }
 
 function PanelSaveHistory(props: React.ComponentProps<typeof SaveHistory>) {
-  const { mode, focus } = useHistoryContext(props.mapMode);
+  const { mode, focus } = useHistoryContext(props.mapMode, props.visible);
   return (
     <SaveHistory
       {...props}
@@ -152,6 +166,53 @@ function PanelSaveHistory(props: React.ComponentProps<typeof SaveHistory>) {
       focusName={focus?.name}
       focusMarketCenter={focus && "center" in focus ? focus.center : undefined}
     />
+  );
+}
+
+function InlineHistory() {
+  const [expanded, setExpanded] = useState(false);
+  const mode = useEu5MapMode();
+  const { mode: contextMode, focus } = useHistoryContext(mode, expanded);
+  const snapshots = useHistory((s) => s.snapshots);
+  const id = useEu5PlaythroughId();
+  const date = useEu5SaveDate();
+  const { data: version } = useEu5Trigger(
+    async (engine) => (await engine.trigger.getHistoryContext()).version,
+    [],
+  );
+  const selected = snapshots.find(
+    (snapshot) =>
+      snapshot.campaignId === id &&
+      snapshot.version === version &&
+      snapshot.dateSort === date.year * 10000 + date.month * 100 + date.day,
+  );
+  const selectedHash = selected?.hash;
+  const showPanel = useHistory((s) => s.showPanel);
+  if (!selected || contextMode === "markets") return null;
+  const dates = snapshots.filter((s) => campaignKey(s) === campaignKey(selected));
+  return (
+    <details
+      className="mx-4 my-3 rounded-(--radius-panel) border border-game-line-strong bg-game-panel p-3"
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
+      <summary className="cursor-pointer font-game-ui text-xs text-game-ink-300">
+        {focus?.name ?? MAP_MODE_TITLES[mode]} · evolution over {dates.length} saved dates
+      </summary>
+      {expanded && (
+        <div className="mt-3">
+          <ContextGraphs
+            dates={dates}
+            mode={contextMode ?? mode}
+            country={focus && "tag" in focus ? focus.tag : "world"}
+            countryName={focus?.name}
+            selectedHash={selectedHash}
+          />
+          <GameButton variant="ghost" onClick={() => showPanel(true)}>
+            Open history controls
+          </GameButton>
+        </div>
+      )}
+    </details>
   );
 }
 
@@ -393,7 +454,7 @@ function HeadlineStat({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex items-baseline gap-1">
       <span className="font-game-num text-[13px] font-medium text-game-ink-100 tabular-nums">
-        {value}
+        <AnimatedValue value={value} />
       </span>
       <span className="text-[10px] tracking-[0.06em] text-game-ink-500 uppercase">{label}</span>
     </span>

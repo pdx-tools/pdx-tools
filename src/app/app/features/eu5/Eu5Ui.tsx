@@ -38,6 +38,8 @@ import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 import { Eu5Toolbar } from "./Eu5Toolbar";
 import { Eu5SelectionPill } from "./Eu5SelectionPill";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
+import { CampaignAnalysis } from "./history/CampaignAnalysis";
+import { SnapshotBar } from "./history/SnapshotBar";
 import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import type { CanvasCourierHost } from "@/lib/canvas_courier";
@@ -183,6 +185,7 @@ const Eu5UiContent = ({
       aria-busy={busy || undefined}
     >
       {/* Left sidebar — always visible */}
+      <CampaignAnalysis />
       <Eu5ControlPanel />
 
       {/* Right panel — slides off right edge when closed */}
@@ -195,6 +198,7 @@ const Eu5UiContent = ({
       <Eu5CursorTooltip cursorRef={cursorRef} />
       <Eu5SelectionPill />
       <TimelineBar />
+      <SnapshotBar />
       <Eu5Toolbar />
     </div>
   );

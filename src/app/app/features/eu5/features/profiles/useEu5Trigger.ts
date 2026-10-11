@@ -39,7 +39,7 @@ export function useEu5Trigger<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, ...deps]);
 
-  return { data, error, loading };
+  return { data, error, loading: loading && data === undefined };
 }
 
 export function useEu5SelectionTrigger<T>(

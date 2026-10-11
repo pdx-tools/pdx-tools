@@ -1,3 +1,4 @@
+import { PreparedSaves } from "./preparedSaves";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type {
@@ -140,6 +141,15 @@ function closeSave() {
   save?.close();
 }
 
+const prepared = new PreparedSaves<wasm_eu5.Eu5App>((app) => app.free());
+let uncachedActiveBytes = 0;
+let workQueue: Promise<unknown> = Promise.resolve();
+function serialize<T>(run: () => Promise<T>): Promise<T> {
+  const job = workQueue.then(run);
+  workQueue = job.catch(() => {});
+  return job;
+}
+
 /**
  * Parse a save and serve it. The save that was open closes first. The
  * caller reads the bytes of the save, so a save that cannot be read never
@@ -149,39 +159,13 @@ function closeSave() {
  * Thus the caller can set the map mode and selection first, and the map
  * changes one time.
  */
-export const loadSave = async (
-  {
-    save,
-    data: saveData,
-    hold,
-  }: {
-    save: Eu5ParsedSave;
-    data: ArrayBuffer;
-    hold: boolean;
-  },
-  {
-    gameBundle,
-    onProgress,
-  }: {
-    gameBundle: GameBundleSource;
-    onProgress?: (increment: number, stage: string) => void;
-  },
-) => {
-  // Wasm memory does not shrink, so the open save goes before this one is
-  // parsed. Two gamestates at once would raise the memory of the page for
-  // the rest of the session.
-  closeSave();
-
-  // Melt reads the save again, so that the worker does not keep a large
-  // file in memory.
-  const readFile = async () =>
-    save.kind === "file"
-      ? save.file.arrayBuffer()
-      : fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
-
-  const [wasm, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
-  onProgress?.(5, "Reading save file");
-
+async function parseApp(
+  saveData: ArrayBuffer,
+  gameBundle: GameBundleSource,
+  onProgress?: (increment: number, stage: string) => void,
+  beforeLocalize?: (workspace: wasm_eu5.Eu5WasmWorkspace) => Promise<void>,
+): Promise<wasm_eu5.Eu5App | null> {
+  const [, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
   const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
   onProgress?.(10, "Parsing gamestate");
 
@@ -218,13 +202,65 @@ export const loadSave = async (
   );
   onProgress?.(3, "Syncing locations");
 
-  if (!mapEndpoint) {
-    throw new Error("Map endpoint not initialized");
-  }
-  const map = mapEndpoint;
+  await beforeLocalize?.(workspace);
+  const localizationBundle = await localizationTask;
+  return workspace.localize(localizationBundle);
+}
 
-  // Send all location data and the grouping table in one message. Then the
-  // map never draws the locations of one save with the groups of a different save.
+export const loadSave = (...args: Parameters<typeof loadSaveInner>) =>
+  serialize(() => loadSaveInner(...args));
+
+export const hasPreparedSave = (cacheKey: string) =>
+  serialize(async () => !!prepared.get(cacheKey));
+
+export const prepareSave = (file: File, cacheKey: string, gameBundle: GameBundleSource) =>
+  serialize(async () => {
+    if (prepared.get(cacheKey)) return true;
+    if (!prepared.makeRoom(file.size * 2 + uncachedActiveBytes)) return false;
+    const app = await parseApp(await file.arrayBuffer(), gameBundle);
+    if (!app) return false;
+    if (prepared.add(cacheKey, app, app.retained_save_bytes())) return true;
+    app.free();
+    return false;
+  });
+
+const loadSaveInner = async (
+  {
+    save,
+    data: saveData,
+    hold,
+    cacheKey,
+  }: {
+    save: Eu5ParsedSave;
+    data: ArrayBuffer;
+    hold: boolean;
+    cacheKey?: string;
+  },
+  {
+    gameBundle,
+    onProgress,
+  }: {
+    gameBundle: GameBundleSource;
+    onProgress?: (increment: number, stage: string) => void;
+  },
+) => {
+  // Wasm memory does not shrink, so the open save goes before this one is
+  // parsed. Two gamestates at once would raise the memory of the page for
+  // the rest of the session.
+  closeSave();
+
+  // Melt reads the save again, so that the worker does not keep a large
+  // file in memory.
+  const readFile = async () =>
+    save.kind === "file"
+      ? save.file.arrayBuffer()
+      : fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
+
+  const [wasm] = await Promise.all([initialized, tokensTask, tokensReady]);
+  onProgress?.(5, "Reading save file");
+
+  if (!mapEndpoint) throw new Error("Map endpoint not initialized");
+  const map = mapEndpoint;
   const syncSave = (source: wasm_eu5.Eu5WasmWorkspace | wasm_eu5.Eu5App) => {
     const buffer = source.location_arrays();
     const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
@@ -239,22 +275,32 @@ export const loadSave = async (
     );
   };
 
-  if (!hold) {
-    // Do not wait: the map worker can still be loading its textures, and the
-    // parse does not need the view. A failure keeps the default view.
-    map.open_view(workspace.opening_view()).catch((error: unknown) => {
-      console.warn("Failed to open the map view", error);
+  let app = cacheKey ? prepared.get(cacheKey) : undefined;
+  let retained = !!app;
+  if (!app) {
+    // A prepared save may have been evicted after the main-thread cache check.
+    if (saveData.byteLength === 0) saveData = await readFile();
+    // Release inactive saves before parsing; a large save can still load uncached.
+    prepared.makeRoom(saveData.byteLength * 2);
+    const parsed = await parseApp(saveData, gameBundle, onProgress, async (workspace) => {
+      if (!hold) {
+        map.open_view(workspace.opening_view()).catch((error: unknown) => {
+          console.warn("Failed to open the map view", error);
+        });
+        await syncSave(workspace);
+      }
     });
-
-    // The map uploads the buffers while this worker localizes.
-    await syncSave(workspace);
+    if (!parsed) return null;
+    app = parsed;
+    retained = !!cacheKey && prepared.add(cacheKey, app, app.retained_save_bytes());
+  } else {
+    app.clear_selection();
+    app.clear_highlights();
+    app.set_map_mode("political");
+    app.set_timeline_date(app.meta().date);
   }
-  onProgress?.(5, "Localizing");
-
-  const localizationBundle = await localizationTask;
-  onProgress?.(2, "Building indexes");
-
-  const app = timeSync("Localize app", () => workspace.localize(localizationBundle));
+  prepared.active = retained ? cacheKey! : null;
+  uncachedActiveBytes = retained ? 0 : app.retained_save_bytes();
   let held = hold;
 
   // Build search indexes once after initialization.
@@ -371,7 +417,11 @@ export const loadSave = async (
 
   const opened: OpenSave = {
     events: held ? null : events,
-    close: () => app.free(),
+    close: () => {
+      prepared.active = null;
+      uncachedActiveBytes = 0;
+      if (!retained) app.free();
+    },
   };
   openSave = opened;
 
@@ -475,6 +525,7 @@ export const loadSave = async (
       return app.get_state_efficacy();
     },
 
+    getMarketIdAtCenter: (center: number) => app.market_id_at_center(center),
     getHistoryContext: () => {
       const version = app.meta().version;
       return {

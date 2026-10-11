@@ -265,7 +265,12 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 
   const height = rows.length * 24 + 54;
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <EChart
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+      onInit={handleInit}
+    />
   );
 }
 
@@ -364,7 +369,7 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
     };
   }, [row, total]);
 
-  return <EChart option={option} style={{ height: "86px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "86px", width: "100%" }} />;
 }
 
 const columnHelper = createColumnHelper<PopulationTopLocation>();
@@ -586,7 +591,7 @@ export function PopulationTypeProfile({
   }, [data, isEmpty]);
 
   const height = data.length * 22 + 52;
-  return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: `${height}px`, width: "100%" }} />;
 }
 
 const OTHER_COLOR = chartInk.muted;
@@ -709,5 +714,5 @@ function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
 export function PopulationSankey({ rows }: { rows: LocationPopRow[] }) {
   const option = useMemo(() => buildSankeyOption(rows), [rows]);
   if (rows.length === 0) return null;
-  return <EChart option={option} style={{ height: "320px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "320px", width: "100%" }} />;
 }

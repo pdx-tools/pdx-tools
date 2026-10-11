@@ -1,8 +1,19 @@
 import type { Snapshot } from "./types";
 
-/** JSON cannot encode the Maps used by the in-memory observation schema. */
-export function exportSnapshots(snapshots: Snapshot[]): string {
-  return JSON.stringify({ schemaVersion: 3, snapshots }, (_key, value) =>
-    value instanceof Map ? Object.fromEntries(value) : value,
-  );
+/** Serialize each observation separately so large campaigns don't hit the JS string limit. */
+export function exportSnapshots(snapshots: Snapshot[]): Blob {
+  const parts: BlobPart[] = ['{"schemaVersion":3,"snapshots":['];
+  for (const [index, snapshot] of snapshots.entries()) {
+    if (index) parts.push(",");
+    // Blob concatenation retains byte chunks without creating one campaign-sized string.
+    parts.push(
+      new Blob([
+        JSON.stringify(snapshot, (_key, value) =>
+          value instanceof Map ? Object.fromEntries(value) : value,
+        ),
+      ]),
+    );
+  }
+  parts.push("]}");
+  return new Blob(parts, { type: "application/json" });
 }

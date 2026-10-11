@@ -1,3 +1,4 @@
+import { parsedSaveKey } from "./saveCacheKey";
 import { wrap, transfer, proxy, releaseProxy } from "comlink";
 import type { Remote } from "comlink";
 import type {
@@ -29,7 +30,7 @@ import type {
   TimelineChange,
   TimelineData,
 } from "@/wasm/wasm_eu5";
-import type { Eu5SaveData } from "./store/types";
+import type { Eu5SaveData, Eu5ParsedSave } from "./store/types";
 import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
 import { fetchOk } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
@@ -250,7 +251,7 @@ export class Eu5GameAdapter {
     const [saveEngine, mapEngine] = await Promise.all([
       config.save.then(({ save, data }) =>
         this.eu5Worker.loadSave(
-          transfer({ save, data, hold: false }, [data]),
+          transfer({ save, data, hold: false, cacheKey: parsedSaveKey(save) }, [data]),
           proxy({
             gameBundle: gameBundleApi,
             onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
@@ -312,7 +313,7 @@ export class Eu5GameAdapter {
     };
 
     const saveEngine = await this.eu5Worker.loadSave(
-      transfer({ save, data, hold: true }, [data]),
+      transfer({ save, data, hold: true, cacheKey: parsedSaveKey(save) }, [data]),
       proxy({
         gameBundle: gameBundleApi,
         onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
@@ -320,6 +321,26 @@ export class Eu5GameAdapter {
     );
 
     return saveEngine === null ? null : saveWorker(saveEngine, mapEngine);
+  }
+
+  async isPrepared(save: Eu5ParsedSave): Promise<boolean> {
+    return this.eu5Worker.hasPreparedSave(parsedSaveKey(save));
+  }
+
+  async prepare(file: File): Promise<boolean> {
+    const resolved = this.bundleVersion;
+    if (!resolved) return false;
+    const urls = getBundleUrls(resolved);
+    return this.eu5Worker.prepareSave(
+      file,
+      parsedSaveKey({ kind: "file", file }),
+      proxy({
+        selectVersion: async (version: string) =>
+          resolveBundleVersion(version) === resolved ? resolved : null,
+        fetch: () => fetchPart(urls.game),
+        fetchLocalization: () => fetchPart(urls.loc),
+      }),
+    );
   }
 
   terminate(): void {
@@ -505,6 +526,7 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
       return await saveEngine.getStateEfficacy();
     },
 
+    getMarketIdAtCenter: async (center: number) => await saveEngine.getMarketIdAtCenter(center),
     getHistoryContext: async () => await saveEngine.getHistoryContext(),
     getCountryProfile: async (countryIdx: number): Promise<CountryProfile | null> => {
       return await saveEngine.getCountryProfile(countryIdx);

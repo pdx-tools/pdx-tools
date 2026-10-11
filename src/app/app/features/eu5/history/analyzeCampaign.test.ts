@@ -50,7 +50,7 @@ let entries: LocalSaveEntry[];
 beforeEach(() => {
   vi.resetAllMocks();
   useHistory.getState().clear();
-  useHistory.setState({ progress: null, cancel: null });
+  useHistory.setState({ progress: null, cancel: null, analysisPaused: false });
   mocks.cachedSnapshots.mockResolvedValue([]);
   entries = [entry("first")];
   mocks.getLocalSave.mockImplementation((id) => entries.find((item) => item.id === id));
@@ -141,6 +141,7 @@ describe("campaign analysis", () => {
       const snapshot = observation();
       options.onSnapshots([snapshot], [{ snapshot, file }]);
       useHistory.getState().cancel!();
+      expect(useHistory.getState().analysisPaused).toBe(true);
       expect(options.signal.aborted).toBe(true);
       options.onSnapshots([observation("late")], [{ snapshot: observation("late"), file }]);
       throw new DOMException("Stopped", "AbortError");

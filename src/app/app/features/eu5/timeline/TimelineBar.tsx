@@ -1,5 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
+import { useCampaign } from "@/features/campaign/CampaignProvider";
+import { useHasSnapshotTimeline } from "../history/SnapshotBar";
+import { useHistory } from "../history/store";
+import { GameButton } from "@/components/game/Button";
 import { TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
 import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
@@ -42,9 +46,11 @@ export function TimelineBar() {
   const campaign = useTimelineCampaign(controller?.timeline.start);
   const mapMode = useEu5MapMode();
   const insets = useViewportInsets();
-  useTimelineKeyboard(controller);
+  const saveNavigation = useCampaign();
+  const savedDates = useHasSnapshotTimeline();
+  useTimelineKeyboard(savedDates ? null : controller);
 
-  const open = controller !== null && isHistoricalMapMode(mapMode);
+  const open = !savedDates && controller !== null && isHistoricalMapMode(mapMode);
   const presence = usePresence(open);
   const barRef = useRef<HTMLDivElement>(null);
   useReportedHeight(barRef, open, presence.mounted);
@@ -64,6 +70,14 @@ export function TimelineBar() {
       }}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-game-line-strong bg-game-overlay py-2 pr-2 pl-2.5 shadow-xl backdrop-blur-md">
+        {saveNavigation && (
+          <GameButton
+            variant="ghost"
+            onClick={() => useHistory.getState().setTimelineMode("saves")}
+          >
+            Saved dates
+          </GameButton>
+        )}
         <TimelineTransport controller={controller} />
 
         <TimelineReadout controller={controller} className="shrink-0" />

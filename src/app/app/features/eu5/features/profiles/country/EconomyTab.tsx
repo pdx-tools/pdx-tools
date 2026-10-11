@@ -1,3 +1,4 @@
+import { AnimatedValue } from "../../../components/AnimatedValue";
 import { useMemo } from "react";
 import type { ReactNode } from "react";
 import { formatCompact, formatFloat, formatInt } from "@/lib/format";
@@ -245,7 +246,7 @@ function HistoryChart({
   return (
     <section>
       <SectionTitle>{title}</SectionTitle>
-      <EChart option={option} style={{ height: "200px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "200px", width: "100%" }} />
     </section>
   );
 }
@@ -393,7 +394,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
   return (
     <section>
       <SectionTitle>Revenue &amp; Net Margin</SectionTitle>
-      <EChart option={option} style={{ height: "200px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "200px", width: "100%" }} />
     </section>
   );
 }
@@ -482,7 +483,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
   return (
     <section>
       <SectionTitle>Tax Base Gap · Wealth vs Tax Base</SectionTitle>
-      <EChart option={option} style={{ height: "300px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "300px", width: "100%" }} />
     </section>
   );
 }
@@ -500,7 +501,7 @@ export function StatPlate({
     <div className="min-w-0 border-r border-game-line bg-game-panel px-3 py-3 last:border-r-0">
       <SectionTitle className="mb-1.5 truncate">{label}</SectionTitle>
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 font-mono text-[18px] font-medium tracking-[-0.01em] text-game-ink-100 tabular-nums">
-        {typeof value === "string" ? <span className="truncate">{value}</span> : value}
+        <AnimatedValue value={value} />
         {delta && (
           <span
             className={`shrink-0 text-[10px] ${delta.positive ? "text-game-good" : "text-game-err"}`}

@@ -128,7 +128,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
   }, [rows]);
 
   const height = Math.max(120, rows.length * 28 + 40);
-  return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: `${height}px`, width: "100%" }} />;
 }
 
 function ForeignShareCallout({ scope }: { scope: BuildingLevelsScopeSummary }) {

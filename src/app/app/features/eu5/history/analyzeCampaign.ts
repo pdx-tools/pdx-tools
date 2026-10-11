@@ -22,9 +22,13 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
   const startedAt = performance.now();
   const issues: string[] = [];
   useHistory.setState({
+    analysisPaused: false,
     progress: { completed: 0, total: entries.length, startedAt },
     issues: [],
-    cancel: () => controller.abort(),
+    cancel: () => {
+      useHistory.setState({ analysisPaused: true });
+      controller.abort();
+    },
   });
   const { signal } = controller;
   try {
@@ -57,6 +61,7 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
           if (completed === sources.length || now - lastProgress > 150) {
             lastProgress = now;
             useHistory.setState({
+              analysisPaused: false,
               progress: {
                 completed: completed + entries.length - sources.length,
                 total: entries.length,

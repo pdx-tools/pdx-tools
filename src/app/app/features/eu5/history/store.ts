@@ -1,3 +1,4 @@
+import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { create } from "zustand";
 import type { FileVersion } from "@/features/campaign/localSaves";
 import type { ImportProgressState } from "./ImportProgress";
@@ -5,8 +6,23 @@ import type { Snapshot } from "./types";
 
 export type SourceObservation = { hash: string; version: FileVersion };
 type HistoryState = {
+  viewedProfiles: ActiveProfileIdentity[];
+  setViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
+  remapRevision: number;
+  remapViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
+  panelOpen: boolean;
+  showPanel: (open: boolean) => void;
+  playing: boolean;
+  setPlaying: (playing: boolean) => void;
+  playbackSpeed: number;
+  setPlaybackSpeed: (speed: number) => void;
+  timelineMode: "saves" | "ownership";
+  setTimelineMode: (mode: "saves" | "ownership") => void;
+  failedSaves: Record<string, string>;
+  markFailed: (key: string, message: string) => void;
   snapshots: Snapshot[];
   sources: Record<string, SourceObservation>;
+  analysisPaused: boolean;
   progress: ImportProgressState | null;
   issues: string[];
   cancel: (() => void) | null;
@@ -16,8 +32,25 @@ type HistoryState = {
 
 /** Historical data only. Campaign navigation owns files and the active save. */
 export const useHistory = create<HistoryState>()((set) => ({
+  viewedProfiles: [],
+  setViewedProfiles: (viewedProfiles) => set({ viewedProfiles }),
+  remapRevision: 0,
+  remapViewedProfiles: (viewedProfiles) =>
+    set((state) => ({ viewedProfiles, remapRevision: state.remapRevision + 1 })),
+  panelOpen: false,
+  showPanel: (panelOpen) => set({ panelOpen }),
+  playing: false,
+  setPlaying: (playing) => set({ playing }),
+  playbackSpeed: 1,
+  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
+  timelineMode: "saves",
+  setTimelineMode: (timelineMode) => set({ timelineMode, playing: false }),
+  failedSaves: {},
+  markFailed: (key, message) =>
+    set((state) => ({ failedSaves: { ...state.failedSaves, [key]: message } })),
   snapshots: [],
   sources: {},
+  analysisPaused: false,
   progress: null,
   issues: [],
   cancel: null,

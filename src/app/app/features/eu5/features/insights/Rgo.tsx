@@ -126,8 +126,11 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
       },
       series: [
         {
+          id: "rgo-material-scatter",
           type: "custom",
           data: scatterData.map((d) => ({
+            id: d.rawMaterial.key,
+            name: d.rawMaterial.name,
             value: d.value,
             rawMaterial: d.rawMaterial,
             colorHex: d.rawMaterial.colorHex || fallbackColor,
@@ -156,6 +159,8 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
               const atlasTotalH = goodsDimensions32.rows * GOODS_CELL_SIZE_32 * scale;
               return {
                 type: "group" as const,
+                name: d.rawMaterial.key,
+                transition: ["x", "y"],
                 x,
                 y,
                 clipPath: {
@@ -179,6 +184,8 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
             }
             return {
               type: "circle" as const,
+              name: d.rawMaterial.key,
+              transition: ["shape"],
               shape: { cx: point[0], cy: point[1], r: half },
               style: { fill: d.rawMaterial.colorHex || fallbackColor, opacity: 0.75 },
             };
@@ -188,7 +195,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
     };
   }, [scatterData, maxLocCount]);
 
-  return <EChart option={option} style={{ height: "320px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "320px", width: "100%" }} />;
 }
 
 function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDelta[] }) {
@@ -282,7 +289,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
   }, [data]);
 
   const height = data.length * 22 + 52;
-  return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: `${height}px`, width: "100%" }} />;
 }
 
 const topLocColHelper = createColumnHelper<RgoTopLocation>();

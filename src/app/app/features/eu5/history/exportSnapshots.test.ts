@@ -3,7 +3,7 @@ import { exportSnapshots } from "./exportSnapshots";
 import type { Snapshot } from "./types";
 
 describe("observation JSON export", () => {
-  it("preserves breakdown values and declares the observation schema", () => {
+  it("preserves breakdown values and declares the observation schema", async () => {
     const snapshot = {
       schemaVersion: 3,
       hash: "blake3:source",
@@ -16,7 +16,7 @@ describe("observation JSON export", () => {
         },
       ],
     } as unknown as Snapshot;
-    const output = JSON.parse(exportSnapshots([snapshot]));
+    const output = JSON.parse(await exportSnapshots([snapshot]).text());
     expect(output.schemaVersion).toBe(3);
     expect(output.snapshots[0].countries[0]).toEqual({
       tag: "FRA",
@@ -25,5 +25,14 @@ describe("observation JSON export", () => {
       buildings: { farm: 2 },
     });
     expect(snapshot.countries[0].religions.get("catholic")).toBe(1200);
+  });
+  it("preserves observation order across chunks and exports an empty campaign", async () => {
+    const snapshots = [{ hash: "first" }, { hash: "second" }] as Snapshot[];
+    expect(JSON.parse(await exportSnapshots(snapshots).text()).snapshots).toEqual(snapshots);
+    expect(JSON.parse(await exportSnapshots([]).text())).toEqual({
+      schemaVersion: 3,
+      snapshots: [],
+    });
+    expect(exportSnapshots([]).type).toBe("application/json");
   });
 });

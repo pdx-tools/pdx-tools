@@ -617,6 +617,11 @@ pub struct Eu5App {
 
 #[wasm_bindgen]
 impl Eu5App {
+    #[wasm_bindgen]
+    pub fn retained_save_bytes(&self) -> usize {
+        self._loaded_save.arena().allocated_bytes()
+    }
+
     fn app(&self) -> &eu5app::Eu5Workspace<'_> {
         &self.app
     }
@@ -1089,6 +1094,26 @@ impl Eu5App {
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.
+    #[wasm_bindgen]
+    pub fn market_center_id(&self, market_id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .market_manager
+            .get(eu5save::models::MarketId::new(market_id))
+            .map(|m| m.center.value())
+    }
+
+    #[wasm_bindgen]
+    pub fn market_id_at_center(&self, center_id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .market_manager
+            .database
+            .iter_with_id()
+            .find(|(_, m)| m.center.value() == center_id)
+            .map(|(id, _)| id.value())
+    }
+
     #[wasm_bindgen]
     pub fn get_market_profile(&self, market_id: u32) -> Result<Option<Ts<MarketProfile>>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);

@@ -92,7 +92,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
 
   return (
     <div>
-      <EChart option={option} style={{ height: "260px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "260px", width: "100%" }} />
       {zeroWealthCount > 0 && (
         <p className="mt-1 text-xs text-game-ink-500">
           {formatInt(zeroWealthCount)} countries with zero wealth excluded.

@@ -40,8 +40,8 @@ const human = (text: string) =>
     .replaceAll("_", " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
-function download(name: string, data: string, type: string) {
-  const url = URL.createObjectURL(new Blob([data], { type }));
+function download(name: string, data: string | Blob, type: string) {
+  const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type }));
   const link = document.createElement("a");
   link.href = url;
   link.download = name;
@@ -332,6 +332,7 @@ export function SaveHistory({
       return;
     }
     try {
+      useHistory.setState({ analysisPaused: false });
       await registerLocalSaves(
         "eu5",
         files.map((file) => ({ kind: "file", file })),

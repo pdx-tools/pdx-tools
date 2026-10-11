@@ -115,7 +115,7 @@ export function LocationDistributionChart({ distribution, title }: Props) {
       <SectionTitle className="mb-1">
         {title ?? `${distribution.metricLabel} distribution`}
       </SectionTitle>
-      <EChart option={option} style={{ height: 180 }} />
+      <EChart mergeUpdates option={option} style={{ height: 180 }} />
     </div>
   );
 }

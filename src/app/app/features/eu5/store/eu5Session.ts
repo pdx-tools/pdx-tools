@@ -1,3 +1,6 @@
+import { rememberSaveFile } from "../saveCacheKey";
+import { useHistory } from "../history/store";
+import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { CanvasCourierHost } from "@/lib/canvas_courier";
 import type { CanvasCourierSurface, CanvasCourierTransport } from "@/lib/canvas_courier";
 import { captureException } from "@/lib/captureException";
@@ -54,6 +57,7 @@ class Eu5Session {
   /** Set while no page shows the session, until it ends. */
   private unclaimed: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
+  private pendingProfiles: ActiveProfileIdentity[] | null = null;
   private pendingStep: {
     save: Eu5SaveInput;
     resolve: () => void;
@@ -66,6 +70,13 @@ class Eu5Session {
     this.host = new CanvasCourierHost(CANVAS_CLASS, (surface, transport) =>
       this.startMap(surface, transport),
     );
+  }
+
+  async prepare(save: Eu5SaveInput): Promise<void> {
+    if (this.destroyed || this.snapshot.stepping || save.kind === "server") return;
+    const file = save.kind === "handle" ? await save.file.getFile() : save.file;
+    rememberSaveFile(file, save);
+    await this.workers?.prepare(file);
   }
 
   getSnapshot = (): Eu5SessionSnapshot => this.snapshot;
@@ -98,7 +109,10 @@ class Eu5Session {
 
     let source: Eu5SaveData;
     try {
-      source = await readSaveData(save);
+      source = await readSaveData(
+        save,
+        (parsed) => this.workers?.isPrepared(parsed) ?? Promise.resolve(false),
+      );
     } catch (error) {
       if (this.isCurrent(generation)) this.update({ stepping: false });
       throw error;
@@ -359,7 +373,8 @@ class Eu5Session {
 
   private async applyCarry(...args: Parameters<typeof applyEu5Carry>): Promise<void> {
     try {
-      await applyEu5Carry(...args);
+      const profiles = await applyEu5Carry(...args);
+      if (Array.isArray(profiles)) this.pendingProfiles = profiles;
     } catch (error) {
       captureException(error, { tags: { msg: "campaign-carry" } });
     }
@@ -378,6 +393,10 @@ class Eu5Session {
       });
     }
     this.update({ data: store, loading: null, stepping: false, error: null });
+    if (this.pendingProfiles) {
+      useHistory.getState().remapViewedProfiles(this.pendingProfiles);
+      this.pendingProfiles = null;
+    }
     const step = this.pendingStep;
     if (step !== null && sameEu5Save(step.save, store.getState().input)) {
       this.pendingStep = null;
@@ -452,4 +471,8 @@ export function terminateEu5Session(): void {
   if (session !== null) {
     endSession(session);
   }
+}
+
+export async function prepareEu5Session(save: Eu5SaveInput): Promise<void> {
+  await currentSession?.prepare(save);
 }

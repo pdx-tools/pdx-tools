@@ -1,3 +1,4 @@
+import { rememberSaveFile } from "./saveCacheKey";
 import type {
   BoxSelectOverlayRect,
   CursorHint,
@@ -191,6 +192,7 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyInsightData>;
+  getMarketIdAtCenter(center: number): Promise<number | undefined>;
   getHistoryContext(): Promise<{ countryNames: Record<string, string>; version: string }>;
   getCountryProfile(countryIdx: number): Promise<CountryProfile | null>;
   getCountryPopulationProfile(countryIdx: number): Promise<CountryPopulationProfile | null>;
@@ -340,6 +342,7 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
+    getMarketIdAtCenter: (center: number) => this.gameInstance.getMarketIdAtCenter(center),
     getHistoryContext: () => this.gameInstance.getHistoryContext(),
     getCountryProfile: (countryIdx) => this.gameInstance.getCountryProfile(countryIdx),
     getCountryPopulationProfile: (countryIdx) =>
@@ -783,11 +786,16 @@ export type OpenedSave = {
  * Read a save in full. A file handle is read once into a `File`, so that
  * the save is parsed and later uploaded from one snapshot.
  */
-export async function readSaveData(input: Eu5SaveInput): Promise<Eu5SaveData> {
+export async function readSaveData(
+  input: Eu5SaveInput,
+  hasPrepared?: (save: Eu5ParsedSave) => Promise<boolean>,
+): Promise<Eu5SaveData> {
   const save: Eu5ParsedSave =
     input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input;
-  const data =
-    save.kind === "file"
+  if (save.kind === "file") rememberSaveFile(save.file, input);
+  const data = (await hasPrepared?.(save))
+    ? new ArrayBuffer(0)
+    : save.kind === "file"
       ? await save.file.arrayBuffer()
       : await fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
   return { save, data };
