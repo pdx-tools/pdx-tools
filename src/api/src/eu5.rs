@@ -141,13 +141,13 @@ mod tests {
         let data = fixture("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5");
         let metadata = parse_metadata(&data).expect("parse binary EU5 metadata");
         assert_eq!(metadata.version.major, 1);
+        assert_eq!(metadata.version.minor, 4);
         assert!(!metadata.playthrough_name.is_empty());
 
-        // The binary save stores the country name under a token, which must
-        // resolve like the other metadata fields.
-        let country = metadata.player_country.expect("single-player country");
-        assert!(!country.tag.is_empty());
-        assert!(country.name.is_some_and(|name| !name.is_empty()));
+        // The fixture is an observer game, so it has no players and no
+        // player country.
+        assert!(metadata.players.is_empty());
+        assert!(metadata.player_country.is_none());
     }
 
     #[test]
