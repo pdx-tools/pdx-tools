@@ -180,15 +180,96 @@ it("finishes playback preparation before resolving import and preserves observat
   const job = importTimeline([file], options).then(() => {
     done = true;
   });
-  await vi.waitFor(() => expect(mocks.preparePlaybackCache).toHaveBeenCalledWith(file, sha));
+  await vi.waitFor(() => expect(mocks.preparePlaybackCache).toHaveBeenCalledWith(file, sha, false));
   expect(onSnapshots).toHaveBeenCalledOnce();
   expect(done).toBe(false);
   finish();
   await job;
-  expect(onProgress).toHaveBeenLastCalledWith(2, 2, "Preparing playback: save.eu5");
+  expect(onProgress).toHaveBeenLastCalledWith(
+    2,
+    2,
+    "Preparing playback: save.eu5",
+    expect.objectContaining({ phase: "playback", completed: 1, total: 1 }),
+  );
   mocks.preparePlaybackCache.mockRejectedValue(Error("QuotaExceededError"));
   const result = await importTimeline([file], options);
   expect(result.errors).toEqual([]);
   expect(onWarning).toHaveBeenCalledWith(expect.stringContaining("original save remains usable"));
+  vi.unstubAllGlobals();
+});
+
+it("prepares eight saves concurrently and stops every cache worker on cancellation", async () => {
+  vi.resetAllMocks();
+  vi.stubGlobal("crossOriginIsolated", false);
+  vi.stubGlobal("navigator", { deviceMemory: 8 });
+  const terminate = vi.fn();
+  vi.stubGlobal(
+    "Worker",
+    class {
+      terminate = terminate;
+    },
+  );
+  let date = 0;
+  mocks.parseSnapshot.mockImplementation(async () => ({
+    snapshot: {
+      ...snapshot(sha),
+      dateSort: 13370101 + date++,
+    },
+  }));
+  mocks.cacheSnapshots.mockResolvedValue(undefined);
+  mocks.preparePlaybackCache.mockImplementation(() => new Promise(() => {}));
+  const controller = new AbortController();
+  const job = importTimeline(
+    Array.from({ length: 12 }, (_, i) => new File(["save"], `${i}.eu5`)),
+    {
+      signal: controller.signal,
+      existing: [],
+      onSnapshots: vi.fn(),
+      onProgress: vi.fn(),
+      onWarning: vi.fn(),
+    },
+  );
+  const rejected = expect(job).rejects.toMatchObject({ name: "AbortError" });
+  await vi.waitFor(() => expect(mocks.preparePlaybackCache).toHaveBeenCalledTimes(8));
+  controller.abort();
+  await rejected;
+  expect(terminate.mock.calls.length).toBeGreaterThanOrEqual(8);
+  vi.unstubAllGlobals();
+});
+
+it("reduces playback concurrency on devices with limited memory", async () => {
+  vi.resetAllMocks();
+  vi.stubGlobal("crossOriginIsolated", false);
+  vi.stubGlobal("navigator", { deviceMemory: 2 });
+  vi.stubGlobal(
+    "Worker",
+    class {
+      terminate() {}
+    },
+  );
+  let date = 0;
+  mocks.parseSnapshot.mockImplementation(async () => ({
+    snapshot: {
+      ...snapshot(sha),
+      dateSort: 13370101 + date++,
+    },
+  }));
+  mocks.cacheSnapshots.mockResolvedValue(undefined);
+  mocks.preparePlaybackCache.mockImplementation(() => new Promise(() => {}));
+  const controller = new AbortController();
+  const job = importTimeline(
+    Array.from({ length: 8 }, (_, i) => new File(["save"], `${i}.eu5`)),
+    {
+      signal: controller.signal,
+      existing: [],
+      onSnapshots: vi.fn(),
+      onProgress: vi.fn(),
+      onWarning: vi.fn(),
+    },
+  );
+  const rejected = expect(job).rejects.toMatchObject({ name: "AbortError" });
+  await vi.waitFor(() => expect(mocks.preparePlaybackCache).toHaveBeenCalledTimes(2));
+  controller.abort();
+  await rejected;
   vi.unstubAllGlobals();
 });

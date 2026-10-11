@@ -59,9 +59,9 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
       {
         signal,
         existing: useHistory.getState().snapshots,
-        onProgress: (completed, total, fileName) => {
+        onProgress: (completed, total, fileName, phase) => {
           const now = performance.now();
-          if (completed === total || now - lastProgress > 150) {
+          if (completed === total || phase?.completed === 0 || now - lastProgress > 150) {
             lastProgress = now;
             useHistory.setState({
               analysisPaused: false,
@@ -70,6 +70,7 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
                 total: total + (entries.length - sources.length) * 2,
                 startedAt,
                 fileName,
+                phase,
               },
             });
           }

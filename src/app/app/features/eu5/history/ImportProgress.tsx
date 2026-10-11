@@ -1,18 +1,32 @@
 import { useEffect, useState } from "react";
 
+export type ImportPhaseState = {
+  phase: "analysis" | "playback";
+  completed: number;
+  total: number;
+  startedAt: number;
+  concurrency?: number;
+};
+
 export type ImportProgressState = {
   completed: number;
   total: number;
   startedAt: number;
   fileName?: string;
+  phase?: ImportPhaseState;
 };
 
-export function importProgressStats(completed: number, total: number, elapsedMs: number) {
+export function importProgressStats(
+  completed: number,
+  total: number,
+  elapsedMs: number,
+  concurrency = 1,
+) {
   const processed = Math.max(0, Math.min(completed, total));
   return {
     percent: total > 0 ? Math.floor((processed / total) * 100) : 0,
     etaSeconds:
-      processed > 0 && total > 0
+      processed > 0 && total > 0 && processed >= Math.min(concurrency, total)
         ? Math.ceil(((Math.max(0, elapsedMs) / processed) * (total - processed)) / 1000)
         : null,
   };
@@ -38,21 +52,30 @@ export function ImportProgress({
     const timer = setInterval(() => setNow(performance.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+  const current = progress.phase ?? progress;
   const { percent, etaSeconds } = importProgressStats(
-    progress.completed,
-    progress.total,
-    Math.max(now, progress.startedAt) - progress.startedAt,
+    current.completed,
+    current.total,
+    Math.max(now, current.startedAt) - current.startedAt,
+    progress.phase?.concurrency,
   );
   return (
     <div className={`w-full min-w-0 text-xs ${light ? "text-white" : "text-game-ink-300"}`}>
       <div role="status" className="mb-2 flex flex-wrap justify-between gap-2">
-        <span>Importing campaign · {percent}%</span>
+        <span>
+          {progress.phase?.phase === "playback"
+            ? "Preparing playback · 2/2"
+            : progress.phase
+              ? "Analyzing saves · 1/2"
+              : "Importing campaign"}{" "}
+          · {percent}%
+        </span>
         <span>
           {etaSeconds == null
             ? "Estimating time remaining…"
-            : progress.completed === progress.total
+            : current.completed === current.total
               ? "Finishing…"
-              : `About ${duration(etaSeconds)} remaining`}
+              : `About ${duration(etaSeconds)} remaining${progress.phase ? " in this phase" : ""}`}
         </span>
       </div>
       <div

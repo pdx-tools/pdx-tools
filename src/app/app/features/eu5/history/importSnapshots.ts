@@ -3,6 +3,7 @@ import { importSnapshots as streamSnapshots } from "../../../../../../dev/eu5-st
 import { cachedHashAlias, cacheSnapshots, cacheHashAlias } from "./cache";
 import { campaignKey } from "./types";
 import type { Snapshot } from "./types";
+import type { ImportPhaseState } from "./ImportProgress";
 import type {
   parseSnapshot,
   sha256File,
@@ -15,7 +16,12 @@ export type ImportOptions = {
   existing: Snapshot[];
   concurrency?: number;
   onSnapshots: (snapshots: Snapshot[], sources: { snapshot: Snapshot; file: File }[]) => void;
-  onProgress: (completed: number, total: number, fileName: string) => void;
+  onProgress: (
+    completed: number,
+    total: number,
+    fileName: string,
+    phase?: ImportPhaseState,
+  ) => void;
   onWarning: (warning: string) => void;
 };
 
@@ -51,6 +57,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
     | undefined;
   let legacyQueue = Promise.resolve();
   let rejectAbort: (error: Error) => void = () => {};
+  const playbackWorkers = new Set<Worker>();
   const aborted = new Promise<never>((_, reject) => {
     rejectAbort = reject;
   });
@@ -58,6 +65,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
   void aborted.catch(() => {});
   const abort = () => {
     legacyWorker?.terminate();
+    for (const worker of playbackWorkers) worker.terminate();
     rejectAbort(abortError());
   };
   signal.addEventListener("abort", abort, { once: true });
@@ -202,12 +210,21 @@ export async function importTimeline(files: File[], options: ImportOptions) {
     if (unsettled >= 16) await Promise.race([flushed, aborted]);
   }
   const errors: { fileName: string; error: string }[] = [];
-  const progress = (fileName: string) =>
-    options.onProgress(++completed, files.length * 2, fileName);
+  let phase: ImportPhaseState = {
+    phase: "analysis",
+    completed: 0,
+    total: files.length,
+    startedAt: performance.now(),
+  };
+  const progress = (fileName: string) => {
+    phase = { ...phase, completed: phase.completed + 1 };
+    options.onProgress(++completed, files.length * 2, fileName, phase);
+  };
   try {
     if (signal.aborted) throw abortError();
     const streaming: File[] = [],
       normal: File[] = [];
+    const textFiles = new Set<File>();
     // Read the header and, for text candidates, a bounded ZIP footer.
     for (const file of files) {
       if (signal.aborted) throw abortError();
@@ -218,11 +235,10 @@ export async function importTimeline(files: File[], options: ImportOptions) {
       }
       try {
         const header = await file.slice(0, 8).text();
-        (globalThis.crossOriginIsolated &&
-        typeof SharedArrayBuffer !== "undefined" &&
-        header.startsWith("SAV") &&
-        header.slice(5, 7) === "00" &&
-        !(await hasZipDirectory(file))
+        const text =
+          header.startsWith("SAV") && header.slice(5, 7) === "00" && !(await hasZipDirectory(file));
+        if (text) textFiles.add(file);
+        (globalThis.crossOriginIsolated && typeof SharedArrayBuffer !== "undefined" && text
           ? streaming
           : normal
         ).push(file);
@@ -262,29 +278,77 @@ export async function importTimeline(files: File[], options: ImportOptions) {
     flush();
     await writes;
     if (sinkFailure) throw sinkFailure;
-    // Build recordings serially after streaming workers have stopped. Keeping
-    // this in the import phase makes completion mean playback preparation is done.
-    for (const file of files) {
-      if (signal.aborted) throw abortError();
-      const hash = playback.get(file);
-      if (hash) {
-        try {
-          await legacy((parser) => parser.preparePlaybackCache(file, hash), true);
-        } catch (error) {
+    legacyWorker?.terminate();
+    legacyWorker = undefined;
+    legacyParser = undefined;
+    // The streaming pool has stopped: spend this phase's budget on up to eight
+    // playback workers. Queue File handles, never complete source buffers.
+    // Chunked recording uses FileReaderSync, without requiring shared memory.
+    const streamed = textFiles;
+    const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
+    const budgetMiB = Math.max(640, memory * 1024 * 0.75);
+    const largestJobMiB = files.reduce(
+      (largest, file) =>
+        Math.max(largest, streamed.has(file) ? 640 : 640 + (2 * file.size) / 1024 ** 2),
+      640,
+    );
+    const count = Math.min(
+      files.length,
+      Math.max(1, Math.min(8, options.concurrency ?? 8)),
+      Math.max(1, Math.floor(budgetMiB / largestJobMiB)),
+    );
+    phase = {
+      phase: "playback",
+      completed: 0,
+      total: files.length,
+      startedAt: performance.now(),
+      concurrency: count,
+    };
+    options.onProgress(completed, files.length * 2, "Preparing playback…", phase);
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: count }, async () => {
+        while (next < files.length) {
           if (signal.aborted) throw abortError();
-          options.onWarning(
-            `${file.name}: playback cache unavailable; the original save remains usable. ${String(error)}`,
-          );
+          const file = files[next++];
+          const hash = playback.get(file);
+          if (hash) {
+            const worker = new Worker(new URL("./snapshot-worker.ts", import.meta.url), {
+              type: "module",
+            });
+            playbackWorkers.add(worker);
+            const failed = new Promise<never>((_, reject) => {
+              worker.onerror = (event) => reject(Error(event.message || "Playback worker failed"));
+            });
+            try {
+              const parser = wrap<{ preparePlaybackCache: typeof preparePlaybackCache }>(worker);
+              await Promise.race([
+                parser.preparePlaybackCache(file, hash, streamed.has(file)),
+                aborted,
+                failed,
+              ]);
+            } catch (error) {
+              if (signal.aborted) throw abortError();
+              options.onWarning(
+                `${file.name}: playback cache unavailable; the original save remains usable. ${String(error)}`,
+              );
+            } finally {
+              // Release the WASM high-water allocation before this lane starts again.
+              worker.terminate();
+              playbackWorkers.delete(worker);
+            }
+          }
+          progress(`Preparing playback: ${file.name}`);
         }
-      }
-      progress(`Preparing playback: ${file.name}`);
-    }
+      }),
+    );
     return { errors, completed: files.length };
   } finally {
     if (timer) clearTimeout(timer);
     for (const item of pending) item.reject(abortError());
     pending = [];
     legacyWorker?.terminate();
+    for (const worker of playbackWorkers) worker.terminate();
     signal.removeEventListener("abort", abort);
   }
 }

@@ -69,14 +69,21 @@ export async function cachedPlayback(hash: string): Promise<ArrayBuffer | undefi
   }
 }
 
-export async function cachePlayback(hash: string, bytes: Uint8Array<ArrayBuffer>): Promise<void> {
+export async function cachePlayback(
+  hash: string,
+  bytes: Uint8Array<ArrayBuffer>,
+  alreadyCompressed = false,
+): Promise<void> {
   if (!bytes.byteLength || bytes.byteLength > budget)
     throw Error("Playback recording exceeds cache budget");
-  const compressed = typeof CompressionStream !== "undefined";
+  const compressed =
+    alreadyCompressed ||
+    (typeof CompressionStream !== "undefined" && typeof DecompressionStream !== "undefined");
   const source = new Blob([bytes]);
-  const blob = compressed
-    ? await new Response(source.stream().pipeThrough(new CompressionStream("gzip"))).blob()
-    : source;
+  const blob =
+    compressed && !alreadyCompressed
+      ? await new Response(source.stream().pipeThrough(new CompressionStream("gzip"))).blob()
+      : source;
   const db = await database();
   try {
     await new Promise<void>((resolve, reject) => {

@@ -1,5 +1,5 @@
 import { expose } from "comlink";
-import init, { set_tokens, Eu5MetaParser } from "@/wasm/wasm_eu5";
+import init, { set_tokens, Eu5MetaParser, stream_playback_cache } from "@/wasm/wasm_eu5";
 import wasmUrl from "@/wasm/wasm_eu5_bg.wasm?url";
 import tokenUrl from "../../../../../../assets/tokens/eu5.bin?url";
 import type { Snapshot } from "./types";
@@ -89,15 +89,37 @@ export async function parseSnapshot(
 }
 
 /** The caller recycles this worker after each full parse to release WASM high-water memory. */
-export async function preparePlaybackCache(file: File, hash: string): Promise<void> {
+export async function preparePlaybackCache(
+  file: File,
+  hash: string,
+  streaming = false,
+): Promise<void> {
   if (await hasPlaybackCache(hash)) return;
   await initialize();
-  const bytes = await file.arrayBuffer();
-  const parser = Eu5MetaParser.create().init(new Uint8Array(bytes));
-  releaseBuffer(bytes);
-  const recording = parser.playback_cache() as Uint8Array<ArrayBuffer>;
+  const gzip = typeof DecompressionStream !== "undefined";
+  let recording: Uint8Array<ArrayBuffer>;
+  if (streaming && typeof FileReaderSync !== "undefined" && gzip) {
+    const reader = new FileReaderSync();
+    let chunk: ArrayBuffer | undefined;
+    try {
+      recording = stream_playback_cache((offset: number, length: number) => {
+        releaseBuffer(chunk);
+        chunk = reader.readAsArrayBuffer(file.slice(offset, offset + length));
+        return new Uint8Array(chunk);
+      }) as Uint8Array<ArrayBuffer>;
+    } finally {
+      releaseBuffer(chunk);
+    }
+  } else {
+    const bytes = await file.arrayBuffer();
+    const parser = Eu5MetaParser.create().init(new Uint8Array(bytes));
+    releaseBuffer(bytes);
+    recording = (
+      gzip ? parser.playback_cache_gzip() : parser.playback_cache()
+    ) as Uint8Array<ArrayBuffer>;
+  }
   try {
-    await cachePlayback(hash, recording);
+    await cachePlayback(hash, recording, gzip);
   } finally {
     releaseBuffer(recording.buffer);
   }
