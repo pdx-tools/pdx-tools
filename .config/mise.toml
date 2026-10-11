@@ -315,6 +315,7 @@ run = "cargo run --release --package pdx-assets -- compile"
 
 [tasks."start:services:test"]
 description = "Run services for testing"
+depends = ["pnpm-install"]
 env.SERVICES_ENV = "test"
 run = ["node ./dev/scripts/services.mts"]
 

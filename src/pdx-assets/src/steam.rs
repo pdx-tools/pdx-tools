@@ -147,9 +147,10 @@ mod tests {
             "\"AppState\"\n{\n\"installdir\" \"Custom EU5 Directory\"\n}",
         )
         .unwrap();
+        // Steam escapes the backslashes of a Windows path.
         let vdf = format!(
             "\"libraryfolders\"\n{{\n\"1\"\n{{\n\"path\" \"{}\"\n}}\n}}",
-            extra.path().display()
+            extra.path().display().to_string().replace('\\', "\\\\")
         );
         std::fs::write(root.path().join("steamapps/libraryfolders.vdf"), vdf).unwrap();
         let libraries = library_paths(root.path()).unwrap();
