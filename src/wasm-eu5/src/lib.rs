@@ -139,6 +139,7 @@ impl From<Eu5MapMode> for MapMode {
     }
 }
 
+mod snapshot;
 mod tokens;
 pub use tokens::set_tokens;
 
@@ -435,6 +436,17 @@ pub struct SaveLoader {
 
 #[wasm_bindgen]
 impl SaveLoader {
+    /// Extract history observations without loading map assets or a GPU map.
+    #[wasm_bindgen]
+    pub fn parse_snapshot(self) -> Result<Ts<snapshot::SaveSnapshot>, JsError> {
+        let mut loaded = self
+            .parser
+            .parse()
+            .map_err(|e| JsError::new(&format!("Failed to parse snapshot: {e}")))?;
+        let game = loaded.take_gamestate();
+        into_ts(snapshot::extract(&game))
+    }
+
     #[wasm_bindgen]
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))

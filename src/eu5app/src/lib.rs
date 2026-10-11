@@ -13,6 +13,7 @@ pub mod presentation;
 pub mod save_hash;
 mod selection;
 mod session;
+pub mod snapshot;
 mod subject_color;
 pub mod timeline;
 
