@@ -174,18 +174,45 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
     }
 
     #[tracing::instrument(name = "eu5.gamestate.parse", skip_all)]
-    pub fn parse(mut self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+    pub fn parse(self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        self.parse_recorded(false)
+    }
+
+    fn parse_recorded(mut self, record: bool) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        let mut recording = super::playback::Recording::new();
         let resolver = eu5save::SaveResolver::from_file(&self.archive, self.resolver)
             .map_err(Eu5LoadError::StringLookup)?;
 
         let game = match Self::gamestate_reader(&self.archive, &mut self.observer)? {
             GamestateReader::Text(x) => {
                 let mut deser = GamestateReader::text_deserializer(x);
-                Gamestate::deserialize_in_arena(&mut deser, &self.arena)
+                if record {
+                    Gamestate::deserialize_in_arena(
+                        super::playback::Record {
+                            inner: &mut deser,
+                            output: &mut recording,
+                            key_start: None,
+                        },
+                        &self.arena,
+                    )
+                } else {
+                    Gamestate::deserialize_in_arena(&mut deser, &self.arena)
+                }
             }
             GamestateReader::Binary(x) => {
                 let mut deser = GamestateReader::binary_deserializer(x, &resolver);
-                Gamestate::deserialize_in_arena(&mut deser, &self.arena)
+                if record {
+                    Gamestate::deserialize_in_arena(
+                        super::playback::Record {
+                            inner: &mut deser,
+                            output: &mut recording,
+                            key_start: None,
+                        },
+                        &self.arena,
+                    )
+                } else {
+                    Gamestate::deserialize_in_arena(&mut deser, &self.arena)
+                }
             }
         };
 
@@ -197,7 +224,11 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
         // gamestate won't live longer than the arena.
         let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
 
-        Ok(Eu5LoadedSave::new(self.arena, game, self.observer))
+        let mut loaded = Eu5LoadedSave::new(self.arena, game, self.observer);
+        if record && recording.valid {
+            loaded.recording = Some(recording.bytes);
+        }
+        Ok(loaded)
     }
 }
 
@@ -307,6 +338,11 @@ impl<R: Read, W: Write> Eu5DebugSaveLoader<R, W> {
 
     #[tracing::instrument(name = "eu5.gamestate.parse", skip_all)]
     pub fn parse(self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        self.parse_recorded(false)
+    }
+
+    fn parse_recorded(self, record: bool) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        let mut recording = super::playback::Recording::new();
         let Self {
             file,
             meta_bytes,
@@ -321,13 +357,28 @@ impl<R: Read, W: Write> Eu5DebugSaveLoader<R, W> {
                 observer: &mut observer,
             };
             let mut deser = GamestateReader::text_deserializer(reader);
-            Gamestate::deserialize_in_arena(&mut deser, &arena)
-                .map_err(Eu5LoadError::GamestateDeserialization)?
+            (if record {
+                Gamestate::deserialize_in_arena(
+                    super::playback::Record {
+                        inner: &mut deser,
+                        output: &mut recording,
+                        key_start: None,
+                    },
+                    &arena,
+                )
+            } else {
+                Gamestate::deserialize_in_arena(&mut deser, &arena)
+            })
+            .map_err(Eu5LoadError::GamestateDeserialization)?
         };
 
         // See `Eu5SaveLoader::parse` for why this is safe.
         let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
-        Ok(Eu5LoadedSave::new(arena, game, observer))
+        let mut loaded = Eu5LoadedSave::new(arena, game, observer);
+        if record && recording.valid {
+            loaded.recording = Some(recording.bytes);
+        }
+        Ok(loaded)
     }
 }
 
@@ -375,6 +426,13 @@ impl<D: AsRef<[u8]>, RES: TokenResolver, W: Write> Eu5AnySaveLoader<D, RES, W> {
         match self {
             Eu5AnySaveLoader::Stream(loader) => loader.meta(),
             Eu5AnySaveLoader::File(loader) => loader.meta(),
+        }
+    }
+
+    pub fn parse_with_playback_cache(self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        match self {
+            Self::Stream(loader) => loader.parse_recorded(true),
+            Self::File(loader) => loader.parse_recorded(true),
         }
     }
 
@@ -451,6 +509,7 @@ pub struct Eu5LoadedSave<W = std::io::Sink> {
     arena: bumpalo::Bump,
     game: Option<Gamestate<'static>>,
     observer: W,
+    recording: Option<Vec<u8>>,
 }
 
 impl<W> Eu5LoadedSave<W> {
@@ -459,7 +518,17 @@ impl<W> Eu5LoadedSave<W> {
             arena,
             game: Some(game),
             observer,
+            recording: None,
         }
+    }
+
+    /// Versioned cache containing metadata and only values consumed by the model.
+    pub fn take_playback_cache(&mut self, meta: &Eu5SaveMetadata) -> Option<Vec<u8>> {
+        let mut body = self.recording.take()?;
+        let mut bytes = b"EU5CACHE1".to_vec();
+        bytes.extend(postcard::to_stdvec(&PlaybackMetadata::from(meta)).ok()?);
+        bytes.append(&mut body);
+        Some(bytes)
     }
 
     pub fn arena(&self) -> &bumpalo::Bump {
@@ -476,6 +545,64 @@ impl<W> Eu5LoadedSave<W> {
     /// But tie it to the lifetime of the loaded save's arena.
     pub fn take_gamestate(&mut self) -> Gamestate<'_> {
         self.game.take().expect("Gamestate already taken")
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct PlaybackMetadata {
+    version: [u32; 3],
+    date: Eu5DateComponents,
+    playthrough_id: String,
+    playthrough_name: String,
+    player_country_name: Option<String>,
+}
+impl From<&Eu5SaveMetadata> for PlaybackMetadata {
+    fn from(meta: &Eu5SaveMetadata) -> Self {
+        Self {
+            version: [meta.version.major, meta.version.minor, meta.version.patch],
+            date: meta.date.clone(),
+            playthrough_id: meta.playthrough_id.clone(),
+            playthrough_name: meta.playthrough_name.clone(),
+            player_country_name: meta.player_country_name.clone(),
+        }
+    }
+}
+impl From<PlaybackMetadata> for Eu5SaveMetadata {
+    fn from(meta: PlaybackMetadata) -> Self {
+        Self {
+            version: GameVersion {
+                major: meta.version[0],
+                minor: meta.version[1],
+                patch: meta.version[2],
+            },
+            date: meta.date,
+            playthrough_id: meta.playthrough_id,
+            playthrough_name: meta.playthrough_name,
+            player_country_name: meta.player_country_name,
+        }
+    }
+}
+
+impl Eu5LoadedSave {
+    pub fn from_playback_cache(bytes: &[u8]) -> Result<(Self, Rc<Eu5SaveMetadata>), String> {
+        let payload = bytes
+            .strip_prefix(b"EU5CACHE1")
+            .ok_or("Invalid playback cache version")?;
+        let (meta, body) =
+            postcard::take_from_bytes::<PlaybackMetadata>(payload).map_err(|e| e.to_string())?;
+        let arena = bumpalo::Bump::new();
+        let mut replay = super::playback::Replay::new(body);
+        let game =
+            Gamestate::deserialize_in_arena(&mut replay, &arena).map_err(|e| e.to_string())?;
+        if !replay.remaining.is_empty() {
+            return Err("Trailing playback cache data".into());
+        }
+        // As in parse(): the model borrows only from the sibling arena.
+        let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
+        Ok((
+            Self::new(arena, game, std::io::sink()),
+            Rc::new(meta.into()),
+        ))
     }
 }
 
@@ -564,5 +691,119 @@ mod tests {
             metadata_prefix_len(&start[..SAVE_HEADER_MAX_LEN]),
             Some(24 + 0x2a)
         );
+    }
+}
+
+#[cfg(test)]
+mod playback_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "Set EU5_PLAYBACK_TEST_SAVE to a local text save"]
+    fn real_save_playback_roundtrip() {
+        let bytes = std::fs::read(std::env::var("EU5_PLAYBACK_TEST_SAVE").unwrap()).unwrap();
+        let resolver = std::collections::HashMap::<u16, String>::new();
+        let parser = Eu5AnySaveLoader::open(bytes, &resolver).unwrap();
+        let meta = parser.meta();
+        let mut original = parser.parse_with_playback_cache().unwrap();
+        let cache = original
+            .take_playback_cache(&meta)
+            .expect("recordable save");
+        eprintln!("Playback recording: {} bytes", cache.len());
+        let (mut restored, restored_meta) = Eu5LoadedSave::from_playback_cache(&cache).unwrap();
+        assert_eq!(
+            serde_json::to_value(&*meta).unwrap(),
+            serde_json::to_value(&*restored_meta).unwrap()
+        );
+        // Re-recording must preserve every consumed field, value, scalar type,
+        // duplicate key and ordering, beyond the subset used by history charts.
+        let (_, body) = postcard::take_from_bytes::<PlaybackMetadata>(&cache[9..]).unwrap();
+        let arena = bumpalo::Bump::new();
+        let mut replay = super::super::playback::Replay::new(body);
+        let mut recording = super::super::playback::Recording::new();
+        Gamestate::deserialize_in_arena(
+            super::super::playback::Record {
+                inner: &mut replay,
+                output: &mut recording,
+                key_start: None,
+            },
+            &arena,
+        )
+        .unwrap();
+        assert!(recording.valid);
+        assert_eq!(body, recording.bytes);
+        assert!(Eu5LoadedSave::from_playback_cache(&cache[..cache.len() / 2]).is_err());
+        let bundles = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/game/eu5")
+            .join(format!("{}.{}", meta.version.major, meta.version.minor));
+        let data = std::sync::Arc::new(
+            crate::game_data::OptimizedGameBundle::open(
+                std::fs::read(bundles.join("game.zip")).unwrap(),
+            )
+            .unwrap()
+            .into_game_data()
+            .unwrap(),
+        );
+        let localization = crate::game_data::OptimizedLocalizationBundle::open(
+            std::fs::read(bundles.join("loc-en.zip")).unwrap(),
+        )
+        .unwrap()
+        .into_localization()
+        .unwrap();
+        let mut a = crate::Eu5Workspace::new(original.take_gamestate(), data.clone()).unwrap();
+        let mut b = crate::Eu5Workspace::new(restored.take_gamestate(), data).unwrap();
+        use crate::MapMode::*;
+        for mode in [
+            Political,
+            Control,
+            Development,
+            Population,
+            Markets,
+            RgoLevel,
+            BuildingLevels,
+            Wealth,
+            UnrealizedTaxBase,
+            Religion,
+            StateEfficacy,
+            PopulationGrowth,
+        ] {
+            a.set_map_mode(mode);
+            b.set_map_mode(mode);
+            assert_eq!(
+                a.location_arrays().as_data(),
+                b.location_arrays().as_data(),
+                "{mode:?}"
+            );
+        }
+        let a = a.localized(&localization).presenter();
+        let b = b.localized(&localization).presenter();
+        macro_rules! same {
+            ($method:ident) => {
+                assert_eq!(
+                    serde_json::to_value(a.$method()).unwrap(),
+                    serde_json::to_value(b.$method()).unwrap(),
+                    stringify!($method)
+                );
+            };
+        }
+        same!(calculate_development_insight);
+        same!(calculate_wealth_insight);
+        same!(calculate_control_insight);
+        same!(calculate_population_insight);
+        same!(calculate_population_growth_insight);
+        same!(calculate_religion_insight);
+        same!(calculate_building_levels_insight);
+        same!(calculate_rgo_insight);
+        same!(calculate_state_efficacy_insight);
+        same!(calculate_unrealized_tax_base_insight);
+        same!(calculate_market_insight);
+        same!(political_world_scoreboard);
+        for index in 1..=10 {
+            let country = eu5save::models::CountryIdx::from_value(index).unwrap();
+            assert_eq!(
+                serde_json::to_value(a.country_profile_for(country)).unwrap(),
+                serde_json::to_value(b.country_profile_for(country)).unwrap()
+            );
+        }
     }
 }

@@ -436,6 +436,19 @@ pub struct SaveLoader {
 
 #[wasm_bindgen]
 impl SaveLoader {
+    /// Build a persistent viewer cache while preserving the regular parser's semantics.
+    #[wasm_bindgen]
+    pub fn playback_cache(self) -> Result<Vec<u8>, JsError> {
+        let meta = self.parser.meta();
+        let mut loaded = self
+            .parser
+            .parse_with_playback_cache()
+            .map_err(|e| JsError::new(&e.to_string()))?;
+        loaded
+            .take_playback_cache(&meta)
+            .ok_or_else(|| JsError::new("Save uses an unsupported cache representation"))
+    }
+
     /// Extract history observations without loading map assets or a GPU map.
     #[wasm_bindgen]
     pub fn parse_snapshot(self) -> Result<Ts<snapshot::SaveSnapshot>, JsError> {
@@ -492,6 +505,23 @@ pub fn read_save_metadata_prefix(prefix: &[u8]) -> Result<Ts<Eu5SaveMetadataHand
 pub struct Eu5WasmGamestate {
     meta: Eu5SaveMetadataHandle,
     parsed_save: Eu5LoadedSave,
+}
+
+#[wasm_bindgen]
+impl Eu5WasmGamestate {
+    #[wasm_bindgen]
+    pub fn from_playback_cache(bytes: &[u8]) -> Result<Eu5WasmGamestate, JsError> {
+        let (parsed_save, meta) =
+            Eu5LoadedSave::from_playback_cache(bytes).map_err(|e| JsError::new(&e))?;
+        Ok(Self {
+            parsed_save,
+            meta: Eu5SaveMetadataHandle(meta),
+        })
+    }
+    #[wasm_bindgen]
+    pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
+        into_ts(self.meta.clone())
+    }
 }
 
 #[wasm_bindgen]
