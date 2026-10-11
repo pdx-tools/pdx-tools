@@ -105,6 +105,7 @@ const jumpButton = "@max-xl:hidden";
 
 export function TimelineTransport({ controller }: { controller: TimelineController }) {
   const { playing, playback, dayOffset, live, locked } = controller;
+  const savedDates = controller.navigation === "saves";
   const atStart = dayOffset <= 0;
   const ended = playback === "ended";
   const playLabel = playing ? "Pause" : ended ? "Replay from the campaign start" : "Play";
@@ -121,8 +122,8 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
         <SkipStartIcon />
       </TransportButton>
       <TransportButton
-        label="Back a day"
-        hint="← · Shift month · Ctrl year"
+        label={savedDates ? "Previous saved date" : "Back a day"}
+        hint={savedDates ? "←" : "← · Shift month · Ctrl year"}
         onClick={(event) => controller.step(stepUnitForModifiers(event), -1)}
         disabled={locked || atStart}
       >
@@ -161,22 +162,22 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
         <Tooltip.Content side="top" className="font-game-ui text-xs">
           <span>
             {playing ? "Pause" : ended || live ? "Play from the campaign start" : "Play"}
-            <span className="text-game-ink-300"> · 1 yr per second</span>
+            {!savedDates && <span className="text-game-ink-300"> · 1 yr per second</span>}
           </span>
           <span className="ml-2 font-game-num text-[10px] text-game-ink-300">Space</span>
         </Tooltip.Content>
       </Tooltip>
 
       <TransportButton
-        label="Forward a day"
-        hint="→ · Shift month · Ctrl year"
+        label={savedDates ? "Next saved date" : "Forward a day"}
+        hint={savedDates ? "→" : "→ · Shift month · Ctrl year"}
         onClick={(event) => controller.step(stepUnitForModifiers(event), 1)}
         disabled={locked || live}
       >
         <StepForwardIcon />
       </TransportButton>
       <TransportButton
-        label="Save date"
+        label={savedDates ? "Last saved date" : "Save date"}
         hint="End"
         onClick={controller.jumpToEnd}
         disabled={locked || live}

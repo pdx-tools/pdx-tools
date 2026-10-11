@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { useCampaign } from "@/features/campaign/CampaignProvider";
-import { useHasSnapshotTimeline } from "../history/SnapshotBar";
+import { useSnapshotTimelineController } from "../history/useSnapshotTimelineController";
 import { useHistory } from "../history/store";
 import { GameButton } from "@/components/game/Button";
 import { TimelapseExport } from "./TimelapseExport";
@@ -12,7 +12,7 @@ import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import type { TimelineController } from "@/features/timeline/controller";
 import { useTimelineController } from "./useTimelineController";
-import { useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
+import { useEu5MapMode, useSetEu5TimelineBarHeight, useSetEu5InsightPanelOpen } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";
 import styles from "./TimelineBar.module.css";
@@ -36,21 +36,23 @@ function usePresence(open: boolean) {
 /**
  * The campaign timeline as a bar along the bottom of the map. The track gets
  * the full map width, which is what a long campaign needs for a precise drag.
- * Only the political mode has a history, so the bar shows for that mode and
- * leaves with the others. The keyboard shortcuts stay live throughout: a
- * step from another mode returns the map to the political mode, and the bar
- * rises with it.
+ * Political mode uses ownership history. Other modes use the same control
+ * to seek and play through saved observations.
  */
 export function TimelineBar() {
-  const controller = useTimelineController();
+  const ownership = useTimelineController();
+  const snapshots = useSnapshotTimelineController();
+  const controller = snapshots ?? ownership;
   const campaign = useTimelineCampaign(controller?.timeline.start);
   const mapMode = useEu5MapMode();
   const insets = useViewportInsets();
   const saveNavigation = useCampaign();
-  const savedDates = useHasSnapshotTimeline();
-  useTimelineKeyboard(savedDates ? null : controller);
+  const savedDates = snapshots !== null;
+  const setPanelOpen = useSetEu5InsightPanelOpen();
+  const speed = useHistory((state) => state.playbackSpeed);
+  useTimelineKeyboard(savedDates || isHistoricalMapMode(mapMode) ? controller : null);
 
-  const open = !savedDates && controller !== null && isHistoricalMapMode(mapMode);
+  const open = controller !== null && (savedDates || isHistoricalMapMode(mapMode));
   const presence = usePresence(open);
   const barRef = useRef<HTMLDivElement>(null);
   useReportedHeight(barRef, open, presence.mounted);
@@ -70,14 +72,6 @@ export function TimelineBar() {
       }}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-game-line-strong bg-game-overlay py-2 pr-2 pl-2.5 shadow-xl backdrop-blur-md">
-        {saveNavigation && (
-          <GameButton
-            variant="ghost"
-            onClick={() => useHistory.getState().setTimelineMode("saves")}
-          >
-            Saved dates
-          </GameButton>
-        )}
         <TimelineTransport controller={controller} />
 
         <TimelineReadout controller={controller} className="shrink-0" />
@@ -87,12 +81,53 @@ export function TimelineBar() {
           <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
 
-        <TimelapseExport controller={controller} />
+        {savedDates ? (
+          <select
+            aria-label="Saved-date playback speed"
+            className="rounded-control border border-game-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300"
+            value={speed}
+            onChange={(event) => useHistory.getState().setPlaybackSpeed(Number(event.target.value))}
+          >
+            {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
+              <option key={value} value={value}>
+                {value}×
+              </option>
+            ))}
+          </select>
+        ) : (
+          <TimelapseExport controller={controller} />
+        )}
+        {saveNavigation && (
+          <GameButton
+            variant="ghost"
+            onClick={() => {
+              useHistory.getState().showPanel(true);
+              setPanelOpen(true);
+            }}
+          >
+            Over time
+          </GameButton>
+        )}
       </div>
 
       <TimelineAnnouncer controller={controller} />
+      <PlaybackFailures />
     </div>
   );
+}
+
+function PlaybackFailures() {
+  const failed = useHistory((state) => state.failedSaves);
+  const count = Object.keys(failed).length;
+  return count ? (
+    <p
+      role="status"
+      className="mt-1 text-xs text-game-ink-500"
+      title={Object.values(failed).join("\n")}
+    >
+      {count} unavailable saves skipped during playback.
+    </p>
+  ) : null;
 }
 
 /**
@@ -127,13 +162,12 @@ function useReportedHeight(
       setHeight(0);
       return;
     }
-    const report = () => setHeight(el.offsetHeight);
-    report();
-    const observer = new ResizeObserver(report);
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-      setHeight(0);
-    };
+    // ResizeObserver provides the border box after layout. Reading offsetHeight in
+    // this effect forced a synchronous layout on every save's new store.
+    const observer = new ResizeObserver(([entry]) => {
+      setHeight(Math.round(entry.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight));
+    });
+    observer.observe(el, { box: "border-box" });
+    return () => observer.disconnect();
   }, [barRef, mounted, open, setHeight]);
 }

@@ -50,6 +50,9 @@ export type TimelapseProgress = {
  * builds it from its own state; the controls read only this.
  */
 export type TimelineController = {
+  navigation?: "saves";
+  /** Commit a previewed seek when the pointer is released. */
+  commitDayOffset?: (day: number) => void;
   timeline: TimelineData;
   /** The date the user asked for; the readout and playhead follow this. */
   date: DateComponents;

@@ -156,6 +156,9 @@ export function TimelineScrubber({
   const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragging) return;
     setDragging(false);
+    controller.commitDayOffset?.(
+      event.type === "pointercancel" ? mapDayOffset : dayAtClientX(event.clientX),
+    );
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }

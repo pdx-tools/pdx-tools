@@ -16,8 +16,6 @@ type HistoryState = {
   setPlaying: (playing: boolean) => void;
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
-  timelineMode: "saves" | "ownership";
-  setTimelineMode: (mode: "saves" | "ownership") => void;
   failedSaves: Record<string, string>;
   markFailed: (key: string, message: string) => void;
   snapshots: Snapshot[];
@@ -43,8 +41,6 @@ export const useHistory = create<HistoryState>()((set) => ({
   setPlaying: (playing) => set({ playing }),
   playbackSpeed: 1,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
-  timelineMode: "saves",
-  setTimelineMode: (timelineMode) => set({ timelineMode, playing: false }),
   failedSaves: {},
   markFailed: (key, message) =>
     set((state) => ({ failedSaves: { ...state.failedSaves, [key]: message } })),
