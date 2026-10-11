@@ -475,6 +475,15 @@ export const loadSave = async (
       return app.get_state_efficacy();
     },
 
+    getHistoryContext: () => {
+      const version = app.meta().version;
+      return {
+        countryNames: Object.fromEntries(
+          countryIndex.map((entry) => [entry.tag, entry.country.name]),
+        ),
+        version: `${version.major}.${version.minor}.${version.patch}`,
+      };
+    },
     getCountryProfile: (countryIdx: number): CountryProfile | null => {
       return timeSync("Get country profile", () => app.get_country_profile(countryIdx) ?? null);
     },

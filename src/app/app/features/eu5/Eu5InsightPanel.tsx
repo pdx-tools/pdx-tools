@@ -1,5 +1,7 @@
+import { SaveHistory } from "./history/SaveHistory";
+import { GameButton } from "@/components/game/Button";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { formatCompact, formatInt } from "@/lib/format";
@@ -33,6 +35,8 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const currentMapMode = useEu5MapMode();
   const setInsightPanelWidth = useSetEu5InsightPanelWidth();
   const handleWidthChange = useCallback(
     (width: number) => setInsightPanelWidth(width),
@@ -58,14 +62,96 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         <ResizablePanel.Header className="border-b border-game-line">
           <ResizablePanel.CloseButton className={btnCx} />
           <div className="min-w-0 flex-1">
-            <InsightPanelTitle />
+            {historyOpen ? (
+              <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+                Campaign history
+              </span>
+            ) : (
+              <InsightPanelTitle />
+            )}
           </div>
           <ResizablePanel.MaximizeButton className={btnCx} />
         </ResizablePanel.Header>
         {/* Don't render panel content until open as panels can be very expensive to render with large charts */}
-        <ResizablePanel.Content>{open ? <PanelContentInner /> : null}</ResizablePanel.Content>
+        <ResizablePanel.Content>
+          {open && (
+            <>
+              <div className="flex gap-2 border-b border-game-line p-2">
+                <GameButton
+                  variant={historyOpen ? "ghost" : "default"}
+                  onClick={() => setHistoryOpen(false)}
+                >
+                  Current save
+                </GameButton>
+                <GameButton
+                  variant={historyOpen ? "default" : "ghost"}
+                  onClick={() => setHistoryOpen(true)}
+                >
+                  Over time
+                </GameButton>
+              </div>
+              {historyOpen ? <PanelSaveHistory mapMode={currentMapMode} /> : <PanelContentInner />}
+            </>
+          )}
+        </ResizablePanel.Content>
       </ResizablePanel.Root>
     </PanelNavProvider>
+  );
+}
+
+function useHistoryContext(
+  mapMode: React.ComponentProps<typeof SaveHistory>["mapMode"],
+  enabled = true,
+) {
+  const nav = usePanelNav();
+  const selection = useEu5SelectionState();
+  const identity = nav.top?.profile ?? selection?.activeProfile;
+  const kind = identity?.kind;
+  const key =
+    identity?.kind === "country"
+      ? identity.country.key
+      : identity?.kind === "market"
+        ? identity.market.key
+        : null;
+  const { data: focus } = useEu5Trigger(
+    async (engine) => {
+      if (!enabled || key == null) return null;
+      if (kind === "country") {
+        const profile = await engine.trigger.getCountryProfile(key);
+        return profile ? { tag: profile.header.tag ?? undefined, name: profile.header.name } : null;
+      }
+      if (kind === "market") {
+        const profile = await engine.trigger.getMarketProfile(key);
+        return profile ? { center: profile.centerId, name: profile.header.name } : null;
+      }
+      return null;
+    },
+    [kind, key, enabled],
+  );
+  const tab = nav.profileTabs.country;
+  const mode =
+    kind === "country" && tab === "religion"
+      ? "religion"
+      : kind === "country" && tab === "population"
+        ? "population"
+        : kind === "country" && tab === "diplomacy"
+          ? "political"
+          : kind === "market"
+            ? "markets"
+            : mapMode;
+  return { mode, focus };
+}
+
+function PanelSaveHistory(props: React.ComponentProps<typeof SaveHistory>) {
+  const { mode, focus } = useHistoryContext(props.mapMode);
+  return (
+    <SaveHistory
+      {...props}
+      mapMode={mode}
+      focusTag={focus && "tag" in focus ? focus.tag : undefined}
+      focusName={focus?.name}
+      focusMarketCenter={focus && "center" in focus ? focus.center : undefined}
+    />
   );
 }
 

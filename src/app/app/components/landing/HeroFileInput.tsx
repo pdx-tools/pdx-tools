@@ -181,5 +181,26 @@ export const HeroFileInput = () => {
     </button>
   );
 
-  return <div className="flex h-[264px] leading-relaxed xl:h-80">{input}</div>;
+  return (
+    <div>
+      <div className="flex h-[264px] leading-relaxed xl:h-80">{input}</div>
+      <label className="mx-auto block w-fit cursor-pointer rounded border border-white/50 px-4 py-2 text-white hover:bg-black/10">
+        Open EU5 save folder
+        <input
+          aria-label="Open EU5 save folder"
+          type="file"
+          className="sr-only"
+          multiple
+          {...{ webkitdirectory: "" }}
+          onChange={(event) => {
+            const files = [...(event.currentTarget.files ?? [])].filter((file) =>
+              file.name.toLowerCase().endsWith(".eu5"),
+            );
+            if (files.length) publishFile(files.map((file) => ({ kind: "file", file }) as const));
+            event.currentTarget.value = "";
+          }}
+        />
+      </label>
+    </div>
+  );
 };

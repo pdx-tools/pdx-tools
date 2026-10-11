@@ -505,6 +505,7 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
       return await saveEngine.getStateEfficacy();
     },
 
+    getHistoryContext: async () => await saveEngine.getHistoryContext(),
     getCountryProfile: async (countryIdx: number): Promise<CountryProfile | null> => {
       return await saveEngine.getCountryProfile(countryIdx);
     },

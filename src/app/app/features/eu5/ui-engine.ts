@@ -191,6 +191,7 @@ export interface AppTriggers {
   getLocationArrays(): Promise<Blob>;
   melt(): Promise<Uint8Array<ArrayBuffer>>;
   getStateEfficacy(): Promise<StateEfficacyInsightData>;
+  getHistoryContext(): Promise<{ countryNames: Record<string, string>; version: string }>;
   getCountryProfile(countryIdx: number): Promise<CountryProfile | null>;
   getCountryPopulationProfile(countryIdx: number): Promise<CountryPopulationProfile | null>;
   getMarketProfile(marketId: number): Promise<MarketProfile | null>;
@@ -339,6 +340,7 @@ export class Eu5UIEngine implements AppEngine {
     getLocationArrays: () => this.handleGetLocationArrays(),
     melt: () => this.handleMelt(),
     getStateEfficacy: () => this.handleGetStateEfficacy(),
+    getHistoryContext: () => this.gameInstance.getHistoryContext(),
     getCountryProfile: (countryIdx) => this.gameInstance.getCountryProfile(countryIdx),
     getCountryPopulationProfile: (countryIdx) =>
       this.gameInstance.getCountryPopulationProfile(countryIdx),
