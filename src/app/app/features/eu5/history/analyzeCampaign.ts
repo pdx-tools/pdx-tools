@@ -33,7 +33,8 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
   const { signal } = controller;
   try {
     try {
-      useHistory.getState().add(await cachedSnapshots());
+      if (!useHistory.getState().snapshots.length)
+        useHistory.getState().add(await cachedSnapshots());
     } catch {
       issues.push("Browser cache unavailable; observations remain available for this session.");
     }

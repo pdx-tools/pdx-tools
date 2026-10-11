@@ -34,6 +34,7 @@ export function SnapshotBar() {
   const setHeight = useSetEu5TimelineBarHeight();
   const setPanelOpen = useSetEu5InsightPanelOpen();
   const ref = useRef<HTMLDivElement>(null);
+  const preparationAttempts = useRef(new Set<string>());
   const saves = useMemo(
     () => campaign?.saves.filter((save) => save.membership !== "different" && canOpen(save)) ?? [],
     [campaign?.saves],
@@ -58,6 +59,7 @@ export function SnapshotBar() {
   });
   useEffect(() => {
     useHistory.getState().setPlaying(false);
+    preparationAttempts.current.clear();
   }, [playthroughId]);
   useEffect(() => {
     if (!visible || !history.playing || campaign?.opening) return;
@@ -69,12 +71,21 @@ export function SnapshotBar() {
     return () => clearTimeout(timer);
   }, [visible, history.playing, history.playbackSpeed, campaign?.opening, next, saves]);
   const upcoming = saves[next];
+  const upcomingEntry =
+    upcoming?.source.kind === "local" ? getLocalSave(upcoming.source.entryId) : undefined;
+  const upcomingRef = upcomingEntry?.ref;
+  const upcomingVersion =
+    upcomingEntry?.version ?? (upcomingRef?.kind === "file" ? upcomingRef.file : undefined);
+  const preparationKey = upcomingEntry
+    ? `${upcomingEntry.id}:${upcomingVersion?.size}:${upcomingVersion?.lastModified}`
+    : undefined;
   useEffect(() => {
-    if (!visible || campaign?.opening || upcoming?.source.kind !== "local") return;
-    const entry = getLocalSave(upcoming.source.entryId);
-    // Preparation is optional. Opening still reports a failure through campaign navigation.
-    if (entry) void prepareEu5Session(entry.ref).catch(() => {});
-  }, [visible, campaign?.opening, upcoming]);
+    if (!visible || campaign?.opening || !upcomingRef || !preparationKey) return;
+    if (preparationAttempts.current.has(preparationKey)) return;
+    preparationAttempts.current.add(preparationKey);
+    // Optional preparation must not retry a broken save on unrelated metadata updates.
+    void prepareEu5Session(upcomingRef).catch(() => {});
+  }, [visible, campaign?.opening, upcomingRef, preparationKey]);
   useLayoutEffect(() => {
     if (!visible || !ref.current) return;
     const element = ref.current;

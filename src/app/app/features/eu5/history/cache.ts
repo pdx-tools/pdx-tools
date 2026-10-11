@@ -15,12 +15,31 @@ async function database(): Promise<IDBDatabase> {
   });
 }
 
-export async function cachedSnapshots(): Promise<Snapshot[]> {
+let pendingSnapshots: Promise<Snapshot[]> | null = null;
+
+/** Share concurrent reads so large campaigns are not cloned into memory twice. */
+export function cachedSnapshots(): Promise<Snapshot[]> {
+  return (pendingSnapshots ??= readCachedSnapshots().finally(() => {
+    pendingSnapshots = null;
+  }));
+}
+
+async function readCachedSnapshots(): Promise<Snapshot[]> {
   const db = await database();
   try {
     return await new Promise((resolve, reject) => {
-      const request = db.transaction("snapshots").objectStore("snapshots").getAll();
-      request.onsuccess = () => resolve(request.result);
+      const snapshots: Snapshot[] = [];
+      const request = db.transaction("snapshots").objectStore("snapshots").openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(snapshots);
+          return;
+        }
+        const snapshot = cursor.value as Snapshot;
+        if (snapshot.schemaVersion === 3) snapshots.push(snapshot);
+        cursor.continue();
+      };
       request.onerror = () => reject(request.error);
     });
   } finally {

@@ -116,6 +116,7 @@ export function SaveHistory({
   const progress = history.progress;
   const issues = history.issues;
   useEffect(() => {
+    if (useHistory.getState().snapshots.length) return;
     void cachedSnapshots()
       .then((snapshots) => useHistory.getState().add(snapshots))
       .catch(() => {});

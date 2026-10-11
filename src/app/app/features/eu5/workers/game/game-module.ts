@@ -164,6 +164,7 @@ async function parseApp(
   gameBundle: GameBundleSource,
   onProgress?: (increment: number, stage: string) => void,
   beforeLocalize?: (workspace: wasm_eu5.Eu5WasmWorkspace) => Promise<void>,
+  diagnose = true,
 ): Promise<wasm_eu5.Eu5App | null> {
   const [, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
   const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
@@ -185,6 +186,7 @@ async function parseApp(
     try {
       return timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
     } catch (originalError) {
+      if (!diagnose) throw originalError;
       const { diagnoseEu5Save } = await import("./eu5-diagnostics");
       await diagnoseEu5Save(saveData, tokens);
       throw originalError;
@@ -217,7 +219,7 @@ export const prepareSave = (file: File, cacheKey: string, gameBundle: GameBundle
   serialize(async () => {
     if (prepared.get(cacheKey)) return true;
     if (!prepared.makeRoom(file.size * 2 + uncachedActiveBytes)) return false;
-    const app = await parseApp(await file.arrayBuffer(), gameBundle);
+    const app = await parseApp(await file.arrayBuffer(), gameBundle, undefined, undefined, false);
     if (!app) return false;
     if (prepared.add(cacheKey, app, app.retained_save_bytes())) return true;
     app.free();
