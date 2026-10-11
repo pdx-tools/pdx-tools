@@ -1026,18 +1026,19 @@ impl<'a> AchievementHunter<'a> {
                 .iter()
                 .all(|x| {
                     self.all_provs_in_region(x, |province, _| {
-                        province
-                            .religion
-                            .as_ref()
-                            .is_some_and(|religion| religion == "catholic")
-                            && owned_and_cored_by(province, self.tag)
+                        (self.patch >= (1, 35) && !province.is_city)
+                            || province
+                                .religion
+                                .as_ref()
+                                .is_some_and(|religion| religion == "catholic")
+                                && owned_and_cored_by(province, self.tag)
                     })
                 })
         } else {
             false
         };
 
-        let desc = "Own and core all provinces in the Pontic Steppe, Russia, and Ural regions and conver them to catholicism";
+        let desc = "Own, core, and convert all required provinces in the Pontic Steppe, Russia, and Ural regions to Catholicism";
         result.and(AchievementCondition::new(has_all_provinces, desc));
         result
     }
