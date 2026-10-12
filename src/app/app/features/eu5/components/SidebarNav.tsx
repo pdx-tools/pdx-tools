@@ -46,6 +46,7 @@ const SidebarNavItem = React.forwardRef<HTMLButtonElement, SidebarNavItemProps>(
       <button
         ref={ref}
         type="button"
+        aria-pressed={active}
         className={cx(
           "relative flex h-7 w-full shrink-0 items-center px-3.5 pr-3.5 text-left",
           "font-game-ui text-[12.5px] transition-colors duration-100",
