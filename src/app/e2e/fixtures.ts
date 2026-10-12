@@ -38,6 +38,7 @@ type Fixtures = {
 
 export const test = base.extend<Fixtures>({
   page: async ({ browser }, use) => {
+    await resetDb();
     const { context, page, errors } = await newPlayerPage(browser);
     await use(page);
     await context.close();
@@ -50,10 +51,6 @@ export const test = base.extend<Fixtures>({
     await context.close();
     expect(errors, "uncaught errors in the visitor's page or its workers").toEqual([]);
   },
-});
-
-test.beforeEach(async () => {
-  await resetDb();
 });
 
 export { expect };
