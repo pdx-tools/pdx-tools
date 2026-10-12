@@ -10,6 +10,11 @@ on:
   schedule:
     - cron: '0 2 * * *'
 
+# Runs from pull_request_target can contain fork code. Thus jobs get a
+# read-only token, and a job that must write declares that permission.
+permissions:
+  contents: read
+
 jobs:
   build-devcontainer:
     runs-on: ${{ matrix.runner }}
@@ -42,6 +47,8 @@ jobs:
       with:
         submodules: 'recursive'
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        allow-unsafe-pr-checkout: true
+        persist-credentials: false
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v4
@@ -94,6 +101,8 @@ jobs:
       with:
         submodules: 'recursive'
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        allow-unsafe-pr-checkout: true
+        persist-credentials: false
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v4
@@ -228,6 +237,10 @@ jobs:
       CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       # Releases are not built on Windows, so CI on Windows uses a release
       # profile that compiles faster.
       - name: Relax the release profile on Windows
@@ -237,7 +250,9 @@ jobs:
           echo "CARGO_PROFILE_RELEASE_LTO=false" >> "$GITHUB_ENV"
           echo "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16" >> "$GITHUB_ENV"
       # Restore the bundle cache for this manifest, or the newest one. The
-      # sync step then downloads only what the cache lacks.
+      # sync step then downloads only what the cache lacks. Runs from
+      # pull_request_target can contain fork code, and their caches go to
+      # the base branch scope. Thus these runs only restore caches.
       - name: Restore assets
         id: bundles
         uses: actions/cache/restore@v6
@@ -299,8 +314,9 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
     
-      - name: Setup pnpm cache
-        uses: actions/cache@v6
+      - name: Restore pnpm cache
+        id: pnpm-cache
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -365,7 +381,9 @@ jobs:
           done
 
       - name: Save EU4 save fixtures
-        if: matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests' && steps.eu4-fixtures.outputs.cache-hit != 'true'
+        if: |
+          github.event_name != 'pull_request_target' && matrix.os == 'ubuntu-latest' &&
+          matrix.suite == 'rust-tests' && steps.eu4-fixtures.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: assets/saves/eu4
@@ -373,7 +391,9 @@ jobs:
           enableCrossOsArchive: true
 
       - name: Save EU5 save fixtures
-        if: matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests' && steps.eu5-fixtures.outputs.cache-hit != 'true'
+        if: |
+          github.event_name != 'pull_request_target' && matrix.os == 'ubuntu-latest' &&
+          matrix.suite == 'rust-tests' && steps.eu5-fixtures.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: assets/saves/eu5
@@ -385,10 +405,18 @@ jobs:
       # fail, but only after a complete sync.
       - name: Save assets
         if: |
-          !cancelled() && matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests' &&
+          !cancelled() && github.event_name != 'pull_request_target' &&
+          matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests' &&
           steps.asset-pipeline.outcome == 'success' && steps.bundles.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ env.ASSET_CACHE_PATHS }}
           key: game-bundles-v2-${{ hashFiles('assets/catalog.json') }}
           enableCrossOsArchive: true
+
+      - name: Save pnpm cache
+        if: github.event_name != 'pull_request_target' && steps.pnpm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
