@@ -36,16 +36,7 @@ type Fixtures = {
   visitor: Page;
 };
 
-export const test = base.extend<Fixtures & { resetState: void }>({
-  resetState: [
-    // oxlint-disable-next-line no-empty-pattern
-    async ({}, use) => {
-      await resetDb();
-      await use();
-    },
-    { auto: true },
-  ],
-
+export const test = base.extend<Fixtures>({
   page: async ({ browser }, use) => {
     const { context, page, errors } = await newPlayerPage(browser);
     await use(page);
@@ -59,6 +50,10 @@ export const test = base.extend<Fixtures & { resetState: void }>({
     await context.close();
     expect(errors, "uncaught errors in the visitor's page or its workers").toEqual([]);
   },
+});
+
+test.beforeEach(async () => {
+  await resetDb();
 });
 
 export { expect };
