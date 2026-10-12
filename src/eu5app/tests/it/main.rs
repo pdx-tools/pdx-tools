@@ -234,6 +234,25 @@ fn timeline_round_trip_restores_the_live_map() {
     });
 }
 
+/// A timeline round trip must restore all map buffers for impassable terrain.
+#[test]
+fn timeline_round_trip_keeps_impassable_terrain_borders() {
+    let save_name = "SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5";
+    let Some(mut loaded) = utils::build_workspace(save_name) else {
+        return;
+    };
+    let ws = &mut loaded.workspace;
+    ws.set_map_mode(MapMode::Political);
+    let live = utils::hash_location_arrays(ws.location_arrays());
+    let summary = ws.timeline_summary();
+    assert!(summary.available);
+    ws.set_timeline_date(summary.start);
+    assert_ne!(utils::hash_location_arrays(ws.location_arrays()), live);
+    ws.set_timeline_date(summary.end);
+    assert!(ws.is_timeline_live());
+    assert_eq!(utils::hash_location_arrays(ws.location_arrays()), live);
+}
+
 /// Playback steps between past dates repaint only the locations that
 /// changed hands and the surrounded terrain next to them. After a walk
 /// through the campaign, that incremental map must equal a full repaint of
