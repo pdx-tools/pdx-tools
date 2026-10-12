@@ -28,7 +28,7 @@ function formatPercent(value: number, digits = 1) {
 }
 
 export function ReligionInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getReligionInsight());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getReligionInsight());
 
   const stateReligions = insightQuery.data?.stateReligions ?? [];
   const religions = insightQuery.data?.religions ?? [];

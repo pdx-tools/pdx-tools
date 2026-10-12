@@ -58,7 +58,7 @@ function PopulationGrowthScopeHeader({ data }: { data?: PopulationGrowthScopeSum
 
 export function PopulationGrowthInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) =>
-    engine.trigger.getPopulationGrowthInsight(),
+    engine.queries.getPopulationGrowthInsight(),
   );
 
   const data = insightQuery.data;

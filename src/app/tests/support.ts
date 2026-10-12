@@ -8,9 +8,7 @@ import type { DbConnection } from "@/server-lib/db/connection";
 // Shared by the server tests (Vitest) and the browser tests (Playwright).
 // Both run against the stack that `mise run test:app` starts.
 
-// Wrangler gives this variable to the app preview in place of the test
-// connection string in `wrangler.toml`. Thus the tests and the app use the
-// same database.
+// Keep the app preview and tests on the same database.
 export const dbConnection =
   process.env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_PDX_DB ??
   "postgres://app_user:mercantilismbaby@localhost:5433/postgres";
@@ -36,11 +34,7 @@ const savesDir = path.resolve(
   "../../../assets/saves",
 );
 
-/**
- * The path of a save fixture. The save is downloaded from the dev CDN and
- * cached when it is not on disk. CI compares the fixtures logged to
- * `PDX_FIXTURES_LOG` with the fixture lists.
- */
+/** Cache save fixtures from the development CDN and record their use for CI. */
 export async function saveFixture(game: Game, name: string): Promise<string> {
   const log = process.env.PDX_FIXTURES_LOG;
   if (log) {
@@ -58,8 +52,7 @@ export async function saveFixture(game: Game, name: string): Promise<string> {
       throw new Error(`unable to retrieve: ${game}/${name}`);
     }
     await fs.mkdir(dir, { recursive: true });
-    // Write to a temporary file first, so that a parallel reader never sees a
-    // partial save.
+    // Publish the fixture only after its download completes.
     const tmp = `${location}.${process.pid}.tmp`;
     await fs.writeFile(tmp, Buffer.from(await resp.arrayBuffer()));
     await fs.rename(tmp, location);

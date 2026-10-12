@@ -57,7 +57,7 @@ export function Eu5Toolbar() {
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const hits = await engine.trigger.searchEntities(searchQuery);
+        const hits = await engine.queries.searchEntities(searchQuery);
         setResults(hits);
       } finally {
         setIsSearching(false);
@@ -73,9 +73,9 @@ export function Eu5Toolbar() {
     async (result: SearchResult) => {
       const selection = resolveSearchSelection(result);
       if (selection.kind === "country") {
-        await engine.trigger.selectCountry(selection.countryIdx);
+        await engine.commands.selectCountry(selection.countryIdx);
       } else {
-        await engine.trigger.setFocusedLocation(selection.locationIdx);
+        await engine.commands.setFocusedLocation(selection.locationIdx);
       }
       panToEntity(selection.panTo);
       setSearchActive(false);
@@ -92,7 +92,7 @@ export function Eu5Toolbar() {
   }, []);
 
   const handleSelectPlayers = useCallback(async () => {
-    await engine.trigger.selectPlayers();
+    await engine.commands.selectPlayers();
   }, [engine]);
 
   const countryResults = useMemo(

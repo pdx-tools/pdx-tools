@@ -1,4 +1,16 @@
-type AnalysisTerminator = () => void;
+import type { SaveGameInput } from "./engineStore";
+
+/** The previous and next inputs of the home page analysis. */
+export type AnalysisChange = {
+  from: SaveGameInput | null;
+  to: SaveGameInput | null;
+};
+
+/**
+ * Return true when an input change ends this analysis.
+ * An analysis that serves another route or continues into the next input stays active.
+ */
+type AnalysisTerminator = (change: AnalysisChange) => boolean;
 
 let currentTerminator:
   | {
@@ -18,8 +30,13 @@ export function registerAnalysisTerminator(terminate: AnalysisTerminator): () =>
   };
 }
 
-export function terminateCurrentAnalysis(): void {
+export function terminateCurrentAnalysis(change: AnalysisChange): void {
   const terminator = currentTerminator;
-  currentTerminator = undefined;
-  terminator?.terminate();
+  if (terminator === undefined || !terminator.terminate(change)) {
+    return;
+  }
+
+  if (currentTerminator?.token === terminator.token) {
+    currentTerminator = undefined;
+  }
 }

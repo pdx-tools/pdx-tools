@@ -20,6 +20,7 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/account";
+import { useHomeSaveScope } from "@/features/engine";
 import { Tooltip } from "@/components/Tooltip";
 import { Toaster } from "@/components/Toaster";
 import { PostHog } from "@/components/PostHog";
@@ -107,6 +108,7 @@ export const ErrorBoundary = () => {
 
 export default function App() {
   const { dehydratedState } = useLoaderData<typeof loader>();
+  useHomeSaveScope();
   const [queryClient] = useState(
     () =>
       new QueryClient({

@@ -3,6 +3,7 @@ import { cx } from "class-variance-authority";
 import { TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
 import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
+import { useTimelineCampaign } from "@/features/campaign/SaveMarks";
 import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import type { TimelineController } from "@/features/timeline/controller";
@@ -38,6 +39,7 @@ function usePresence(open: boolean) {
  */
 export function TimelineBar() {
   const controller = useTimelineController();
+  const campaign = useTimelineCampaign(controller?.timeline.start);
   const mapMode = useEu5MapMode();
   const insets = useViewportInsets();
   useTimelineKeyboard(controller);
@@ -68,7 +70,7 @@ export function TimelineBar() {
 
         {/* A narrow bar gives the track its own full row on top. */}
         <div className="min-w-0 flex-1 basis-64 @max-xl:order-first @max-xl:basis-full">
-          <TimelineScrubber controller={controller} />
+          <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
 
         <TimelapseExport controller={controller} />

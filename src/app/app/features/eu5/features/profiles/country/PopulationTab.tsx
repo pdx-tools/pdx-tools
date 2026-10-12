@@ -136,7 +136,7 @@ export function CountryPopulationTabContent({
   historicalPopulation: number[];
 }) {
   const { data, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getCountryPopulationProfile(countryIdx),
+    (engine) => engine.queries.getCountryPopulationProfile(countryIdx),
     [countryIdx],
   );
   const concentration = useMemo(() => concentrationFromLocations(locations), [locations]);

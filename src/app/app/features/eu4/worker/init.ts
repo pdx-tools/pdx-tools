@@ -1,3 +1,5 @@
+import { fileVersion, toPlaythroughId } from "@/features/campaign/types";
+import type { FileVersion } from "@/features/campaign/types";
 import { timeSync } from "@/lib/timeit";
 import type { AchievementsScore } from "../types/models";
 import { wasm } from "./common";
@@ -19,18 +21,18 @@ export async function fetchData(save: Eu4SaveInput) {
         file: save.file,
         lastModified,
       });
-      return;
+      return fileVersion(file);
     }
     case "file": {
       const data = await save.file.arrayBuffer();
       wasm.stash(new Uint8Array(data), { kind: "file", file: save.file });
-      return;
+      return fileVersion(save.file);
     }
     case "server": {
       const url = `/api/saves/${save.saveId}/file`;
       const data = await fetchOk(url).then((x) => x.arrayBuffer());
       wasm.stash(new Uint8Array(data), { kind: "remote", url });
-      return;
+      return null;
     }
   }
 }
@@ -76,6 +78,7 @@ export function getMeta(savefile: mod.SaveFile) {
     warnings,
     ...saveInfo,
     ...meta,
+    playthroughId: toPlaythroughId(saveInfo.playthroughId),
     multiplayer: saveInfo.mode === "Multiplayer",
   };
 }
@@ -109,9 +112,13 @@ export type FileObservationFrequency = Parameters<typeof wasm.save.reparse>[0];
 let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
 export function startFileObserver<T>(
   frequency: FileObservationFrequency,
-  cb: (save: { meta: EnhancedMeta; achievements: AchievementsScore }) => T,
+  cb: (save: {
+    meta: EnhancedMeta;
+    achievements: AchievementsScore;
+    fileVersion: FileVersion;
+  }) => T,
 ) {
-  observer = wasm.startFileObserver((data) => {
+  observer = wasm.startFileObserver((data, file) => {
     try {
       const reparse = timeSync(
         (result) =>
@@ -127,7 +134,11 @@ export function startFileObserver<T>(
       // The old cursor points into the save that was just replaced.
       resetTimelineCursor();
       const achievements = wasm.save.get_achievements();
-      cb({ meta: getMeta(wasm.save), achievements });
+      cb({
+        meta: getMeta(wasm.save),
+        achievements,
+        fileVersion: fileVersion(file),
+      });
     } catch (ex) {
       captureException(ex, { tags: { msg: "file-watcher" } });
     }

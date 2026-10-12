@@ -29,8 +29,8 @@ export function useEu5EntityChartClick(opts: {
 
     if (ev?.altKey) {
       void (opts.kind === "country"
-        ? engine.trigger.removeCountry(target.id)
-        : engine.trigger.removeMarket(target.id));
+        ? engine.commands.removeCountry(target.id)
+        : engine.commands.removeMarket(target.id));
       return;
     }
 

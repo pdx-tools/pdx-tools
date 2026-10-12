@@ -350,9 +350,8 @@ jobs:
         run: |
           mise run admin:assets:sync
           mise run admin:assets:compile:all
-      # Lavapipe gives the headless render tests a software GPU adapter.
       - name: Install a software GPU
-        if: matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests'
+        if: matrix.os == 'ubuntu-latest' && matrix.with_tokens
         run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers
 
       - name: Install browser dependencies
@@ -366,11 +365,10 @@ jobs:
       - shell: bash
         env:
           PDX_REQUIRE_TEST_ASSETS: ${{ matrix.with_tokens && '1' || '0' }}
-          # A render test without a GPU adapter fails, and does not skip.
+          # Fail when the required GPU adapter is unavailable.
           PDX_REQUIRE_GPU: ${{ matrix.suite == 'rust-tests' && '1' || '0' }}
         run: |
-          # Headless Chromium on the Windows runner has no WebGPU adapter,
-          # so the browser tests run only on Linux.
+          # Run browser tests only on runners with WebGPU support.
           app_tests=test:app
           if [ "$RUNNER_OS" = "Windows" ]; then app_tests=test:app:integration; fi
           case "${{ matrix.suite }}" in

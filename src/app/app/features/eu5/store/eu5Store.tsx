@@ -5,15 +5,23 @@ import type { StoreApi } from "zustand";
 import { isTimelineLive } from "../ui-engine";
 import type { AppEngine, AppState } from "../ui-engine";
 import type { Eu5DateComponents, Eu5PlayerData, WorldSummary } from "@/wasm/wasm_eu5";
-import type { Eu5ParsedSave } from "./types";
+import type { Eu5ParsedSave, Eu5SaveInput } from "./types";
+import type { OpenedSave } from "../ui-engine";
+import type { PlaythroughId } from "@/features/campaign/types";
 
 type Eu5State = {
   engine: AppEngine;
   appState: AppState;
   filename: string;
+  /** Retain the original input for future file reads. */
+  input: Eu5SaveInput;
   saveInput: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
+
+  playthroughId: PlaythroughId | null;
   playthroughName: string;
+  /** Use the server multiplayer rule for campaign grouping. */
+  multiplayer: boolean;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
   /** The whole map: the scope of every insight when nothing is selected. */
@@ -39,27 +47,38 @@ export type Eu5Store = StoreApi<Eu5State>;
 
 export const Eu5Context = createContext<Eu5Store | null>(null);
 
-export const createEu5Store = (
-  engine: AppEngine,
-  saveInput: Eu5ParsedSave,
-  filename: string,
-  saveDate: Eu5DateComponents,
-  playthroughName: string,
-  players: Eu5PlayerData[],
-  world: WorldSummary,
-): Eu5Store => {
+/** View state preserved across save changes. */
+type Eu5ViewState = Pick<Eu5State, "insightPanelOpen" | "insightPanelWidth" | "timelineBarHeight">;
+
+export const createEu5Store = ({
+  opened,
+  input,
+  saveInput,
+  view,
+}: {
+  opened: OpenedSave;
+  input: Eu5SaveInput;
+  saveInput: Eu5ParsedSave;
+
+  view?: Partial<Eu5ViewState>;
+}): Eu5Store => {
+  const { engine } = opened;
+  const filename = saveInput.kind === "file" ? saveInput.file.name : saveInput.name;
   const store = createStore<Eu5State>()((set) => ({
     engine,
+    input,
     saveInput,
     appState: engine.getState(),
     filename,
-    saveDate,
-    playthroughName,
-    players,
-    world,
-    insightPanelOpen: false,
-    insightPanelWidth: 640,
-    timelineBarHeight: 0,
+    saveDate: opened.saveDate,
+    playthroughId: opened.playthroughId,
+    playthroughName: opened.playthroughName,
+    multiplayer: opened.multiplayer,
+    players: opened.players,
+    world: opened.world,
+    insightPanelOpen: view?.insightPanelOpen ?? false,
+    insightPanelWidth: view?.insightPanelWidth ?? 640,
+    timelineBarHeight: view?.timelineBarHeight ?? 0,
     setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
     setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
     setTimelineBarHeight: (height) => set({ timelineBarHeight: height }),
@@ -73,6 +92,11 @@ export const createEu5Store = (
 
   return store;
 };
+
+export function eu5ViewState(store: Eu5Store): Eu5ViewState {
+  const { insightPanelOpen, insightPanelWidth, timelineBarHeight } = store.getState();
+  return { insightPanelOpen, insightPanelWidth, timelineBarHeight };
+}
 
 export function useEu5Context() {
   return check(useContext(Eu5Context), "Missing EU5 Context");
@@ -98,10 +122,13 @@ export const useEu5BoxSelectRect = () => useEu5Store((x) => x.appState.boxSelect
 export const useEu5CursorHint = () => useEu5Store((x) => x.appState.cursorHint);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveInput = () => useEu5Store((x) => x.saveInput);
+export const useEu5Input = () => useEu5Store((x) => x.input);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5World = () => useEu5Store((x) => x.world);
+export const useEu5PlaythroughId = () => useEu5Store((x) => x.playthroughId);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5Players = () => useEu5Store((x) => x.players);
+export const useEu5Multiplayer = () => useEu5Store((x) => x.multiplayer);
 export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);
 export const useEu5SelectionRevision = () => useEu5Store((x) => x.appState.selectionRevision);
 export const useEu5InsightPanelOpen = () => useEu5Store((x) => x.insightPanelOpen);

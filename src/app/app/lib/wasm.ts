@@ -99,7 +99,7 @@ export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allo
       return stashed?.kind === "handle";
     }
 
-    startFileObserver(callback: (data: Uint8Array) => Promise<void> | void) {
+    startFileObserver(callback: (data: Uint8Array, file: File) => Promise<void> | void) {
       if (stashed?.kind !== "handle") {
         throw new Error("file observer not supported");
       }
@@ -122,7 +122,7 @@ export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allo
         lastModified = file.lastModified;
         stashed = { kind: "handle", file: handle, lastModified };
         const bytes = await timeAsync("read polled file", () => file.arrayBuffer());
-        await callback(new Uint8Array(bytes));
+        await callback(new Uint8Array(bytes), file);
       }
 
       intervalCheck();

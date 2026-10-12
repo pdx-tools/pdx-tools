@@ -32,7 +32,7 @@ function formatPercent(value: number, digits = 0) {
 
 function UnrealizedTaxBaseScopeHeader() {
   const { data, error, loading } = useEu5SelectionTrigger((engine) =>
-    engine.trigger.getUnrealizedTaxBaseScope(),
+    engine.queries.getUnrealizedTaxBaseScope(),
   );
 
   if (loading && !data) return <InsightReadoutSkeleton />;
@@ -57,7 +57,7 @@ function UnrealizedTaxBaseScopeHeader() {
 
 export function UnrealizedTaxBaseInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) =>
-    engine.trigger.getUnrealizedTaxBaseInsight(),
+    engine.queries.getUnrealizedTaxBaseInsight(),
   );
 
   const countries = insightQuery.data?.countries ?? [];

@@ -8,7 +8,12 @@ interface TimeAgoProps {
 export const TimeAgo = ({ date }: TimeAgoProps) => {
   return (
     <Tooltip>
-      <Tooltip.Trigger>{timeAgo(date)}</Tooltip.Trigger>
+      <Tooltip.Trigger>
+        {/* The relative time can change between server render and hydration. */}
+        <time dateTime={date} suppressHydrationWarning>
+          {timeAgo(date)}
+        </time>
+      </Tooltip.Trigger>
       <Tooltip.Content>{display(date)}</Tooltip.Content>
     </Tooltip>
   );

@@ -5,7 +5,3 @@ export interface CanvasCourierDomSurface {
 export interface CanvasCourierSurface extends CanvasCourierDomSurface {
   offscreen: OffscreenCanvas;
 }
-
-export interface CanvasCourierController {
-  attachSurface(surface: CanvasCourierSurface): void;
-}

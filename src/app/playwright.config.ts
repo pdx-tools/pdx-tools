@@ -1,7 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Playwright starts the parse API and the app preview. The database and the
-// other services must run before the tests start (`mise run test:app:e2e`).
+// Browser tests require the database services started by `mise run test:app:e2e`.
 export default defineConfig({
   testDir: "./e2e",
   // All tests share one database, which each test resets.
@@ -21,7 +20,7 @@ export default defineConfig({
       command: "mise run serve:api:test",
       url: "http://localhost:8081/healthz",
       reuseExistingServer: !process.env.CI,
-      // The first start can compile the API.
+
       timeout: 300_000,
     },
     {
@@ -36,12 +35,11 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         launchOptions: {
-          // Headless Chromium has no WebGPU adapter. Without SwiftShader the
-          // EU5 load stops before the UI mounts.
+          // Use software rendering; SwiftShader is too slow for EU4 on Linux.
           args: [
             "--enable-unsafe-webgpu",
             "--enable-features=Vulkan",
-            "--use-angle=swiftshader",
+            process.platform === "linux" ? "--use-angle=vulkan" : "--use-angle=swiftshader",
             "--ignore-gpu-blocklist",
           ],
         },

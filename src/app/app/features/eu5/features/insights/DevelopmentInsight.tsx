@@ -51,7 +51,7 @@ function DevelopmentScopeHeader({ data }: { data?: DevelopmentInsightData }) {
 }
 
 export function DevelopmentInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getDevelopmentInsight());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getDevelopmentInsight());
 
   const countries = insightQuery.data?.countries ?? [];
 

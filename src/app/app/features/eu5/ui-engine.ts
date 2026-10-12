@@ -1,8 +1,9 @@
-import { Eu5GameAdapter } from "./game-adapter";
 import type {
   BoxSelectOverlayRect,
   CursorHint,
   GameInstance,
+  SaveCommands,
+  SaveQueries,
   GradientConfig,
   DisplayData,
   PaletteGradients,
@@ -27,36 +28,13 @@ import type {
   TimelinePlayback,
   TimelineStepUnit,
 } from "@/features/timeline/controller";
-import type { Eu5ParsedSave, Eu5SaveInput } from "./store/types";
-import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
-import type {
-  MapMode,
-  StateEfficacyInsightData,
-  CountryPopulationProfile,
-  CountryProfile,
-  MarketProfile,
-  LocationProfile,
-  MarketProductionLocationSummary,
-  DevelopmentInsightData,
-  WealthInsightData,
-  WealthScope,
-  UnrealizedTaxBaseInsightData,
-  UnrealizedTaxBaseScope,
-  MarketInsightData,
-  ScopedGoodSummary,
-  PopulationInsightData,
-  PopulationGrowthInsightData,
-  WorldSummary,
-  BuildingLevelsInsightData,
-  ReligionInsightData,
-  RgoInsightData,
-  ControlInsightData,
-  PoliticalWorldScoreboard,
-  Eu5DateComponents,
-  Eu5PlayerData,
-} from "@/wasm/wasm_eu5";
-import type { CanvasSize, SharedCanvasInputConfig } from "@/lib/canvas_courier";
+import { eu5SaveFileUrl } from "./store/types";
+import type { Eu5ParsedSave, Eu5SaveData, Eu5SaveInput } from "./store/types";
+import { fetchOk } from "@/lib/fetch";
+import type { MapMode, WorldSummary, Eu5DateComponents, Eu5PlayerData } from "@/wasm/wasm_eu5";
 import { log } from "@/lib/log";
+import { toPlaythroughId } from "@/features/campaign/types";
+import type { PlaythroughId } from "@/features/campaign/types";
 import { formatInt } from "@/lib/format";
 
 type TimelapsePhase = "date" | "render" | "encode" | "hop" | "pace" | "finish";
@@ -188,47 +166,12 @@ export interface AppTriggers {
   stopTimelapse(): void;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
   toggleOwnerBorders(): Promise<void>;
-  getLocationArrays(): Promise<Blob>;
-  melt(): Promise<Uint8Array<ArrayBuffer>>;
-  getStateEfficacy(): Promise<StateEfficacyInsightData>;
-  getCountryProfile(countryIdx: number): Promise<CountryProfile | null>;
-  getCountryPopulationProfile(countryIdx: number): Promise<CountryPopulationProfile | null>;
-  getMarketProfile(marketId: number): Promise<MarketProfile | null>;
-  getMarketGoodsProfile(marketId: number): Promise<ScopedGoodSummary[]>;
-  getMarketLocationsProfile(marketId: number): Promise<MarketProductionLocationSummary[]>;
-  getLocationProfile(locationIdx: number): Promise<LocationProfile | null>;
-  getDevelopmentInsight(): Promise<DevelopmentInsightData>;
-  getWealthInsight(): Promise<WealthInsightData>;
-  getWealthScope(): Promise<WealthScope>;
-  getUnrealizedTaxBaseInsight(): Promise<UnrealizedTaxBaseInsightData>;
-  getUnrealizedTaxBaseScope(): Promise<UnrealizedTaxBaseScope>;
-  getMarketInsight(): Promise<MarketInsightData>;
-  getPopulationInsight(): Promise<PopulationInsightData>;
-  getPopulationGrowthInsight(): Promise<PopulationGrowthInsightData>;
-  getBuildingLevelsInsight(): Promise<BuildingLevelsInsightData>;
-  getReligionInsight(): Promise<ReligionInsightData>;
-  getRgoInsight(): Promise<RgoInsightData>;
-  getControlInsight(): Promise<ControlInsightData>;
-  getPoliticalWorldScoreboard(): Promise<PoliticalWorldScoreboard>;
-  getPoliticalDefaultCountryAnchor(): Promise<number | null>;
-  selectCountry(countryIdx: number): Promise<void>;
-  addCountry(countryIdx: number): Promise<void>;
-  removeCountry(countryIdx: number): Promise<void>;
-  selectMarket(marketId: number): Promise<void>;
-  addMarket(marketId: number): Promise<void>;
-  removeMarket(marketId: number): Promise<void>;
-  setFocusedLocation(locationIdx: number): Promise<void>;
-  clearFocus(): Promise<void>;
-  clearFocusOrSelection(): Promise<void>;
-  selectPlayers(): Promise<void>;
-  clearSelection(): Promise<void>;
-  highlightMapHoverTarget(target: Eu5MapHoverTarget): Promise<void>;
-  clearMapHoverHighlight(): Promise<void>;
-  searchEntities(query: string): Promise<SearchResult[]>;
   panToLocation(
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
   ): Promise<void>;
+
+  fitWorldRect(rect: MapViewport["viewport"]): Promise<void>;
 }
 
 /** Only ownership has a history in the save, so only the political map can show a past date. */
@@ -242,7 +185,10 @@ export function isTimelineLive(state: Pick<AppState, "timeline" | "timelineMapDa
 }
 
 export interface AppEngine {
+  /** Actions that change the map view or the engine state. */
   trigger: AppTriggers;
+  queries: SaveQueries;
+  commands: SaveCommands;
   state: AppState;
   subscribe(listener: AppStateListener): () => void;
   getState(): AppState;
@@ -262,14 +208,19 @@ export class Eu5UIEngine implements AppEngine {
   private rewindTimer: ReturnType<typeof setTimeout> | null = null;
   /** Set by `stopTimelapse`, read between frames of a recording. */
   private timelapseStopped = false;
+  private destroyed = false;
+
+  readonly queries: SaveQueries;
+  readonly commands: SaveCommands;
 
   constructor(
     private gameInstance: GameInstance,
-    private workers: Eu5GameAdapter,
     paletteGradients: PaletteGradients,
     timeline: TimelineData,
     initialState?: Partial<AppState>,
   ) {
+    this.queries = gameInstance.queries;
+    this.commands = gameInstance.commands;
     this._state = {
       currentMapMode: "political",
       hoverDisplayData: null,
@@ -334,45 +285,8 @@ export class Eu5UIEngine implements AppEngine {
     stopTimelapse: () => this.handleStopTimelapse(),
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
-    getLocationArrays: () => this.handleGetLocationArrays(),
-    melt: () => this.handleMelt(),
-    getStateEfficacy: () => this.handleGetStateEfficacy(),
-    getCountryProfile: (countryIdx) => this.gameInstance.getCountryProfile(countryIdx),
-    getCountryPopulationProfile: (countryIdx) =>
-      this.gameInstance.getCountryPopulationProfile(countryIdx),
-    getMarketProfile: (marketId) => this.gameInstance.getMarketProfile(marketId),
-    getMarketGoodsProfile: (marketId) => this.gameInstance.getMarketGoodsProfile(marketId),
-    getMarketLocationsProfile: (marketId) => this.gameInstance.getMarketLocationsProfile(marketId),
-    getLocationProfile: (locationIdx) => this.gameInstance.getLocationProfile(locationIdx),
-    getDevelopmentInsight: () => this.gameInstance.getDevelopmentInsight(),
-    getWealthInsight: () => this.gameInstance.getWealthInsight(),
-    getWealthScope: () => this.gameInstance.getWealthScope(),
-    getUnrealizedTaxBaseInsight: () => this.gameInstance.getUnrealizedTaxBaseInsight(),
-    getUnrealizedTaxBaseScope: () => this.gameInstance.getUnrealizedTaxBaseScope(),
-    getMarketInsight: () => this.gameInstance.getMarketInsight(),
-    getPopulationInsight: () => this.gameInstance.getPopulationInsight(),
-    getPopulationGrowthInsight: () => this.gameInstance.getPopulationGrowthInsight(),
-    getBuildingLevelsInsight: () => this.gameInstance.getBuildingLevelsInsight(),
-    getReligionInsight: () => this.gameInstance.getReligionInsight(),
-    getRgoInsight: () => this.gameInstance.getRgoInsight(),
-    getControlInsight: () => this.gameInstance.getControlInsight(),
-    getPoliticalWorldScoreboard: () => this.gameInstance.getPoliticalWorldScoreboard(),
-    getPoliticalDefaultCountryAnchor: () => this.gameInstance.getPoliticalDefaultCountryAnchor(),
-    selectCountry: (countryIdx) => this.gameInstance.selectCountry(countryIdx),
-    addCountry: (countryIdx) => this.gameInstance.addCountry(countryIdx),
-    removeCountry: (countryIdx) => this.gameInstance.removeCountry(countryIdx),
-    selectMarket: (marketId) => this.gameInstance.selectMarket(marketId),
-    addMarket: (marketId) => this.gameInstance.addMarket(marketId),
-    removeMarket: (marketId) => this.gameInstance.removeMarket(marketId),
-    setFocusedLocation: (locationIdx) => this.handleSetFocusedLocation(locationIdx),
-    clearFocus: () => this.handleClearFocus(),
-    clearFocusOrSelection: () => this.handleClearFocusOrSelection(),
-    selectPlayers: () => this.handleSelectPlayers(),
-    clearSelection: () => this.handleClearSelection(),
-    highlightMapHoverTarget: (target) => this.gameInstance.highlightMapHoverTarget(target),
-    clearMapHoverHighlight: () => this.gameInstance.clearMapHoverHighlight(),
-    searchEntities: (query) => this.handleSearchEntities(query),
     panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
+    fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };
 
   get state(): AppState {
@@ -388,10 +302,18 @@ export class Eu5UIEngine implements AppEngine {
     return this.state;
   }
 
+  /** Release save resources while retaining the session workers. */
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.handlePauseTimeline();
+    if (this.isTimelapseRunning()) {
+      // Discard a recording that still depends on this save.
+      this.timelapseStopped = true;
+      void this.gameInstance.endTimelapseRecording();
+    }
     this.gameInstance.stopHoverTracking();
-    this.workers.terminate();
+    this.gameInstance.release();
     this.listeners.clear();
   }
 
@@ -437,7 +359,8 @@ export class Eu5UIEngine implements AppEngine {
 
   private handleSetTimelineDate(date: Eu5DateComponents): void {
     const timeline = this._state.timeline;
-    if (!timeline.available || this.isTimelapseRunning()) return;
+    // Ignore window shortcuts while this engine awaits replacement.
+    if (this.destroyed || !timeline.available || this.isTimelapseRunning()) return;
     const clamped = clampDate(date, timeline.start, timeline.end);
     if (sameDate(clamped, this._state.timelineDate) && !this.timelineInFlight) return;
     this.updateState((state) => ({
@@ -492,7 +415,14 @@ export class Eu5UIEngine implements AppEngine {
 
   private handlePlayTimeline(): void {
     const timeline = this._state.timeline;
-    if (!timeline.available || this.isTimelineRunning() || this.isTimelapseRunning()) return;
+    if (
+      this.destroyed ||
+      !timeline.available ||
+      this.isTimelineRunning() ||
+      this.isTimelapseRunning()
+    ) {
+      return;
+    }
 
     // A play from the save date first glides the playhead back to the
     // campaign start, so the eye can follow the rewind before borders move.
@@ -688,10 +618,6 @@ export class Eu5UIEngine implements AppEngine {
     this.updateState(() => ({ ownerBordersEnabled: newEnabled }));
   }
 
-  private async handleGetLocationArrays(): Promise<Blob> {
-    return await this.gameInstance.getLocationArrays();
-  }
-
   private async handleGenerateScreenshot(fullResolution: boolean): Promise<Blob> {
     if (this._state.isGeneratingScreenshot) {
       throw new Error("Screenshot generation already in progress");
@@ -706,87 +632,48 @@ export class Eu5UIEngine implements AppEngine {
       this.updateState(() => ({ isGeneratingScreenshot: false }));
     }
   }
-
-  private async handleMelt(): Promise<Uint8Array<ArrayBuffer>> {
-    return await this.gameInstance.melt();
-  }
-
-  private async handleGetStateEfficacy(): Promise<StateEfficacyInsightData> {
-    return await this.gameInstance.getStateEfficacy();
-  }
-
-  private async handleSetFocusedLocation(locationIdx: number): Promise<void> {
-    await this.gameInstance.setFocusedLocation(locationIdx);
-  }
-
-  private async handleClearFocus(): Promise<void> {
-    await this.gameInstance.clearFocus();
-  }
-
-  private async handleClearFocusOrSelection(): Promise<void> {
-    await this.gameInstance.clearFocusOrSelection();
-  }
-
-  private async handleSelectPlayers(): Promise<void> {
-    await this.gameInstance.selectPlayers();
-  }
-
-  private async handleClearSelection(): Promise<void> {
-    await this.gameInstance.clearSelection();
-  }
-
-  private async handleSearchEntities(query: string): Promise<SearchResult[]> {
-    return await this.gameInstance.searchEntities(query);
-  }
 }
 
-// Factory function for creating a loaded engine after save loading
-export async function createLoadedEngine(
-  saveInput: Eu5SaveInput,
-  canvas: {
-    offscreen: OffscreenCanvas;
-    display: CanvasSize;
-    inputConfig: SharedCanvasInputConfig;
-  },
-  onProgress?: (increment: number, stage: string) => void,
-): Promise<{
+export type OpenedSave = {
   engine: Eu5UIEngine;
-  save: Eu5ParsedSave;
   saveDate: Eu5DateComponents;
+  playthroughId: PlaythroughId | null;
   playthroughName: string;
+  /** Use the server multiplayer rule for campaign grouping. */
+  multiplayer: boolean;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
   world: WorldSummary;
-}> {
-  const { offscreen, display, inputConfig } = canvas;
+};
+
+/** Use one file snapshot for parsing and later uploads. */
+export async function readSaveData(input: Eu5SaveInput): Promise<Eu5SaveData> {
   const save: Eu5ParsedSave =
-    saveInput.kind === "handle"
-      ? { kind: "file", file: await saveInput.file.getFile() }
-      : saveInput;
+    input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input;
+  const data =
+    save.kind === "file"
+      ? await save.file.arrayBuffer()
+      : await fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
+  return { save, data };
+}
 
-  const workers = Eu5GameAdapter.create();
-  const gameInstance = await workers.newSave(
-    {
-      canvas: offscreen,
-      display,
-      inputConfig,
-      save,
-    },
-    onProgress,
-  );
-
+export async function openEngine(
+  gameInstance: GameInstance,
+  initialState?: Partial<AppState>,
+): Promise<OpenedSave> {
   const [metadata, paletteGradients, timeline] = await Promise.all([
     gameInstance.getSaveMetadata(),
     gameInstance.getPaletteGradients(),
     gameInstance.getTimeline(),
   ]);
 
-  const engine = new Eu5UIEngine(gameInstance, workers, paletteGradients, timeline);
+  const engine = new Eu5UIEngine(gameInstance, paletteGradients, timeline, initialState);
   return {
     engine,
-    save,
     saveDate: metadata.date,
+    playthroughId: toPlaythroughId(metadata.playthroughId),
     playthroughName: metadata.playthroughName,
+    multiplayer: metadata.multiplayer,
     players: metadata.players,
     world: metadata.world,
   };

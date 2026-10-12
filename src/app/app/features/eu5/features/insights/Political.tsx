@@ -18,7 +18,7 @@ const BACK_LABEL = "Great Powers";
 const columnHelper = createColumnHelper<PoliticalWorldRow>();
 
 export function PoliticalInsight() {
-  const query = useEu5SelectionTrigger((engine) => engine.trigger.getPoliticalWorldScoreboard());
+  const query = useEu5SelectionTrigger((engine) => engine.queries.getPoliticalWorldScoreboard());
   const rows = query.data?.rows ?? [];
 
   if (query.error) {
@@ -155,7 +155,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
           <Eu5DataTable.Affordance
             kind="remove"
             label={`Remove ${row.original.country.country.name} from selection`}
-            onClick={() => void engine.trigger.removeCountry(row.original.country.country.key)}
+            onClick={() => void engine.commands.removeCountry(row.original.country.country.key)}
           />
         ),
       }),

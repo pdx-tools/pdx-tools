@@ -166,7 +166,7 @@ function MarketsScopeHeader({ data }: { data?: MarketScopeSummary }) {
 }
 
 export function MarketsInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getMarketInsight());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getMarketInsight());
 
   const goods = insightQuery.data?.goods ?? [];
   const markets = insightQuery.data?.markets ?? [];

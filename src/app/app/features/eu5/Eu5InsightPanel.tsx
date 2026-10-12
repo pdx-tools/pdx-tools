@@ -236,9 +236,9 @@ function EntityPanelTitle({
   const { data: header } = useEu5Trigger(
     (engine) => {
       if (kind === "country") {
-        return engine.trigger.getCountryProfile(id).then((profile) => profile?.header);
+        return engine.queries.getCountryProfile(id).then((profile) => profile?.header);
       }
-      return engine.trigger.getMarketProfile(id).then((profile) => profile?.header);
+      return engine.queries.getMarketProfile(id).then((profile) => profile?.header);
     },
     [id, kind],
   );

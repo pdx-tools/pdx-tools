@@ -12,8 +12,9 @@ import styles from "./TimelineScrubber.module.css";
 /** Vertical budget of each layer, in px. */
 const STRIP = 16;
 const TRACK = 18;
+/** Optional lane for campaign save marks. */
+const SAVE_LANE = 16;
 const LABELS = 14;
-const HEIGHT = STRIP + TRACK + LABELS;
 /** The y of the track line. */
 const TRACK_Y = STRIP + TRACK / 2;
 
@@ -34,13 +35,37 @@ function useElementWidth(ref: React.RefObject<HTMLElement | null>): number {
   return width;
 }
 
+export type SaveLaneGeometry = {
+  /** The x of a day after the timeline start. */
+  px: (day: number) => number;
+  width: number;
+  /** The y of the track line, which the marks hang from. */
+  trackY: number;
+  /** The top of the lane. */
+  top: number;
+  height: number;
+};
+
+/** Extend the track to later campaign saves while limiting playback to the open save. */
+export type TimelineCampaign = {
+  /** The date of the latest save of the campaign. */
+  end: DateComponents;
+  lane: (geometry: SaveLaneGeometry) => React.ReactNode;
+};
+
 /**
  * The track of the campaign timeline: an activity strip of border changes,
  * year ticks, the named events, and a playhead the user can drag or steer
  * with the keyboard. The playhead follows the requested date; a fainter mark
  * shows where the map has caught up to when the two differ.
  */
-export function TimelineScrubber({ controller }: { controller: TimelineController }) {
+export function TimelineScrubber({
+  controller,
+  campaign,
+}: {
+  controller: TimelineController;
+  campaign?: TimelineCampaign;
+}) {
   const {
     timeline,
     totalDays,
@@ -57,19 +82,32 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
   const width = useElementWidth(ref);
   const [dragging, setDragging] = useState(false);
 
+  const campaignDays = campaign ? daysBetween(timeline.start, campaign.end) : 0;
+  const domainDays = Math.max(totalDays, campaignDays);
+  const domainEnd = domainDays > totalDays && campaign ? campaign.end : timeline.end;
+  const height = STRIP + TRACK + (campaign ? SAVE_LANE : 0) + LABELS;
+
   const px = useCallback(
-    (day: number) => (totalDays === 0 ? 0 : (day / totalDays) * width),
-    [totalDays, width],
+    (day: number) => (domainDays === 0 ? 0 : (Math.max(0, day) / domainDays) * width),
+    [domainDays, width],
   );
+  /** Limit playback to the history available in the open save. */
+  const historyX = px(totalDays);
 
   const ticks = useMemo(
-    () => buildYearTicks(timeline.start, timeline.end, width),
-    [timeline.start, timeline.end, width],
+    () => buildYearTicks(timeline.start, domainEnd, width),
+    [timeline.start, domainEnd, width],
   );
   const density = useMemo(
     () =>
-      buildDensity(timeline.changeDays, timeline.changeCounts, totalDays, width, DENSITY_BUCKET_PX),
-    [timeline.changeDays, timeline.changeCounts, totalDays, width],
+      buildDensity(
+        timeline.changeDays,
+        timeline.changeCounts,
+        totalDays,
+        historyX,
+        DENSITY_BUCKET_PX,
+      ),
+    [timeline.changeDays, timeline.changeCounts, totalDays, historyX],
   );
   const notes = useMemo(
     () =>
@@ -86,14 +124,17 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
       if (!el || width === 0) return 0;
       const rect = el.getBoundingClientRect();
       const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      return Math.round(ratio * totalDays);
+
+      return Math.min(totalDays, Math.round(ratio * domainDays));
     },
-    [totalDays, width],
+    [totalDays, domainDays, width],
   );
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || locked) return;
-    if (event.target instanceof HTMLElement && event.target.closest("button")) return;
+    // Ignore events from portal content outside the track.
+    if (!(event.target instanceof Element) || !event.currentTarget.contains(event.target)) return;
+    if (event.target.closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus({ preventScroll: true });
     setDragging(true);
@@ -112,7 +153,11 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (locked) return;
+    // Keep keyboard input from portal content outside the track.
+    const target = event.target;
+    if (locked || !(target instanceof Node) || !event.currentTarget.contains(target)) return;
+
+    if (event.key === " " && target !== event.currentTarget) return;
     if (handleTimelineKey(controller, event)) event.preventDefault();
   };
 
@@ -145,13 +190,13 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
         locked ? "cursor-default" : dragging ? "cursor-grabbing" : "cursor-pointer",
         focusRing,
       )}
-      style={{ height: HEIGHT }}
+      style={{ height }}
     >
       {width > 0 && (
         <svg
           aria-hidden
           width={width}
-          height={HEIGHT}
+          height={height}
           className="absolute inset-0 overflow-visible"
         >
           {/* Activity strip: where borders moved. Elapsed history in brass. */}
@@ -169,7 +214,7 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
             />
           ))}
 
-          <ScaleLayer ticks={ticks} width={width} px={px} />
+          <ScaleLayer ticks={ticks} width={width} height={height} historyX={historyX} px={px} />
 
           {/* Where the map has caught up to, when it trails the playhead. */}
           {showMapMark && (
@@ -188,6 +233,15 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
 
       {width > 0 && <NoteMarkers notes={notes} px={px} setDate={setDate} locked={locked} />}
 
+      {width > 0 &&
+        campaign?.lane({
+          px,
+          width,
+          trackY: TRACK_Y,
+          top: STRIP + TRACK,
+          height: SAVE_LANE,
+        })}
+
       {/* Elapsed track and playhead: both move on `transform` with one glide. */}
       {width > 0 && (
         <div
@@ -200,7 +254,7 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
             top: TRACK_Y - 0.75,
             width,
             height: 1.5,
-            transform: `scaleX(${totalDays === 0 ? 0 : dayOffset / totalDays})`,
+            transform: `scaleX(${domainDays === 0 ? 0 : dayOffset / domainDays})`,
           }}
         />
       )}
@@ -232,10 +286,15 @@ export function TimelineScrubber({ controller }: { controller: TimelineControlle
 const ScaleLayer = memo(function ScaleLayer({
   ticks,
   width,
+  height,
+  historyX,
   px,
 }: {
   ticks: YearTick[];
   width: number;
+  height: number;
+  /** The x of the save date. A campaign's later saves are past it. */
+  historyX: number;
   px: (day: number) => number;
 }) {
   return (
@@ -255,7 +314,7 @@ const ScaleLayer = memo(function ScaleLayer({
             {tick.labeled && (
               <text
                 x={x}
-                y={HEIGHT - 2}
+                y={height - 2}
                 textAnchor="middle"
                 className="fill-game-ink-500 font-game-num text-[9.5px]"
               >
@@ -269,18 +328,31 @@ const ScaleLayer = memo(function ScaleLayer({
       {/* Track. */}
       <line
         x1={0}
-        x2={width}
+        x2={historyX}
         y1={TRACK_Y}
         y2={TRACK_Y}
         className="stroke-game-ink-700"
         strokeWidth={1}
       />
 
+      {/* Past the save date: campaign that only a later save can show. */}
+      {width - historyX >= 1 && (
+        <line
+          x1={historyX}
+          x2={width}
+          y1={TRACK_Y}
+          y2={TRACK_Y}
+          className="stroke-game-ink-700"
+          strokeWidth={1}
+          strokeDasharray="3 3"
+        />
+      )}
+
       {/* The save date: the end of what the save can show. It lights up
           once when playback arrives. */}
       <line
-        x1={width - 0.5}
-        x2={width - 0.5}
+        x1={Math.min(historyX, width - 0.5)}
+        x2={Math.min(historyX, width - 0.5)}
         y1={STRIP - 2}
         y2={STRIP + TRACK}
         className={cx(styles.terminal, "stroke-game-ink-500")}

@@ -18,7 +18,7 @@ export function MarketProfile({ marketId }: { marketId: number }) {
   const profileTab = useProfileTab("market");
   const activeTab = profileTab.value;
   const { data: profile, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getMarketProfile(marketId),
+    (engine) => engine.queries.getMarketProfile(marketId),
     [marketId],
   );
 
@@ -92,7 +92,7 @@ function MarketLocationsTabContent({
   locationMarketAttraction: number[];
 }) {
   const { data: locations, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getMarketLocationsProfile(marketId),
+    (engine) => engine.queries.getMarketLocationsProfile(marketId),
     [marketId],
   );
 

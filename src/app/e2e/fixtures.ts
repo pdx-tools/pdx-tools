@@ -2,11 +2,7 @@ import { test as base, expect } from "@playwright/test";
 import type { Browser, Page } from "@playwright/test";
 import { resetDb, saveFixture } from "../tests/support";
 
-/**
- * Open a page like a player does. The landing page uses the file input
- * only when the File System Access API is absent, and a test cannot drive
- * the native picker.
- */
+/** Use the file input because tests cannot operate the native file picker. */
 async function newPlayerPage(browser: Browser) {
   const context = await browser.newContext();
   await context.addInitScript(() => {
@@ -16,10 +12,7 @@ async function newPlayerPage(browser: Browser) {
   return { context, page, errors: watchErrors(page) };
 }
 
-/**
- * Collect uncaught errors from the page and its workers. A worker error
- * reaches the page console as "Uncaught ...", not as a page error.
- */
+/** Collect page and worker errors; worker failures appear in the browser console. */
 function watchErrors(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -75,11 +68,7 @@ export function campaignDate(page: Page) {
   return page.getByRole("slider", { name: "Campaign date" });
 }
 
-/**
- * Click the icon of an EU4 side bar button, as a player does. The closed
- * side bar shows only the icons. The label of each button is clipped, and
- * the map canvas gets clicks at the center of the button.
- */
+/** Click the visible icon because closed side panel labels are clipped. */
 export async function clickSideBar(page: Page, name: string) {
   await page.getByRole("button", { name, exact: true }).locator("svg").click();
 }

@@ -1,42 +1,24 @@
-import { useCallback, useEffect, useEffectEvent, useRef } from "react";
-import type { CanvasCourierController } from "./types";
+import { useCallback, useLayoutEffect, useRef } from "react";
+import type { CanvasCourierHost } from "./host";
 
-export function useCanvasCourierSurface({ controller }: { controller: CanvasCourierController }) {
+/** Attach a retained canvas for this component and detach it on unmount. */
+export function useCanvasCourierSurface(host: CanvasCourierHost | null) {
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const offscreenRef = useRef<OffscreenCanvas | null>(null);
 
-  const attachSurface = useEffectEvent((canvas: HTMLCanvasElement, offscreen: OffscreenCanvas) => {
-    controller.attachSurface({ canvas, offscreen });
-  });
-
-  const focus = useCallback(() => {
-    canvasRef.current?.focus({ preventScroll: true });
-  }, []);
-
-  const blur = useCallback(() => {
-    canvasRef.current?.blur();
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
+  // Attach the canvas before paint to avoid a blank frame.
+  useLayoutEffect(() => {
     const container = surfaceRef.current;
-    if (!canvas || !container) {
+    if (!container || !host) {
       return;
     }
 
-    if (offscreenRef.current === null) {
-      offscreenRef.current = canvas.transferControlToOffscreen();
-      attachSurface(canvas, offscreenRef.current);
-    }
+    host.attach(container);
+    return () => host.detach(container);
+  }, [host]);
 
-    // No cleanup as transferring is a one-way operation
-  }, []);
+  const focus = useCallback(() => {
+    host?.canvas?.focus({ preventScroll: true });
+  }, [host]);
 
-  return {
-    surfaceRef,
-    canvasRef,
-    focus,
-    blur,
-  };
+  return { surfaceRef, focus };
 }

@@ -1,4 +1,4 @@
-import { wrap, transfer, proxy } from "comlink";
+import { wrap, transfer, proxy, releaseProxy } from "comlink";
 import type { Remote } from "comlink";
 import type {
   GradientConfig,
@@ -6,32 +6,13 @@ import type {
   DisplayData,
   MapMode,
   SelectionSummaryData,
-  CountryPopulationProfile,
-  CountryProfile,
-  MarketProfile,
-  LocationProfile,
-  MarketProductionLocationSummary,
-  DevelopmentInsightData,
-  WealthInsightData,
-  WealthScope,
-  UnrealizedTaxBaseInsightData,
-  UnrealizedTaxBaseScope,
-  MarketInsightData,
-  ScopedGoodSummary,
-  PopulationInsightData,
-  PopulationGrowthInsightData,
-  BuildingLevelsInsightData,
-  ReligionInsightData,
-  RgoInsightData,
-  ControlInsightData,
-  PoliticalWorldScoreboard,
   Eu5DateComponents,
   TimelineChange,
   TimelineData,
 } from "@/wasm/wasm_eu5";
-import type { Eu5SaveInput } from "./store/types";
-import type { Eu5MapHoverTarget } from "./useEu5MapHoverTarget";
+import type { Eu5SaveData } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
+import { check } from "@/lib/isPresent";
 import { getLogLevel } from "@/lib/isDeveloper";
 import { trackWorker } from "@/lib/sentryWorker";
 import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
@@ -122,9 +103,21 @@ function resolveBundleVersion(requested: string): string {
   return latest;
 }
 
-function getBundleUrls(version: string): { game: string; map: string; loc: string } {
-  const resolved = resolveBundleVersion(version);
+type BundleUrls = { game: string; map: string; loc: string };
+type BundleParts = {
+  game: Promise<Uint8Array>;
+  map: Promise<Uint8Array>;
+  loc: Promise<Uint8Array>;
+};
+
+function getBundleUrls(resolved: string): BundleUrls {
   return completeBundles.get(resolved)!;
+}
+
+async function fetchPart(url: string): Promise<Uint8Array> {
+  const response = await fetchOk(url);
+  const arrayBuffer = await response.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
 }
 
 // Worker types
@@ -169,7 +162,16 @@ export class Eu5GameAdapter {
     return new Eu5GameAdapter(eu5RawWorker, mapRawWorker, eu5Worker, eu5MapWorker);
   }
 
-  async newSave(
+  /** The map can reuse only the bundles selected for its first save. */
+  private bundleVersion: string | null = null;
+  private mapEngine: MapEngine | null = null;
+
+  get mapStarted(): boolean {
+    return this.mapEngine !== null;
+  }
+
+  /** Initialize the map and game workers with the first save. */
+  async start(
     config: {
       canvas: OffscreenCanvas;
       display: {
@@ -178,10 +180,11 @@ export class Eu5GameAdapter {
         scaleFactor: number;
       };
       inputConfig: SharedCanvasInputConfig;
-      save: Eu5SaveInput;
+      /** File reading can run while the map initializes. */
+      save: Promise<Eu5SaveData>;
     },
     onProgress?: (increment: number, stage: string) => void,
-  ) {
+  ): Promise<GameInstance> {
     // Coordinate part fetching on the main thread. The game worker calls
     // `gameBundle.selectVersion(version)` after parsing save metadata, which
     // eagerly kicks off `game.zip`, `map.zip`, and `loc-en.zip` fetches against
@@ -189,43 +192,24 @@ export class Eu5GameAdapter {
     // the map worker awaits `map.zip`; the game worker awaits `game.zip` to
     // build the workspace and sync map buffers, then awaits
     // `loc-en.zip` to localize before exposing presentation endpoints.
-    let resolvedVersion: string | null = null;
-    let resolveBundles: (b: {
-      game: Promise<Uint8Array>;
-      map: Promise<Uint8Array>;
-      loc: Promise<Uint8Array>;
-    }) => void;
-
-    const bundlesPromise = new Promise<{
-      game: Promise<Uint8Array>;
-      map: Promise<Uint8Array>;
-      loc: Promise<Uint8Array>;
-    }>((resolve) => {
+    let resolveBundles: (b: BundleParts) => void;
+    const bundlesPromise = new Promise<BundleParts>((resolve) => {
       resolveBundles = resolve;
     });
 
-    const fetchPart = async (url: string): Promise<Uint8Array> => {
-      const response = await fetchOk(url);
-      const arrayBuffer = await response.arrayBuffer();
-      return new Uint8Array(arrayBuffer);
-    };
-
-    const selectVersion = (version: string) => {
-      if (resolvedVersion !== null) {
-        if (resolvedVersion !== version) {
-          throw new Error(
-            `selectVersion called with ${version} after already resolving ${resolvedVersion}`,
-          );
-        }
-        return;
+    const selectVersion = async (version: string) => {
+      if (this.bundleVersion !== null) {
+        throw new Error(`selectVersion called with ${version} after the map chose a version`);
       }
-      resolvedVersion = version;
-      const urls = getBundleUrls(version);
+      const resolved = resolveBundleVersion(version);
+      this.bundleVersion = resolved;
+      const urls = getBundleUrls(resolved);
       resolveBundles({
         game: fetchPart(urls.game),
         map: fetchPart(urls.map),
         loc: fetchPart(urls.loc),
       });
+      return resolved;
     };
 
     const gameBundleApi = {
@@ -239,12 +223,14 @@ export class Eu5GameAdapter {
     };
 
     const [saveEngine, mapEngine] = await Promise.all([
-      this.eu5Worker.createGame(
-        { save: config.save },
-        proxy({
-          gameBundle: gameBundleApi,
-          onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
-        }),
+      config.save.then(({ save, data }) =>
+        this.eu5Worker.loadSave(
+          transfer({ save, data, hold: false }, [data]),
+          proxy({
+            gameBundle: gameBundleApi,
+            onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
+          }),
+        ),
       ),
       this.eu5MapWorker.createMapEngine(
         transfer(
@@ -262,7 +248,50 @@ export class Eu5GameAdapter {
       ),
     ]);
 
+    this.mapEngine = mapEngine;
+    if (saveEngine === null) {
+      throw new Error("The first save did not choose the bundles of the map");
+    }
     return saveWorker(saveEngine, mapEngine);
+  }
+
+  /**
+   * Keep the current map visible until the next save is ready.
+   * Return null when a different patch requires a new map.
+   */
+  async load(
+    { save, data }: Eu5SaveData,
+    onProgress?: (increment: number, stage: string) => void,
+  ): Promise<GameInstance | null> {
+    const mapEngine = this.mapEngine;
+    if (mapEngine === null) {
+      throw new Error("The map has not started");
+    }
+
+    let urls: BundleUrls | null = null;
+    const selectVersion = async (version: string) => {
+      const resolved = resolveBundleVersion(version);
+      if (resolved !== this.bundleVersion) return null;
+      urls = getBundleUrls(resolved);
+      return resolved;
+    };
+
+    // Reuse loaded game bundles across compatible saves.
+    const gameBundleApi = {
+      selectVersion,
+      fetch: () => fetchPart(check(urls, "bundle version not selected").game),
+      fetchLocalization: () => fetchPart(check(urls, "bundle version not selected").loc),
+    };
+
+    const saveEngine = await this.eu5Worker.loadSave(
+      transfer({ save, data, hold: true }, [data]),
+      proxy({
+        gameBundle: gameBundleApi,
+        onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
+      }),
+    );
+
+    return saveEngine === null ? null : saveWorker(saveEngine, mapEngine);
   }
 
   terminate(): void {
@@ -271,16 +300,100 @@ export class Eu5GameAdapter {
   }
 }
 
-export function saveWorker(
-  saveEngine: Awaited<ReturnType<Eu5Worker["createGame"]>>,
-  mapEngine: Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>,
-) {
+type SaveEngine = NonNullable<Awaited<ReturnType<Eu5Worker["loadSave"]>>>;
+type MapEngine = Awaited<ReturnType<Eu5MapWorker["createMapEngine"]>>;
+
+/** Reads of the open save. */
+export type SaveQueries = Pick<
+  SaveEngine,
+  | "getStateEfficacy"
+  | "getCountryProfile"
+  | "getCountryPopulationProfile"
+  | "getMarketProfile"
+  | "getMarketGoodsProfile"
+  | "getMarketLocationsProfile"
+  | "getLocationProfile"
+  | "getDevelopmentInsight"
+  | "getWealthInsight"
+  | "getWealthScope"
+  | "getUnrealizedTaxBaseInsight"
+  | "getUnrealizedTaxBaseScope"
+  | "getMarketInsight"
+  | "getPopulationInsight"
+  | "getPopulationGrowthInsight"
+  | "getBuildingLevelsInsight"
+  | "getReligionInsight"
+  | "getRgoInsight"
+  | "getControlInsight"
+  | "getPoliticalWorldScoreboard"
+  | "getPoliticalDefaultCountryAnchor"
+  | "searchEntities"
+  | "getCountryTag"
+  | "findCountryByTag"
+  | "getLocationArrays"
+  | "melt"
+>;
+
+/** Changes to the selection, focus and highlight of the open save. */
+export type SaveCommands = Pick<
+  SaveEngine,
+  | "selectCountry"
+  | "addCountry"
+  | "removeCountry"
+  | "selectMarket"
+  | "addMarket"
+  | "removeMarket"
+  | "setFocusedLocation"
+  | "clearFocus"
+  | "clearFocusOrSelection"
+  | "selectPlayers"
+  | "clearSelection"
+  | "highlightMapHoverTarget"
+  | "clearMapHoverHighlight"
+>;
+
+/** Set to `never` each method that returns a result. */
+type WithoutResults<T> = {
+  [K in keyof T]: T[K] extends (...args: never[]) => Promise<void> ? T[K] : never;
+};
+
+/** After release, send each call to `released` instead of the worker. */
+export function guardRelease<T extends object>(
+  remote: T,
+  isReleased: () => boolean,
+  released: () => Promise<void>,
+): T {
+  return new Proxy(remote, {
+    // Keep "then" so that the proxy does not look like a promise.
+    get: (target, key) => (isReleased() && key !== "then" ? released : Reflect.get(target, key)),
+  });
+}
+
+function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
+  // The UI can still hold a save after a save change releases it.
+  let isReleased = false;
+  const save = guardRelease(
+    saveEngine,
+    () => isReleased,
+    () => Promise.reject(new DOMException("The save was released", "AbortError")),
+  );
+  const queries: SaveQueries = save;
+  // A command on a released save does nothing, so a command must not return a result.
+  const commands: WithoutResults<SaveCommands> = guardRelease(
+    saveEngine,
+    () => isReleased,
+    () => Promise.resolve(),
+  );
+
   let hoverDisplayCallback: ((data: DisplayData) => void) | null = null;
   let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
     null;
   let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
   let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
   let viewportCallback: ((viewport: MapViewport) => void) | null = null;
+  // Retain initial map state until the UI subscribes.
+  let lastCursorHint: CursorHint | null = null;
+  let lastViewport: MapViewport | null = null;
 
   saveEngine.onHoverDisplayUpdate(
     proxy((data: DisplayData) => {
@@ -302,30 +415,36 @@ export function saveWorker(
 
   mapEngine.onCursorHintUpdate(
     proxy((hint: CursorHint) => {
+      lastCursorHint = hint;
       cursorHintCallback?.(hint);
     }),
   );
 
   mapEngine.onViewportChange(
     proxy((viewport: MapViewport) => {
+      lastViewport = viewport;
       viewportCallback?.(viewport);
     }),
   );
 
   return {
+    queries,
+    commands,
+
+    show: () => save.show(),
+
+    release: () => {
+      isReleased = true;
+      saveEngine[releaseProxy]();
+    },
     getZoom: () => mapEngine.get_zoom(),
-    getPaletteGradients: async (): Promise<PaletteGradients> => {
-      return await saveEngine.getPaletteGradients();
-    },
-    setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
-      return await saveEngine.setMapMode(mode);
-    },
-    getTimeline: async (): Promise<TimelineData> => {
-      return await saveEngine.getTimeline();
-    },
-    setTimelineDate: async (date: Eu5DateComponents): Promise<TimelineChange> => {
-      return await saveEngine.setTimelineDate(date);
-    },
+    fitWorldRect: (rect: MapViewport["viewport"]) => mapEngine.fitWorldRect(rect),
+    getSaveMetadata: () => save.getSaveMetadata(),
+    getPaletteGradients: (): Promise<PaletteGradients> => save.getPaletteGradients(),
+    setMapMode: (mode: MapMode): Promise<TimelineChange> => save.setMapMode(mode),
+    getTimeline: (): Promise<TimelineData> => save.getTimeline(),
+    setTimelineDate: (date: Eu5DateComponents): Promise<TimelineChange> =>
+      save.setTimelineDate(date),
     beginTimelapseRecording: (options: {
       framing: TimelapseFraming;
       output: { width: number; height: number };
@@ -344,18 +463,11 @@ export function saveWorker(
       return mapEngine.endTimelapseRecording();
     },
     generateWorldScreenshot: async (fullResolution: boolean): Promise<Blob> => {
-      const overlayData = await saveEngine.getOverlayData();
+      const overlayData = await save.getOverlayData();
       return await mapEngine.generateWorldScreenshot(fullResolution, overlayData);
     },
     setOwnerBorders: (enabled: boolean) => {
       mapEngine.execCommands([{ kind: "setOwnerBorders", enabled }, { kind: "render" }]);
-    },
-    getLocationArrays: () => {
-      return saveEngine.getLocationArrays();
-    },
-
-    melt: () => {
-      return saveEngine.melt();
     },
 
     startHoverTracking: () => mapEngine.startHoverTracking(),
@@ -378,138 +490,20 @@ export function saveWorker(
 
     onCursorHintUpdate: (callback: (hint: CursorHint) => void) => {
       cursorHintCallback = callback;
+      if (lastCursorHint !== null) callback(lastCursorHint);
     },
     onViewportChange: (callback: (viewport: MapViewport) => void) => {
       viewportCallback = callback;
-    },
-
-    selectCountry: (countryIdx: number) => {
-      return saveEngine.selectCountry(countryIdx);
-    },
-    addCountry: (countryIdx: number) => {
-      return saveEngine.addCountry(countryIdx);
-    },
-    removeCountry: (countryIdx: number) => {
-      return saveEngine.removeCountry(countryIdx);
-    },
-    selectMarket: (marketId: number) => {
-      return saveEngine.selectMarket(marketId);
-    },
-    addMarket: (marketId: number) => {
-      return saveEngine.addMarket(marketId);
-    },
-    removeMarket: (marketId: number) => {
-      return saveEngine.removeMarket(marketId);
-    },
-    setFocusedLocation: (locationIdx: number) => {
-      return saveEngine.setFocusedLocation(locationIdx);
-    },
-    clearFocus: () => {
-      return saveEngine.clearFocus();
-    },
-    clearFocusOrSelection: () => {
-      return saveEngine.clearFocusOrSelection();
-    },
-
-    selectPlayers: () => {
-      return saveEngine.selectPlayers();
-    },
-
-    clearSelection: () => {
-      return saveEngine.clearSelection();
-    },
-
-    highlightMapHoverTarget: (target: Eu5MapHoverTarget) => {
-      return saveEngine.highlightMapHoverTarget(target);
-    },
-
-    clearMapHoverHighlight: () => {
-      return saveEngine.clearMapHoverHighlight();
-    },
-
-    getSaveMetadata: async () => {
-      return await saveEngine.getSaveMetadata();
-    },
-
-    getStateEfficacy: async () => {
-      return await saveEngine.getStateEfficacy();
-    },
-
-    getCountryProfile: async (countryIdx: number): Promise<CountryProfile | null> => {
-      return await saveEngine.getCountryProfile(countryIdx);
-    },
-    getCountryPopulationProfile: async (
-      countryIdx: number,
-    ): Promise<CountryPopulationProfile | null> => {
-      return await saveEngine.getCountryPopulationProfile(countryIdx);
-    },
-    getMarketProfile: async (marketId: number): Promise<MarketProfile | null> => {
-      return await saveEngine.getMarketProfile(marketId);
-    },
-    getMarketGoodsProfile: async (marketId: number): Promise<ScopedGoodSummary[]> => {
-      return await saveEngine.getMarketGoodsProfile(marketId);
-    },
-    getMarketLocationsProfile: async (
-      marketId: number,
-    ): Promise<MarketProductionLocationSummary[]> => {
-      return await saveEngine.getMarketLocationsProfile(marketId);
-    },
-    getLocationProfile: async (locationIdx: number): Promise<LocationProfile | null> => {
-      return await saveEngine.getLocationProfile(locationIdx);
-    },
-
-    getDevelopmentInsight: async (): Promise<DevelopmentInsightData> => {
-      return await saveEngine.getDevelopmentInsight();
-    },
-    getWealthInsight: async (): Promise<WealthInsightData> => {
-      return await saveEngine.getWealthInsight();
-    },
-    getWealthScope: async (): Promise<WealthScope> => {
-      return await saveEngine.getWealthScope();
-    },
-    getUnrealizedTaxBaseInsight: async (): Promise<UnrealizedTaxBaseInsightData> => {
-      return await saveEngine.getUnrealizedTaxBaseInsight();
-    },
-    getUnrealizedTaxBaseScope: async (): Promise<UnrealizedTaxBaseScope> => {
-      return await saveEngine.getUnrealizedTaxBaseScope();
-    },
-    getMarketInsight: async (): Promise<MarketInsightData> => {
-      return await saveEngine.getMarketInsight();
-    },
-    getPopulationInsight: async (): Promise<PopulationInsightData> => {
-      return await saveEngine.getPopulationInsight();
-    },
-    getPopulationGrowthInsight: async (): Promise<PopulationGrowthInsightData> => {
-      return await saveEngine.getPopulationGrowthInsight();
-    },
-    getBuildingLevelsInsight: async (): Promise<BuildingLevelsInsightData> => {
-      return await saveEngine.getBuildingLevelsInsight();
-    },
-    getReligionInsight: async (): Promise<ReligionInsightData> => {
-      return await saveEngine.getReligionInsight();
-    },
-    getRgoInsight: async (): Promise<RgoInsightData> => {
-      return await saveEngine.getRgoInsight();
-    },
-    getControlInsight: async (): Promise<ControlInsightData> => {
-      return await saveEngine.getControlInsight();
-    },
-    getPoliticalWorldScoreboard: async (): Promise<PoliticalWorldScoreboard> => {
-      return await saveEngine.getPoliticalWorldScoreboard();
-    },
-    getPoliticalDefaultCountryAnchor: async (): Promise<number | null> => {
-      return await saveEngine.getPoliticalDefaultCountryAnchor();
-    },
-
-    searchEntities: async (query: string) => {
-      return await saveEngine.searchEntities(query);
+      if (lastViewport !== null) callback(lastViewport);
     },
 
     panToLocation: async (
       locationIdx: number,
       insets: { left: number; right: number; top: number; bottom: number },
     ) => {
-      const colorId = await saveEngine.getLocationColorId(locationIdx);
+      // Like a command, a pan on a released save does nothing.
+      if (isReleased) return;
+      const colorId = await save.getLocationColorId(locationIdx);
       if (colorId != null) {
         await mapEngine.pan_to_color_id(colorId, insets);
       }
