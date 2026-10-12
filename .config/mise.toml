@@ -38,7 +38,7 @@ PDX_DEV_DATABASE_HOST = """
 """
 
 [tasks."build:cargo-wasm"]
-depends = ["setup:wasm"]
+depends = ["setup:wasm", "tokenize"]
 run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
 run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
 hide = true
@@ -154,6 +154,7 @@ hide = true
 
 [tasks."dev:app:setup:types:cargo"]
 description = "Generate TypeScript types"
+depends = ["tokenize"]
 run = "cargo run -p applib --bin types"
 hide = true
 
@@ -169,6 +170,7 @@ run = [
 hide = true
 
 [tasks."dev:app:setup:assets"]
+depends = ["tokenize"]
 run = "node ./dev/scripts/setup-assets.mts"
 hide = true
 

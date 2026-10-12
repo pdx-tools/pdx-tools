@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [lib]
+doctest = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
