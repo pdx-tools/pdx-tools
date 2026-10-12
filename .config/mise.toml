@@ -206,15 +206,35 @@ run = "pnpm build --mode test"
 env.NODE_ENV = "test"
 hide = true
 
-[tasks."test:app"]
-description = "Test the application and backend services"
-depends = [
-    "build:api",
-    "test:app:build",
-    "start:services:test -d"
-]
+[tasks."test:app:browser:install"]
+description = "Install the browser for the browser tests"
+depends = ["pnpm-install"]
 dir = "src/app"
-run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm run preview --mode test" "pnpm test -- run {@}"']
+run = "pnpm exec playwright install chromium"
+hide = true
+
+[tasks."test:app:unit"]
+description = "Run application unit tests. Arguments go to Vitest"
+depends = ["pnpm-install"]
+dir = "src/app"
+run = "pnpm exec vitest run --project unit"
+
+[tasks."test:app:integration"]
+description = "Run application unit and API tests. Arguments go to Vitest"
+depends = ["build:api", "test:app:build", "start:services:test -d"]
+dir = "src/app"
+run = ['pnpm exec concurrently --kill-others --success command-2 --passthrough-arguments "mise run serve:api:test" "pnpm run preview --mode test" "pnpm test -- run {@}" --']
+
+[tasks."test:app:e2e"]
+description = "Run application browser tests. Arguments go to Playwright"
+depends = ["build:api", "test:app:browser:install", "test:app:build", "start:services:test -d"]
+dir = "src/app"
+run = "pnpm exec playwright test"
+
+[tasks."test:app"]
+description = "Run all application tests"
+depends = ["build:api", "test:app:browser:install", "test:app:build", "start:services:test -d"]
+run = [{ task = "test:app:integration" }, { task = "test:app:e2e" }]
 
 [tasks."env:dev"]
 description = "Run backend services (eg: postgres, s3) configured for development"

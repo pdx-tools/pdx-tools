@@ -1,6 +1,5 @@
 ---
 source: src/eu5app/tests/it/main.rs
-assertion_line: 168
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
 ---
@@ -16,19 +15,115 @@ input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
       }
     }
   ],
-  "map_mode_colors": {
-    "building_levels": "0x533a1c1a23194585942bdc926c8697c10a6630a584db40ece6cfed129bbdab73",
-    "control": "0xda7188131138bd399db5b7c4e00502d3909e68210320729430c159f9c635ecff",
-    "development": "0xa9b0bb8f5ac1725bd3ed8860f919d36b099ca2b198be8e62185e5517266259d5",
-    "markets": "0x9c418598ed6670b555c349f29ea86cb2946158dd6e53abc0396a92764d02da31",
-    "political": "0xa58e55a1eacfbebc7fd334f375f0aaa523d9d9a862be4e77bc6e416602d78421",
-    "population": "0x1cb5e5349fcd0bafbe706644d165658566bb3914b7924a13b9d8933916074174",
-    "population_growth": "0xe5b35754a774a04ede56c0b56ef7c640655f3b1ee9097fd2e15b402b7bbf4d7e",
-    "religion": "0xbbd0c9e25aabd8919c242f3dc14d370b87a88a9291f9a42d0c83afd5744359b3",
-    "rgo_level": "0xd60590e5591700bc02c4ae3f9b3862222c06237825066e2a90eb9a9812cd78ef",
-    "state_efficacy": "0xa632f89d30151a05c414024cf86220571c4d096aa9bc1e7d84182fe2e4512922",
-    "unrealized_tax_base": "0xbb9dd891e7b2f165defdba0a770c8c20aa0d9dca4edd1d5da66b2b59dfd93673",
-    "wealth": "0x0653705c66e76d57e034237406a4f3bfa398e6530b954aa8144a9c53cff025bd"
+  "map_modes": {
+    "building_levels": {
+      "colors": 47,
+      "fingerprint": "0x533a1c1a23194585",
+      "top": [
+        "#ff040101 x11620",
+        "#ff808080 x7305",
+        "#ff455e77 x5708"
+      ]
+    },
+    "control": {
+      "colors": 732,
+      "fingerprint": "0xda7188131138bd39",
+      "top": [
+        "#ff808080 x7305",
+        "#ff455e77 x5708",
+        "#ff570d0d x3997"
+      ]
+    },
+    "development": {
+      "colors": 141,
+      "fingerprint": "0xa9b0bb8f5ac1725b",
+      "top": [
+        "#ff808080 x7305",
+        "#ff455e77 x5708",
+        "#ff646464 x1972"
+      ]
+    },
+    "markets": {
+      "colors": 11900,
+      "fingerprint": "0x9c418598ed6670b5",
+      "top": [
+        "#ff140505 x6514",
+        "#ff455e77 x2574",
+        "#ff646464 x1819"
+      ]
+    },
+    "political": {
+      "colors": 1504,
+      "fingerprint": "0xa58e55a1eacfbebc",
+      "top": [
+        "#ff808080 x7306",
+        "#ff455e77 x5366",
+        "#ff969c3b x1997"
+      ]
+    },
+    "population": {
+      "colors": 712,
+      "fingerprint": "0x1cb5e5349fcd0baf",
+      "top": [
+        "#ff808080 x7305",
+        "#ff455e77 x5708",
+        "#ff646464 x1972"
+      ]
+    },
+    "population_growth": {
+      "colors": 397,
+      "fingerprint": "0xe5b35754a774a04e",
+      "top": [
+        "#ff808080 x7305",
+        "#ff455e77 x5708",
+        "#ff646464 x1972"
+      ]
+    },
+    "religion": {
+      "colors": 257,
+      "fingerprint": "0xbbd0c9e25aabd891",
+      "top": [
+        "#ff455e77 x5389",
+        "#ffb27f00 x3133",
+        "#ff159b61 x2002"
+      ]
+    },
+    "rgo_level": {
+      "colors": 18,
+      "fingerprint": "0xd60590e5591700bc",
+      "top": [
+        "#ff1f0505 x9089",
+        "#ff808080 x7305",
+        "#ff455e77 x5708"
+      ]
+    },
+    "state_efficacy": {
+      "colors": 424,
+      "fingerprint": "0xa632f89d30151a05",
+      "top": [
+        "#ff808080 x7305",
+        "#ff455e77 x5708",
+        "#ff646464 x1972"
+      ]
+    },
+    "unrealized_tax_base": {
+      "colors": 256,
+      "fingerprint": "0xbb9dd891e7b2f165",
+      "top": [
+        "#ff808080 x7305",
+        "#ff455e77 x5708",
+        "#ff040101 x2940"
+      ]
+    },
+    "wealth": {
+      "colors": 250,
+      "fingerprint": "0x0653705c66e76d57",
+      "top": [
+        "#ff808080 x7305",
+        "#ff455e77 x5708",
+        "#ff050101 x2553"
+      ]
+    }
   },
   "save_version": "1.0.0",
   "selection_counts": {

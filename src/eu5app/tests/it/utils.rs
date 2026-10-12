@@ -171,6 +171,34 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
     })
 }
 
+/// Summarize a map mode for a snapshot. A change in the snapshot shows the
+/// number of colors and the most common colors. The
+/// fingerprint makes sure that a change outside the summary also fails.
+pub fn summarize_location_arrays(arrays: &LocationArrays) -> serde_json::Value {
+    let buffers = arrays.buffers();
+    let primary: &[u32] = bytemuck::cast_slice(buffers.primary_colors());
+    let mut counts: std::collections::HashMap<u32, usize> = std::collections::HashMap::new();
+    for color in primary {
+        *counts.entry(*color).or_default() += 1;
+    }
+
+    let mut common: Vec<(u32, usize)> = counts.iter().map(|(c, n)| (*c, *n)).collect();
+    common.sort_unstable_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    let top: Vec<String> = common
+        .iter()
+        .take(3)
+        .map(|(color, count)| format!("#{color:08x} x{count}"))
+        .collect();
+
+    let hash = hash_location_arrays(arrays);
+
+    serde_json::json!({
+        "colors": counts.len(),
+        "top": top,
+        "fingerprint": &hash[..18],
+    })
+}
+
 /// Hash all four GPU color/flag buffers from `LocationArrays` into a single hex string.
 pub fn hash_location_arrays(arrays: &LocationArrays) -> String {
     let hasher = highway::HighwayHasher::new(highway::Key::default());

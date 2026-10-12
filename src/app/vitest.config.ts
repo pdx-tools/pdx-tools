@@ -20,6 +20,8 @@ export default defineConfig({
           name: "integration",
           include: ["tests/api*.test.ts"],
           globalSetup: "./tests/globalSetup.ts",
+          // Each test deletes the data from the shared database.
+          fileParallelism: false,
         },
       },
     ],
