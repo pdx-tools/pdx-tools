@@ -169,6 +169,12 @@ unused_result_ok = "warn"
 lto = "thin"
 codegen-units = 1
 
+# For local Wasm builds. A rebuild takes about 14s instead of 44s, but EU5 saves
+# parse about 5% slower.
+[profile.wasm-dev]
+inherits = "release"
+codegen-units = 16
+
 [profile.bench]
 debug = true
 
