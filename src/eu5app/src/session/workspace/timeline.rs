@@ -155,7 +155,9 @@ impl<'bump> Eu5Workspace<'bump> {
     ///
     /// The owner color of each changed location is refreshed here, because
     /// the owner borders read it in every map mode, and the map mode passes
-    /// do not write it.
+    /// do not write it. Water and impassable terrain keep the border color
+    /// and flags that `build_location_arrays` gives them, because they have
+    /// no owner border. The map mode repaints only their fill.
     pub(super) fn step_timeline_to(&mut self, date: Eu5Date) -> Vec<LocationIdx> {
         let from = self.timeline.date;
         if date == from {
@@ -187,6 +189,9 @@ impl<'bump> Eu5Workspace<'bump> {
             let Some(gpu_index) = self.gpu_indices[location_idx] else {
                 continue;
             };
+            if !self.location_terrain(location_idx).is_passable() {
+                continue;
+            }
             let color = self.location_political_color(self.political_fill_source(location_idx));
             let unowned = self.owner_at_timeline_date(location_idx).is_dummy();
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
