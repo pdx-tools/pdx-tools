@@ -137,7 +137,19 @@ mod tests {
     }
 
     #[test]
-    fn parses_binary_eu5_metadata() {
+    fn parses_binary_player_eu5_metadata() {
+        let data = fixture("Clandeboye.eu5");
+        let metadata = parse_metadata(&data).expect("parse binary EU5 metadata");
+        assert_eq!(metadata.version.major, 1);
+        assert_eq!(metadata.version.minor, 0);
+        assert!(!metadata.playthrough_name.is_empty());
+        let country = metadata.player_country.expect("single-player country");
+        assert!(!country.tag.is_empty());
+        assert!(country.name.is_some_and(|name| !name.is_empty()));
+    }
+
+    #[test]
+    fn parses_binary_observer_eu5_metadata() {
         let data = fixture("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5");
         let metadata = parse_metadata(&data).expect("parse binary EU5 metadata");
         assert_eq!(metadata.version.major, 1);
