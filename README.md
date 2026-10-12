@@ -81,8 +81,6 @@ To develop against the frontend and backend services:
 mise run dev
 ```
 
-Docker will be required to run backend services.
-
 ### Binary / Ironman saves
 
 By default, ironman and binary files will be unparsable. If you are in possession of a binary token file, you can unlock processing binary saves by placing the token file under the assets directory:
