@@ -37,55 +37,41 @@ PDX_DEV_DATABASE_HOST = """
 {%- endif -%}
 """
 
-[tasks."build:cargo-wasm"]
-depends = ["setup:wasm", "tokenize"]
-run = ["cargo build --release --no-default-features --features zstd_c_fat_lto --features zstd_c --target wasm32-unknown-unknown -p wasm-*"]
-run_windows = ["cargo build --release --no-default-features --features zstd_rust --target wasm32-unknown-unknown -p wasm-*"]
-hide = true
-
-[tasks."build:wasm-bindgen"]
-usage = 'arg "<rust_package>" help="Rust package name"'
-depends = ['build:cargo-wasm']
-run = [
-    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/{{ usage.rust_package }}.wasm --out-dir ./src/app/app/wasm'
-]
-hide = true
-
-[tasks."build:wasm:app"]
-depends = ["build:wasm-bindgen wasm_app"]
-hide = true
-
-[tasks."build:pdx_map"]
-depends = ["setup:wasm"]
-hide = true
-run = [
-    "cargo build --release -p wasm-pdx-map --target wasm32-unknown-unknown",
-    { task = "build:wasm:pdx_map" }
-]
-
-[tasks."build:wasm:pdx_map"]
-wait_for = ["build:cargo-wasm"]
-run = [
-    'wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/wasm_pdx_map.wasm --out-dir ./src/pdx-map-playground/src/workers/wasm'
-]
-hide = true
-
 [tasks."build:wasm"]
-description = "Build wasm"
-depends = [
-    'build:wasm:app',
-    'build:wasm:pdx_map',
-    'build:wasm-bindgen wasm_ck3',
-    'build:wasm-bindgen wasm_compress',
-    'build:wasm-bindgen wasm_eu4',
-    'build:wasm-bindgen wasm_eu5_map',
-    'build:wasm-bindgen wasm_eu5',
-    'build:wasm-bindgen wasm_eu5_diagnostics',
-    'build:wasm-bindgen wasm_hoi4',
-    'build:wasm-bindgen wasm_imperator',
-    'build:wasm-bindgen wasm_pdx_map',
-    'build:wasm-bindgen wasm_vic3',
+description = "Build wasm (--release for deployment)"
+usage = 'flag "--release" help="Use the release profile and wasm-opt"'
+depends = ["setup:wasm", "tokenize"]
+run = [
+    { task = "build:wasm:cargo{% if usage.release %} --release{% endif %}" },
+    { tasks = [
+        "build:wasm:module wasm_app{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_ck3{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_compress{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_eu4{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_eu5{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_eu5_diagnostics{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_eu5_map{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_hoi4{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_imperator{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_vic3{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_pdx_map src/pdx-map-playground/src/workers/wasm{% if usage.release %} --release{% endif %}",
+    ] },
 ]
+
+[tasks."build:wasm:cargo"]
+usage = 'flag "--release"'
+run = "cargo build --profile {% if usage.release %}release{% else %}wasm-dev{% endif %} --target wasm32-unknown-unknown --no-default-features --features zstd_c --features zstd_c_fat_lto -p wasm-*"
+run_windows = "cargo build --profile {% if usage.release %}release{% else %}wasm-dev{% endif %} --target wasm32-unknown-unknown --no-default-features --features zstd_rust -p wasm-*"
+hide = true
+
+[tasks."build:wasm:module"]
+usage = '''
+arg "<module>" help="Rust library name of the module, for example wasm_eu5"
+arg "[out_dir]" default="src/app/app/wasm" help="Directory for the bindings"
+flag "--release"
+'''
+run = "wasm-bindgen --target web ./target/wasm32-unknown-unknown/{% if usage.release %}release{% else %}wasm-dev{% endif %}/{{ usage.module }}.wasm --out-dir {{ usage.out_dir }}{% if usage.release %} && wasm-opt -O2 {{ usage.out_dir }}/{{ usage.module }}_bg.wasm -o {{ usage.out_dir }}/{{ usage.module }}_bg.wasm{% endif %}"
+hide = true
 
 [tasks."build:api"]
 depends = ["tokenize"]
@@ -105,52 +91,11 @@ run = "cp -r src/docs/dist/. src/app/public/."
 run_windows = "xcopy src\\docs\\dist src\\app\\public /E /I /Y"
 
 [tasks."build:app"]
-description = "Build pdx.tools frontend for deployment"
-depends = ["pnpm-install", "build:docs", "build:wasm", "optimize:wasm:*", "dev:app:setup:**", "tokenize"]
+description = "Build pdx.tools frontend (--release for deployment)"
+usage = 'flag "--release" help="Build the wasm for deployment"'
+depends = ["pnpm-install", "build:docs", "build:wasm{% if usage.release %} --release{% endif %}", "dev:app:setup:**", "tokenize"]
 dir = "src/app"
 run = ["pnpm run build"]
-
-[tasks.wasm-opt]
-usage = 'arg "<rust_package>" help="Rust package name"'
-run = [
-    'wasm-opt -O2 ./src/app/app/wasm/{{ usage.rust_package }}_bg.wasm -o ./src/app/app/wasm/{{ usage.rust_package }}_bg.wasm',
-]
-hide = true
-
-[tasks."optimize:wasm:app"]
-wait_for = ["build:wasm-bindgen wasm_app"]
-run = [{ task = "wasm-opt wasm_app" }]
-hide = true
-
-[tasks."optimize:wasm:ck3"]
-wait_for = ["build:wasm-bindgen wasm_ck3"]
-run = [{ task = "wasm-opt wasm_ck3" }]
-hide = true
-
-[tasks."optimize:wasm:compress"]
-wait_for = ["build:wasm-bindgen wasm_compress"]
-run = [{ task = "wasm-opt wasm_compress" }]
-hide = true
-
-[tasks."optimize:wasm:eu4"]
-wait_for = ["build:wasm-bindgen wasm_eu4"]
-run = [{ task = "wasm-opt wasm_eu4" }]
-hide = true
-
-[tasks."optimize:wasm:hoi4"]
-wait_for = ["build:wasm-bindgen wasm_hoi4"]
-run = [{ task = "wasm-opt wasm_hoi4" }]
-hide = true
-
-[tasks."optimize:wasm:imperator"]
-wait_for = ["build:wasm-bindgen wasm_imperator"]
-run = [{ task = "wasm-opt wasm_imperator" }]
-hide = true
-
-[tasks."optimize:wasm:vic3"]
-wait_for = ["build:wasm-bindgen wasm_vic3"]
-run = [{ task = "wasm-opt wasm_vic3" }]
-hide = true
 
 [tasks."dev:app:setup:types:cargo"]
 description = "Generate TypeScript types"
@@ -412,7 +357,7 @@ description = "Build the api container image. The api compiles inside the image 
 run = "docker build -t ghcr.io/pdx-tools/api:nightly -f ./dev/api.dockerfile ."
 
 [tasks."release:build"]
-depends = ["build:wasm", "optimize:wasm:*", "build:app", "release:build:docker"]
+depends = ["build:app --release", "release:build:docker"]
 
 [tasks."bench:wasm"]
 description = "Run benchmarks in wasm"

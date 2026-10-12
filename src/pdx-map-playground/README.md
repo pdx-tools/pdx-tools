@@ -6,7 +6,7 @@ To get started:
 
 ```sh
 pnpm install
-mise run build:pdx_map
+mise run build:wasm
 pnpm run dev
 ```
 
