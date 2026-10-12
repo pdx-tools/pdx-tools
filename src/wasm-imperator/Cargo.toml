@@ -8,6 +8,7 @@ publish = false
 workspace = true
 
 [lib]
+doctest = false
 crate-type = ["cdylib", "rlib"]
 
 [features]

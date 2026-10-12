@@ -12,6 +12,7 @@ zstd_c = ["pdx-zstd/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust"]
 
 [lib]
+doctest = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

@@ -174,12 +174,16 @@ debug = true
 
 # We override the test profile so that our tests run in a tolerable time as
 # some of the asset files are heavyweight and can take a significant amount of
-# time. Here is some timing data recorded to run one test:
+# time. Thin LTO does not make the tests faster, but it makes each test binary
+# slow to link. Here is timing data for the host builds of `mise run
+# test:cargo` on 8 cores, with the dependencies already compiled:
 #
-# cargo test                 0m15.037s
-# cargo test (opt-level=3)   0m9.644s
-# cargo test (+lto=thin)     0m0.907s
-# cargo test --release       0m0.620s
+#                       build   test run
+# opt-level=3, lto=thin 232s    24s
+# opt-level=3           131s    24s
+#
+# Do not set opt-level=1 with `[profile.test.package."*"] opt-level = 3`. It
+# saves 35s on the build above, but the "*" override also applies to proc
+# macros and build scripts, which then compile slowly on each cold build.
 [profile.test]
 opt-level = 3
-lto = "thin"

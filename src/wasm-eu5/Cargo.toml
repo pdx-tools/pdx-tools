@@ -12,6 +12,7 @@ zstd_c = ["eu5app/zstd_c"]
 zstd_rust = ["eu5app/zstd_rust"]
 
 [lib]
+doctest = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

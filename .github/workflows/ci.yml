@@ -80,36 +80,16 @@ jobs:
           - runner: ubuntu-latest
             arch: amd64
             platform: linux/amd64
-            with_tokens: false
-          - runner: ubuntu-latest
-            arch: amd64
-            platform: linux/amd64
-            with_tokens: true
           - runner: ubuntu-24.04-arm
             arch: arm64
             platform: linux/arm64
-            with_tokens: false
-    name: devcontainer / test / ${{ matrix.arch }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
+    # A smoke test. It checks that the toolchain in the image compiles the
+    # code, but it does not build or test it. The build job runs the full
+    # test suites.
+    name: devcontainer / test / ${{ matrix.arch }}
     env:
-      ASSET_CACHE_PATHS: |
-        assets/game-bundles
-      PDX_FIXTURES_LOG: ${{ github.workspace }}/fixtures.log
       DEVCONTAINER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      CARGO_INCREMENTAL: 0
-      CARGO_PROFILE_DEV_DEBUG: 0
-      CARGO_TERM_COLOR: always
     steps:
-    - name: Remove unwanted software
-      if: matrix.arch == 'amd64'
-      run: |
-        echo "before"
-        df -h
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        echo "after"
-        df -h
-
     - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
@@ -125,53 +105,9 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
-    # Restore the bundle cache for this manifest, or the newest one. The sync
-    # step then downloads only what the cache lacks. This job only restores.
-    - name: Restore assets
-      if: matrix.arch == 'amd64'
-      uses: actions/cache/restore@v6
-      with:
-        path: ${{ env.ASSET_CACHE_PATHS }}
-        key: game-bundles-v2-${{ hashFiles('assets/catalog.json') }}
-        restore-keys: game-bundles-v2-
-        enableCrossOsArchive: true # shares one cache with the build job
-
-    - name: Restore EU4 save fixtures
-      if: matrix.arch == 'amd64' && matrix.with_tokens
-      uses: actions/cache/restore@v6
-      with:
-        path: assets/saves/eu4
-        key: save-fixtures-v1-eu4-${{ hashFiles('src/eu4game/tests/it/fixtures.txt') }}
-        restore-keys: save-fixtures-v1-eu4-
-        enableCrossOsArchive: true
-
-    - name: Restore EU5 save fixtures
-      if: matrix.arch == 'amd64' && matrix.with_tokens
-      uses: actions/cache/restore@v6
-      with:
-        path: assets/saves/eu5
-        key: save-fixtures-v1-eu5-${{ hashFiles('src/eu5app/tests/it/fixtures.txt') }}
-        restore-keys: save-fixtures-v1-eu5-
-        enableCrossOsArchive: true
-
-    - uses: actions/checkout@v7
-      name: Clone tokens
-      if: matrix.with_tokens
-      with:
-        path: assets/tokens
-        repository: pdx-tools/tokens
-        token: ${{secrets.GH_PAT}}
-
-    - name: Link tokens
-      if: matrix.with_tokens
-      run: cd assets/tokens && ln -s tokens/* .
-
     - name: Run Dev Container validation
       uses: devcontainers/ci@v0.3
       env:
-        ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
-        ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
-        GH_PAT: ${{ secrets.GH_PAT }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         imageName: ghcr.io/pdx-tools/devcontainer
@@ -180,47 +116,28 @@ jobs:
         platform: ${{ matrix.platform }}
         push: never
         env: |
-          ASSETS_ACCESS_KEY
-          ASSETS_SECRET_KEY
           CI
           GITHUB_TOKEN
         runCmd: |
           set -e
+          mise install --verbose --jobs 1
+          mise --version
+          mise exec -- rustc --version
+          mise exec -- pnpm --version
+          # The build scripts run during a check, so this also compiles the
+          # flatbuffers schema and the zstd C sources for wasm.
+          mise run tokenize
+          mise exec -- cargo check --workspace --exclude 'wasm-*'
+          mise run setup:wasm
+          mise exec -- cargo check --release --target wasm32-unknown-unknown -p 'wasm-*' \
+            --no-default-features --features zstd_c_fat_lto --features zstd_c
           if [ "${{ matrix.arch }}" = "arm64" ]; then
-            mise install --verbose --jobs 1
-            mise --version
-            mise exec -- rustc --version
-            mise exec -- pnpm --version
             steamcmd 2>&1 | grep -F "steamcmd is only installed in the amd64 devcontainer image."
           else
-            # The host path in PDX_FIXTURES_LOG does not exist in the
-            # container; the checkout is bind-mounted at the current directory.
-            export PDX_FIXTURES_LOG="$PWD/fixtures.log"
-            export PDX_REQUIRE_TEST_ASSETS=${{ matrix.with_tokens && '1' || '0' }}
-            mise run admin:assets:sync
-            mise run admin:assets:compile:all
-            mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
-            ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
-            mise run build:app
+            # Start the test services with Docker in Docker and apply the
+            # migrations.
+            mise run start:services:test -d
           fi
-
-    - name: Check fixture lists
-      if: matrix.arch == 'amd64' && matrix.with_tokens
-      shell: bash
-      run: |
-        for fixture in "eu4 src/eu4game/tests/it/fixtures.txt" "eu5 src/eu5app/tests/it/fixtures.txt"; do
-          game=${fixture%% *}
-          file=${fixture#* }
-          actual=$(mktemp)
-          awk -F/ -v game="$game" '$1 == game { print $2 }' "$PDX_FIXTURES_LOG" | LC_ALL=C sort -u > "$actual"
-          unexpected=$(comm -23 "$actual" <(LC_ALL=C sort "$file"))
-          rm -f "$actual"
-          if [ -n "$unexpected" ]; then
-            echo "Fixtures used by $game are missing from $file:"
-            echo "$unexpected"
-            exit 1
-          fi
-        done
 
   devcontainer-publish:
     runs-on: ubuntu-latest
@@ -278,18 +195,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The "no-tokens" suite checks the build without tokens. The
+        # "rust-tests" and "app-tests" suites need tokens. They use different
+        # cargo profiles, so they share few build artifacts and run as
+        # parallel jobs.
         include:
           - os: ubuntu-latest
+            suite: no-tokens
             with_tokens: false
           - os: ubuntu-latest
+            suite: rust-tests
+            with_tokens: true
+          - os: ubuntu-latest
+            suite: app-tests
             with_tokens: true
           - os: windows-latest
-            with_tokens: false
+            suite: rust-tests
+            with_tokens: true
           - os: windows-latest
+            suite: app-tests
             with_tokens: true
           - os: macos-15
-            with_tokens: false # docker not supported on macos gh actions
-    name: build / ${{ matrix.os }} / tokens-${{ matrix.with_tokens && 'included' || 'absent' }}
+            suite: no-tokens # docker not supported on macos gh actions
+            with_tokens: false
+    name: build / ${{ matrix.os }} / ${{ matrix.suite }}
     env:
       ASSET_CACHE_PATHS: |
         assets/game-bundles
@@ -299,7 +228,16 @@ jobs:
       CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v7
-      # See the note on the devcontainer job's restore step.
+      # Releases are not built on Windows, so CI on Windows uses a release
+      # profile that compiles faster.
+      - name: Relax the release profile on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo "CARGO_PROFILE_RELEASE_LTO=false" >> "$GITHUB_ENV"
+          echo "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16" >> "$GITHUB_ENV"
+      # Restore the bundle cache for this manifest, or the newest one. The
+      # sync step then downloads only what the cache lacks.
       - name: Restore assets
         id: bundles
         uses: actions/cache/restore@v6
@@ -346,10 +284,15 @@ jobs:
           version: 2026.9.17
           cache: false
 
-      # Trial out rust caching with the slowest run:
+      # Only the slow suites use the cache, and only master saves it. A save
+      # from each pull request would make the job longer and push the master
+      # entries out of the repository cache limit.
       - name: Cache Rust dependencies
-        if: matrix.os == 'windows-latest' && matrix.with_tokens
+        if: matrix.with_tokens
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.suite }}
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Get pnpm store directory
         shell: bash
@@ -365,7 +308,7 @@ jobs:
             ${{ runner.os }}-pnpm-store
 
       - name: Start PostgreSQL on Windows
-        if: matrix.os == 'windows-latest' && matrix.with_tokens
+        if: matrix.os == 'windows-latest' && matrix.suite == 'app-tests'
         shell: bash
         env:
           PGHOST: 127.0.0.1
@@ -397,9 +340,11 @@ jobs:
         env:
           PDX_REQUIRE_TEST_ASSETS: ${{ matrix.with_tokens && '1' || '0' }}
         run: |
-          mise run ${{ matrix.with_tokens && 'test:cargo' || 'test:wasm' }}
-          ${{ matrix.with_tokens && 'mise run test:app ::: typecheck' || '' }}
-          mise run build:app
+          case "${{ matrix.suite }}" in
+            no-tokens) mise run test:wasm; mise run build:app ;;
+            rust-tests) mise run test:cargo ;;
+            app-tests) mise run test:app ::: typecheck; mise run build:app ;;
+          esac
 
       - name: Check fixture lists
         if: matrix.os == 'ubuntu-latest' && matrix.with_tokens
@@ -420,7 +365,7 @@ jobs:
           done
 
       - name: Save EU4 save fixtures
-        if: matrix.os == 'ubuntu-latest' && matrix.with_tokens && steps.eu4-fixtures.outputs.cache-hit != 'true'
+        if: matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests' && steps.eu4-fixtures.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: assets/saves/eu4
@@ -428,7 +373,7 @@ jobs:
           enableCrossOsArchive: true
 
       - name: Save EU5 save fixtures
-        if: matrix.os == 'ubuntu-latest' && matrix.with_tokens && steps.eu5-fixtures.outputs.cache-hit != 'true'
+        if: matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests' && steps.eu5-fixtures.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: assets/saves/eu5
@@ -440,7 +385,7 @@ jobs:
       # fail, but only after a complete sync.
       - name: Save assets
         if: |
-          !cancelled() && matrix.os == 'ubuntu-latest' && matrix.with_tokens &&
+          !cancelled() && matrix.os == 'ubuntu-latest' && matrix.suite == 'rust-tests' &&
           steps.asset-pipeline.outcome == 'success' && steps.bundles.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
