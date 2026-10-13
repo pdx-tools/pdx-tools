@@ -3,7 +3,7 @@ mod utils;
 use std::collections::BTreeMap;
 
 use eu5app::{Eu5SaveLoader, Eu5Workspace, MapMode};
-use eu5save::models::LocationIdx;
+use eu5save::models::{CountryIdx, LocationIdx};
 use eu5save::{Eu5File, JominiFileKind};
 use jomini::binary::TokenResolver;
 
@@ -307,6 +307,217 @@ fn incremental_timeline_steps_match_a_full_repaint() {
 /// zstd. The permalink page opens that upload with the same feature set as
 /// this crate's defaults, so the zstd zip path must work without the C
 /// backend.
+#[test]
+fn good_producers_add_up_to_market_production() {
+    insta::glob!("saves.d/*.save", |path| {
+        let save_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .expect("pointer file stem is UTF-8");
+        let Some(mut loaded) = utils::build_workspace(save_name) else {
+            return;
+        };
+        let ws = &mut loaded.workspace;
+        ws.clear_selection();
+
+        let markets: Vec<_> = ws
+            .gamestate()
+            .market_manager
+            .database
+            .iter_with_id()
+            .map(|(id, market)| (id, market.center))
+            .collect();
+        let goods: Vec<String> = ws
+            .gamestate()
+            .market_manager
+            .produced_goods
+            .iter()
+            .map(|(good, _)| good.to_str().to_string())
+            .collect();
+
+        let localized = ws.localized(&loaded.localization);
+        let presenter = localized.presenter();
+        for good in &goods {
+            let world = presenter.calculate_good_producers(good, None);
+            let sources = world.raw_material_units + world.building_units + world.other_units;
+            assert!(
+                (world.total_units - sources).abs() < 1e-6 * world.total_units.max(1.0),
+                "{save_name}: {good} sources {sources} do not add up to {}",
+                world.total_units
+            );
+            let attributed: f64 = world.countries.iter().map(|c| c.units).sum();
+            assert!(
+                attributed <= world.total_units * (1.0 + 1e-9) + 1e-9,
+                "{save_name}: {good} attributes {attributed} of {}",
+                world.total_units
+            );
+            assert!(
+                world
+                    .countries
+                    .windows(2)
+                    .all(|pair| pair[0].units >= pair[1].units),
+                "{save_name}: {good} producers are not sorted"
+            );
+
+            // The world is the sum of its markets.
+            let by_market: f64 = markets
+                .iter()
+                .map(|(id, _)| {
+                    presenter
+                        .calculate_good_producers(good, Some(*id))
+                        .total_units
+                })
+                .sum();
+            assert!(
+                (by_market - world.total_units).abs() < 1e-6 * world.total_units.max(1.0),
+                "{save_name}: {good} markets sum to {by_market}, world is {}",
+                world.total_units
+            );
+
+            // Building output is a base value, so it is never negative.
+            assert!(
+                world.building_base_output >= 0.0 && world.world_building_base_output >= 0.0,
+                "{save_name}: {good} has a negative building base output"
+            );
+            // A good with building production and no known producing method
+            // has no base output in the game data. Such goods are printed, and
+            // the test does not fail on them.
+            if world.building_units > 0.0 && world.world_building_base_output <= 0.0 {
+                eprintln!(
+                    "{save_name}: {good} has {} building units but no known producing method",
+                    world.building_units
+                );
+            }
+        }
+    });
+}
+
+/// The production value of each country adds up to the market records. Each
+/// country profile agrees with the world list.
+#[test]
+fn production_value_by_country_adds_up_to_world_production() {
+    insta::glob!("saves.d/*.save", |path| {
+        let save_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .expect("pointer file stem is UTF-8");
+        let Some(mut loaded) = utils::build_workspace(save_name) else {
+            return;
+        };
+        let ws = &mut loaded.workspace;
+        ws.clear_selection();
+
+        let markets: Vec<_> = ws
+            .gamestate()
+            .market_manager
+            .database
+            .iter_with_id()
+            .map(|(id, _)| id)
+            .collect();
+
+        let localized = ws.localized(&loaded.localization);
+        let presenter = localized.presenter();
+        let tolerance = |value: f64| 1e-6 * value.abs().max(1.0);
+
+        let world = presenter.calculate_production_by_country(None);
+        assert!(
+            (world.total_base_value - world.world_base_value).abs()
+                <= tolerance(world.world_base_value),
+            "{save_name}: an empty selection should cover the world base value"
+        );
+        assert!(
+            (world.total_market_value - world.world_market_value).abs()
+                <= tolerance(world.world_market_value),
+            "{save_name}: an empty selection should cover the world market value"
+        );
+
+        let attributed: f64 = world.countries.iter().map(|c| c.base_value).sum();
+        assert!(
+            attributed <= world.total_base_value + tolerance(world.total_base_value),
+            "{save_name}: countries attribute {attributed} of {}",
+            world.total_base_value
+        );
+        assert!(
+            world
+                .countries
+                .windows(2)
+                .all(|pair| pair[0].base_value >= pair[1].base_value),
+            "{save_name}: countries are not sorted by base value"
+        );
+        assert!(
+            world.countries.iter().all(|c| c.top_goods.len() <= 3),
+            "{save_name}: a country lists more than 3 top goods"
+        );
+
+        let by_market: f64 = markets
+            .iter()
+            .map(|id| {
+                presenter
+                    .calculate_production_by_country(Some(*id))
+                    .total_base_value
+            })
+            .sum();
+        assert!(
+            (by_market - world.world_base_value).abs() <= tolerance(world.world_base_value),
+            "{save_name}: markets sum to {by_market}, world is {}",
+            world.world_base_value
+        );
+
+        let distinct = world
+            .countries
+            .windows(2)
+            .all(|pair| pair[0].base_value != pair[1].base_value);
+        for (position, country) in world.countries.iter().take(20).enumerate() {
+            let idx = CountryIdx::from_value(country.country.country.key.value())
+                .expect("a listed country has a valid index");
+            let profile = presenter
+                .country_production_profile_for(idx)
+                .unwrap_or_else(|| panic!("{save_name}: no profile for country {}", idx.value()));
+
+            let goods_base: f64 = profile.goods.iter().map(|g| g.base_value).sum();
+            assert!(
+                (goods_base - profile.base_value).abs() <= tolerance(profile.base_value),
+                "{save_name}: country {} goods sum to {goods_base}, profile is {}",
+                idx.value(),
+                profile.base_value
+            );
+            assert!(
+                (profile.base_value - country.base_value).abs() <= tolerance(country.base_value),
+                "{save_name}: country {} profile is {}, world list is {}",
+                idx.value(),
+                profile.base_value,
+                country.base_value
+            );
+            if distinct {
+                assert_eq!(
+                    profile.world_rank,
+                    position as u32 + 1,
+                    "{save_name}: country {} rank",
+                    idx.value()
+                );
+            }
+            for good in &profile.goods {
+                assert!(
+                    good.rank >= 1 && good.rank <= good.producer_count,
+                    "{save_name}: country {} rank {} of {} for {}",
+                    idx.value(),
+                    good.rank,
+                    good.producer_count,
+                    good.good.key
+                );
+                assert!(
+                    good.units <= good.world_units + tolerance(good.world_units),
+                    "{save_name}: country {} makes {} of {} for {}",
+                    idx.value(),
+                    good.units,
+                    good.world_units,
+                    good.good.key
+                );
+            }
+        }
+    });
+}
+
 #[test]
 fn opens_a_zstd_remuxed_zip_save() {
     let mut file =

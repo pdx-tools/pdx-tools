@@ -1,6 +1,8 @@
 use crate::{
     GameLocation,
-    game_data::{GameData, GameDataError, GoodsData, Localization, LocalizationsData},
+    game_data::{
+        GameData, GameDataError, GoodsData, Localization, LocalizationsData, ProductionMethodsData,
+    },
 };
 use pdx_map::{R16, TopologyIndex};
 use rawzip::{ZipArchive, ZipSliceArchive};
@@ -28,6 +30,7 @@ pub struct OptimizedGameBundle<R: AsRef<[u8]>> {
     location_lookup: (u64, rawzip::ZipArchiveEntryWayfinder),
     game_data: (u64, rawzip::ZipArchiveEntryWayfinder),
     topology: (u64, rawzip::ZipArchiveEntryWayfinder),
+    production_methods: (u64, rawzip::ZipArchiveEntryWayfinder),
 }
 
 impl<R> OptimizedGameBundle<R>
@@ -39,6 +42,7 @@ where
         let mut location_lookup_entry = None;
         let mut game_data_entry = None;
         let mut topology_entry = None;
+        let mut production_methods_entry = None;
 
         for entry in zip.entries() {
             let entry = entry.map_err(GameDataError::ZipAccess)?;
@@ -53,6 +57,10 @@ where
                 b"topology.bin" => {
                     topology_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
                 }
+                b"production_methods.bin" => {
+                    production_methods_entry =
+                        Some((entry.uncompressed_size_hint(), entry.wayfinder()));
+                }
                 _ => {}
             }
         }
@@ -66,12 +74,16 @@ where
         let topology = topology_entry.ok_or_else(|| {
             GameDataError::MissingData("topology.bin not found in bundle".to_string())
         })?;
+        let production_methods = production_methods_entry.ok_or_else(|| {
+            GameDataError::MissingData("production_methods.bin not found in bundle".to_string())
+        })?;
 
         Ok(Self {
             zip,
             location_lookup,
             game_data,
             topology,
+            production_methods,
         })
     }
 
@@ -80,7 +92,8 @@ where
             .location_lookup
             .0
             .max(self.game_data.0)
-            .max(self.topology.0);
+            .max(self.topology.0)
+            .max(self.production_methods.0);
         let mut buf = vec![0; buf_size as usize];
 
         let location_entry = self
@@ -107,9 +120,19 @@ where
         pdx_zstd::decode_to(topology_entry.data(), topology_buf)?;
         let topology: TopologyIndex = postcard::from_bytes(topology_buf)?;
 
+        let production_methods_entry = self
+            .zip
+            .get_entry(self.production_methods.1)
+            .map_err(GameDataError::ZipAccess)?;
+        let production_methods_buf = &mut buf[..self.production_methods.0 as usize];
+        pdx_zstd::decode_to(production_methods_entry.data(), production_methods_buf)?;
+        let production_methods: ProductionMethodsData =
+            postcard::from_bytes(production_methods_buf)?;
+
         Ok(GameData {
             locations,
             goods: game_data.goods,
+            production_methods: production_methods.methods,
             topology,
         })
     }
@@ -388,6 +411,11 @@ mod tests {
         );
         write_test_entry(&mut archive, "game_data.bin", goods);
         write_test_entry(&mut archive, "topology.bin", empty_topology());
+        write_test_entry(
+            &mut archive,
+            "production_methods.bin",
+            ProductionMethodsData::default(),
+        );
         archive.finish().unwrap().into_inner()
     }
 

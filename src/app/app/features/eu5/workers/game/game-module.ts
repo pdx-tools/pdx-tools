@@ -19,6 +19,7 @@ import type {
   StateEfficacyInsightData,
   SelectionSummaryData,
   CountryPopulationProfile,
+  CountryProductionProfile,
   CountryProfile,
   MarketProfile,
   LocationProfile,
@@ -29,6 +30,8 @@ import type {
   UnrealizedTaxBaseInsightData,
   UnrealizedTaxBaseScope,
   MarketInsightData,
+  GoodProducersData,
+  ProductionByCountryData,
   ScopedGoodSummary,
   PopulationInsightData,
   PopulationGrowthInsightData,
@@ -457,6 +460,9 @@ export const loadSave = async (
     getCountryPopulationProfile: (countryIdx: number): CountryPopulationProfile | null => {
       return app.get_country_population_profile(countryIdx) ?? null;
     },
+    getCountryProductionProfile: (countryIdx: number): CountryProductionProfile | null => {
+      return app.get_country_production_profile(countryIdx) ?? null;
+    },
     getMarketProfile: (marketId: number): MarketProfile | null => {
       return app.get_market_profile(marketId) ?? null;
     },
@@ -487,6 +493,12 @@ export const loadSave = async (
     },
     getMarketInsight: (): MarketInsightData => {
       return app.get_market_insight();
+    },
+    getGoodProducers: (good: string, marketId?: number): GoodProducersData => {
+      return app.get_good_producers(good, marketId);
+    },
+    getProductionByCountry: (marketId?: number): ProductionByCountryData => {
+      return app.get_production_by_country(marketId);
     },
     getPopulationInsight: (): PopulationInsightData => {
       return app.get_population_insight();

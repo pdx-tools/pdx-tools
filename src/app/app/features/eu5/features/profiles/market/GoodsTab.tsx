@@ -6,6 +6,8 @@ import {
   MarketGoodDetail,
 } from "../../insights/Markets";
 import type { GoodsPressureMetric } from "../../insights/Markets";
+import { MarketGoodProducers } from "../../insights/GoodProducers";
+import { MarketProductionByCountry } from "../../insights/ProductionByCountry";
 import { useEu5Trigger } from "../useEu5Trigger";
 import { formatFloat, formatInt } from "@/lib/format";
 import type { ScopedGoodSummary } from "@/wasm/wasm_eu5";
@@ -283,8 +285,17 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
             </select>
           </div>
           <MarketGoodDetail good={selectedGood} />
+          <section>
+            <SectionTitle>{selectedGood.good.name} producers by country</SectionTitle>
+            <MarketGoodProducers marketId={marketId} goodKey={selectedGood.good.key} />
+          </section>
         </section>
       )}
+
+      <section>
+        <SectionTitle>Production value by country</SectionTitle>
+        <MarketProductionByCountry marketId={marketId} />
+      </section>
     </div>
   );
 }
