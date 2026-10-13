@@ -33,34 +33,34 @@ url = "https://github.com/F1bonacc1/process-compose/releases/download/v1.122.0/p
 url_api = "https://api.github.com/repos/F1bonacc1/process-compose/releases/assets/518622326"
 
 [[tools."github:WebAssembly/binaryen"]]
-version = "ersion_129"
+version = "ersion_133"
 backend = "github:WebAssembly/binaryen"
-specifiers = ["version_129"]
+specifiers = ["version_133"]
 
 [tools."github:WebAssembly/binaryen"."platforms.linux-arm64"]
-checksum = "sha256:81d46b86b10876ab615eec67e09fcc5615115a7b189cfe3d466725ee36c46ac2"
-url = "https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-aarch64-linux.tar.gz"
-url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/386341715"
+checksum = "sha256:89c07ea56faf38d0fbecf36ca8ec0721756716185f265b568e133d427f299bf8"
+url = "https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-aarch64-linux.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/580038503"
 
 [tools."github:WebAssembly/binaryen"."platforms.linux-x64"]
-checksum = "sha256:50b9fa62b9abea752da92ec57e0c555fee578760cd237c40107957715d2976ba"
-url = "https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-linux.tar.gz"
-url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/386339206"
+checksum = "sha256:2dc9c7813f5375db93d96ead4b78222fcc3e2677bbb832297af4797782a37489"
+url = "https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-linux.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/580050094"
 
 [tools."github:WebAssembly/binaryen"."platforms.macos-arm64"]
-checksum = "sha256:d1bb014775ca3002506712b81b4406d126ff6845e8b2f343bc2696a1a88b7117"
-url = "https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-arm64-macos.tar.gz"
-url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/386337538"
+checksum = "sha256:ad66da82ac13f163e424b1643f16c6dfcccc98b5966296b43e52d3cab04f84a8"
+url = "https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-arm64-macos.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/580039733"
 
 [tools."github:WebAssembly/binaryen"."platforms.macos-x64"]
-checksum = "sha256:cc38897d3d93c968f24819fae210e04afd0146d0e2467e307207ea7e798a59b9"
-url = "https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-macos.tar.gz"
-url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/386337535"
+checksum = "sha256:13a9b90be775c6389ce3d1f879cb8627bea56708ba8c122983941d53a8199b95"
+url = "https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-macos.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/580039734"
 
 [tools."github:WebAssembly/binaryen"."platforms.windows-x64"]
-checksum = "sha256:1405d2f51377859ccf5fcd2c59c0a8c5756373e691ca0eeb5219f646b743e3aa"
-url = "https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-windows.tar.gz"
-url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/386340704"
+checksum = "sha256:17a2cbeac6b5693c5fbafab3838d3c65fd9c1eb38b05f5baec6c657e8c84995b"
+url = "https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-windows.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/580050907"
 
 [[tools."github:cargo-bins/cargo-binstall"]]
 version = "1.12.5"
@@ -123,6 +123,18 @@ backend = "github:google/flatbuffers"
 specifiers = ["25.2.10"]
 
 [tools."github:google/flatbuffers".options]
+asset_pattern = "Windows.flatc.binary.zip"
+matching = "clang"
+
+[tools."github:google/flatbuffers"."platforms.windows-x64"]
+url = "https://github.com/google/flatbuffers/releases/download/v25.2.10/Windows.flatc.binary.zip"
+url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/228083068"
+
+[[tools."github:google/flatbuffers"]]
+version = "25.2.10"
+backend = "github:google/flatbuffers"
+
+[tools."github:google/flatbuffers".options]
 matching = "clang"
 
 [tools."github:google/flatbuffers"."platforms.linux-arm64"]
@@ -136,7 +148,6 @@ url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/22808
 [[tools."github:google/flatbuffers"]]
 version = "25.2.10"
 backend = "github:google/flatbuffers"
-specifiers = ["25.2.10"]
 
 [tools."github:google/flatbuffers".options]
 asset_pattern = "Mac.flatc.binary.zip"
@@ -149,7 +160,6 @@ url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/22808
 [[tools."github:google/flatbuffers"]]
 version = "25.2.10"
 backend = "github:google/flatbuffers"
-specifiers = ["25.2.10"]
 
 [tools."github:google/flatbuffers".options]
 asset_pattern = "MacIntel.flatc.binary.zip"
@@ -158,19 +168,6 @@ matching = "clang"
 [tools."github:google/flatbuffers"."platforms.macos-x64"]
 url = "https://github.com/google/flatbuffers/releases/download/v25.2.10/MacIntel.flatc.binary.zip"
 url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/228082633"
-
-[[tools."github:google/flatbuffers"]]
-version = "25.2.10"
-backend = "github:google/flatbuffers"
-specifiers = ["25.2.10"]
-
-[tools."github:google/flatbuffers".options]
-asset_pattern = "Windows.flatc.binary.zip"
-matching = "clang"
-
-[tools."github:google/flatbuffers"."platforms.windows-x64"]
-url = "https://github.com/google/flatbuffers/releases/download/v25.2.10/Windows.flatc.binary.zip"
-url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/228083068"
 
 [[tools."github:llvm/llvm-project"]]
 version = "llvmorg-19.1.7"
@@ -262,34 +259,39 @@ url = "https://github.com/rclone/rclone/releases/download/v1.70.3/rclone-v1.70.3
 url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/271394046"
 
 [[tools."github:rustwasm/wasm-bindgen"]]
-version = "0.2.118"
+version = "0.2.129"
 backend = "github:rustwasm/wasm-bindgen"
-specifiers = ["0.2.118"]
+specifiers = ["0.2.129"]
 
 [tools."github:rustwasm/wasm-bindgen"."platforms.linux-arm64"]
-checksum = "sha256:e8b75bf5055c189af5e4842bf7c58f616880fb8505a10f7cd575353a9f4e2dba"
-url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.118/wasm-bindgen-0.2.118-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/393417763"
+checksum = "sha256:1797c349a0f45d30946e8986b184135e12839ab576c9a04203e85febfc5dcb35"
+url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/587769532"
+provenance = "github-attestations"
 
 [tools."github:rustwasm/wasm-bindgen"."platforms.linux-x64"]
-checksum = "sha256:00b519c9fc2d6e087265da1a00f29160bfcc6a823993482bc2e691910287427b"
-url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.118/wasm-bindgen-0.2.118-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/393417768"
+checksum = "sha256:82d12bb940e2d4e72e0d5605387fc1b8ca179044e012b620f0ce4e7440e8320e"
+url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/587769529"
+provenance = "github-attestations"
 
 [tools."github:rustwasm/wasm-bindgen"."platforms.macos-arm64"]
-checksum = "sha256:f76553ae8d084dc3e96a7cef748813bf2dac4d78326166409328fc74646eef76"
-url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.118/wasm-bindgen-0.2.118-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/393417765"
+checksum = "sha256:81d4a23d56b3c3eb8187658329116d50e0b228a93b343825fb71f70179051cd1"
+url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/587769526"
+provenance = "github-attestations"
 
 [tools."github:rustwasm/wasm-bindgen"."platforms.macos-x64"]
-checksum = "sha256:2f1c1586c0b5bad9a25e6704825d6b1a9ccdd7c6830d57198645411545b566ad"
-url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.118/wasm-bindgen-0.2.118-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/393417766"
+checksum = "sha256:7e028879a68ec53dae14048b55cc5215f6df75b17a9c1426fac8fa086d3202fd"
+url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/587769520"
+provenance = "github-attestations"
 
 [tools."github:rustwasm/wasm-bindgen"."platforms.windows-x64"]
-checksum = "sha256:075902fd092f8e2a223783ccb73697f7a619bfa02e166d3b68319924a19d5a08"
-url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.118/wasm-bindgen-0.2.118-x86_64-pc-windows-msvc.tar.gz"
-url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/393417764"
+checksum = "sha256:79e348c169d0c10c0b287647f1e753d0985353ca96800bc29be8f4261baf13e6"
+url = "https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-pc-windows-msvc.tar.gz"
+url_api = "https://api.github.com/repos/rustwasm/wasm-bindgen/releases/assets/587769522"
+provenance = "github-attestations"
 
 [[tools.node]]
 version = "24.18.0"
@@ -320,11 +322,3 @@ url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-win-x64.zip"
 version = "1.98.1"
 backend = "core:rust"
 specifiers = ["1.98.1"]
-
-[[tools.rust]]
-version = "1.98.1"
-backend = "core:rust"
-specifiers = ["1.98.1"]
-
-[tools.rust.options]
-targets = "wasm32-unknown-unknown"
