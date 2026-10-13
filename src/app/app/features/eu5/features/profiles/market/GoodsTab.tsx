@@ -205,7 +205,7 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
   const [selectedGoodKey, setSelectedGoodKey] = useState<string | null>(null);
   const [metric, setMetric] = useState<GoodsPressureMetric>("units");
   const { data: goods, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getMarketGoodsProfile(marketId),
+    (engine) => engine.queries.getMarketGoodsProfile(marketId),
     [marketId],
   );
 

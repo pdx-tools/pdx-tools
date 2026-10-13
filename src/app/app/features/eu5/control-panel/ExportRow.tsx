@@ -97,7 +97,7 @@ function MeltButton() {
   const { isLoading, run } = useTriggeredAction({
     action: async () => {
       try {
-        const meltedData = await engine.trigger.melt();
+        const meltedData = await engine.queries.melt();
         const baseName = saveFilename.substring(0, saveFilename.lastIndexOf(".")) || saveFilename;
         downloadData(meltedData, `${baseName}_melted.eu5`);
         toast.success("Save file melted and downloaded", { duration: 2000 });

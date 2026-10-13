@@ -13,7 +13,7 @@ export function CountryProfile({ countryIdx }: { countryIdx: number }) {
   const mode = useEu5MapMode();
   const profileTab = useProfileTab("country");
   const { data: profile, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getCountryProfile(countryIdx),
+    (engine) => engine.queries.getCountryProfile(countryIdx),
     [countryIdx],
   );
 

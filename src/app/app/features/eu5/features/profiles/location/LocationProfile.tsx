@@ -13,7 +13,7 @@ interface Props {
 export function LocationProfile({ locationIdx }: Props) {
   const profileTab = useProfileTab("location");
   const { data: profile, loading } = useEu5Trigger(
-    (engine) => engine.trigger.getLocationProfile(locationIdx),
+    (engine) => engine.queries.getLocationProfile(locationIdx),
     [locationIdx],
   );
 

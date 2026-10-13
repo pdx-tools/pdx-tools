@@ -40,7 +40,13 @@ export const links = () => mediaPreconnectLinks;
 export default function Eu5SaveRoute() {
   const { save } = useLoaderData<typeof loader>();
   const input = useMemo(
-    () => save && { kind: "server" as const, saveId: save.id, name: save.filename },
+    () =>
+      save && {
+        kind: "server" as const,
+        saveId: save.id,
+        name: save.filename,
+        uploaderId: save.user_id,
+      },
     [save],
   );
   if (!input) return <Eu5SaveNotFound />;

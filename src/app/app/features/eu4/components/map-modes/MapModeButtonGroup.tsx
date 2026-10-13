@@ -13,6 +13,7 @@ export const MapModeButtonGroup = () => {
         <Tooltip key={mode}>
           <Tooltip.Trigger asChild>
             <button
+              aria-pressed={mapMode === mode}
               className="m-0 hidden border-none bg-transparent p-0 select-none group-hover:block"
               onClick={() => updateMapMode(mode)}
             >

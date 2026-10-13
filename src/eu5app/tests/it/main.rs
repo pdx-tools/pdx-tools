@@ -94,12 +94,12 @@ fn workspace_scenarios() {
         ws.clear_focus();
         ws.set_map_mode(MapMode::Political);
 
-        let mut color_hashes: BTreeMap<&'static str, String> = BTreeMap::new();
+        let mut map_modes: BTreeMap<&'static str, serde_json::Value> = BTreeMap::new();
         for mode in ALL_MAP_MODES {
             ws.set_map_mode(mode);
-            color_hashes.insert(
+            map_modes.insert(
                 mode_name(mode),
-                utils::hash_location_arrays(ws.location_arrays()),
+                utils::summarize_location_arrays(ws.location_arrays()),
             );
         }
 
@@ -148,7 +148,7 @@ fn workspace_scenarios() {
         let localized = ws.localized(&localization);
         let snapshot = serde_json::json!({
             "save_version": ws.gamestate().metadata().version.to_string(),
-            "map_mode_colors": color_hashes,
+            "map_modes": map_modes,
             "location": [{
                 "id": location.id().value(),
                 "name": localized.presenter().location_display_name(location.idx()),
@@ -309,7 +309,8 @@ fn incremental_timeline_steps_match_a_full_repaint() {
 /// backend.
 #[test]
 fn opens_a_zstd_remuxed_zip_save() {
-    let mut file = utils::request_file("Clandeboye.eu5");
+    let mut file =
+        utils::request_file("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5");
     let mut data = Vec::new();
     std::io::Read::read_to_end(&mut file, &mut data).unwrap();
     let original = Eu5File::from_slice(data.clone()).unwrap();
@@ -336,4 +337,51 @@ fn opens_a_zstd_remuxed_zip_save() {
     }
     let mut loaded = loader.parse().unwrap();
     assert!(loaded.take_gamestate().locations.iter().next().is_some());
+}
+
+#[test]
+fn metadata_prefix_matches_the_full_file() {
+    insta::glob!("saves.d/*.save", |path| {
+        let save_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .expect("pointer file stem is UTF-8");
+        let resolver = utils::tokens();
+        let mut file = utils::request_file(save_name);
+        let full = Eu5File::from_file(file.try_clone().unwrap())
+            .unwrap_or_else(|e| panic!("{save_name}: {e}"));
+        if full.header().kind().is_binary() && resolver.is_empty() {
+            assert!(
+                !utils::require_test_assets(),
+                "{save_name}: EU5 binary tokens not loaded"
+            );
+            return;
+        }
+        let expected = Eu5SaveLoader::open(full, resolver)
+            .unwrap_or_else(|e| panic!("{save_name}: {e}"))
+            .meta();
+
+        // The clone shares the position of the file, which the full read moved.
+        std::io::Seek::rewind(&mut file).unwrap();
+        let mut start = vec![0u8; eu5app::SAVE_HEADER_MAX_LEN];
+        std::io::Read::read_exact(&mut file, &mut start).unwrap();
+        let len = eu5app::metadata_prefix_len(&start)
+            .unwrap_or_else(|| panic!("{save_name}: no metadata length"));
+        let mut prefix = vec![0u8; len];
+        std::io::Seek::rewind(&mut file).unwrap();
+        std::io::Read::read_exact(&mut file, &mut prefix).unwrap();
+
+        let actual = eu5app::read_metadata_prefix(&prefix, resolver)
+            .unwrap_or_else(|e| panic!("{save_name}: {e}"));
+        assert_eq!(
+            actual.playthrough_id, expected.playthrough_id,
+            "{save_name}"
+        );
+        assert_eq!(
+            actual.playthrough_name, expected.playthrough_name,
+            "{save_name}"
+        );
+        assert_eq!(actual.date, expected.date, "{save_name}");
+        assert_eq!(actual.version, expected.version, "{save_name}");
+    });
 }

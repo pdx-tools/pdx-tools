@@ -64,7 +64,7 @@ function ControlScopeHeader({ data }: { data?: ControlScopeSummary }) {
 }
 
 export function ControlInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getControlInsight());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getControlInsight());
 
   const data = insightQuery.data;
   const barCountries = data?.barCountries ?? [];

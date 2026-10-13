@@ -52,7 +52,7 @@ function PopulationScopeHeader({ data }: { data?: PopulationScopeSummary }) {
 }
 
 export function PopulationInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getPopulationInsight());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getPopulationInsight());
 
   const countries = insightQuery.data?.countries ?? [];
   const rankTotals = insightQuery.data?.rankTotals ?? [];

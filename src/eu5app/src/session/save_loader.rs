@@ -16,7 +16,7 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct Eu5DateComponents {
@@ -96,32 +96,25 @@ impl Eu5SaveLoader<(), ()> {
         mut observer: W,
     ) -> Result<Eu5SaveLoader<R, RES, W>, Eu5LoadError> {
         let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
-        let meta = {
-            let meta = match file.meta().map_err(Eu5LoadError::MetaExtraction)? {
-                SaveMetadataKind::Text(text) => {
-                    let header = text.header().clone();
-                    let reader = TeeReader {
-                        reader: Box::new(text),
-                        observer: &mut observer,
-                    };
-                    let mut text = SaveMetadata::<eu5save::TextEncoding, _>::new(reader, header);
-                    ZipPrelude::deserialize_in_arena(&mut text.deserializer(), &arena)
-                }
-                SaveMetadataKind::Binary(bin) => {
-                    let header = bin.header().clone();
-                    let reader = TeeReader {
-                        reader: Box::new(bin),
-                        observer: &mut observer,
-                    };
-                    let mut bin = SaveMetadata::<eu5save::BinaryEncoding, _>::new(reader, header);
-                    let mut deser = bin.deserializer(&resolver);
-                    ZipPrelude::deserialize_in_arena(&mut deser, &arena)
-                }
-            };
-
-            let meta = meta.map_err(Eu5LoadError::MetaDeserialization)?;
-            Eu5SaveMetadata::from(&meta.metadata)
+        let meta = match file.meta().map_err(Eu5LoadError::MetaExtraction)? {
+            SaveMetadataKind::Text(text) => {
+                let header = text.header().clone();
+                let reader = TeeReader {
+                    reader: Box::new(text),
+                    observer: &mut observer,
+                };
+                SaveMetadataKind::Text(SaveMetadata::new(reader, header))
+            }
+            SaveMetadataKind::Binary(bin) => {
+                let header = bin.header().clone();
+                let reader = TeeReader {
+                    reader: Box::new(bin),
+                    observer: &mut observer,
+                };
+                SaveMetadataKind::Binary(SaveMetadata::new(reader, header))
+            }
         };
+        let meta = deserialize_metadata(meta, &resolver, &arena)?;
 
         Ok(Eu5SaveLoader {
             resolver,
@@ -393,6 +386,55 @@ impl<D: AsRef<[u8]>, RES: TokenResolver, W: Write> Eu5AnySaveLoader<D, RES, W> {
     }
 }
 
+/// Return the header and metadata prefix length. Return `None` when a full read is required.
+pub fn metadata_prefix_len(start: &[u8]) -> Option<usize> {
+    let header = eu5save::SaveHeader::from_slice(start).ok()?;
+    let meta_len = usize::try_from(header.metadata_len()).ok()?;
+    (meta_len > 0).then(|| header.header_len() + meta_len)
+}
+
+/// Maximum header size, including optional padding and the line ending.
+pub const SAVE_HEADER_MAX_LEN: usize = 33;
+
+/// Read metadata without loading the complete save. The prefix must contain the full metadata.
+pub fn read_metadata_prefix<RES: TokenResolver>(
+    prefix: &[u8],
+    resolver: RES,
+) -> Result<Eu5SaveMetadata, Eu5LoadError> {
+    let header = eu5save::SaveHeader::from_slice(prefix).map_err(Eu5LoadError::Header)?;
+    let start = header.header_len();
+    let end = usize::try_from(header.metadata_len())
+        .ok()
+        .and_then(|len| start.checked_add(len))
+        .filter(|&end| end <= prefix.len())
+        .ok_or_else(|| Eu5LoadError::MetaRead(std::io::ErrorKind::UnexpectedEof.into()))?;
+    let data = &prefix[start..end];
+
+    let meta = if header.kind().is_text() {
+        SaveMetadataKind::Text(SaveMetadata::new(data, header))
+    } else {
+        SaveMetadataKind::Binary(SaveMetadata::new(data, header))
+    };
+    deserialize_metadata(meta, &resolver, &bumpalo::Bump::new())
+}
+
+fn deserialize_metadata<R: Read, RES: TokenResolver>(
+    meta: SaveMetadataKind<R>,
+    resolver: &RES,
+    arena: &bumpalo::Bump,
+) -> Result<Eu5SaveMetadata, Eu5LoadError> {
+    let prelude = match meta {
+        SaveMetadataKind::Text(mut text) => {
+            ZipPrelude::deserialize_in_arena(&mut text.deserializer(), arena)
+        }
+        SaveMetadataKind::Binary(mut bin) => {
+            ZipPrelude::deserialize_in_arena(&mut bin.deserializer(resolver), arena)
+        }
+    };
+    let prelude = prelude.map_err(Eu5LoadError::MetaDeserialization)?;
+    Ok(Eu5SaveMetadata::from(&prelude.metadata))
+}
+
 #[derive(Debug)]
 pub struct Eu5LoadedSave<W = std::io::Sink> {
     arena: bumpalo::Bump,
@@ -486,5 +528,29 @@ impl From<&Metadata<'_>> for Eu5SaveMetadata {
                 .as_ref()
                 .map(|x| x.to_str().to_owned()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn longest_header_fits_in_max_len() {
+        let header = b"SAV0103aaaaaaaa0000002a12345678\r\n";
+        assert_eq!(header.len(), SAVE_HEADER_MAX_LEN);
+        assert_eq!(
+            metadata_prefix_len(header),
+            Some(SAVE_HEADER_MAX_LEN + 0x2a)
+        );
+    }
+
+    #[test]
+    fn shortest_header_gives_its_own_length() {
+        let start = b"SAV0103aaaaaaaa0000002a\nmetadata starts here";
+        assert_eq!(
+            metadata_prefix_len(&start[..SAVE_HEADER_MAX_LEN]),
+            Some(24 + 0x2a)
+        );
     }
 }

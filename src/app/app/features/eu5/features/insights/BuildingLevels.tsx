@@ -339,7 +339,7 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
 
 export function BuildingLevelsInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) =>
-    engine.trigger.getBuildingLevelsInsight(),
+    engine.queries.getBuildingLevelsInsight(),
   );
 
   const types = insightQuery.data?.types ?? [];

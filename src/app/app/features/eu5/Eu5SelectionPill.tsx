@@ -21,7 +21,7 @@ export function Eu5SelectionPill() {
   const timelineBarHeight = useEu5TimelineBarHeight();
 
   const handleClear = useCallback(async () => {
-    await engine.trigger.clearSelection();
+    await engine.commands.clearSelection();
   }, [engine]);
 
   if (selectionState == null || selectionState.isEmpty) {

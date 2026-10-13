@@ -350,17 +350,42 @@ jobs:
         run: |
           mise run admin:assets:sync
           mise run admin:assets:compile:all
+      - name: Install a software GPU
+        if: matrix.os == 'ubuntu-latest' && matrix.with_tokens
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers
+
+      - name: Install browser dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.suite == 'app-tests'
+        run: |
+          mise run pnpm-install
+          pnpm --dir src/app exec playwright install --with-deps chromium
+
       # Bash on every OS: a multi-line PowerShell script reports only the
       # exit code of its last command, so a failed test passed on Windows.
       - shell: bash
         env:
           PDX_REQUIRE_TEST_ASSETS: ${{ matrix.with_tokens && '1' || '0' }}
+          # Fail when the required GPU adapter is unavailable.
+          PDX_REQUIRE_GPU: ${{ matrix.suite == 'rust-tests' && '1' || '0' }}
         run: |
+          # Run browser tests only on runners with WebGPU support.
+          app_tests=test:app
+          if [ "$RUNNER_OS" = "Windows" ]; then app_tests=test:app:integration; fi
           case "${{ matrix.suite }}" in
             no-tokens) mise run test:wasm; mise run build:app ;;
             rust-tests) mise run test:cargo ;;
-            app-tests) mise run test:app ::: typecheck; mise run build:app ;;
+            app-tests) mise run "$app_tests" ::: typecheck; mise run build:app ;;
           esac
+
+      - name: Upload browser test report
+        if: failure() && matrix.os == 'ubuntu-latest' && matrix.suite == 'app-tests'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            src/app/playwright-report
+            src/app/test-results
+          retention-days: 7
 
       - name: Check fixture lists
         if: matrix.os == 'ubuntu-latest' && matrix.with_tokens

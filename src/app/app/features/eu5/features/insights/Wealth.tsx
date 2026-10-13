@@ -32,7 +32,7 @@ const formatWealthValue = (value: number) => formatFloat(value, 1);
 
 function WealthScopeHeader() {
   const { data, error, loading } = useEu5SelectionTrigger((engine) =>
-    engine.trigger.getWealthScope(),
+    engine.queries.getWealthScope(),
   );
 
   if (loading && !data) return <InsightReadoutSkeleton />;
@@ -53,7 +53,7 @@ function WealthScopeHeader() {
 }
 
 export function WealthInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getWealthInsight());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getWealthInsight());
 
   const countries = insightQuery.data?.countries ?? [];
 

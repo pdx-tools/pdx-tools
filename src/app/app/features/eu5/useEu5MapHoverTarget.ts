@@ -42,9 +42,9 @@ function applyHoverTarget(engine: AppEngine, target: Eu5MapHoverTarget | null) {
   appliedHoverTarget = target;
 
   if (target) {
-    void engine.trigger.highlightMapHoverTarget(target);
+    void engine.commands.highlightMapHoverTarget(target);
   } else {
-    void engine.trigger.clearMapHoverHighlight();
+    void engine.commands.clearMapHoverHighlight();
   }
 }
 

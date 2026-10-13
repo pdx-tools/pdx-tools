@@ -1,6 +1,6 @@
 use crate::{
     Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize,
-    units::{WorldLength, WorldPoint},
+    units::{WorldLength, WorldPoint, WorldRect},
     viewport::{PanTarget, ViewportInsets},
 };
 use std::time::Duration;
@@ -333,6 +333,11 @@ impl InteractionController {
     /// Show the whole map, as large as the zoom limits allow.
     pub fn fit_map(&mut self) {
         self.viewport.fit_map();
+    }
+
+    /// Fit the rectangle within the camera zoom limits.
+    pub fn fit(&mut self, rect: WorldRect<u32>) {
+        self.viewport.fit(rect);
     }
 
     /// Center on world point.

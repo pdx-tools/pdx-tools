@@ -26,7 +26,7 @@ function NameCell({ row }: { row: AppRow<LocationRow> }) {
         if (nav.stack.length > 0) {
           nav.pushMany([locationProfileEntry(location.key, location.name)]);
         } else {
-          void engine.trigger.setFocusedLocation(location.key);
+          void engine.commands.setFocusedLocation(location.key);
         }
       }}
     />

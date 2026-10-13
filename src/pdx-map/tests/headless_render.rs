@@ -1,5 +1,6 @@
 //! Headless render tests. These tests need a GPU adapter (lavapipe is
-//! sufficient) and skip when none is available.
+//! sufficient) and skip when none is available. Set `PDX_REQUIRE_GPU=1` to
+//! make a missing adapter fail the tests.
 
 use pdx_map::{
     GpuColor, GpuContext, HeadlessMapRenderer, LocationArrays, LocationFlags, LocationId,
@@ -261,6 +262,9 @@ macro_rules! frame_or_skip {
     ($e:expr) => {
         match block_on($e) {
             Some(frame) => frame,
+            None if std::env::var("PDX_REQUIRE_GPU").as_deref() == Ok("1") => {
+                panic!("no GPU adapter, and PDX_REQUIRE_GPU=1 requires one");
+            }
             None => {
                 eprintln!("no GPU adapter, skipping");
                 return;

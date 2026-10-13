@@ -62,7 +62,7 @@ function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }
 }
 
 export function StateEfficacyInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getStateEfficacy());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getStateEfficacy());
 
   const countries = insightQuery.data?.countries ?? [];
 

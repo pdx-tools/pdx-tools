@@ -194,7 +194,7 @@ export function CountryLink({ country, ...props }: SharedProps & { country: Coun
       }
       tag={tag}
       name={country.country.name}
-      onAltActivate={() => void engine.trigger.removeCountry(country.country.key)}
+      onAltActivate={() => void engine.commands.removeCountry(country.country.key)}
     />
   );
 }
@@ -212,7 +212,7 @@ export function MarketLink({ market, ...props }: SharedProps & { market: MarketR
       colorHex={market.colorHex}
       isPlayer={false}
       name={market.market.name}
-      onAltActivate={() => void engine.trigger.removeMarket(market.market.key)}
+      onAltActivate={() => void engine.commands.removeMarket(market.market.key)}
     />
   );
 }

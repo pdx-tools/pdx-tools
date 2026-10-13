@@ -346,7 +346,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
 }
 
 export function RgoInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.trigger.getRgoInsight());
+  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getRgoInsight());
 
   const data: RgoInsightData | undefined = insightQuery.data ?? undefined;
   const materials = data?.materials ?? [];

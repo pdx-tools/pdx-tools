@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DependencyList } from "react";
+import { isAbortError } from "@/lib/abortController";
 import { useEu5Engine, useEu5SelectionRevision } from "../../store";
 import type { AppEngine } from "../../ui-engine";
 
@@ -16,23 +17,20 @@ export function useEu5Trigger<T>(
     let cancelled = false;
     setLoading(true);
     setError(undefined);
-    void fetch(engine)
-      .then((result) => {
-        if (!cancelled) {
-          setData(result ?? undefined);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setData(undefined);
-          setError(err instanceof Error ? err : new Error(String(err)));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
+    void fetch(engine).then(
+      (result) => {
+        if (cancelled) return;
+        setData(result ?? undefined);
+        setLoading(false);
+      },
+      (err: unknown) => {
+        // A released save rejects with an abort. Keep loading until the next save shows.
+        if (cancelled || isAbortError(err)) return;
+        setData(undefined);
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setLoading(false);
+      },
+    );
     return () => {
       cancelled = true;
     };

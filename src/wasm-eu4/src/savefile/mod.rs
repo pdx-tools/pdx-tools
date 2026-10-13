@@ -967,7 +967,7 @@ impl SaveFileImpl {
             encoding: self.encoding,
             gameplay_options: self.query.save().game.gameplay_settings.options.clone(),
             dlc: self.query.save().meta.dlc_enabled.clone(),
-            playthough_id: playthrough_id(&self.query),
+            playthrough_id: playthrough_id(&self.query),
             random_world: self.query.save().game.random_world,
             colonial_subjects: self.colonial_subjects(),
         }

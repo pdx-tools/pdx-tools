@@ -61,9 +61,8 @@ export const Eu4CanvasOverlay = () => {
 
   return (
     <>
-      {/* The bottom is left to the timeline bar, which spans the map beneath
-          the sidebar's hover width. Zoom and map modes stop above it. */}
-      <div className="flex h-full flex-col gap-2 pt-4 pb-20 text-white">
+      {/* Reserve the bottom edge for the timeline. */}
+      <div className="flex h-full flex-col gap-2 pt-4 pb-[var(--timeline-clearance,5rem)] text-white">
         <div className="flex justify-end overflow-hidden whitespace-nowrap">
           {location.pathname === "/" ? (
             homeButton
