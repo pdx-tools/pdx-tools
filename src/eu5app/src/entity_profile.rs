@@ -14,7 +14,9 @@ pub mod country {
     pub(crate) mod workspace {
         pub(crate) use super::super::{
             ActiveProfileIdentitySource as ActiveProfileIdentity,
+            CountryGoodProductionSource as CountryGoodProduction,
             CountryPopulationProfileSource as CountryPopulationProfile,
+            CountryProductionProfileSource as CountryProductionProfile,
             CountryProfileSource as CountryProfile,
             CountryReligionSectionSource as CountryReligionSection,
             ReligionShareSource as ReligionShare,
@@ -23,9 +25,9 @@ pub mod country {
 
     pub mod presentation {
         pub use super::super::{
-            ActiveProfileIdentity, CountryPopulationProfile, CountryProfile,
-            CountryReligionSection, DiplomacySection, EntityHeader, LocationPopRow,
-            LocationsSection, ReligionShare, SubjectRef,
+            ActiveProfileIdentity, CountryGoodProduction, CountryPopulationProfile,
+            CountryProductionProfile, CountryProfile, CountryReligionSection, DiplomacySection,
+            EntityHeader, LocationPopRow, LocationsSection, ReligionShare, SubjectRef,
         };
     }
 }
@@ -522,5 +524,39 @@ present_dto! {
         type_profile: Vec<PopulationTypeProfileRow>,
         rank_totals: Vec<PopulationRankSegment>,
         sankey_rows: Vec<LocationPopRowSource> => Vec<LocationPopRow>,
+    }
+}
+
+present_dto! {
+    pub(crate) workspace CountryGoodProductionSource<'a> => pub CountryGoodProduction {
+        good: crate::presentation::GoodRefSource<'a> => crate::presentation::GoodRef,
+        units: f64,
+        base_value: f64,
+        market_value: f64,
+        raw_material_units: f64,
+        building_units: f64,
+        // Recorded world production of the good, all markets and sources.
+        world_units: f64,
+        // 1-based rank of this country among the countries that make the good,
+        // by estimated units.
+        rank: u32,
+        producer_count: u32,
+    }
+}
+
+present_dto! {
+    pub(crate) workspace CountryProductionProfileSource<'a> => pub CountryProductionProfile {
+        base_value: f64,
+        market_value: f64,
+        // Recorded world production, all markets and goods.
+        world_base_value: f64,
+        world_market_value: f64,
+        // 1-based rank among the countries that make anything, by base value.
+        // 0 when the country makes nothing.
+        world_rank: u32,
+        // The number of countries that make anything.
+        producer_count: u32,
+        // Sorted by base value, largest first.
+        goods: Vec<CountryGoodProductionSource<'a>> => Vec<CountryGoodProduction>,
     }
 }

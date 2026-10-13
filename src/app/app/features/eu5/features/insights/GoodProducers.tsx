@@ -22,7 +22,7 @@ export function producedGoods(goods: ScopedGoodSummary[]): ScopedGoodSummary[] {
     .sort((a, b) => baseProductionValue(b) - baseProductionValue(a));
 }
 
-function formatPercent(value: number): string {
+export function formatPercent(value: number): string {
   return `${formatFloat(value * 100, value < 0.1 ? 1 : 0)}%`;
 }
 
@@ -104,6 +104,17 @@ function ProducersSummary({ data }: { data: GoodProducersData }) {
     { label: "other", units: data.otherUnits },
   ].filter((source) => source.units > 0);
 
+  // Building output as a share of its base output. Show it only when both values are above zero.
+  const buildingShare =
+    data.buildingUnits > 0 && data.buildingBaseOutput > 0
+      ? data.buildingUnits / data.buildingBaseOutput
+      : undefined;
+  // Omit the world share when this scope is the whole world.
+  const worldBuildingShare =
+    data.worldBuildingBaseOutput > 0 && data.buildingUnits < data.worldBuildingUnits
+      ? data.worldBuildingUnits / data.worldBuildingBaseOutput
+      : undefined;
+
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[12px] text-game-ink-300">
@@ -120,11 +131,21 @@ function ProducersSummary({ data }: { data: GoodProducersData }) {
         {sources.length > 1 &&
           ` (${sources.map((s) => `${formatPercent(s.units / data.totalUnits)} ${s.label}`).join(", ")})`}
         .
+        {buildingShare !== undefined && (
+          <>
+            {" "}
+            <span title="Recorded building output divided by the base output of every building level that can make this good. Modifiers, staffing and missing inputs change it.">
+              Buildings here make {formatPercent(buildingShare)} of their base output
+              {worldBuildingShare !== undefined && ` (world: ${formatPercent(worldBuildingShare)})`}
+              .
+            </span>
+          </>
+        )}
       </p>
       <ProducersTable data={data} />
       <p className="text-[11px] text-game-ink-500">
         Market totals come from the save. The save does not record what each location makes, so the
-        split between countries is estimated from RGO size and building employment.
+        split between countries is estimated from RGO size and building level.
         {data.otherUnits > 0 &&
           ` ${formatFloat(data.otherUnits, 1)} units of base production have no known source and are not given to a country.`}
       </p>

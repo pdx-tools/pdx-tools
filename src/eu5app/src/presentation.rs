@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::color::Srgb;
 use crate::entity_profile::country::presentation::{
-    ActiveProfileIdentity, CountryPopulationProfile, CountryProfile, DiplomacySection,
-    EntityHeader, LocationsSection,
+    ActiveProfileIdentity, CountryPopulationProfile, CountryProductionProfile, CountryProfile,
+    DiplomacySection, EntityHeader, LocationsSection,
 };
 use crate::entity_profile::location::presentation::LocationProfile;
 use crate::entity_profile::market::presentation::{MarketGoodsSection, MarketProfile};
@@ -28,7 +28,8 @@ use crate::insights::buildings::presentation::BuildingLevelsInsightData;
 use crate::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
 use crate::insights::development::presentation::DevelopmentInsightData;
 use crate::insights::markets::presentation::{
-    GoodProducersData, MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
+    GoodProducersData, MarketInsightData, MarketProductionLocationSummary, ProductionByCountryData,
+    ScopedGoodSummary,
 };
 use crate::insights::population::presentation::PopulationInsightData;
 use crate::insights::population_growth::presentation::PopulationGrowthInsightData;
@@ -71,6 +72,15 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
     ) -> GoodProducersData {
         self.workspace
             .calculate_good_producers(good, market)
+            .present(&self.ctx)
+    }
+
+    pub fn calculate_production_by_country(
+        &self,
+        market: Option<MarketId>,
+    ) -> ProductionByCountryData {
+        self.workspace
+            .calculate_production_by_country(market)
             .present(&self.ctx)
     }
 
@@ -164,6 +174,15 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
     ) -> Option<CountryPopulationProfile> {
         self.workspace
             .country_population_profile_for(country_idx)
+            .map(|r| r.present(&self.ctx))
+    }
+
+    pub fn country_production_profile_for(
+        &self,
+        country_idx: CountryIdx,
+    ) -> Option<CountryProductionProfile> {
+        self.workspace
+            .country_production_profile_for(country_idx)
             .map(|r| r.present(&self.ctx))
     }
 

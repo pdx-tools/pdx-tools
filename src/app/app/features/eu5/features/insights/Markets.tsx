@@ -26,6 +26,7 @@ import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../Insigh
 import { MarketProductionLocations } from "./MarketProductionLocations";
 import { GoodsMarketsHeatmap } from "./GoodsMarketsHeatmap";
 import { GoodProducers, producedGoods } from "./GoodProducers";
+import { ProductionByCountry } from "./ProductionByCountry";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -214,6 +215,11 @@ export function MarketsInsight() {
               />
             </section>
           )}
+
+          <section>
+            <SectionTitle>Production value by country</SectionTitle>
+            <ProductionByCountry />
+          </section>
 
           {markets.length >= 2 && (
             <section>
