@@ -104,7 +104,9 @@ function SummaryTable({
 
   const container = useRef<HTMLDivElement>(null);
   const previous = useRef(new Map<string, { top: number; value: number }>());
+  const previousMetric = useRef(metric);
   useLayoutEffect(() => {
+    const sameMetric = previousMetric.current === metric;
     const next = new Map<string, { top: number; value: number }>();
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     container.current?.querySelectorAll<HTMLDivElement>("[data-trade-good]").forEach((element) => {
@@ -112,6 +114,8 @@ function SummaryTable({
       const value = Number(element.dataset.tradeValue);
       const top = element.offsetTop;
       const old = previous.current.get(name);
+      const number = element.querySelector("[data-trade-number]");
+      if (!sameMetric) number?.getAnimations().forEach((animation) => animation.cancel());
       next.set(name, { top, value });
       if (old && !reduced) {
         if (old.top !== top) {
@@ -121,16 +125,15 @@ function SummaryTable({
             { duration: 800, easing: "cubic-bezier(.22,.61,.36,1)" },
           );
         }
-        if (old.value !== value)
-          element
-            .querySelector("[data-trade-number]")
-            ?.animate([{ color: value > old.value ? "#8fcfa7" : "#ed9692" }, { color: "" }], {
-              duration: 1000,
-              easing: "ease-out",
-            });
+        if (sameMetric && old.value !== value)
+          number?.animate([{ color: value > old.value ? "#8fcfa7" : "#ed9692" }, { color: "" }], {
+            duration: 1000,
+            easing: "ease-out",
+          });
       }
     });
     previous.current = next;
+    previousMetric.current = metric;
   }, [sorted, metric]);
 
   if (sorted.length === 0) {
