@@ -10,11 +10,14 @@ export type Eu5Carry = {
   insightPanel: { open: boolean; width: number };
   /**
    * Use country tags across saves because country indices can change.
-   * Location indices remain stable within one map. Market selections are not restored.
+   * Location indices remain stable within one map. Markets carry by their center
+   * because market IDs can change between saves.
    */
   selection:
     | { kind: "players" }
     | { kind: "country"; tag: string; focusedLocation: number | null }
+    | { kind: "market"; center: number }
+    | { kind: "location"; locationIdx: number }
     | null;
 };
 
@@ -32,6 +35,11 @@ export async function captureEu5Carry(store: Eu5Store): Promise<Eu5Carry> {
     if (tag) {
       carried = { kind: "country", tag, focusedLocation: selection?.focusedLocation ?? null };
     }
+  } else if (profile?.kind === "market") {
+    const market = await engine.queries.getMarketProfile(profile.market.key);
+    if (market) carried = { kind: "market", center: market.centerId };
+  } else if (profile?.kind === "location") {
+    carried = { kind: "location", locationIdx: profile.location.key };
   }
 
   return {
@@ -59,6 +67,11 @@ export async function applyEu5Carry(engine: AppEngine, carry: Eu5Carry): Promise
         await engine.commands.setFocusedLocation(selection.focusedLocation);
       }
     }
+  } else if (selection?.kind === "market") {
+    const marketId = await engine.queries.getMarketIdAtCenter(selection.center);
+    if (marketId !== null) await engine.commands.selectMarket(marketId);
+  } else if (selection?.kind === "location") {
+    await engine.commands.setFocusedLocation(selection.locationIdx);
   }
 
   // Restore the camera after selection changes so the view stays fixed.

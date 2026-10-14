@@ -1069,6 +1069,18 @@ impl Eu5App {
         )
     }
 
+    /// Resolve a market across campaign saves by its stable center location.
+    #[wasm_bindgen]
+    pub fn market_id_at_center(&self, center_id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .market_manager
+            .database
+            .iter_with_id()
+            .find(|(_, market)| market.center.value() == center_id)
+            .map(|(id, _)| id.value())
+    }
+
     /// Full market profile resolved from `market_id`, independent of current map mode.
     #[wasm_bindgen]
     pub fn get_market_profile(&self, market_id: u32) -> Result<Option<Ts<MarketProfile>>, JsError> {

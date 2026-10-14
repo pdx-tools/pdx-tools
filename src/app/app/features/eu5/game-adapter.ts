@@ -310,6 +310,7 @@ export type SaveQueries = Pick<
   | "getCountryProfile"
   | "getCountryPopulationProfile"
   | "getMarketProfile"
+  | "getMarketIdAtCenter"
   | "getMarketGoodsProfile"
   | "getMarketLocationsProfile"
   | "getLocationProfile"

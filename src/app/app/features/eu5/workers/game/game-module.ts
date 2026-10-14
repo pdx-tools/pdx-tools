@@ -457,6 +457,8 @@ export const loadSave = async (
     getCountryPopulationProfile: (countryIdx: number): CountryPopulationProfile | null => {
       return app.get_country_population_profile(countryIdx) ?? null;
     },
+    getMarketIdAtCenter: (center: number): number | null => app.market_id_at_center(center) ?? null,
+
     getMarketProfile: (marketId: number): MarketProfile | null => {
       return app.get_market_profile(marketId) ?? null;
     },
