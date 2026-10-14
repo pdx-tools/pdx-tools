@@ -83,6 +83,7 @@ By default, ironman and binary files will be unparsable. If you are in possessio
 
 ```plain
 assets/tokens/eu4.txt
+assets/tokens/eu5.txt
 assets/tokens/ck3.txt
 assets/tokens/hoi4.txt
 assets/tokens/vic3.txt
