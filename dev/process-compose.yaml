@@ -8,28 +8,17 @@ ordered_shutdown: true
 
 processes:
   db:
-    command: mise run env:dev -- up --build db
-    readiness_probe:
-      exec:
-        command: mise run env:dev -- exec -T db pg_isready -h 127.0.0.1 -U postgres
-      period_seconds: 1
-      failure_threshold: 60
-    shutdown:
-      command: mise run env:dev -- stop db
-      timeout_seconds: 30
-    availability:
-      exit_on_end: true
-
-  migrate:
-    command: node ./dev/scripts/services.mts migrate
+    # PostgreSQL runs in the background, so a command stops it. The start also
+    # applies the migrations.
+    command: node ./dev/scripts/services.mts start
+    is_daemon: true
     environment:
       - SERVICES_ENV=dev
-    depends_on:
-      db:
-        condition: process_healthy
+    shutdown:
+      command: node ./dev/scripts/services.mts stop
+      timeout_seconds: 30
     availability:
       restart: exit_on_failure
-      exit_on_skipped: true
 
   app:
     command: mise run --skip-deps dev:app

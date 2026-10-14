@@ -1,5 +1,0 @@
-services:
-  db:
-    extends:
-      file: docker-compose.test.yml
-      service: db

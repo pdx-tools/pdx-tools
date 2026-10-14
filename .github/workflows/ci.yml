@@ -143,9 +143,7 @@ jobs:
           if [ "${{ matrix.arch }}" = "arm64" ]; then
             steamcmd 2>&1 | grep -F "steamcmd is only installed in the amd64 devcontainer image."
           else
-            # Start the test services with Docker in Docker and apply the
-            # migrations.
-            mise run start:services:test -d
+            mise run start:services:test
           fi
 
   devcontainer-publish:
@@ -225,8 +223,8 @@ jobs:
             suite: app-tests
             with_tokens: true
           - os: macos-15
-            suite: no-tokens # docker not supported on macos gh actions
-            with_tokens: false
+            suite: app-tests
+            with_tokens: true
     name: build / ${{ matrix.os }} / ${{ matrix.suite }}
     env:
       ASSET_CACHE_PATHS: |
@@ -323,24 +321,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store
 
-      - name: Start PostgreSQL on Windows
-        if: matrix.os == 'windows-latest' && matrix.suite == 'app-tests'
-        shell: bash
-        env:
-          PGHOST: 127.0.0.1
-          PGUSER: postgres
-          PGPASSWORD: root
-        run: |
-          source src/app/.env.test
-          source dev/.env.test
-          export PGPORT="$DATABASE_PORT"
-          export DATABASE_APP_USER="$DATABASE_USER" DATABASE_APP_USER_PASSWORD="$DATABASE_PASSWORD"
-          "$PGBIN/pg_ctl.exe" -D "$PGDATA" -o "-p $PGPORT" -l "$RUNNER_TEMP/postgres.log" -w start
-          psql() { "$PGBIN/psql.exe" -v ON_ERROR_STOP=1 "$@"; }
-          source dev/sql/init-db.sh
-          echo "DATABASE_ADMIN_PASSWORD=$PGPASSWORD" >> "$GITHUB_ENV"
-          echo "PDX_TEST_DATABASE_EXTERNAL=1" >> "$GITHUB_ENV"
-  
       - name: Asset pipeline
         id: asset-pipeline
         if: matrix.with_tokens # if tokens are enabled, process game bundles
