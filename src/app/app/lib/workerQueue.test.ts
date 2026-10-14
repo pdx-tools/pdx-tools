@@ -127,6 +127,19 @@ it("rejects a worker crash and runs the next job on a fresh worker", async () =>
   expect(workers).toHaveLength(2);
 });
 
+it("discards an errored idle worker before accepting more work", async () => {
+  const { queue, workers } = setup();
+  await expect(queue.run((api) => api.echo("first"))).resolves.toBe("first");
+  workers[0].dispatchEvent(new Event("error"));
+  expect(workers[0].terminate).toHaveBeenCalledOnce();
+
+  await expect(queue.run((api) => api.echo("next"))).resolves.toBe("next");
+  expect(workers).toHaveLength(2);
+  workers[0].dispatchEvent(new Event("error"));
+  expect(workers[1].terminate).not.toHaveBeenCalled();
+  queue.terminate();
+});
+
 it("keeps a complete job on one worker and recycles between jobs", async () => {
   const { queue, workers, calls } = setup({ recycleAfterJob: true });
   await queue.run(async (api) => {

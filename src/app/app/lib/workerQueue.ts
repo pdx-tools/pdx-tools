@@ -53,7 +53,9 @@ export function createWorkerQueue<Api>(
       const raw = start();
       const untrack = trackWorker(raw);
       const onError = (event: ErrorEvent) => {
-        if (worker?.raw === raw) active?.cancel(new Error(event.message || "Worker failed"));
+        if (worker?.raw !== raw) return;
+        if (active) active.cancel(new Error(event.message || "Worker failed"));
+        else stopWorker();
       };
       raw.addEventListener("error", onError);
       worker = {
