@@ -23,19 +23,23 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   const path = await permalink.getAttribute("href");
   expect(path).toMatch(/^\/eu5\/saves\/\w+$/);
 
+  // Close each map before the next one opens. Pages in one browser share the
+  // GPU, and a busy map can block the other page for many seconds.
+  await page.goto("/saves?game=eu5");
+  const card = page.getByText("1 April 1617").first();
+  await expect(card).toBeVisible();
+
   await visitor.goto(path!);
   await expect(campaignDate(visitor)).toHaveAttribute("aria-valuetext", "1617 Apr 1", {
     timeout: 60_000,
   });
   await expect(visitor.getByRole("button", { name: "Copy link" })).toBeVisible();
+  await visitor.close();
 
-  await page.goto("/saves?game=eu5");
-  const card = page.getByText("1 April 1617").first();
-  await expect(card).toBeVisible();
   await page.getByRole("button", { name: "Delete save" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Delete save" }).click();
   await expect(card).toBeHidden();
 
-  const gone = await visitor.request.get(`/api${path}`);
+  const gone = await page.request.get(`/api${path}`);
   expect(gone.status()).toBe(404);
 });

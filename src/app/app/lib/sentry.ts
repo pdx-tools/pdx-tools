@@ -1,5 +1,4 @@
 import { setCaptureExceptionImplementation } from "@/lib/captureException";
-import { isEnvironmentSupported } from "@/lib/compatibility";
 import { setWebWorkerIntegration } from "@/lib/sentryWorker";
 import posthog from "posthog-js";
 
@@ -24,9 +23,6 @@ export function sentryInit() {
         debug: !import.meta.env.PROD,
         tunnel: "/api/tunnel",
         ignoreErrors: ["ResizeObserver loop completed with undelivered notifications."],
-        beforeSend: (event, _hint) => {
-          return isEnvironmentSupported() ? event : null;
-        },
         integrations: [
           webWorker,
           posthog.sentryIntegration({

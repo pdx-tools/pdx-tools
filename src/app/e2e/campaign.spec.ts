@@ -254,6 +254,8 @@ test("a visitor steps through uploaded EU4 saves and a local file takes preceden
   await stepTimeline(visitor);
   await visitor.keyboard.press("[");
   await expect(visitor).toHaveURL(`/eu4/saves/${uploads[0]}`);
+  // The visitor's map shares the GPU with the next page.
+  await visitor.close();
 
   await openFiles(page, [await saveFixture("eu4", EU4_SAVES[0])]);
   await expectSaveIndex(page, 1, 2);

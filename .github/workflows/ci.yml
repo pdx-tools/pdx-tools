@@ -358,10 +358,11 @@ jobs:
           esac
 
       - name: Upload browser test report
-        if: failure() && matrix.os == 'ubuntu-latest' && matrix.suite == 'app-tests'
+        if: failure() && matrix.suite == 'app-tests'
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.os }}
+          if-no-files-found: ignore
           path: |
             src/app/playwright-report
             src/app/test-results

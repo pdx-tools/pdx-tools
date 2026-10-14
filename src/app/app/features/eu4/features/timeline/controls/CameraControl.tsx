@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { CameraIcon } from "@heroicons/react/24/solid";
 import { IMG_WIDTH } from "@pdx.tools/map";
+import { webgl2Capabilities } from "../../map/resources";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Button } from "@/components/Button";
-import { compatibilityReport } from "@/lib/compatibility";
 import { downloadData } from "@/lib/downloadData";
 import { emitEvent } from "@/lib/events";
 import { toast } from "@/lib/toast";
@@ -16,10 +16,7 @@ export function CameraControl() {
   const meta = useEu4Meta();
   const mode = useEu4MapMode();
   const date = useSelectedDate();
-  const [textureSize] = useState(() => {
-    const report = compatibilityReport();
-    return report.webgl2.enabled ? report.webgl2.textureSize.actual : 0;
-  });
+  const [textureSize] = useState(() => webgl2Capabilities()?.maxTextureSize ?? 0);
 
   const { isLoading, run } = useTriggeredAction({
     action: async (kind: "view" | 1 | 2) => {

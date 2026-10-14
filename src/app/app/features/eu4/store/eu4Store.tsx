@@ -1,4 +1,3 @@
-import { compatibilityReport } from "@/lib/compatibility";
 import { check } from "@/lib/isPresent";
 import type { MapController } from "@pdx.tools/map";
 import { pdxApi } from "@/services/appApi";
@@ -6,6 +5,7 @@ import { createContext, useContext, useMemo } from "react";
 import { createStore, useStore } from "zustand";
 import type { StoreApi } from "zustand";
 import { mapModes } from "../types/map";
+import { webgl2Capabilities } from "../features/map/resources";
 import type { MapPayload } from "../types/map";
 import type {
   CountryMatcher,
@@ -171,10 +171,10 @@ export const createEu4Store = async ({
   } as const;
 
   const syncMapSettings = (state: Eu4State, options?: { draw?: boolean }) => {
-    const report = compatibilityReport().webgl2;
+    const gpu = webgl2Capabilities();
     state.map.update(
       {
-        renderTerrain: state.renderTerrain && report.enabled && !report.performanceCaveat,
+        renderTerrain: state.renderTerrain && gpu !== null && !gpu.performanceCaveat,
         showProvinceBorders: state.showProvinceBorders,
         showCountryBorders: selectShowCountryBorders(state),
         showMapModeBorders: state.showMapModeBorders,
