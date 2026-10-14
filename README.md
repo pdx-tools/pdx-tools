@@ -26,24 +26,20 @@ If you'd like to contribute, you've come to the right place! This README should 
 
 ### Setup Instructions
 
-1. Install [mise](https://mise.jdx.dev/). Mise is a task runner and will download all dependencies.
-2. Within the pdx tools repo, ensure all dependencies are up to date with:
-  ```bash
-  mise install
-  ```
-3. It's also a good idea to install Rust via [Rustup](https://rustup.rs/).
-4. To develop against plaintext / debug CK3, Vic3, Imperator, and HOI4 saves on localhost:3001
-  ```bash
-  mise run dev:app
-  ```
+1. Install [mise](https://mise.jdx.dev/). It manages the tool versions used by this repo, and the development tasks install the project dependencies. See [mise install instructions](https://mise.jdx.dev/installing-mise.html#installation-methods). Windows users with winget can run:
+   ```cmd
+   winget install jdx.mise --version 2026.9.17
+   ```
 
-### EU4 and EU5 next steps
-
-For those contributing to EU4 or EU5, pdx.tools must access the game data to prepare those assets to be consumed within the browser.
-
-```bash
-mise run assets:compile
-```
+2. For EU4 or EU5 development, compile browser assets from your installed game files. Skip this step when developing support for other games.
+   ```bash
+   mise run assets:compile
+   ```
+3. Start the full development environment:
+   ```bash
+   mise run dev
+   ```
+   Open [http://localhost:3001](http://localhost:3001).
 
 ### Dev Container
 
@@ -67,15 +63,15 @@ pnpm config set store-dir D:\packages\pnpm
 
 ### Start server
 
-To start the PDX Tools:
+To run only the frontend:
 
 ```bash
 mise run dev:app
 ```
 
-This will start the web server on port 3001.
+This starts the web server on port 3001.
 
-To develop against the frontend and backend services:
+To run the full development environment, including the backend services:
 
 ```bash
 mise run dev
