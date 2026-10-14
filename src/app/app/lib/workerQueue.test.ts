@@ -5,26 +5,26 @@ vi.mock("comlink", () => ({ wrap: (raw: unknown) => raw }));
 vi.mock("@/lib/sentryWorker", () => ({ trackWorker: vi.fn() }));
 
 type Api = { echo: (value: string) => Promise<string> };
-type FakeWorker = Api & { terminate: ReturnType<typeof vi.fn> };
+type FakeWorker = EventTarget & Api & { terminate: ReturnType<typeof vi.fn> };
 
-function setup({ idleMs = 1_000, timeoutMs = 5_000 } = {}) {
+function setup({ idleMs = 1_000, timeoutMs = 5_000, recycleAfterJob = false } = {}) {
   const workers: FakeWorker[] = [];
   const calls: string[] = [];
   const gates = new Map<string, () => void>();
   const start = () => {
-    const worker: FakeWorker = {
-      echo: (value) =>
-        new Promise((resolve) => {
+    const worker: FakeWorker = Object.assign(new EventTarget(), {
+      echo: (value: string) =>
+        new Promise<string>((resolve) => {
           calls.push(value);
           if (value.startsWith("wait")) gates.set(value, () => resolve(value));
           else resolve(value);
         }),
       terminate: vi.fn(),
-    };
+    });
     workers.push(worker);
     return worker as unknown as Worker;
   };
-  const queue = createWorkerQueue<Api>(start, { idleMs, timeoutMs });
+  const queue = createWorkerQueue<Api>(start, { idleMs, timeoutMs, recycleAfterJob });
   return { queue, workers, calls, gates };
 }
 
@@ -68,4 +68,85 @@ describe("createWorkerQueue", () => {
     expect(workers[0].terminate).toHaveBeenCalledOnce();
     expect(workers).toHaveLength(2);
   });
+});
+
+it("rejects active and queued jobs on termination and permits later work", async () => {
+  const { queue, workers, gates } = setup();
+  const first = queue.run((api) => api.echo("wait-first"));
+  const next = queue.run((api) => api.echo("next"));
+  const firstFailure = expect(first).rejects.toMatchObject({ name: "AbortError" });
+  const nextFailure = expect(next).rejects.toMatchObject({ name: "AbortError" });
+  await vi.waitFor(() => expect(gates.has("wait-first")).toBe(true));
+  queue.terminate();
+  await Promise.all([firstFailure, nextFailure]);
+  expect(workers[0].terminate).toHaveBeenCalledOnce();
+  await expect(queue.run((api) => api.echo("fresh"))).resolves.toBe("fresh");
+  expect(workers).toHaveLength(2);
+});
+
+it("cancels a queued job without interrupting the active worker", async () => {
+  const { queue, workers, gates, calls } = setup();
+  const controller = new AbortController();
+  const first = queue.run((api) => api.echo("wait-first"));
+  const cancelled = queue.run((api) => api.echo("cancelled"), { signal: controller.signal });
+  const failure = expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
+  controller.abort();
+  await failure;
+  expect(workers[0].terminate).not.toHaveBeenCalled();
+  gates.get("wait-first")!();
+  await first;
+  expect(calls).toEqual(["wait-first"]);
+});
+
+it("cancels active work immediately and signals asynchronous host callbacks", async () => {
+  const { queue, workers } = setup();
+  const controller = new AbortController();
+  let jobSignal: AbortSignal | undefined;
+  const job = queue.run(
+    (api, signal) => {
+      jobSignal = signal;
+      return api.echo("wait-active");
+    },
+    { signal: controller.signal },
+  );
+  const failure = expect(job).rejects.toMatchObject({ name: "AbortError" });
+  controller.abort();
+  await failure;
+  expect(jobSignal?.aborted).toBe(true);
+  expect(workers[0].terminate).toHaveBeenCalledOnce();
+});
+
+it("rejects a worker crash and runs the next job on a fresh worker", async () => {
+  const { queue, workers } = setup();
+  const failed = queue.run((api) => api.echo("wait-crash"));
+  const next = queue.run((api) => api.echo("next"));
+  const failure = expect(failed).rejects.toThrow("Worker failed");
+  workers[0].dispatchEvent(new Event("error"));
+  await failure;
+  await expect(next).resolves.toBe("next");
+  expect(workers).toHaveLength(2);
+});
+
+it("keeps a complete job on one worker and recycles between jobs", async () => {
+  const { queue, workers, calls } = setup({ recycleAfterJob: true });
+  await queue.run(async (api) => {
+    await api.echo("parse");
+    expect(workers[0].terminate).not.toHaveBeenCalled();
+    return api.echo("cache");
+  });
+  expect(calls).toEqual(["parse", "cache"]);
+  expect(workers[0].terminate).toHaveBeenCalledOnce();
+  await queue.run((api) => api.echo("second-save"));
+  expect(workers).toHaveLength(2);
+  expect(workers[1].terminate).toHaveBeenCalledOnce();
+});
+
+it("does not create a worker for an already cancelled job", async () => {
+  const { queue, workers } = setup();
+  const controller = new AbortController();
+  controller.abort();
+  await expect(
+    queue.run((api) => api.echo("never"), { signal: controller.signal }),
+  ).rejects.toMatchObject({ name: "AbortError" });
+  expect(workers).toHaveLength(0);
 });
