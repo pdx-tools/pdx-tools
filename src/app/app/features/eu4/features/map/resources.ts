@@ -39,6 +39,25 @@ export function glContext(
   return canvas.getContext("webgl2", arg);
 }
 
+type Webgl2Capabilities = { maxTextureSize: number; performanceCaveat: boolean };
+let capabilities: Webgl2Capabilities | null | undefined;
+
+/** Find what the GPU can do for the map. Returns null without WebGL2. */
+export function webgl2Capabilities(): Webgl2Capabilities | null {
+  if (capabilities !== undefined) {
+    return capabilities;
+  }
+
+  const fast = glContext(document.createElement("canvas"), { failIfMajorPerformanceCaveat: true });
+  const gl = fast ?? glContext(document.createElement("canvas"));
+  capabilities = gl && {
+    maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+    performanceCaveat: !fast,
+  };
+  gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  return capabilities;
+}
+
 export function setMapControls(map: WebGLMap, controls: MapOnlyControls) {
   map.showProvinceBorders = controls.showProvinceBorders;
   map.showMapModeBorders = controls.showMapModeBorders;

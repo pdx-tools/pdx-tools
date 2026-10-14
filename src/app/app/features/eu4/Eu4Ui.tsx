@@ -7,7 +7,6 @@ import { SavePreviewUnderlay } from "@/components/SavePreviewUnderlay";
 import { developerLog } from "@/lib/log";
 import { useLoadEu4, Eu4StoreProvider } from "./store";
 import type { Eu4SaveInput } from "./store";
-import { BrowserCheck } from "@/components/landing/BrowserCheck";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { ogImageUrl } from "@/lib/media";
@@ -96,7 +95,6 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
             <Alert.Description>{getErrorMessage(error)}</Alert.Description>
           </Alert>
         ) : null}
-        <BrowserCheck />
       </div>
     </>
   );

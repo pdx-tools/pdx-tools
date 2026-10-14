@@ -13,7 +13,7 @@ export type Event =
       game: DetectedDataType;
     }
   | {
-      kind: "Timelapse playing" | "Login click" | "Register click";
+      kind: "$pageview" | "Timelapse playing" | "Login click" | "Register click";
     }
   | {
       kind: "Screenshot taken" | "Timelapse recording";
@@ -30,13 +30,6 @@ export type Event =
   | {
       kind: "Country details tab change" | "World details selection";
       section: string;
-    }
-  | {
-      kind: "$pageview";
-      maxSize: number | null;
-      performanceCaveat: boolean | null;
-      offscreenCanvas: boolean;
-      supportedEnvironment: boolean;
     }
   | {
       kind: "Budget interval switched";

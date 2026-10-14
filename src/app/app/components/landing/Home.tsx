@@ -2,7 +2,6 @@ import React from "react";
 import games from "./games.webp";
 import { HeroFileInput } from "./HeroFileInput";
 import { Link } from "@/components/Link";
-import { BrowserCheck } from "./BrowserCheck";
 import {
   ChromeIcon,
   DiscordIcon,
@@ -88,7 +87,6 @@ export const Home = ({ subtitle }: HomeProps) => {
                 </Link>
               </div>
             </div>
-            <BrowserCheck />
           </div>
           <section className="flex w-full flex-col items-center justify-center">
             <div className="flex">

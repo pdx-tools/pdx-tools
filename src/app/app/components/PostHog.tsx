@@ -1,6 +1,5 @@
 import posthog from "posthog-js";
 import { useEffect } from "react";
-import { compatibilityReport, isEnvironmentSupported } from "@/lib/compatibility";
 import { emitEvent } from "@/lib/events";
 import { PostHogProvider } from "posthog-js/react";
 import { useLocation } from "react-router";
@@ -29,17 +28,7 @@ export function PostHog() {
   }, []);
 
   useEffect(() => {
-    const { webgl2, offscreen } = compatibilityReport();
-    const maxTextureSize = webgl2.enabled ? webgl2.textureSize.actual : null;
-    const performanceCaveat = webgl2.enabled ? webgl2.performanceCaveat : null;
-
-    emitEvent({
-      kind: "$pageview",
-      maxSize: maxTextureSize,
-      performanceCaveat,
-      offscreenCanvas: offscreen.enabled,
-      supportedEnvironment: isEnvironmentSupported(),
-    });
+    emitEvent({ kind: "$pageview" });
   }, [location]);
 
   return <PostHogProvider client={posthog} />;
