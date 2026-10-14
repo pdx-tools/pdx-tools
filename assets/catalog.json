@@ -74,8 +74,8 @@
         },
         {
           "branch": "1.4-open-beta",
-          "game_version": "1.4.0",
-          "sha256": "ca0a4fc72a3352dc2224dfb177da68fb6b77bc5725346db0b54fe4dac8881b76"
+          "game_version": "1.4.1",
+          "sha256": "b9aecdbbf5e90f416da52eea27aedd473c20d1188ec37c191da83030a0600032"
         }
       ]
     }
