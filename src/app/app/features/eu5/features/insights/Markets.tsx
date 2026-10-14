@@ -444,6 +444,8 @@ export function GoodsPressureChart({
         </div>
       )}
       <EChart
+        gpuBars
+        mergeUpdates
         option={option}
         style={{ height: `${height}px`, width: "100%" }}
         onInit={
@@ -513,7 +515,7 @@ function MarketGoodSankey({ good }: { good: ScopedGoodSummary }) {
     return <EmptyNote>No category breakdown is available for this good.</EmptyNote>;
   }
 
-  return <EChart option={option} style={{ height: "360px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "360px", width: "100%" }} />;
 }
 
 function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
@@ -671,7 +673,14 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
     return <EmptyNote>No demand fulfillment breakdown is available for this good.</EmptyNote>;
   }
 
-  return <EChart option={option} style={{ height: `${rows.length * 34 + 70}px`, width: "100%" }} />;
+  return (
+    <EChart
+      gpuBars
+      mergeUpdates
+      option={option}
+      style={{ height: `${rows.length * 34 + 70}px`, width: "100%" }}
+    />
+  );
 }
 
 const MONTH_NAMES = [
@@ -840,7 +849,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
     return <EmptyNote>No price history is available for this good.</EmptyNote>;
   }
 
-  return <EChart option={option} style={{ height: "300px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "300px", width: "100%" }} />;
 }
 
 function positiveEntries(entries: GoodBreakdownEntry[]): GoodBreakdownEntry[] {
@@ -1110,6 +1119,7 @@ export function GoodsPriceVsBaseChart({
 
   return (
     <EChart
+      mergeUpdates
       option={option}
       style={{ height: "320px", width: "100%" }}
       onInit={(chart) => {
@@ -1251,5 +1261,12 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <EChart
+      mergeUpdates
+      option={option}
+      style={{ height: "420px", width: "100%" }}
+      onInit={handleInit}
+    />
+  );
 }
