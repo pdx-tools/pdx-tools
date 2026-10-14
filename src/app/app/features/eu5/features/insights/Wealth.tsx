@@ -222,5 +222,13 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <EChart
+      mergeUpdates
+      gpuScatter
+      option={option}
+      style={{ height: "420px", width: "100%" }}
+      onInit={handleInit}
+    />
+  );
 }
