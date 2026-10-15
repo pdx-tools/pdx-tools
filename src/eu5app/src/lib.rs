@@ -30,7 +30,7 @@ pub use session::{
     Eu5AnySaveLoader, Eu5DateComponents, Eu5DebugSaveLoader, Eu5LoadError, Eu5LoadedSave,
     Eu5SaveLoader, Eu5SaveMetadata, Eu5Workspace, LocalizedEu5Workspace, MapChange, MapDirty,
     OpeningView, Player, SAVE_HEADER_MAX_LEN, TimelineNote, TimelineSummary, humanize_note_key,
-    metadata_prefix_len, read_metadata_prefix,
+    read_metadata_at,
 };
 
 pub use color::Srgb;

@@ -140,7 +140,7 @@ export const loadSave = async (
     hold,
   }: {
     save: Eu5ParsedSave;
-    data: ArrayBuffer;
+    data: Blob;
     hold: boolean;
   },
   {
@@ -163,11 +163,10 @@ export const loadSave = async (
   const [wasm, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
   onProgress?.(5, "Reading save file");
 
-  const metaParser = timeSync("Create Meta Parser", () => wasm_eu5.Eu5MetaParser.create());
   onProgress?.(10, "Parsing gamestate");
 
-  const saveParser = timeSync("Initialize Save Parser", () =>
-    metaParser.init(new Uint8Array(saveData)),
+  const saveParser = await timeAsync("Initialize Save Parser", () =>
+    wasm_eu5.SaveLoader.open(saveData),
   );
 
   const metadata = saveParser.meta();

@@ -10,29 +10,10 @@ const ready = Promise.all([
   fetchOk(tokenPath).then((x) => x.arrayBuffer()),
 ]).then(([, tokens]) => wasm_eu5.set_tokens(new Uint8Array(tokens)));
 
-async function readFileStart(file: File, end: number): Promise<Uint8Array> {
-  return new Uint8Array(await file.slice(0, end).arrayBuffer());
-}
-
-/** Fallback for saves without a metadata prefix length. */
-function readWholeFileMeta(data: Uint8Array) {
-  const loader = wasm_eu5.Eu5MetaParser.create().init(data);
-  try {
-    return loader.meta();
-  } finally {
-    loader.free();
-  }
-}
-
-/** Read only the metadata prefix when the save format supports it. */
+/** Read only the parts of the save that hold its metadata. */
 export async function readIdentity(file: File): Promise<SaveIdentity> {
   await ready;
-  const start = await readFileStart(file, wasm_eu5.save_header_max_len());
-  const prefixLen = wasm_eu5.save_metadata_prefix_len(start);
-  const meta =
-    prefixLen === undefined
-      ? readWholeFileMeta(new Uint8Array(await file.arrayBuffer()))
-      : wasm_eu5.read_save_metadata_prefix(await readFileStart(file, prefixLen));
+  const meta = wasm_eu5.read_save_metadata(file);
   return {
     playthroughId: toPlaythroughId(meta.playthroughId),
     campaignIdHint: null,

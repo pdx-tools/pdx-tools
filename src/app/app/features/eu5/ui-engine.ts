@@ -652,8 +652,8 @@ export async function readSaveData(input: Eu5SaveInput): Promise<Eu5SaveData> {
     input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input;
   const data =
     save.kind === "file"
-      ? await save.file.arrayBuffer()
-      : await fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
+      ? save.file
+      : await fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.blob());
   return { save, data };
 }
 

@@ -140,7 +140,9 @@ impl From<Eu5MapMode> for MapMode {
 }
 
 mod tokens;
+
 pub use tokens::set_tokens;
+use wasm_pdx_core::blob::{BlobReader, read_blob_start};
 
 #[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
 #[serde(tag = "type", content = "value")]
@@ -401,38 +403,46 @@ impl From<eu5app::OverlayTable> for OverlayTable {
     }
 }
 
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct Eu5MetaParser {
-    base_resolver: &'static FlatResolver<'static>,
-}
+/// Stream an uncompressed save, so the large file is not in memory. Read a
+/// compressed save at once, because one read is faster.
+async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
+    let start = read_blob_start(&save, eu5app::SAVE_HEADER_MAX_LEN as u64)?;
+    let uncompressed = eu5save::SaveHeader::from_slice(&start).is_ok_and(|header| {
+        matches!(
+            header.kind(),
+            eu5save::SaveHeaderKind::Text | eu5save::SaveHeaderKind::Binary
+        )
+    });
 
-#[wasm_bindgen]
-impl Eu5MetaParser {
-    #[wasm_bindgen]
-    pub fn create() -> Result<Self, JsError> {
-        Ok(Eu5MetaParser {
-            base_resolver: tokens::get_tokens(),
-        })
-    }
-
-    #[wasm_bindgen]
-    pub fn init(self, save: Vec<u8>) -> Result<SaveLoader, JsError> {
-        let parser = Eu5AnySaveLoader::open(save, self.base_resolver)
-            .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
-
-        Ok(SaveLoader { parser })
+    if uncompressed {
+        BlobReader::streaming(save)
+    } else {
+        BlobReader::buffered(&save).await
     }
 }
 
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct SaveLoader {
-    parser: Eu5AnySaveLoader<Vec<u8>, &'static FlatResolver<'static>>,
+    parser: Eu5AnySaveLoader<BlobReader, &'static FlatResolver<'static>>,
 }
 
 #[wasm_bindgen]
 impl SaveLoader {
+    /// Open a save from a `Blob`, such as a `File`. The save is never
+    /// copied completely into wasm memory.
+    #[wasm_bindgen]
+    pub async fn open(save: web_sys::Blob) -> Result<SaveLoader, JsError> {
+        let reader = open_save(save)
+            .await
+            .map_err(|e| JsError::new(&format!("Failed to read save file: {e}")))?;
+        let size = reader.size();
+        let parser = Eu5AnySaveLoader::open_at(reader, size, tokens::get_tokens())
+            .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
+
+        Ok(SaveLoader { parser })
+    }
+
     #[wasm_bindgen]
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
@@ -450,24 +460,21 @@ impl SaveLoader {
     }
 }
 
-/// Return the metadata prefix length, or undefined when a full read is required.
-/// `start` must contain at least `SAVE_HEADER_MAX_LEN` bytes.
+/// Read the metadata of a save without the rest of the save.
 #[wasm_bindgen]
-pub fn save_metadata_prefix_len(start: &[u8]) -> Option<usize> {
-    eu5app::metadata_prefix_len(start)
-}
-
-#[wasm_bindgen]
-pub fn save_header_max_len() -> usize {
-    eu5app::SAVE_HEADER_MAX_LEN
-}
-
-/// Read metadata from a complete prefix, without loading the rest of the save.
-#[wasm_bindgen]
-pub fn read_save_metadata_prefix(prefix: &[u8]) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
-    let meta = eu5app::read_metadata_prefix(prefix, tokens::get_tokens())
+pub fn read_save_metadata(save: web_sys::Blob) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
+    let meta = read_metadata(save)
         .map_err(|e| JsError::new(&format!("Failed to parse save metadata: {e}")))?;
-    into_ts(Eu5SaveMetadataHandle(Rc::new(meta)))
+    into_ts(Eu5SaveMetadataHandle(meta))
+}
+
+fn read_metadata(save: web_sys::Blob) -> Result<Rc<Eu5SaveMetadata>, eu5app::Eu5LoadError> {
+    // One window holds the header and a metadata prefix of a few hundred KB.
+    let reader =
+        BlobReader::streaming_with_window(save, 1024 * 1024).map_err(eu5app::Eu5LoadError::Read)?;
+    let size = reader.size();
+    let meta = eu5app::read_metadata_at(reader, size, tokens::get_tokens())?;
+    Ok(Rc::new(meta))
 }
 
 #[wasm_bindgen]

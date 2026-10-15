@@ -17,8 +17,11 @@ export type Eu5SaveInput =
  */
 export type Eu5ParsedSave = Exclude<Eu5SaveInput, { kind: "handle" }>;
 
-/** Read the target save before releasing the current one. */
-export type Eu5SaveData = { save: Eu5ParsedSave; data: ArrayBuffer };
+/**
+ * Get the target save before releasing the current one. The worker reads
+ * the `Blob` as it parses, so the complete save is not in memory.
+ */
+export type Eu5SaveData = { save: Eu5ParsedSave; data: Blob };
 
 export function eu5SaveFileUrl(saveId: string): string {
   return `/api/eu5/saves/${saveId}/file`;

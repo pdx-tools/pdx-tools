@@ -1,7 +1,8 @@
 use arena_serde::ArenaDeserialize;
-use eu5save::{Eu5BinaryDeserialization, SaveResolver, models::Gamestate};
+use eu5save::{Eu5BinaryDeserialization, ReaderAt, SaveResolver, models::Gamestate};
 use jomini::{TextDeserializer, text::TokenReader};
 use wasm_bindgen::prelude::*;
+use wasm_pdx_core::blob::BlobReader;
 
 mod tokens;
 pub use tokens::set_tokens;
@@ -17,21 +18,32 @@ pub use tokens::set_tokens;
 /// Keeping diagnostics separate leaves the primary module at 2.08 MB and reduced the clean
 /// joint build to 60.1 s. The web worker therefore loads this module only after the fast parser
 /// fails.
+///
+/// The save is read from a `Blob` as the parse needs it. Thus, the complete
+/// save is not in wasm memory.
 #[wasm_bindgen]
-pub fn diagnose_save(save: Vec<u8>) -> Result<(), JsError> {
+pub fn diagnose_save(save: web_sys::Blob) -> Result<(), JsError> {
     diagnose_save_impl(save)
         .map_err(|error| JsError::new(&format!("Failed to parse game state: {error}")))
 }
 
-fn diagnose_save_impl(save: Vec<u8>) -> Result<(), String> {
+fn diagnose_save_impl(save: web_sys::Blob) -> Result<(), String> {
+    let save = BlobReader::streaming(save)
+        .map_err(|error| format!("Unable to read save file: {error}"))?;
+    let size = save.size();
+    let mut magic = [0u8; 4];
+    let magic = &mut magic[..size.min(4) as usize];
+    save.read_exact_at(magic, 0)
+        .map_err(|error| format!("Unable to read save file: {error}"))?;
+
     let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
     let mut path_buf = Vec::new();
     let track = arena_serde::tracked::Track::new_with(&mut path_buf);
 
     // An uploaded save is a Zstd stream of a text save. Read it through the
     // debug text reader, which decodes the stream as it parses.
-    let game = if pdx_zstd::is_zstd_compressed(&save) {
-        let decoder = pdx_zstd::Decoder::new(std::io::Cursor::new(save))
+    let game = if pdx_zstd::is_zstd_compressed(magic) {
+        let decoder = pdx_zstd::Decoder::new(rawzip::RangeReader::new(save, 0..size))
             .map_err(|error| format!("Unable to decompress save file: {error}"))?;
         let file = eu5save::Eu5DebugFile::from_reader(decoder)
             .map_err(|error| format!("Unable to parse save file: {error}"))?;
@@ -39,7 +51,7 @@ fn diagnose_save_impl(save: Vec<u8>) -> Result<(), String> {
         let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &track);
         Gamestate::deserialize_in_arena(tracked, &arena)
     } else {
-        let file = eu5save::Eu5File::from_slice(save)
+        let file = eu5save::Eu5File::from_reader_at(save, size)
             .map_err(|error| format!("Unable to parse save file: {error}"))?;
         let game_content = file
             .gamestate()
