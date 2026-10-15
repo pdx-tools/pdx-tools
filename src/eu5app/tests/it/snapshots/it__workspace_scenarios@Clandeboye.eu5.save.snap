@@ -126,9 +126,18 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     }
   },
   "save_version": "1.0.4",
+  "selection_cases": {
+    "location_without_market": true,
+    "owned_location": true,
+    "owned_market_anchor": true
+  },
   "selection_counts": {
     "after_add": 395,
     "after_remove": 134,
     "after_select": 261
+  },
+  "timeline": {
+    "available": false,
+    "change_dates": 0
   }
 }
