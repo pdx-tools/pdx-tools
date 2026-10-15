@@ -341,6 +341,7 @@ export type SaveCommands = Pick<
   | "addCountry"
   | "removeCountry"
   | "selectMarket"
+  | "selectMarketAt"
   | "addMarket"
   | "removeMarket"
   | "setFocusedLocation"

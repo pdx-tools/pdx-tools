@@ -169,6 +169,77 @@ fn workspace_scenarios() {
     });
 }
 
+#[test]
+fn campaign_selection_uses_market_anchors_and_location_profiles() {
+    let Some(mut loaded) =
+        utils::build_workspace("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5")
+    else {
+        return;
+    };
+    let ws = &mut loaded.workspace;
+    let (market_id, anchor) = ws
+        .gamestate()
+        .market_manager
+        .database
+        .iter_with_id()
+        .find_map(|(id, market)| {
+            let idx = ws.gamestate().locations.get(market.center)?;
+            let loc = ws.gamestate().locations.index(idx).location();
+            (loc.market == Some(id) && !loc.owner.is_dummy()).then_some((id, idx))
+        })
+        .expect("fixture has an owned market anchor");
+    let header = ws
+        .localized(&loaded.localization)
+        .presenter()
+        .market_profile_for(market_id)
+        .unwrap()
+        .header;
+    assert_eq!(header.anchor_location_idx, anchor.value());
+
+    for mode in [MapMode::Political, MapMode::Markets, MapMode::Population] {
+        ws.clear_selection();
+        ws.set_map_mode(mode);
+        ws.select_market_at(LocationIdx::new(header.anchor_location_idx));
+        let profile = ws
+            .localized(&loaded.localization)
+            .presenter()
+            .active_profile_identity();
+        assert!(matches!(
+            profile,
+            Some(eu5app::entity_profile::ActiveProfileIdentity::Market { market })
+                if market.key.value() == market_id.value()
+        ));
+        assert!(ws.selection_state().focused_location().is_none());
+    }
+
+    ws.clear_selection();
+    ws.set_map_mode(MapMode::Political);
+    ws.select_country_at(anchor);
+    assert!(matches!(
+        ws.localized(&loaded.localization)
+            .presenter()
+            .active_profile_identity(),
+        Some(eu5app::entity_profile::ActiveProfileIdentity::Country { .. })
+    ));
+    ws.set_focused_location(anchor);
+    assert!(matches!(
+        ws.localized(&loaded.localization).presenter().active_profile_identity(),
+        Some(eu5app::entity_profile::ActiveProfileIdentity::Location { location })
+            if location.key.value() == anchor.value()
+    ));
+
+    let outside_market = ws
+        .gamestate()
+        .locations
+        .iter()
+        .find(|entry| entry.location().market.is_none())
+        .expect("fixture has locations outside any market")
+        .idx();
+    ws.clear_selection();
+    ws.select_market_at(outside_market);
+    assert!(ws.selection_state().is_empty());
+}
+
 /// The border index at the save date must agree with the current owner of
 /// every location, and a round trip through the past must restore the live
 /// map exactly. Saves from before the campaign timeline have no history, so

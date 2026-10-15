@@ -420,6 +420,7 @@ export const loadSave = async (
     addCountry: (countryIdx: number) => afterMutation(app.add_country(countryIdx)),
     removeCountry: (countryIdx: number) => afterMutation(app.remove_country(countryIdx)),
     selectMarket: (marketId: number) => afterMutation(app.select_market(marketId)),
+    selectMarketAt: (locationIdx: number) => afterMutation(app.select_market_at(locationIdx)),
     addMarket: (marketId: number) => afterMutation(app.add_market(marketId)),
     removeMarket: (marketId: number) => afterMutation(app.remove_market(marketId)),
     setFocusedLocation: (locationIdx: number) =>

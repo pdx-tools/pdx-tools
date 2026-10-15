@@ -813,6 +813,14 @@ impl Eu5App {
         selection_change_ts(center, gradient)
     }
 
+    /// Select the market at a location using the current save's market IDs.
+    #[wasm_bindgen]
+    pub fn select_market_at(&mut self, location_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        let (center, gradient) = self.app.select_market_at(idx);
+        selection_change_ts(center, gradient)
+    }
+
     #[wasm_bindgen]
     pub fn add_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
