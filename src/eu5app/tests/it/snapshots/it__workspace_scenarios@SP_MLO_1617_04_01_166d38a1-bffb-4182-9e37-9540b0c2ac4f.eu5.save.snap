@@ -126,9 +126,18 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
     }
   },
   "save_version": "1.4.0",
+  "selection_cases": {
+    "location_without_market": true,
+    "owned_location": true,
+    "owned_market_anchor": true
+  },
   "selection_counts": {
     "after_add": 524,
     "after_remove": 42,
     "after_select": 482
+  },
+  "timeline": {
+    "available": true,
+    "change_dates": 4077
   }
 }
