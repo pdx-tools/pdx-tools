@@ -392,6 +392,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
   return (
     <EChart
       mergeUpdates
+      gpuScatter
       option={option}
       style={{ height: "420px", width: "100%" }}
       onInit={handleInit}

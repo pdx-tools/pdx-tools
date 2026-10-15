@@ -1,3 +1,4 @@
+import { CHART_UPDATE_DURATION, CHART_UPDATE_EASING } from "./chartMotion";
 import { captureSankey, animateSankey } from "./sankeyTransitions";
 import { createGpuScatter, gpuScatterOption } from "./gpuScatter";
 import { createGpuBars, gpuBarOption, supportsGpuBars } from "./gpuBars";
@@ -98,7 +99,7 @@ export interface EChartProps {
   className?: string;
   /** Keep series identities for animated updates and retain chart zoom. */
   mergeUpdates?: boolean;
-  /** Render a single country scatterplot's points on the GPU. */
+  /** Render a single circular scatterplot's points on the GPU. */
   gpuScatter?: boolean;
   /** Animate Cartesian bars on the GPU, retaining the ECharts layout and controls. */
   gpuBars?: boolean;
@@ -107,8 +108,23 @@ export interface EChartProps {
 export const escapeEChartsHtml = (value: unknown) =>
   echarts.format.encodeHTML(value == null ? "" : String(value));
 
+function datasetIdentity(source: unknown) {
+  const first = Array.isArray(source) ? source[0] : undefined;
+  return first && !Array.isArray(first) && typeof first === "object"
+    ? "id" in first
+      ? "id"
+      : "name" in first
+        ? "name"
+        : "religion" in first
+          ? "religion"
+          : "scope" in first
+            ? "scope"
+            : undefined
+    : undefined;
+}
+
 // ECharts diffs by series ID and item ID. Keep these stable while rankings change.
-function animatedOption(option: EChartsOption): EChartsOption {
+function animatedOption(option: EChartsOption, duration: number): EChartsOption {
   const list = <T,>(value: T | T[] | undefined): T[] =>
     value == null ? [] : Array.isArray(value) ? value : [value];
   const categoryAxis = [...list(option.xAxis), ...list(option.yAxis)].find(
@@ -120,23 +136,11 @@ function animatedOption(option: EChartsOption): EChartsOption {
     ...option,
     animation:
       option.animation !== false && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    animationDurationUpdate: 800,
-    animationEasingUpdate: "cubicInOut",
+    animationDurationUpdate: duration,
+    animationEasingUpdate: CHART_UPDATE_EASING,
     dataset: datasets.map((dataset) => {
       const source = dataset.source;
-      const first = Array.isArray(source) ? source[0] : undefined;
-      const identity =
-        first && !Array.isArray(first) && typeof first === "object"
-          ? "id" in first
-            ? "id"
-            : "name" in first
-              ? "name"
-              : "religion" in first
-                ? "religion"
-                : "scope" in first
-                  ? "scope"
-                  : undefined
-          : undefined;
+      const identity = datasetIdentity(source);
       const dimensions = dataset.dimensions;
       return identity &&
         dimensions &&
@@ -147,19 +151,7 @@ function animatedOption(option: EChartsOption): EChartsOption {
     series: list(option.series).map((series, index) => {
       const dataset = datasets[("datasetIndex" in series ? series.datasetIndex : 0) ?? 0];
       const source = dataset?.source;
-      const first = Array.isArray(source) ? source[0] : undefined;
-      const identity =
-        first && !Array.isArray(first) && typeof first === "object"
-          ? "id" in first
-            ? "id"
-            : "name" in first
-              ? "name"
-              : "religion" in first
-                ? "religion"
-                : "scope" in first
-                  ? "scope"
-                  : undefined
-          : undefined;
+      const identity = datasetIdentity(source);
       const data =
         "data" in series && Array.isArray(series.data)
           ? series.data.map((item, i) => {
@@ -208,12 +200,21 @@ export const EChart = memo(function EChart({
 
   const visibleRef = useRef(!mergeUpdates);
   const appliedRef = useRef<EChartsOption | null>(null);
+  const lastUpdateRef = useRef<{ option: EChartsOption; at: number } | null>(null);
   const applyOptionRef = useRef<(() => void) | undefined>(undefined);
   const applyOption = useEffectEvent(() => {
     const chart = chartRef.current;
     if (!chart || !visibleRef.current || appliedRef.current === option) return;
     const previousSankey = mergeUpdates ? captureSankey(chart) : undefined;
-    const next = mergeUpdates ? animatedOption(option) : option;
+    const now = performance.now();
+    // Finish frequent playback transitions before the next observation arrives.
+    // Slower updates retain the usual duration; interrupted transitions still
+    // start from their current position rather than jumping to the destination.
+    const duration =
+      lastUpdateRef.current == null
+        ? CHART_UPDATE_DURATION
+        : Math.min(CHART_UPDATE_DURATION, (now - lastUpdateRef.current.at) * 0.8);
+    const next = mergeUpdates ? animatedOption(option, duration) : option;
     if (gpuBars && !barsFailed.current && !barsRef.current && supportsGpuBars(next)) {
       barsRef.current = createGpuBars(chart, () => {
         barsRef.current?.dispose();
@@ -239,7 +240,8 @@ export const EChart = memo(function EChart({
     barsRef.current?.update(next);
     gpuRef.current?.update(next);
     appliedRef.current = option;
-    if (previousSankey) animateSankey(chart, previousSankey);
+    if (lastUpdateRef.current?.option !== option) lastUpdateRef.current = { option, at: now };
+    if (previousSankey) animateSankey(chart, previousSankey, duration);
   });
 
   useEffect(() => {
@@ -296,13 +298,19 @@ export const EChart = memo(function EChart({
         size = { width: container.clientWidth, height: container.clientHeight };
         onInitEvent(chart);
       } else {
-        chartRef.current.getZr().animation.start();
-        gpuRef.current?.resume();
-        barsRef.current?.resume();
         resize();
       }
       applyOption();
+      chartRef.current?.getZr().animation.start();
+      gpuRef.current?.resume();
+      barsRef.current?.resume();
     };
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const motionChanged = () => {
+      appliedRef.current = null;
+      applyOption();
+    };
+    if (mergeUpdates) motion.addEventListener("change", motionChanged);
     // EU5 charts keep the latest option while clipped by a scroll panel or hidden.
     // They are created only when visible, then retained for subsequent animated updates.
     const visibility = mergeUpdates
@@ -326,6 +334,7 @@ export const EChart = memo(function EChart({
     resizeObserver.observe(container);
     return () => {
       if (rafId != null) cancelAnimationFrame(rafId);
+      if (mergeUpdates) motion.removeEventListener("change", motionChanged);
       visibility?.disconnect();
       resizeObserver.disconnect();
       barsRef.current?.dispose();
@@ -336,6 +345,7 @@ export const EChart = memo(function EChart({
       chartRef.current?.dispose();
       chartRef.current = null;
       appliedRef.current = null;
+      lastUpdateRef.current = null;
     };
   }, [mergeUpdates, gpuScatter, gpuBars]);
 

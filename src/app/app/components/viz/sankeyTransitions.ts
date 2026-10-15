@@ -1,3 +1,4 @@
+import { CHART_UPDATE_DURATION, CHART_UPDATE_EASING } from "./chartMotion";
 import type { ECharts } from "echarts/core";
 
 // The native Sankey view recreates its graphics on update. Capture only geometry,
@@ -45,15 +46,19 @@ export function captureSankey(chart: ECharts) {
   return shapes;
 }
 
-export function animateSankey(chart: ECharts, previous: Map<string, Shape>) {
+export function animateSankey(
+  chart: ECharts,
+  previous: Map<string, Shape>,
+  duration = CHART_UPDATE_DURATION,
+) {
   if (!previous.size || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   visitSankey(chart, (key, graphic) => {
     graphic.stopAnimation();
     graphic.disableLabelAnimation = false;
     const shape = previous.get(key);
     graphic.animateFrom(shape ? { shape } : { style: { opacity: 0 } }, {
-      duration: 800,
-      easing: "cubicInOut",
+      duration,
+      easing: CHART_UPDATE_EASING,
     });
   });
 }
