@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createWorkerQueue } from "./workerQueue";
 
 vi.mock("comlink", () => ({ wrap: (raw: unknown) => raw }));
-vi.mock("@/lib/sentryWorker", () => ({ trackWorker: vi.fn() }));
+vi.mock("@/lib/sentryWorker", () => ({ trackWorker: vi.fn(() => vi.fn()) }));
 
 type Api = { echo: (value: string) => Promise<string> };
 type FakeWorker = EventTarget & Api & { terminate: ReturnType<typeof vi.fn> };
@@ -54,6 +54,22 @@ describe("createWorkerQueue", () => {
 
     await queue.run((api) => api.echo("b"));
     expect(workers).toHaveLength(2);
+  });
+
+  it("rejects a parse failure and reuses the same worker for the next save", async () => {
+    const { queue, workers } = setup();
+    await queue.run((api) => api.echo("first save"));
+    const parseError = new Error("missing field morale");
+    vi.spyOn(workers[0], "echo").mockRejectedValueOnce(parseError);
+
+    const failed = queue.run((api) => api.echo("invalid save"));
+    const next = queue.run((api) => api.echo("next save"));
+
+    await expect(failed).rejects.toBe(parseError);
+    await expect(next).resolves.toBe("next save");
+    expect(workers).toHaveLength(1);
+    expect(workers[0].terminate).not.toHaveBeenCalled();
+    queue.terminate();
   });
 
   it("fails a call that takes too long and does not stop the calls after it", async () => {

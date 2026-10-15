@@ -63,7 +63,7 @@ export function createWorkerQueue<Api>(
         api: wrap<Api>(raw),
         cleanup: () => {
           raw.removeEventListener("error", onError);
-          untrack?.();
+          untrack();
         },
       };
     }
