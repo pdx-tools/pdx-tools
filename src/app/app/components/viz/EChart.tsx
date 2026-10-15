@@ -267,9 +267,9 @@ export const EChart = memo(function EChart({
     };
     const activate = () => {
       if (!chartRef.current) {
-        const chart = echarts.init(container, undefined, {
-          useDirtyRect: mergeUpdates && !gpuScatter,
-        });
+        // Dirty-rectangle painting clears strips of filled line series when
+        // axis-pointer hover markers move. Repaint the canvas as a whole.
+        const chart = echarts.init(container);
         chartRef.current = chart;
         if (gpuScatter) {
           gpuRef.current = createGpuScatter(chart, () => {
