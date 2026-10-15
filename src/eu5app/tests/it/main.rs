@@ -445,7 +445,7 @@ fn opens_a_zstd_remuxed_zip_save() {
 }
 
 #[test]
-fn metadata_prefix_matches_the_full_file() {
+fn metadata_read_matches_the_full_file() {
     insta::glob!("saves.d/*.save", |path| {
         let save_name = path
             .file_stem()
@@ -468,15 +468,10 @@ fn metadata_prefix_matches_the_full_file() {
 
         // The clone shares the position of the file, which the full read moved.
         std::io::Seek::rewind(&mut file).unwrap();
-        let mut start = vec![0u8; eu5app::SAVE_HEADER_MAX_LEN];
-        std::io::Read::read_exact(&mut file, &mut start).unwrap();
-        let len = eu5app::metadata_prefix_len(&start)
-            .unwrap_or_else(|| panic!("{save_name}: no metadata length"));
-        let mut prefix = vec![0u8; len];
-        std::io::Seek::rewind(&mut file).unwrap();
-        std::io::Read::read_exact(&mut file, &mut prefix).unwrap();
+        let mut data = Vec::new();
+        std::io::Read::read_to_end(&mut file, &mut data).unwrap();
 
-        let actual = eu5app::read_metadata_prefix(&prefix, resolver)
+        let actual = eu5app::read_metadata_at(data.as_slice(), data.len() as u64, resolver)
             .unwrap_or_else(|e| panic!("{save_name}: {e}"));
         assert_eq!(
             actual.playthrough_id, expected.playthrough_id,

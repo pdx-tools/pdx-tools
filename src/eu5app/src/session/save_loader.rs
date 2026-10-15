@@ -337,83 +337,110 @@ impl<R: Read, W: Write> Eu5DebugSaveLoader<R, W> {
 /// stream decodes through [`Eu5DebugSaveLoader`] without a buffer. Any other
 /// save is parsed in place with [`Eu5SaveLoader`].
 #[derive(Debug)]
-pub enum Eu5AnySaveLoader<D: AsRef<[u8]>, RES, W = std::io::Sink> {
-    Stream(Eu5DebugSaveLoader<pdx_zstd::Decoder<std::io::Cursor<D>>, W>),
-    File(Eu5SaveLoader<std::io::Cursor<D>, RES, W>),
+pub struct Eu5AnySaveLoader<R: ReaderAt, RES, W = std::io::Sink> {
+    inner: AnySaveLoader<R, RES, W>,
 }
 
-impl Eu5AnySaveLoader<&[u8], (), ()> {
-    pub fn open<D: AsRef<[u8]>, RES: TokenResolver>(
-        data: D,
-        resolver: RES,
-    ) -> Result<Eu5AnySaveLoader<D, RES>, Eu5LoadError> {
+#[derive(Debug)]
+enum AnySaveLoader<R: ReaderAt, RES, W> {
+    Stream(Eu5DebugSaveLoader<pdx_zstd::Decoder<rawzip::RangeReader<R>>, W>),
+    File(Eu5SaveLoader<R, RES, W>),
+}
+
+impl<D: AsRef<[u8]>, RES: TokenResolver> Eu5AnySaveLoader<std::io::Cursor<D>, RES> {
+    pub fn open(data: D, resolver: RES) -> Result<Self, Eu5LoadError> {
         Self::open_with(data, resolver, std::io::sink())
     }
+}
 
+impl<D: AsRef<[u8]>, RES: TokenResolver, W: Write> Eu5AnySaveLoader<std::io::Cursor<D>, RES, W> {
     /// Open a save and write its decompressed content to `observer` as the
     /// content is read.
-    pub fn open_with<D: AsRef<[u8]>, RES: TokenResolver, W: Write>(
-        data: D,
-        resolver: RES,
-        observer: W,
-    ) -> Result<Eu5AnySaveLoader<D, RES, W>, Eu5LoadError> {
-        if pdx_zstd::is_zstd_compressed(data.as_ref()) {
-            let decoder = pdx_zstd::Decoder::new(std::io::Cursor::new(data))
-                .map_err(Eu5LoadError::Decompress)?;
-            let loader = Eu5DebugSaveLoader::open_with(decoder, observer)?;
-            Ok(Eu5AnySaveLoader::Stream(loader))
-        } else {
-            let file = Eu5File::from_slice(data).map_err(Eu5LoadError::Header)?;
-            let loader = Eu5SaveLoader::open_with(file, resolver, observer)?;
-            Ok(Eu5AnySaveLoader::File(loader))
-        }
+    pub fn open_with(data: D, resolver: RES, observer: W) -> Result<Self, Eu5LoadError> {
+        let size = data.as_ref().len() as u64;
+        Self::open_at_with(std::io::Cursor::new(data), size, resolver, observer)
     }
 }
 
-impl<D: AsRef<[u8]>, RES: TokenResolver, W: Write> Eu5AnySaveLoader<D, RES, W> {
+impl<R: ReaderAt, RES: TokenResolver> Eu5AnySaveLoader<R, RES> {
+    /// Open a save of `size` bytes that is not in memory. The loader reads
+    /// only the parts of the save that it needs, when it needs them.
+    pub fn open_at(reader: R, size: u64, resolver: RES) -> Result<Self, Eu5LoadError> {
+        Self::open_at_with(reader, size, resolver, std::io::sink())
+    }
+}
+
+impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5AnySaveLoader<R, RES, W> {
+    /// Like [`open_at`](Eu5AnySaveLoader::open_at), and write the
+    /// decompressed content to `observer` as the content is read.
+    pub fn open_at_with(
+        reader: R,
+        size: u64,
+        resolver: RES,
+        observer: W,
+    ) -> Result<Self, Eu5LoadError> {
+        let mut magic = [0u8; 4];
+        let magic = &mut magic[..size.min(4) as usize];
+        reader.read_exact_at(magic, 0).map_err(Eu5LoadError::Read)?;
+
+        let inner = if pdx_zstd::is_zstd_compressed(magic) {
+            let stream = rawzip::RangeReader::new(reader, 0..size);
+            let decoder = pdx_zstd::Decoder::new(stream).map_err(Eu5LoadError::Decompress)?;
+            AnySaveLoader::Stream(Eu5DebugSaveLoader::open_with(decoder, observer)?)
+        } else {
+            let file = Eu5File::from_reader_at(reader, size).map_err(Eu5LoadError::Header)?;
+            AnySaveLoader::File(Eu5SaveLoader::open_with(file, resolver, observer)?)
+        };
+        Ok(Self { inner })
+    }
+
     pub fn meta(&self) -> Rc<Eu5SaveMetadata> {
-        match self {
-            Eu5AnySaveLoader::Stream(loader) => loader.meta(),
-            Eu5AnySaveLoader::File(loader) => loader.meta(),
+        match &self.inner {
+            AnySaveLoader::Stream(loader) => loader.meta(),
+            AnySaveLoader::File(loader) => loader.meta(),
         }
     }
 
     pub fn parse(self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
-        match self {
-            Eu5AnySaveLoader::Stream(loader) => loader.parse(),
-            Eu5AnySaveLoader::File(loader) => loader.parse(),
+        match self.inner {
+            AnySaveLoader::Stream(loader) => loader.parse(),
+            AnySaveLoader::File(loader) => loader.parse(),
         }
     }
-}
-
-/// Return the header and metadata prefix length. Return `None` when a full read is required.
-pub fn metadata_prefix_len(start: &[u8]) -> Option<usize> {
-    let header = eu5save::SaveHeader::from_slice(start).ok()?;
-    let meta_len = usize::try_from(header.metadata_len()).ok()?;
-    (meta_len > 0).then(|| header.header_len() + meta_len)
 }
 
 /// Maximum header size, including optional padding and the line ending.
 pub const SAVE_HEADER_MAX_LEN: usize = 33;
 
-/// Read metadata without loading the complete save. The prefix must contain the full metadata.
-pub fn read_metadata_prefix<RES: TokenResolver>(
-    prefix: &[u8],
+/// Read the metadata of a save of `size` bytes without the rest of the save.
+/// Only the header and the metadata that follows it are read.
+pub fn read_metadata_at<R: ReaderAt, RES: TokenResolver>(
+    reader: R,
+    size: u64,
     resolver: RES,
 ) -> Result<Eu5SaveMetadata, Eu5LoadError> {
-    let header = eu5save::SaveHeader::from_slice(prefix).map_err(Eu5LoadError::Header)?;
-    let start = header.header_len();
-    let end = usize::try_from(header.metadata_len())
-        .ok()
-        .and_then(|len| start.checked_add(len))
-        .filter(|&end| end <= prefix.len())
-        .ok_or_else(|| Eu5LoadError::MetaRead(std::io::ErrorKind::UnexpectedEof.into()))?;
-    let data = &prefix[start..end];
+    let mut start = [0u8; SAVE_HEADER_MAX_LEN];
+    let start = &mut start[..size.min(SAVE_HEADER_MAX_LEN as u64) as usize];
+    reader.read_exact_at(start, 0).map_err(Eu5LoadError::Read)?;
+    let header = eu5save::SaveHeader::from_slice(start).map_err(Eu5LoadError::Header)?;
+    if header.metadata_len() == 0 {
+        let error = std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "the save header does not give a metadata length",
+        );
+        return Err(Eu5LoadError::MetaRead(error));
+    }
 
+    let begin = header.header_len() as u64;
+    let end = begin
+        .checked_add(header.metadata_len())
+        .filter(|&end| end <= size)
+        .ok_or_else(|| Eu5LoadError::MetaRead(std::io::ErrorKind::UnexpectedEof.into()))?;
+    let range = rawzip::RangeReader::new(reader, begin..end);
     let meta = if header.kind().is_text() {
-        SaveMetadataKind::Text(SaveMetadata::new(data, header))
+        SaveMetadataKind::Text(SaveMetadata::new(range, header))
     } else {
-        SaveMetadataKind::Binary(SaveMetadata::new(data, header))
+        SaveMetadataKind::Binary(SaveMetadata::new(range, header))
     };
     deserialize_metadata(meta, &resolver, &bumpalo::Bump::new())
 }
@@ -470,6 +497,9 @@ impl<W> Eu5LoadedSave<W> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Eu5LoadError {
+    #[error("Unable to read save: {0}")]
+    Read(#[source] std::io::Error),
+
     #[error("Unable to decompress save: {0}")]
     Decompress(#[source] pdx_zstd::Error),
 
@@ -539,18 +569,8 @@ mod tests {
     fn longest_header_fits_in_max_len() {
         let header = b"SAV0103aaaaaaaa0000002a12345678\r\n";
         assert_eq!(header.len(), SAVE_HEADER_MAX_LEN);
-        assert_eq!(
-            metadata_prefix_len(header),
-            Some(SAVE_HEADER_MAX_LEN + 0x2a)
-        );
-    }
-
-    #[test]
-    fn shortest_header_gives_its_own_length() {
-        let start = b"SAV0103aaaaaaaa0000002a\nmetadata starts here";
-        assert_eq!(
-            metadata_prefix_len(&start[..SAVE_HEADER_MAX_LEN]),
-            Some(24 + 0x2a)
-        );
+        let header = eu5save::SaveHeader::from_slice(header).unwrap();
+        assert_eq!(header.header_len(), SAVE_HEADER_MAX_LEN);
+        assert_eq!(header.metadata_len(), 0x2a);
     }
 }

@@ -225,7 +225,7 @@ export class Eu5GameAdapter {
     const [saveEngine, mapEngine] = await Promise.all([
       config.save.then(({ save, data }) =>
         this.eu5Worker.loadSave(
-          transfer({ save, data, hold: false }, [data]),
+          { save, data, hold: false },
           proxy({
             gameBundle: gameBundleApi,
             onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),
@@ -284,7 +284,7 @@ export class Eu5GameAdapter {
     };
 
     const saveEngine = await this.eu5Worker.loadSave(
-      transfer({ save, data, hold: true }, [data]),
+      { save, data, hold: true },
       proxy({
         gameBundle: gameBundleApi,
         onProgress: (increment: number, stage: string) => onProgress?.(increment, stage),

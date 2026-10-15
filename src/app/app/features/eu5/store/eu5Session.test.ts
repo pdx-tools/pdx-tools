@@ -85,7 +85,7 @@ beforeEach(() => {
   mocks.supported.mockReturnValue(true);
   mocks.read.mockImplementation(async (input: Eu5SaveInput) => ({
     save: input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input,
-    data: new ArrayBuffer(0),
+    data: new Blob(),
   }));
   mocks.start.mockImplementation(async ({ save }: { save: Promise<{ save: Eu5SaveInput }> }) =>
     game((await save).save),
