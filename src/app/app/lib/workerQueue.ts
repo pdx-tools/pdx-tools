@@ -93,7 +93,6 @@ export function createWorkerQueue<Api>(
         try {
           job.resolve(await Promise.race([job.run(controller.signal), interrupted]));
         } catch (error) {
-          stopWorker();
           job.reject(error);
         } finally {
           job.cleanup();
