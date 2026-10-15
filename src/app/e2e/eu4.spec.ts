@@ -46,9 +46,12 @@ test("upload a save, share it, and delete it", async ({ page, visitor }) => {
 
   // The uploader deletes it from the saves page.
   await page.goto("/saves");
-  const card = page.getByText("Italy, 12 December 1583");
+  const card = page.getByRole("article", {
+    name: "Italy, 12 December 1583",
+    exact: true,
+  });
   await expect(card).toBeVisible();
-  await page.getByRole("button", { name: "Delete save" }).click();
+  await card.getByRole("button", { name: "Delete save" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Delete save" }).click();
   await expect(card).toBeHidden();
 
