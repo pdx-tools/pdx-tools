@@ -53,6 +53,7 @@ test("upload a save, share it, and delete it", async ({ page, visitor }) => {
   await expect(card).toBeVisible();
   await card.getByRole("button", { name: "Delete save" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Delete save" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
   await expect(card).toBeHidden();
 
   const gone = await visitor.request.get(apiPath);
