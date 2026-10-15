@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Store } from "./store/eu5Store";
 import type { Eu5Carry } from "./campaignCarry";
+import type { SelectionSummaryData } from "@/wasm/wasm_eu5";
 import { applyEu5Carry, captureEu5Carry } from "./campaignCarry";
 
 const engine = () => ({
@@ -9,13 +10,13 @@ const engine = () => ({
   queries: {
     getCountryTag: vi.fn().mockResolvedValue("FRA"),
     findCountryByTag: vi.fn().mockResolvedValue(77),
-    getMarketProfile: vi.fn().mockResolvedValue({ centerId: 100 }),
-    getMarketIdAtCenter: vi.fn().mockResolvedValue(91),
+    getMarketProfile: vi.fn().mockResolvedValue({ header: { anchorLocationIdx: 100 } }),
   },
   commands: {
     selectPlayers: vi.fn(),
     selectCountry: vi.fn(),
     selectMarket: vi.fn(),
+    selectMarketAt: vi.fn(),
     setFocusedLocation: vi.fn(),
   },
   trigger: { selectMapMode: vi.fn(), fitWorldRect: vi.fn() },
@@ -26,7 +27,10 @@ const view = (selection: Eu5Carry["selection"]): Eu5Carry => ({
   insightPanel: { open: true, width: 640 },
   selection,
 });
-const capture = (previous: ReturnType<typeof engine>, selectionState: unknown) =>
+const capture = (
+  previous: ReturnType<typeof engine>,
+  selectionState: Pick<SelectionSummaryData, "activeProfile" | "focusedLocation" | "preset"> | null,
+) =>
   captureEu5Carry({
     getState: () => ({
       engine: previous,
@@ -43,21 +47,23 @@ const apply = (next: ReturnType<typeof engine>, selection: Eu5Carry["selection"]
   applyEu5Carry(next as unknown as AppEngine, view(selection));
 
 describe("campaign view carry", () => {
-  it("preserves a market through its center when its ID changes in the next save", async () => {
+  it("preserves a market through its anchor without carrying its save-specific ID", async () => {
     const previous = engine();
     const carry = await capture(previous, {
       activeProfile: { kind: "market", market: { key: 3, name: "Paris" } },
+      focusedLocation: undefined,
+      preset: undefined,
     });
-    expect(carry).toEqual(view({ kind: "market", center: 100 }));
+    expect(carry).toEqual(view({ kind: "market", locationIdx: 100 }));
     expect(previous.queries.getMarketProfile).toHaveBeenCalledExactlyOnceWith(3);
 
     const next = engine();
     await applyEu5Carry(next as unknown as AppEngine, carry);
-    expect(next.queries.getMarketIdAtCenter).toHaveBeenCalledExactlyOnceWith(100);
-    expect(next.commands.selectMarket).toHaveBeenCalledExactlyOnceWith(91);
+    expect(next.commands.selectMarketAt).toHaveBeenCalledExactlyOnceWith(100);
+    expect(next.commands.selectMarket).not.toHaveBeenCalled();
     expect(next.trigger.selectMapMode).toHaveBeenCalledExactlyOnceWith("population");
     expect(next.trigger.fitWorldRect).toHaveBeenCalledExactlyOnceWith(carry.viewport);
-    expect(next.commands.selectMarket.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(next.commands.selectMarketAt.mock.invocationCallOrder[0]).toBeLessThan(
       next.trigger.fitWorldRect.mock.invocationCallOrder[0],
     );
   });
@@ -66,6 +72,8 @@ describe("campaign view carry", () => {
     const previous = engine();
     const carry = await capture(previous, {
       activeProfile: { kind: "location", location: { key: 100, name: "Paris" } },
+      focusedLocation: 100,
+      preset: undefined,
     });
     expect(carry.selection).toEqual({ kind: "location", locationIdx: 100 });
     expect(previous.queries.getMarketProfile).not.toHaveBeenCalled();
@@ -80,20 +88,18 @@ describe("campaign view carry", () => {
     );
   });
 
-  it("leaves the selection empty when the carried market no longer has that center", async () => {
+  it("accepts anchor location index zero", async () => {
+    const previous = engine();
+    previous.queries.getMarketProfile.mockResolvedValue({ header: { anchorLocationIdx: 0 } });
+    const carry = await capture(previous, {
+      activeProfile: { kind: "market", market: { key: 3, name: "Paris" } },
+      focusedLocation: undefined,
+      preset: undefined,
+    });
+    expect(carry.selection).toEqual({ kind: "market", locationIdx: 0 });
     const next = engine();
-    next.queries.getMarketIdAtCenter.mockResolvedValue(null);
-    await apply(next, { kind: "market", center: 100 });
-    expect(next.commands.selectMarket).not.toHaveBeenCalled();
-    expect(next.commands.setFocusedLocation).not.toHaveBeenCalled();
-    expect(next.trigger.fitWorldRect).toHaveBeenCalledOnce();
-  });
-
-  it("accepts market ID zero", async () => {
-    const next = engine();
-    next.queries.getMarketIdAtCenter.mockResolvedValue(0);
-    await apply(next, { kind: "market", center: 100 });
-    expect(next.commands.selectMarket).toHaveBeenCalledExactlyOnceWith(0);
+    await applyEu5Carry(next as unknown as AppEngine, carry);
+    expect(next.commands.selectMarketAt).toHaveBeenCalledExactlyOnceWith(0);
   });
 
   it("does not carry a market that cannot be resolved in the original save", async () => {
@@ -101,21 +107,33 @@ describe("campaign view carry", () => {
     previous.queries.getMarketProfile.mockResolvedValue(null);
     const carry = await capture(previous, {
       activeProfile: { kind: "market", market: { key: 3, name: "Paris" } },
+      focusedLocation: undefined,
+      preset: undefined,
     });
     expect(carry.selection).toBeNull();
   });
 
-  it("keeps country remapping and its focused location", async () => {
+  it("keeps country remapping without a focused location", async () => {
     const previous = engine();
     const carry = await capture(previous, {
       activeProfile: { kind: "country", country: { key: 12, name: "France" } },
-      focusedLocation: 100,
+      focusedLocation: undefined,
+      preset: undefined,
     });
-    expect(carry.selection).toEqual({ kind: "country", tag: "FRA", focusedLocation: 100 });
+    expect(carry.selection).toEqual({ kind: "country", tag: "FRA" });
     const next = engine();
     await applyEu5Carry(next as unknown as AppEngine, carry);
     expect(next.commands.selectCountry).toHaveBeenCalledExactlyOnceWith(77);
-    expect(next.commands.setFocusedLocation).toHaveBeenCalledExactlyOnceWith(100);
+    expect(next.commands.setFocusedLocation).not.toHaveBeenCalled();
+  });
+
+  it("leaves selection empty when the country is absent from the next save", async () => {
+    const next = engine();
+    next.queries.findCountryByTag.mockResolvedValue(null);
+    await apply(next, { kind: "country", tag: "FRA" });
+    expect(next.commands.selectCountry).not.toHaveBeenCalled();
+    expect(next.commands.setFocusedLocation).not.toHaveBeenCalled();
+    expect(next.trigger.fitWorldRect).toHaveBeenCalledOnce();
   });
 
   it("keeps the players preset ahead of an active location profile", async () => {
@@ -123,6 +141,7 @@ describe("campaign view carry", () => {
     const carry = await capture(previous, {
       preset: "players",
       activeProfile: { kind: "location", location: { key: 100, name: "Paris" } },
+      focusedLocation: 100,
     });
     expect(carry.selection).toEqual({ kind: "players" });
     const next = engine();

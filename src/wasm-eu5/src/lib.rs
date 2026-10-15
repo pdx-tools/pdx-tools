@@ -813,6 +813,14 @@ impl Eu5App {
         selection_change_ts(center, gradient)
     }
 
+    /// Select the market at a location using the current save's market IDs.
+    #[wasm_bindgen]
+    pub fn select_market_at(&mut self, location_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        let (center, gradient) = self.app.select_market_at(idx);
+        selection_change_ts(center, gradient)
+    }
+
     #[wasm_bindgen]
     pub fn add_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
         let id = eu5save::models::MarketId::new(market_id);
@@ -1067,18 +1075,6 @@ impl Eu5App {
                 .presenter()
                 .country_population_profile_for(idx),
         )
-    }
-
-    /// Resolve a market across campaign saves by its stable center location.
-    #[wasm_bindgen]
-    pub fn market_id_at_center(&self, center_id: u32) -> Option<u32> {
-        self.app()
-            .gamestate()
-            .market_manager
-            .database
-            .iter_with_id()
-            .find(|(_, market)| market.center.value() == center_id)
-            .map(|(id, _)| id.value())
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.

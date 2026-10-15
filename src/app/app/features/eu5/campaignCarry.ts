@@ -10,13 +10,13 @@ export type Eu5Carry = {
   insightPanel: { open: boolean; width: number };
   /**
    * Use country tags across saves because country indices can change.
-   * Location indices remain stable within one map. Markets carry by their center
+   * Location indices remain stable within one map. Markets carry by their anchor
    * because market IDs can change between saves.
    */
   selection:
     | { kind: "players" }
-    | { kind: "country"; tag: string; focusedLocation: number | null }
-    | { kind: "market"; center: number }
+    | { kind: "country"; tag: string }
+    | { kind: "market"; locationIdx: number }
     | { kind: "location"; locationIdx: number }
     | null;
 };
@@ -33,11 +33,11 @@ export async function captureEu5Carry(store: Eu5Store): Promise<Eu5Carry> {
   } else if (profile?.kind === "country") {
     const tag = await engine.queries.getCountryTag(profile.country.key);
     if (tag) {
-      carried = { kind: "country", tag, focusedLocation: selection?.focusedLocation ?? null };
+      carried = { kind: "country", tag };
     }
   } else if (profile?.kind === "market") {
     const market = await engine.queries.getMarketProfile(profile.market.key);
-    if (market) carried = { kind: "market", center: market.centerId };
+    if (market) carried = { kind: "market", locationIdx: market.header.anchorLocationIdx };
   } else if (profile?.kind === "location") {
     carried = { kind: "location", locationIdx: profile.location.key };
   }
@@ -63,13 +63,9 @@ export async function applyEu5Carry(engine: AppEngine, carry: Eu5Carry): Promise
     const countryIdx = await engine.queries.findCountryByTag(selection.tag);
     if (countryIdx !== null) {
       await engine.commands.selectCountry(countryIdx);
-      if (selection.focusedLocation !== null) {
-        await engine.commands.setFocusedLocation(selection.focusedLocation);
-      }
     }
   } else if (selection?.kind === "market") {
-    const marketId = await engine.queries.getMarketIdAtCenter(selection.center);
-    if (marketId !== null) await engine.commands.selectMarket(marketId);
+    await engine.commands.selectMarketAt(selection.locationIdx);
   } else if (selection?.kind === "location") {
     await engine.commands.setFocusedLocation(selection.locationIdx);
   }
