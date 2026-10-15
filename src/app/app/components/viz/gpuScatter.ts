@@ -1,3 +1,4 @@
+import { CHART_UPDATE_DURATION, easeChartUpdate, interpolate } from "./chartMotion";
 import * as echarts from "echarts/core";
 import type { EChartsOption } from "./EChart";
 
@@ -8,10 +9,11 @@ type Point = {
   from: number[];
   to: number[];
   alpha: number;
+  fromSize: number;
+  toSize: number;
   visible: boolean;
 };
 
-const ease = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 const key = (d: Datum) => String(d.id ?? d.tag ?? d.name);
 
 // ECharts retains axes, zoom and sparse labels. Only the dense point layer uses WebGL.
@@ -42,23 +44,24 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
       gl.VERTEX_SHADER,
       `
       attribute vec2 aFrom; attribute vec2 aTo; attribute vec4 aColor;
-      attribute vec2 aAlpha;
-      uniform vec2 uSize; uniform float uProgress; uniform mediump float uPointSize;
-      varying vec4 vColor;
+      attribute vec2 aAlpha; attribute vec2 aSize;
+      uniform vec2 uSize; uniform float uProgress; uniform mediump float uRatio;
+      varying vec4 vColor; varying mediump float vPointSize;
       void main() {
         vec2 p = mix(aFrom, aTo, uProgress) / uSize;
         gl_Position = vec4(p.x * 2.0 - 1.0, 1.0 - p.y * 2.0, 0.0, 1.0);
-        gl_PointSize = uPointSize;
-        vColor = vec4(aColor.rgb, aColor.a * mix(aAlpha.x, aAlpha.y, uProgress));
+        float pointSize = mix(aSize.x, aSize.y, uProgress);
+        vPointSize = pointSize * uRatio + 1.0;
+        gl_PointSize = vPointSize;
+        vColor = vec4(aColor.rgb, aColor.a * mix(aAlpha.x, aAlpha.y, uProgress) * step(0.0001, pointSize));
       }`,
     );
     compile(
       gl.FRAGMENT_SHADER,
       `
-      precision mediump float; varying vec4 vColor; uniform mediump float uPointSize;
-      void main() {
+      precision mediump float; varying vec4 vColor; varying mediump float vPointSize; void main() {
         float radius = length(gl_PointCoord - vec2(0.5));
-        float alpha = clamp((0.5 - radius) * uPointSize, 0.0, 1.0);
+        float alpha = clamp((0.5 - radius) * vPointSize, 0.0, 1.0);
         gl_FragColor = vec4(vColor.rgb, vColor.a * alpha);
       }`,
     );
@@ -88,26 +91,31 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
     ["aTo", 2, 2],
     ["aColor", 4, 4],
     ["aAlpha", 2, 8],
+    ["aSize", 2, 10],
   ] as const) {
     const location = gl.getAttribLocation(program, name);
     gl.enableVertexAttribArray(location);
-    gl.vertexAttribPointer(location, size, gl.FLOAT, false, 40, offset * 4);
+    gl.vertexAttribPointer(location, size, gl.FLOAT, false, 48, offset * 4);
   }
   const sizeUniform = gl.getUniformLocation(program, "uSize");
   const progressUniform = gl.getUniformLocation(program, "uProgress");
-  const pointSizeUniform = gl.getUniformLocation(program, "uPointSize");
+  const ratioUniform = gl.getUniformLocation(program, "uRatio");
   gl.enable(gl.BLEND);
   gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   let points: Point[] = [];
   let started = 0;
   let duration = 0;
+  let maxPointSize = 8;
   let raf = 0;
   let paused = false;
   let option: EChartsOption;
   let hovered: Point | undefined;
+  let pointer: MouseEvent | undefined;
+  let tooltipText: string | undefined;
   const progress = () =>
-    duration ? ease(Math.min(1, (performance.now() - started) / duration)) : 1;
-  const position = (point: Point, t: number) => point.from.map((v, i) => v + (point.to[i] - v) * t);
+    duration ? easeChartUpdate(Math.min(1, (performance.now() - started) / duration)) : 1;
+  const position = (point: Point, t: number) =>
+    point.from.map((v, i) => interpolate(v, point.to[i], t));
   const eventParams = (point: Point, event?: MouseEvent) =>
     ({
       componentType: "series",
@@ -135,25 +143,26 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
       y = event.clientY - rect.top;
     if (!chart.containPixel({ gridIndex: 0 }, [x, y])) return;
     const t = progress();
-    let selected: Point | undefined;
-    let distance = 36;
-    for (const point of points) {
-      if (!point.visible) continue;
-      const [px, py] = position(point, t);
-      const d = (px - x) ** 2 + (py - y) ** 2;
-      if (d <= distance) {
-        distance = d;
-        selected = point;
-      }
+    // WebGL paints later points on top, so hit testing follows that order.
+    for (let i = points.length - 1; i >= 0; i--) {
+      const point = points[i];
+      if (!point.visible || interpolate(point.alpha, 1, t) < 0.01) continue;
+      const px = interpolate(point.from[0], point.to[0], t);
+      const py = interpolate(point.from[1], point.to[1], t);
+      const size = interpolate(point.fromSize, point.toSize, t);
+      if (size <= 0) continue;
+      const radius = size / 2 + 2;
+      if ((px - x) ** 2 + (py - y) ** 2 <= radius * radius) return point;
     }
-    return selected;
   };
-  const move = (event: MouseEvent) => {
+  const move = (event: MouseEvent, stationary = false) => {
+    pointer = event;
     const point = pick(event);
     if (!point) {
       clearHover();
       return;
     }
+    if (stationary && hovered === point) return;
     if (hovered !== point) {
       clearHover();
       hovered = point;
@@ -165,7 +174,10 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
     if (typeof formatter !== "function") return;
     const text = formatter(eventParams(point) as never, "gpu", () => {});
     if (typeof text !== "string") return;
-    tooltip.innerHTML = text;
+    if (tooltipText !== text) {
+      tooltip.innerHTML = text;
+      tooltipText = text;
+    }
     Object.assign(tooltip.style, {
       background: settings?.backgroundColor ?? "rgba(8,11,16,.9)",
       color: settings?.textStyle?.color ?? "#f2eade",
@@ -177,6 +189,10 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
     const rect = container.getBoundingClientRect();
     tooltip.style.left = `${Math.max(0, Math.min(event.clientX - rect.left + 12, chart.getWidth() - tooltip.offsetWidth - 4))}px`;
     tooltip.style.top = `${Math.max(0, Math.min(event.clientY - rect.top + 12, chart.getHeight() - tooltip.offsetHeight - 4))}px`;
+  };
+  const leave = () => {
+    pointer = undefined;
+    clearHover();
   };
   const click = (event: MouseEvent) => {
     const point = pick(event);
@@ -202,11 +218,8 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     // Grid corners follow zoom and resize without depending on ECharts internals.
-    const series = Array.isArray(option.series) ? option.series[0] : option.series;
     const grid = Array.isArray(option.grid) ? option.grid[0] : option.grid;
-    const pointSize =
-      series?.type === "scatter" && typeof series.symbolSize === "number" ? series.symbolSize : 8;
-    const radius = pointSize / 2 + 1;
+    const radius = maxPointSize / 2 + 1;
     if (
       grid &&
       typeof grid.left === "number" &&
@@ -225,21 +238,26 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
     gl.uniform2f(sizeUniform, width, height);
     const t = progress();
     gl.uniform1f(progressUniform, t);
-    gl.uniform1f(pointSizeUniform, pointSize * ratio + 1);
+    gl.uniform1f(ratioUniform, ratio);
     gl.drawArrays(gl.POINTS, 0, points.length);
+    if (pointer) move(pointer, true);
     if (t < 1) raf = requestAnimationFrame(draw);
   };
   const update = (next: EChartsOption, animate = true) => {
     clearHover();
     option = next;
     const series = Array.isArray(next.series) ? next.series[0] : next.series;
-    if (!series || !("data" in series)) return;
+    if (!series || series.type !== "scatter" || !Array.isArray(series.data)) return;
     const data = series.data as Datum[];
     const t = progress();
     const previous = new Map(
       points.map((p) => [
         key(p.data),
-        { position: position(p, t), alpha: p.alpha + ((p.visible ? 1 : 0) - p.alpha) * t },
+        {
+          position: position(p, t),
+          alpha: interpolate(p.alpha, p.visible ? 1 : 0, t),
+          size: interpolate(p.fromSize, p.toSize, t),
+        },
       ]),
     );
     const ids = new Set(data.map(key));
@@ -248,12 +266,19 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
       ...data.map((d, index) => {
         const to = chart.convertToPixel({ seriesIndex: 0 }, d.value) as number[];
         const old = previous.get(key(d));
+        const size =
+          typeof series.symbolSize === "function"
+            ? series.symbolSize(d.value, { data: d, dataIndex: index } as never)
+            : (series.symbolSize ?? 8);
+        const pointSize = typeof size === "number" ? Math.max(0, size) : 8;
         return {
           data: d,
           index,
           from: old?.position ?? to,
           to,
           alpha: old?.alpha ?? 0,
+          fromSize: old?.size ?? pointSize,
+          toSize: pointSize,
           visible: true,
         };
       }),
@@ -262,13 +287,24 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
         from: previous.get(key(p.data))!.position,
         to: previous.get(key(p.data))!.position,
         alpha: previous.get(key(p.data))!.alpha,
+        fromSize: previous.get(key(p.data))!.size,
+        toSize: previous.get(key(p.data))!.size,
         visible: false,
       })),
     ];
-    const vertices = new Float32Array(points.length * 10);
+    maxPointSize = points.reduce((max, p) => Math.max(max, p.fromSize, p.toSize), 0);
+    const vertices = new Float32Array(points.length * 12);
     const opacity = series.itemStyle?.opacity ?? 0.8;
     points.forEach((p, i) => {
-      const color = echarts.color.parse(p.data.color ?? "#1a9f99") ?? [26, 159, 153, 1];
+      const paint =
+        series.itemStyle?.color ?? (typeof series.color === "string" ? series.color : undefined);
+      const resolved =
+        typeof paint === "function"
+          ? paint(eventParams(p) as never)
+          : (paint ?? p.data.color ?? "#1a9f99");
+      const color = echarts.color.parse(typeof resolved === "string" ? resolved : "#1a9f99") ?? [
+        26, 159, 153, 1,
+      ];
       vertices.set(
         [
           ...p.from,
@@ -279,13 +315,20 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
           color[3] * opacity,
           p.alpha,
           p.visible ? 1 : 0,
+          p.fromSize,
+          p.toSize,
         ],
-        i * 10,
+        i * 12,
       );
     });
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
-    duration = animate && next.animation !== false && previous.size ? 800 : 0;
+    duration =
+      animate && next.animation !== false && previous.size
+        ? typeof next.animationDurationUpdate === "number"
+          ? next.animationDurationUpdate
+          : CHART_UPDATE_DURATION
+        : 0;
     started = performance.now();
     draw();
   };
@@ -298,7 +341,7 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
   };
   canvas.addEventListener("webglcontextlost", lost);
   container.addEventListener("mousemove", move);
-  container.addEventListener("mouseleave", clearHover);
+  container.addEventListener("mouseleave", leave);
   container.addEventListener("click", click);
   chart.on("datazoom", zoom);
   return {
@@ -309,7 +352,7 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
     pause: () => {
       paused = true;
       cancelAnimationFrame(raf);
-      clearHover();
+      leave();
     },
     resume: () => {
       paused = false;
@@ -317,11 +360,11 @@ export function createGpuScatter(chart: echarts.ECharts, fallback: () => void) {
     },
     dispose: () => {
       cancelAnimationFrame(raf);
-      clearHover();
+      leave();
       chart.off("datazoom", zoom);
       canvas.removeEventListener("webglcontextlost", lost);
       container.removeEventListener("mousemove", move);
-      container.removeEventListener("mouseleave", clearHover);
+      container.removeEventListener("mouseleave", leave);
       container.removeEventListener("click", click);
       gl.deleteBuffer(buffer);
       shaders.forEach((shader) => gl.deleteShader(shader));
@@ -344,7 +387,9 @@ export function gpuScatterOption(option: EChartsOption): EChartsOption {
   return {
     ...option,
     series: [
-      { ...series, symbolSize: 0, silent: true, label: { show: false }, animation: false },
+      // Retain dense data for axes and zoom without creating a second set of
+      // zero-size Canvas symbols for points already painted by WebGL.
+      { ...series, symbol: "none", silent: true, label: { show: false }, animation: false },
       {
         ...series,
         id: `${series.id}/labels`,

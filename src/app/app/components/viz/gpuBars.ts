@@ -1,3 +1,4 @@
+import { CHART_UPDATE_DURATION, easeChartUpdate, interpolate } from "./chartMotion";
 import * as echarts from "echarts/core";
 type Rect = InstanceType<typeof echarts.graphic.Rect>;
 type GlobalModel = { eachSeries(callback: (series: echarts.SeriesModel) => void): void };
@@ -25,8 +26,8 @@ type Bar = {
   focusSeries: boolean;
   silent: boolean;
 };
-const ease = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
-const position = (bar: Bar, t: number) => bar.from.map((v, i) => v + (bar.to[i] - v) * t) as Box;
+const position = (bar: Bar, t: number) =>
+  bar.from.map((v, i) => interpolate(v, bar.to[i], t)) as Box;
 const color = (value: unknown, opacity = 1) => {
   if (value == null || value === "none") return [0, 0, 0, 0];
   if (typeof value !== "string") throw new Error("Unsupported bar paint");
@@ -171,7 +172,7 @@ export function createGpuBars(chart: echarts.ECharts, fallback: () => void) {
     paused = false;
   let hovered: Bar | undefined;
   const progress = () =>
-    duration ? ease(Math.min(1, (performance.now() - started) / duration)) : 1;
+    duration ? easeChartUpdate(Math.min(1, (performance.now() - started) / duration)) : 1;
   const params = (bar: Bar, event?: MouseEvent) =>
     ({ ...bar.params, ...(event ? { event: { event } } : {}) }) as echarts.ECElementEvent;
   const clearHover = () => {
@@ -230,7 +231,7 @@ export function createGpuBars(chart: echarts.ECharts, fallback: () => void) {
       old = new Map(
         bars.map((b) => [
           b.key,
-          { ...b, from: position(b, t), fromAlpha: b.fromAlpha + (b.toAlpha - b.fromAlpha) * t },
+          { ...b, from: position(b, t), fromAlpha: interpolate(b.fromAlpha, b.toAlpha, t) },
         ]),
       );
     restore();
@@ -380,7 +381,7 @@ export function createGpuBars(chart: echarts.ECharts, fallback: () => void) {
             : 1000
           : typeof next.animationDurationUpdate === "number"
             ? next.animationDurationUpdate
-            : 800
+            : CHART_UPDATE_DURATION
         : 0;
     draw();
   };
