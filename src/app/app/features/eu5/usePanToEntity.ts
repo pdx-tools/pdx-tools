@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useEu5Engine } from "./store";
+import { activeEu5Store, useEu5Engine } from "./store";
 import { useViewportInsets } from "./useViewportInsets";
 
 export function usePanToEntity() {
@@ -8,7 +8,10 @@ export function usePanToEntity() {
 
   return useCallback(
     (locationIdx: number) => {
-      void engine.trigger.panToLocation(locationIdx, insets);
+      void (activeEu5Store()?.getState().engine ?? engine).trigger.panToLocation(
+        locationIdx,
+        insets,
+      );
     },
     [engine, insets],
   );

@@ -256,6 +256,8 @@ export type SaveQueries = Pick<
   | "getPoliticalWorldScoreboard"
   | "getPoliticalDefaultCountryAnchor"
   | "searchEntities"
+  | "getCountryStableId"
+  | "getSaveVersion"
   | "getCountryTag"
   | "findCountryByTag"
   | "getLocationArrays"

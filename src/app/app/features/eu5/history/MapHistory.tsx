@@ -1,3 +1,4 @@
+import type { AnalysisEntity } from "./analysisTypes";
 import type { MapInteraction } from "./mapInteraction";
 import {
   createContext,
@@ -284,6 +285,7 @@ function useMapHistoryState() {
         selectedObservations: { ...history.selectedObservations, [campaignId]: hash },
       }));
       await ensureObservationLoaded(campaignId, hash, campaign, interaction);
+      return true;
     } catch (failure) {
       if (!isAbortError(failure) && mounted.current) {
         setError(String(failure));
@@ -298,6 +300,7 @@ function useMapHistoryState() {
           }
         }
       }
+      return false;
     } finally {
       inspection.current = false;
       if (mounted.current) setInspecting(false);
@@ -333,6 +336,13 @@ function useMapHistoryState() {
     state.mapProjection,
     state.currentMapMode,
   ]);
+  const inspectEntity = async (entity: AnalysisEntity) => {
+    const hash = selectedFrame?.hash ?? state.mapProjection?.hash;
+    if (!hash || !campaignId || !campaign) return null;
+    const resolved = await campaignAnalysis().resolveEntity(hash, entity);
+    if (!(await inspect({ kind: "entity", entity: resolved }))) return null;
+    return activeEu5Store()?.getState().appState.selectionState?.activeProfile ?? null;
+  };
   const clearCampaign = async () => {
     if (!campaignId || inspection.current || progress !== null) return;
     inspection.current = true;
@@ -454,6 +464,7 @@ function useMapHistoryState() {
     preview: state.mapProjection,
     inspect,
     clearCampaign,
+    inspectEntity,
     playing,
   };
 }

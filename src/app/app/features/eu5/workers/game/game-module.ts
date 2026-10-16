@@ -458,6 +458,18 @@ const loadSaveInner = async (
     },
     replayMapInteraction: (interaction: MapInteraction) => {
       if (projectionActive || openSave !== opened) return;
+      if (interaction.kind === "entity") {
+        const entity = interaction.entity;
+        if (entity.kind === "country") {
+          const index = app.country_index_from_id(entity.id);
+          if (index == null) throw Error("Country is absent from this save");
+          return afterMutation(app.select_country(index));
+        }
+        if (entity.kind === "market") return afterMutation(app.select_market(entity.id));
+        const index = app.location_index_from_id(entity.id);
+        if (index == null) throw Error("Location is absent from this save");
+        return afterMutation(app.set_focused_location(index));
+      }
       if (interaction.kind === "click") events.click(interaction.event);
       else if (interaction.kind === "box") return events.boxSelect(interaction.event);
       else {
@@ -612,6 +624,11 @@ const loadSaveInner = async (
       const restored = restoreCampaignView(app, countryIndex, carry);
       await syncAll(restored.change);
       return restored;
+    },
+    getCountryStableId: (index: number) => app.country_id_at_index(index),
+    getSaveVersion: () => {
+      const version = app.meta().version;
+      return `${version.major}.${version.minor}.${version.patch}`;
     },
     getCountryProfile: (countryIdx: number): CountryProfile | null => {
       return timeSync("Get country profile", () => app.get_country_profile(countryIdx) ?? null);

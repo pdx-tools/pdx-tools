@@ -1,12 +1,19 @@
+import { useAnalysisHistory } from "./history/useAnalysisHistory";
 import { useMapHistory } from "./history/MapHistory";
+import { useHistory } from "./history/store";
+import { ContextGraphs } from "./history/ContextGraphs";
+import { useCurrentHistorySnapshot } from "./history/currentSnapshot";
+import { SaveHistory } from "./history/SaveHistory";
+import { GameButton } from "@/components/game/Button";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { formatCompact, formatInt } from "@/lib/format";
 import { Eu5Flag } from "./components/flags/Eu5Flag";
 import {
   useEu5MapMode,
+  useEu5PlaythroughId,
   useEu5SelectionState,
   useEu5World,
   useSetEu5InsightPanelWidth,
@@ -34,7 +41,11 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
-  const preview = useMapHistory()?.preview;
+  const projection = useMapHistory();
+  const preview = projection?.preview;
+  const historyOpen = useHistory((state) => state.panelOpen);
+  const setHistoryOpen = useHistory((state) => state.showPanel);
+  const currentMapMode = useEu5MapMode();
   const setInsightPanelWidth = useSetEu5InsightPanelWidth();
   const handleWidthChange = useCallback(
     (width: number) => setInsightPanelWidth(width),
@@ -60,14 +71,159 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         <ResizablePanel.Header className="border-b border-game-line">
           <ResizablePanel.CloseButton className={btnCx} />
           <div className="min-w-0 flex-1">
-            {preview ? "Campaign overview" : <InsightPanelTitle />}
+            {historyOpen ? (
+              <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+                Campaign history
+              </span>
+            ) : preview ? (
+              <span className="font-game-ui text-sm font-semibold text-game-ink-300">
+                Campaign overview
+              </span>
+            ) : (
+              <InsightPanelTitle />
+            )}
           </div>
           <ResizablePanel.MaximizeButton className={btnCx} />
         </ResizablePanel.Header>
         {/* Don't render panel content until open as panels can be very expensive to render with large charts */}
-        <ResizablePanel.Content>{open ? <PanelContentInner /> : null}</ResizablePanel.Content>
+        <ResizablePanel.Content>
+          {open && (
+            <>
+              <div className="flex gap-2 border-b border-game-line p-2">
+                <GameButton
+                  variant={historyOpen ? "ghost" : "default"}
+                  onClick={() => {
+                    setHistoryOpen(false);
+                  }}
+                >
+                  Current save
+                </GameButton>
+                <GameButton
+                  variant={historyOpen ? "default" : "ghost"}
+                  onClick={() => setHistoryOpen(true)}
+                >
+                  Over time
+                </GameButton>
+              </div>
+              {!historyOpen && (
+                <>
+                  <PanelContentInner />
+                  <InlineHistory />
+                </>
+              )}
+            </>
+          )}
+          {open && historyOpen ? <PanelSaveHistory visible mapMode={currentMapMode} /> : null}
+        </ResizablePanel.Content>
       </ResizablePanel.Root>
     </PanelNavProvider>
+  );
+}
+
+function useHistoryContext(
+  mapMode: React.ComponentProps<typeof SaveHistory>["mapMode"],
+  enabled = true,
+) {
+  const nav = usePanelNav();
+  const selection = useEu5SelectionState();
+  const preview = useMapHistory()?.preview;
+  const identity = preview ? undefined : (nav.top?.profile ?? selection?.activeProfile);
+  const kind = identity?.kind;
+  const key =
+    identity?.kind === "country"
+      ? identity.country.key
+      : identity?.kind === "market"
+        ? identity.market.key
+        : null;
+  const { data: focus } = useEu5Trigger(
+    async (engine) => {
+      if (!enabled || key == null) return null;
+      if (kind === "country") {
+        const [profile, id] = await Promise.all([
+          engine.queries.getCountryProfile(key),
+          engine.queries.getCountryStableId(key),
+        ]);
+        return profile && id != null ? { tag: `id:${id}`, name: profile.header.name } : null;
+      }
+      if (kind === "market") {
+        const profile = await engine.queries.getMarketProfile(key);
+        return profile ? { center: profile.centerId, name: profile.header.name } : null;
+      }
+      return null;
+    },
+    [kind, key, enabled],
+  );
+  const tab = nav.profileTabs.country;
+  const mode =
+    kind === "country" && tab === "religion"
+      ? "religion"
+      : kind === "country" && tab === "population"
+        ? "population"
+        : kind === "country" && tab === "diplomacy"
+          ? "political"
+          : kind === "market"
+            ? "markets"
+            : mapMode;
+  return { mode, focus };
+}
+
+function PanelSaveHistory(props: React.ComponentProps<typeof SaveHistory>) {
+  const campaignId = useEu5PlaythroughId();
+  const { mode, focus } = useHistoryContext(props.mapMode, props.visible);
+  return (
+    <SaveHistory
+      key={campaignId}
+      {...props}
+      mapMode={mode}
+      focusTag={focus && "tag" in focus ? focus.tag : undefined}
+      focusName={focus?.name}
+      focusMarketCenter={focus && "center" in focus ? focus.center : undefined}
+    />
+  );
+}
+
+function InlineHistory() {
+  const [expanded, setExpanded] = useState(false);
+  const mode = useEu5MapMode();
+  const { mode: contextMode, focus } = useHistoryContext(mode, expanded);
+  const { data: version } = useEu5Trigger((engine) => engine.queries.getSaveVersion(), []);
+  const selected = useCurrentHistorySnapshot(version);
+  const selectedHash = selected?.hash;
+  const observedCount = useHistory(
+    (s) => s.snapshots.filter((row) => row.campaignId === selected?.campaignId).length,
+  );
+  const showPanel = useHistory((s) => s.showPanel);
+  const { dates } = useAnalysisHistory(
+    {
+      campaignId: selected?.campaignId ?? "",
+      country: focus && "tag" in focus ? focus.tag : "world",
+    },
+    expanded && contextMode !== "markets",
+  );
+  if (!selected || contextMode === "markets") return null;
+  return (
+    <details
+      className="mx-4 my-3 rounded-(--radius-panel) border border-game-line-strong bg-game-panel p-3"
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
+      <summary className="cursor-pointer font-game-ui text-xs text-game-ink-300">
+        {focus?.name ?? MAP_MODE_TITLES[mode]} · evolution over {observedCount} saved dates
+      </summary>
+      {expanded && (
+        <div className="mt-3">
+          <ContextGraphs
+            dates={dates}
+            mode={contextMode ?? mode}
+            country={focus && "tag" in focus ? focus.tag : "world"}
+            countryName={focus?.name}
+            selectedHash={selectedHash}
+          />
+          <GameButton variant="ghost" onClick={() => showPanel(true)}>
+            Open history controls
+          </GameButton>
+        </div>
+      )}
+    </details>
   );
 }
 
