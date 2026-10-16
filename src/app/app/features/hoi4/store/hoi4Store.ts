@@ -9,12 +9,22 @@ type Hoi4StateInit = {
   input: File;
 };
 
-type Hoi4State = Hoi4StateInit;
+type Hoi4State = Hoi4StateInit & {
+  /** The country that the panel describes and the map highlights */
+  selectedTag: string | undefined;
+  actions: {
+    selectCountry: (tag: string | undefined) => void;
+  };
+};
 
 export const createHoi4Store = ({ meta, input }: Hoi4StateInit) => {
-  return createStore<Hoi4State>()((_set, _get) => ({
+  return createStore<Hoi4State>()((set) => ({
     meta,
     input,
+    selectedTag: meta.player ?? meta.countries[0],
+    actions: {
+      selectCountry: (tag) => set({ selectedTag: tag }),
+    },
   }));
 };
 
@@ -31,4 +41,6 @@ function useHoi4Store<T>(selector: (state: Hoi4State) => T): T {
 export const hoi4 = {
   useMeta: () => useHoi4Store((x) => x.meta),
   useSaveInput: () => useHoi4Store((x) => x.input),
+  useSelectedTag: () => useHoi4Store((x) => x.selectedTag),
+  useActions: () => useHoi4Store((x) => x.actions),
 };

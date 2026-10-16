@@ -12,6 +12,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import type { Eu5SaveData } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
+import { discoverBundles, resolveBundleVersion } from "@/lib/gameBundles";
 import { check } from "@/lib/isPresent";
 import { getLogLevel } from "@/lib/isDeveloper";
 import { trackWorker } from "@/lib/sentryWorker";
@@ -45,63 +46,11 @@ const locZipUrls = import.meta.glob<true, string, string>(
   { query: "?url", eager: true, import: "default" },
 );
 
-type BundleVersion = { version: string; major: number; minor: number };
-
-function parseBundleVersion(version: string): BundleVersion | null {
-  const match = /^(\d+)\.(\d+)$/.exec(version);
-  if (!match) return null;
-  return { version, major: Number(match[1]), minor: Number(match[2]) };
-}
-
-function extractDirVersion(path: string): string | null {
-  const match = /\/assets\/game\/eu5\/([^/]+)\//.exec(path);
-  return match ? match[1] : null;
-}
-
-function discoverBundles(): Map<string, { game: string; map: string; loc: string }> {
-  const games = new Map<string, string>();
-  for (const [path, url] of Object.entries(gameZipUrls)) {
-    const version = extractDirVersion(path);
-    if (version !== null) games.set(version, url);
-  }
-
-  const locs = new Map<string, string>();
-  for (const [path, url] of Object.entries(locZipUrls)) {
-    const version = extractDirVersion(path);
-    if (version !== null) locs.set(version, url);
-  }
-
-  const complete = new Map<string, { game: string; map: string; loc: string }>();
-  for (const [path, mapUrl] of Object.entries(mapZipUrls)) {
-    const version = extractDirVersion(path);
-    if (version === null || parseBundleVersion(version) === null) continue;
-    const gameUrl = games.get(version);
-    const locUrl = locs.get(version);
-    if (gameUrl && locUrl) {
-      complete.set(version, { game: gameUrl, map: mapUrl, loc: locUrl });
-    }
-  }
-
-  return complete;
-}
-
-const completeBundles = discoverBundles();
-
-function resolveBundleVersion(requested: string): string {
-  if (completeBundles.has(requested)) return requested;
-
-  const sorted = Array.from(completeBundles.keys())
-    .map((v) => parseBundleVersion(v)!)
-    .sort((a, b) => (b.major === a.major ? b.minor - a.minor : b.major - a.major));
-
-  if (sorted.length === 0) {
-    throw new Error("No complete EU5 optimized bundles found");
-  }
-
-  const latest = sorted[0].version;
-  console.warn(`EU5 bundle for version ${requested} not found, falling back to ${latest}`);
-  return latest;
-}
+const completeBundles = discoverBundles("eu5", {
+  game: gameZipUrls,
+  map: mapZipUrls,
+  loc: locZipUrls,
+});
 
 type BundleUrls = { game: string; map: string; loc: string };
 type BundleParts = {
@@ -201,7 +150,10 @@ export class Eu5GameAdapter {
       if (this.bundleVersion !== null) {
         throw new Error(`selectVersion called with ${version} after the map chose a version`);
       }
-      const resolved = resolveBundleVersion(version);
+      const resolved = resolveBundleVersion(completeBundles.keys(), version, "latest");
+      if (resolved === null) {
+        throw new Error("No complete EU5 optimized bundles found");
+      }
       this.bundleVersion = resolved;
       const urls = getBundleUrls(resolved);
       resolveBundles({
@@ -270,8 +222,8 @@ export class Eu5GameAdapter {
 
     let urls: BundleUrls | null = null;
     const selectVersion = async (version: string) => {
-      const resolved = resolveBundleVersion(version);
-      if (resolved !== this.bundleVersion) return null;
+      const resolved = resolveBundleVersion(completeBundles.keys(), version, "latest");
+      if (resolved === null || resolved !== this.bundleVersion) return null;
       urls = getBundleUrls(resolved);
       return resolved;
     };
