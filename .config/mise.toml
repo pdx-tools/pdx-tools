@@ -44,6 +44,7 @@ run = [
         "build:wasm:module wasm_eu5_diagnostics{% if usage.release %} --release{% endif %}",
         "build:wasm:module wasm_eu5_map{% if usage.release %} --release{% endif %}",
         "build:wasm:module wasm_hoi4{% if usage.release %} --release{% endif %}",
+        "build:wasm:module wasm_hoi4_map{% if usage.release %} --release{% endif %}",
         "build:wasm:module wasm_imperator{% if usage.release %} --release{% endif %}",
         "build:wasm:module wasm_vic3{% if usage.release %} --release{% endif %}",
         "build:wasm:module wasm_pdx_map src/pdx-map-playground/src/workers/wasm{% if usage.release %} --release{% endif %}",

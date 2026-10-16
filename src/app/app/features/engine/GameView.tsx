@@ -89,7 +89,7 @@ const gameRenderer = (savegame: SaveGameInput | null) => {
       } as const;
     case "hoi4":
       return {
-        kind: "in-screen",
+        kind: "full-screen",
         component: () => (
           <Suspense fallback={null}>
             <DynamicHoi4 save={savegame} />
