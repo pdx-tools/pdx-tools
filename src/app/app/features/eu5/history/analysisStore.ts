@@ -1,81 +1,194 @@
-import { analyticalBuffers } from "./transferBuffers";
-import type { AnalysisDescriptor, MapFrame, SaveAnalysis } from "./analysisTypes";
-/** Own independent map column blocks; appending never copies previous observations. */
-export class CampaignAnalysisStore {
-  private bufferRefs = new Map<ArrayBuffer, number>();
-  private residentBytes = 0;
-  private saves = new Map<string, SaveAnalysis>();
-  private layouts = new Map<string, Uint32Array<ArrayBuffer>>();
-  private campaigns = new Map<string, AnalysisDescriptor[]>();
-  append(save: SaveAnalysis): AnalysisDescriptor {
-    const row = save.observation;
-    if (!row.hash || !row.campaignId || !Number.isInteger(row.dateSort))
-      throw Error("Invalid map observation");
-    const campaign = this.campaigns.get(row.campaignId) ?? [];
-    const previous = campaign.find((item) => item.dateSort === row.dateSort);
-    if (previous && previous.hash !== row.hash)
-      throw Error(
-        `A different save already occupies ${row.date}. Separate alternate campaign branches before importing.`,
-      );
-    const existing = this.saves.get(row.hash);
-    if (existing) return existing.observation;
-    const frame = save.projection,
-      n = frame.locationIds.length;
-    if (
-      frame.layoutKey !== row.layoutKey ||
-      frame.metrics.length !== n * 7 ||
-      frame.fractions.length !== n * 2 ||
-      [frame.owners, frame.controllers, frame.religions, frame.markets].some(
-        (ids) => ids.length !== n,
-      )
-    )
-      throw Error("Incomplete analytical map columns");
-    const shared = this.layouts.get(frame.layoutKey);
-    if (shared && (shared.length !== n || shared.some((id, i) => id !== frame.locationIds[i])))
-      throw Error("Incompatible analytical map layout");
-    if (shared) frame.locationIds = shared;
-    else this.layouts.set(frame.layoutKey, frame.locationIds);
-    for (const buffer of analyticalBuffers(save)) {
-      const count = this.bufferRefs.get(buffer) ?? 0;
-      if (!count) this.residentBytes += buffer.byteLength;
-      this.bufferRefs.set(buffer, count + 1);
-    }
-    this.saves.set(row.hash, save);
-    campaign.push(row);
-    campaign.sort((a, b) => a.dateSort - b.dateSort || a.hash.localeCompare(b.hash));
-    this.campaigns.set(row.campaignId, campaign);
-    return row;
+import { MapColumnStore } from "./mapColumnStore";
+import {
+  snapshotView,
+  snapshotCountry,
+  snapshotGoods,
+  snapshotMetadata,
+  countryAt,
+  marketAt,
+  validateSnapshot,
+} from "./packedSnapshot";
+import { overview } from "./packedOverview";
+import { exportSnapshots } from "./exportSnapshots";
+import type {
+  AnalysisDescriptor,
+  AnalysisEntity,
+  HistoryQuery,
+  MapFrame,
+  SaveAnalysis,
+} from "./analysisTypes";
+import type { Snapshot } from "./types";
+import type { OverviewData } from "@/wasm/wasm_eu5";
+
+/** Lives in one worker. The UI never retains the campaign's raw analytical columns. */
+export class CampaignAnalysisStore extends MapColumnStore<SaveAnalysis> {
+  private strings = new Map<string, string>();
+  private descriptors = new Map<string, AnalysisDescriptor>();
+  private worlds = new Map<string, Snapshot["countries"][number] | undefined>();
+  override append(save: SaveAnalysis): AnalysisDescriptor {
+    const snapshot = save.snapshot;
+
+    if (!snapshot.hash || !snapshot.campaignId) throw Error("Invalid analytical observation");
+    validateSnapshot(snapshot);
+    if (this.saves.has(snapshot.hash)) return this.descriptors.get(snapshot.hash)!;
+    const descriptor = this.describe(save);
+    const world = this.world(save.snapshot);
+    const intern = (label: string) => {
+      const shared = this.strings.get(label);
+      if (shared !== undefined) return shared;
+      this.strings.set(label, label);
+      return label;
+    };
+    snapshot.strings = snapshot.strings.map(intern);
+    save.overviews.strings = save.overviews.strings.map(intern);
+    for (const [id, name] of Object.entries(save.countryNames))
+      save.countryNames[id] = intern(name);
+    super.append({ ...save, observation: descriptor });
+    this.descriptors.set(snapshot.hash, descriptor);
+    this.worlds.set(snapshot.hash, world);
+    return descriptor;
   }
-  timeline(campaignId: string, layoutKey?: string): AnalysisDescriptor[] {
-    return (this.campaigns.get(campaignId) ?? []).filter(
-      (row) => !layoutKey || row.layoutKey === layoutKey,
-    );
+  private describe(save: SaveAnalysis): AnalysisDescriptor {
+    const {
+      countries: _countries,
+      markets: _markets,
+      ...metadata
+    } = { ...snapshotMetadata(save.snapshot), countries: [], markets: [] };
+    return {
+      ...metadata,
+      world: save.observation.world,
+      layoutKey: save.projection.layoutKey,
+      countryNames: save.countryNames,
+      goods: snapshotGoods(save.snapshot),
+    };
   }
-  mapFrame(hash: string): MapFrame {
+  override timeline(campaignId: string, layoutKey?: string): AnalysisDescriptor[] {
+    return super.timeline(campaignId, layoutKey) as AnalysisDescriptor[];
+  }
+
+  private require(hash: string): SaveAnalysis {
     const save = this.saves.get(hash);
     if (!save)
       throw Error("This observation is no longer available. Import the original saves again.");
-    return { ...save.projection, ...save.observation };
+    return save;
   }
-  clearCampaign(campaignId?: string) {
-    for (const [hash, save] of this.saves) {
-      if (campaignId && save.observation.campaignId !== campaignId) continue;
-      for (const buffer of analyticalBuffers(save)) {
-        const count = this.bufferRefs.get(buffer)! - 1;
-        if (count) this.bufferRefs.set(buffer, count);
-        else {
-          this.bufferRefs.delete(buffer);
-          this.residentBytes -= buffer.byteLength;
+  override mapFrame(hash: string): MapFrame {
+    const save = this.require(hash);
+    const { campaignId, date, dateSort, version, layoutKey, fileName, world } = save.observation;
+    return {
+      ...save.projection,
+      hash,
+      campaignId,
+      date,
+      dateSort,
+      version,
+      layoutKey,
+      fileName,
+      world,
+    };
+  }
+
+  queryOverview<K extends keyof OverviewData>(
+    hash: string,
+    key: K,
+  ): { hash: string; data: OverviewData[K] } {
+    return { hash, data: overview(this.require(hash).overviews, key) };
+  }
+  queryHistory(query: HistoryQuery): Snapshot[] {
+    return this.timeline(query.campaignId).map((row) => {
+      const source = this.require(row.hash).snapshot;
+      const country =
+        query.country && query.country !== "world"
+          ? snapshotCountry(source, query.country)
+          : this.worlds.get(row.hash);
+      const packed = this.require(row.hash).snapshot,
+        markets: Snapshot["markets"] = [];
+      const good = query.good ? packed.strings.indexOf(query.good) : -1;
+      if (good >= 0)
+        for (let i = 0; i < packed.marketIds.length; i += 2) {
+          if (packed.marketIds[i + 1] !== good) continue;
+          const center = packed.marketMetadata[packed.marketIds[i] * 3 + 1];
+          if (!query.centers?.length || query.centers.includes(center))
+            markets.push(marketAt(source, i / 2));
         }
-      }
-      this.saves.delete(hash);
-    }
-    if (campaignId) this.campaigns.delete(campaignId);
-    else this.campaigns.clear();
-    const used = new Set([...this.saves.values()].map((save) => save.projection.layoutKey));
-    for (const key of this.layouts.keys()) if (!used.has(key)) this.layouts.delete(key);
+      const {
+        layoutKey: _layout,
+        countryNames: _names,
+        goods: _goods,
+        marketLabels: _labels,
+        ...metadata
+      } = row;
+      return { ...metadata, marketLabels: {}, countries: country ? [{ ...country }] : [], markets };
+    });
   }
-  memoryBytes() {
-    return this.residentBytes;
+  private world(source: SaveAnalysis["snapshot"]): Snapshot["countries"][number] | undefined {
+    const countries = Array.from({ length: source.countryIds.length / 3 }, (_, i) =>
+      countryAt(source, i),
+    );
+    const first = countries[0];
+    if (!first) return undefined;
+    const total = {
+      ...first,
+      countryId: 0xffffffff,
+      tag: "world",
+      greatPowerRank: undefined,
+      religions: new Map<string, number>(),
+      materials: new Map<string, number>(),
+      buildings: new Map<string, number>(),
+      marketCenters: [],
+    };
+    for (const key of Object.keys(first) as (keyof typeof first)[]) {
+      if (typeof first[key] === "number" && key !== "greatPowerRank" && key !== "countryId")
+        (total as unknown as Record<string, unknown>)[key] = countries.reduce(
+          (sum, c) => sum + Number(c[key]),
+          0,
+        );
+    }
+    for (const c of countries)
+      for (const key of ["religions", "materials", "buildings"] as const)
+        for (const [name, value] of c[key])
+          total[key].set(name, (total[key].get(name) ?? 0) + value);
+    return total;
+  }
+  marketCenters(campaignId: string, country: string): number[] {
+    const centers = new Set<number>();
+    for (const row of this.timeline(campaignId)) {
+      const snapshot = this.require(row.hash).snapshot;
+      for (const center of snapshotCountry(snapshot, country)?.marketCenters ?? [])
+        centers.add(center);
+    }
+    return [...centers];
+  }
+  resolveEntity(hash: string, entity: AnalysisEntity): AnalysisEntity {
+    const save = this.require(hash);
+    if (entity.kind === "country") {
+      const id = save.countryIds[entity.id];
+      if (entity.id === 0 || id === undefined)
+        throw Error("Country is not present in this observation");
+      return { ...entity, id };
+    }
+    if (entity.kind === "location") {
+      const id = save.projection.locationIds[entity.id];
+      if (id === undefined) throw Error("Location is not present in this observation");
+      return { ...entity, id };
+    }
+    return entity;
+  }
+  exportObservations(campaignId: string): Blob {
+    return exportSnapshots(
+      this.timeline(campaignId).map((row) => snapshotView(this.require(row.hash).snapshot)),
+    );
+  }
+  override clearCampaign(campaignId?: string): void {
+    for (const row of this.timeline(campaignId ?? "")) {
+      this.descriptors.delete(row.hash);
+      this.worlds.delete(row.hash);
+    }
+    if (!campaignId) {
+      this.descriptors.clear();
+      this.worlds.clear();
+    }
+    super.clearCampaign(campaignId);
+    if (!this.saves.size) this.strings.clear();
   }
 }
