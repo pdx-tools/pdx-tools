@@ -3,7 +3,7 @@ import type { webWorkerIntegration } from "@sentry/react-router";
 type WebWorkerIntegration = ReturnType<typeof webWorkerIntegration>;
 
 let integration: WebWorkerIntegration | undefined;
-const pending: Worker[] = [];
+const pending = new Set<Worker>();
 
 /**
  * Give Sentry access to the debug IDs of a worker's bundle and forward its
@@ -19,13 +19,17 @@ export function trackWorker(worker: Worker) {
   if (integration) {
     integration.addWorker(worker);
   } else {
-    pending.push(worker);
+    pending.add(worker);
   }
+  return () => {
+    pending.delete(worker);
+  };
 }
 
 export function setWebWorkerIntegration(webWorker: WebWorkerIntegration) {
   integration = webWorker;
-  for (const worker of pending.splice(0)) {
+  for (const worker of pending) {
     webWorker.addWorker(worker);
   }
+  pending.clear();
 }
