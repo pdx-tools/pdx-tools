@@ -1,4 +1,4 @@
-import { useCallback, useState, memo, useRef } from "react";
+import { useCallback, useMemo, useState, memo, useRef } from "react";
 import type { PropsWithChildren } from "react";
 import { Popover } from "@/components/Popover";
 import { Command } from "@/components/Command";
@@ -7,15 +7,18 @@ import { CheckIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
 import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
-import type { Hoi4Metadata } from "../worker/types";
+import type { CountryDisplay, Hoi4Metadata } from "../worker/types";
 
 export const CountrySelect = memo(function CountrySelect({
   children,
   countries,
+  landed,
   isSelected,
   onSelect,
 }: PropsWithChildren<{
   countries: Hoi4Metadata["countries"];
+  /** Countries that own land on the map, with names and colors */
+  landed: CountryDisplay[];
   isSelected: (tag: string) => boolean;
   onSelect: (tag: string) => boolean;
 }>) {
@@ -33,6 +36,13 @@ export const CountrySelect = memo(function CountrySelect({
     setOpen(open);
   }, []);
 
+  const others = useMemo(() => {
+    const landedTags = new Set(landed.map((x) => x.tag));
+    return countries
+      .filter((tag) => !landedTags.has(tag))
+      .map((tag) => ({ tag, name: tag, color: "" }));
+  }, [countries, landed]);
+
   const search = input?.trim().toLocaleLowerCase() ?? "";
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -48,7 +58,13 @@ export const CountrySelect = memo(function CountrySelect({
             if (search.length == 0) {
               return 1;
             } else if (search.length <= 3) {
-              return value.includes(search, value.length - 3) ? 1 : 0;
+              // A short search matches the start of the tag (the last word)
+              // or the start of a word in the name.
+              const match =
+                value.includes(search, value.length - 3) ||
+                value.startsWith(search) ||
+                value.includes(` ${search}`);
+              return match ? 1 : 0;
             } else {
               return value.includes(search) ? 1 : 0;
             }
@@ -57,9 +73,17 @@ export const CountrySelect = memo(function CountrySelect({
           <Command.Input value={input} onValueChange={setInput} placeholder="Search countries" />
           <Command.List>
             <Command.Empty>No countries found.</Command.Empty>
+            {landed.length > 0 ? (
+              <CountrySelectGroup
+                title="On the map"
+                countries={landed}
+                isSelected={isSelected}
+                onSelect={select}
+              />
+            ) : null}
             <CountrySelectGroup
-              title="Countries"
-              countries={countries}
+              title={landed.length > 0 ? "Other tags" : "Countries"}
+              countries={others}
               isSelected={isSelected}
               onSelect={select}
             />
@@ -72,7 +96,7 @@ export const CountrySelect = memo(function CountrySelect({
 
 type CountrySelectGroupProps = {
   title: string;
-  countries: Hoi4Metadata["countries"];
+  countries: CountryDisplay[];
   onSelect: (tag: string) => void;
   isSelected: (tag: string) => boolean;
 };
@@ -86,16 +110,33 @@ const CountrySelectGroup = memo(function CountrySelectGroup({
   return (
     <Command.Group heading={title}>
       {countries.map((x) => (
-        <Command.Item key={x} value={x.toLowerCase()} onSelect={() => onSelect(x)}>
+        <Command.Item
+          key={x.tag}
+          value={`${x.name} ${x.tag}`.toLowerCase()}
+          onSelect={() => onSelect(x.tag)}
+        >
           <CheckIcon
             className={cx(
-              "mr-2 h-4 w-4 opacity-0 data-selected:opacity-100",
-              isSelected(x) ? "opacity-100" : "opacity-0",
+              "mr-2 h-4 w-4 shrink-0 opacity-0 data-selected:opacity-100",
+              isSelected(x.tag) ? "opacity-100" : "opacity-0",
             )}
           />
-          {x}
+          {x.color ? <CountrySwatch color={x.color} /> : null}
+          <span className="truncate">{x.name}</span>
+          {x.name !== x.tag ? (
+            <span className="ml-auto pl-2 text-xs opacity-60">{x.tag}</span>
+          ) : null}
         </Command.Item>
       ))}
     </Command.Group>
   );
 });
+
+export function CountrySwatch({ color }: { color: string }) {
+  return (
+    <span
+      className="mr-2 inline-block h-3 w-3 shrink-0 rounded-sm border border-black/30"
+      style={{ backgroundColor: color }}
+    />
+  );
+}
