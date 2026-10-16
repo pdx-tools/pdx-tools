@@ -10,6 +10,8 @@ import type { BoxSelectCommitEvent } from "../../types/box-select";
 import { eu5SaveFileUrl } from "../../store/types";
 import type { Eu5ParsedSave } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
+import { findCarriedCountry } from "../../carriedCountry";
+import type { CountryIdentity } from "../../carriedCountry";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
   MapMode,
@@ -539,16 +541,13 @@ export const loadSave = async (
       return [...countries, ...locations].slice(0, 20);
     },
 
-    getCountryTag: (countryIdx: number): string | null => {
-      return countryIndex.find((c) => c.country.key === countryIdx)?.tag ?? null;
+    getCountryIdentity: (countryIdx: number): CountryIdentity | null => {
+      const entry = countryIndex.find((c) => c.country.key === countryIdx);
+      return entry ? { id: entry.id, tag: entry.tag } : null;
     },
 
-    /** Prefer a country that has land when dead countries share the tag. */
-    findCountryByTag: (tag: string): number | null => {
-      const match =
-        countryIndex.find((c) => c.tag === tag && c.capital != null) ??
-        countryIndex.find((c) => c.tag === tag);
-      return match?.country.key ?? null;
+    findCountry: (country: CountryIdentity): number | null => {
+      return findCarriedCountry(countryIndex, country);
     },
 
     getLocationColorId: (locationIdx: number): number | null => {

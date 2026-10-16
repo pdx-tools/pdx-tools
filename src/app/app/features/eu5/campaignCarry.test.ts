@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Store } from "./store/eu5Store";
 import type { Eu5Carry } from "./campaignCarry";
-import type { SelectionSummaryData } from "@/wasm/wasm_eu5";
+import type { SelectionSummaryData, UiCountryId } from "@/wasm/wasm_eu5";
 import { applyEu5Carry, captureEu5Carry } from "./campaignCarry";
 
 const engine = () => ({
   state: { currentMapMode: "political" },
   queries: {
-    getCountryTag: vi.fn().mockResolvedValue("FRA"),
-    findCountryByTag: vi.fn().mockResolvedValue(77),
+    getCountryIdentity: vi.fn().mockResolvedValue({ id: 611, tag: "FRA" }),
+    findCountry: vi.fn().mockResolvedValue(77),
     getMarketProfile: vi.fn().mockResolvedValue({ header: { anchorLocationIdx: 100 } }),
   },
   commands: {
@@ -77,7 +77,7 @@ describe("campaign view carry", () => {
     });
     expect(carry.selection).toEqual({ kind: "location", locationIdx: 100 });
     expect(previous.queries.getMarketProfile).not.toHaveBeenCalled();
-    expect(previous.queries.getCountryTag).not.toHaveBeenCalled();
+    expect(previous.queries.getCountryIdentity).not.toHaveBeenCalled();
 
     const next = engine();
     await applyEu5Carry(next as unknown as AppEngine, carry);
@@ -120,17 +120,18 @@ describe("campaign view carry", () => {
       focusedLocation: undefined,
       preset: undefined,
     });
-    expect(carry.selection).toEqual({ kind: "country", tag: "FRA" });
+    expect(carry.selection).toEqual({ kind: "country", id: 611, tag: "FRA" });
     const next = engine();
     await applyEu5Carry(next as unknown as AppEngine, carry);
+    expect(next.queries.findCountry).toHaveBeenCalledExactlyOnceWith(carry.selection);
     expect(next.commands.selectCountry).toHaveBeenCalledExactlyOnceWith(77);
     expect(next.commands.setFocusedLocation).not.toHaveBeenCalled();
   });
 
   it("leaves selection empty when the country is absent from the next save", async () => {
     const next = engine();
-    next.queries.findCountryByTag.mockResolvedValue(null);
-    await apply(next, { kind: "country", tag: "FRA" });
+    next.queries.findCountry.mockResolvedValue(null);
+    await apply(next, { kind: "country", id: 611 as UiCountryId, tag: "FRA" });
     expect(next.commands.selectCountry).not.toHaveBeenCalled();
     expect(next.commands.setFocusedLocation).not.toHaveBeenCalled();
     expect(next.trigger.fitWorldRect).toHaveBeenCalledOnce();

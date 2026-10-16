@@ -2,6 +2,7 @@ import type { MapMode } from "@/wasm/wasm_eu5";
 import type { MapViewport } from "@pdx.tools/timelapse";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Store } from "./store/eu5Store";
+import type { CountryIdentity } from "./carriedCountry";
 
 /** View state preserved across campaign saves. */
 export type Eu5Carry = {
@@ -9,13 +10,13 @@ export type Eu5Carry = {
   viewport: MapViewport["viewport"] | null;
   insightPanel: { open: boolean; width: number };
   /**
-   * Use country tags across saves because country indices can change.
-   * Location indices remain stable within one map. Markets carry by their anchor
-   * because market IDs can change between saves.
+   * Country indices can change between saves, thus a country carries by its
+   * ID and its tag. Location indices remain stable within one map. Markets
+   * carry by their anchor because market IDs can change between saves.
    */
   selection:
     | { kind: "players" }
-    | { kind: "country"; tag: string }
+    | ({ kind: "country" } & CountryIdentity)
     | { kind: "market"; locationIdx: number }
     | { kind: "location"; locationIdx: number }
     | null;
@@ -31,9 +32,9 @@ export async function captureEu5Carry(store: Eu5Store): Promise<Eu5Carry> {
   if (selection?.preset === "players") {
     carried = { kind: "players" };
   } else if (profile?.kind === "country") {
-    const tag = await engine.queries.getCountryTag(profile.country.key);
-    if (tag) {
-      carried = { kind: "country", tag };
+    const country = await engine.queries.getCountryIdentity(profile.country.key);
+    if (country) {
+      carried = { kind: "country", ...country };
     }
   } else if (profile?.kind === "market") {
     const market = await engine.queries.getMarketProfile(profile.market.key);
@@ -60,7 +61,7 @@ export async function applyEu5Carry(engine: AppEngine, carry: Eu5Carry): Promise
   if (selection?.kind === "players") {
     await engine.commands.selectPlayers();
   } else if (selection?.kind === "country") {
-    const countryIdx = await engine.queries.findCountryByTag(selection.tag);
+    const countryIdx = await engine.queries.findCountry(selection);
     if (countryIdx !== null) {
       await engine.commands.selectCountry(countryIdx);
     }

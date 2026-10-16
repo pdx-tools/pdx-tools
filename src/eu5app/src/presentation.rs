@@ -7,7 +7,8 @@
 //! identity key with a display name.
 
 use eu5save::models::{
-    CountryIdx, CountryName, CultureId, GoodName, LocationIdx, MarketId, PopulationType, ReligionId,
+    CountryId, CountryIdx, CountryName, CultureId, GoodName, LocationIdx, MarketId, PopulationType,
+    ReligionId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -276,6 +277,13 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
 
     pub fn country_search_entries(&self) -> CountriesData {
         let gamestate = self.workspace.gamestate();
+        let mut landed = gamestate.countries.create_index(false);
+        for entry in gamestate.locations.iter() {
+            let owner = entry.location().owner.real_id();
+            if let Some(idx) = owner.and_then(|id| gamestate.countries.get(id.country_id())) {
+                landed[idx] = true;
+            }
+        }
         let countries = gamestate
             .countries
             .iter()
@@ -289,8 +297,10 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
                     .map(UiLocationIdx::from);
                 Some(CountrySearchEntry {
                     country,
+                    id: entry.id().into(),
                     tag,
                     capital,
+                    landed: landed[entry.idx()],
                 })
             })
             .collect();
@@ -433,6 +443,25 @@ macro_rules! ui_id {
 }
 
 ui_id!(UiCountryIdx);
+
+/// The country ID in the save. The `UiCountryIdx` of a country can change
+/// between saves, but this ID stays the same, also when the country changes
+/// its tag. The game uses the low 24 bits again for new countries, but then it
+/// increases the high 8 bits. Thus, an ID does not identify two countries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(transparent)]
+#[cfg_attr(
+    feature = "tsify",
+    tsify(type = "number & { readonly __brand: \"UiCountryId\" }")
+)]
+pub struct UiCountryId(pub u32);
+
+impl From<CountryId> for UiCountryId {
+    fn from(id: CountryId) -> Self {
+        UiCountryId(id.value())
+    }
+}
 ui_id!(UiLocationIdx);
 ui_id!(UiLocationId);
 ui_id!(UiMarketId);
