@@ -682,7 +682,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// changed and the current mode derives its colors from that set. Any
     /// other mutation (focus, hover, a no-op) only refreshes the flags.
     pub fn rebuild_colors(&mut self) -> MapChange {
-        let generation = self.selection_state.membership_generation();
+        let generation = self.selection_state.selection_generation();
         let membership_changed = generation != self.painted_selection_generation;
         if membership_changed && self.current_map_mode.selection_affects_domain() {
             self.set_map_mode(self.current_map_mode)
@@ -723,7 +723,7 @@ impl<'bump> Eu5Workspace<'bump> {
         };
 
         self.current_map_legend = gradient;
-        self.painted_selection_generation = self.selection_state.membership_generation();
+        self.painted_selection_generation = self.selection_state.selection_generation();
         self.apply_interaction_flags();
 
         MapChange {
@@ -781,7 +781,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 .is_some_and(|donor| self.selection_state.contains(donor))
     }
 
-    fn apply_interaction_flags(&mut self) {
+    pub(super) fn apply_interaction_flags(&mut self) {
         let has_selection = !self.selection_state.is_empty();
         for location in self.gamestate.locations.iter() {
             let terrain = self.location_terrain(location.idx());

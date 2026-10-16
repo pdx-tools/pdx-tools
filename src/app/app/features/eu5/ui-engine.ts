@@ -106,7 +106,10 @@ export interface AppState {
   paletteGradients: PaletteGradients;
   mapModeGradient: GradientConfig | null;
   selectionState: SelectionSummaryData | null;
+  /** Bumps on any change to the selected locations. */
   selectionRevision: number;
+  /** Bumps when the user changes the selection, not when the timeline moves it. */
+  userSelectionRevision: number;
   boxSelectRect: BoxSelectOverlayRect | null;
   cursorHint: CursorHint;
   timeline: TimelineData;
@@ -230,6 +233,7 @@ export class Eu5UIEngine implements AppEngine {
       mapModeGradient: null,
       selectionState: null,
       selectionRevision: 0,
+      userSelectionRevision: 0,
       boxSelectRect: null,
       cursorHint: "default",
       timeline,
@@ -248,10 +252,12 @@ export class Eu5UIEngine implements AppEngine {
       }));
     });
 
-    this.gameInstance.onSelectionUpdate((data, gradient) => {
+    this.gameInstance.onSelectionUpdate((data, gradient, fromTimeline) => {
       this.updateState((state) => ({
         selectionState: data,
         selectionRevision: state.selectionRevision + 1,
+        // The timeline keeps the selected entity, so the panel keeps its place.
+        userSelectionRevision: state.userSelectionRevision + (fromTimeline ? 0 : 1),
         mapModeGradient: gradient ?? null,
       }));
     });

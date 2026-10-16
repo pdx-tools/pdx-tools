@@ -131,6 +131,8 @@ export const useEu5Players = () => useEu5Store((x) => x.players);
 export const useEu5Multiplayer = () => useEu5Store((x) => x.multiplayer);
 export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);
 export const useEu5SelectionRevision = () => useEu5Store((x) => x.appState.selectionRevision);
+export const useEu5UserSelectionRevision = () =>
+  useEu5Store((x) => x.appState.userSelectionRevision);
 export const useEu5InsightPanelOpen = () => useEu5Store((x) => x.insightPanelOpen);
 export const useEu5InsightPanelWidth = () => useEu5Store((x) => x.insightPanelWidth);
 export const useSetEu5InsightPanelOpen = () => useEu5Store((x) => x.setInsightPanelOpen);

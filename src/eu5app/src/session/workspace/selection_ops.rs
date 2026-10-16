@@ -2,21 +2,21 @@ use super::*;
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Build a flat lookup table mapping GPU location index → group ID for
-    /// the current map mode. Built once per mode switch; used by the map
-    /// renderer for per-frame box-select preview highlighting.
+    /// the current map mode. Built once per mode switch and per timeline
+    /// step; used by the map renderer for per-frame box-select preview
+    /// highlighting.
     pub fn build_grouping_table(&self) -> GroupingTable {
         let len = self.location_arrays.len();
         let mut groups = vec![GroupId::NONE; len];
 
-        for entry in self.gamestate.locations.iter() {
-            let loc = entry.location();
-            let Some(gpu_idx) = self.gpu_indices[entry.idx()] else {
+        for (idx, info) in self.iter_locations() {
+            let Some(gpu_idx) = self.gpu_indices[idx] else {
                 continue;
             };
 
             let group = match self.current_map_mode {
-                MapMode::Markets => loc.market.map(GroupId::from_market),
-                _ => loc.owner.real_id().map(GroupId::from_owner),
+                MapMode::Markets => info.market.map(GroupId::from_market),
+                _ => info.owner.map(GroupId::from_owner),
             };
 
             groups[gpu_idx.value() as usize] = group.unwrap_or(GroupId::NONE);
@@ -105,13 +105,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Filled terrain joins its country for a click, but it has no profile
     /// of its own, so a click inside the selected country does not focus it.
     fn can_focus(&self, idx: eu5save::models::LocationIdx) -> bool {
-        !self
-            .gamestate
-            .locations
-            .index(idx)
-            .location()
-            .owner
-            .is_dummy()
+        !self.owner_at_timeline_date(idx).is_dummy()
     }
 
     /// Replace the selection with the country owning `anchor_idx`.
@@ -132,13 +126,16 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Add the country owning `anchor_idx` to the existing selection.
     pub fn add_country_at(&mut self, anchor_idx: eu5save::models::LocationIdx) -> MapChange {
         let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
-        self.selection_state.add_all(&locs);
+        self.selection_state.add_all(locs);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
         self.rebuild_colors()
     }
 
     /// Remove the country owning `anchor_idx` from the selection.
     pub fn remove_country_at(&mut self, anchor_idx: eu5save::models::LocationIdx) -> MapChange {
+        if let Some(owner) = self.location_info(anchor_idx).owner {
+            self.selection_state.unfollow(owner);
+        }
         let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
         self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
@@ -163,7 +160,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Add the market containing `anchor_idx` to the existing selection.
     pub fn add_market_at(&mut self, anchor_idx: eu5save::models::LocationIdx) -> MapChange {
         let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
-        self.selection_state.add_all(&locs);
+        self.selection_state.add_all(locs);
         self.recompute_derived_scope_for_kind(EntityKind::Market);
         self.rebuild_colors()
     }
@@ -206,7 +203,7 @@ impl<'bump> Eu5Workspace<'bump> {
             return self.no_map_change();
         };
         let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
-        self.selection_state.add_all(&locs);
+        self.selection_state.add_all(locs);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
         self.rebuild_colors()
     }
@@ -216,6 +213,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let Some(owner) = self.gamestate.countries.index(country_idx).id().real_id() else {
             return self.no_map_change();
         };
+        self.selection_state.unfollow(owner);
         let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
         self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
@@ -246,7 +244,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Add all locations belonging to `market_id` to the existing selection.
     pub fn add_market_by_id(&mut self, market_id: eu5save::models::MarketId) -> MapChange {
         let locs = SelectionAdapter::new(&*self).resolve_by_market_id(market_id);
-        self.selection_state.add_all(&locs);
+        self.selection_state.add_all(locs);
         self.recompute_derived_scope_for_kind(EntityKind::Market);
         self.rebuild_colors()
     }
@@ -289,7 +287,7 @@ impl<'bump> Eu5Workspace<'bump> {
         operation: SelectionSetOperation,
     ) -> MapChange {
         match operation {
-            SelectionSetOperation::Add => self.selection_state.add_all(&locations),
+            SelectionSetOperation::Add => self.selection_state.add_all(locations),
             SelectionSetOperation::Remove => {
                 let kind = Self::entity_kind_for_map_mode(self.current_map_mode);
                 self.remove_locations_from_scope_for_kind(&locations, kind);
@@ -311,7 +309,7 @@ impl<'bump> Eu5Workspace<'bump> {
             self.selection_state
                 .remove_all_from_scope_or_global(locations, global_locations);
         } else {
-            self.selection_state.remove_all(locations);
+            self.selection_state.remove_all(locations.iter().copied());
         }
     }
 
@@ -345,7 +343,7 @@ impl<'bump> Eu5Workspace<'bump> {
     ) -> (Option<crate::ColorIdx>, MapChange) {
         let scope_mode = self.derived_scope_map_mode();
         let already_scoped_here = self
-            .derived_entity_anchor
+            .derived_entity_anchor()
             .map(|anchor| self.same_entity(location, anchor, scope_mode))
             .unwrap_or(false);
 
@@ -384,21 +382,24 @@ impl<'bump> Eu5Workspace<'bump> {
             .collect();
 
         let locations: FnvHashSet<eu5save::models::LocationIdx> = self
-            .gamestate
-            .locations
-            .iter()
-            .filter_map(|entry| {
-                let owner_id = entry.location().owner.real_id()?;
-                let owner_idx = self.gamestate.countries.get(owner_id.country_id())?;
-                player_and_subjects
-                    .contains(&owner_idx)
-                    .then_some(entry.idx())
+            .iter_locations()
+            .filter_map(|(idx, info)| {
+                let owner_idx = self.gamestate.countries.get(info.owner?.country_id())?;
+                player_and_subjects.contains(&owner_idx).then_some(idx)
             })
             .collect();
 
         self.selection_state
             .replace_with_preset(locations, crate::selection::SelectionPreset::Players);
         self.recompute_derived_scope();
+        // Also follow players and subjects with no land on this date.
+        let mut followed = self.selection_state.followed().clone();
+        followed.extend(
+            player_and_subjects
+                .iter()
+                .filter_map(|&idx| self.gamestate.countries.index(idx).id().real_id()),
+        );
+        self.selection_state.set_followed(followed);
         self.rebuild_colors()
     }
 
@@ -439,8 +440,8 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         } else {
             for &idx in self.selection_state.selected_locations() {
-                let loc = self.gamestate.locations.index(idx).location();
-                let Some(country_id) = loc.owner.real_id().map(|id| id.country_id()) else {
+                let Some(country_id) = self.location_info(idx).owner.map(|id| id.country_id())
+                else {
                     continue;
                 };
                 let Some(country_idx) = self.gamestate.countries.get(country_id) else {
@@ -553,8 +554,8 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     pub fn handle_location_hover(&mut self, location_idx: eu5save::models::LocationIdx) {
-        // On a past date the selection does not apply and the country under
-        // the cursor is the one that held the land then.
+        // On a past date, hover shows the whole country that held the land
+        // then, also inside the selection.
         if !self.is_timeline_live() {
             self.highlight_owner_at_timeline_date(location_idx);
             return;
@@ -564,16 +565,16 @@ impl<'bump> Eu5Workspace<'bump> {
 
         if tracing::enabled!(tracing::Level::WARN) {
             let entity_anchor = single_entity_scope(&self.selection_state, &*self, scope_mode);
-            if self.derived_entity_anchor != entity_anchor {
+            if self.derived_entity_anchor() != entity_anchor {
                 tracing::warn!(
                     "derived_entity_anchor mismatch: expected {:?}, got {:?}",
                     entity_anchor,
-                    self.derived_entity_anchor
+                    self.derived_entity_anchor()
                 );
             }
         }
 
-        if let Some(anchor) = self.derived_entity_anchor
+        if let Some(anchor) = self.derived_entity_anchor()
             && self.same_entity(location_idx, anchor, scope_mode)
         {
             self.highlight_location(location_idx);

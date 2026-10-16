@@ -4,9 +4,12 @@ import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { formatCompact, formatInt } from "@/lib/format";
 import { Eu5Flag } from "./components/flags/Eu5Flag";
+import { formatLongDate } from "@/features/timeline/date";
 import {
   useEu5MapMode,
+  useEu5SaveDate,
   useEu5SelectionState,
+  useEu5TimelineLive,
   useEu5World,
   useSetEu5InsightPanelWidth,
 } from "./store";
@@ -74,6 +77,8 @@ function PanelContentInner() {
   const { top, stack } = nav;
   const selectionState = useEu5SelectionState();
   const currentMapMode = useEu5MapMode();
+  const timelineLive = useEu5TimelineLive();
+  const saveDate = useEu5SaveDate();
   const activeProfile = selectionState?.activeProfile;
 
   let content: React.ReactNode;
@@ -116,16 +121,36 @@ function PanelContentInner() {
     content = <EmptyInsightState />;
   }
 
-  if (stack.length > 0) {
-    return (
+  const body =
+    stack.length > 0 ? (
       <div className="flex h-full flex-col">
         <Breadcrumb />
         <div className="min-h-0 flex-1 overflow-y-auto">{content}</div>
       </div>
+    ) : (
+      content
     );
-  }
 
-  return <>{content}</>;
+  // One wrapper on every date, so a step across the save date keeps the panel.
+  // The status stays mounted, so it is announced when the note appears.
+  return (
+    <div className="flex h-full flex-col">
+      <div role="status">
+        {!timelineLive && (
+          // Only borders have a history in the save.
+          <p className="flex min-h-7 items-center border-b border-game-line px-4 font-game-ui text-[11px] leading-[1.4] text-game-ink-500">
+            <span>
+              Values are from the save date,{" "}
+              <span className="font-game-num text-game-ink-300 tabular-nums">
+                {formatLongDate(saveDate)}
+              </span>
+            </span>
+          </p>
+        )}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col">{body}</div>
+    </div>
+  );
 }
 
 function profileIdentityKey(profile: ActiveProfileIdentity) {

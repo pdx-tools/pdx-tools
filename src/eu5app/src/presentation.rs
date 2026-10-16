@@ -250,22 +250,22 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
     }
 
     pub fn scope_display_name(&self) -> Option<String> {
-        let anchor = self.workspace.derived_entity_anchor()?;
-        let loc = self
-            .workspace
-            .gamestate()
-            .locations
-            .index(anchor)
-            .location();
+        let Some(anchor) = self.workspace.derived_entity_anchor() else {
+            let country_idx = self.workspace.landless_followed_country()?;
+            return Some(country_idx.present(&self.ctx).name);
+        };
         match self.workspace.derived_entity_kind()? {
             EntityKind::Market => {
-                let market_id = loc.market?;
-                Some(market_id.present(&self.ctx).name)
+                let loc = self
+                    .workspace
+                    .gamestate()
+                    .locations
+                    .index(anchor)
+                    .location();
+                Some(loc.market?.present(&self.ctx).name)
             }
             EntityKind::Country => {
-                let owner_id = loc.owner.real_id()?;
-                let country_id = owner_id.country_id();
-                let country_idx = self.workspace.gamestate().countries.get(country_id)?;
+                let country_idx = self.workspace.scope_country(anchor)?;
                 Some(country_idx.present(&self.ctx).name)
             }
         }

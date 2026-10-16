@@ -286,8 +286,8 @@ export const loadSave = async (
   // Push selection state and the gradient produced by the most recent mutation
   // back to the UI. `gradient` is undefined when the mode produces no gradient
   // (e.g. political, markets, religion).
-  const pushSelection = (gradient?: GradientConfig) => {
-    selectionCallback?.(app.get_selection_summary(), gradient);
+  const pushSelection = (gradient?: GradientConfig, fromTimeline?: boolean) => {
+    selectionCallback?.(app.get_selection_summary(), gradient, fromTimeline);
   };
 
   // Run a selection mutation, sync GPU buffers, and push the new state.
@@ -378,7 +378,10 @@ export const loadSave = async (
         await syncAll(change);
         pushSelection(change.gradient ?? undefined);
       } else {
-        await syncChangedData(change);
+        // Push before the await, in order with the pushes of later clicks.
+        if (change.selectionChanged) pushSelection(change.gradient ?? undefined, true);
+        // New owners regroup the locations for box selection.
+        await (change.colorsChanged ? syncAll(change) : syncChangedData(change));
       }
       return change;
     },
@@ -413,7 +416,11 @@ export const loadSave = async (
       hoverDisplayCallback = callback;
     },
     onSelectionUpdate: (
-      callback: (data: SelectionSummaryData, gradient?: GradientConfig) => void,
+      callback: (
+        data: SelectionSummaryData,
+        gradient?: GradientConfig,
+        fromTimeline?: boolean,
+      ) => void,
     ) => {
       selectionCallback = callback;
     },
@@ -562,8 +569,9 @@ export const loadSave = async (
 
 let mapEndpoint: Eu5MapEndpoint | null = null;
 let hoverDisplayCallback: ((data: DisplayData) => void) | null = null;
-let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
-  null;
+let selectionCallback:
+  | ((data: SelectionSummaryData, gradient?: GradientConfig, fromTimeline?: boolean) => void)
+  | null = null;
 
 export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
   const map = wrap<Eu5MapEndpoint>(port);

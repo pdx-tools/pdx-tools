@@ -6,7 +6,7 @@ use crate::population::{LITERACY_SCALE, POP_SIZE_SCALE};
 impl<'bump> Eu5Workspace<'bump> {
     /// Returns the entity kind for the current single-entity scope.
     pub fn derived_entity_kind(&self) -> Option<EntityKind> {
-        self.derived_entity_kind
+        self.derived_scope.map(|scope| scope.kind)
     }
 
     pub(crate) fn active_profile_identity(&self) -> Option<ActiveProfileIdentity> {
@@ -14,12 +14,10 @@ impl<'bump> Eu5Workspace<'bump> {
             return Some(ActiveProfileIdentity::Location(idx));
         }
 
-        if let (Some(anchor), Some(kind)) = (self.derived_entity_anchor, self.derived_entity_kind) {
+        if let Some(DerivedScope { anchor, kind }) = self.derived_scope {
             return match kind {
                 EntityKind::Country => {
-                    let loc = self.gamestate.locations.index(anchor).location();
-                    let owner_id = loc.owner.real_id()?.country_id();
-                    let country_idx = self.gamestate.countries.get(owner_id)?;
+                    let country_idx = self.scope_country(anchor)?;
                     self.gamestate.countries.index(country_idx).data()?;
                     Some(ActiveProfileIdentity::Country(country_idx))
                 }
@@ -30,6 +28,11 @@ impl<'bump> Eu5Workspace<'bump> {
                     Some(ActiveProfileIdentity::Market(market_id))
                 }
             };
+        }
+
+        if let Some(country_idx) = self.landless_followed_country() {
+            self.gamestate.countries.index(country_idx).data()?;
+            return Some(ActiveProfileIdentity::Country(country_idx));
         }
 
         if self.selection_state.len() == 1 {
@@ -43,6 +46,25 @@ impl<'bump> Eu5Workspace<'bump> {
         }
 
         None
+    }
+
+    /// The owner of a country scope's anchor on the timeline date.
+    pub(crate) fn scope_country(
+        &self,
+        anchor: eu5save::models::LocationIdx,
+    ) -> Option<eu5save::models::CountryIdx> {
+        let owner = self.owner_at_timeline_date(anchor).real_id()?;
+        self.gamestate.countries.get(owner.country_id())
+    }
+
+    /// The only followed country, when it has no land on the timeline date.
+    pub(crate) fn landless_followed_country(&self) -> Option<eu5save::models::CountryIdx> {
+        let selection = &self.selection_state;
+        if !selection.selected_locations().is_empty() || selection.followed().len() != 1 {
+            return None;
+        }
+        let owner = selection.followed().iter().next()?;
+        self.gamestate.countries.get(owner.country_id())
     }
 
     fn headline_for_locations(
@@ -320,14 +342,13 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Returns header data for the current single-entity scope.
     /// Returns None when the filter is empty or spans multiple entities.
     pub(crate) fn entity_header(&self) -> Option<EntityHeader> {
-        let anchor = self.derived_entity_anchor?;
+        let anchor = self.derived_entity_anchor()?;
         let loc = self.gamestate.locations.index(anchor).location();
         let locations = self.selection_state.selected_locations().iter().copied();
         let headline = self.headline_for_locations(locations);
         match self.derived_entity_kind()? {
             EntityKind::Country => {
-                let owner_id = loc.owner.real_id()?.country_id();
-                let country_idx = self.gamestate.countries.get(owner_id)?;
+                let country_idx = self.scope_country(anchor)?;
                 self.country_header(country_idx, headline)
             }
             EntityKind::Market => {
@@ -616,7 +637,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Returns goods section for the current market scope.
     pub(crate) fn market_goods_section(&'bump self) -> Option<MarketGoodsSection<'bump>> {
-        let anchor = self.derived_entity_anchor?;
+        let anchor = self.derived_entity_anchor()?;
         if !matches!(self.derived_entity_kind()?, EntityKind::Market) {
             return None;
         }
@@ -784,7 +805,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Returns location rows for all selected locations, sorted by location index.
     pub(crate) fn locations_section(&self) -> Option<LocationsSection> {
-        self.derived_entity_anchor?;
+        self.derived_entity_anchor()?;
         let locations = self.selection_state.selected_locations().iter().copied();
         Some(self.build_locations_section(locations))
     }
@@ -816,13 +837,11 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Returns diplomacy data for the current country scope.
     /// Returns None for market entities (markets have no diplomacy).
     pub(crate) fn diplomacy_section(&self) -> Option<DiplomacySection> {
-        let anchor = self.derived_entity_anchor?;
+        let anchor = self.derived_entity_anchor()?;
         if matches!(self.derived_entity_kind()?, EntityKind::Market) {
             return None;
         }
-        let loc = self.gamestate.locations.index(anchor).location();
-        let owner_id = loc.owner.real_id()?.country_id();
-        let country_idx = self.gamestate.countries.get(owner_id)?;
+        let country_idx = self.scope_country(anchor)?;
         self.country_diplomacy(country_idx)
     }
 
@@ -1092,14 +1111,13 @@ impl<'bump> Eu5Workspace<'bump> {
         let selected_count = self.selection_state.len();
         match kind {
             EntityKind::Country => {
-                let loc = self.gamestate.locations.index(anchor).location();
-                let Some(owner) = loc.owner.real_id() else {
+                let Some(owner) = self.owner_at_timeline_date(anchor).real_id() else {
                     return false;
                 };
-                let Some(country_idx) = self.gamestate.countries.get(owner.country_id()) else {
-                    return false;
-                };
-                self.iter_country_locations(country_idx).count() == selected_count
+                self.iter_locations()
+                    .filter(|(_, info)| info.owner == Some(owner))
+                    .count()
+                    == selected_count
             }
             EntityKind::Market => {
                 let loc = self.gamestate.locations.index(anchor).location();
