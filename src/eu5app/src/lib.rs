@@ -2,6 +2,9 @@ mod color;
 pub mod entity_profile;
 pub mod game_data;
 pub mod gradient;
+pub(crate) mod map_measurements;
+pub mod map_projection;
+pub(crate) mod map_render_source;
 
 pub mod hover;
 pub mod insights;
@@ -39,3 +42,6 @@ pub use models::*;
 pub(crate) use overlay::OverlayBodyConfigSource;
 pub use overlay::{OverlayBodyConfig, OverlayTable, TableCell};
 pub use save_hash::SaveCheckSummer;
+
+pub mod snapshot;
+pub use session::workspace::analysis;

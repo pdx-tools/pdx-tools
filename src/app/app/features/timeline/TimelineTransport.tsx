@@ -161,7 +161,10 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
         <Tooltip.Content side="top" className="font-game-ui text-xs">
           <span>
             {playing ? "Pause" : ended || live ? "Play from the campaign start" : "Play"}
-            <span className="text-game-ink-300"> · 1 yr per second</span>
+            <span className="text-game-ink-300">
+              {" "}
+              · {controller.playbackHint ?? "1 yr per second"}
+            </span>
           </span>
           <span className="ml-2 font-game-num text-[10px] text-game-ink-300">Space</span>
         </Tooltip.Content>

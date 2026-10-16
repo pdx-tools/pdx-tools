@@ -1,6 +1,10 @@
+import type { MapInteraction } from "./history/mapInteraction";
+import type { MapObservation } from "./history/analysisTypes";
+import type { Eu5Carry } from "./campaignCarry";
 import { wrap, transfer, proxy, releaseProxy } from "comlink";
 import type { Remote } from "comlink";
 import type {
+  ActiveProfileIdentity,
   GradientConfig,
   GradientPalette,
   DisplayData,
@@ -30,89 +34,13 @@ import type {
   TimelapseFrameTiming,
 } from "@pdx.tools/timelapse";
 
-const gameZipUrls = import.meta.glob<true, string, string>(
-  "../../../../../assets/game/eu5/*/game.zip",
-  { query: "?url", eager: true, import: "default" },
-);
-
-const mapZipUrls = import.meta.glob<true, string, string>(
-  "../../../../../assets/game/eu5/*/map.zip",
-  { query: "?url", eager: true, import: "default" },
-);
-
-const locZipUrls = import.meta.glob<true, string, string>(
-  "../../../../../assets/game/eu5/*/loc-en.zip",
-  { query: "?url", eager: true, import: "default" },
-);
-
-type BundleVersion = { version: string; major: number; minor: number };
-
-function parseBundleVersion(version: string): BundleVersion | null {
-  const match = /^(\d+)\.(\d+)$/.exec(version);
-  if (!match) return null;
-  return { version, major: Number(match[1]), minor: Number(match[2]) };
-}
-
-function extractDirVersion(path: string): string | null {
-  const match = /\/assets\/game\/eu5\/([^/]+)\//.exec(path);
-  return match ? match[1] : null;
-}
-
-function discoverBundles(): Map<string, { game: string; map: string; loc: string }> {
-  const games = new Map<string, string>();
-  for (const [path, url] of Object.entries(gameZipUrls)) {
-    const version = extractDirVersion(path);
-    if (version !== null) games.set(version, url);
-  }
-
-  const locs = new Map<string, string>();
-  for (const [path, url] of Object.entries(locZipUrls)) {
-    const version = extractDirVersion(path);
-    if (version !== null) locs.set(version, url);
-  }
-
-  const complete = new Map<string, { game: string; map: string; loc: string }>();
-  for (const [path, mapUrl] of Object.entries(mapZipUrls)) {
-    const version = extractDirVersion(path);
-    if (version === null || parseBundleVersion(version) === null) continue;
-    const gameUrl = games.get(version);
-    const locUrl = locs.get(version);
-    if (gameUrl && locUrl) {
-      complete.set(version, { game: gameUrl, map: mapUrl, loc: locUrl });
-    }
-  }
-
-  return complete;
-}
-
-const completeBundles = discoverBundles();
-
-function resolveBundleVersion(requested: string): string {
-  if (completeBundles.has(requested)) return requested;
-
-  const sorted = Array.from(completeBundles.keys())
-    .map((v) => parseBundleVersion(v)!)
-    .sort((a, b) => (b.major === a.major ? b.minor - a.minor : b.major - a.major));
-
-  if (sorted.length === 0) {
-    throw new Error("No complete EU5 optimized bundles found");
-  }
-
-  const latest = sorted[0].version;
-  console.warn(`EU5 bundle for version ${requested} not found, falling back to ${latest}`);
-  return latest;
-}
-
-type BundleUrls = { game: string; map: string; loc: string };
+import type { BundleUrls } from "./bundleUrls";
+import { resolveBundleVersion, getBundleUrls } from "./bundleUrls";
 type BundleParts = {
   game: Promise<Uint8Array>;
   map: Promise<Uint8Array>;
   loc: Promise<Uint8Array>;
 };
-
-function getBundleUrls(resolved: string): BundleUrls {
-  return completeBundles.get(resolved)!;
-}
 
 async function fetchPart(url: string): Promise<Uint8Array> {
   const response = await fetchOk(url);
@@ -341,7 +269,6 @@ export type SaveCommands = Pick<
   | "addCountry"
   | "removeCountry"
   | "selectMarket"
-  | "selectMarketAt"
   | "addMarket"
   | "removeMarket"
   | "setFocusedLocation"
@@ -433,6 +360,17 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
     commands,
 
     show: () => save.show(),
+    replayMapInteraction: (interaction: MapInteraction) => save.replayMapInteraction(interaction),
+    requestMapInspection: (interaction: MapInteraction) => save.requestMapInspection(interaction),
+    getMapLayoutKey: () => save.getMapLayoutKey(),
+    connectMapFrames: (id: string, port: MessagePort | null) =>
+      save.connectMapFrames(id, port ? transfer(port, [port]) : null),
+    stopMapProjection: () => save.stopMapProjection(),
+    showMapProjection: (frame: MapObservation, mode: MapMode) =>
+      save.showMapObservation(frame.hash, mode),
+    clearMapProjection: () => save.clearMapProjection(),
+    onMapInspect: (callback: ((interaction: MapInteraction) => void) | null) =>
+      save.onMapInspect(callback ? proxy(callback) : null),
 
     release: () => {
       isReleased = true;
@@ -446,6 +384,9 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
     getTimeline: (): Promise<TimelineData> => save.getTimeline(),
     setTimelineDate: (date: Eu5DateComponents): Promise<TimelineChange> =>
       save.setTimelineDate(date),
+    getCampaignIdentities: (profiles: ActiveProfileIdentity[]) =>
+      save.getCampaignIdentities(profiles),
+    restoreCampaignView: (carry: Eu5Carry) => save.restoreCampaignView(carry),
     beginTimelapseRecording: (options: {
       framing: TimelapseFraming;
       output: { width: number; height: number };

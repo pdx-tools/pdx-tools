@@ -1,3 +1,4 @@
+import { useMapHistory } from "../history/MapHistory";
 import { CameraIcon } from "@heroicons/react/24/outline";
 import { FireIcon } from "@heroicons/react/24/solid";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
@@ -37,14 +38,20 @@ type ExportButtonProps = {
   hint: string;
   icon: React.ReactNode;
   isLoading: boolean;
+  disabled?: boolean;
   onClick: (e: React.MouseEvent) => void;
 };
 
-function ExportButton({ label, hint, icon, isLoading, onClick }: ExportButtonProps) {
+function ExportButton({ label, hint, icon, isLoading, disabled, onClick }: ExportButtonProps) {
   return (
     <Tooltip>
       <Tooltip.Trigger asChild>
-        <GameButton variant="ghost" className="px-2" disabled={isLoading} onClick={onClick}>
+        <GameButton
+          variant="ghost"
+          className="px-2"
+          disabled={isLoading || disabled}
+          onClick={onClick}
+        >
           {isLoading ? <LoadingIcon className="h-4 w-4" /> : icon}
           {label}
         </GameButton>
@@ -91,6 +98,7 @@ function ScreenshotButton() {
 }
 
 function MeltButton() {
+  const unavailable = !!useMapHistory()?.preview;
   const engine = useEu5Engine();
   const saveFilename = useSaveFilename();
 
@@ -111,9 +119,14 @@ function MeltButton() {
   return (
     <ExportButton
       label="Melt"
-      hint="Convert the binary save to plaintext and download it."
+      hint={
+        unavailable
+          ? "Available when the selected save has loaded"
+          : "Convert the binary save to plaintext and download it."
+      }
       icon={<FireIcon className="h-4 w-4" />}
       isLoading={isLoading}
+      disabled={unavailable}
       onClick={() => run()}
     />
   );
