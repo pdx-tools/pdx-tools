@@ -1,7 +1,7 @@
 import type { Eu5Carry } from "../campaignCarry";
 import { create } from "zustand";
 import type { FileVersion } from "@/features/campaign/types";
-import type { ImportProgressState } from "./importProgress";
+import type { ImportProgressState } from "./importTiming";
 import type { SnapshotMetadata } from "./types";
 
 export type SourceObservation = { hash: string; version: FileVersion };
