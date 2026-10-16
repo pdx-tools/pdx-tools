@@ -1,3 +1,4 @@
+import { MapHistoryProvider, useMapHistory } from "./history/MapHistory";
 import "@fontsource/public-sans/latin-400.css";
 import "@fontsource/public-sans/latin-500.css";
 import "@fontsource/public-sans/latin-600.css";
@@ -78,7 +79,9 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       {load.status === "success" && host !== null ? (
         <Eu5StoreProvider store={load.data}>
           <Eu5CampaignProvider>
-            <Eu5UiContent cursorRef={cursorRef} host={host} busy={stepping} />
+            <MapHistoryProvider>
+              <Eu5UiContent cursorRef={cursorRef} host={host} busy={stepping} />
+            </MapHistoryProvider>
           </Eu5CampaignProvider>
         </Eu5StoreProvider>
       ) : null}
@@ -100,8 +103,9 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
 const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
   const mapMode = useEu5MapMode();
   const selectionState = useEu5SelectionState();
+  const preview = useMapHistory()?.preview;
   const label =
-    (selectionState?.isEmpty === false ? selectionState.scopeDisplayName : null) ??
+    (!preview && selectionState?.isEmpty === false ? selectionState.scopeDisplayName : null) ??
     MAP_MODE_TITLES[mapMode] ??
     "Insights";
 
@@ -149,20 +153,22 @@ const Eu5UiContent = ({
   const cursorHint = useEu5CursorHint();
   const engine = useEu5Engine();
   const wasEmptyRef = useRef(true);
+  const preview = useMapHistory()?.preview;
+  const settling = useMapHistory()?.settling;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
-      if (event.key === "Escape" && !busy) {
+      if (event.key === "Escape" && !busy && !preview) {
         void engine.commands.clearFocusOrSelection();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [engine, busy]);
+  }, [engine, busy, preview]);
 
   useEffect(() => {
     host.setCursor(cursorHint);
@@ -170,16 +176,16 @@ const Eu5UiContent = ({
 
   useEffect(() => {
     const isEmpty = selectionState?.isEmpty ?? true;
-    if (!isEmpty && wasEmptyRef.current) {
+    if (!preview && !isEmpty && wasEmptyRef.current) {
       setInsightOpen(true);
     }
     wasEmptyRef.current = isEmpty;
-  }, [selectionState, setInsightOpen]);
+  }, [selectionState, setInsightOpen, preview]);
 
   return (
     <div
       className="pointer-events-none absolute inset-0"
-      inert={busy}
+      inert={busy && !settling}
       aria-busy={busy || undefined}
     >
       {/* Left sidebar — always visible */}
@@ -192,10 +198,10 @@ const Eu5UiContent = ({
 
       {/* Canvas overlays */}
       <BoxSelectOverlay />
-      <Eu5CursorTooltip cursorRef={cursorRef} />
-      <Eu5SelectionPill />
+      {!preview ? <Eu5CursorTooltip cursorRef={cursorRef} /> : null}
+      {!preview ? <Eu5SelectionPill /> : null}
       <TimelineBar />
-      <Eu5Toolbar />
+      {!preview ? <Eu5Toolbar /> : null}
     </div>
   );
 };

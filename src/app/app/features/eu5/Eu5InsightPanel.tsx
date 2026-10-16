@@ -1,3 +1,4 @@
+import { useMapHistory } from "./history/MapHistory";
 import type React from "react";
 import { useCallback } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
@@ -36,6 +37,7 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
+  const preview = useMapHistory()?.preview;
   const setInsightPanelWidth = useSetEu5InsightPanelWidth();
   const handleWidthChange = useCallback(
     (width: number) => setInsightPanelWidth(width),
@@ -61,7 +63,7 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         <ResizablePanel.Header className="border-b border-game-line">
           <ResizablePanel.CloseButton className={btnCx} />
           <div className="min-w-0 flex-1">
-            <InsightPanelTitle />
+            {preview ? "Campaign overview" : <InsightPanelTitle />}
           </div>
           <ResizablePanel.MaximizeButton className={btnCx} />
         </ResizablePanel.Header>
@@ -79,13 +81,15 @@ function PanelContentInner() {
   const currentMapMode = useEu5MapMode();
   const timelineLive = useEu5TimelineLive();
   const saveDate = useEu5SaveDate();
-  const activeProfile = selectionState?.activeProfile;
+  const preview = useMapHistory()?.preview;
+  const activeProfile = preview ? null : selectionState?.activeProfile;
 
+  if (preview) return <p className="p-4 text-sm text-game-ink-500">Charts become available when playback pauses and this save has loaded.</p>;
   let content: React.ReactNode;
 
-  if (top?.kind === "focus") {
+  if (!preview && top?.kind === "focus") {
     content = <EntityProfileRoot identity={top.profile} />;
-  } else if (top?.kind === "profile") {
+  } else if (!preview && top?.kind === "profile") {
     content = <EntityProfileRoot identity={top.profile} />;
   } else if (activeProfile != null) {
     content = (
@@ -122,7 +126,7 @@ function PanelContentInner() {
   }
 
   const body =
-    stack.length > 0 ? (
+    !preview && stack.length > 0 ? (
       <div className="flex h-full flex-col">
         <Breadcrumb />
         <div className="min-h-0 flex-1 overflow-y-auto">{content}</div>

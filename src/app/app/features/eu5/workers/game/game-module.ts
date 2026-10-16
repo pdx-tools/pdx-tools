@@ -1,3 +1,9 @@
+import type { MapInteraction } from "../../history/mapInteraction";
+import type { MapFrame, MapObservation } from "../../history/analysisTypes";
+import { LatestRequest } from "../../history/latestRequest";
+import { MapFrameReader } from "../../history/framePort";
+import { campaignIdentities, restoreCampaignView } from "./restoreCampaignView";
+import type { Eu5Carry } from "../../campaignCarry";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type {
@@ -14,6 +20,7 @@ import { findCarriedCountry } from "../../carriedCountry";
 import type { CountryIdentity } from "../../carriedCountry";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
+  ActiveProfileIdentity,
   MapMode,
   DisplayData,
   GradientConfig,
@@ -131,46 +138,47 @@ function closeSave() {
   save?.close();
 }
 
+type SearchIndexes = {
+  countries: ReturnType<wasm_eu5.Eu5App["get_countries"]>["countries"];
+  locations: ReturnType<wasm_eu5.Eu5App["get_locations"]>["locations"];
+};
+// Indexes follow their parsed save without preventing eviction.
+const indexes = new WeakMap<wasm_eu5.Eu5App, SearchIndexes>();
+function searchIndexes(app: wasm_eu5.Eu5App) {
+  let index = indexes.get(app);
+  if (!index) {
+    index = {
+      countries: timeSync("Build country index", () => app.get_countries().countries),
+      locations: timeSync("Build location index", () => app.get_locations().locations),
+    };
+    indexes.set(app, index);
+  }
+  return index;
+}
+
+let workQueue: Promise<unknown> = Promise.resolve();
+function serialize<T>(run: () => Promise<T>): Promise<T> {
+  const job = workQueue.then(run);
+  workQueue = job.catch(() => {});
+  return job;
+}
+
 /**
  * Release the current save before parsing to limit memory use.
  * With `hold`, defer map changes until the caller restores the view and calls `show`.
  */
-export const loadSave = async (
-  {
-    save,
-    data: saveData,
-    hold,
-  }: {
-    save: Eu5ParsedSave;
-    data: Blob;
-    hold: boolean;
-  },
-  {
-    gameBundle,
-    onProgress,
-  }: {
-    gameBundle: GameBundleSource;
-    onProgress?: (increment: number, stage: string) => void;
-  },
-) => {
-  // Avoid retaining two full saves because WASM memory cannot shrink.
-  closeSave();
-
-  // Read the file again for conversion instead of retaining its bytes.
-  const readFile = async () =>
-    save.kind === "file"
-      ? save.file.arrayBuffer()
-      : fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
-
-  const [wasm, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
-  onProgress?.(5, "Reading save file");
-
+async function parseApp(
+  saveData: Blob,
+  gameBundle: GameBundleSource,
+  onProgress?: (increment: number, stage: string) => void,
+  beforeLocalize?: (workspace: wasm_eu5.Eu5WasmWorkspace) => Promise<void>,
+  diagnose = true,
+): Promise<wasm_eu5.Eu5App | null> {
+  const [, tokens] = await Promise.all([initialized, tokensTask, tokensReady]);
   onProgress?.(10, "Parsing gamestate");
-
   const saveParser = await timeAsync("Initialize Save Parser", () =>
     wasm_eu5.SaveLoader.open(saveData),
   );
-
   const metadata = saveParser.meta();
   const version = `${metadata.version.major}.${metadata.version.minor}`;
   if ((await gameBundle.selectVersion(version)) === null) {
@@ -178,11 +186,11 @@ export const loadSave = async (
     return null;
   }
   const { game: gameBundleTask, localization: localizationTask } = openBundles(gameBundle);
-
   const gamestate = await (async () => {
     try {
       return timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
     } catch (originalError) {
+      if (!diagnose) throw originalError;
       const { diagnoseEu5Save } = await import("./eu5-diagnostics");
       await diagnoseEu5Save(saveData, tokens);
       throw originalError;
@@ -200,12 +208,49 @@ export const loadSave = async (
   );
   onProgress?.(3, "Syncing locations");
 
-  if (!mapEndpoint) {
-    throw new Error("Map endpoint not initialized");
-  }
-  const map = mapEndpoint;
+  await beforeLocalize?.(workspace);
+  const localizationBundle = await localizationTask;
+  return workspace.localize(localizationBundle);
+}
 
-  // Apply location data and grouping together so they always describe the same save.
+export const loadSave = (...args: Parameters<typeof loadSaveInner>) =>
+  serialize(() => loadSaveInner(...args));
+
+const loadSaveInner = async (
+  {
+    save,
+    data: saveData,
+    hold,
+  }: {
+    save: Eu5ParsedSave;
+    data: Blob;
+    hold: boolean;
+  },
+  {
+    gameBundle,
+    onProgress,
+  }: {
+    gameBundle: GameBundleSource;
+    onProgress?: (increment: number, stage: string) => void;
+  },
+) => {
+  // Wasm memory does not shrink, so the open save goes before this one is
+  // parsed. Two gamestates at once would raise the memory of the page for
+  // the rest of the session.
+  closeSave();
+
+  // Melt reads the save again, so that the worker does not keep a large
+  // file in memory.
+  const readFile = async () =>
+    save.kind === "file"
+      ? save.file.arrayBuffer()
+      : fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
+
+  const [wasm] = await Promise.all([initialized, tokensTask, tokensReady]);
+  onProgress?.(5, "Reading save file");
+
+  if (!mapEndpoint) throw new Error("Map endpoint not initialized");
+  const map = mapEndpoint;
   const syncSave = (source: wasm_eu5.Eu5WasmWorkspace | wasm_eu5.Eu5App) => {
     const buffer = source.location_arrays();
     const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
@@ -220,25 +265,21 @@ export const loadSave = async (
     );
   };
 
-  if (!hold) {
-    // Parsing can proceed while map textures load. View failures keep the defaults.
-    map.open_view(workspace.opening_view()).catch((error: unknown) => {
-      console.warn("Failed to open the map view", error);
-    });
-
-    await syncSave(workspace);
-  }
-  onProgress?.(5, "Localizing");
-
-  const localizationBundle = await localizationTask;
-  onProgress?.(2, "Building indexes");
-
-  const app = timeSync("Localize app", () => workspace.localize(localizationBundle));
+  const app = await parseApp(saveData, gameBundle, onProgress, async (workspace) => {
+    if (!hold) {
+      map
+        .open_view(workspace.opening_view())
+        .catch((error: unknown) => console.warn("Failed to open the map view", error));
+      await syncSave(workspace);
+    }
+  });
+  if (!app) return null;
   let held = hold;
+  let projectionActive = false;
+  let inspectProjection: ((interaction: MapInteraction) => void) | null = null;
 
-  // Build search indexes once after initialization.
-  const countryIndex = timeSync("Build country index", () => app.get_countries().countries);
-  const locationIndex = timeSync("Build location index", () => app.get_locations().locations);
+  // Search indexes belong only to the currently open save.
+  const { countries: countryIndex, locations: locationIndex } = searchIndexes(app);
 
   // Render each palette into a CSS gradient string once. The palette stops
   // come from Rust (single source of truth with the shader); the FE only ever
@@ -299,6 +340,7 @@ export const loadSave = async (
 
   const events: MapEvents = {
     hover: (event) => {
+      if (projectionActive) return;
       // Hover resolution is synchronous and worker messages are ordered. If
       // this handler becomes asynchronous, carry a generation through it.
       app.clear_highlights();
@@ -314,6 +356,10 @@ export const loadSave = async (
     },
 
     click: (event) => {
+      if (projectionActive) {
+        inspectProjection?.({ kind: "click", event });
+        return;
+      }
       let change: MapChangeData;
       if (event.kind === "update") {
         const mods = event.modifiers;
@@ -331,6 +377,10 @@ export const loadSave = async (
     },
 
     boxSelect: (event) => {
+      if (projectionActive) {
+        inspectProjection?.({ kind: "box", event });
+        return Promise.resolve();
+      }
       let change: MapChangeData;
       switch (event.operation) {
         case "add":
@@ -347,22 +397,115 @@ export const loadSave = async (
     },
   };
 
+  let frameSource: { id: string; reader: MapFrameReader } | undefined;
   const opened: OpenSave = {
     events: held ? null : events,
-    close: () => app.free(),
+    close: () => {
+      frameSource?.reader.close();
+      void projections.stop();
+      app.free();
+    },
   };
   openSave = opened;
 
+  const applyProjection = async (frame: MapFrame, mode: MapMode): Promise<TimelineChange> => {
+      if (openSave !== opened) throw Error("This save is no longer open");
+      const groups = app.apply_map_projection(
+        mode,
+        frame.layoutKey,
+        frame.locationIds,
+        frame.fractions,
+        frame.metrics,
+        frame.owners,
+        frame.controllers,
+        frame.religions,
+        frame.markets,
+        frame.countries,
+        frame.religionColors,
+        frame.marketColors,
+      );
+      const change = app.map_projection_change();
+      projectionActive = true;
+      hoverDisplayCallback?.({ kind: "clear" });
+      await Promise.all([
+        syncMapData({
+          colors: cloneBuffer(app.location_color_data()),
+          flags: cloneBuffer(app.location_flag_data()),
+        }),
+        held ? Promise.resolve() : map.syncGroupingTable(transfer(groups, [groups.buffer])),
+      ]);
+      if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
+      return change;
+  };
+  const projections = new LatestRequest<{ hash: string; mode: MapMode }, { change: TimelineChange; observation: MapObservation }>(async ({ hash, mode }, current) => {
+    if (!frameSource) throw Error("Campaign frame connection is not ready");
+    const frame = await frameSource.reader.read(hash);
+    if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
+    const change = await applyProjection(frame, mode);
+    const { campaignId, date, dateSort, version, layoutKey, fileName, world } = frame;
+    return { change, observation: { hash, campaignId, date, dateSort, version, layoutKey, fileName, world } };
+  });
   return proxy({
     show: async (): Promise<void> => {
       if (!held || openSave !== opened) return;
       held = false;
       await syncSave(app);
-      opened.events = events;
+      if (openSave === opened) opened.events = events;
+    },
+    replayMapInteraction: (interaction: MapInteraction) => {
+      if (projectionActive || openSave !== opened) return;
+      if (interaction.kind === "click") events.click(interaction.event);
+      else if (interaction.kind === "box") return events.boxSelect(interaction.event);
+      else {
+        const id = interaction.args[0];
+        const commands: Record<string, () => MapChangeData> = {
+          selectCountry: () => app.select_country(id),
+          addCountry: () => app.add_country(id),
+          removeCountry: () => app.remove_country(id),
+          selectMarket: () => app.select_market(id),
+          addMarket: () => app.add_market(id),
+          removeMarket: () => app.remove_market(id),
+          setFocusedLocation: () => app.set_focused_location(id),
+          clearFocus: () => app.clear_focus(),
+          clearFocusOrSelection: () => app.clear_focus_or_selection(),
+          selectPlayers: () => app.select_players(),
+          clearSelection: () => app.clear_selection(),
+        };
+        const command = commands[interaction.name];
+        if (command) return afterMutation(command());
+      }
+    },
+    requestMapInspection: (interaction: MapInteraction) => {
+      if (projectionActive) inspectProjection?.(interaction);
+    },
+    getMapLayoutKey: () => {
+      if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
+      return app.map_projection_layout_key();
+    },
+    onMapInspect: (callback: ((interaction: MapInteraction) => void) | null) => {
+      inspectProjection = callback;
+    },
+    connectMapFrames: (id: string, port: MessagePort | null) => {
+      if (!port && frameSource?.id !== id) return;
+      frameSource?.reader.close();
+      frameSource = port ? { id, reader: new MapFrameReader(port) } : undefined;
+    },
+    stopMapProjection: () => projections.stop(),
+    showMapObservation: (hash: string, mode: MapMode) => projections.request({ hash, mode }),
+    clearMapProjection: async (): Promise<void> => {
+      if (!projectionActive || openSave !== opened) return;
+      projectionActive = false;
+      app.restore_map_projection();
+      await syncAll({ colorsChanged: true, flagsChanged: true, gradient: undefined });
     },
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
+      if (projectionActive) {
+        projectionActive = false;
+        app.restore_map_projection();
+      }
       const change = app.set_map_mode(mode);
       await syncAll(change);
+      if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
       pushSelection(change.gradient ?? undefined);
       return change;
     },
@@ -370,6 +513,10 @@ export const loadSave = async (
       return app.get_timeline();
     },
     setTimelineDate: async (date: Eu5DateComponents): Promise<TimelineChange> => {
+      if (projectionActive) {
+        projectionActive = false;
+        app.restore_map_projection();
+      }
       const before = app.get_map_mode();
       const change = app.set_timeline_date(date);
       // A date can force the political mode, which is a mode change like any
@@ -428,7 +575,6 @@ export const loadSave = async (
     addCountry: (countryIdx: number) => afterMutation(app.add_country(countryIdx)),
     removeCountry: (countryIdx: number) => afterMutation(app.remove_country(countryIdx)),
     selectMarket: (marketId: number) => afterMutation(app.select_market(marketId)),
-    selectMarketAt: (locationIdx: number) => afterMutation(app.select_market_at(locationIdx)),
     addMarket: (marketId: number) => afterMutation(app.add_market(marketId)),
     removeMarket: (marketId: number) => afterMutation(app.remove_market(marketId)),
     setFocusedLocation: (locationIdx: number) =>
@@ -438,6 +584,7 @@ export const loadSave = async (
     selectPlayers: () => afterMutation(app.select_players()),
     clearSelection: () => afterMutation(app.clear_selection()),
     highlightMapHoverTarget: (target: Eu5MapHoverTarget) => {
+      if (projectionActive) return Promise.resolve();
       app.clear_highlights();
       switch (target.kind) {
         case "location":
@@ -453,6 +600,7 @@ export const loadSave = async (
       return syncFlagData();
     },
     clearMapHoverHighlight: () => {
+      if (projectionActive) return Promise.resolve();
       app.clear_highlights();
       return syncFlagData();
     },
@@ -460,6 +608,14 @@ export const loadSave = async (
       return app.get_state_efficacy();
     },
 
+    getMarketIdAtCenter: (center: number) => app.market_id_at_center(center),
+    getCampaignIdentities: (profiles: ActiveProfileIdentity[]) =>
+      campaignIdentities(app, countryIndex, profiles),
+    restoreCampaignView: async (carry: Eu5Carry) => {
+      const restored = restoreCampaignView(app, countryIndex, carry);
+      await syncAll(restored.change);
+      return restored;
+    },
     getCountryProfile: (countryIdx: number): CountryProfile | null => {
       return timeSync("Get country profile", () => app.get_country_profile(countryIdx) ?? null);
     },

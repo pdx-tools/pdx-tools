@@ -124,12 +124,13 @@ export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveInput = () => useEu5Store((x) => x.saveInput);
 export const useEu5Input = () => useEu5Store((x) => x.input);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
-export const useEu5World = () => useEu5Store((x) => x.world);
+export const useEu5World = () => useEu5Store((x) => x.appState.mapProjection?.world ?? x.world);
 export const useEu5PlaythroughId = () => useEu5Store((x) => x.playthroughId);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5Players = () => useEu5Store((x) => x.players);
 export const useEu5Multiplayer = () => useEu5Store((x) => x.multiplayer);
-export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);
+export const useEu5SelectionState = () =>
+  useEu5Store((x) => (x.appState.mapProjection ? null : x.appState.selectionState));
 export const useEu5SelectionRevision = () => useEu5Store((x) => x.appState.selectionRevision);
 export const useEu5UserSelectionRevision = () =>
   useEu5Store((x) => x.appState.userSelectionRevision);
@@ -139,7 +140,8 @@ export const useSetEu5InsightPanelOpen = () => useEu5Store((x) => x.setInsightPa
 export const useSetEu5InsightPanelWidth = () => useEu5Store((x) => x.setInsightPanelWidth);
 export const useEu5Timeline = () => useEu5Store((x) => x.appState.timeline);
 export const useEu5TimelineDate = () => useEu5Store((x) => x.appState.timelineDate);
-export const useEu5TimelineMapDate = () => useEu5Store((x) => x.appState.timelineMapDate);
+export const useEu5TimelineMapDate = () =>
+  useEu5Store((x) => x.appState.mapProjection?.date ?? x.appState.timelineMapDate);
 export const useEu5TimelineLive = () => useEu5Store((x) => isTimelineLive(x.appState));
 export const useEu5TimelinePlayback = () => useEu5Store((x) => x.appState.timelinePlayback);
 export const useEu5Timelapse = () => useEu5Store((x) => x.appState.timelapse);
