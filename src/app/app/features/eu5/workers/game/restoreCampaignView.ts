@@ -33,9 +33,12 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
     change.flagsChanged ||= next.flagsChanged;
     change.gradient = next.gradient;
   };
-  const identified = countries.map((country) => ({ ...country, id:countryId(app,country) ?? -1 }));
+  const identified = countries.map((country) => ({
+    ...country,
+    id: countryId(app, country) ?? -1,
+  }));
   const country = (identity: { id?: number; tag: string }) => {
-    const key = findCarriedCountry(identified,identity);
+    const key = findCarriedCountry(identified, identity);
     return countries.find((c) => c.country.key === key);
   };
   const selection = carry.selection;

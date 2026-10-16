@@ -13,8 +13,6 @@ type HistoryState = {
   remapViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
   panelOpen: boolean;
   showPanel: (open: boolean) => void;
-  playing: boolean;
-  setPlaying: (playing: boolean) => void;
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
   snapshots: SnapshotMetadata[];
@@ -53,8 +51,6 @@ export const useHistory = create<HistoryState>()((set) => ({
     set((state) => ({ viewedProfiles, remapRevision: state.remapRevision + 1 })),
   panelOpen: false,
   showPanel: (panelOpen) => set({ panelOpen }),
-  playing: false,
-  setPlaying: (playing) => set({ playing }),
   playbackSpeed: 1,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   snapshots: [],
