@@ -92,7 +92,7 @@ export function TimelineScrubber({
     [domainDays, width],
   );
   /** Limit playback to the history available in the open save. */
-  const historyX = px(totalDays);
+  const historyX = domainDays === 0 ? width : px(totalDays);
 
   const ticks = useMemo(
     () => buildYearTicks(timeline.start, domainEnd, width),
@@ -137,6 +137,7 @@ export function TimelineScrubber({
     if (event.target.closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus({ preventScroll: true });
+    controller.beginScrub?.();
     setDragging(true);
     setDayOffset(dayAtClientX(event.clientX));
   };
@@ -147,6 +148,9 @@ export function TimelineScrubber({
   const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragging) return;
     setDragging(false);
+    controller.commitDayOffset?.(
+      event.type === "pointercancel" ? mapDayOffset : dayAtClientX(event.clientX),
+    );
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }

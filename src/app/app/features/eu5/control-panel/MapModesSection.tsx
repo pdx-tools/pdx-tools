@@ -2,6 +2,7 @@ import { useId } from "react";
 import { SidebarNav } from "../components/SidebarNav";
 import { useEu5Engine, useEu5MapMode, useEu5Timelapse, useEu5TimelineLive } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
+import { useMapHistory } from "../history/MapHistory";
 import { MAP_MODES } from "./modeConfig";
 import type { ModeConfig } from "./modeConfig";
 import type { MapMode } from "@/wasm/wasm_eu5";
@@ -28,11 +29,10 @@ function ModeRow({ mode, live, locked }: { mode: ModeConfig; live: boolean; lock
   const currentMapMode = useEu5MapMode();
   const isActive = currentMapMode === mode.value;
   const noteId = useId();
-  // Only borders have a history. On a past date the other modes still work,
-  // but choosing one returns the map to the save date first. The rows look
-  // the same either way: the map's return and the timeline's exit show what
-  // happened. Assistive tech gets the reason as a description.
-  const resets = !live && !isHistoricalMapMode(mode.value);
+  const history = useMapHistory();
+  // Imported observations supply non-political history independently of
+  // the full save's ownership timeline.
+  const resets = !live && !history?.frames && !isHistoricalMapMode(mode.value);
   const note = locked
     ? "A timelapse recording is using the map. Map modes come back when it finishes."
     : resets
