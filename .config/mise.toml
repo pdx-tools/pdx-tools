@@ -1,7 +1,7 @@
 min_version = "2026.9.17"
 
 [tools]
-"node" = { version = "24.18.0" }
+"node" = { version = "26.12.0" }
 "conda:postgresql" = { version = "16.15" } # same major version as production
 "rust" = { version = "1.98.1" } # update in rust-toolchain.toml too!
 "github:cargo-bins/cargo-binstall" = { version = "1.12.5" }

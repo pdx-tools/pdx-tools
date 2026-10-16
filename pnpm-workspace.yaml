@@ -7,7 +7,7 @@ packages:
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 catalog:
-  '@types/node': 24.9.1
+  '@types/node': 26.6.5
   comlink: 4.4.2
   react-dom: 19.3.0
   react: 19.3.0
