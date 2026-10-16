@@ -300,7 +300,6 @@ fn analytical_overviews_match_normal_viewer_queries() {
     );
 }
 
-
 fn first_difference(a: &serde_json::Value, b: &serde_json::Value, path: &str) -> String {
     match (a, b) {
         (serde_json::Value::Object(a), serde_json::Value::Object(b)) => {
