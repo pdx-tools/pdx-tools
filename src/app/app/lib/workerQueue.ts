@@ -52,9 +52,11 @@ export function createWorkerQueue<Api>(
     if (!worker) {
       const raw = start();
       const untrack = trackWorker(raw);
-      const onError = (event: ErrorEvent) => {
-        if (worker?.raw !== raw) return;
-        if (active) active.cancel(new Error(event.message || "Worker failed"));
+      // A worker that fails to load sends a plain error event. An uncaught
+      // exception sends an ErrorEvent with a message, and the worker continues.
+      const onError = (event: Event) => {
+        if ((event as Partial<ErrorEvent>).message) return;
+        if (active) active.cancel(new Error("Worker failed", { cause: event }));
         else stopWorker();
       };
       raw.addEventListener("error", onError);
@@ -78,20 +80,28 @@ export function createWorkerQueue<Api>(
     try {
       for (let job = jobs.shift(); job; job = jobs.shift()) {
         const controller = new AbortController();
-        let interrupt: (reason: unknown) => void = () => {};
-        const interrupted = new Promise<never>((_, reject) => {
-          interrupt = reject;
-        });
+        const { promise: interrupted, reject: interrupt } = Promise.withResolvers<never>();
+        // Ignore a cancel after the call settles, so that it does not stop a healthy worker.
+        let settled = false;
+        let stopped: { reason: unknown } | undefined;
         active = {
           job,
           cancel: (reason) => {
+            if (settled || stopped) return;
+            stopped = { reason };
             controller.abort(reason);
             stopWorker();
             interrupt(reason);
           },
         };
         try {
-          job.resolve(await Promise.race([job.run(controller.signal), interrupted]));
+          const call = job.run(controller.signal).finally(() => {
+            settled = true;
+          });
+          const value = await Promise.race([call, interrupted]);
+          // The call can settle after a cancel stops the worker. Reject it.
+          if (stopped) throw stopped.reason;
+          job.resolve(value);
         } catch (error) {
           job.reject(error);
         } finally {
@@ -145,6 +155,7 @@ export function createWorkerQueue<Api>(
       }),
     terminate: (reason = abortError()) => {
       active?.cancel(reason);
+      // Stop the worker also when no job is active or the active call is settled.
       stopWorker();
       for (const job of jobs.splice(0)) {
         job.cleanup();

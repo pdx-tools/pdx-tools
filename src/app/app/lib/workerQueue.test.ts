@@ -179,3 +179,40 @@ it("does not create a worker for an already cancelled job", async () => {
   ).rejects.toMatchObject({ name: "AbortError" });
   expect(workers).toHaveLength(0);
 });
+
+it("keeps the worker and the job after an uncaught exception in the worker", async () => {
+  const { queue, workers, gates } = setup();
+  const job = queue.run((api) => api.echo("wait-job"));
+  await vi.waitFor(() => expect(gates.has("wait-job")).toBe(true));
+  workers[0].dispatchEvent(Object.assign(new Event("error"), { message: "stray throw" }));
+  gates.get("wait-job")!();
+  await expect(job).resolves.toBe("wait-job");
+  expect(workers[0].terminate).not.toHaveBeenCalled();
+  queue.terminate();
+});
+
+it("ignores a cancel that arrives after the call settles", async () => {
+  const { queue, workers } = setup();
+  const controller = new AbortController();
+  const job = queue.run(
+    (api) => {
+      const reply = api.echo("done");
+      void reply.then(() => Promise.resolve().then(() => controller.abort()));
+      return reply;
+    },
+    { signal: controller.signal },
+  );
+  await expect(job).resolves.toBe("done");
+  expect(controller.signal.aborted).toBe(true);
+  expect(workers[0].terminate).not.toHaveBeenCalled();
+  queue.terminate();
+});
+
+it("keeps the load failure as the cause of a worker crash", async () => {
+  const { queue, workers } = setup();
+  const failed = queue.run((api) => api.echo("wait-crash"));
+  const event = new Event("error");
+  const failure = expect(failed).rejects.toMatchObject({ cause: event });
+  workers[0].dispatchEvent(event);
+  await failure;
+});
