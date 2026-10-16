@@ -2,8 +2,7 @@ import type React from "react";
 import { cx } from "class-variance-authority";
 import { MapHoverButton } from "../../MapHoverButton";
 import { EntityName, entityLinkControl } from "../../components/EntityName";
-import { usePanelNav, locationProfileEntry } from "./PanelNavContext";
-import { usePanToEntity } from "../../usePanToEntity";
+import { useAnalysisEntityNavigation } from "./useAnalysisEntityNavigation";
 
 export type LocationTarget = { key: number; name: string };
 
@@ -21,13 +20,11 @@ export function LocationLink({
   className,
   ...props
 }: LocationLinkProps) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
+  const openEntity = useAnalysisEntityNavigation();
   const activate =
     onActivate ??
     ((target: LocationTarget) => {
-      nav.pushMany([locationProfileEntry(target.key, target.name)], backLabel);
-      panToEntity(target.key);
+      void openEntity("location", target.key, target.name, target.key, backLabel);
     });
 
   return (

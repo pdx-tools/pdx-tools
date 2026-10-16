@@ -58,7 +58,7 @@ export type CampaignNav = Readonly<{
   /** The key of the save that is being opened. */
   opening: string | null;
   /** Report navigation failures without replacing the current save when preparation fails. */
-  open: (save: CampaignSave) => Promise<OpenResult>;
+  open: (save: CampaignSave, carry?: CampaignCarry) => Promise<OpenResult>;
 }>;
 
 /** Identify the open save across changes to local file references. */
@@ -167,8 +167,9 @@ export function useCampaignNav(
   const leaveFor = async (
     target: CampaignStepTarget,
     transition: CampaignTransition,
+    requestedCarry?: CampaignCarry,
   ): Promise<OpenFailure | null> => {
-    const carry = await adapter.captureCarry();
+    const carry = requestedCarry ?? (await adapter.captureCarry());
     if (openPlaythroughId !== null) transition.preserveView(openPlaythroughId, carry);
     await adapter.leave?.();
     if (adapter.completion === "before-navigation") {
@@ -182,7 +183,7 @@ export function useCampaignNav(
     return null;
   };
 
-  const openSave = async (save: CampaignSave): Promise<OpenResult> => {
+  const openSave = async (save: CampaignSave, carry?: CampaignCarry): Promise<OpenResult> => {
     const from = open;
     if (from === null) return { kind: "busy" };
     const transition = save.isOpen ? null : transitions.begin(save.key);
@@ -205,6 +206,7 @@ export function useCampaignNav(
             uploaderId: save.source.uploaderId,
           },
           transition,
+          carry,
         );
         if (failure !== null) return { kind: "failed", failure };
         if (left()) return { kind: "cancelled" };
@@ -225,7 +227,7 @@ export function useCampaignNav(
       entry = registry.get(entry.id);
       if (entry === undefined) return refuse({ kind: "missing" });
 
-      const failure = await leaveFor({ kind: "local", ref: entry.ref }, transition);
+      const failure = await leaveFor({ kind: "local", ref: entry.ref }, transition, carry);
       if (failure !== null) return { kind: "failed", failure };
       if (left()) return { kind: "cancelled" };
       fileInput(localSaveInput(from.game, entry.ref));
@@ -250,7 +252,10 @@ export function useCampaignNav(
   useLayoutEffect(() => {
     latestOpenSave.current = openSave;
   });
-  const stableOpenSave = useCallback((save: CampaignSave) => latestOpenSave.current(save), []);
+  const stableOpenSave = useCallback(
+    (save: CampaignSave, carry?: CampaignCarry) => latestOpenSave.current(save, carry),
+    [],
+  );
 
   const pending = pendingEntries.length;
   const otherCampaign = saves.filter((x) => x.membership === "different").length;

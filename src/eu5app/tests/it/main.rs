@@ -1,3 +1,5 @@
+mod analysis;
+mod fixtures;
 mod utils;
 
 use std::collections::BTreeMap;
