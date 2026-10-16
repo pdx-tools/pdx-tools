@@ -124,22 +124,6 @@ beforeEach(() => {
 afterEach(() => terminateEu5Session());
 
 describe("EU5 campaign transitions", () => {
-  const previousProfiles = [{ kind: "country", country: { key: 4, name: "France" } }] as const;
-  const nextProfiles = [{ kind: "country", country: { key: 17, name: "France" } }] as const;
-  function preserveView() {
-    const transition = campaignTransitions.begin("next")!;
-    transition.preserveView(toPlaythroughId("campaign")!, {
-      game: "eu5",
-      payload: {
-        mapMode: "political",
-        viewport: null,
-        selection: null,
-        insightPanel: { open: true, width: 400 },
-      },
-    });
-    return transition;
-  }
-
   it("passes a carried map inspection to the destination save", async () => {
     await openSession();
     const interaction = {
