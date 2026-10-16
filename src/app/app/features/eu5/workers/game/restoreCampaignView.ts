@@ -33,12 +33,9 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
     change.flagsChanged ||= next.flagsChanged;
     change.gradient = next.gradient;
   };
-  const identified = countries.map((country) => ({
-    ...country,
-    id: countryId(app, country) ?? -1,
-  }));
+  const identified = countries.map((country) => ({ ...country, id:countryId(app,country) ?? -1 }));
   const country = (identity: { id?: number; tag: string }) => {
-    const key = findCarriedCountry(identified, identity);
+    const key = findCarriedCountry(identified,identity);
     return countries.find((c) => c.country.key === key);
   };
   const selection = carry.selection;
@@ -57,7 +54,24 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
     merge(app.set_focused_location(selection.locationIdx));
   }
 
-  return { change, selection: app.get_selection_summary() };
+  const profiles: ActiveProfileIdentity[] = [];
+  for (const profile of carry.profiles ?? []) {
+    if (profile.kind === "country") {
+      const match = country(profile);
+      if (!match) break;
+      profiles.push({ kind: "country", country: match.country });
+    } else if (profile.kind === "market") {
+      const id = app.market_id_at_center(profile.center);
+      const market = id == null ? null : app.get_market_profile(id);
+      if (!market || id == null) break;
+      profiles.push({ kind: "market", market: { key: id, name: market.header.name } });
+    } else {
+      const location = app.get_location_profile(profile.locationIdx);
+      if (!location) break;
+      profiles.push({ kind: "location", location: location.header.location });
+    }
+  }
+  return { change, selection: app.get_selection_summary(), profiles };
 }
 
 /** Resolve identities without building complete country profiles or searching locations. */

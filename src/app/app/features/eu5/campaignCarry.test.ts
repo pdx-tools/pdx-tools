@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Carry } from "./campaignCarry";
 import { applyEu5Carry, captureEu5Carry, findCarriedCountry } from "./campaignCarry";
 import type { Eu5Store } from "./store/eu5Store";
+import { useHistory } from "./history/store";
 const engine = () => ({
   state: { currentMapMode: "political" },
   trigger: {
@@ -24,9 +25,13 @@ const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   selection: null,
   ...extra,
 });
+beforeEach(() => useHistory.getState().setViewedProfiles([]));
 describe("campaign profile carry", () => {
-  it("captures the selected market by its center", async () => {
+  it("captures a market by its center and country breadcrumbs by tag", async () => {
     const previous = engine();
+    useHistory
+      .getState()
+      .setViewedProfiles([{ kind: "country", country: { key: 12, name: "France" } }]);
     const store = {
       getState: () => ({
         engine: previous,
@@ -40,13 +45,14 @@ describe("campaign profile carry", () => {
     } as unknown as Eu5Store;
     const result = await captureEu5Carry(store);
     expect(result.selection).toEqual({ kind: "market", center: 100 });
+    expect(result.profiles).toEqual([{ kind: "country", tag: "FRA" }]);
   });
   it("restores the view in one worker call before moving the camera", async () => {
     const next = engine();
     const view = carry({ selection: { kind: "country", tag: "FRA", focusedLocation: null } });
     const profiles = await applyEu5Carry(next as unknown as AppEngine, view);
     expect(next.trigger.restoreCampaignView).toHaveBeenCalledExactlyOnceWith(view);
-    expect(profiles).toBeUndefined();
+    expect(profiles).toEqual([{ kind: "country", country: { key: 77, name: "France" } }]);
     expect(next.trigger.fitWorldRect).not.toHaveBeenCalled();
   });
   it("replays a carried map interaction after restoring the view", async () => {
@@ -75,7 +81,7 @@ describe("campaign profile carry", () => {
 
     expect(order).toEqual(["restore", "interaction", "camera"]);
     expect(next.trigger.replayMapInteraction).toHaveBeenCalledExactlyOnceWith(interaction);
-    expect(profiles).toBeUndefined();
+    expect(profiles).toEqual([]);
   });
   it("captures a country and its focused location with one identity lookup", async () => {
     const previous = engine();
