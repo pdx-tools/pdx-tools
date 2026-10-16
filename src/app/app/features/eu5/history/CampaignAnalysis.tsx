@@ -1,3 +1,4 @@
+import { sameFileVersion } from "@/features/campaign/types";
 import { useEffect, useRef } from "react";
 import { useIsDeveloper } from "@/features/account";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
@@ -16,7 +17,21 @@ export function pendingCampaignAnalysis(
   playthroughId: string,
   attempted: ReadonlySet<string>,
 ) {
+  const history = useHistory.getState();
+  const completed = new Set(
+    history.snapshots.filter((row) => row.campaignId === playthroughId).map((row) => row.hash),
+  );
   return entries
+    .filter((entry) => {
+      const source = history.sources[entry.id];
+      const version = entry.version ?? (entry.ref.kind === "file" ? entry.ref.file : null);
+      return (
+        !source ||
+        !version ||
+        !completed.has(source.hash) ||
+        !sameFileVersion(version, source.version)
+      );
+    })
     .filter(
       (entry) =>
         entry.game === "eu5" &&

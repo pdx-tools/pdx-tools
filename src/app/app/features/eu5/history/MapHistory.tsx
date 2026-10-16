@@ -207,8 +207,8 @@ function useMapHistoryState() {
       previousMode.current.engine !== engine ||
       previousMode.current.mode !== state.currentMapMode
     ) {
+      if (previousMode.current.mode !== state.currentMapMode) setPlaying(false);
       previousMode.current = { engine, mode: state.currentMapMode };
-      setPlaying(false);
     }
     if (inspection.current) return;
     // A freshly opened entity owns the rich save view. Background timeline
@@ -280,6 +280,9 @@ function useMapHistoryState() {
     }
     setError(null);
     try {
+      useHistory.setState((history) => ({
+        selectedObservations: { ...history.selectedObservations, [campaignId]: hash },
+      }));
       await ensureObservationLoaded(campaignId, hash, campaign, interaction);
     } catch (failure) {
       if (!isAbortError(failure) && mounted.current) {

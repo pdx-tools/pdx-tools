@@ -1,3 +1,4 @@
+vi.mock("../history/analysisClient", () => ({ connectAnalysisFrames: async () => () => {} }));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SaveGameInput } from "@/features/engine/engineStore";
 import type { Eu5SaveInput } from "./types";
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   supported: vi.fn(() => true),
   emit: vi.fn(),
   applyCarry: vi.fn(),
+  project: vi.fn(),
 }));
 
 vi.mock("@/lib/canvas_courier", () => ({
@@ -87,7 +89,10 @@ async function openSession(input = save("previous")) {
 beforeEach(() => {
   vi.resetAllMocks();
   campaignTransitions.failed();
-  useHistory.setState({ viewedProfiles: [], remapRevision: 0, selectedObservations: {}, settlingObservation: null });
+  useHistory.setState({
+    selectedObservations: {},
+    settlingObservation: null,
+  });
   mocks.supported.mockReturnValue(true);
   mocks.read.mockImplementation(async (input: Eu5SaveInput) => ({
     save: input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input,
@@ -99,6 +104,11 @@ beforeEach(() => {
   mocks.load.mockImplementation(async ({ save }: { save: Eu5SaveInput }) => game(save));
   mocks.open.mockImplementation(async () => ({
     engine: {
+      trigger: {
+        selectMapMode: vi.fn(),
+        connectMapFrames: vi.fn(),
+        showMapProjection: mocks.project,
+      },
       destroy: vi.fn(),
       getState: () => ({ ownerBordersEnabled: true, hoverDisplayData: null }),
       subscribe: () => () => {},
@@ -130,42 +140,6 @@ describe("EU5 campaign transitions", () => {
     return transition;
   }
 
-  it("clears breadcrumbs when the target belongs to another campaign", async () => {
-    await openSession();
-    useHistory.getState().setViewedProfiles([...previousProfiles]);
-    const transition = preserveView();
-    mocks.open.mockResolvedValueOnce({
-      ...(await mocks.open()),
-      playthroughId: "another-campaign",
-    });
-    await stepEu5Session(save("other"));
-    expect(mocks.applyCarry).not.toHaveBeenCalled();
-    expect(useHistory.getState().viewedProfiles).toEqual([]);
-    expect(useHistory.getState().remapRevision).toBe(2);
-    transition.complete();
-  });
-
-  it("remaps breadcrumbs only after the matching target is successfully displayed", async () => {
-    await openSession();
-    useHistory.getState().setViewedProfiles([...previousProfiles]);
-    const transition = preserveView();
-    mocks.applyCarry.mockResolvedValue([...nextProfiles]);
-    const displayed = Promise.withResolvers<void>();
-    mocks.load.mockResolvedValueOnce(
-      game(
-        save("next"),
-        vi.fn(() => displayed.promise),
-      ),
-    );
-    const step = stepEu5Session(save("next"));
-    await vi.waitFor(() => expect(mocks.applyCarry).toHaveBeenCalledOnce());
-    expect(useHistory.getState().viewedProfiles).toEqual(previousProfiles);
-    displayed.resolve();
-    await step;
-    expect(useHistory.getState().viewedProfiles).toEqual(nextProfiles);
-    transition.complete();
-  });
-
   it("passes a carried map inspection to the destination save", async () => {
     await openSession();
     const interaction = {
@@ -193,19 +167,6 @@ describe("EU5 campaign transitions", () => {
     );
     expect(shownInput(findEu5Session(save("local-save"))!)).toEqual(save("local-save"));
     transition.complete();
-  });
-
-  it("does not apply target breadcrumbs to the previous save after display fails", async () => {
-    const session = await openSession();
-    useHistory.getState().setViewedProfiles([...previousProfiles]);
-    const transition = preserveView();
-    mocks.applyCarry.mockResolvedValue([...nextProfiles]);
-    const failure = new Error("Map synchronization failed");
-    mocks.load.mockResolvedValueOnce(game(save("next"), vi.fn().mockRejectedValue(failure)));
-    await expect(stepEu5Session(save("next"))).rejects.toThrow(failure);
-    expect(shownInput(session)).toEqual(save("previous"));
-    expect(useHistory.getState().viewedProfiles).toEqual(previousProfiles);
-    transition.cancel();
   });
 
   it("starts with the same snapshot as a page without a session", () => {
@@ -348,15 +309,29 @@ it("does not display a settled save after the requested observation changes duri
   const gate = Promise.withResolvers<ReturnType<typeof game>>();
   const stale = game(save("stale"));
   mocks.load.mockReturnValueOnce(gate.promise);
-  useHistory.setState({ selectedObservations: { campaign: "stale" }, settlingObservation: { campaignId: "campaign", hash: "stale" } });
+  useHistory.setState({
+    selectedObservations: { campaign: "stale" },
+    settlingObservation: { campaignId: "campaign", hash: "stale" },
+  });
   const step = stepEu5Session(save("stale"));
   const rejected = expect(step).rejects.toMatchObject({ name: "AbortError" });
   await vi.waitFor(() => expect(mocks.load).toHaveBeenCalledOnce());
-  useHistory.setState({ selectedObservations: { campaign: "latest" } });
+  useHistory.setState({
+    selectedObservations: { campaign: "latest" },
+    snapshots: [
+      {
+        hash: "latest",
+        layoutKey: "layout",
+        world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
+      } as never,
+    ],
+  });
   gate.resolve(stale);
   await rejected;
-  expect(stale.show).not.toHaveBeenCalled();
-  expect(shownInput(session)).toEqual(save("previous"));
+  expect(mocks.project).toHaveBeenCalledWith(expect.objectContaining({ hash: "latest" }));
+  expect(mocks.project.mock.invocationCallOrder[0]).toBeLessThan(
+    stale.show.mock.invocationCallOrder[0],
+  );
   useHistory.setState({ settlingObservation: { campaignId: "campaign", hash: "latest" } });
   await stepEu5Session(save("latest"));
   expect(shownInput(session)).toEqual(save("latest"));

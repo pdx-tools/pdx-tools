@@ -167,7 +167,7 @@ export interface AppTriggers {
   clearMapProjection(): Promise<void>;
   onMapInspect(callback: ((interaction: MapInteraction) => void) | null): Promise<void>;
   getCampaignIdentities(profiles: ActiveProfileIdentity[]): Promise<(StableProfile | null)[]>;
-  restoreCampaignView(carry: Eu5Carry): Promise<ActiveProfileIdentity[]>;
+  restoreCampaignView(carry: Eu5Carry): Promise<void>;
   selectMapMode(mode: MapMode): Promise<void>;
   /**
    * Show the map on a date. Calls coalesce: only the latest date renders.
@@ -346,7 +346,6 @@ export class Eu5UIEngine implements AppEngine {
         selectionState: restored.selection,
         selectionRevision: state.selectionRevision + 1,
       }));
-      return restored.profiles;
     },
     selectMapMode: (mode) => this.handleSelectMapMode(mode),
     setTimelineDate: (date) => this.handleSetTimelineDate(date),

@@ -63,3 +63,21 @@ it("enables analysis per campaign and resumes only the requested campaign", asyn
   expect(useHistory.getState().analysisPausedCampaigns).toEqual(["two"]);
   useHistory.setState({ analysisEnabledCampaigns: [], analysisPausedCampaigns: [] });
 });
+
+it("keeps completed file versions analyzed across UI remounts", async () => {
+  const { useHistory } = await import("./store");
+  const a = entry("finished");
+  useHistory.setState({
+    sources: { finished: { hash: "done", version: { size: 4, lastModified: 1 } } },
+    snapshots: [{ hash: "done", campaignId: "campaign" } as never],
+  });
+  expect(pendingCampaignAnalysis([a], "campaign", new Set())).toEqual([]);
+  expect(
+    pendingCampaignAnalysis(
+      [{ ...a, version: { size: 5, lastModified: 2 } }],
+      "campaign",
+      new Set(),
+    ),
+  ).toHaveLength(1);
+  useHistory.setState({ sources: {}, snapshots: [] });
+});

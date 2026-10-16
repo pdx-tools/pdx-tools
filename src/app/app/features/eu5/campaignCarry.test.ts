@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Carry } from "./campaignCarry";
-import { applyEu5Carry, captureEu5Carry } from "./campaignCarry";
+import { applyEu5Carry, captureEu5Carry, findCarriedCountry } from "./campaignCarry";
 import type { Eu5Store } from "./store/eu5Store";
-import { useHistory } from "./history/store";
 const engine = () => ({
   state: { currentMapMode: "political" },
   trigger: {
@@ -25,13 +24,9 @@ const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   selection: null,
   ...extra,
 });
-beforeEach(() => useHistory.getState().setViewedProfiles([]));
 describe("campaign profile carry", () => {
-  it("captures a market by its center and country breadcrumbs by tag", async () => {
+  it("captures the selected market by its center", async () => {
     const previous = engine();
-    useHistory
-      .getState()
-      .setViewedProfiles([{ kind: "country", country: { key: 12, name: "France" } }]);
     const store = {
       getState: () => ({
         engine: previous,
@@ -45,14 +40,13 @@ describe("campaign profile carry", () => {
     } as unknown as Eu5Store;
     const result = await captureEu5Carry(store);
     expect(result.selection).toEqual({ kind: "market", center: 100 });
-    expect(result.profiles).toEqual([{ kind: "country", tag: "FRA" }]);
   });
   it("restores the view in one worker call before moving the camera", async () => {
     const next = engine();
     const view = carry({ selection: { kind: "country", tag: "FRA", focusedLocation: null } });
     const profiles = await applyEu5Carry(next as unknown as AppEngine, view);
     expect(next.trigger.restoreCampaignView).toHaveBeenCalledExactlyOnceWith(view);
-    expect(profiles).toEqual([{ kind: "country", country: { key: 77, name: "France" } }]);
+    expect(profiles).toBeUndefined();
     expect(next.trigger.fitWorldRect).not.toHaveBeenCalled();
   });
   it("replays a carried map interaction after restoring the view", async () => {
@@ -81,7 +75,7 @@ describe("campaign profile carry", () => {
 
     expect(order).toEqual(["restore", "interaction", "camera"]);
     expect(next.trigger.replayMapInteraction).toHaveBeenCalledExactlyOnceWith(interaction);
-    expect(profiles).toEqual([]);
+    expect(profiles).toBeUndefined();
   });
   it("captures a country and its focused location with one identity lookup", async () => {
     const previous = engine();
@@ -117,5 +111,40 @@ describe("campaign profile carry", () => {
     } as unknown as Eu5Store;
     expect((await captureEu5Carry(store)).selection).toBeNull();
     expect(previous.trigger.getCampaignIdentities).not.toHaveBeenCalled();
+  });
+});
+
+describe("carried country lookup", () => {
+  const country = (key: number, id: number, tag: string, capital: number | null = 1) => ({
+    country: { key },
+    id,
+    tag,
+    capital,
+  });
+
+  it("follows a country that changes its tag", () => {
+    // NTC forms YMT and keeps its ID.
+    const countries = [country(5, 611, "YMT"), country(6, 700, "NTC")];
+    expect(findCarriedCountry(countries, { id: 611, tag: "NTC" })).toBe(5);
+  });
+
+  it("uses the new holder of the tag when the ID is gone", () => {
+    // A new country takes POR, and the old POR is gone.
+    const countries = [country(9, 2375, "POR")];
+    expect(findCarriedCountry(countries, { id: 1259, tag: "POR" })).toBe(9);
+  });
+
+  it("prefers a landed country when the tag is shared", () => {
+    const countries = [country(3, 50, "POR", null), country(9, 2375, "POR")];
+    expect(findCarriedCountry(countries, { id: 1259, tag: "POR" })).toBe(9);
+  });
+
+  it("finds nothing when the ID and the tag are both gone", () => {
+    expect(findCarriedCountry([country(5, 611, "YMT")], { id: 1259, tag: "POR" })).toBeNull();
+  });
+
+  it("uses the tag for a carry that has no ID", () => {
+    const countries = [country(5, 611, "YMT"), country(9, 2375, "POR")];
+    expect(findCarriedCountry(countries, { tag: "POR" })).toBe(9);
   });
 });
