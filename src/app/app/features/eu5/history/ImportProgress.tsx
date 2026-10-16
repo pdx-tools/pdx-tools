@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import type { ImportProgressState } from "./importProgress";
-import { importProgressStats } from "./importProgress";
+import type { ImportProgressState } from "./importTiming";
+import { importProgressStats } from "./importTiming";
 
 function duration(seconds: number) {
   if (seconds < 60) return `${seconds}s`;

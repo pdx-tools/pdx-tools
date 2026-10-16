@@ -364,9 +364,11 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
     replayMapInteraction: (interaction: MapInteraction) => save.replayMapInteraction(interaction),
     requestMapInspection: (interaction: MapInteraction) => save.requestMapInspection(interaction),
     getMapLayoutKey: () => save.getMapLayoutKey(),
-    connectMapFrames: (id: string, port: MessagePort | null) => save.connectMapFrames(id, port ? transfer(port, [port]) : null),
+    connectMapFrames: (id: string, port: MessagePort | null) =>
+      save.connectMapFrames(id, port ? transfer(port, [port]) : null),
     stopMapProjection: () => save.stopMapProjection(),
-    showMapProjection: (frame: MapObservation, mode: MapMode) => save.showMapObservation(frame.hash, mode),
+    showMapProjection: (frame: MapObservation, mode: MapMode) =>
+      save.showMapObservation(frame.hash, mode),
     clearMapProjection: () => save.clearMapProjection(),
     onMapInspect: (callback: ((interaction: MapInteraction) => void) | null) =>
       save.onMapInspect(callback ? proxy(callback) : null),

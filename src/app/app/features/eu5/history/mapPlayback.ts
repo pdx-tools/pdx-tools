@@ -64,4 +64,3 @@ export function nearestMapFrame(frames: MapFrame[], date: DateComponents) {
   }
   return nearest;
 }
-

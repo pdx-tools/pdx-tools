@@ -409,41 +409,47 @@ const loadSaveInner = async (
   openSave = opened;
 
   const applyProjection = async (frame: MapFrame, mode: MapMode): Promise<TimelineChange> => {
-      if (openSave !== opened) throw Error("This save is no longer open");
-      const groups = app.apply_map_projection(
-        mode,
-        frame.layoutKey,
-        frame.locationIds,
-        frame.fractions,
-        frame.metrics,
-        frame.owners,
-        frame.controllers,
-        frame.religions,
-        frame.markets,
-        frame.countries,
-        frame.religionColors,
-        frame.marketColors,
-      );
-      const change = app.map_projection_change();
-      projectionActive = true;
-      hoverDisplayCallback?.({ kind: "clear" });
-      await Promise.all([
-        syncMapData({
-          colors: cloneBuffer(app.location_color_data()),
-          flags: cloneBuffer(app.location_flag_data()),
-        }),
-        held ? Promise.resolve() : map.syncGroupingTable(transfer(groups, [groups.buffer])),
-      ]);
-      if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
-      return change;
+    if (openSave !== opened) throw Error("This save is no longer open");
+    const groups = app.apply_map_projection(
+      mode,
+      frame.layoutKey,
+      frame.locationIds,
+      frame.fractions,
+      frame.metrics,
+      frame.owners,
+      frame.controllers,
+      frame.religions,
+      frame.markets,
+      frame.countries,
+      frame.religionColors,
+      frame.marketColors,
+    );
+    const change = app.map_projection_change();
+    projectionActive = true;
+    hoverDisplayCallback?.({ kind: "clear" });
+    await Promise.all([
+      syncMapData({
+        colors: cloneBuffer(app.location_color_data()),
+        flags: cloneBuffer(app.location_flag_data()),
+      }),
+      held ? Promise.resolve() : map.syncGroupingTable(transfer(groups, [groups.buffer])),
+    ]);
+    if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
+    return change;
   };
-  const projections = new LatestRequest<{ hash: string; mode: MapMode }, { change: TimelineChange; observation: MapObservation }>(async ({ hash, mode }, current) => {
+  const projections = new LatestRequest<
+    { hash: string; mode: MapMode },
+    { change: TimelineChange; observation: MapObservation }
+  >(async ({ hash, mode }, current) => {
     if (!frameSource) throw Error("Campaign frame connection is not ready");
     const frame = await frameSource.reader.read(hash);
     if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
     const change = await applyProjection(frame, mode);
     const { campaignId, date, dateSort, version, layoutKey, fileName, world } = frame;
-    return { change, observation: { hash, campaignId, date, dateSort, version, layoutKey, fileName, world } };
+    return {
+      change,
+      observation: { hash, campaignId, date, dateSort, version, layoutKey, fileName, world },
+    };
   });
   return proxy({
     show: async (): Promise<void> => {

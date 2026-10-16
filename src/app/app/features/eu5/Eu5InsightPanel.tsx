@@ -84,7 +84,12 @@ function PanelContentInner() {
   const preview = useMapHistory()?.preview;
   const activeProfile = preview ? null : selectionState?.activeProfile;
 
-  if (preview) return <p className="p-4 text-sm text-game-ink-500">Charts become available when playback pauses and this save has loaded.</p>;
+  if (preview)
+    return (
+      <p className="p-4 text-sm text-game-ink-500">
+        Charts become available when playback pauses and this save has loaded.
+      </p>
+    );
   let content: React.ReactNode;
 
   if (!preview && top?.kind === "focus") {

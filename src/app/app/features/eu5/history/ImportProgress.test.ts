@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { importProgressStats } from "./importProgress";
+import { importProgressStats } from "./importTiming";
 
 it("waits for completed saves before estimating remaining time", () => {
   expect(importProgressStats(0, 10, 5000)).toEqual({ percent: 0, etaSeconds: null });

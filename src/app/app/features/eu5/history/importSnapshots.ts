@@ -2,7 +2,7 @@ import { createWorkerQueue } from "@/lib/workerQueue";
 import type { WorkerQueue } from "@/lib/workerQueue";
 import { appendAnalysis, campaignAnalysis } from "./analysisClient";
 import type { SnapshotMetadata } from "./types";
-import type { ImportPhaseState } from "./importProgress";
+import type { ImportPhaseState } from "./importTiming";
 import type { parseImport } from "./snapshot-worker";
 export type ImportOptions = {
   signal: AbortSignal;
