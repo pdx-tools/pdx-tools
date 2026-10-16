@@ -425,55 +425,66 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
 
 #[derive(Debug, Serialize, Tsify)]
 #[serde(rename_all = "camelCase")]
-pub struct MapImportMetadata {
-    pub content_hash: String,
-    pub extractor_version: u32,
-    pub campaign_id: String,
-    pub date: String,
-    pub date_sort: i32,
-    pub game_version: String,
-    pub layout_key: String,
-    pub world: eu5app::insights::WorldSummary,
+pub struct SaveAnalysisImport {
+    pub snapshot: eu5app::snapshot::SaveSnapshot,
+    pub hash: String,
+    pub overviews: eu5app::analysis::OverviewData,
+    pub country_ids: Vec<u32>,
+    pub country_names: std::collections::BTreeMap<u32, String>,
 }
 
-fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result<JsValue, JsError> {
-    let (mut observation, projection) = {
+fn analysis_result(
+    mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>,
+    game_bundle: &Eu5WasmGameBundle,
+    localization: &Eu5WasmLocalizationBundle,
+) -> Result<JsValue, JsError> {
+    use eu5app::presentation::{LocalizationContext, Present};
+    let (snapshot, projection, overviews, country_ids, country_names) = {
         let game = loaded.take_gamestate();
-        let meta = game.metadata();
-        if meta.playthrough_id.to_str().is_empty() {
+        if game.metadata().playthrough_id.to_str().is_empty() {
             return Err(JsError::new("Save has no campaign ID"));
         }
-        let date = Eu5DateComponents::from(meta.date);
-        let projection =
-            eu5app::map_projection::extract(&game).map_err(|e| JsError::new(&e.to_string()))?;
-        let observation = MapImportMetadata {
-            content_hash: String::new(),
-            extractor_version: eu5app::map_projection::EXTRACTOR_VERSION,
-            campaign_id: meta.playthrough_id.to_str().to_owned(),
-            date: format!("{:04}-{:02}-{:02}", date.year, date.month, date.day),
-            date_sort: i32::from(date.year) * 10000
-                + i32::from(date.month) * 100
-                + i32::from(date.day),
-            game_version: format!(
-                "{}.{}.{}",
-                meta.version.major, meta.version.minor, meta.version.patch
+        let context =
+            LocalizationContext::new(&localization.localization, &game_bundle.game_data, &game);
+        let ids = eu5app::snapshot::country_ids_by_index(&game);
+        let snapshot = eu5app::snapshot::extract(&game);
+        let names = snapshot
+            .countries
+            .iter()
+            .filter_map(|country| {
+                let idx = game
+                    .countries
+                    .get(eu5save::models::CountryId::new(country.country_id))?;
+                Some((country.country_id, idx.present(&context).name))
+            })
+            .collect();
+        (
+            snapshot,
+            map_projection::into_js(
+                &eu5app::map_projection::extract(&game)
+                    .map_err(|e| JsError::new(&e.to_string()))?,
+            )?,
+            eu5app::analysis::extract_overviews(
+                &game,
+                &game_bundle.game_data,
+                &localization.localization,
             ),
-            layout_key: projection.layout_key.clone(),
-            world: eu5app::map_projection::world_summary(&game),
-        };
-        (observation, map_projection::into_js(&projection)?)
+            ids,
+            names,
+        )
     };
-    observation.content_hash = loaded.into_observer().finish();
-    let result = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &result,
-        &JsValue::from_str("observation"),
-        &into_ts(observation)?.into(),
-    )
-    .map_err(|_| JsError::new("Could not create map observation"))?;
+    let hash = loaded.into_observer().finish();
+    let result: JsValue = into_ts(SaveAnalysisImport {
+        snapshot,
+        hash,
+        overviews,
+        country_ids,
+        country_names,
+    })?
+    .into();
     js_sys::Reflect::set(&result, &JsValue::from_str("projection"), &projection)
-        .map_err(|_| JsError::new("Could not create map columns"))?;
-    Ok(result.into())
+        .map_err(|_| JsError::new("Could not create analytical map columns"))?;
+    Ok(result)
 }
 
 #[wasm_bindgen]
@@ -501,12 +512,16 @@ impl ImportLoader {
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
-    pub fn parse_import(self) -> Result<JsValue, JsError> {
+    pub fn parse_import(
+        self,
+        game: &Eu5WasmGameBundle,
+        localization: &Eu5WasmLocalizationBundle,
+    ) -> Result<JsValue, JsError> {
         let loaded = self
             .parser
             .parse()
             .map_err(|e| JsError::new(&e.to_string()))?;
-        analysis_result(loaded)
+        analysis_result(loaded, game, localization)
     }
 }
 
