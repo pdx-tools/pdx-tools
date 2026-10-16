@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::color::Srgb;
 use crate::insights::{PopulationRankSegment, PopulationTypeProfileRow};
 use crate::presentation::{
-    LocalizationContext, Localized, Present, UiCountryIdx, UiLocationIdx, UiMarketId, present_dto,
+    LocalizationContext, Localized, Present, UiCountryId, UiCountryIdx, UiLocationIdx, UiMarketId,
+    present_dto,
 };
 
 pub mod country {
@@ -98,8 +99,12 @@ pub enum ActiveProfileIdentity {
 #[serde(rename_all = "camelCase")]
 pub struct CountrySearchEntry {
     pub country: Localized<UiCountryIdx>,
+    pub id: UiCountryId,
     pub tag: String,
     pub capital: Option<UiLocationIdx>,
+    /// The country owns one or more locations. A dead country can keep its
+    /// capital, so use this value and not the capital to find living countries.
+    pub landed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

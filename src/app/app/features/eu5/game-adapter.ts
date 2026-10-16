@@ -328,8 +328,8 @@ export type SaveQueries = Pick<
   | "getPoliticalWorldScoreboard"
   | "getPoliticalDefaultCountryAnchor"
   | "searchEntities"
-  | "getCountryTag"
-  | "findCountryByTag"
+  | "getCountryIdentity"
+  | "findCountry"
   | "getLocationArrays"
   | "melt"
 >;

@@ -17,7 +17,7 @@ mod subject_color;
 pub mod timeline;
 
 pub use presentation::{
-    LocalizationContext, Localized, Present, UiCountryIdx, UiCultureId, UiLocationId,
+    LocalizationContext, Localized, Present, UiCountryId, UiCountryIdx, UiCultureId, UiLocationId,
     UiLocationIdx, UiMarketId, UiReligionId,
 };
 
