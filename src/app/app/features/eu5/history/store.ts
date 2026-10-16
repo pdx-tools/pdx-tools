@@ -1,5 +1,4 @@
 import type { Eu5Carry } from "../campaignCarry";
-import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { create } from "zustand";
 import type { FileVersion } from "@/features/campaign/types";
 import type { ImportProgressState } from "./importProgress";
@@ -7,18 +6,8 @@ import type { SnapshotMetadata } from "./types";
 
 export type SourceObservation = { hash: string; version: FileVersion };
 type HistoryState = {
-  viewedProfiles: ActiveProfileIdentity[];
-  setViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
-  remapRevision: number;
-  remapViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
-  panelOpen: boolean;
-  showPanel: (open: boolean) => void;
-  playing: boolean;
-  setPlaying: (playing: boolean) => void;
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
-  failedSaves: Record<string, string>;
-  markFailed: (key: string, message: string) => void;
   snapshots: SnapshotMetadata[];
   selectedObservations: Record<string, string>;
   previewCarries: Record<string, Eu5Carry | undefined>;
@@ -48,20 +37,8 @@ export function isAnalysisPaused(
 
 /** Historical data only. Campaign navigation owns files and the active save. */
 export const useHistory = create<HistoryState>()((set) => ({
-  viewedProfiles: [],
-  setViewedProfiles: (viewedProfiles) => set({ viewedProfiles }),
-  remapRevision: 0,
-  remapViewedProfiles: (viewedProfiles) =>
-    set((state) => ({ viewedProfiles, remapRevision: state.remapRevision + 1 })),
-  panelOpen: false,
-  showPanel: (panelOpen) => set({ panelOpen }),
-  playing: false,
-  setPlaying: (playing) => set({ playing }),
   playbackSpeed: 1,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
-  failedSaves: {},
-  markFailed: (key, message) =>
-    set((state) => ({ failedSaves: { ...state.failedSaves, [key]: message } })),
   snapshots: [],
   selectedObservations: {},
   previewCarries: {},

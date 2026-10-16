@@ -185,6 +185,36 @@ fn map_projection_preserves_all_modes_and_restores_the_full_save() {
             })
         ));
         assert_eq!(ws.location_arrays().as_data(), preview);
+        let mut ids = frame.location_ids.clone();
+        ids[0] = ids[0].wrapping_add(1);
+        let mut invalid = frame.as_data();
+        invalid.location_ids = &ids;
+        assert!(matches!(
+            ws.apply_map_projection(invalid, mode),
+            Err(eu5app::map_projection::MapProjectionError::LocationMismatch { index: 0, .. })
+        ));
+        assert_eq!(ws.location_arrays().as_data(), preview);
+        let mut measurements = frame.metrics.clone();
+        measurements[0] = f32::NAN;
+        let mut invalid = frame.as_data();
+        invalid.metrics = &measurements;
+        assert_eq!(
+            ws.apply_map_projection(invalid, mode).unwrap_err(),
+            eu5app::map_projection::MapProjectionError::NonFinite {
+                location: frame.location_ids[0]
+            }
+        );
+        assert_eq!(ws.location_arrays().as_data(), preview);
+        let mut invalid = frame.as_data();
+        invalid.countries = &frame.countries[..1];
+        assert!(matches!(
+            ws.apply_map_projection(invalid, mode),
+            Err(eu5app::map_projection::MapProjectionError::TableWidth {
+                table: "countries",
+                ..
+            })
+        ));
+        assert_eq!(ws.location_arrays().as_data(), preview);
         ws.restore_map_projection();
         assert_eq!(ws.location_arrays().as_data(), original, "{mode:?} restore");
     }

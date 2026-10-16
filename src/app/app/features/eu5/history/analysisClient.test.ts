@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
-  api: { memoryBytes: vi.fn() },
+  api: { memoryBytes: vi.fn(), connectFrames: vi.fn(), disconnectFrames: vi.fn() },
   cancel: vi.fn(),
   setState: vi.fn(),
   untrack: vi.fn(),
@@ -76,4 +76,14 @@ it("keeps every lost campaign retryable after another campaign resumes", async (
   expect(mocks.setState).toHaveBeenCalledWith(
     expect.objectContaining({ analysisPausedCampaigns: ["paused", "a", "b"] }),
   );
+});
+
+it("disconnects game ports immediately when the storage worker fails", async () => {
+  const { connectAnalysisFrames } = await import("./analysisClient");
+  const connect = vi.fn().mockResolvedValue(undefined);
+  const disconnect = await connectAnalysisFrames(connect);
+  const id = connect.mock.calls[0][0];
+  mocks.workers[0].dispatchEvent(new Event("error"));
+  expect(connect).toHaveBeenLastCalledWith(id, null);
+  disconnect();
 });

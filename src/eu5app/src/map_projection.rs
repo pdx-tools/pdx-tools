@@ -163,10 +163,6 @@ pub fn world_summary(game: &Gamestate<'_>) -> crate::insights::WorldSummary {
 
 pub fn layout_key(metadata: &Metadata<'_>) -> String {
     let mut hash = SaveCheckSummer::new();
-    hash.write_all(&metadata.version.major.to_le_bytes())
-        .expect("checksum writes are infallible");
-    hash.write_all(&metadata.version.minor.to_le_bytes())
-        .expect("checksum writes are infallible");
     for (id, name) in metadata.compatibility.locations_iter() {
         hash.write_all(&id.value().to_le_bytes())
             .expect("checksum writes are infallible");
@@ -264,6 +260,14 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
     };
     for entry in game.locations.iter() {
         let location = entry.location();
+        if !location.control.is_finite()
+            || !location.market_access.is_finite()
+            || !location.tax.is_finite()
+        {
+            return Err(MapProjectionError::NonFinite {
+                location: entry.id().value(),
+            });
+        }
         result.location_ids.push(entry.id().value());
         result
             .fractions

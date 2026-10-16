@@ -6,6 +6,7 @@ import { analyticalBuffers } from "./transferBuffers";
 import { trackWorker } from "@/lib/sentryWorker";
 import { useHistory } from "./store";
 let client: Remote<typeof analysisApi> | undefined;
+const frameConnections = new Map<string, () => void>();
 export function campaignAnalysis(): Remote<typeof analysisApi> {
   if (!client) {
     const worker = new Worker(new URL("./analysis-worker.ts", import.meta.url), { type: "module" });
@@ -48,6 +49,7 @@ export function campaignAnalysis(): Remote<typeof analysisApi> {
       failure = new Error(message);
       for (const reject of pending) reject(failure);
       pending.clear();
+      for (const disconnect of frameConnections.values()) disconnect();
       worker.removeEventListener("error", failed);
       worker.removeEventListener("messageerror", failed);
       worker.terminate();
@@ -85,9 +87,11 @@ export async function connectAnalysisFrames(
   const channel = new MessageChannel();
   const storage = campaignAnalysis();
   const disconnect = () => {
+    frameConnections.delete(id);
     void storage.disconnectFrames(id).catch(() => {});
     void connect(id, null).catch(() => {});
   };
+  frameConnections.set(id, disconnect);
   try {
     await Promise.all([
       storage.connectFrames(id, transfer(channel.port1, [channel.port1])),
@@ -96,6 +100,8 @@ export async function connectAnalysisFrames(
     return disconnect;
   } catch (error) {
     disconnect();
+    channel.port1.close();
+    channel.port2.close();
     throw error;
   }
 }
