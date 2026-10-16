@@ -54,7 +54,11 @@ function save(hash = "one", dateSort = 13600101, campaignId = "campaign"): SaveA
     development: 12,
   };
   return {
-    observation: { ...snapshot, layoutKey:"same", world:{locationCount:1,countryCount:1,totalPopulation:10} },
+    observation: {
+      ...snapshot,
+      layoutKey: "same",
+      world: { locationCount: 1, countryCount: 1, totalPopulation: 10 },
+    },
     snapshot: packSnapshot(snapshot),
     projection: {
       layoutKey: "same",
@@ -182,4 +186,28 @@ it("does not copy selector metadata with map frames or selected history results"
   const rows = store.queryHistory({ campaignId: "campaign", country: "world" });
   expect(rows[0]).not.toHaveProperty("countryNames");
   expect(rows[0]).not.toHaveProperty("goods");
+});
+
+it("never merges historical series when a different country reuses the old tag", () => {
+  const store = new CampaignAnalysisStore();
+  const first = save(),
+    later = save("later", 13600401);
+  later.snapshot.countryIds[2] = 99;
+  store.append(first);
+  store.append(later);
+  expect(
+    store
+      .queryHistory({ campaignId: "campaign", country: "id:7" })
+      .map((row) => row.countries.length),
+  ).toEqual([1, 0]);
+  expect(
+    store
+      .queryHistory({ campaignId: "campaign", country: "id:99" })
+      .map((row) => row.countries.length),
+  ).toEqual([0, 1]);
+  expect(
+    store
+      .queryHistory({ campaignId: "campaign", country: "ENG" })
+      .every((row) => !row.countries.length),
+  ).toBe(true);
 });
