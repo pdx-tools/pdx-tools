@@ -7,13 +7,13 @@ packages:
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 catalog:
-  '@types/node': 24.9.1
+  '@types/node': 26.6.5
   comlink: 4.4.2
   react-dom: 19.3.0
   react: 19.3.0
   typescript: 7.0.2
   vite: 8.3.0
-  wrangler: 4.147.0
+  wrangler: 4.151.0
 allowBuilds:
   '@sentry/cli': true
   '@tailwindcss/oxide': true
