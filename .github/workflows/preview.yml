@@ -1,0 +1,232 @@
+name: Preview
+
+# A read-only preview of each pull request on Cloudflare Workers. Each push
+# updates it. When the pull request closes, a placeholder replaces it. A pull
+# request from a fork gets a preview only with the "safe to test" label.
+#
+# The preview Worker (env.preview in src/app/wrangler.toml) has no R2 or
+# analytics bindings and no production secrets, and its database role can only
+# read.
+#
+# The build job runs code from the pull request, so it does not get the
+# Cloudflare token. The deploy job does not run code from the pull request. It
+# uploads the built files with the trusted src/app/wrangler.toml, not with the
+# config from the build, so a build cannot add bindings. For a fork,
+# pull_request_target runs the workflow and the deploy job from the base
+# branch.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  pull_request_target:
+    types: [labeled, synchronize, reopened, closed]
+
+# For a fork, both events start a run, and only one of them does work. The
+# event name keeps the two runs from canceling each other.
+concurrency:
+  group: preview-${{ github.event_name }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PREVIEW_ALIAS: pr-${{ github.event.pull_request.number }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.action != 'closed' && (
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          contains(github.event.pull_request.labels.*.name, 'safe to test') &&
+          (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+      )
+    env:
+      ASSET_CACHE_PATHS: |
+        assets/game-bundles
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Restore assets
+        uses: actions/cache/restore@v6
+        with:
+          key: game-bundles-v2-${{ hashFiles('assets/catalog.json') }}
+          restore-keys: game-bundles-v2-
+          enableCrossOsArchive: true
+          path: ${{ env.ASSET_CACHE_PATHS }}
+
+      - uses: actions/checkout@v7
+        name: Clone tokens
+        with:
+          path: assets/tokens
+          repository: pdx-tools/tokens
+          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
+
+      - name: Link tokens
+        run: cd assets/tokens && ln -s tokens/* .
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.9.17
+          cache: false
+
+      - name: Restore Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: preview
+          save-if: false
+
+      - name: Get pnpm store directory
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+
+      - name: Restore pnpm cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store
+
+      - name: Asset pipeline
+        env:
+          ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
+          ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
+        run: |
+          mise run admin:assets:sync
+          mise run admin:assets:compile:all
+
+      # CLOUDFLARE_ENV selects env.preview at build time. The build uses the
+      # faster wasm-dev profile, and it keeps the production media origin from
+      # .env.production.
+      - name: Build
+        env:
+          CLOUDFLARE_ENV: preview
+        run: |
+          mise run build:app
+          find src/app/build -iname "*.map" -delete
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: preview-build
+          path: src/app/build
+          retention-days: 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The default ref: the base branch for pull_request_target, and the
+      # pull request from this repository for pull_request.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.9.17
+          cache: false
+          install_args: node github:pnpm/pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: preview-build
+          path: ${{ runner.temp }}/build
+
+      - name: Upload preview
+        working-directory: src/app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.json
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pnpm exec wrangler versions upload "$RUNNER_TEMP/build/server/index.js" \
+            --config wrangler.toml \
+            --env preview \
+            --no-bundle \
+            --assets "$RUNNER_TEMP/build/client" \
+            --preview-alias "$PREVIEW_ALIAS" \
+            --tag "$PREVIEW_ALIAS" \
+            --message "Preview of #$PR_NUMBER at $HEAD_SHA"
+          url=$(jq -r 'select(.type == "version-upload") | .preview_alias_url // empty' "$WRANGLER_OUTPUT_FILE_PATH")
+          if [ -z "$url" ]; then
+            echo "Wrangler did not report a preview alias URL"
+            exit 1
+          fi
+          echo "PREVIEW_URL=$url" >> "$GITHUB_ENV"
+
+      - name: Comment with the preview URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none \
+            --body "Read-only preview of $HEAD_SHA: $PREVIEW_URL"
+
+  close:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.action == 'closed' && (
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          contains(github.event.pull_request.labels.*.name, 'safe to test'))
+      )
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The merge ref of a closed pull request can be gone, so use the base
+      # branch.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          persist-credentials: false
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.9.17
+          cache: false
+          install_args: node github:pnpm/pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Point the alias of the pull request at the placeholder. Each version
+      # also has its own URL, which Cloudflare cannot delete. Those URLs are
+      # not linked anywhere, and they can only read data.
+      - name: Replace the preview with the placeholder
+        working-directory: src/app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm exec wrangler versions upload \
+            --config ../../dev/preview/wrangler.toml \
+            --preview-alias "$PREVIEW_ALIAS" \
+            --message "Close the preview of #$PR_NUMBER"
+
+      - name: Update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none \
+            --body "The preview of this pull request is closed."

@@ -25,6 +25,13 @@ export async function saveFileResponse({
   saveId: string;
   game: "eu4" | "eu5";
 }) {
+  // A pull request preview has no save bucket. It gets the save file from
+  // production through the same public route.
+  const { env } = getCloudflare(context);
+  if (!env.SAVE_BUCKET && env.SAVE_FILE_ORIGIN) {
+    return forwardSaveFile(request, new URL(url.pathname, env.SAVE_FILE_ORIGIN));
+  }
+
   const startedAt = performance.now();
   const storage = pdxStorage({ context, game });
   const metrics = pdxMetrics(context);
@@ -113,4 +120,15 @@ export async function saveFileResponse({
     });
     throw error;
   }
+}
+
+// Send only the conditional headers. The other request headers (eg. the
+// session cookie) are for the preview, not for production.
+function forwardSaveFile(request: Request, target: URL) {
+  const headers = new Headers();
+  for (const name of ["if-none-match", "if-modified-since"]) {
+    const value = request.headers.get(name);
+    if (value !== null) headers.set(name, value);
+  }
+  return fetch(target, { headers });
 }

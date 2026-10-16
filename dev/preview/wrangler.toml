@@ -1,0 +1,8 @@
+#:schema ../../src/app/node_modules/wrangler/config-schema.json
+# The placeholder version of the preview Worker. The preview workflow uploads it
+# under the alias of a closed pull request, and it is the deployed version of
+# the Worker. See .github/workflows/preview.yml.
+name = "pdx-tools-workers-preview"
+compatibility_date = "2026-09-18"
+main = "./closed.js"
+preview_urls = true

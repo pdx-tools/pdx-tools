@@ -35,9 +35,11 @@ export type Metric = {
   bytes?: number;
 };
 
+// A Worker without the PDX_METRICS binding (eg. a pull request preview)
+// discards metrics.
 export const pdxMetrics = (context: PdxRouteContext) => ({
   record: (m: Metric) => {
-    getCloudflare(context).env.PDX_METRICS.writeDataPoint({
+    getCloudflare(context).env.PDX_METRICS?.writeDataPoint({
       indexes: [m.domain],
       blobs: [
         m.operation,

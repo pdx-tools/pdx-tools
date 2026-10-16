@@ -76,3 +76,30 @@ bucket_name = "pdx-media-test"
 
 [env.test.version_metadata]
 binding = "CF_VERSION_METADATA"
+
+# Read-only previews of pull requests (see .github/workflows/preview.yml). The
+# preview has no R2 or analytics bindings, and its database role can only read.
+# Thus code in a pull request cannot change production data.
+[env.preview]
+name = "pdx-tools-workers-preview"
+preview_urls = true
+r2_buckets = []
+analytics_engine_datasets = []
+
+# The preview workflow uploads the build with this config, not with the config
+# from the build (a pull request can change that one). The Vite build ignores
+# these rules. They match the rules that the Vite build writes.
+[[env.preview.rules]]
+type = "ESModule"
+globs = ["**/*.js", "**/*.mjs"]
+
+[env.preview.vars]
+SAVE_FILE_ORIGIN = "https://pdx.tools"
+
+[[env.preview.hyperdrive]]
+binding = "PDX_DB"
+id = "f14dd112a27640509aa5e711f63104c0"
+localConnectionString = "postgres://app_user:mercantilismbaby2@localhost:5432/postgres"
+
+[env.preview.version_metadata]
+binding = "CF_VERSION_METADATA"
