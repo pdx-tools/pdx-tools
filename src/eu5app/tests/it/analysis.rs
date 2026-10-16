@@ -227,3 +227,104 @@ fn map_projection_preserves_all_modes_and_restores_the_full_save() {
     ws.restore_map_projection();
     assert_eq!(ws.location_arrays().as_data(), original);
 }
+
+#[test]
+fn analytical_country_identities_preserve_one_based_ui_indices() {
+    let mut loaded = Eu5DebugSaveLoader::open(fixtures::request_file("debug-1.0.eu5"))
+        .unwrap()
+        .parse()
+        .unwrap();
+    let game = loaded.take_gamestate();
+    let ids = eu5app::snapshot::country_ids_by_index(&game);
+    assert_eq!(ids[0], 0);
+    for entry in game.countries.iter() {
+        assert_eq!(ids[entry.idx().value() as usize], entry.id().value());
+    }
+}
+#[test]
+fn analytical_overviews_match_normal_viewer_queries() {
+    let Some(mut loaded) =
+        utils::build_workspace("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5")
+    else {
+        return;
+    };
+    let ws = &mut loaded.workspace;
+    ws.clear_selection();
+    // Localization from the same fixture bundle used by the existing viewer.
+    let version = ws.gamestate().metadata().version;
+    let Some(install) = utils::game_install(version) else {
+        return;
+    };
+    let (_, data, loc) = install.into_inner();
+    let cached = eu5app::analysis::extract_overviews(ws.gamestate(), &data, &loc);
+    macro_rules! same {
+        ($field:ident,$method:ident,$mode:ident) => {
+            ws.set_map_mode(eu5app::MapMode::$mode);
+            let expected = serde_json::to_value(ws.localized(&loc).presenter().$method()).unwrap();
+            let actual = serde_json::to_value(&cached.$field).unwrap();
+            assert!(
+                actual == expected,
+                "{} mismatch at {}",
+                stringify!($field),
+                first_difference(&actual, &expected, "root")
+            );
+        };
+    }
+    same!(political, political_world_scoreboard, Political);
+    same!(control, calculate_control_insight, Control);
+    same!(development, calculate_development_insight, Development);
+    same!(population, calculate_population_insight, Population);
+    same!(markets, calculate_market_insight, Markets);
+    same!(rgo_level, calculate_rgo_insight, RgoLevel);
+    same!(
+        building_levels,
+        calculate_building_levels_insight,
+        BuildingLevels
+    );
+    same!(wealth, calculate_wealth_insight, Wealth);
+    same!(
+        unrealized_tax_base,
+        calculate_unrealized_tax_base_insight,
+        UnrealizedTaxBase
+    );
+    same!(religion, calculate_religion_insight, Religion);
+    same!(
+        state_efficacy,
+        calculate_state_efficacy_insight,
+        StateEfficacy
+    );
+    same!(
+        population_growth,
+        calculate_population_growth_insight,
+        PopulationGrowth
+    );
+}
+
+
+fn first_difference(a: &serde_json::Value, b: &serde_json::Value, path: &str) -> String {
+    match (a, b) {
+        (serde_json::Value::Object(a), serde_json::Value::Object(b)) => {
+            for (key, value) in a {
+                if b.get(key) != Some(value) {
+                    return first_difference(
+                        value,
+                        b.get(key).unwrap_or(&serde_json::Value::Null),
+                        &format!("{path}.{key}"),
+                    );
+                }
+            }
+        }
+        (serde_json::Value::Array(a), serde_json::Value::Array(b)) => {
+            if a.len() != b.len() {
+                return format!("{path} lengths {} vs {}", a.len(), b.len());
+            }
+            for (i, (a, b)) in a.iter().zip(b).enumerate() {
+                if a != b {
+                    return first_difference(a, b, &format!("{path}[{i}]"));
+                }
+            }
+        }
+        _ => return format!("{path}: {a} vs {b}"),
+    }
+    path.to_owned()
+}

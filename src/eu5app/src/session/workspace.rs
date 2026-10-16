@@ -179,6 +179,7 @@ fn nice_bucket_step(range: f64, target_buckets: usize) -> f64 {
     nice_norm * magnitude
 }
 
+pub mod analysis;
 pub mod entity_profile;
 mod hover;
 mod insights;

@@ -1,3 +1,4 @@
+import { queryAnalysisOverview } from "./history/analysisClient";
 import type { MapInteraction } from "./history/mapInteraction";
 import type { MapObservation } from "./history/analysisTypes";
 import type { Eu5Carry, StableProfile } from "./campaignCarry";
@@ -239,7 +240,38 @@ export class Eu5UIEngine implements AppEngine {
     timeline: TimelineData,
     initialState?: Partial<AppState>,
   ) {
-    this.queries = gameInstance.queries;
+    const overviewQueries = {
+      getStateEfficacy: "stateEfficacy",
+      getDevelopmentInsight: "development",
+      getWealthInsight: "wealth",
+      getWealthScope: "wealthScope",
+      getUnrealizedTaxBaseInsight: "unrealizedTaxBase",
+      getUnrealizedTaxBaseScope: "unrealizedTaxBaseScope",
+      getMarketInsight: "markets",
+      getPopulationInsight: "population",
+      getPopulationGrowthInsight: "populationGrowth",
+      getBuildingLevelsInsight: "buildingLevels",
+      getReligionInsight: "religion",
+      getRgoInsight: "rgoLevel",
+      getControlInsight: "control",
+      getPoliticalWorldScoreboard: "political",
+    } as const;
+    this.queries = new Proxy(gameInstance.queries, {
+      get: (target, key) => {
+        const original = Reflect.get(target, key);
+        if (typeof key !== "string" || !(key in overviewQueries)) return original;
+        return async (...args: unknown[]) => {
+          if (this.destroyed) throw new DOMException("Save changed", "AbortError");
+          const hash = this._state.mapProjection?.hash;
+          if (!hash) return original(...args);
+          const name = overviewQueries[key as keyof typeof overviewQueries];
+          const result = await queryAnalysisOverview(hash, name);
+          if (this.destroyed || result.hash !== hash || this._state.mapProjection?.hash !== hash)
+            throw new DOMException("Date changed", "AbortError");
+          return result.data;
+        };
+      },
+    });
     this.commands = new Proxy(gameInstance.commands, {
       get: (target, key) => {
         const original = Reflect.get(target, key);
