@@ -107,10 +107,7 @@ export async function connectAnalysisFrames(
   }
 }
 
-export async function queryAnalysisOverview<K extends keyof OverviewData>(
-  hash: string,
-  key: K,
-) {
+export async function queryAnalysisOverview<K extends keyof OverviewData>(hash: string, key: K) {
   return (await campaignAnalysis().queryOverview(hash, key)) as {
     hash: string;
     data: OverviewData[K];
