@@ -1,3 +1,5 @@
+import { connectAnalysisFrames } from "../history/analysisClient";
+import { useHistory } from "../history/store";
 import { CanvasCourierHost } from "@/lib/canvas_courier";
 import type { CanvasCourierSurface, CanvasCourierTransport } from "@/lib/canvas_courier";
 import { captureException } from "@/lib/captureException";
@@ -235,6 +237,7 @@ class Eu5Session {
     }
 
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
+    const reload = this.pendingStep?.failure != null;
     if (carry !== null) {
       await this.applyCarry(opened.engine, carry);
       if (!this.isCurrent(generation)) {
@@ -248,7 +251,7 @@ class Eu5Session {
       : undefined;
     const { save: saveInput } = await source;
     this.show(createEu5Store({ opened, input: save, saveInput, view }), {
-      reload: this.pendingStep?.failure != null,
+      reload,
     });
   }
 
@@ -314,6 +317,68 @@ class Eu5Session {
       return;
     }
 
+    // A parser already in flight cannot be interrupted. If playback resumed,
+    // adopt its engine only after painting the latest analytical observation.
+    // Publishing the obsolete full-save map would jump the playhead backwards.
+    const history = useHistory.getState();
+    const settling = history.settlingObservation;
+    const selected = opened.playthroughId
+      ? history.selectedObservations[opened.playthroughId]
+      : undefined;
+    if (
+      opened.playthroughId &&
+      settling?.campaignId === opened.playthroughId &&
+      selected &&
+      selected !== settling.hash
+    ) {
+      const original =
+        history.previewCarries[opened.playthroughId] ??
+        campaignTransitions.takeView("eu5", opened.playthroughId);
+      if (original)
+        await this.applyCarry(opened.engine, {
+          ...original,
+          inspection: undefined,
+          mapMode: previous.getState().appState.currentMapMode,
+          viewport: null,
+        });
+      else await opened.engine.trigger.selectMapMode(previous.getState().appState.currentMapMode);
+      const disconnect = await connectAnalysisFrames(opened.engine.trigger.connectMapFrames);
+      try {
+        let painted: string;
+        do {
+          painted = useHistory.getState().selectedObservations[opened.playthroughId];
+          const frame = useHistory.getState().snapshots.find((row) => row.hash === painted);
+          if (!frame || !frame.layoutKey || !frame.world)
+            throw new DOMException("Observation removed", "AbortError");
+          await opened.engine.trigger.showMapProjection({
+            ...frame,
+            layoutKey: frame.layoutKey,
+            world: frame.world,
+          });
+        } while (
+          this.isCurrent(generation) &&
+          painted !== useHistory.getState().selectedObservations[opened.playthroughId]
+        );
+        if (!this.isCurrent(generation)) {
+          opened.engine.destroy();
+          return;
+        }
+        await game.show();
+        this.rejectStep(new DOMException("Selected observation changed", "AbortError"));
+        this.show(
+          createEu5Store({
+            opened,
+            input: save,
+            saveInput: source.save,
+            view: eu5ViewState(previous),
+          }),
+          { reload: true },
+        );
+      } finally {
+        disconnect();
+      }
+      return;
+    }
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
     if (carry !== null) {
       // The retained canvas already has the current camera position.
@@ -340,6 +405,7 @@ class Eu5Session {
       await applyEu5Carry(...args);
     } catch (error) {
       captureException(error, { tags: { msg: "campaign-carry" } });
+      return;
     }
   }
 
@@ -430,4 +496,10 @@ export function terminateEu5Session(): void {
   if (session !== null) {
     endSession(session);
   }
+}
+
+/** The fully loaded view after a campaign step finishes. */
+export function activeEu5Store(): Eu5Store | null {
+  const snapshot = currentSession?.getSnapshot();
+  return snapshot?.status === "success" ? snapshot.data : null;
 }

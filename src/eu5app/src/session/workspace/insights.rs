@@ -1440,23 +1440,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// The whole map: owned locations, owning countries, and their people.
     pub fn world_summary(&self) -> WorldSummary {
-        let mut owners: FxHashSet<CountryId> = FxHashSet::default();
-        let mut location_count = 0u32;
-        let mut total_population = 0u32;
-        for entry in self.gamestate.locations.iter() {
-            let loc = entry.location();
-            let Some(owner_id) = loc.owner.real_id().map(|r| r.country_id()) else {
-                continue;
-            };
-            owners.insert(owner_id);
-            location_count += 1;
-            total_population += self.gamestate.location_population(loc) as u32;
-        }
-        WorldSummary {
-            location_count,
-            country_count: owners.len() as u32,
-            total_population,
-        }
+        crate::map_projection::world_summary(&self.gamestate)
     }
 
     /// Owned locations per country over the whole map, used to tell a fully

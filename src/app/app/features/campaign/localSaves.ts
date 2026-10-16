@@ -338,6 +338,7 @@ export function createLocalSaveRegistry(
       fileVersion: parsedVersion === null ? null : fileVersion(parsedVersion),
     }),
     get: getLocalSave,
+    recordIdentity: setLocalSaveIdentity,
     readIdentity,
     verify,
     observeOpen,
@@ -352,4 +353,9 @@ export const registerLocalSaves = localSaveRegistry.register;
 
 export function localSaveInput(game: CampaignGame, ref: LocalSaveRef): SaveGameInput {
   return game === "eu4" ? { kind: "eu4", data: ref } : { kind: "eu5", data: ref };
+}
+
+/** Match the registered file reference before attaching an analysis result. */
+export function holdsRef(entry: LocalSaveEntry, ref: LocalSaveRef): boolean {
+  return entry.ref.kind === ref.kind && entry.ref.file === ref.file;
 }

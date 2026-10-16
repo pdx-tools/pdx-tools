@@ -214,6 +214,39 @@ describe("campaign navigation", () => {
     expect(mocks.navigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
+  it("preserves a caller-provided inspection carry when opening a local save", async () => {
+    const file = new File(["save"], "next.eu5");
+    const [entry] = await registry.register("eu5", [{ kind: "file", file }]);
+    const prepare = vi.fn(async () => {});
+    const adapter = beforeNavigation(prepare);
+    adapter.captureCarry = vi.fn(captureCarry);
+    const nav = renderNav(adapter);
+    const local: CampaignSave = {
+      ...target,
+      key: `local:${entry.id}`,
+      source: { kind: "local", entryId: entry.id, uploadedBy: null },
+    };
+    const requestedCarry: CampaignCarry = {
+      game: "eu5",
+      payload: {
+        mapMode: "markets",
+        viewport: null,
+        selection: null,
+        insightPanel: { open: true, width: 640 },
+        inspection: {
+          interaction: {
+            kind: "click",
+            event: { kind: "update", locationIdx: 42, modifiers: 1 },
+          },
+        },
+      },
+    };
+
+    expect(await nav.open(local, requestedCarry)).toEqual({ kind: "navigated" });
+    expect(adapter.captureCarry).not.toHaveBeenCalled();
+    expect(transitions.takeView("eu5", open.playthroughId)).toEqual(requestedCarry.payload);
+  });
+
   it("allows another step and starts fresh after a save fails to load", async () => {
     const playthroughId = toPlaythroughId("campaign")!;
     const nav = renderNav({ completion: "after-navigation", captureCarry });

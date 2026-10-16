@@ -1,10 +1,9 @@
 // Test helper for EU5 save fixtures.
 // Keep downloaded fixtures outside source directories.
 
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 use std::path::Path;
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
 
 use eu5app::game_data::Localization;
 use eu5app::game_data::game_install::Eu5GameInstall;
@@ -15,77 +14,10 @@ use highway::HighwayHash;
 use jomini::binary::TokenResolver;
 use pdx_map::LocationArrays;
 
-static DATA: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+pub use super::fixtures::request_file;
 
 pub fn require_test_assets() -> bool {
     std::env::var("PDX_REQUIRE_TEST_ASSETS").as_deref() == Ok("1")
-}
-
-fn log_access(name: &str) {
-    let Some(path) = std::env::var_os("PDX_FIXTURES_LOG") else {
-        return;
-    };
-    let mut log = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .expect("PDX_FIXTURES_LOG to be writable");
-    // One write per line so parallel tests do not interleave.
-    log.write_all(format!("eu5/{name}\n").as_bytes()).unwrap();
-}
-
-/// Fetch a save file. Save files can be quite large, so the save files are not stored in the
-/// repo. Instead they are stored in a public S3 bucket. This function will check if the file has
-/// been cached, else fetch it from the S3 bucket. Previous implementations used git lfs, but had
-/// to be migrated away as we ran out of the monthly free bandwidth (1GB) on day 1 (and even git
-/// lfs caching was used). The S3 implementation used is backblaze, which provides 1GB free
-/// download per day, so I'm not anticipating paying more than a few cents a year to maintain this
-/// repository of saves.
-pub fn request_file<S: AsRef<str>>(input: S) -> File {
-    let reffed = input.as_ref();
-    log_access(reffed);
-    let cache_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/saves/eu5");
-    let cache = cache_dir.join(reffed);
-    if cache.exists() {
-        println!("cache hit: {}", reffed);
-    } else {
-        let guard = DATA.lock().unwrap();
-        if cache.exists() {
-            drop(guard);
-            println!("cache hit: {}", reffed);
-        } else {
-            let url = format!("https://cdn-dev.pdx.tools/eu5-saves/{}", reffed);
-            let mut attempts = 0;
-            loop {
-                match attohttpc::get(&url).send() {
-                    Ok(mut resp) => {
-                        if !resp.is_success() {
-                            panic!("expected a 200 code from s3");
-                        } else {
-                            // Atomic rename to avoid reading partial writes.
-                            // Use temporary in same directory to avoid cross
-                            // device rename issues.
-                            std::fs::create_dir_all(&cache_dir).unwrap();
-                            let mut tmp = tempfile::NamedTempFile::new_in(&cache_dir)
-                                .expect("to create tempfile");
-                            std::io::copy(&mut resp, &mut tmp).expect("to copy to tempfile");
-                            tmp.persist(&cache).unwrap();
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        if attempts > 4 {
-                            panic!("errored retrieving from s3: {:?}", e)
-                        } else {
-                            attempts += 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    std::fs::File::open(cache).unwrap()
 }
 
 static TOKENS: LazyLock<BasicTokenResolver> = LazyLock::new(|| {
@@ -131,26 +63,7 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
     let loader = Eu5SaveLoader::open(file, resolver).unwrap_or_else(|e| panic!("{save_name}: {e}"));
     let version = loader.meta().version;
 
-    let bundle_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("assets")
-        .join("game-bundles")
-        .join(format!("eu5-{}.{}.zip", version.major, version.minor));
-    if !bundle_path.exists() {
-        let message = format!(
-            "{save_name}: missing {}; run mise run admin:assets:sync, or add the bundle with mise run admin:assets:publish",
-            bundle_path.display()
-        );
-        if require_test_assets() {
-            panic!("{message}");
-        }
-        eprintln!("{message}");
-        return None;
-    }
-
-    let install = Eu5GameInstall::open(&bundle_path)
-        .unwrap_or_else(|e| panic!("{save_name}: {}: {e}", bundle_path.display()));
+    let install = game_install(version)?;
     let (_textures, game_data, localization) = install.into_inner();
 
     let mut loaded_save = loader
@@ -169,6 +82,32 @@ pub fn build_workspace(save_name: &str) -> Option<LoadedWorkspace> {
         localization,
         _loaded_save: loaded_save,
     })
+}
+
+/// Match the asset requirements used by the existing workspace tests.
+pub fn game_install(version: eu5save::models::GameVersion) -> Option<Eu5GameInstall> {
+    let bundle_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("assets")
+        .join("game-bundles")
+        .join(format!("eu5-{}.{}.zip", version.major, version.minor));
+    if !bundle_path.exists() {
+        let message = format!(
+            "missing {}; run mise run admin:assets:sync, or add the bundle with mise run admin:assets:publish",
+            bundle_path.display()
+        );
+        if require_test_assets() {
+            panic!("{message}");
+        }
+        eprintln!("{message}");
+        return None;
+    }
+
+    Some(
+        Eu5GameInstall::open(&bundle_path)
+            .unwrap_or_else(|e| panic!("{}: {e}", bundle_path.display())),
+    )
 }
 
 /// Summarize a map mode for a snapshot. A change in the snapshot shows the

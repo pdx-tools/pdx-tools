@@ -1,3 +1,5 @@
+import { useHistory } from "../history/store";
+import { useMapHistory } from "../history/MapHistory";
 import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { TimelapseExport } from "./TimelapseExport";
@@ -32,50 +34,65 @@ function usePresence(open: boolean) {
 /**
  * The campaign timeline as a bar along the bottom of the map. The track gets
  * the full map width, which is what a long campaign needs for a precise drag.
- * Only the political mode has a history, so the bar shows for that mode and
- * leaves with the others. The keyboard shortcuts stay live throughout: a
- * step from another mode returns the map to the political mode, and the bar
- * rises with it.
+ * Political mode retains ownership history; other modes seek observed save dates
+ * from the same compact analytical timeline.
  */
 export function TimelineBar() {
-  const controller = useTimelineController();
-  const campaign = useTimelineCampaign(controller?.timeline.start);
+  const ownership = useTimelineController();
+  const history = useMapHistory();
   const mapMode = useEu5MapMode();
+  const controller = history?.controller ?? (isHistoricalMapMode(mapMode) ? ownership : null);
+  const campaign = useTimelineCampaign(controller?.timeline.start);
+  const speed = useHistory((state) => state.playbackSpeed);
   const insets = useViewportInsets();
   useTimelineKeyboard(controller);
-
-  const open = controller !== null && isHistoricalMapMode(mapMode);
+  const open = controller !== null;
   const presence = usePresence(open);
   const barRef = useRef<HTMLDivElement>(null);
   useReportedHeight(barRef, open, presence.mounted);
-
-  if (controller === null || !presence.mounted) return null;
-
+  if (!presence.mounted || !controller) return null;
   return (
     <div
       ref={barRef}
       data-state={presence.state}
       onAnimationEnd={presence.onAnimationEnd}
       className={cx(styles.bar, "@container pointer-events-auto absolute z-20 font-game-ui")}
-      style={{
-        left: insets.left + GUTTER_PX,
-        right: insets.right + GUTTER_PX,
-        bottom: GUTTER_PX,
-      }}
+      style={{ left: insets.left + GUTTER_PX, right: insets.right + GUTTER_PX, bottom: GUTTER_PX }}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-game-line-strong bg-game-overlay py-2 pr-2 pl-2.5 shadow-xl backdrop-blur-md">
         <TimelineTransport controller={controller} />
-
         <TimelineReadout controller={controller} className="shrink-0" />
-
-        {/* A narrow bar gives the track its own full row on top. */}
         <div className="min-w-0 flex-1 basis-64 @max-xl:order-first @max-xl:basis-full">
           <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
-
-        <TimelapseExport controller={controller} />
+        {history?.controller ? (
+          <select
+            aria-label="Saved-date playback speed"
+            value={speed}
+            className="rounded-control border border-game-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300"
+            onChange={(event) => useHistory.getState().setPlaybackSpeed(Number(event.target.value))}
+          >
+            {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
+              <option key={value} value={value}>
+                {value}×
+              </option>
+            ))}
+          </select>
+        ) : (
+          <TimelapseExport controller={controller} />
+        )}
       </div>
-
+      {history?.error && (
+        <div
+          role="status"
+          className="mt-1 flex items-center gap-2 rounded-panel bg-game-panel px-3 py-2 text-xs text-game-ink-300"
+        >
+          <span>{history.error}</span>
+          <button className="underline" onClick={() => void history.inspect()}>
+            Retry loading
+          </button>
+        </div>
+      )}
       <TimelineAnnouncer controller={controller} />
     </div>
   );
