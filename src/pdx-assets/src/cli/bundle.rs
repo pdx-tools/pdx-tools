@@ -1,5 +1,6 @@
 use crate::asset_compilers::{
     Eu4AssetCompliler, Eu5AssetCompiler, GameAssetCompiler, Hoi4AssetCompiler, PackageOptions,
+    Vic3AssetCompiler,
 };
 use crate::bundler::{AssetBundler, AssetManifest};
 use crate::images::RustImageProcessor;
@@ -21,7 +22,7 @@ pub struct BundleArgs {
     #[clap(value_parser)]
     out_directory: Option<PathBuf>,
 
-    /// Game to bundle (eu4, eu5, or hoi4). If not specified, attempts to auto-detect from source
+    /// Game to bundle (eu4, eu5, hoi4, or vic3). If not specified, attempts to auto-detect from source
     #[clap(long)]
     game: Option<String>,
 
@@ -104,6 +105,15 @@ impl BundleArgs {
                 }
                 Game::Hoi4 => {
                     let game_compiler = Hoi4AssetCompiler;
+                    game_compiler.compile_assets(
+                        &tracking_provider,
+                        &imaging,
+                        &out_dir,
+                        &options,
+                    )?
+                }
+                Game::Vic3 => {
+                    let game_compiler = Vic3AssetCompiler;
                     game_compiler.compile_assets(
                         &tracking_provider,
                         &imaging,

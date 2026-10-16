@@ -13,6 +13,7 @@ pub mod http;
 pub mod images;
 pub mod launcher;
 pub mod steam;
+pub mod vic3;
 
 pub use cli::*;
 pub use file_provider::*;
@@ -82,7 +83,7 @@ impl Game {
 
     /// Is the game a part of the asset pipeline (bundle and compile)?
     pub fn has_asset_pipeline(self) -> bool {
-        matches!(self, Game::Eu4 | Game::Eu5 | Game::Hoi4)
+        matches!(self, Game::Eu4 | Game::Eu5 | Game::Hoi4 | Game::Vic3)
     }
 
     /// Is the provider an installation of this game?
@@ -108,7 +109,7 @@ impl Game {
         if let Some(game) = launcher::game_id(provider)
             .ok()
             .flatten()
-            .and_then(|game_id| game_id.parse().ok())
+            .and_then(|game_id| Game::from_launcher_id(&game_id).ok())
         {
             return Ok(game);
         }
@@ -129,6 +130,15 @@ impl Game {
                 "Could not auto-detect game type. Please specify --game with one of: {}",
                 Game::names()
             ))
+        }
+    }
+
+    /// The game of a `gameId` in the launcher settings. Most games use their
+    /// short name, but Vic3 uses "victoria3".
+    pub fn from_launcher_id(game_id: &str) -> Result<Self> {
+        match game_id {
+            "victoria3" => Ok(Game::Vic3),
+            game_id => game_id.parse(),
         }
     }
 
@@ -252,7 +262,7 @@ mod tests {
 
     #[test]
     fn unknown_or_invalid_launcher_settings_fall_back_to_data_files() {
-        for settings in [&br#"{"gameId": "victoria3"}"#[..], b"not json"] {
+        for settings in [&br#"{"gameId": "stellaris"}"#[..], b"not json"] {
             let dir = install_with(&["launcher-settings.json", "map/area.txt"]);
             std::fs::write(dir.path().join("launcher-settings.json"), settings).unwrap();
             assert_eq!(
@@ -291,6 +301,21 @@ mod tests {
             ])
             .unwrap(),
             Game::Hoi4
+        );
+    }
+
+    #[test]
+    fn detects_vic3_zip_bundle_from_launcher_game_id() {
+        assert_eq!(
+            detect_zip(&[
+                ("game/map_data/default.map", b"test"),
+                (
+                    "launcher/launcher-settings.json",
+                    br#"{"gameId":"victoria3","rawVersion":"1.14.0"}"#,
+                ),
+            ])
+            .unwrap(),
+            Game::Vic3
         );
     }
 
