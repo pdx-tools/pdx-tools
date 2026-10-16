@@ -86,6 +86,10 @@ async function openSession(input = save("previous")) {
 beforeEach(() => {
   vi.resetAllMocks();
   campaignTransitions.failed();
+  useHistory.setState({
+    viewedProfiles: [],
+    remapRevision: 0,
+  });
   mocks.supported.mockReturnValue(true);
   mocks.read.mockImplementation(async (input: Eu5SaveInput) => ({
     save: input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input,
@@ -115,7 +119,59 @@ beforeEach(() => {
 afterEach(() => terminateEu5Session());
 
 describe("EU5 campaign transitions", () => {
-  it("passes a carried map click to the destination save", async () => {
+  const previousProfiles = [{ kind: "country", country: { key: 4, name: "France" } }] as const;
+  const nextProfiles = [{ kind: "country", country: { key: 17, name: "France" } }] as const;
+  function preserveView() {
+    const transition = campaignTransitions.begin("next")!;
+    transition.preserveView(toPlaythroughId("campaign")!, {
+      game: "eu5",
+      payload: {
+        mapMode: "political",
+        viewport: null,
+        selection: null,
+        insightPanel: { open: true, width: 400 },
+      },
+    });
+    return transition;
+  }
+
+  it("clears breadcrumbs when the target belongs to another campaign", async () => {
+    await openSession();
+    useHistory.getState().setViewedProfiles([...previousProfiles]);
+    const transition = preserveView();
+    mocks.open.mockResolvedValueOnce({
+      ...(await mocks.open()),
+      playthroughId: "another-campaign",
+    });
+    await stepEu5Session(save("other"));
+    expect(mocks.applyCarry).not.toHaveBeenCalled();
+    expect(useHistory.getState().viewedProfiles).toEqual([]);
+    expect(useHistory.getState().remapRevision).toBe(2);
+    transition.complete();
+  });
+
+  it("remaps breadcrumbs only after the matching target is successfully displayed", async () => {
+    await openSession();
+    useHistory.getState().setViewedProfiles([...previousProfiles]);
+    const transition = preserveView();
+    mocks.applyCarry.mockResolvedValue([...nextProfiles]);
+    const displayed = Promise.withResolvers<void>();
+    mocks.load.mockResolvedValueOnce(
+      game(
+        save("next"),
+        vi.fn(() => displayed.promise),
+      ),
+    );
+    const step = stepEu5Session(save("next"));
+    await vi.waitFor(() => expect(mocks.applyCarry).toHaveBeenCalledOnce());
+    expect(useHistory.getState().viewedProfiles).toEqual(previousProfiles);
+    displayed.resolve();
+    await step;
+    expect(useHistory.getState().viewedProfiles).toEqual(nextProfiles);
+    transition.complete();
+  });
+
+  it("passes a carried map inspection to the destination save", async () => {
     await openSession();
     const click = { kind: "update" as const, locationIdx: 42, modifiers: 1 };
     const transition = campaignTransitions.begin("local-save")!;
@@ -139,6 +195,19 @@ describe("EU5 campaign transitions", () => {
     );
     expect(shownInput(findEu5Session(save("local-save"))!)).toEqual(save("local-save"));
     transition.complete();
+  });
+
+  it("does not apply target breadcrumbs to the previous save after display fails", async () => {
+    const session = await openSession();
+    useHistory.getState().setViewedProfiles([...previousProfiles]);
+    const transition = preserveView();
+    mocks.applyCarry.mockResolvedValue([...nextProfiles]);
+    const failure = new Error("Map synchronization failed");
+    mocks.load.mockResolvedValueOnce(game(save("next"), vi.fn().mockRejectedValue(failure)));
+    await expect(stepEu5Session(save("next"))).rejects.toThrow(failure);
+    expect(shownInput(session)).toEqual(save("previous"));
+    expect(useHistory.getState().viewedProfiles).toEqual(previousProfiles);
+    transition.cancel();
   });
 
   it("starts with the same snapshot as a page without a session", () => {
