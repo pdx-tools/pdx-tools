@@ -3,8 +3,9 @@ mod utils;
 use std::collections::BTreeMap;
 
 use eu5app::game_data::Localization;
-use eu5app::{Eu5SaveLoader, Eu5Workspace, MapMode};
-use eu5save::models::{LocationIdx, MarketId};
+use eu5app::{EntityKind, Eu5SaveLoader, Eu5Workspace, MapMode};
+use eu5save::hash::FnvHashSet;
+use eu5save::models::{CountryId, LocationIdx, MarketId};
 use eu5save::{Eu5File, JominiFileKind};
 use jomini::binary::TokenResolver;
 
@@ -138,6 +139,12 @@ fn workspace_scenarios() {
         });
         run_workspace_scenario(save_name, "incremental timeline", ws, |ws| {
             incremental_timeline_steps_match_a_full_repaint(ws, save_name)
+        });
+        run_workspace_scenario(save_name, "selection follows the timeline", ws, |ws| {
+            country_selection_follows_the_timeline(ws, &localization, save_name)
+        });
+        run_workspace_scenario(save_name, "market scope across the timeline", ws, |ws| {
+            market_scope_survives_the_timeline(ws, save_name)
         });
     });
 }
@@ -407,6 +414,140 @@ fn incremental_timeline_steps_match_a_full_repaint(ws: &mut Eu5Workspace, save_n
         incremental, full,
         "{save_name}: incremental steps drift from a full repaint"
     );
+}
+
+/// The locations a country owns on the timeline date.
+fn land_on_timeline_date(ws: &Eu5Workspace, country: CountryId) -> FnvHashSet<LocationIdx> {
+    ws.gamestate()
+        .locations
+        .iter()
+        .map(|entry| entry.idx())
+        .filter(|&idx| ws.owner_at_timeline_date(idx) == country)
+        .collect()
+}
+
+/// A selected country keeps its selection through the timeline, and the
+/// selected locations are its land on each date. A click on a past date
+/// selects the country that held the land on that date.
+fn country_selection_follows_the_timeline(
+    ws: &mut Eu5Workspace,
+    localization: &Localization,
+    save_name: &str,
+) {
+    let profile_country = |ws: &Eu5Workspace| match ws
+        .localized(localization)
+        .presenter()
+        .active_profile_identity()
+    {
+        Some(eu5app::entity_profile::ActiveProfileIdentity::Country { country }) => {
+            Some(country.key.value())
+        }
+        _ => None,
+    };
+    let summary = ws.timeline_summary();
+    if !summary.available {
+        return;
+    }
+
+    // The country whose land changed the most between the start and the save date.
+    ws.set_timeline_date(summary.start);
+    let start_owners: Vec<CountryId> = ws
+        .gamestate()
+        .locations
+        .iter()
+        .map(|entry| ws.owner_at_timeline_date(entry.idx()))
+        .collect();
+    ws.set_timeline_date(summary.end);
+    let mut moved: BTreeMap<u32, usize> = BTreeMap::new();
+    for (entry, &start) in ws.gamestate().locations.iter().zip(&start_owners) {
+        let owner = entry.location().owner;
+        if owner != start && !owner.is_dummy() {
+            *moved.entry(owner.value()).or_default() += 1;
+        }
+    }
+    let Some((&country, _)) = moved.iter().max_by_key(|(_, count)| **count) else {
+        return;
+    };
+    let country = CountryId::new(country);
+    let country_idx = ws.gamestate().countries.get(country).unwrap();
+
+    ws.select_country_by_idx(country_idx);
+    let live = ws.selection_state().selected_locations().clone();
+    assert_eq!(live, land_on_timeline_date(ws, country));
+    assert_eq!(profile_country(ws), Some(country_idx.value()));
+
+    let past_dates: Vec<_> = summary
+        .change_dates
+        .iter()
+        .copied()
+        .filter(|&date| date < summary.end)
+        .collect();
+    let checked = past_dates.len().div_ceil(40).max(1);
+    for (i, &date) in past_dates.iter().rev().enumerate() {
+        ws.set_timeline_date(date);
+        assert!(
+            !ws.selection_state().is_empty(),
+            "{save_name}: {date:?} keeps the selection"
+        );
+        if i % checked == 0 {
+            assert_eq!(
+                ws.selection_state().selected_locations(),
+                &land_on_timeline_date(ws, country),
+                "{save_name}: {date:?} selects the land of the country"
+            );
+            assert_eq!(
+                profile_country(ws),
+                Some(country_idx.value()),
+                "{save_name}: {date:?} keeps the country profile"
+            );
+        }
+    }
+
+    ws.set_timeline_date(summary.end);
+    assert_eq!(
+        ws.selection_state().selected_locations(),
+        &live,
+        "{save_name}: the save date restores the selection"
+    );
+
+    // A location that changed hands selects its owner at the start.
+    ws.set_timeline_date(summary.start);
+    let Some(clicked) = ws.gamestate().locations.iter().find_map(|entry| {
+        let start = ws.owner_at_timeline_date(entry.idx());
+        let terrain = ws.location_terrain(entry.idx());
+        (start != entry.location().owner && !start.is_dummy() && terrain.is_passable())
+            .then_some(entry.idx())
+    }) else {
+        return;
+    };
+    let start_owner = ws.owner_at_timeline_date(clicked);
+    ws.clear_selection();
+    ws.select_entity(clicked);
+    assert_eq!(
+        ws.selection_state().selected_locations(),
+        &land_on_timeline_date(ws, start_owner),
+        "{save_name}: a click selects the owner on the timeline date"
+    );
+}
+
+/// Markets have no history, so a market scope stays on a past date.
+fn market_scope_survives_the_timeline(ws: &mut Eu5Workspace, save_name: &str) {
+    let summary = ws.timeline_summary();
+    let Some((_, anchor)) = find_owned_market_anchor(ws) else {
+        return;
+    };
+    ws.set_map_mode(MapMode::Markets);
+    ws.select_market_at(anchor);
+    assert_eq!(ws.derived_entity_kind(), Some(EntityKind::Market));
+
+    for date in [summary.start, summary.end] {
+        ws.set_timeline_date(date);
+        assert_eq!(
+            ws.derived_entity_kind(),
+            Some(EntityKind::Market),
+            "{save_name}: {date:?} keeps the market scope"
+        );
+    }
 }
 
 /// The browser uploads saves after `pdx-save-codec` remuxes the zip entries to

@@ -387,8 +387,9 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
   );
 
   let hoverDisplayCallback: ((data: DisplayData) => void) | null = null;
-  let selectionCallback: ((data: SelectionSummaryData, gradient?: GradientConfig) => void) | null =
-    null;
+  let selectionCallback:
+    | ((data: SelectionSummaryData, gradient?: GradientConfig, fromTimeline?: boolean) => void)
+    | null = null;
   let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
   let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
   let viewportCallback: ((viewport: MapViewport) => void) | null = null;
@@ -403,8 +404,8 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
   );
 
   saveEngine.onSelectionUpdate(
-    proxy((data: SelectionSummaryData, gradient?: GradientConfig) => {
-      selectionCallback?.(data, gradient);
+    proxy((data: SelectionSummaryData, gradient?: GradientConfig, fromTimeline?: boolean) => {
+      selectionCallback?.(data, gradient, fromTimeline);
     }),
   );
 
@@ -480,7 +481,11 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
     },
 
     onSelectionUpdate: (
-      callback: (data: SelectionSummaryData, gradient?: GradientConfig) => void,
+      callback: (
+        data: SelectionSummaryData,
+        gradient?: GradientConfig,
+        fromTimeline?: boolean,
+      ) => void,
     ) => {
       selectionCallback = callback;
     },

@@ -29,6 +29,16 @@ pub struct OwnerChange {
     pub to: CountryId,
 }
 
+impl OwnerChange {
+    fn reversed(self) -> Self {
+        Self {
+            from: self.to,
+            to: self.from,
+            ..self
+        }
+    }
+}
+
 /// Something that changes the political map on a date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimelineEvent {
@@ -39,12 +49,31 @@ pub enum TimelineEvent {
     Recolor(CountryId),
 }
 
-/// The locations and countries a step wrote, so a caller can repaint only
-/// those. A location may appear more than once.
+/// The owner changes and recolors a step crossed, so a caller can repaint
+/// only those. The owner changes are in the direction of the step, in the
+/// order they were applied. A location may appear more than once.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StepChanges {
-    pub locations: Vec<LocationIdx>,
+    pub owners: Vec<OwnerChange>,
     pub countries: Vec<CountryId>,
+}
+
+impl StepChanges {
+    pub fn locations(&self) -> impl Iterator<Item = LocationIdx> + '_ {
+        self.owners.iter().map(|change| change.location)
+    }
+
+    /// One change per location, from its owner before the step to its owner
+    /// after. A location that ends with the owner it started with is left out.
+    pub fn net_owner_changes(&self) -> impl Iterator<Item = OwnerChange> {
+        let mut net: FxHashMap<LocationIdx, OwnerChange> = FxHashMap::default();
+        for &change in &self.owners {
+            net.entry(change.location)
+                .and_modify(|first| first.to = change.to)
+                .or_insert(change);
+        }
+        net.into_values().filter(|change| change.from != change.to)
+    }
 }
 
 /// Every event in the campaign, grouped by date.
@@ -240,7 +269,7 @@ impl TimelineIndex {
                     match event {
                         TimelineEvent::Owner(change) => {
                             owners[change.location] = change.to;
-                            changes.locations.push(change.location);
+                            changes.owners.push(*change);
                         }
                         TimelineEvent::Recolor(country) => changes.countries.push(*country),
                     }
@@ -252,7 +281,7 @@ impl TimelineIndex {
                     match event {
                         TimelineEvent::Owner(change) => {
                             owners[change.location] = change.from;
-                            changes.locations.push(change.location);
+                            changes.owners.push(change.reversed());
                         }
                         TimelineEvent::Recolor(country) => changes.countries.push(*country),
                     }
@@ -474,11 +503,14 @@ mod tests {
         assert_eq!(owner(&owners, 0), 6);
         let changes = index.step(&mut owners, date("1340.1.1"), date("1339.1.1"));
         assert_eq!(
-            changes.locations,
+            changes.locations().collect::<Vec<_>>(),
             [LocationIdx::new(0), LocationIdx::new(0)]
         );
         assert!(changes.countries.is_empty());
         assert_eq!(owner(&owners, 0), 4);
+        let net: Vec<_> = changes.net_owner_changes().collect();
+        assert_eq!(net.len(), 1);
+        assert_eq!((net[0].from.value(), net[0].to.value()), (6, 4));
     }
 
     /// A recolor takes effect on its date. A step from the day before to the

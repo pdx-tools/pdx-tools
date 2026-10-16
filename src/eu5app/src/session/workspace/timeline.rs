@@ -124,6 +124,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let was_live = self.is_timeline_live();
         let was_political = self.current_map_mode == MapMode::Political;
+        let had_focus = self.selection_state.has_focus();
         let touched = self.step_timeline_to(date);
 
         // A step between two past dates in the political mode repaints only
@@ -132,7 +133,13 @@ impl<'bump> Eu5Workspace<'bump> {
         // leaving the save date repaints everything, because the live map
         // also carries controller stripes.
         if was_political && !was_live && !self.is_timeline_live() {
-            return self.repaint_locations(&touched);
+            let mut change = self.repaint_locations(&touched);
+            if had_focus && !self.selection_state.has_focus() {
+                // The focused location left the selection.
+                self.apply_interaction_flags();
+                change.dirty = change.dirty | MapDirty::FLAGS;
+            }
+            return change;
         }
 
         let mode = if self.is_timeline_live() || Self::is_historical_map_mode(self.current_map_mode)
@@ -170,7 +177,18 @@ impl<'bump> Eu5Workspace<'bump> {
             .step(&mut self.timeline.owners, from, date);
         self.timeline.date = date;
 
-        let mut touched = changes.locations;
+        if !self.selection_state.is_empty()
+            && self
+                .selection_state
+                .apply_owner_changes(changes.net_owner_changes())
+        {
+            // The anchor can be a location that left the selection, or the
+            // land can now be one country. Markets have no history.
+            let kind = self.derived_entity_kind().unwrap_or(EntityKind::Country);
+            self.recompute_scope_anchor(kind);
+        }
+
+        let mut touched: Vec<LocationIdx> = changes.locations().collect();
         let recolored = self.with_subjects(&changes.countries);
         if !recolored.is_empty() {
             touched.extend(

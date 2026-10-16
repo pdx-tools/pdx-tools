@@ -88,17 +88,24 @@ pub struct Eu5Workspace<'bump> {
     gpu_indices: LocationIndexedVec<Option<GpuLocationIdx>>,
     current_map_legend: crate::gradient::MapLegend,
     /// The selection generation the domain colors were last painted for.
-    /// Compared with [`SelectionState::membership_generation`] to skip a
+    /// Compared with [`SelectionState::selection_generation`] to skip a
     /// repaint when only focus or highlights changed.
     painted_selection_generation: u64,
 
     // Filter / selection state
     selection_state: SelectionState,
-    derived_entity_anchor: Option<eu5save::models::LocationIdx>,
-    derived_entity_kind: Option<EntityKind>,
+    derived_scope: Option<DerivedScope>,
 
     // Campaign timeline: the date the map shows and the owners on that date
     timeline: timeline::TimelineState<'bump>,
+}
+
+/// The selection covers the whole of one entity: `anchor` is one of its
+/// selected locations.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct DerivedScope {
+    anchor: LocationIdx,
+    kind: EntityKind,
 }
 
 /// The GPU location buffers that a map operation changed.
@@ -271,8 +278,7 @@ impl<'bump> Eu5Workspace<'bump> {
             current_map_legend: crate::gradient::MapLegend::Qualitative,
             painted_selection_generation: 0,
             selection_state: SelectionState::new(),
-            derived_entity_anchor: None,
-            derived_entity_kind: None,
+            derived_scope: None,
             timeline,
         };
 
@@ -341,32 +347,75 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn recompute_derived_scope_for_kind(&mut self, kind: EntityKind) {
+        self.refresh_followed_countries(kind);
+        self.recompute_scope_anchor(kind);
+    }
+
+    /// Follow each country whose whole land is selected. A followed country
+    /// with no land on this date stays followed, so its land comes back
+    /// later on the timeline.
+    fn refresh_followed_countries(&mut self, kind: EntityKind) {
+        let selection = &self.selection_state;
+        if kind == EntityKind::Market || selection.is_empty() {
+            self.selection_state.set_followed(FnvHashSet::default());
+            return;
+        }
+
+        let mut covered: FxHashMap<eu5save::models::RealCountryId, bool> = selection
+            .selected_locations()
+            .iter()
+            .filter_map(|&idx| self.owner_at_timeline_date(idx).real_id())
+            .map(|owner| (owner, true))
+            .collect();
+        let mut landed = FnvHashSet::default();
+        for (idx, info) in self.iter_locations() {
+            let Some(owner) = info.owner else {
+                continue;
+            };
+            landed.insert(owner);
+            if let Some(all_in) = covered.get_mut(&owner)
+                && !selection.contains(idx)
+            {
+                *all_in = false;
+            }
+        }
+
+        let landless = selection
+            .followed()
+            .iter()
+            .copied()
+            .filter(|country| !landed.contains(country));
+        let followed = covered
+            .into_iter()
+            .filter_map(|(owner, all_in)| all_in.then_some(owner))
+            .chain(landless)
+            .collect();
+        self.selection_state.set_followed(followed);
+    }
+
+    fn recompute_scope_anchor(&mut self, kind: EntityKind) {
         let mode = Self::map_mode_for_entity_kind(kind);
         let anchor = single_entity_scope(&self.selection_state, &*self, mode);
-        let full_coverage = anchor
-            .map(|a| self.selection_covers_full_entity(a, kind))
-            .unwrap_or(false);
-        self.derived_entity_anchor = if full_coverage { anchor } else { None };
-        self.derived_entity_kind = self.derived_entity_anchor.map(|_| kind);
+        self.derived_scope = anchor
+            .filter(|&a| self.selection_covers_full_entity(a, kind))
+            .map(|anchor| DerivedScope { anchor, kind });
     }
 
     fn derived_scope_map_mode(&self) -> MapMode {
-        self.derived_entity_kind
+        self.derived_entity_kind()
             .map(Self::map_mode_for_entity_kind)
             .unwrap_or(self.current_map_mode)
     }
 
     fn map_click_derived_anchor(&self) -> Option<eu5save::models::LocationIdx> {
         let current_kind = Self::entity_kind_for_map_mode(self.current_map_mode);
-        if self.derived_entity_kind == Some(current_kind) {
-            self.derived_entity_anchor
-        } else {
-            None
-        }
+        self.derived_scope
+            .filter(|scope| scope.kind == current_kind)
+            .map(|scope| scope.anchor)
     }
 
     pub fn derived_entity_anchor(&self) -> Option<eu5save::models::LocationIdx> {
-        self.derived_entity_anchor
+        self.derived_scope.map(|scope| scope.anchor)
     }
 
     fn country_ref_from_country_idx(
@@ -398,12 +447,11 @@ impl LocationData for Eu5Workspace<'_> {
     ) -> impl Iterator<Item = (eu5save::models::LocationIdx, crate::selection::LocationInfo)> + '_
     {
         self.gamestate.locations.iter().map(|entry| {
-            let loc = entry.location();
             (
                 entry.idx(),
                 crate::selection::LocationInfo {
-                    owner: loc.owner.real_id(),
-                    market: loc.market,
+                    owner: self.owner_at_timeline_date(entry.idx()).real_id(),
+                    market: entry.location().market,
                 },
             )
         })
@@ -412,15 +460,14 @@ impl LocationData for Eu5Workspace<'_> {
     /// Filled terrain belongs to the country it takes its color from, so a
     /// click or a hover on it resolves to that country. The iteration above
     /// stays raw: filled terrain is never a member of a selection.
+    ///
+    /// Owners are those on the timeline date, so a click selects the country
+    /// that the map shows.
     fn location_info(&self, idx: eu5save::models::LocationIdx) -> crate::selection::LocationInfo {
-        let loc = self
-            .gamestate
-            .locations
-            .index(self.fill_source(idx))
-            .location();
+        let source = self.fill_source(idx);
         crate::selection::LocationInfo {
-            owner: loc.owner.real_id(),
-            market: loc.market,
+            owner: self.owner_at_timeline_date(source).real_id(),
+            market: self.gamestate.locations.index(source).location().market,
         }
     }
 }

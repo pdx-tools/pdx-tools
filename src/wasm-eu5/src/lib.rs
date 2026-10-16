@@ -233,6 +233,8 @@ pub struct TimelineChange {
     pub date: Eu5DateComponents,
     /// The map mode after the move. A past date forces the political mode.
     pub map_mode: MapMode,
+    /// True when the selected locations or their owners changed.
+    pub selection_changed: bool,
     #[serde(flatten)]
     pub map: MapChangeData,
 }
@@ -666,8 +668,9 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn set_map_mode(&mut self, mode: Ts<MapMode>) -> Result<Ts<TimelineChange>, JsError> {
         let mode = mode.to_rust()?;
+        let generation = self.app().selection_state().selection_generation();
         let change = self.app.set_map_mode(mode.into());
-        self.timeline_change(change)
+        self.timeline_change(change, generation)
     }
 
     /// Get the current map mode
@@ -717,14 +720,20 @@ impl Eu5App {
         date: Ts<Eu5DateComponents>,
     ) -> Result<Ts<TimelineChange>, JsError> {
         let date = date_from_components(&date.to_rust()?)?;
+        let generation = self.app().selection_state().selection_generation();
         let change = self.app.set_timeline_date(date);
-        self.timeline_change(change)
+        self.timeline_change(change, generation)
     }
 
-    fn timeline_change(&self, change: MapChange) -> Result<Ts<TimelineChange>, JsError> {
+    fn timeline_change(
+        &self,
+        change: MapChange,
+        generation: u64,
+    ) -> Result<Ts<TimelineChange>, JsError> {
         into_ts(TimelineChange {
             date: self.app().timeline_date().into(),
             map_mode: self.app().get_map_mode().into(),
+            selection_changed: self.app().selection_state().selection_generation() != generation,
             map: change.into(),
         })
     }
@@ -936,10 +945,10 @@ impl Eu5App {
             .selected_locations()
             .iter()
             .filter_map(|&idx| {
-                let loc = self.app.gamestate().locations.index(idx).location();
-                if loc.owner.is_dummy() {
+                if self.app.owner_at_timeline_date(idx).is_dummy() {
                     return None;
                 }
+                let loc = self.app.gamestate().locations.index(idx).location();
                 Some(self.app.gamestate().location_population(loc) as u32)
             })
             .sum();

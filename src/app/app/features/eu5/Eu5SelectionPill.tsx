@@ -6,6 +6,8 @@ import { formatInt } from "@/lib/format";
 import { focusRing } from "@/components/game/focusRing";
 
 function formatSelectionSummary(entityCount: number, locationCount: number): string {
+  // A followed country can have no land on a past date.
+  if (locationCount === 0) return "No land on this date";
   const locPart = locationCount === 1 ? "1 location" : `${formatInt(locationCount)} locations`;
   if (entityCount === 1) return locPart;
   return `${locPart}`;

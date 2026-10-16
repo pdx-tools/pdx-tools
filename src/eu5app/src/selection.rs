@@ -1,6 +1,7 @@
 use crate::MapMode;
+use crate::timeline::OwnerChange;
 use eu5save::hash::FnvHashSet;
-use eu5save::models::{LocationIdx, MarketId, RealCountryId};
+use eu5save::models::{CountryId, LocationIdx, MarketId, RealCountryId};
 use pdx_map::GpuLocationIdx;
 
 /// Result of [`SelectionAdapter::resolve_click`].
@@ -75,16 +76,21 @@ pub enum SelectionPreset {
 ///
 /// `focused_location` is optional context inside the current filter. Whether the
 /// filter is scoped to one entity is derived from `locations`, not stored here.
+///
+/// `followed` holds the countries whose whole land is selected. Their
+/// selected locations follow the borders on the timeline date.
 #[derive(Debug, Default)]
 pub struct SelectionState {
     locations: FnvHashSet<LocationIdx>,
+    followed: FnvHashSet<RealCountryId>,
     preset: Option<SelectionPreset>,
     /// Single tile focused within the current scope.
     focused_location: Option<LocationIdx>,
-    /// Incremented each time the set of selected locations changes. Focus and
-    /// preset changes do not count. The map uses this to know when a
-    /// selection-dependent color pass must run again.
-    membership_generation: u64,
+    /// Incremented each time the set of selected locations, or the owner of
+    /// a selected location, changes. Focus and preset changes do not count.
+    /// The map uses this to know when a selection-dependent color pass must
+    /// run again.
+    selection_generation: u64,
 }
 
 impl SelectionState {
@@ -92,15 +98,15 @@ impl SelectionState {
         Self::default()
     }
 
-    /// The generation of the selected set. See [`Self::membership_generation`].
-    pub fn membership_generation(&self) -> u64 {
-        self.membership_generation
+    /// See [`Self::selection_generation`].
+    pub fn selection_generation(&self) -> u64 {
+        self.selection_generation
     }
 
     /// Record a change to the selected set. Clears focus and preset because
     /// the filter changed.
     fn membership_changed(&mut self) {
-        self.membership_generation += 1;
+        self.selection_generation += 1;
         self.preset = None;
         self.focused_location = None;
     }
@@ -114,25 +120,27 @@ impl SelectionState {
 
     /// Remove a location from the selection. Clears focus because the filter changed.
     pub fn remove(&mut self, idx: LocationIdx) {
-        if self.locations.remove(&idx) {
-            self.membership_changed();
-        }
+        self.remove_all([idx]);
     }
 
     /// Add all provided locations to the selection. Clears focus because the filter changed.
-    pub fn add_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
+    pub fn add_all(&mut self, locations: impl IntoIterator<Item = LocationIdx>) {
         let before = self.locations.len();
-        self.locations.extend(locations.iter().copied());
+        self.locations.extend(locations);
         if self.locations.len() != before {
             self.membership_changed();
         }
     }
 
     /// Remove all provided locations from the selection. Clears focus because the filter changed.
-    pub fn remove_all(&mut self, locations: &FnvHashSet<LocationIdx>) {
-        let before = self.locations.len();
-        self.locations.retain(|idx| !locations.contains(idx));
-        if self.locations.len() != before {
+    pub fn remove_all(&mut self, locations: impl IntoIterator<Item = LocationIdx>) {
+        let mut changed = false;
+        for idx in locations {
+            if self.locations.remove(&idx) {
+                changed = true;
+            }
+        }
+        if changed {
             self.membership_changed();
         }
     }
@@ -148,7 +156,7 @@ impl SelectionState {
         if self.is_empty() && !locations.is_empty() {
             self.replace(global_locations);
         }
-        self.remove_all(locations);
+        self.remove_all(locations.iter().copied());
     }
 
     /// Replace the entire selection with `locations`, discarding focus.
@@ -176,7 +184,9 @@ impl SelectionState {
         locations: FnvHashSet<LocationIdx>,
         preset: Option<SelectionPreset>,
     ) {
-        if self.locations != locations {
+        let was_empty = self.is_empty();
+        self.followed.clear();
+        if self.locations != locations || was_empty != self.is_empty() {
             self.locations = locations;
             self.membership_changed();
         }
@@ -184,10 +194,71 @@ impl SelectionState {
         self.preset = preset;
     }
 
+    pub fn followed(&self) -> &FnvHashSet<RealCountryId> {
+        &self.followed
+    }
+
+    pub fn set_followed(&mut self, followed: FnvHashSet<RealCountryId>) {
+        let was_empty = self.is_empty();
+        self.followed = followed;
+        self.emptiness_changed(was_empty);
+    }
+
+    pub fn unfollow(&mut self, country: RealCountryId) {
+        let was_empty = self.is_empty();
+        self.followed.remove(&country);
+        self.emptiness_changed(was_empty);
+    }
+
+    /// A followed country without land makes an empty set count as a
+    /// selection, so a change to that counts as a change to the set.
+    fn emptiness_changed(&mut self, was_empty: bool) {
+        if was_empty != self.is_empty() {
+            self.selection_generation += 1;
+        }
+    }
+
+    /// After a timeline step, add the land a followed country gained and
+    /// remove the land it lost, except the focused location. `changes` must hold
+    /// at most one net change per location. Returns true when the set
+    /// changed or a selected location changed owner.
+    pub fn apply_owner_changes(&mut self, changes: impl IntoIterator<Item = OwnerChange>) -> bool {
+        let followed = &self.followed;
+        let is_followed = |owner: CountryId| {
+            owner
+                .real_id()
+                .is_some_and(|owner| followed.contains(&owner))
+        };
+        let mut changed = false;
+        for change in changes {
+            let idx = change.location;
+            if is_followed(change.to) {
+                // Selected either way, and its owner changed.
+                self.locations.insert(idx);
+                changed = true;
+            } else if is_followed(change.from) && self.focused_location != Some(idx) {
+                changed |= self.locations.remove(&idx);
+            } else {
+                changed |= self.locations.contains(&idx);
+            }
+        }
+
+        if changed {
+            self.selection_generation += 1;
+            if self
+                .focused_location
+                .is_some_and(|idx| !self.locations.contains(&idx))
+            {
+                self.focused_location = None;
+            }
+        }
+        changed
+    }
+
     /// Add `idx` to the filter if needed and set it as the focused location.
     pub fn set_focus(&mut self, idx: LocationIdx) {
         if self.locations.insert(idx) {
-            self.membership_generation += 1;
+            self.selection_generation += 1;
             self.preset = None;
         }
         self.focused_location = Some(idx);
@@ -216,8 +287,9 @@ impl SelectionState {
         self.locations.contains(&idx)
     }
 
+    /// A followed country with no land on the timeline date still counts.
     pub fn is_empty(&self) -> bool {
-        self.locations.is_empty()
+        self.locations.is_empty() && self.followed.is_empty()
     }
 
     pub fn len(&self) -> usize {
@@ -472,7 +544,7 @@ impl GroupingTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use eu5save::models::{CountryId, LocationIdx, MarketId};
+    use eu5save::models::{LocationIdx, MarketId};
 
     struct MockLocations {
         locations: Vec<LocationInfo>,
@@ -493,6 +565,14 @@ mod tests {
 
     fn real_country(id: u32) -> RealCountryId {
         CountryId::new(id).real_id().unwrap()
+    }
+
+    fn owner_change(location: u32, from: u32, to: u32) -> OwnerChange {
+        OwnerChange {
+            location: loc(location),
+            from: CountryId::new(from),
+            to: CountryId::new(to),
+        }
     }
 
     fn market(id: u32) -> MarketId {
@@ -523,6 +603,55 @@ mod tests {
                 info(Some(real_country(1)), None),
             ],
         }
+    }
+
+    #[test]
+    fn follow_owners_moves_followed_land() {
+        let mut state = SelectionState::new();
+        state.replace([loc(0), loc(1), loc(2), loc(4)].into_iter().collect());
+        state.set_followed([real_country(1)].into_iter().collect());
+        state.set_focus(loc(1));
+
+        // c1 loses 0 and 1 and gains 3. 2 of c2 was added by hand.
+        let changed = state.apply_owner_changes([
+            owner_change(0, 1, 2),
+            owner_change(1, 1, 2),
+            owner_change(3, 2, 1),
+        ]);
+
+        assert!(changed);
+        let expected: FnvHashSet<_> = [loc(1), loc(2), loc(3), loc(4)].into_iter().collect();
+        assert_eq!(state.selected_locations(), &expected, "the focus stays");
+        assert_eq!(state.focused_location(), Some(loc(1)));
+    }
+
+    #[test]
+    fn owner_change_inside_the_selection_counts_as_a_change() {
+        let mut state = SelectionState::new();
+        state.replace([loc(0), loc(2)].into_iter().collect());
+        state.set_followed([real_country(1), real_country(2)].into_iter().collect());
+        let generation = state.selection_generation();
+
+        // c1 takes the land of c2. The set stays, but its owners changed.
+        assert!(state.apply_owner_changes([owner_change(2, 2, 1)]));
+        assert_eq!(state.len(), 2);
+        assert_ne!(state.selection_generation(), generation);
+    }
+
+    #[test]
+    fn followed_country_without_land_keeps_the_selection() {
+        let mut state = SelectionState::new();
+        state.replace_with_preset([loc(0)].into_iter().collect(), SelectionPreset::Players);
+        state.set_followed([real_country(1)].into_iter().collect());
+
+        state.apply_owner_changes([owner_change(0, 1, 2)]);
+
+        assert_eq!(state.len(), 0);
+        assert!(!state.is_empty());
+        assert_eq!(state.preset(), Some(SelectionPreset::Players));
+
+        state.replace(FnvHashSet::default());
+        assert!(state.is_empty(), "a new selection stops following");
     }
 
     #[test]
@@ -589,7 +718,7 @@ mod tests {
         let mut to_remove = FnvHashSet::default();
         to_remove.insert(loc(1));
         to_remove.insert(loc(9));
-        state.remove_all(&to_remove);
+        state.remove_all(to_remove);
 
         assert!(state.contains(loc(0)));
         assert!(!state.contains(loc(1)));
