@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { useHistory } from "../../history/store";
 import { PanelNavProvider, usePanelNav } from "./PanelNavContext";
 
-vi.mock("../../store", () => ({ useEu5SelectionRevision: () => 0 }));
+vi.mock("../../store", () => ({ useEu5UserSelectionRevision: () => 0 }));
 beforeEach(() => useHistory.setState({ viewedProfiles: [], remapRevision: 0 }));
 
 function Breadcrumbs() {
