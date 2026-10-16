@@ -1,11 +1,33 @@
+import { campaignTransitions } from "@/features/campaign/transitions";
+import { useHistory } from "../../history/store";
 import type React from "react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, useEffect } from "react";
 import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { useEu5UserSelectionRevision } from "../../store";
 
 export type PanelNavEntry =
   | { kind: "profile"; profile: ActiveProfileIdentity; label: string }
   | { kind: "focus"; profile: Extract<ActiveProfileIdentity, { kind: "location" }>; label: string };
+
+/** Remapped identities retain their breadcrumb positions and replace stored save indices. */
+export function remapProfileStack(
+  stack: PanelNavEntry[],
+  profiles: ActiveProfileIdentity[],
+): PanelNavEntry[] {
+  const result: PanelNavEntry[] = [];
+  for (const [i, entry] of stack.entries()) {
+    const profile = profiles[i];
+    if (!profile || profile.kind !== entry.profile.kind) break;
+    const label =
+      profile.kind === "country"
+        ? profile.country.name
+        : profile.kind === "market"
+          ? profile.market.name
+          : profile.location.name;
+    result.push({ ...entry, profile, label } as PanelNavEntry);
+  }
+  return result;
+}
 
 type ProfileTabKind = ActiveProfileIdentity["kind"];
 type ProfileTabs = Record<ProfileTabKind, string>;
@@ -88,35 +110,74 @@ export function useProfileTab(kind: ProfileTabKind, defaultValue = "overview") {
 }
 
 export function PanelNavProvider({ children }: { children: React.ReactNode }) {
-  const [stack, setStack] = useState<PanelNavEntry[]>([]);
+  const [stack, setStack] = useState<PanelNavEntry[]>(() =>
+    useHistory
+      .getState()
+      .viewedProfiles.map((profile) =>
+        profile.kind === "country"
+          ? countryProfileEntry(profile.country.key, profile.country.name)
+          : profile.kind === "market"
+            ? marketProfileEntry(profile.market.key, profile.market.name)
+            : locationProfileEntry(profile.location.key, profile.location.name),
+      ),
+  );
   const [rootLabel, setRootLabel] = useState<string | undefined>(undefined);
   const [profileTabs, setProfileTabs] = useState<ProfileTabs>(DEFAULT_PROFILE_TABS);
 
-  const userSelectionRevision = useEu5UserSelectionRevision();
-  const [previousUserSelectionRevision, setPreviousUserSelectionRevision] =
-    useState(userSelectionRevision);
-  const userSelectionChanged = previousUserSelectionRevision !== userSelectionRevision;
-  const effectiveStack = userSelectionChanged ? EMPTY_STACK : stack;
-  const effectiveRootLabel = userSelectionChanged ? undefined : rootLabel;
+  const selectionRevision = useEu5UserSelectionRevision();
+  const switchingSave = campaignTransitions.useOpening() !== null;
+  const [previousSelectionRevision, setPreviousSelectionRevision] = useState(selectionRevision);
+  const selectionChanged = previousSelectionRevision !== selectionRevision;
+  const resetForSelection = selectionChanged && !switchingSave;
+  const remapRevision = useHistory((s) => s.remapRevision);
+  const remappedProfiles = useHistory((s) => s.viewedProfiles);
+  const [previousRemapRevision, setPreviousRemapRevision] = useState(remapRevision);
+  const saveChanged = previousRemapRevision !== remapRevision;
+  const effectiveStack = resetForSelection
+    ? EMPTY_STACK
+    : saveChanged
+      ? remapProfileStack(stack, remappedProfiles)
+      : stack;
+  const effectiveRootLabel =
+    resetForSelection || (saveChanged && !effectiveStack.length) ? undefined : rootLabel;
+  useEffect(() => {
+    if (!stack.length) useHistory.getState().setViewedProfiles([]);
+  }, [stack.length]);
 
-  if (userSelectionChanged) {
-    setPreviousUserSelectionRevision(userSelectionRevision);
-    setStack([]);
-    setRootLabel(undefined);
+  if (saveChanged) {
+    setPreviousRemapRevision(remapRevision);
+    setStack(effectiveStack);
+    setRootLabel(effectiveRootLabel);
+  }
+  if (selectionChanged) {
+    setPreviousSelectionRevision(selectionRevision);
+    if (!switchingSave) {
+      setStack([]);
+      setRootLabel(undefined);
+    }
   }
 
-  const pushMany = useCallback((entries: PanelNavEntry[], nextRootLabel?: string) => {
-    if (nextRootLabel != null) {
-      setRootLabel(nextRootLabel);
-    }
-    setStack((s) => [...s, ...entries]);
-  }, []);
+  const pushMany = useCallback(
+    (entries: PanelNavEntry[], nextRootLabel?: string) => {
+      if (nextRootLabel != null) {
+        setRootLabel(nextRootLabel);
+      }
+      useHistory.getState().setViewedProfiles([...stack, ...entries].map((entry) => entry.profile));
+      setStack((s) => [...s, ...entries]);
+    },
+    [stack],
+  );
 
-  const popTo = useCallback((length: number) => {
-    setStack((s) => s.slice(0, length));
-  }, []);
+  const popTo = useCallback(
+    (length: number) => {
+      useHistory.getState().setViewedProfiles(stack.slice(0, length).map((entry) => entry.profile));
+      setStack((s) => s.slice(0, length));
+    },
+    [stack],
+  );
 
   const reset = useCallback(() => {
+    useHistory.getState().setViewedProfiles([]);
     setStack([]);
     setRootLabel(undefined);
   }, []);

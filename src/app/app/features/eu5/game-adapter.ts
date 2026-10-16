@@ -256,6 +256,7 @@ export type SaveQueries = Pick<
   | "searchEntities"
   | "getCountryIdentity"
   | "findCountry"
+  | "getSaveVersion"
   | "getLocationArrays"
   | "melt"
 >;
