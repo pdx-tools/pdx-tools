@@ -12,6 +12,10 @@ pub struct Vic3Metadata {
     pub is_meltable: bool,
     pub last_played_tag: String,
     pub available_tags: Vec<String>,
+    /// The game version that wrote the save
+    pub version: String,
+    /// The version (major.minor) of the asset bundle that matches the save
+    pub bundle_version: Option<String>,
 }
 
 #[derive(Tsify, Debug, Serialize)]
@@ -56,4 +60,10 @@ pub struct Vic3CountryGraphDataResponse {
 pub struct Vic3CountryGraphData {
     pub tag: String,
     pub stats: Vec<Vic3GraphData>,
+}
+
+#[derive(Tsify, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LandedCountries {
+    pub countries: Vec<vic3app::CountryDisplay>,
 }

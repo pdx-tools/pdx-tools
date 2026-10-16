@@ -26,20 +26,13 @@ async function loadVic3Save(save: Vic3SaveInput, signal: AbortSignal) {
 
   const worker = getVic3Worker();
 
-  await Promise.all([
-    run({
-      fn: () => worker.initializeWasm(),
-      name: "initialized vic3 wasm",
-    }),
-
-    run({
-      fn: () => worker.fetchData(save),
-      name: "save data read",
-    }),
-  ]);
+  await run({
+    fn: () => worker.initializeWasm(),
+    name: "initialized vic3 wasm",
+  });
 
   const result = await run({
-    fn: () => worker.parseVic3(),
+    fn: () => worker.parseVic3(save),
     name: "parse vic3 file",
   });
   emitEvent({ kind: "Save parsed", game: "vic3", source: "local" });
@@ -99,6 +92,7 @@ export function useLoadVic3(save: Vic3SaveInput) {
           kind: "data",
           data: await createVic3Store({
             save: { meta: data, filename: save.file.name },
+            input: save,
           }),
         });
       })

@@ -87,6 +87,15 @@
           "sha256": "44633e2f1eb7acdda317e6d1cf367ba3655db9bc57ba384d9d95ca1a5112601d"
         }
       ]
+    },
+    "vic3": {
+      "releases": [
+        {
+          "branch": "1.14-openbeta",
+          "game_version": "1.14.5",
+          "sha256": "39340b773da34e7908aa0fd1a07049c0f682d3a9183fcafc6e6a376c4d0e9495"
+        }
+      ]
     }
   }
 }
