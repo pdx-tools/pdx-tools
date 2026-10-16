@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "format": "oxfmt --write \"**/*.{js,jsx,ts,tsx,css,mts}\"",
-    "format:check": "oxfmt --check \"**/*.{js,jsx,ts,tsx,css,mts}\"",
-    "lint": "oxlint",
+    "format": "oxfmt --write \"**/*.{js,jsx,ts,tsx,css,mts}\" \"!**/.claude/skills/impeccable/**\"",
+    "format:check": "oxfmt --check \"**/*.{js,jsx,ts,tsx,css,mts}\" \"!**/.claude/skills/impeccable/**\"",
+    "lint": "oxlint --ignore-pattern '**/.claude/skills/impeccable/**'",
     "typecheck": "tsc --build"
   },
   "dependencies": {
