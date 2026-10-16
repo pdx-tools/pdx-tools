@@ -3,8 +3,24 @@ name = "pdx-tools-workers"
 compatibility_date = "2026-09-18"
 main = "./server.ts"
 
+# Upload prebuilt modules with trusted rules instead of the pull request's
+# build config. Vite ignores these settings.
+no_bundle = true
+rules = [{ type = "ESModule", globs = ["**/*.js", "**/*.mjs"] }]
+
 [assets]
 directory = "./build/client"
+
+# Database grants restrict previews to reads. Omit R2 and analytics bindings.
+# `wrangler types` ignores previews, so generated types still require
+# those bindings.
+[previews.version_metadata]
+binding = "CF_VERSION_METADATA"
+
+[[previews.hyperdrive]]
+binding = "PDX_DB"
+id = "f14dd112a27640509aa5e711f63104c0"
+localConnectionString = "postgres://app_user:mercantilismbaby2@localhost:5432/postgres"
 
 [observability]
 enabled = true

@@ -35,9 +35,10 @@ export type Metric = {
   bytes?: number;
 };
 
+// Previews omit analytics to keep test traffic out of production metrics.
 export const pdxMetrics = (context: PdxRouteContext) => ({
   record: (m: Metric) => {
-    getCloudflare(context).env.PDX_METRICS.writeDataPoint({
+    getCloudflare(context).env.PDX_METRICS?.writeDataPoint({
       indexes: [m.domain],
       blobs: [
         m.operation,

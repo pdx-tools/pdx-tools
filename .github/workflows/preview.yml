@@ -1,0 +1,205 @@
+name: Preview
+
+# Keep the Cloudflare token out of the build job, which runs pull request code.
+# Preview base secrets must contain only values safe for pull request code.
+
+# Use pull_request to test workflow changes before merge. Forks require the
+# "safe to test" label and use the default branch workflow.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  pull_request_target:
+    types: [labeled, synchronize, reopened, closed]
+
+# Keep skipped event runs from canceling the active preview run.
+concurrency:
+  group: preview-${{ github.event_name }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.action != 'closed' && (
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          contains(github.event.pull_request.labels.*.name, 'safe to test') &&
+          (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+      )
+    env:
+      ASSET_CACHE_PATHS: |
+        assets/game-bundles
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Restore assets
+        uses: actions/cache/restore@v6
+        with:
+          key: game-bundles-v2-${{ hashFiles('assets/catalog.json') }}
+          restore-keys: game-bundles-v2-
+          enableCrossOsArchive: true
+          path: ${{ env.ASSET_CACHE_PATHS }}
+
+      - uses: actions/checkout@v7
+        name: Clone tokens
+        with:
+          path: assets/tokens
+          repository: pdx-tools/tokens
+          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
+
+      - name: Link tokens
+        run: cd assets/tokens && ln -s tokens/* .
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.9.17
+          cache: false
+
+      - name: Restore Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: preview
+          save-if: false
+
+      - name: Get pnpm store directory
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+
+      - name: Restore pnpm cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store
+
+      - name: Asset pipeline
+        env:
+          ASSETS_ACCESS_KEY: ${{ secrets.ASSETS_ACCESS_KEY }}
+          ASSETS_SECRET_KEY: ${{ secrets.ASSETS_SECRET_KEY }}
+        run: |
+          mise run admin:assets:sync
+          mise run admin:assets:compile:all
+
+      # Use wasm-dev for faster builds and .env.production for public media.
+      - name: Build
+        run: |
+          mise run build:app
+          find src/app/build -iname "*.map" -delete
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: preview-build
+          path: src/app/build
+          retention-days: 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # For forks, keep deployment tools and config on the default branch.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.9.17
+          cache: false
+          install_args: node github:pnpm/pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: preview-build
+          path: src/app/build
+
+      # Explicit --config prevents the build config from adding bindings.
+      - name: Upload preview
+        working-directory: src/app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.json
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pnpm exec wrangler preview build/server/index.js \
+            --config wrangler.toml \
+            --name "$PREVIEW_NAME" \
+            --message "Preview of #$PR_NUMBER at $HEAD_SHA"
+          url=$(jq -r 'select(.type == "preview") | [.preview_urls | .. | strings] | first // empty' "$WRANGLER_OUTPUT_FILE_PATH")
+          if [ -z "$url" ]; then
+            echo "Wrangler did not report a Preview URL"
+            exit 1
+          fi
+          echo "PREVIEW_URL=$url" >> "$GITHUB_ENV"
+
+      - name: Comment with the preview URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none \
+            --body "Read-only preview of $HEAD_SHA: $PREVIEW_URL"
+
+  close:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.action == 'closed' && (
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          contains(github.event.pull_request.labels.*.name, 'safe to test'))
+      )
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # Closed pull requests can lose their merge ref.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          persist-credentials: false
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.9.17
+          cache: false
+          install_args: node github:pnpm/pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Delete the preview
+        working-directory: src/app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler preview delete --config wrangler.toml --name "$PREVIEW_NAME"
+
+      - name: Update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none \
+            --body "The preview of this pull request is deleted."
