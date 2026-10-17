@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { LoadingState } from "../LoadingState";
 import { pdxApi } from "@/services/appApi";
-import { AchievementPodium } from "@/features/eu4/AchievementPage";
+import { AchievementPodium } from "@/features/eu4/AchievementPodium";
 import { cx } from "class-variance-authority";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import { Link } from "../Link";
