@@ -20,6 +20,13 @@ variable "hyperdrive_password" {
   default     = "managed-out-of-band"
 }
 
+variable "hyperdrive_preview_password" {
+  description = "Password of the app_preview role. Set it in terraform.tfvars for the first apply. Then tofu ignores it."
+  type        = string
+  sensitive   = true
+  default     = "managed-out-of-band"
+}
+
 variable "email_forward_to" {
   description = "Destination email that routing rules forward to (set in terraform.tfvars)."
   type        = string

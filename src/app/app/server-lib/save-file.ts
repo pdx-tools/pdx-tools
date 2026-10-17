@@ -25,6 +25,11 @@ export async function saveFileResponse({
   saveId: string;
   game: "eu4" | "eu5";
 }) {
+  // Previews have no bucket binding, so read public saves through production.
+  if (!getCloudflare(context).env.SAVE_BUCKET) {
+    return forwardSaveFile(request, new URL(url.pathname, "https://pdx.tools"));
+  }
+
   const startedAt = performance.now();
   const storage = pdxStorage({ context, game });
   const metrics = pdxMetrics(context);
@@ -113,4 +118,14 @@ export async function saveFileResponse({
     });
     throw error;
   }
+}
+
+// Keep preview cookies and credentials out of requests to production.
+function forwardSaveFile(request: Request, target: URL) {
+  const headers = new Headers();
+  for (const name of ["if-none-match", "if-modified-since"]) {
+    const value = request.headers.get(name);
+    if (value !== null) headers.set(name, value);
+  }
+  return fetch(target, { headers });
 }

@@ -18,21 +18,29 @@ export const pdxStorage = ({
   saves: Bucketed;
   previews: Bucketed;
 } => {
-  const { SAVE_BUCKET, MEDIA_BUCKET } = getCloudflare(context).env;
+  const env = getCloudflare(context).env;
+  const saveBucket = () => required(env.SAVE_BUCKET, "SAVE_BUCKET");
+  const mediaBucket = () => required(env.MEDIA_BUCKET, "MEDIA_BUCKET");
   const saveKey = (id: string) => `${game}/${id}`;
   const ogKey = (id: string) => `${game}/og/${id}.webp`;
   return {
     saves: {
-      get: (id, options) => SAVE_BUCKET.get(saveKey(id), options),
-      put: (id, value, options) => SAVE_BUCKET.put(saveKey(id), value, options),
-      delete: (id) => SAVE_BUCKET.delete(saveKey(id)),
+      get: (id, options) => saveBucket().get(saveKey(id), options),
+      put: (id, value, options) => saveBucket().put(saveKey(id), value, options),
+      delete: (id) => saveBucket().delete(saveKey(id)),
     },
     previews: {
-      get: (id, options) => MEDIA_BUCKET.get(ogKey(id), options),
-      put: (id, value, options) => MEDIA_BUCKET.put(ogKey(id), value, options),
-      delete: (id) => MEDIA_BUCKET.delete(ogKey(id)),
+      get: (id, options) => mediaBucket().get(ogKey(id), options),
+      put: (id, value, options) => mediaBucket().put(ogKey(id), value, options),
+      delete: (id) => mediaBucket().delete(ogKey(id)),
     },
   };
 };
+
+// Previews omit buckets. Check bindings only when an operation needs one.
+function required(bucket: R2Bucket | undefined, name: string): R2Bucket {
+  if (!bucket) throw new Error(`${name} is not available in this environment`);
+  return bucket;
+}
 
 export type PdxStorage = ReturnType<typeof pdxStorage>;
