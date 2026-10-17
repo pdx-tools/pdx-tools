@@ -1,6 +1,6 @@
 import type { DetectedDataType } from "@/features/engine";
-import posthog from "posthog-js";
 import { log } from "./log";
+import { posthogClient } from "./posthogClient";
 
 export type Event =
   | {
@@ -48,13 +48,13 @@ export type Event =
 let isRecording = false;
 export function startSessionRecording() {
   if (!isRecording) {
-    posthog.startSessionRecording();
+    void posthogClient().then((posthog) => posthog?.startSessionRecording());
   }
   isRecording = true;
 }
 
 export function resetLogging() {
-  posthog.reset();
+  void posthogClient().then((posthog) => posthog?.reset());
   identity = "";
 }
 
@@ -62,13 +62,11 @@ let identity = "";
 export function identify(userId: string) {
   if (userId !== identity) {
     identity = userId;
-    posthog.identify(userId);
+    void posthogClient().then((posthog) => posthog?.identify(userId));
   }
 }
 
 export function emitEvent({ kind, ...props }: Event) {
   log("Event", { kind, ...props });
-  if (import.meta.env.PROD) {
-    posthog.capture(kind, props);
-  }
+  void posthogClient().then((posthog) => posthog?.capture(kind, props));
 }
