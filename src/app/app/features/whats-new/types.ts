@@ -25,5 +25,3 @@ export type UpdateReleaseFile = z.infer<typeof updateReleaseFileSchema>;
 export type UpdateRelease = UpdateReleaseFile & {
   release_date: string;
 };
-
-export const updatesIndexSchema = z.array(z.string());
