@@ -6,7 +6,8 @@ const isBrowser = typeof window !== "undefined";
 const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
 
 export function sentryInit() {
-  if (!isBrowser) {
+  // Without a DSN Sentry is off, so do not download it.
+  if (!isBrowser || !SENTRY_DSN) {
     return;
   }
 
@@ -19,7 +20,6 @@ export function sentryInit() {
       Sentry.init({
         dsn: SENTRY_DSN,
         tracesSampleRate: 0.0,
-        enabled: !!SENTRY_DSN,
         debug: !import.meta.env.PROD,
         tunnel: "/api/tunnel",
         ignoreErrors: ["ResizeObserver loop completed with undelivered notifications."],
