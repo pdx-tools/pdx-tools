@@ -1,7 +1,7 @@
 import { localSaveRegistry, holdsRef } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
 import {
-  useEu5AppState,
+  useEu5MapProjection,
   useEu5Input,
   useEu5PlaythroughId,
   useEu5SaveDate,
@@ -39,7 +39,7 @@ export function currentHistorySnapshot(
 
 /** Both inline and expanded history must identify the same parsed file version. */
 export function useCurrentHistorySnapshot(version: string | undefined) {
-  const projection = useEu5AppState().mapProjection;
+  const projection = useEu5MapProjection();
   const snapshots = useHistory((state) => state.snapshots);
   const sources = useHistory((state) => state.sources);
   const entries = localSaveRegistry.useEntries();
