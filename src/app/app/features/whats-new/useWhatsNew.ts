@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchOkJson } from "@/lib/fetch";
-import { updateReleaseFileSchema, updatesIndexSchema } from "./types";
-import type { UpdateRelease } from "./types";
+import type { UpdateRelease, UpdateReleaseFile } from "./types";
 import {
   rehydrateWhatsNewStore,
   useWhatsNewBannerDismissedOn,
@@ -15,16 +14,14 @@ const QUERY_KEY_INDEX = ["whats-new", "index"] as const;
 const QUERY_KEY_RELEASES = ["whats-new", "releases"] as const;
 
 async function fetchIndex(): Promise<string[]> {
-  const raw = await fetchOkJson<unknown>("/whats-new.json");
-  const parsed = updatesIndexSchema.parse(raw);
-  return parsed.map((date) => date.trim()).filter(Boolean);
+  const dates = await fetchOkJson<string[]>("/whats-new.json");
+  return dates.map((date) => date.trim()).filter(Boolean);
 }
 
 async function fetchRelease(date: string): Promise<UpdateRelease> {
-  const raw = await fetchOkJson<unknown>(`/whats-new/${date}.json`);
-  const parsed = updateReleaseFileSchema.parse(raw);
+  const release = await fetchOkJson<UpdateReleaseFile>(`/whats-new/${date}.json`);
   return {
-    ...parsed,
+    ...release,
     release_date: date,
   };
 }
