@@ -20,7 +20,9 @@ import { addDays, addMonths, addYears, daysBetween } from "@/features/timeline/d
 import type { TimelineController } from "@/features/timeline/controller";
 import {
   activeEu5Store,
-  useEu5AppState,
+  useEu5MapMode,
+  useEu5MapProjection,
+  useEu5SelectionState,
   useEu5Engine,
   useEu5PlaythroughId,
   useEu5SaveDate,
@@ -44,7 +46,9 @@ const EMPTY_FRAMES: MapFrame[] = [];
 
 function useMapHistoryState() {
   const engine = useEu5Engine();
-  const state = useEu5AppState();
+  const currentMapMode = useEu5MapMode();
+  const mapProjection = useEu5MapProjection();
+  const selectionState = useEu5SelectionState();
   const campaignId = useEu5PlaythroughId();
   const isDeveloper = useIsDeveloper();
   const enabled = useHistory(
@@ -66,7 +70,7 @@ function useMapHistoryState() {
   );
   const selectedHash =
     useHistory((history) => (campaignId ? history.selectedObservations[campaignId] : undefined)) ??
-    state.mapProjection?.hash;
+    mapProjection?.hash;
   const input = useEu5Input(),
     parsed = useEu5SaveInput();
   const sources = useHistory((history) => history.sources);
@@ -102,7 +106,7 @@ function useMapHistoryState() {
     [imported, layout, engine, campaignId],
   );
   const requestedFrame = useRef<{ engine: typeof engine; mode: string; hash: string } | null>(null);
-  const previousMode = useRef({ engine, mode: state.currentMapMode });
+  const previousMode = useRef({ engine, mode: currentMapMode });
   const [painted, setPainted] = useState(0);
   const [requestedPlaying, setPlaying] = useState(false);
   const playing = frames.length > 0 && requestedPlaying;
@@ -197,35 +201,32 @@ function useMapHistoryState() {
   }, [engine, campaignId, enabled]);
 
   const requestFrame = (frame: MapFrame) => {
-    requestedFrame.current = { engine, mode: state.currentMapMode, hash: frame.hash };
+    requestedFrame.current = { engine, mode: currentMapMode, hash: frame.hash };
     void paint(frame).catch((failure) => {
       if (!isAbortError(failure)) failed(failure);
     });
   };
   const changeMode = useEffectEvent(() => {
-    if (
-      previousMode.current.engine !== engine ||
-      previousMode.current.mode !== state.currentMapMode
-    ) {
-      if (previousMode.current.mode !== state.currentMapMode) setPlaying(false);
-      previousMode.current = { engine, mode: state.currentMapMode };
+    if (previousMode.current.engine !== engine || previousMode.current.mode !== currentMapMode) {
+      if (previousMode.current.mode !== currentMapMode) setPlaying(false);
+      previousMode.current = { engine, mode: currentMapMode };
     }
     if (inspection.current) return;
     // A freshly opened entity owns the rich save view. Background timeline
     // discovery must not replace it with an overview projection.
-    if (!state.mapProjection && state.selectionState?.isEmpty === false) return;
-    if (state.currentMapMode === "political") {
+    if (!mapProjection && selectionState?.isEmpty === false) return;
+    if (currentMapMode === "political") {
       requestedFrame.current = null;
       void engine.trigger.stopMapProjection();
     } else {
       const previous = requestedFrame.current;
       if (
         selectedFrame &&
-        (playing || scrubbing || !!state.mapProjection || selectedFrame.hash !== loadedHash) &&
+        (playing || scrubbing || !!mapProjection || selectedFrame.hash !== loadedHash) &&
         !settling &&
         !(
           previous?.engine === engine &&
-          previous.mode === state.currentMapMode &&
+          previous.mode === currentMapMode &&
           previous.hash === selectedFrame.hash
         )
       )
@@ -240,10 +241,10 @@ function useMapHistoryState() {
     return () => {
       cancelled = true;
     };
-  }, [engine, state.currentMapMode, selectedFrame?.hash, loadedHash, settling]);
+  }, [engine, currentMapMode, selectedFrame?.hash, loadedHash, settling]);
 
   const move = (next: number) => {
-    if (inspection.current || state.currentMapMode === "political" || !frames.length) return;
+    if (inspection.current || currentMapMode === "political" || !frames.length) return;
     const clamped = Math.max(0, Math.min(next, frames.length - 1));
     if (!campaignId) return;
     useHistory.setState((history) => ({
@@ -261,14 +262,14 @@ function useMapHistoryState() {
     } else move(index + 1);
   });
   useEffect(() => {
-    if (!playing || state.currentMapMode === "political") return;
+    if (!playing || currentMapMode === "political") return;
     const timer = setInterval(advance, 500 / speed);
     return () => clearInterval(timer);
-  }, [playing, state.currentMapMode, speed]);
+  }, [playing, currentMapMode, speed]);
 
   const inspect = async (interaction?: MapInteraction) => {
     if (!campaignId || !campaign || inspection.current) return;
-    const hash = selectedFrame?.hash ?? state.mapProjection?.hash;
+    const hash = selectedFrame?.hash ?? mapProjection?.hash;
     if (!hash) {
       if (interaction) setPanelOpen(true);
       return;
@@ -316,8 +317,8 @@ function useMapHistoryState() {
       !selectedAvailable ||
       settling ||
       attemptedSettlement.current === selectedHash ||
-      (selectedHash === loadedHash && !state.mapProjection) ||
-      state.currentMapMode === "political"
+      (selectedHash === loadedHash && !mapProjection) ||
+      currentMapMode === "political"
     )
       return;
     const timer = setTimeout(settle, 250);
@@ -330,8 +331,8 @@ function useMapHistoryState() {
     selectedAvailable,
     loadedHash,
     settling,
-    state.mapProjection,
-    state.currentMapMode,
+    mapProjection,
+    currentMapMode,
   ]);
   const clearCampaign = async () => {
     if (!campaignId || inspection.current || progress !== null) return;
@@ -381,7 +382,7 @@ function useMapHistoryState() {
   }, [engine]);
 
   let controller: TimelineController | null = null;
-  if (enabled && state.currentMapMode !== "political" && campaignId) {
+  if (enabled && currentMapMode !== "political" && campaignId) {
     const { start, end } = mapTimelineBounds(
       saveDate,
       frames,
@@ -413,7 +414,7 @@ function useMapHistoryState() {
       dayOffset: daysBetween(start, date),
       mapDayOffset: daysBetween(
         start,
-        paintedFrame ? mapFrameDate(paintedFrame) : (state.mapProjection?.date ?? saveDate),
+        paintedFrame ? mapFrameDate(paintedFrame) : (mapProjection?.date ?? saveDate),
       ),
       setDate,
       beginScrub: () => setScrubbing(true),
@@ -451,7 +452,7 @@ function useMapHistoryState() {
     error,
     inspecting,
     settling,
-    preview: state.mapProjection,
+    preview: mapProjection,
     inspect,
     clearCampaign,
     playing,

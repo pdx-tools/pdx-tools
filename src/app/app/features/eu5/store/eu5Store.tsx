@@ -110,7 +110,7 @@ const useEu5Store = <T,>(selector: (state: Eu5State) => T): T =>
   useStore(useEu5Context(), selector);
 
 export const useEu5Engine = () => useEu5Store((x) => x.engine);
-export const useEu5AppState = () => useEu5Store((x) => x.appState);
+export const useEu5MapProjection = () => useEu5Store((x) => x.appState.mapProjection);
 export const useEu5MapMode = () => useEu5Store((x) => x.appState.currentMapMode);
 export const useEu5HoverData = () => useEu5Store((x) => x.appState.hoverDisplayData);
 export const useEu5OwnerBorders = () => useEu5Store((x) => x.appState.ownerBordersEnabled);
