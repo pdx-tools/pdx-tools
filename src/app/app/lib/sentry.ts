@@ -1,6 +1,6 @@
 import { setCaptureExceptionImplementation } from "@/lib/captureException";
 import { setWebWorkerIntegration } from "@/lib/sentryWorker";
-import posthog from "posthog-js";
+import { withPostHog } from "@/lib/posthogClient";
 
 const isBrowser = typeof window !== "undefined";
 const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN;
@@ -23,15 +23,19 @@ export function sentryInit() {
         debug: !import.meta.env.PROD,
         tunnel: "/api/tunnel",
         ignoreErrors: ["ResizeObserver loop completed with undelivered notifications."],
-        integrations: [
-          webWorker,
+        integrations: [webWorker],
+      });
+
+      // PostHog loads after the page, so add its integration when it is ready.
+      withPostHog((posthog) => {
+        Sentry.addIntegration(
           posthog.sentryIntegration({
             organization: import.meta.env.VITE_SENTRY_ORG,
 
             // Take everything after the last slash in the DSN
             projectId: +(SENTRY_DSN?.split("/").pop() ?? "0"),
           }),
-        ],
+        );
       });
 
       setWebWorkerIntegration(webWorker);
