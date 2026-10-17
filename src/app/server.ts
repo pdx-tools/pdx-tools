@@ -2,6 +2,8 @@ import { createRequestHandler, RouterContextProvider } from "react-router";
 import * as Sentry from "@sentry/cloudflare";
 import { cloudflareContext } from "./app/server-lib/cloudflare-context";
 
+export { PreviewSaves } from "./app/server-lib/preview-saves";
+
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
   import.meta.env.MODE,
