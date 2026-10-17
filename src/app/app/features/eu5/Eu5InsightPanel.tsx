@@ -295,17 +295,18 @@ function PanelContentInner() {
   return (
     <div className="flex h-full flex-col">
       <div role="status">
-        {!preview && !timelineLive && (
-          // Only borders have a history in the save.
-          <p className="flex min-h-7 items-center border-b border-game-line px-4 font-game-ui text-[11px] leading-[1.4] text-game-ink-500">
-            <span>
-              Values are from the save date,{" "}
-              <span className="font-game-num text-game-ink-300 tabular-nums">
-                {formatLongDate(saveDate)}
+        {!preview &&
+          !timelineLive && (
+            // Only borders have a history in the save.
+            <p className="flex min-h-7 items-center border-b border-game-line px-4 font-game-ui text-[11px] leading-[1.4] text-game-ink-500">
+              <span>
+                Values are from the save date,{" "}
+                <span className="font-game-num text-game-ink-300 tabular-nums">
+                  {formatLongDate(saveDate)}
+                </span>
               </span>
-            </span>
-          </p>
-        )}
+            </p>
+          )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col">{body}</div>
     </div>
