@@ -91,20 +91,13 @@ async function loadHoi4Save(file: File, signal: AbortSignal) {
   };
 
   const worker = getHoi4Worker();
-  await Promise.all([
-    run({
-      fn: () => worker.initializeWasm(),
-      name: "initialized Hoi4 wasm",
-    }),
-
-    run({
-      fn: () => worker.fetchData(file),
-      name: "save data read",
-    }),
-  ]);
+  await run({
+    fn: () => worker.initializeWasm(),
+    name: "initialized Hoi4 wasm",
+  });
 
   const { meta } = await run({
-    fn: () => worker.parseHoi4(),
+    fn: () => worker.parseHoi4(file),
     name: "parse Hoi4 file",
   });
 
