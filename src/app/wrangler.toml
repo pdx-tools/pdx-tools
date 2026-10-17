@@ -1,6 +1,8 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "pdx-tools-workers"
 compatibility_date = "2026-09-18"
+# Route preview requests to the public production Worker.
+compatibility_flags = ["global_fetch_strictly_public"]
 main = "./server.ts"
 
 # Upload prebuilt modules with trusted rules instead of the pull request's
