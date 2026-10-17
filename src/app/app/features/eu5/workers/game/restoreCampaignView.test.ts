@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Eu5App } from "@/wasm/wasm_eu5";
+import type { Eu5App, UiCountryId } from "@/wasm/wasm_eu5";
 import type { Eu5Carry } from "../../campaignCarry";
 import { campaignIdentities, restoreCampaignView } from "./restoreCampaignView";
+
+const id = (value: number) => value as UiCountryId;
 
 const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   mapMode: "population",
@@ -11,12 +13,11 @@ const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   ...extra,
 });
 const countries = [
-  { tag: "FRA", country: { key: 77, name: "France" }, capital: 100 },
+  { id: id(611), landed: true, tag: "FRA", country: { key: 77, name: "France" }, capital: 100 },
 ] as ReturnType<Eu5App["get_countries"]>["countries"];
 function app() {
   const change = () => ({ colorsChanged: false, flagsChanged: true, gradient: undefined });
   return {
-    country_id_at_index: vi.fn(() => undefined),
     set_map_mode: vi.fn((mapMode) => ({
       ...change(),
       mapMode,
@@ -107,7 +108,7 @@ it("captures mixed profile identities using the country index", () => {
       { kind: "location", location: { key: 100, name: "Paris" } },
     ]),
   ).toEqual([
-    { kind: "country", tag: "FRA" },
+    { kind: "country", id: id(611), tag: "FRA" },
     null,
     { kind: "market", center: 100 },
     { kind: "location", locationIdx: 100 },
@@ -117,14 +118,20 @@ it("captures mixed profile identities using the country index", () => {
 it("keeps selections and breadcrumb profiles on the same country across a tag change", () => {
   const a = app();
   const countries = [
-    { id: 611, tag: "YMT", country: { key: 5, name: "Yamato" }, capital: undefined },
-    { id: 700, tag: "NTC", country: { key: 6, name: "New NTC" }, capital: 100 },
+    {
+      id: id(611),
+      landed: true,
+      tag: "YMT",
+      country: { key: 5, name: "Yamato" },
+      capital: undefined,
+    },
+    { id: id(700), landed: true, tag: "NTC", country: { key: 6, name: "New NTC" }, capital: 100 },
   ];
   restoreCampaignView(
     a as unknown as Eu5App,
     countries,
     carry({
-      selection: { kind: "country", id: 611, tag: "NTC", focusedLocation: null },
+      selection: { kind: "country", id: id(611), tag: "NTC", focusedLocation: null },
     }),
   );
   expect(a.select_country).toHaveBeenCalledWith(5);
@@ -132,5 +139,5 @@ it("keeps selections and breadcrumb profiles on the same country across a tag ch
     campaignIdentities(a as unknown as Eu5App, countries, [
       { kind: "country", country: { key: 5, name: "Yamato" } },
     ]),
-  ).toEqual([{ kind: "country", id: 611, tag: "YMT" }]);
+  ).toEqual([{ kind: "country", id: id(611), tag: "YMT" }]);
 });

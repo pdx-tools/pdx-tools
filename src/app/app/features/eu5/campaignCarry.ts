@@ -1,4 +1,4 @@
-import type { MapMode } from "@/wasm/wasm_eu5";
+import type { MapMode, UiCountryId } from "@/wasm/wasm_eu5";
 import type { MapViewport } from "@pdx.tools/timelapse";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Store } from "./store/eu5Store";
@@ -8,7 +8,7 @@ export { findCarriedCountry } from "./carriedCountry";
 export type { CountryIdentity } from "./carriedCountry";
 
 export type StableProfile =
-  | { kind: "country"; id?: number; tag: string }
+  | { kind: "country"; id?: UiCountryId; tag: string }
   | { kind: "market"; center: number }
   | { kind: "location"; locationIdx: number };
 
@@ -26,7 +26,7 @@ export type Eu5Carry = {
    */
   selection:
     | { kind: "players" }
-    | { kind: "country"; id?: number; tag: string; focusedLocation: number | null }
+    | { kind: "country"; id?: UiCountryId; tag: string; focusedLocation: number | null }
     | { kind: "market"; center: number }
     | { kind: "location"; locationIdx: number }
     | null;

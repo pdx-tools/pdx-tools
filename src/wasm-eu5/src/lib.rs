@@ -1019,15 +1019,6 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn country_id_at_index(&self, index: u32) -> Option<u32> {
-        self.app()
-            .gamestate()
-            .countries
-            .iter()
-            .find(|entry| entry.idx().value() == index)
-            .map(|entry| entry.id().value())
-    }
-    #[wasm_bindgen]
     pub fn country_index_from_id(&self, id: u32) -> Option<u32> {
         self.app()
             .gamestate()
@@ -1090,7 +1081,10 @@ impl Eu5App {
 
     #[wasm_bindgen]
     pub fn map_projection_change(&self) -> Result<Ts<TimelineChange>, JsError> {
-        self.timeline_change(self.app().no_map_change())
+        self.timeline_change(
+            self.app().no_map_change(),
+            self.app().selection_state().selection_generation(),
+        )
     }
 
     #[wasm_bindgen]

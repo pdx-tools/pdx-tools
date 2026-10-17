@@ -5,7 +5,6 @@ import type { ActiveProfileIdentity, Eu5App, MapChangeData } from "@/wasm/wasm_e
 type Countries = ReturnType<Eu5App["get_countries"]>["countries"];
 type ViewApp = Pick<
   Eu5App,
-  | "country_id_at_index"
   | "set_map_mode"
   | "select_players"
   | "select_country"
@@ -17,14 +16,6 @@ type ViewApp = Pick<
   | "get_selection_summary"
 >;
 
-function countryId(app: Pick<Eu5App, "country_id_at_index">, country: Countries[number]) {
-  // #1024 exposes IDs on search entries; current master can read the same ID
-  // from the workspace while that upstream change is still pending.
-  return "id" in country && typeof country.id === "number"
-    ? country.id
-    : app.country_id_at_index(country.country.key);
-}
-
 /** Restore a campaign view within the game worker, before publishing its buffers. */
 export function restoreCampaignView(app: ViewApp, countries: Countries, carry: Eu5Carry) {
   const change = app.set_map_mode(carry.mapMode);
@@ -33,12 +24,8 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
     change.flagsChanged ||= next.flagsChanged;
     change.gradient = next.gradient;
   };
-  const identified = countries.map((country) => ({
-    ...country,
-    id: countryId(app, country) ?? -1,
-  }));
-  const country = (identity: { id?: number; tag: string }) => {
-    const key = findCarriedCountry(identified, identity);
+  const country = (identity: Extract<StableProfile, { kind: "country" }>) => {
+    const key = findCarriedCountry(countries, identity);
     return countries.find((c) => c.country.key === key);
   };
   const selection = carry.selection;
@@ -62,14 +49,14 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
 
 /** Resolve identities without building complete country profiles or searching locations. */
 export function campaignIdentities(
-  app: Pick<ViewApp, "get_market_profile" | "country_id_at_index">,
+  app: Pick<ViewApp, "get_market_profile">,
   countries: Countries,
   profiles: ActiveProfileIdentity[],
 ): (StableProfile | null)[] {
   return profiles.map((profile) => {
     if (profile.kind === "country") {
       const match = countries.find((c) => c.country.key === profile.country.key);
-      return match ? { kind: "country", id: countryId(app, match), tag: match.tag } : null;
+      return match ? { kind: "country", id: match.id, tag: match.tag } : null;
     }
     if (profile.kind === "market") {
       const market = app.get_market_profile(profile.market.key);

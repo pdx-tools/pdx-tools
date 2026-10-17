@@ -17,7 +17,9 @@ impl<'bump> Eu5Workspace<'bump> {
             groups[gpu_idx.value() as usize] =
                 GroupId::from_raw(crate::map_render_source::group_id(
                     self.current_map_mode,
-                    info.owner.map(|id| id.country_id().value()).unwrap_or(u32::MAX),
+                    info.owner
+                        .map(|id| id.country_id().value())
+                        .unwrap_or(u32::MAX),
                     info.market.map(|id| id.value()).unwrap_or(u32::MAX),
                 ));
         }

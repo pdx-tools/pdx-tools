@@ -42,4 +42,9 @@ describe("carried country lookup", () => {
   it("finds nothing when the ID and the tag are both gone", () => {
     expect(findCarriedCountry([country(5, 611, "YMT")], { id: id(1259), tag: "POR" })).toBeNull();
   });
+
+  it("accepts a legacy carry with only a tag", () => {
+    const countries = [country(3, 50, "POR", false), country(9, 2375, "POR")];
+    expect(findCarriedCountry(countries, { tag: "POR" })).toBe(9);
+  });
 });
