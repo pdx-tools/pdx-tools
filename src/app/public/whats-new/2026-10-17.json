@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "improvements": [
+      "Multi-save navigation on a single campaign for local and uploaded saves",
+      "Allow selecting multiple local save files for multi-save mode",
+      "EU5: memory usage optimized for processing uncompressed save files",
+      "EU4: Add achievement 'An Unlikely Candidate'"
+    ],
+    "fixes": []
+  }
+}
