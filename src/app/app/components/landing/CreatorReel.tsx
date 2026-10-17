@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { PlayIcon } from "@heroicons/react/24/solid";
+import ChevronLeftIcon from "@heroicons/react/24/outline/ChevronLeftIcon";
+import ChevronRightIcon from "@heroicons/react/24/outline/ChevronRightIcon";
+import PlayIcon from "@heroicons/react/24/solid/PlayIcon";
 import { DiscordIcon, RedditIcon } from "@/components/icons";
 import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";

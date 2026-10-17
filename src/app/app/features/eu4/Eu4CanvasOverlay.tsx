@@ -19,12 +19,10 @@ import { SideBarButton } from "./components/SideBarButton";
 import { MapModeImage } from "./components/map-modes/MapModeImage";
 import { MapModeButtonGroup } from "./components/map-modes";
 import { Tooltip } from "@/components/Tooltip";
-import {
-  ArrowUpTrayIcon,
-  FlagIcon,
-  HomeIcon,
-  InformationCircleIcon,
-} from "@heroicons/react/24/outline";
+import ArrowUpTrayIcon from "@heroicons/react/24/outline/ArrowUpTrayIcon";
+import FlagIcon from "@heroicons/react/24/outline/FlagIcon";
+import HomeIcon from "@heroicons/react/24/outline/HomeIcon";
+import InformationCircleIcon from "@heroicons/react/24/outline/InformationCircleIcon";
 import { ChartAreaIcon } from "@/components/icons/ChartAreaIcon";
 import { FileSyncIcon } from "@/components/icons/FileSyncIcon";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";

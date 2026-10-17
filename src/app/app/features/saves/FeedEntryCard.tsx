@@ -1,5 +1,7 @@
 import { useId, useState } from "react";
-import { ArrowRightIcon, CheckIcon, LinkIcon } from "@heroicons/react/24/outline";
+import ArrowRightIcon from "@heroicons/react/24/outline/ArrowRightIcon";
+import CheckIcon from "@heroicons/react/24/outline/CheckIcon";
+import LinkIcon from "@heroicons/react/24/outline/LinkIcon";
 import { Button } from "@/components/Button";
 import { IconButton } from "@/components/IconButton";
 import { Link } from "@/components/Link";

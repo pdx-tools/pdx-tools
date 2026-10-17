@@ -2,7 +2,8 @@ import type { SaveMode as Mode } from "../../types/models";
 import ironmanNo from "./ironman-no.png";
 import ironmanOk from "./ironman-ok.png";
 import { Tooltip } from "@/components/Tooltip";
-import { UserIcon, UsersIcon } from "@heroicons/react/24/outline";
+import UserIcon from "@heroicons/react/24/outline/UserIcon";
+import UsersIcon from "@heroicons/react/24/outline/UsersIcon";
 
 export interface SaveModeProps {
   mode: Mode;

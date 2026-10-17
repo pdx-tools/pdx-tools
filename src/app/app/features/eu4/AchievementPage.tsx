@@ -5,7 +5,7 @@ import { AchievementAvatar, Flag } from "./components/avatars";
 import { Card } from "@/components/Card";
 import { formatFloat, formatInt } from "@/lib/format";
 import { cx } from "class-variance-authority";
-import { TrophyIcon } from "@heroicons/react/24/solid";
+import TrophyIcon from "@heroicons/react/24/solid/TrophyIcon";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Link } from "@/components/Link";
 import { difficultyColor, difficultyText } from "@/lib/difficulty";

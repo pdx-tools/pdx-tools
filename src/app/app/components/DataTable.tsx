@@ -1,7 +1,8 @@
 import React, { useId, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import ChevronLeftIcon from "@heroicons/react/24/outline/ChevronLeftIcon";
+import ChevronRightIcon from "@heroicons/react/24/outline/ChevronRightIcon";
+import ChevronDownIcon from "@heroicons/react/20/solid/ChevronDownIcon";
 import { Table } from "./Table";
 import { flexRender, useTable } from "@tanstack/react-table";
 import type {

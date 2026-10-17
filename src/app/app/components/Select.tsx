@@ -1,7 +1,7 @@
 import React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import CheckIcon from "@heroicons/react/24/outline/CheckIcon";
 import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const Select = SelectPrimitive.Root as typeof SelectPrimitive.Root & {

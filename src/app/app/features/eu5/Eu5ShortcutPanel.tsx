@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCircleIcon";
 import { cx } from "class-variance-authority";
 import { Popover } from "@/components/Popover";
 import { focusRing } from "@/components/game/focusRing";

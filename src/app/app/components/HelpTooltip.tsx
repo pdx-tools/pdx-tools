@@ -1,5 +1,5 @@
 import { IconButton } from "./IconButton";
-import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCircleIcon";
 
 interface HelpTooltipProps {
   help: string;

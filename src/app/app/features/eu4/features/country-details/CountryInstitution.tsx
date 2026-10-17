@@ -10,7 +10,7 @@ import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
 import { create } from "zustand";
 import { IconButton } from "@/components/IconButton";
-import { XMarkIcon } from "@heroicons/react/16/solid";
+import XMarkIcon from "@heroicons/react/16/solid/XMarkIcon";
 import { useThrottle } from "@/hooks/useThrottle";
 import { Divider } from "@/components/Divider";
 import { Tooltip } from "@/components/Tooltip";

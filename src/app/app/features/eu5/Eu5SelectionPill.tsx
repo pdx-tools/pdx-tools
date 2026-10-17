@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useEu5SelectionState, useEu5Engine, useEu5TimelineBarHeight } from "./store";
-import { XMarkIcon } from "@heroicons/react/24/solid";
+import XMarkIcon from "@heroicons/react/24/solid/XMarkIcon";
 import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";
 import { focusRing } from "@/components/game/focusRing";

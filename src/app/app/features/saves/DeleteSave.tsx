@@ -6,7 +6,7 @@ import { Dialog } from "@/components/Dialog";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { Tooltip } from "@/components/Tooltip";
 import { toast } from "@/lib/toast";
-import { TrashIcon } from "@heroicons/react/24/outline";
+import TrashIcon from "@heroicons/react/24/outline/TrashIcon";
 import { cx } from "class-variance-authority";
 
 interface DeleteSaveProps extends ButtonProps {

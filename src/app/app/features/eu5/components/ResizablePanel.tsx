@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { ArrowsPointingInIcon, ArrowsPointingOutIcon } from "@heroicons/react/24/solid";
+import ChevronLeftIcon from "@heroicons/react/24/outline/ChevronLeftIcon";
+import ChevronRightIcon from "@heroicons/react/24/outline/ChevronRightIcon";
+import ArrowsPointingInIcon from "@heroicons/react/24/solid/ArrowsPointingInIcon";
+import ArrowsPointingOutIcon from "@heroicons/react/24/solid/ArrowsPointingOutIcon";
 import { focusBar, focusRing } from "@/components/game/focusRing";
 
 interface ResizablePanelContextValue {

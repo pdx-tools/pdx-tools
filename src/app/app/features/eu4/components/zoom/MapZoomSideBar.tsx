@@ -1,6 +1,7 @@
 import { ZoomInSideBarButton } from "./ZoomInSideBarButton";
 import { ZoomOutSideBarButton } from "./ZoomOutSideBarButton";
-import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
+import MinusIcon from "@heroicons/react/24/outline/MinusIcon";
+import PlusIcon from "@heroicons/react/24/outline/PlusIcon";
 
 export const MapZoomSideBar = () => {
   return (

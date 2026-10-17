@@ -7,7 +7,7 @@ import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Table } from "@/components/Table";
 import { DataTable } from "@/components/DataTable";
-import { StarIcon } from "@heroicons/react/24/outline";
+import StarIcon from "@heroicons/react/24/outline/StarIcon";
 
 export interface CountryCulturesProps {
   details: CountryDetails;

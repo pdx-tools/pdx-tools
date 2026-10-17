@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { cx } from "class-variance-authority";
-import { ArrowDownTrayIcon, CheckIcon, LinkIcon } from "@heroicons/react/24/outline";
+import ArrowDownTrayIcon from "@heroicons/react/24/outline/ArrowDownTrayIcon";
+import CheckIcon from "@heroicons/react/24/outline/CheckIcon";
+import LinkIcon from "@heroicons/react/24/outline/LinkIcon";
 import { useCopyLink } from "@/features/saves/useCopyLink";
 import { Link } from "@/components/Link";
 import { Tooltip } from "@/components/Tooltip";

@@ -3,7 +3,7 @@ import { Dialog as SheetPrimitive } from "radix-ui";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 import { Button } from "./Button";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
 import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 // https://github.com/shadcn-ui/ui/issues/399

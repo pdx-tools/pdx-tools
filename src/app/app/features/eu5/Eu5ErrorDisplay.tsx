@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import ExclamationTriangleIcon from "@heroicons/react/24/outline/ExclamationTriangleIcon";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { DISCORD_INVITE_URL } from "@/lib/links";
 import { DiscordIcon, GithubIcon } from "@/components/icons";

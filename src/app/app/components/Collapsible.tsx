@@ -1,7 +1,7 @@
 import React from "react";
 import { Collapsible as CollapsiblePrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
-import { ChevronDownIcon } from "@heroicons/react/24/solid";
+import ChevronDownIcon from "@heroicons/react/24/solid/ChevronDownIcon";
 
 export const Collapsible = CollapsiblePrimitive.Root as typeof CollapsiblePrimitive.Root & {
   Trigger: typeof CollapsibleTrigger;
