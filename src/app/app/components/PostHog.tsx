@@ -17,6 +17,7 @@ export function PostHog() {
       posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
         autocapture: false,
         disable_session_recording: true,
+        capture_dead_clicks: false,
         ui_host: "https://eu.posthog.com",
         api_host: "/ph",
         person_profiles: "identified_only",
