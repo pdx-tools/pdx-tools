@@ -11,7 +11,7 @@ const games = ["eu4", "eu5", "ck3", "hoi4", "imperator", "vic3"] as const;
 type Game = (typeof games)[number];
 
 /** Games that the asset pipeline can turn into a compiled bundle */
-const bundledGames: Game[] = ["eu4", "eu5", "hoi4"];
+const bundledGames: Game[] = ["eu4", "eu5", "hoi4", "vic3"];
 
 /**
  * `branch` is the Steam beta branch to download; omit it for `public`.
