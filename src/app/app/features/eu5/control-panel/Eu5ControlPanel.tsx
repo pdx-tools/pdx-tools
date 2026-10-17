@@ -1,6 +1,6 @@
 import { useMapHistory } from "../history/context";
 import { useRef, useState } from "react";
-import { PlusIcon } from "@heroicons/react/16/solid";
+import PlusIcon from "@heroicons/react/16/solid/PlusIcon";
 import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
 import { GameButton } from "@/components/game/Button";
 import { holdsRef, localSaveRegistry, registerLocalSaves } from "@/features/campaign/localSaves";
