@@ -1,7 +1,7 @@
 import React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
 import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const Dialog = DialogPrimitive.Root as typeof DialogPrimitive.Root & {

@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useId, useState } from "react";
 import { cx } from "class-variance-authority";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/16/solid";
+import ChevronLeftIcon from "@heroicons/react/16/solid/ChevronLeftIcon";
+import ChevronRightIcon from "@heroicons/react/16/solid/ChevronRightIcon";
 import { GameButton, Kbd, focusRing } from "@/components/game";
 import { Popover } from "@/components/Popover";
 import { sectionLabel } from "@/components/game/SectionTitle";

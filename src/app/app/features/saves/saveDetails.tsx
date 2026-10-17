@@ -1,4 +1,4 @@
-import { UserGroupIcon } from "@heroicons/react/24/outline";
+import UserGroupIcon from "@heroicons/react/24/outline/UserGroupIcon";
 import { cx } from "class-variance-authority";
 import { Flag } from "@/features/eu4/components/avatars";
 import { Eu5Flag } from "@/features/eu5/components/flags/Eu5Flag";

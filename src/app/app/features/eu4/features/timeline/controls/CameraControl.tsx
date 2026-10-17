@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CameraIcon } from "@heroicons/react/24/solid";
+import CameraIcon from "@heroicons/react/24/solid/CameraIcon";
 import { IMG_WIDTH } from "@pdx.tools/map";
 import { webgl2Capabilities } from "../../map/resources";
 import { DropdownMenu } from "@/components/DropdownMenu";

@@ -3,7 +3,7 @@ import { useServerSaveFile } from "../../store";
 import { pdxApi } from "@/services/appApi";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
-import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import PencilSquareIcon from "@heroicons/react/24/outline/PencilSquareIcon";
 import { check } from "@/lib/isPresent";
 import { toast } from "@/lib/toast";
 

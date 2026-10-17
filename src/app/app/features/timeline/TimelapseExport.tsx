@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { cx } from "class-variance-authority";
 import { ToggleGroup } from "radix-ui";
-import { VideoCameraIcon } from "@heroicons/react/24/outline";
+import VideoCameraIcon from "@heroicons/react/24/outline/VideoCameraIcon";
 import { Popover } from "@/components/Popover";
 import { Tooltip } from "@/components/Tooltip";
 import { downloadData } from "@/lib/downloadData";

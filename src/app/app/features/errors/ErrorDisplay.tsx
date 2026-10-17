@@ -1,6 +1,6 @@
 import React from "react";
 import { cx } from "class-variance-authority";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import ExclamationTriangleIcon from "@heroicons/react/24/outline/ExclamationTriangleIcon";
 import { Button } from "@/components/Button";
 import { Collapsible } from "@/components/Collapsible";
 import { getErrorMessage } from "@/lib/getErrorMessage";

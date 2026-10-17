@@ -9,7 +9,7 @@ import { Table } from "@/components/Table";
 import { Button } from "@/components/Button";
 import { Select } from "@/components/Select";
 import { formatInt } from "@/lib/format";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import ChevronDownIcon from "@heroicons/react/20/solid/ChevronDownIcon";
 
 export interface CountryLeadersProps {
   details: CountryDetails;

@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { cx } from "class-variance-authority";
-import { HomeIcon } from "@heroicons/react/24/outline";
+import HomeIcon from "@heroicons/react/24/outline/HomeIcon";
 import { focusRing } from "@/components/game/focusRing";
 import { useEngineActions } from "../../engine";
 import { useEu5SaveDate, useEu5PlaythroughName } from "../store";

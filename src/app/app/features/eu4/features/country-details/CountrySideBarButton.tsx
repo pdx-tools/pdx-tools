@@ -34,7 +34,7 @@ import { CountryEstates } from "./CountryEstates";
 import { Tabs } from "@/components/Tabs";
 import { Alert } from "@/components/Alert";
 import { Link } from "@/components/Link";
-import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCircleIcon";
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import { CountrySelect } from "../../components/CountrySelect";

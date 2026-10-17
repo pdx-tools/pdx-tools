@@ -22,7 +22,7 @@ import { IconButton } from "@/components/IconButton";
 import { Alert } from "@/components/Alert";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { DataTable } from "@/components/DataTable";
-import { TableCellsIcon } from "@heroicons/react/24/outline";
+import TableCellsIcon from "@heroicons/react/24/outline/TableCellsIcon";
 import type { MonitorData } from "../../worker/module";
 import type { Eu4Date } from "../../types/models";
 

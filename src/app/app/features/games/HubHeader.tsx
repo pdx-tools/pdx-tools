@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import ArrowRightIcon from "@heroicons/react/24/outline/ArrowRightIcon";
 import { Link } from "@/components/Link";
 
 /**

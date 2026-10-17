@@ -1,5 +1,5 @@
-import { CameraIcon } from "@heroicons/react/24/outline";
-import { FireIcon } from "@heroicons/react/24/solid";
+import CameraIcon from "@heroicons/react/24/outline/CameraIcon";
+import FireIcon from "@heroicons/react/24/solid/FireIcon";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { Tooltip } from "@/components/Tooltip";
 import { GameButton } from "@/components/game/Button";

@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import ChevronLeftIcon from "@heroicons/react/24/outline/ChevronLeftIcon";
+import ChevronRightIcon from "@heroicons/react/24/outline/ChevronRightIcon";
 import { IconButton } from "@/components/IconButton";
 import { Link } from "@/components/Link";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";

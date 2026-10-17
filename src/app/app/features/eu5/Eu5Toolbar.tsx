@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useEu5SelectionState, useEu5Engine, useEu5Players } from "./store";
 import { usePanToEntity } from "./usePanToEntity";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon";
 import { Command as CommandPrimitive } from "cmdk";
 import { cx } from "class-variance-authority";
 import type { SearchResult } from "./ui-engine";

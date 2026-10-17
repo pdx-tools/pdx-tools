@@ -1,6 +1,6 @@
 import React from "react";
 import { NavigationMenu as NavigationMenuPrimitive } from "radix-ui";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import ChevronDownIcon from "@heroicons/react/24/outline/ChevronDownIcon";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 

@@ -58,7 +58,7 @@ import {
   NavyTraditionIcon,
 } from "../../components/icons";
 import { PersonalityAvatar } from "../../components/avatars";
-import { CheckCircleIcon } from "@heroicons/react/24/outline";
+import CheckCircleIcon from "@heroicons/react/24/outline/CheckCircleIcon";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { LeaderStats } from "../../components/LeaderStats";
 import { Card } from "@/components/Card";

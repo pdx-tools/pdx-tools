@@ -7,7 +7,7 @@ import { Button } from "@/components/Button";
 import { Tooltip } from "@/components/Tooltip";
 import { Sheet } from "@/components/Sheet";
 import { Link } from "@/components/Link";
-import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCircleIcon";
 
 export interface InheranticeLabelProps {
   details: CountryDetails;

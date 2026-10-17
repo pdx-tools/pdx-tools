@@ -1,5 +1,6 @@
 import { cx } from "class-variance-authority";
-import { PauseIcon, PlayIcon } from "@heroicons/react/24/solid";
+import PauseIcon from "@heroicons/react/24/solid/PauseIcon";
+import PlayIcon from "@heroicons/react/24/solid/PlayIcon";
 import { Tooltip } from "@/components/Tooltip";
 import { GameButton } from "@/components/game/Button";
 import { focusRing } from "@/components/game/focusRing";

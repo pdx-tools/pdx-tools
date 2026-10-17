@@ -1,6 +1,6 @@
 import { toast as sonnerToast } from "sonner";
 import { cx } from "class-variance-authority";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
 import { Button } from "@/components/Button";
 
 interface ToastAction {

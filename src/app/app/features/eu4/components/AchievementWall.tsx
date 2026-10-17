@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { useNavigate } from "react-router";
 import { cx } from "class-variance-authority";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon";
 import { AchievementAvatar } from "@/features/eu4/components/avatars";
 import { Input } from "@/components/Input";
 import { Link } from "@/components/Link";

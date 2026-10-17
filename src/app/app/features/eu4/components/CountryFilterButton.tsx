@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Select } from "@/components/Select";
 import { useEu4Actions, useTagFilter } from "../store";
 import { Button } from "@/components/Button";
-import { FunnelIcon } from "@heroicons/react/24/outline";
+import FunnelIcon from "@heroicons/react/24/outline/FunnelIcon";
 import { CountrySelect } from "./CountrySelect";
 import { ToggleRow } from "../features/settings/ToggleRow";
 import { Dialog } from "@/components/Dialog";

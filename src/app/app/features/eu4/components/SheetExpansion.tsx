@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Sheet } from "@/components/Sheet";
 import { Button } from "@/components/Button";
 import { cx } from "class-variance-authority";
-import { PlusCircleIcon } from "@heroicons/react/24/solid";
+import PlusCircleIcon from "@heroicons/react/24/solid/PlusCircleIcon";
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 

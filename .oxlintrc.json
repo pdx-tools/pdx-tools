@@ -4,7 +4,18 @@
     // referencing window in a web worker
     "typescript/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": "error",
-    "import/no-cycle": "error"
+    "import/no-cycle": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "regex": "^@heroicons/react(/(16|20|24))?(/(solid|outline))?$",
+            "message": "Import each icon from its own module, for example \"@heroicons/react/24/solid/XMarkIcon\"."
+          }
+        ]
+      }
+    ]
   },
   "categories": {
     "correctness": "error"

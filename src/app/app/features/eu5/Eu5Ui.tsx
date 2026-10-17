@@ -41,7 +41,7 @@ import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import type { CanvasCourierHost } from "@/lib/canvas_courier";
-import { ChevronLeftIcon } from "@heroicons/react/24/solid";
+import ChevronLeftIcon from "@heroicons/react/24/solid/ChevronLeftIcon";
 import type { CursorPosition } from "@/components/CursorTooltip";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { Eu5CampaignProvider } from "./campaign";

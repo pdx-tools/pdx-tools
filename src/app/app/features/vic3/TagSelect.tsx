@@ -1,5 +1,5 @@
 import { Button } from "@/components/Button";
-import { PlayIcon } from "@heroicons/react/20/solid";
+import PlayIcon from "@heroicons/react/20/solid/PlayIcon";
 import { Select } from "@/components/Select";
 import { useVic3Meta } from "./store";
 import { useMemo } from "react";

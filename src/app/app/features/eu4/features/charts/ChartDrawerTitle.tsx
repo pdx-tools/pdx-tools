@@ -8,10 +8,11 @@ import { Select } from "@/components/Select";
 import { Sheet } from "@/components/Sheet";
 import { Help } from "./Help";
 import { CountryFilterButton } from "../../components/CountryFilterButton";
-import { QuestionMarkCircleIcon, TableCellsIcon } from "@heroicons/react/24/outline";
+import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCircleIcon";
+import TableCellsIcon from "@heroicons/react/24/outline/TableCellsIcon";
 import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
-import { PlayIcon } from "@heroicons/react/20/solid";
+import PlayIcon from "@heroicons/react/20/solid/PlayIcon";
 import { emitEvent } from "@/lib/events";
 
 interface ChartDrawerTitleProps {

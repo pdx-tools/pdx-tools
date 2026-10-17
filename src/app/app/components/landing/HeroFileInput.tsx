@@ -1,5 +1,5 @@
 import React, { useRef, useSyncExternalStore } from "react";
-import { DocumentIcon } from "@heroicons/react/24/solid";
+import DocumentIcon from "@heroicons/react/24/solid/DocumentIcon";
 import { useFilePublisher } from "@/features/engine";
 import { useFileDrop } from "@/hooks/useFileDrop";
 import compassSymbol from "./compass-symbol.webp";

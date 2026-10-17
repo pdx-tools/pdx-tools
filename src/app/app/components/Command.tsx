@@ -1,7 +1,7 @@
 import React from "react";
 import type { Dialog as DialogNamespace } from "radix-ui";
 import { Command as CommandPrimitive } from "cmdk";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon";
 import { Dialog } from "@/components/Dialog";
 import { cx } from "class-variance-authority";
 import styles from "./Command.module.css";
