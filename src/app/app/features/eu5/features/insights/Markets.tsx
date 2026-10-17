@@ -444,6 +444,8 @@ export function GoodsPressureChart({
         </div>
       )}
       <EChart
+        gpuBars
+        mergeUpdates
         option={option}
         style={{ height: `${height}px`, width: "100%" }}
         onInit={
@@ -513,7 +515,7 @@ function MarketGoodSankey({ good }: { good: ScopedGoodSummary }) {
     return <EmptyNote>No category breakdown is available for this good.</EmptyNote>;
   }
 
-  return <EChart option={option} style={{ height: "360px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "360px", width: "100%" }} />;
 }
 
 function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
@@ -671,7 +673,14 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
     return <EmptyNote>No demand fulfillment breakdown is available for this good.</EmptyNote>;
   }
 
-  return <EChart option={option} style={{ height: `${rows.length * 34 + 70}px`, width: "100%" }} />;
+  return (
+    <EChart
+      gpuBars
+      mergeUpdates
+      option={option}
+      style={{ height: `${rows.length * 34 + 70}px`, width: "100%" }}
+    />
+  );
 }
 
 const MONTH_NAMES = [
@@ -840,7 +849,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
     return <EmptyNote>No price history is available for this good.</EmptyNote>;
   }
 
-  return <EChart option={option} style={{ height: "300px", width: "100%" }} />;
+  return <EChart mergeUpdates option={option} style={{ height: "300px", width: "100%" }} />;
 }
 
 function positiveEntries(entries: GoodBreakdownEntry[]): GoodBreakdownEntry[] {
@@ -1110,6 +1119,7 @@ export function GoodsPriceVsBaseChart({
 
   return (
     <EChart
+      mergeUpdates
       option={option}
       style={{ height: "320px", width: "100%" }}
       onInit={(chart) => {
@@ -1191,9 +1201,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         trigger: "item",
         formatter: (params) => {
           if (Array.isArray(params)) return "";
-          const dataIndex = params.dataIndex;
-          if (dataIndex == null) return "";
-          const d = markets[dataIndex];
+          const d = params.data as ScopedMarketSummary | undefined;
           if (!d) return "";
           return marketTooltip(d);
         },
@@ -1201,16 +1209,21 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
       series: [
         {
           type: "scatter",
-          data: markets.map((m) => [m.marketValue, m.shortagePressure]),
+          data: markets.map((m) => ({
+            ...m,
+            id: m.market.market.key,
+            name: m.market.market.name,
+            value: [m.marketValue, m.shortagePressure],
+          })),
           symbolSize: (_val, params) => {
-            const d = markets[params.dataIndex];
+            const d = params.data as ScopedMarketSummary | undefined;
             if (!d) return 6;
             const scaled = Math.sqrt((d.totalTaken / maxTaken) * 400) + 6;
             return Math.max(6, Math.min(36, scaled));
           },
           itemStyle: {
             color: (params) => {
-              const d = markets[params.dataIndex];
+              const d = params.data as ScopedMarketSummary | undefined;
               return d?.market.colorHex ?? seriesColor(0);
             },
             opacity: 0.75,
@@ -1218,7 +1231,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
           label: {
             show: true,
             formatter: (params) => {
-              const d = markets[params.dataIndex];
+              const d = params.data as ScopedMarketSummary | undefined;
               if (!d) return "";
               return topMarkets.has(d.market.market.key) || markets.length <= 10
                 ? d.market.market.name.replace(/ Market$/, "")
@@ -1239,8 +1252,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
     kind: "market",
     backLabel: "Markets",
     getTarget: (params) => {
-      const dataIndex = params.dataIndex;
-      const market = dataIndex == null ? null : markets[dataIndex];
+      const market = params.data as ScopedMarketSummary | undefined;
       return market
         ? {
             id: market.market.market.key,
@@ -1251,5 +1263,13 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <EChart
+      mergeUpdates
+      gpuScatter
+      option={option}
+      style={{ height: "420px", width: "100%" }}
+      onInit={handleInit}
+    />
+  );
 }

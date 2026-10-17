@@ -244,7 +244,13 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
   const height = Math.min(sorted.length, BAR_CAP) * 18 + 68;
 
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <EChart
+      gpuBars
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+      onInit={handleInit}
+    />
   );
 }
 
@@ -381,5 +387,12 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <EChart
+      mergeUpdates
+      option={option}
+      style={{ height: "420px", width: "100%" }}
+      onInit={handleInit}
+    />
+  );
 }

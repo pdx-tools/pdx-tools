@@ -1,4 +1,5 @@
-import React, { useId, useMemo, useState } from "react";
+import { AnimatedValue } from "./AnimatedValue";
+import React, { useId, useMemo, useState, useRef, useLayoutEffect } from "react";
 import { flexRender, useTable } from "@tanstack/react-table";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import type {
@@ -182,6 +183,47 @@ export function Eu5DataTable<TData extends RowData>({
   const table = useTable({
     ...tableOptions,
     data,
+    getRowId:
+      tableOptions?.getRowId ??
+      ((row, index) => {
+        const r = row as Record<string, unknown>;
+        if ("kind" in r && "culture" in r && "religion" in r) {
+          const culture = r.culture as { key?: string } | undefined;
+          const religion = r.religion as { key?: string };
+          return JSON.stringify([r.kind, culture?.key ?? null, religion.key]);
+        }
+        const location = r.location as { key?: number; name?: string } | undefined;
+        const parts: [string, string | number][] = [];
+        if (location?.key != null) parts.push(["location", location.key]);
+        for (const field of [
+          "country",
+          "market",
+          "religion",
+          "good",
+          "building",
+          "material",
+          "rawMaterial",
+          "buildingType",
+          "ownerCountry",
+          "foreignOwner",
+          "kind",
+          "popType",
+        ]) {
+          const v = r[field];
+          if (v && typeof v === "object") {
+            const entity = v as {
+              tag?: string;
+              key?: number | string;
+              country?: { key?: number };
+              name?: string;
+            };
+            const id = entity.tag ?? entity.key ?? entity.country?.key ?? entity.name;
+            if (id != null) parts.push([field, id]);
+          } else if (typeof v === "string" || typeof v === "number") parts.push([field, v]);
+        }
+        if (parts.length) return JSON.stringify(parts);
+        return String(r.id ?? r.name ?? index);
+      }),
     columns: columns as unknown as AppColumnDef<TData, unknown>[],
     features: appTableFeatures,
     // TanStack's built-in default header renders the accessor key, which
@@ -200,6 +242,43 @@ export function Eu5DataTable<TData extends RowData>({
   });
 
   const rows = table.getRowModel().rows;
+  const body = useRef<HTMLTableSectionElement>(null);
+  const positions = useRef(new Map<string, number>());
+  const rowAnimations = useRef(new Map<HTMLTableRowElement, Animation>());
+  useLayoutEffect(() => {
+    const next = new Map<string, number>();
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const measured = Array.from(
+      body.current?.querySelectorAll<HTMLTableRowElement>("tr[data-row-key]") ?? [],
+      (row) => ({
+        row,
+        key: row.dataset.rowKey!,
+        top: row.offsetTop,
+      }),
+    );
+    // Read all positions before starting animations, avoiding read/write layout flushes.
+    for (const { row, key, top } of measured) {
+      const previous = positions.current.get(key);
+      next.set(key, top);
+      if (!reduced && previous != null && previous !== top) {
+        rowAnimations.current.get(row)?.cancel();
+        rowAnimations.current.set(
+          row,
+          row.animate(
+            [{ transform: `translateY(${previous - top}px)` }, { transform: "translateY(0)" }],
+            { duration: 800, easing: "cubic-bezier(.22,.61,.36,1)" },
+          ),
+        );
+      }
+    }
+    for (const [row, animation] of rowAnimations.current) {
+      if (!row.isConnected) {
+        animation.cancel();
+        rowAnimations.current.delete(row);
+      }
+    }
+    positions.current = next;
+  }, [rows]);
   const filteredCount = data.length;
   const displayTotal = totalCount ?? data.length;
   const showTitleCount = totalCount !== undefined || data.length !== filteredCount;
@@ -226,7 +305,7 @@ export function Eu5DataTable<TData extends RowData>({
         <table className="w-full min-w-full table-auto border-separate border-spacing-0">
           <ColumnGroup table={table} />
           <HeaderBand table={table} />
-          <tbody>
+          <tbody ref={body}>
             {rows.length === 0 ? (
               <tr>
                 <td
@@ -252,6 +331,7 @@ export function Eu5DataTable<TData extends RowData>({
                       </tr>
                     )}
                     <tr
+                      data-row-key={row.id}
                       data-in-filter={inFilter || undefined}
                       onMouseEnter={
                         onRowHoverChange ? () => onRowHoverChange(row.original) : undefined
@@ -484,11 +564,45 @@ function BodyCell<TData extends RowData>({ cell }: { cell: AppCell<TData> }) {
   const meta = cell.column.columnDef.meta?.eu5;
   const variant: Eu5DataTableColumnVariant = meta?.variant ?? "default";
   const align = meta?.align ?? alignForVariant(variant);
+  const element = useRef<HTMLSpanElement>(null);
+  const value = cell.getValue();
+  const previous = useRef(value);
+  const highlight = useRef<Animation | undefined>(undefined);
+  useLayoutEffect(() => {
+    const old = previous.current;
+    previous.current = value;
+    if (
+      typeof old !== "number" ||
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      old === value ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    highlight.current?.cancel();
+    if (element.current) {
+      element.current.style.backgroundColor = value > old ? "#8fcfa725" : "#ed969225";
+      highlight.current = element.current.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 1000,
+        easing: "ease-out",
+      });
+    }
+    return () => highlight.current?.cancel();
+  }, [value]);
   return (
     <td
-      className={cx(cellVariants({ variant }), alignClass(align), "border-b border-game-line")}
+      className={cx(
+        cellVariants({ variant }),
+        alignClass(align),
+        "relative border-b border-game-line",
+      )}
       style={cellStyle(meta?.minWidth)}
     >
+      <span
+        ref={element}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-0"
+      />
       {flexRender(cell.column.columnDef.cell, cell.getContext())}
     </td>
   );
@@ -607,7 +721,7 @@ type NumericCellProps = React.HTMLAttributes<HTMLSpanElement> & {
 function NumericCell({ children, delta, className, ...rest }: NumericCellProps) {
   return (
     <span className={cx("font-game-num tabular-nums", className)} {...rest}>
-      {children}
+      <AnimatedValue value={children} />
       {delta && (
         <span
           className={cx(
