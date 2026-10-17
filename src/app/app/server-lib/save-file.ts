@@ -1,6 +1,7 @@
 import { log } from "./logging";
 import { pdxMetrics } from "./metrics";
-import { pdxStorage } from "./storage";
+import { saveObjectResponse } from "./save-object-response";
+import { required } from "./storage";
 import { getCloudflare } from "./cloudflare-context";
 import type { PdxRouteContext } from "./cloudflare-context";
 
@@ -26,12 +27,15 @@ export async function saveFileResponse({
   game: "eu4" | "eu5";
 }) {
   // Previews have no bucket binding, so read public saves through production.
-  if (!getCloudflare(context).env.SAVE_BUCKET) {
-    return forwardSaveFile(request, new URL(url.pathname, "https://pdx.tools"));
+  const { env, caches, ctx } = getCloudflare(context);
+  if (!env.SAVE_BUCKET) {
+    return required(env.PREVIEW_SAVES, "PREVIEW_SAVES").getSave(game, saveId, {
+      ifNoneMatch: request.headers.get("if-none-match") ?? undefined,
+      ifModifiedSince: request.headers.get("if-modified-since") ?? undefined,
+    });
   }
 
   const startedAt = performance.now();
-  const storage = pdxStorage({ context, game });
   const metrics = pdxMetrics(context);
   let cacheResult: CacheResult = "MISS";
 
@@ -41,8 +45,7 @@ export async function saveFileResponse({
     // Based on: https://developers.cloudflare.com/r2/examples/cache-api/
     const cacheKey = new Request(url.toString(), request);
 
-    const cloudflare = getCloudflare(context);
-    const cache = cloudflare.caches.default;
+    const cache = caches.default;
 
     let response = await cache.match(cacheKey);
     if (response) {
@@ -62,11 +65,9 @@ export async function saveFileResponse({
     }
 
     log.info({ msg: "cache miss", key: saveId });
-    const object = await storage.saves.get(saveId, {
-      onlyIf: request.headers,
-    });
+    response = await saveObjectResponse(env.SAVE_BUCKET, game, saveId, request.headers);
 
-    if (object === null) {
+    if (response.status === 404) {
       metrics.record({
         domain: "save_file",
         game,
@@ -76,23 +77,11 @@ export async function saveFileResponse({
         status: 404,
         elapsedMs: performance.now() - startedAt,
       });
-      return new Response(null, { status: 404 });
+      return response;
     }
 
-    const headers = new Headers();
-    object.writeHttpMetadata(headers);
-    headers.set("etag", object.httpEtag);
-    // Cloudflare's Cache API only persists responses with a cacheable
-    // Cache-Control.
-    headers.set("Cache-Control", "public, max-age=86400");
-
-    // A bodyless R2Object means the If-None-Match precondition matched, so the
-    // client already has the object: respond 304 and don't (re)cache.
-    if (!("body" in object)) {
-      response = new Response(null, { status: 304, headers });
-    } else {
-      response = new Response(object.body, { status: 200, headers });
-      cloudflare.ctx.waitUntil(cache.put(cacheKey, response.clone()));
+    if (response.status === 200) {
+      ctx.waitUntil(cache.put(cacheKey, response.clone()));
     }
 
     metrics.record({
@@ -118,14 +107,4 @@ export async function saveFileResponse({
     });
     throw error;
   }
-}
-
-// Keep preview cookies and credentials out of requests to production.
-function forwardSaveFile(request: Request, target: URL) {
-  const headers = new Headers();
-  for (const name of ["if-none-match", "if-modified-since"]) {
-    const value = request.headers.get(name);
-    if (value !== null) headers.set(name, value);
-  }
-  return fetch(target, { headers });
 }

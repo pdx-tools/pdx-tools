@@ -1,8 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "pdx-tools-workers"
 compatibility_date = "2026-09-18"
-# Route preview requests to the public production Worker.
-compatibility_flags = ["global_fetch_strictly_public"]
 main = "./server.ts"
 
 # Upload prebuilt modules with trusted rules instead of the pull request's
@@ -18,6 +16,11 @@ directory = "./build/client"
 # those bindings.
 [previews.version_metadata]
 binding = "CF_VERSION_METADATA"
+
+[[previews.services]]
+binding = "PREVIEW_SAVES"
+service = "pdx-tools-workers"
+entrypoint = "PreviewSaves"
 
 [[previews.hyperdrive]]
 binding = "PDX_DB"
