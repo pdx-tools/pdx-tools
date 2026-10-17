@@ -3,7 +3,7 @@
   <br/>
   Explore the world you created
   <br/>
-  <a href="https://discord.gg/rCpNWQW"><img alt="Discord" src="https://img.shields.io/discord/712465396590182461?logo=discord&logoColor=white"></a> <a href="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml/badge.svg"></a> 
+  <a href="https://discord.gg/rCpNWQW"><img alt="Discord" src="https://img.shields.io/discord/712465396590182461?logo=discord&logoColor=white"></a> <a href="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pdx-tools/pdx-tools/actions/workflows/ci.yml/badge.svg"></a> <a href="https://preview-pdx-tools-workers.rakaly.workers.dev"><img alt="Preview: canary" src="https://img.shields.io/badge/preview-canary-yellow"></a> 
 <br/>
 <br/>
   <img src="src/app/app/components/landing/gallery-map.webp?raw=true">
