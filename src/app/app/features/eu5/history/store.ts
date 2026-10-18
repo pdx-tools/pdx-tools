@@ -7,6 +7,9 @@ export type SourceObservation = { hash: string; version: FileVersion };
 type HistoryState = {
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
+  /** The history section of the insight panel is open. It stays open when a save opens. */
+  panelOpen: boolean;
+  setPanelOpen: (open: boolean) => void;
   snapshots: SnapshotMetadata[];
   sources: Record<string, SourceObservation>;
   analyzingEntryIds: readonly string[];
@@ -16,6 +19,8 @@ type HistoryState = {
   analysisPausedCampaigns: string[];
   progress: ImportProgressState | null;
   issues: string[];
+  /** Why the store refused saves, or null when it has space. */
+  memoryFull: string | null;
   cancel: (() => void) | null;
   add: (snapshots: SnapshotMetadata[], sources?: Record<string, SourceObservation>) => void;
 };
@@ -34,6 +39,8 @@ export function isAnalysisPaused(
 export const useHistory = create<HistoryState>()((set) => ({
   playbackSpeed: 1,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
+  panelOpen: false,
+  setPanelOpen: (panelOpen) => set({ panelOpen }),
   snapshots: [],
   sources: {},
   analyzingEntryIds: [],
@@ -48,6 +55,7 @@ export const useHistory = create<HistoryState>()((set) => ({
   analysisPausedCampaigns: [],
   progress: null,
   issues: [],
+  memoryFull: null,
   cancel: null,
   add: (snapshots, sources = {}) =>
     set((state) => {

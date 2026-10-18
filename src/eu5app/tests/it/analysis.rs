@@ -205,3 +205,108 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
     assert!(paint.groups.iter().all(|owner| *owner == u32::MAX));
     assert_eq!(ws.location_arrays().as_data(), original);
 }
+
+/// The country table and the location columns come from the same save, so
+/// the population of each country must agree.
+#[test]
+fn snapshot_tables_agree_with_the_location_columns() {
+    use eu5app::snapshot::{CountryMetric, MarketMetric};
+    let resolver = utils::tokens();
+    for name in [
+        "debug-1.0.eu5",
+        "SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5",
+        "Clandeboye.eu5",
+    ] {
+        let mut bytes = Vec::new();
+        fixtures::request_file(name)
+            .read_to_end(&mut bytes)
+            .unwrap();
+        let mut loaded =
+            Eu5AnySaveLoader::open_with(&bytes, resolver, eu5app::SaveCheckSummer::new())
+                .unwrap()
+                .parse()
+                .unwrap();
+        let game = loaded.take_gamestate();
+        let tables = eu5app::snapshot::extract(&game);
+        let projection = eu5app::map_projection::extract(&game).unwrap();
+
+        let countries = tables.country_ids.len();
+        assert!(countries > 0, "{name}");
+        assert!(tables.country_ids.is_sorted(), "{name}");
+        assert_eq!(tables.country_tags.len(), countries, "{name}");
+        assert_eq!(tables.country_locations.len(), countries, "{name}");
+        assert_eq!(
+            tables.country_values.len(),
+            countries * CountryMetric::ALL.len(),
+            "{name}"
+        );
+        assert_eq!(
+            tables.breakdown_offsets.len(),
+            countries * eu5app::snapshot::Breakdown::ALL.len() + 1,
+            "{name}"
+        );
+        assert_eq!(
+            *tables.breakdown_offsets.last().unwrap() as usize,
+            tables.breakdown_values.len(),
+            "{name}"
+        );
+        assert_eq!(
+            tables.breakdown_keys.len(),
+            tables.breakdown_values.len(),
+            "{name}"
+        );
+        assert_eq!(tables.country_market_offsets.len(), countries + 1, "{name}");
+        let markets = tables.market_centers.len();
+        assert!(markets > 0, "{name}");
+        assert_eq!(tables.market_goods.len(), markets, "{name}");
+        assert_eq!(
+            tables.market_values.len(),
+            markets * MarketMetric::ALL.len(),
+            "{name}"
+        );
+
+        let width = eu5app::map_projection::Metric::ALL.len();
+        let population = eu5app::map_projection::Metric::Population as usize;
+        let mut from_locations = std::collections::HashMap::<u32, (f64, u32)>::new();
+        for (i, &owner) in projection.owners.iter().enumerate() {
+            if owner == u32::MAX {
+                continue;
+            }
+            let total = from_locations.entry(owner).or_default();
+            total.0 += f64::from(projection.metrics[i * width + population]);
+            total.1 += 1;
+        }
+        assert_eq!(from_locations.len(), countries, "{name}");
+        for (row, &id) in tables.country_ids.iter().enumerate() {
+            let (expected, locations) = from_locations[&id];
+            let actual = tables.country(id).unwrap()[CountryMetric::Population as usize];
+            assert_eq!(tables.country_locations[row], locations, "{name} {id}");
+            assert!(
+                (actual - expected).abs() <= expected.abs() * 1e-5 + 1.0,
+                "{name} {id}: {actual} vs {expected}"
+            );
+        }
+
+        let projection_bytes = 4
+            * (projection.location_ids.len()
+                + projection.owners.len()
+                + projection.controllers.len()
+                + projection.religions.len()
+                + projection.markets.len()
+                + projection.metrics.len()
+                + projection.countries.len()
+                + projection.religion_colors.len()
+                + projection.market_colors.len())
+            + 2 * projection.fractions.len();
+        let string_bytes: usize = tables.strings.iter().map(|s| s.len()).sum();
+        eprintln!(
+            "{name}: locations {} countries {countries} market rows {markets} breakdown rows {} \
+             strings {} ({string_bytes} B) | location columns {projection_bytes} B, \
+             tables {} B",
+            projection.location_ids.len(),
+            tables.breakdown_values.len(),
+            tables.strings.len(),
+            tables.column_bytes(),
+        );
+    }
+}

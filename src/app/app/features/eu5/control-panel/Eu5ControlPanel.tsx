@@ -39,6 +39,7 @@ function CampaignAnalysisControls() {
   const cancel = useHistory((state) => state.cancel);
   const paused = useHistory((state) => isAnalysisPaused(state, playthroughId));
   const issues = useHistory((state) => state.issues);
+  const memoryFull = useHistory((state) => state.memoryFull);
   const enabled = useHistory(
     (state) => !!playthroughId && state.analysisEnabledCampaigns.includes(playthroughId),
   );
@@ -65,6 +66,11 @@ function CampaignAnalysisControls() {
         </GameButton>
       )}
       {progress && <ImportProgress progress={progress} onCancel={() => cancel?.()} />}
+      {memoryFull && (
+        <p role="status" className="mt-2 text-xs text-game-ink-300">
+          {memoryFull}
+        </p>
+      )}
       {issues.length > 0 && (
         <details className="mt-2 text-xs text-game-ink-300">
           <summary>{issues.length} analysis notices</summary>

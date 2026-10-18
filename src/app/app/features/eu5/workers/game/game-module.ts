@@ -655,6 +655,11 @@ const loadSaveInner = async (
       return entry ? { id: entry.id, tag: entry.tag } : null;
     },
 
+    /** The save IDs of locations. Snapshots identify locations by these IDs. */
+    getLocationIds: (locationIdxs: number[]): number[] => {
+      return Array.from(app.location_ids(Uint32Array.from(locationIdxs)));
+    },
+
     findCountry: (country: CountryIdentity): number | null => {
       return findCarriedCountry(countryIndex, country);
     },

@@ -255,6 +255,7 @@ export type SaveQueries = Pick<
   | "getPoliticalDefaultCountryAnchor"
   | "searchEntities"
   | "getCountryIdentity"
+  | "getLocationIds"
   | "findCountry"
   | "getLocationArrays"
   | "melt"

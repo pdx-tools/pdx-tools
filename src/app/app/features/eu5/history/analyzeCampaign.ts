@@ -129,6 +129,17 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
       },
     );
     issues.push(...result.errors.map((error) => `${error.fileName}: ${error.error}`));
+    if (result.memoryFull) {
+      const { message, refused } = result.memoryFull;
+      const saves = refused === 1 ? "1 save was" : `${refused} saves were`;
+      useHistory.setState((state) => ({
+        memoryFull: `${message} ${saves} not analyzed. Clear the campaign analysis to analyze other saves.`,
+        // Do not parse more saves that cannot fit.
+        analysisPausedCampaigns: state.analysisPausedCampaigns.includes(playthroughId)
+          ? state.analysisPausedCampaigns
+          : [...state.analysisPausedCampaigns, playthroughId],
+      }));
+    }
   } catch (error) {
     if (!signal.aborted) {
       issues.push(String(error));

@@ -170,6 +170,7 @@ function useMapHistoryState() {
             Object.entries(history.sources).filter(([, source]) => hashes.has(source.hash)),
           ),
           issues: [],
+          memoryFull: null,
           analysisPausedCampaigns: [...new Set([...history.analysisPausedCampaigns, campaignId])],
         };
       });
@@ -238,6 +239,16 @@ function useMapHistoryState() {
     };
   }
 
+  // A click on a history chart moves the playhead. The save opens when it stops.
+  const showSnapshot =
+    controller &&
+    ((hash: string) => {
+      const next = frames.findIndex((frame) => frame.hash === hash);
+      if (next < 0) return;
+      setPlaying(false);
+      move(next);
+    });
+
   // The date and legend follow the frame that the map shows, not the request.
   const previewView: {
     shown: { date: DateComponents; gradient: GradientConfig | null } | null;
@@ -245,6 +256,10 @@ function useMapHistoryState() {
   return {
     controller,
     enabled,
+    campaignId,
+    /** The snapshot that the map shows, or null if the analysis does not have it. */
+    shownHash: previewing ? (shown?.hash ?? null) : (loadedHash ?? null),
+    showSnapshot,
     progress,
     frames: frames.length,
     readyHashes,

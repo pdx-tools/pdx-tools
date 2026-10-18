@@ -140,6 +140,7 @@ impl From<Eu5MapMode> for MapMode {
 }
 
 mod map_projection;
+mod snapshot;
 mod tokens;
 pub use tokens::set_tokens;
 use wasm_pdx_core::blob::{BlobReader, read_blob_start};
@@ -436,7 +437,7 @@ pub struct MapImportMetadata {
 }
 
 fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result<JsValue, JsError> {
-    let (mut observation, projection) = {
+    let (mut observation, projection, tables) = {
         let game = loaded.take_gamestate();
         let meta = game.metadata();
         if meta.playthrough_id.to_str().is_empty() {
@@ -459,7 +460,12 @@ fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result
             layout_key: projection.layout_key.clone(),
             world: eu5app::map_projection::world_summary(&game),
         };
-        (observation, map_projection::into_js(&projection)?)
+        let tables = eu5app::snapshot::extract(&game);
+        (
+            observation,
+            map_projection::into_js(&projection)?,
+            snapshot::into_js(&tables)?,
+        )
     };
     observation.hash = loaded.into_observer().finish();
     let result = js_sys::Object::new();
@@ -471,6 +477,8 @@ fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result
     .map_err(|_| JsError::new("Could not create map observation"))?;
     js_sys::Reflect::set(&result, &JsValue::from_str("projection"), &projection)
         .map_err(|_| JsError::new("Could not create map columns"))?;
+    js_sys::Reflect::set(&result, &JsValue::from_str("tables"), &tables)
+        .map_err(|_| JsError::new("Could not create snapshot tables"))?;
     Ok(result.into())
 }
 
@@ -1016,6 +1024,24 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn map_projection_layout_key(&self) -> String {
         self.app().map_projection_layout_key().to_owned()
+    }
+
+    /// The save IDs of locations, which stay the same in all saves of a map
+    /// layout. An index that is not on the map gives `u32::MAX`.
+    #[wasm_bindgen]
+    pub fn location_ids(&self, location_idxs: Vec<u32>) -> Vec<u32> {
+        let locations = &self.app().gamestate().locations;
+        location_idxs
+            .into_iter()
+            .map(|idx| {
+                if (idx as usize) < locations.len() {
+                    let idx = eu5save::models::LocationIdx::new(idx);
+                    locations.index(idx).id().value()
+                } else {
+                    u32::MAX
+                }
+            })
+            .collect()
     }
 
     /// Paint a snapshot frame for the map overlay. The buffers of the loaded

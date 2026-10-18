@@ -1,6 +1,7 @@
 import { useMapHistory } from "./history/context";
+import { useHistory } from "./history/store";
 import type React from "react";
-import { useCallback } from "react";
+import { lazy, Suspense, useCallback } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { formatCompact, formatInt } from "@/lib/format";
@@ -30,6 +31,10 @@ import { EntityProfileRoot } from "./features/profiles";
 import { PanelNavProvider, usePanelNav } from "./features/profiles/PanelNavContext";
 import { Breadcrumb } from "./features/profiles/Breadcrumb";
 import { useEu5Trigger } from "./features/profiles/useEu5Trigger";
+
+const PanelHistory = lazy(() =>
+  import("./history/PanelHistory").then((module) => ({ default: module.PanelHistory })),
+);
 
 type Eu5InsightPanelProps = {
   open: boolean;
@@ -63,7 +68,13 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         <ResizablePanel.Header className="border-b border-game-line">
           <ResizablePanel.CloseButton className={btnCx} />
           <div className="min-w-0 flex-1">
-            {preview ? "Campaign overview" : <InsightPanelTitle />}
+            {preview ? (
+              <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
+                Campaign history
+              </span>
+            ) : (
+              <InsightPanelTitle />
+            )}
           </div>
           <ResizablePanel.MaximizeButton className={btnCx} />
         </ResizablePanel.Header>
@@ -84,11 +95,14 @@ function PanelContentInner() {
   const preview = useMapHistory()?.preview;
   const activeProfile = preview ? null : selectionState?.activeProfile;
 
+  // The insights of one save come back when the save at the playhead opens.
   if (preview)
     return (
-      <p className="p-4 text-sm text-game-ink-500">
-        Charts become available when playback pauses and this save has loaded.
-      </p>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <Suspense fallback={null}>
+          <PanelHistory mode={currentMapMode} />
+        </Suspense>
+      </div>
     );
   let content: React.ReactNode;
 
@@ -157,8 +171,34 @@ function PanelContentInner() {
           </p>
         )}
       </div>
+      <HistoryDisclosure />
       <div className="flex min-h-0 flex-1 flex-col">{body}</div>
     </div>
+  );
+}
+
+/** The campaign history above the insights of the loaded save. */
+function HistoryDisclosure() {
+  const history = useMapHistory();
+  const mode = useEu5MapMode();
+  const open = useHistory((state) => state.panelOpen);
+  const setOpen = useHistory((state) => state.setPanelOpen);
+  if (!history?.enabled || !history.frames) return null;
+  return (
+    <details
+      open={open}
+      className="max-h-[60%] shrink-0 overflow-y-auto border-b border-game-line"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className="cursor-pointer px-4 py-2 font-game-ui text-xs text-game-ink-300">
+        Campaign history · {history.frames} saved dates
+      </summary>
+      {open && (
+        <Suspense fallback={null}>
+          <PanelHistory mode={mode} />
+        </Suspense>
+      )}
+    </details>
   );
 }
 

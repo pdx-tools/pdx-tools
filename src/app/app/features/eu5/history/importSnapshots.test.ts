@@ -216,3 +216,17 @@ it("reuses parser workers between saves, including a failed parse, and releases 
   expect(mocks.workers).toHaveLength(1);
   expect(mocks.workers[0].terminate).toHaveBeenCalledOnce();
 });
+
+it("stops parsing when the store is full and counts the saves that it refused", async () => {
+  const full = Object.assign(Error("Campaign analysis is full."), { name: "AnalysisMemoryLimit" });
+  mocks.append.mockImplementationOnce(async () => descriptor(0)).mockRejectedValueOnce(full);
+  const opts = options({ concurrency: 1 });
+  const result = await importTimeline(
+    [0, 1, 2, 3].map((i) => new File(["save"], `save-${i}.eu5`)),
+    opts,
+  );
+  expect(mocks.parseImport).toHaveBeenCalledTimes(2);
+  expect(opts.onSnapshots).toHaveBeenCalledOnce();
+  expect(result.errors).toEqual([]);
+  expect(result.memoryFull).toEqual({ message: "Campaign analysis is full.", refused: 3 });
+});

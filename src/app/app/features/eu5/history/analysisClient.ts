@@ -67,6 +67,7 @@ export function campaignAnalysis(): Remote<typeof analysisApi> {
           ]),
         ],
         issues: [message],
+        memoryFull: null,
       });
     };
     worker.addEventListener("error", failed);

@@ -54,6 +54,7 @@ beforeEach(() => {
     cancel: null,
     analysisPaused: false,
     analysisPausedCampaigns: [],
+    memoryFull: null,
   });
   entries = [entry("first")];
   mocks.getLocalSave.mockImplementation((id) => entries.find((item) => item.id === id));
@@ -61,6 +62,19 @@ beforeEach(() => {
 });
 
 describe("campaign analysis", () => {
+  it("says why the store refused saves and pauses the campaign", async () => {
+    mocks.importTimeline.mockResolvedValue({
+      errors: [],
+      memoryFull: { message: "Campaign analysis is full.", refused: 2 },
+    });
+    await analyzeCampaign(entries, "campaign");
+    const state = useHistory.getState();
+    expect(state.memoryFull).toBe(
+      "Campaign analysis is full. 2 saves were not analyzed. Clear the campaign analysis to analyze other saves.",
+    );
+    expect(isAnalysisPaused(state, "campaign")).toBe(true);
+  });
+
   it("attaches observations to campaign entries without owning navigation state", async () => {
     mocks.importTimeline.mockImplementation(async (_files, options) => {
       const snapshot = observation();

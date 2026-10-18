@@ -1,6 +1,7 @@
 import { createWorkerQueue } from "@/lib/workerQueue";
 import type { WorkerQueue } from "@/lib/workerQueue";
 import { appendAnalysis, campaignAnalysis } from "./analysisClient";
+import { MEMORY_LIMIT_ERROR } from "./analysisStore";
 import type { SnapshotMetadata } from "./types";
 import type { ImportPhaseState } from "./importTiming";
 import type { parseImport } from "./snapshot-worker";
@@ -30,7 +31,9 @@ export async function importTimeline(files: File[], options: ImportOptions) {
   let stopping = false,
     completed = 0,
     next = 0,
-    sinkFailure: unknown;
+    sinkFailure: unknown,
+    memoryFull: string | null = null,
+    refused = 0;
   const abort = () => {
     stopping = true;
     for (const queue of queues) queue.terminate(abortError());
@@ -83,7 +86,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
           { idleMs: 0, timeoutMs: 300_000 },
         );
         queues.push(queue);
-        while (next < jobs.length && !stopping && lane < capacity) {
+        while (next < jobs.length && !stopping && !memoryFull && lane < capacity) {
           signal.throwIfAborted();
           const file = jobs[next++];
           active.add(file);
@@ -115,7 +118,11 @@ export async function importTimeline(files: File[], options: ImportOptions) {
           } catch (error) {
             if (sinkFailure) throw sinkFailure;
             signal.throwIfAborted();
-            errors.push({ fileName: file.name, error: String(error) });
+            if (error instanceof Error && error.name === MEMORY_LIMIT_ERROR) {
+              // More saves cannot fit, so do not parse them.
+              memoryFull ??= error.message;
+              refused++;
+            } else errors.push({ fileName: file.name, error: String(error) });
           } finally {
             active.delete(file);
             options.onActiveFiles?.([...active]);
@@ -125,7 +132,12 @@ export async function importTimeline(files: File[], options: ImportOptions) {
       }),
     );
     if (sinkFailure) throw sinkFailure;
-    return { errors, completed: files.length };
+    refused += jobs.length - next;
+    return {
+      errors,
+      completed: files.length,
+      memoryFull: memoryFull && { message: memoryFull, refused },
+    };
   } finally {
     abort();
     signal.removeEventListener("abort", abort);
