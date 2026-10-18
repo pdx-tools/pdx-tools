@@ -23,7 +23,7 @@ import { SessionProvider } from "@/features/account";
 import { useHomeSaveScope } from "@/features/engine";
 import { Tooltip } from "@/components/Tooltip";
 import { Toaster } from "@/components/Toaster";
-import { PostHog } from "@/components/PostHog";
+import { usePageViewEvents } from "@/hooks/usePageViewEvents";
 import { captureException } from "@/lib/captureException";
 import { pdxKeys } from "./services/appApi";
 import { pdxSession } from "./server-lib/auth/session";
@@ -109,6 +109,7 @@ export const ErrorBoundary = () => {
 export default function App() {
   const { dehydratedState } = useLoaderData<typeof loader>();
   useHomeSaveScope();
+  usePageViewEvents();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -135,7 +136,6 @@ export default function App() {
       <HydrationBoundary state={dehydratedState}>
         <SessionProvider>
           <Tooltip.Provider delayDuration={300}>
-            <PostHog />
             <Toaster />
             <Outlet />
           </Tooltip.Provider>
