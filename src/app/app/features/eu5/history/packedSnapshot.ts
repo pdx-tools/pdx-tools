@@ -247,17 +247,6 @@ export function snapshotCountry(p: PackedSnapshot, key: string): Country | undef
     if (p.countryIds[i] === id) return countryAt(p, (i - 2) / 3);
   return undefined;
 }
-export function snapshotMarket(
-  p: PackedSnapshot,
-  center: number,
-  good: string,
-): Market | undefined {
-  const key = p.strings.indexOf(good);
-  for (let i = 0; i < p.marketIds.length; i += 2)
-    if (p.marketIds[i + 1] === key && p.marketMetadata[p.marketIds[i] * 3 + 1] === center)
-      return marketAt(p, i / 2);
-  return undefined;
-}
 export function snapshotGoods(p: PackedSnapshot): string[] {
   const keys = new Set<number>();
   for (let i = 1; i < p.marketIds.length; i += 2) keys.add(p.marketIds[i]);

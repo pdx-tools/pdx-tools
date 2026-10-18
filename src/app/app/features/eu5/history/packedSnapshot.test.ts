@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { packSnapshot, snapshotView, snapshotCountry, snapshotMarket } from "./packedSnapshot";
+import { packSnapshot, snapshotView, snapshotCountry } from "./packedSnapshot";
 import type { Snapshot } from "./types";
 import { exportSnapshots } from "./exportSnapshots";
 
@@ -84,15 +84,11 @@ describe("packed historical observations", () => {
     const b = JSON.parse(await exportSnapshots([original]).text());
     expect(a).toEqual(b);
   });
-  it("finds country and market rows directly, preserving absent records", () => {
+  it("finds country rows directly, preserving absent records", () => {
     const packed = packSnapshot(snapshot()),
       view = snapshotView(packed);
     expect(snapshotCountry(packed, "id:7")).toEqual(view.countries[0]);
     expect(snapshotCountry(packed, "id:999")).toBeUndefined();
-    expect(snapshotMarket(packed, 42, "grain")).toEqual(view.markets[0]);
-    expect(snapshotMarket(packed, 43, "grain")).toEqual(view.markets[1]);
-    expect(snapshotMarket(packed, 44, "grain")).toBeUndefined();
-    expect(snapshotMarket(packed, 42, "iron")).toBeUndefined();
   });
   it("rejects incompatible or corrupted cached columns", () => {
     const packed = packSnapshot(snapshot());
