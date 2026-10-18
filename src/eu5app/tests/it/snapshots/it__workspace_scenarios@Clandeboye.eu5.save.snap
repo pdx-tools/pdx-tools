@@ -19,6 +19,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "building_levels": {
       "colors": 309,
       "fingerprint": "0xd4b8f795d335c4ae",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 198.0, max_value: 396.0 })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
@@ -28,6 +30,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "control": {
       "colors": 934,
       "fingerprint": "0x2bbcf3b7426d76e4",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
       "top": [
         "#ff455e77 x5708",
         "#ff00fff0 x2834",
@@ -37,6 +41,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "development": {
       "colors": 889,
       "fingerprint": "0x82694288e30cf5f9",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 50.0, max_value: 100.0 })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
@@ -46,6 +52,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "markets": {
       "colors": 16406,
       "fingerprint": "0x98120b9f56e78283",
+      "groups": "0xa24a1582b4d75c29",
+      "legend": "Qualitative",
       "top": [
         "#ff455e77 x2574",
         "#ff646464 x1819",
@@ -55,6 +63,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "political": {
       "colors": 435,
       "fingerprint": "0x3493b568ee45bb28",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Qualitative",
       "top": [
         "#ff455e77 x5082",
         "#ff646464 x1324",
@@ -64,6 +74,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "population": {
       "colors": 823,
       "fingerprint": "0xf75eaf53a76969ef",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 30321.222836920017, max_value: 980019.0 })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
@@ -73,6 +85,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "population_growth": {
       "colors": 818,
       "fingerprint": "0x13410b9a458ff1e5",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.005434009621418112, max_value: 0.010868019242836225 })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
@@ -82,6 +96,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "religion": {
       "colors": 95,
       "fingerprint": "0x2966b950bca9c127",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Qualitative",
       "top": [
         "#ffb27f00 x9196",
         "#ff455e77 x5109",
@@ -91,6 +107,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "rgo_level": {
       "colors": 68,
       "fingerprint": "0xe188e3e4b0e32ac9",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 32.0, max_value: 64.0 })",
       "top": [
         "#ff455e77 x5708",
         "#ff0a0202 x3415",
@@ -100,6 +118,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "state_efficacy": {
       "colors": 869,
       "fingerprint": "0x423e2ae90ed86157",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 50.0, max_value: 100.0 })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
@@ -109,6 +129,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "unrealized_tax_base": {
       "colors": 162,
       "fingerprint": "0x9cb610c8eba40283",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 313.118745, max_value: 626.23749 })",
       "top": [
         "#ff040101 x7980",
         "#ff455e77 x5708",
@@ -118,6 +140,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "wealth": {
       "colors": 227,
       "fingerprint": "0x64edc96ca5ec6a92",
+      "groups": "0x5a2f4ba4c5aba582",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 907.352, max_value: 1814.704 })",
       "top": [
         "#ff455e77 x5708",
         "#ff040101 x5213",
@@ -125,7 +149,146 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       ]
     }
   },
+  "past_political": null,
+  "projection": "0xe218c24c5343afb4",
   "save_version": "1.0.4",
+  "selected": {
+    "locations": "0xb78b40bd8af7fc72",
+    "map_modes": {
+      "building_levels": {
+        "colors": 328,
+        "fingerprint": "0x2e196d0b88f19d43",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 149.5, max_value: 299.0 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff646464 x1972",
+          "#ff040101 x1926"
+        ]
+      },
+      "control": {
+        "colors": 934,
+        "fingerprint": "0x7fd0a212625ad99f",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff00fff0 x2834",
+          "#ff646464 x1972"
+        ]
+      },
+      "development": {
+        "colors": 889,
+        "fingerprint": "0x03c196b4d9d4889f",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 42.57943, max_value: 85.15886 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff646464 x1972",
+          "#ff808080 x217"
+        ]
+      },
+      "markets": {
+        "colors": 16406,
+        "fingerprint": "0x6e8cb0a5af1abda2",
+        "groups": "0xa24a1582b4d75c29",
+        "legend": "Qualitative",
+        "top": [
+          "#ff455e77 x2574",
+          "#ff646464 x1819",
+          "#ff140505 x736"
+        ]
+      },
+      "political": {
+        "colors": 435,
+        "fingerprint": "0x70037e057c057435",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Qualitative",
+        "top": [
+          "#ff455e77 x5082",
+          "#ff646464 x1324",
+          "#ff459dd0 x996"
+        ]
+      },
+      "population": {
+        "colors": 827,
+        "fingerprint": "0x1bc89770ff3eaec6",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 11821.505371835245, max_value: 163391.0 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff646464 x1972",
+          "#ff808080 x217"
+        ]
+      },
+      "population_growth": {
+        "colors": 830,
+        "fingerprint": "0x461a795b25d57ab6",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.002613302785136393, max_value: 0.005226605570272786 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff646464 x1972",
+          "#ff00fff0 x1049"
+        ]
+      },
+      "religion": {
+        "colors": 95,
+        "fingerprint": "0x6cfd02f86a98dcbb",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Qualitative",
+        "top": [
+          "#ffb27f00 x9196",
+          "#ff455e77 x5109",
+          "#ff159b61 x2721"
+        ]
+      },
+      "rgo_level": {
+        "colors": 91,
+        "fingerprint": "0x4dd646281de9d819",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 13.5, max_value: 27.0 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff0a0202 x3366",
+          "#ff646464 x1972"
+        ]
+      },
+      "state_efficacy": {
+        "colors": 870,
+        "fingerprint": "0xa45c1ecb7c638032",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 37.895692700000005, max_value: 75.79138540000001 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff646464 x1972",
+          "#ff040101 x907"
+        ]
+      },
+      "unrealized_tax_base": {
+        "colors": 162,
+        "fingerprint": "0x9d3815c9ca24a8d3",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 133.440905, max_value: 266.88181 })",
+        "top": [
+          "#ff040101 x7947",
+          "#ff455e77 x5708",
+          "#ff050101 x3071"
+        ]
+      },
+      "wealth": {
+        "colors": 237,
+        "fingerprint": "0x0680974d4cf5754c",
+        "groups": "0x5a2f4ba4c5aba582",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 214.24222, max_value: 428.48444 })",
+        "top": [
+          "#ff455e77 x5708",
+          "#ff040101 x5166",
+          "#ff050101 x2439"
+        ]
+      }
+    }
+  },
   "selection_cases": {
     "location_without_market": true,
     "owned_location": true,

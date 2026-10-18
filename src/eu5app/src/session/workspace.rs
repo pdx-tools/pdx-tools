@@ -50,7 +50,7 @@ use crate::{MapMode, models::Terrain, subject_color};
 use eu5save::hash::{FnvHashSet, FxHashMap, FxHashSet};
 use eu5save::models::{
     CountryId, CountryIdx, CountryIndexedVecOwned,
-    DiplomacySubjectType as SaveDiplomacySubjectType, Gamestate, GoodName, LocationIdx,
+    DiplomacySubjectType as SaveDiplomacySubjectType, Gamestate, GoodName, LocationId, LocationIdx,
     LocationIndexedVec, LocationRank, Market, PopulationType,
 };
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays, LocationFlags};
@@ -85,6 +85,8 @@ pub struct Eu5Workspace<'bump> {
     // Map app state (rendering)
     current_map_mode: MapMode,
     map_layout_key: String,
+    /// The index of each location ID in snapshot frames of this layout.
+    projection_location_index: OnceLock<FxHashMap<LocationId, LocationIdx>>,
     location_arrays: pdx_map::LocationArrays,
     gpu_indices: LocationIndexedVec<Option<GpuLocationIdx>>,
     current_map_legend: crate::gradient::MapLegend,
@@ -189,6 +191,7 @@ fn nice_bucket_step(range: f64, target_buckets: usize) -> f64 {
 pub mod entity_profile;
 mod hover;
 mod insights;
+mod map_painter;
 mod map_projection;
 mod map_render;
 mod opening_view;
@@ -277,6 +280,7 @@ impl<'bump> Eu5Workspace<'bump> {
             religion_fill_donors: OnceLock::new(),
             current_map_mode: MapMode::Political,
             map_layout_key,
+            projection_location_index: OnceLock::new(),
             location_arrays,
             gpu_indices,
             current_map_legend: crate::gradient::MapLegend::Qualitative,

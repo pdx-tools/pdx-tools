@@ -1,10 +1,73 @@
 //! Compact, save-independent inputs for replaying observed map modes.
 use crate::{SaveCheckSummer, subject_color, timeline::CountryIdentities};
-use eu5save::models::{CountryId, Gamestate, Locations, Metadata};
+use eu5save::models::{CountryId, Gamestate, Location, Locations, Metadata};
 use pdx_map::GpuColor;
 use std::{collections::BTreeMap, io::Write};
 
 pub const FRACTION_SCALE: f64 = u16::MAX as f64;
+
+/// A fraction column of a location, in frame order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fraction {
+    Control,
+    MarketAccess,
+}
+
+impl Fraction {
+    pub const ALL: [Fraction; 2] = [Fraction::Control, Fraction::MarketAccess];
+
+    pub(crate) fn of(self, location: &Location) -> f64 {
+        match self {
+            Fraction::Control => location.control,
+            Fraction::MarketAccess => location.market_access,
+        }
+    }
+}
+
+/// A measurement column of a location, in frame order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Metric {
+    Development,
+    Population,
+    BuildingLevels,
+    RgoLevel,
+    Wealth,
+    UnrealizedTaxBase,
+    PopulationGrowth,
+}
+
+impl Metric {
+    pub const ALL: [Metric; 7] = [
+        Metric::Development,
+        Metric::Population,
+        Metric::BuildingLevels,
+        Metric::RgoLevel,
+        Metric::Wealth,
+        Metric::UnrealizedTaxBase,
+        Metric::PopulationGrowth,
+    ];
+
+    /// The value of a location in the save. Building levels need a pass over
+    /// all buildings, so the caller supplies them.
+    pub(crate) fn of(
+        self,
+        game: &Gamestate<'_>,
+        location: &Location,
+        building_levels: impl FnOnce() -> f64,
+    ) -> f64 {
+        match self {
+            Metric::Development => location.development,
+            Metric::Population => game.location_population(location),
+            Metric::BuildingLevels => building_levels(),
+            Metric::RgoLevel => location.rgo_level,
+            Metric::Wealth => location.possible_tax,
+            Metric::UnrealizedTaxBase => (location.possible_tax - location.tax).max(0.0),
+            Metric::PopulationGrowth => {
+                crate::population::location_reproduction_rate(game, location)
+            }
+        }
+    }
+}
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum MapProjectionError {
@@ -77,8 +140,8 @@ impl MapProjectionData<'_> {
         let n = locations.len();
         for (column, actual, expected) in [
             ("location_ids", self.location_ids.len(), n),
-            ("fractions", self.fractions.len(), n * 2),
-            ("metrics", self.metrics.len(), n * 7),
+            ("fractions", self.fractions.len(), n * Fraction::ALL.len()),
+            ("metrics", self.metrics.len(), n * Metric::ALL.len()),
             ("owners", self.owners.len(), n),
             ("controllers", self.controllers.len(), n),
             ("religions", self.religions.len(), n),
@@ -117,7 +180,7 @@ impl MapProjectionData<'_> {
         }
         if let Some(index) = self.metrics.iter().position(|value| !value.is_finite()) {
             return Err(MapProjectionError::NonFinite {
-                location: self.location_ids[index / 7],
+                location: self.location_ids[index / Metric::ALL.len()],
             });
         }
         Ok(())
@@ -212,25 +275,14 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
         let Some(color) = color_of(owner) else {
             return GpuColor::UNOWNED.packed();
         };
-        let mut parent = owner;
-        let mut parent_color = color;
-        for _ in 0..game.countries.len() {
-            let Some(next) = overlords.get(&parent) else {
-                break;
-            };
-            parent = *next;
-            if let Some(next_color) = color_of(parent) {
-                parent_color = next_color;
-            }
-        }
-        if parent == owner {
-            return GpuColor::from(color.0).packed();
-        }
-        let (r, g, b) = subject_color::blend_color(
-            GpuColor::from(color.0).rgb(),
-            GpuColor::from(parent_color.0).rgb(),
-        );
-        GpuColor::from_rgb(r, g, b).packed()
+        subject_color::subject_map_color(
+            owner,
+            color,
+            game.countries.len(),
+            |id| overlords.get(&id).copied(),
+            color_of,
+        )
+        .packed()
     };
     let buildings = crate::map_measurements::location_building_levels(game);
     let mut countries = BTreeMap::new();
@@ -239,8 +291,8 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
     let mut result = MapProjection {
         layout_key: layout_key(game.metadata()),
         location_ids: Vec::with_capacity(game.locations.len()),
-        fractions: Vec::with_capacity(game.locations.len() * 2),
-        metrics: Vec::with_capacity(game.locations.len() * 7),
+        fractions: Vec::with_capacity(game.locations.len() * Fraction::ALL.len()),
+        metrics: Vec::with_capacity(game.locations.len() * Metric::ALL.len()),
         owners: Vec::with_capacity(game.locations.len()),
         controllers: Vec::with_capacity(game.locations.len()),
         religions: Vec::with_capacity(game.locations.len()),
@@ -271,16 +323,9 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
         result.location_ids.push(entry.id().value());
         result
             .fractions
-            .extend([quantize(location.control), quantize(location.market_access)]);
-        for value in [
-            location.development,
-            game.location_population(location),
-            buildings[entry.idx()],
-            location.rgo_level,
-            location.possible_tax,
-            (location.possible_tax - location.tax).max(0.0),
-            crate::population::location_reproduction_rate(game, location),
-        ] {
+            .extend(Fraction::ALL.map(|fraction| quantize(fraction.of(location))));
+        for metric in Metric::ALL {
+            let value = metric.of(game, location, || buildings[entry.idx()]);
             result.metrics.push(compact(value, entry.id().value())?);
         }
         for (id, values) in [

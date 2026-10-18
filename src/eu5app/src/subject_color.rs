@@ -1,4 +1,6 @@
 use crate::color::{Hsv, UnitRgb};
+use eu5save::models::Color;
+use pdx_map::GpuColor;
 
 const OVERLORD_HUE_STRENGTH_ON_SUBJECT: f32 = 0.99;
 const OVERLORD_SATURATION_STRENGTH_ON_SUBJECT: f32 = 0.75;
@@ -32,6 +34,39 @@ pub fn blend_color(subject_color: (u8, u8, u8), overlord_color: (u8, u8, u8)) ->
     };
 
     UnitRgb::from(final_hsv).into()
+}
+
+/// The map color of a country: its own color, or when it is a subject, that
+/// color blended toward the color of its top overlord. `overlord_of` gives
+/// the direct overlord of a country, and `color_of` gives the color of an
+/// overlord. An overlord without a color is skipped over. The walk stops
+/// after `max_depth` overlords, so a loop in the relations cannot run forever.
+pub fn subject_map_color<K: Copy + PartialEq>(
+    country: K,
+    color: Color,
+    max_depth: usize,
+    overlord_of: impl Fn(K) -> Option<K>,
+    color_of: impl Fn(K) -> Option<Color>,
+) -> GpuColor {
+    let mut top = country;
+    let mut top_color = color;
+    for _ in 0..max_depth {
+        let Some(next) = overlord_of(top) else {
+            break;
+        };
+        top = next;
+        if let Some(next_color) = color_of(next) {
+            top_color = next_color;
+        }
+    }
+    if top == country {
+        return GpuColor::from(color.0);
+    }
+    let (r, g, b) = blend_color(
+        GpuColor::from(color.0).rgb(),
+        GpuColor::from(top_color.0).rgb(),
+    );
+    GpuColor::from_rgb(r, g, b)
 }
 
 #[cfg(test)]

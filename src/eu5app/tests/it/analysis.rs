@@ -90,6 +90,8 @@ fn random_access_import_matches_buffered_text_binary_and_zstd() {
     }
 }
 
+/// Paint each mode from an extracted frame and compare it with the live map.
+/// The u16 fractions of the frame permit a difference of 1 in a color channel.
 #[test]
 fn map_projection_preserves_all_modes_and_restores_the_full_save() {
     let save = "SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5";
@@ -101,20 +103,7 @@ fn map_projection_preserves_all_modes_and_restores_the_full_save() {
     let mut frame = eu5app::map_projection::extract(ws.gamestate()).unwrap();
     assert_eq!(frame.layout_key, ws.map_projection_layout_key());
     use eu5app::MapMode::*;
-    for mode in [
-        Political,
-        Control,
-        Development,
-        Population,
-        Markets,
-        RgoLevel,
-        BuildingLevels,
-        Wealth,
-        UnrealizedTaxBase,
-        Religion,
-        StateEfficacy,
-        PopulationGrowth,
-    ] {
+    for mode in crate::ALL_MAP_MODES {
         ws.restore_map_projection();
         ws.set_map_mode(mode);
         let original = ws.location_arrays().as_data().to_vec();
@@ -166,58 +155,60 @@ fn map_projection_preserves_all_modes_and_restores_the_full_save() {
                 }
             }
         }
-        let preview = ws.location_arrays().as_data().to_vec();
-        let mut invalid = frame.as_data();
-        invalid.layout_key = "wrong-layout";
-        assert_eq!(
-            ws.apply_map_projection(invalid, mode).unwrap_err(),
-            eu5app::map_projection::MapProjectionError::LayoutMismatch
-        );
-        assert_eq!(ws.location_arrays().as_data(), preview);
-        let mut invalid = frame.as_data();
-        invalid.metrics = &frame.metrics[..1];
-        assert!(matches!(
-            ws.apply_map_projection(invalid, mode),
-            Err(eu5app::map_projection::MapProjectionError::ColumnLength {
-                column: "metrics",
-                actual: 1,
-                ..
-            })
-        ));
-        assert_eq!(ws.location_arrays().as_data(), preview);
-        let mut ids = frame.location_ids.clone();
-        ids[0] = ids[0].wrapping_add(1);
-        let mut invalid = frame.as_data();
-        invalid.location_ids = &ids;
-        assert!(matches!(
-            ws.apply_map_projection(invalid, mode),
-            Err(eu5app::map_projection::MapProjectionError::LocationMismatch { index: 0, .. })
-        ));
-        assert_eq!(ws.location_arrays().as_data(), preview);
-        let mut measurements = frame.metrics.clone();
-        measurements[0] = f32::NAN;
-        let mut invalid = frame.as_data();
-        invalid.metrics = &measurements;
-        assert_eq!(
-            ws.apply_map_projection(invalid, mode).unwrap_err(),
-            eu5app::map_projection::MapProjectionError::NonFinite {
-                location: frame.location_ids[0]
-            }
-        );
-        assert_eq!(ws.location_arrays().as_data(), preview);
-        let mut invalid = frame.as_data();
-        invalid.countries = &frame.countries[..1];
-        assert!(matches!(
-            ws.apply_map_projection(invalid, mode),
-            Err(eu5app::map_projection::MapProjectionError::TableWidth {
-                table: "countries",
-                ..
-            })
-        ));
-        assert_eq!(ws.location_arrays().as_data(), preview);
         ws.restore_map_projection();
         assert_eq!(ws.location_arrays().as_data(), original, "{mode:?} restore");
     }
+    // Validation does not depend on the mode, and a refused frame leaves
+    // the buffers unchanged.
+    let preview = ws.location_arrays().as_data().to_vec();
+    let mut invalid = frame.as_data();
+    invalid.layout_key = "wrong-layout";
+    assert_eq!(
+        ws.apply_map_projection(invalid, Control).unwrap_err(),
+        eu5app::map_projection::MapProjectionError::LayoutMismatch
+    );
+    assert_eq!(ws.location_arrays().as_data(), preview);
+    let mut invalid = frame.as_data();
+    invalid.metrics = &frame.metrics[..1];
+    assert!(matches!(
+        ws.apply_map_projection(invalid, Control),
+        Err(eu5app::map_projection::MapProjectionError::ColumnLength {
+            column: "metrics",
+            actual: 1,
+            ..
+        })
+    ));
+    assert_eq!(ws.location_arrays().as_data(), preview);
+    let mut ids = frame.location_ids.clone();
+    ids[0] = ids[0].wrapping_add(1);
+    let mut invalid = frame.as_data();
+    invalid.location_ids = &ids;
+    assert!(matches!(
+        ws.apply_map_projection(invalid, Control),
+        Err(eu5app::map_projection::MapProjectionError::LocationMismatch { index: 0, .. })
+    ));
+    assert_eq!(ws.location_arrays().as_data(), preview);
+    let mut measurements = frame.metrics.clone();
+    measurements[0] = f32::NAN;
+    let mut invalid = frame.as_data();
+    invalid.metrics = &measurements;
+    assert_eq!(
+        ws.apply_map_projection(invalid, Control).unwrap_err(),
+        eu5app::map_projection::MapProjectionError::NonFinite {
+            location: frame.location_ids[0]
+        }
+    );
+    assert_eq!(ws.location_arrays().as_data(), preview);
+    let mut invalid = frame.as_data();
+    invalid.countries = &frame.countries[..1];
+    assert!(matches!(
+        ws.apply_map_projection(invalid, Control),
+        Err(eu5app::map_projection::MapProjectionError::TableWidth {
+            table: "countries",
+            ..
+        })
+    ));
+    assert_eq!(ws.location_arrays().as_data(), preview);
     // Projection ownership changes never mutate the retained full model.
     ws.set_map_mode(Control);
     let original = ws.location_arrays().as_data().to_vec();
