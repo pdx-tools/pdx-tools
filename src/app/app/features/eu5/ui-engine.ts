@@ -337,8 +337,10 @@ export class Eu5UIEngine implements AppEngine {
       }));
     },
     clearMapProjection: async () => {
+      const projection = this._state.mapProjection;
       await this.gameInstance.clearMapProjection();
-      if (!this.destroyed) this.updateState(() => ({ mapProjection: undefined }));
+      if (!this.destroyed && this._state.mapProjection === projection)
+        this.updateState(() => ({ mapProjection: undefined }));
     },
     onMapInspect: (callback) => this.gameInstance.onMapInspect(callback),
     getCampaignIdentities: (profiles) => this.gameInstance.getCampaignIdentities(profiles),

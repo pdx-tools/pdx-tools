@@ -502,7 +502,11 @@ const loadSaveInner = async (
       if (!projectionActive || openSave !== opened) return;
       projectionActive = false;
       app.restore_map_projection();
-      await syncAll({ colorsChanged: true, flagsChanged: true, gradient: undefined });
+      const gradient = app.map_projection_change().gradient ?? undefined;
+      const sync = syncAll({ colorsChanged: true, flagsChanged: true, gradient });
+      // Publish before awaiting map sync, in order with subsequent selections and previews.
+      pushSelection(gradient, true);
+      await sync;
     },
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       if (projectionActive) {
