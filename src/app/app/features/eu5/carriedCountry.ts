@@ -8,7 +8,7 @@ export type CountryIdentity = { id: UiCountryId; tag: string };
  */
 export function findCarriedCountry(
   countries: readonly { id: UiCountryId; tag: string; landed: boolean; country: { key: number } }[],
-  { id, tag }: CountryIdentity,
+  { id, tag }: { id?: UiCountryId; tag: string },
 ): number | null {
   const match =
     countries.find((c) => c.id === id && c.landed) ??

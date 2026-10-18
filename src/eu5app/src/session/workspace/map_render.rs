@@ -3,6 +3,25 @@ use crate::population::location_reproduction_rate;
 use eu5save::models::Color;
 
 use super::*;
+use crate::map_render_source::{self, MapRenderSource};
+
+impl MapRenderSource for Eu5Workspace<'_> {
+    fn location_count(&self) -> usize {
+        self.gamestate.locations.len()
+    }
+    fn terrain(&self, index: LocationIdx) -> Terrain {
+        self.location_terrain(index)
+    }
+    fn owned(&self, index: LocationIdx) -> bool {
+        !self
+            .gamestate
+            .locations
+            .index(index)
+            .location()
+            .owner
+            .is_dummy()
+    }
+}
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Compute gradient domain bounds for a quantitative mode in a single pass.
@@ -12,26 +31,12 @@ impl<'bump> Eu5Workspace<'bump> {
         &self,
         extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
     ) -> (f64, f64) {
-        let has_selection = !self.selection_state.is_empty();
-        let mut global_max = 0.0_f64;
-        let mut filtered_max = 0.0_f64;
-        for loc_entry in self.gamestate.locations.iter() {
-            let idx = loc_entry.idx();
-            let terrain = self.location_terrain(idx);
-            if terrain.is_water() || !terrain.is_passable() {
-                continue;
-            }
-            let loc = loc_entry.location();
-            if loc.owner.is_dummy() {
-                continue;
-            }
-            let value = extract(idx, loc);
-            global_max = global_max.max(value);
-            if !has_selection || self.selection_state.contains(idx) {
-                filtered_max = filtered_max.max(value);
-            }
-        }
-        (global_max, filtered_max)
+        map_render_source::gradient_domains(
+            self,
+            &|idx| extract(idx, self.gamestate.locations.index(idx).location()),
+            &|idx| self.selection_state.is_empty() || self.selection_state.contains(idx),
+            None,
+        )
     }
 
     /// Like [`Self::gradient_domain`], but each bound is the value at
@@ -43,37 +48,12 @@ impl<'bump> Eu5Workspace<'bump> {
         extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
         percentile: f64,
     ) -> (f64, f64) {
-        let has_selection = !self.selection_state.is_empty();
-        let mut global = Vec::new();
-        let mut filtered = Vec::new();
-        for loc_entry in self.gamestate.locations.iter() {
-            let idx = loc_entry.idx();
-            let terrain = self.location_terrain(idx);
-            if terrain.is_water() || !terrain.is_passable() {
-                continue;
-            }
-            let loc = loc_entry.location();
-            if loc.owner.is_dummy() {
-                continue;
-            }
-            let value = extract(idx, loc);
-            global.push(value);
-            if !has_selection || self.selection_state.contains(idx) {
-                filtered.push(value);
-            }
-        }
-
-        fn value_at(mut values: Vec<f64>, percentile: f64) -> f64 {
-            if values.is_empty() {
-                return 0.0;
-            }
-            values.sort_by(f64::total_cmp);
-            let last = values.len() - 1;
-            let pos = ((last as f64) * percentile.clamp(0.0, 1.0)).round() as usize;
-            values[pos]
-        }
-
-        (value_at(global, percentile), value_at(filtered, percentile))
+        map_render_source::gradient_domains(
+            self,
+            &|idx| extract(idx, self.gamestate.locations.index(idx).location()),
+            &|idx| self.selection_state.is_empty() || self.selection_state.contains(idx),
+            Some(percentile),
+        )
     }
 
     /// The reproduction gradient stops at this percentile. A pop of a few
@@ -127,26 +107,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Returns a reference to the cached data.
     pub fn get_location_building_levels(&self) -> &LocationIndexedVec<f64> {
         self.location_building_levels
-            .get_or_init(|| self.compute_location_building_levels())
-    }
-
-    /// Computes building levels for all locations in a single pass
-    fn compute_location_building_levels(&self) -> LocationIndexedVec<f64> {
-        let mut levels = self.gamestate.locations.create_index(0.0);
-
-        // Single pass through all buildings
-        for building in self.gamestate.building_manager.database.iter() {
-            if let Some(loc_idx) = self.gamestate.locations.get(building.location) {
-                let location = self.gamestate.locations.index(loc_idx).location();
-
-                // Only count if building owner matches location owner
-                if location.owner == building.owner {
-                    levels[loc_idx] += building.level;
-                }
-            }
-        }
-
-        levels
+            .get_or_init(|| crate::map_measurements::location_building_levels(&self.gamestate))
     }
 
     pub fn location_terrain(&self, idx: eu5save::models::LocationIdx) -> Terrain {
@@ -223,76 +184,37 @@ impl<'bump> Eu5Workspace<'bump> {
         self.get_country_color_for_location(key, |loc| loc.controller.real_id())
     }
 
-    pub fn location_development_color(
-        &self,
-        location_idx: eu5save::models::LocationIdx,
-        max_dev: f64,
-    ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        gradient::interpolate_eu5_gradient(
-            save_location.development,
+    pub fn location_development_color(&self, location_idx: LocationIdx, max_dev: f64) -> GpuColor {
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            loc.development,
             max_dev,
             GradientScale::Linear,
         )
     }
 
-    pub fn location_population_color(
-        &self,
-        location_idx: eu5save::models::LocationIdx,
-        max_pop: f64,
-    ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        // location_population returns floor(size * 1000); divide back to thousands
-        // so the log curve is meaningful (ln_1p operates on 0–max_k, not 0–max_k*1000)
-        let population = self.gamestate.location_population(save_location) / 1000.0;
-        gradient::interpolate_eu5_gradient(population, max_pop / 1000.0, GradientScale::Log)
+    pub fn location_population_color(&self, location_idx: LocationIdx, max_pop: f64) -> GpuColor {
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            self.gamestate.location_population(loc) / 1000.0,
+            max_pop / 1000.0,
+            GradientScale::Log,
+        )
     }
 
-    pub fn location_control_value_color(
-        &self,
-        location_idx: eu5save::models::LocationIdx,
-    ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        gradient::interpolate_eu5_gradient(save_location.control, 1.0, GradientScale::Linear)
+    pub fn location_control_value_color(&self, location_idx: LocationIdx) -> GpuColor {
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            loc.control,
+            1.0,
+            GradientScale::Linear,
+        )
     }
 
     pub fn location_market_color(&self, location_idx: eu5save::models::LocationIdx) -> GpuColor {
@@ -324,42 +246,22 @@ impl<'bump> Eu5Workspace<'bump> {
 
         let market_color = GpuColor::from(market.color.0);
 
-        // Blend market color (subject) with market center owner color (overlord) using HSV
-        let owner_rgb = market_center_owner_color.rgb();
-        let market_rgb = market_color.rgb();
-        let blended_rgb = crate::subject_color::blend_color(market_rgb, owner_rgb);
-        let blended_color = GpuColor::from_rgb(blended_rgb.0, blended_rgb.1, blended_rgb.2);
-
-        // Apply market access: blend with dark red for low access
-        let market_access = save_location.market_access.clamp(0.0, 1.0);
-        let dark_red = GpuColor::from_rgb(20, 5, 5);
-
-        // market_access = 1.0 -> market center owner+market blend
-        // market_access = 0.0 -> dark red
-        dark_red.blend(blended_color, market_access as f32)
+        map_render_source::market_access_color(
+            map_render_source::market_center_color(market_color, market_center_owner_color),
+            save_location.market_access,
+        )
     }
 
     pub fn location_rgo_level_color(
         &self,
-        location_idx: eu5save::models::LocationIdx,
+        location_idx: LocationIdx,
         max_rgo_level: f64,
     ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        gradient::interpolate_eu5_gradient(
-            save_location.rgo_level,
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            loc.rgo_level,
             max_rgo_level,
             GradientScale::Linear,
         )
@@ -367,54 +269,24 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn location_building_levels_color(
         &self,
-        location_idx: eu5save::models::LocationIdx,
+        location_idx: LocationIdx,
         max_building_levels: f64,
     ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        let levels = self.get_location_building_levels();
-        let building_levels_sum = levels[location_idx];
-
-        gradient::interpolate_eu5_gradient(
-            building_levels_sum,
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            self.get_location_building_levels()[location_idx],
             max_building_levels,
             GradientScale::Linear,
         )
     }
 
-    pub fn location_wealth_color(
-        &self,
-        location_idx: eu5save::models::LocationIdx,
-        max_wealth: f64,
-    ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        gradient::interpolate_eu5_gradient(
-            save_location.possible_tax,
+    pub fn location_wealth_color(&self, location_idx: LocationIdx, max_wealth: f64) -> GpuColor {
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            loc.possible_tax,
             max_wealth,
             GradientScale::Linear,
         )
@@ -422,71 +294,47 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub fn location_unrealized_tax_base_color(
         &self,
-        location_idx: eu5save::models::LocationIdx,
+        location_idx: LocationIdx,
         max_gap: f64,
     ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        let gap = (save_location.possible_tax - save_location.tax).max(0.0);
-        gradient::interpolate_eu5_gradient(gap, max_gap, GradientScale::Linear)
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            (loc.possible_tax - loc.tax).max(0.0),
+            max_gap,
+            GradientScale::Linear,
+        )
     }
 
     pub fn location_state_efficacy_color(
         &self,
-        location_idx: eu5save::models::LocationIdx,
+        location_idx: LocationIdx,
         max_efficacy: f64,
     ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        let efficacy = save_location.control * save_location.development;
-        gradient::interpolate_eu5_gradient(efficacy, max_efficacy, GradientScale::Linear)
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            loc.control * loc.development,
+            max_efficacy,
+            GradientScale::Linear,
+        )
     }
 
     pub fn location_reproduction_color(
         &self,
-        location_idx: eu5save::models::LocationIdx,
+        location_idx: LocationIdx,
         max_rate: f64,
     ) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        if save_location.owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-
-        let rate = location_reproduction_rate(&self.gamestate, save_location);
-        gradient::interpolate_eu5_gradient(rate, max_rate, GradientScale::Linear)
+        let loc = self.gamestate.locations.index(location_idx).location();
+        map_render_source::quantitative_color(
+            self,
+            location_idx,
+            location_reproduction_rate(&self.gamestate, loc),
+            max_rate,
+            GradientScale::Linear,
+        )
     }
 
     pub(crate) fn get_country_color_for_location<F>(
@@ -1254,7 +1102,6 @@ pub(super) fn set_unowned_flag(flags: &mut LocationFlags, unowned: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     const PAINTED: GpuColor = GpuColor::from_rgb(1, 2, 3);
 
     #[test]

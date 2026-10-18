@@ -139,8 +139,8 @@ impl From<Eu5MapMode> for MapMode {
     }
 }
 
+mod map_projection;
 mod tokens;
-
 pub use tokens::set_tokens;
 use wasm_pdx_core::blob::{BlobReader, read_blob_start};
 
@@ -423,6 +423,91 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
     }
 }
 
+#[derive(Debug, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct MapImportMetadata {
+    pub hash: String,
+    pub campaign_id: String,
+    pub date: String,
+    pub date_sort: i32,
+    pub version: String,
+    pub layout_key: String,
+    pub world: eu5app::insights::WorldSummary,
+}
+
+fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result<JsValue, JsError> {
+    let (mut observation, projection) = {
+        let game = loaded.take_gamestate();
+        let meta = game.metadata();
+        if meta.playthrough_id.to_str().is_empty() {
+            return Err(JsError::new("Save has no campaign ID"));
+        }
+        let date = Eu5DateComponents::from(meta.date);
+        let projection =
+            eu5app::map_projection::extract(&game).map_err(|e| JsError::new(&e.to_string()))?;
+        let observation = MapImportMetadata {
+            hash: String::new(),
+            campaign_id: meta.playthrough_id.to_str().to_owned(),
+            date: format!("{:04}-{:02}-{:02}", date.year, date.month, date.day),
+            date_sort: i32::from(date.year) * 10000
+                + i32::from(date.month) * 100
+                + i32::from(date.day),
+            version: format!(
+                "{}.{}.{}",
+                meta.version.major, meta.version.minor, meta.version.patch
+            ),
+            layout_key: projection.layout_key.clone(),
+            world: eu5app::map_projection::world_summary(&game),
+        };
+        (observation, map_projection::into_js(&projection)?)
+    };
+    observation.hash = loaded.into_observer().finish();
+    let result = js_sys::Object::new();
+    js_sys::Reflect::set(
+        &result,
+        &JsValue::from_str("observation"),
+        &into_ts(observation)?.into(),
+    )
+    .map_err(|_| JsError::new("Could not create map observation"))?;
+    js_sys::Reflect::set(&result, &JsValue::from_str("projection"), &projection)
+        .map_err(|_| JsError::new("Could not create map columns"))?;
+    Ok(result.into())
+}
+
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct ImportLoader {
+    parser: Eu5AnySaveLoader<BlobReader, &'static FlatResolver<'static>, eu5app::SaveCheckSummer>,
+}
+#[wasm_bindgen]
+impl ImportLoader {
+    /// Use the viewer's format-aware reader and checksum the parsed content.
+    pub async fn open(save: web_sys::Blob) -> Result<ImportLoader, JsError> {
+        let reader = open_save(save)
+            .await
+            .map_err(|e| JsError::new(&format!("Failed to read save file: {e}")))?;
+        let size = reader.size();
+        let parser = Eu5AnySaveLoader::open_at_with(
+            reader,
+            size,
+            tokens::get_tokens(),
+            eu5app::SaveCheckSummer::new(),
+        )
+        .map_err(|e| JsError::new(&format!("Failed to parse save file: {e}")))?;
+        Ok(Self { parser })
+    }
+    pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
+        into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
+    }
+    pub fn parse_import(self) -> Result<JsValue, JsError> {
+        let loaded = self
+            .parser
+            .parse()
+            .map_err(|e| JsError::new(&e.to_string()))?;
+        analysis_result(loaded)
+    }
+}
+
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct SaveLoader {
@@ -484,6 +569,14 @@ fn read_metadata(save: web_sys::Blob) -> Result<Rc<Eu5SaveMetadata>, eu5app::Eu5
 pub struct Eu5WasmGamestate {
     meta: Eu5SaveMetadataHandle,
     parsed_save: Eu5LoadedSave,
+}
+
+#[wasm_bindgen]
+impl Eu5WasmGamestate {
+    #[wasm_bindgen]
+    pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
+        into_ts(self.meta.clone())
+    }
 }
 
 #[wasm_bindgen]
@@ -920,6 +1013,64 @@ impl Eu5App {
         map_change_ts(change)
     }
 
+    #[wasm_bindgen]
+    pub fn map_projection_layout_key(&self) -> String {
+        self.app().map_projection_layout_key().to_owned()
+    }
+
+    #[wasm_bindgen]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "Typed WASM columns avoid deserializing and allocating per-location JS objects"
+    )]
+    pub fn apply_map_projection(
+        &mut self,
+        mode: Ts<MapMode>,
+        key: &str,
+        ids: &[u32],
+        fractions: &[u16],
+        metrics: &[f32],
+        owners: &[u32],
+        controllers: &[u32],
+        religions: &[u32],
+        markets: &[u32],
+        countries: &[u32],
+        religion_colors: &[u32],
+        market_colors: &[u32],
+    ) -> Result<js_sys::Uint32Array, JsError> {
+        let frame = eu5app::map_projection::MapProjectionData {
+            layout_key: key,
+            location_ids: ids,
+            fractions,
+            metrics,
+            owners,
+            controllers,
+            religions,
+            markets,
+            countries,
+            religion_colors,
+            market_colors,
+        };
+        let groups = self
+            .app
+            .apply_map_projection(frame, mode.to_rust()?.into())
+            .map_err(|e| JsError::new(&e.to_string()))?;
+        Ok(js_sys::Uint32Array::from(groups.as_slice()))
+    }
+
+    #[wasm_bindgen]
+    pub fn map_projection_change(&self) -> Result<Ts<TimelineChange>, JsError> {
+        self.timeline_change(
+            self.app().no_map_change(),
+            self.app().selection_state().selection_generation(),
+        )
+    }
+
+    #[wasm_bindgen]
+    pub fn restore_map_projection(&mut self) {
+        self.app.restore_map_projection();
+    }
+
     /// Return the grouping table for the current map mode as a flat Uint32Array.
     /// Each element is the raw GroupId for the corresponding GPU location index.
     /// Sentinel value `u32::MAX` means no group (unowned / no market).
@@ -1091,6 +1242,17 @@ impl Eu5App {
                 .presenter()
                 .country_population_profile_for(idx),
         )
+    }
+
+    #[wasm_bindgen]
+    pub fn market_id_at_center(&self, center_id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .market_manager
+            .database
+            .iter_with_id()
+            .find(|(_, m)| m.center.value() == center_id)
+            .map(|(id, _)| id.value())
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.

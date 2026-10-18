@@ -84,6 +84,7 @@ pub struct Eu5Workspace<'bump> {
 
     // Map app state (rendering)
     current_map_mode: MapMode,
+    map_layout_key: String,
     location_arrays: pdx_map::LocationArrays,
     gpu_indices: LocationIndexedVec<Option<GpuLocationIdx>>,
     current_map_legend: crate::gradient::MapLegend,
@@ -185,9 +186,10 @@ fn nice_bucket_step(range: f64, target_buckets: usize) -> f64 {
     nice_norm * magnitude
 }
 
-mod entity_profile;
+pub mod entity_profile;
 mod hover;
 mod insights;
+mod map_projection;
 mod map_render;
 mod opening_view;
 mod overlay;
@@ -205,6 +207,7 @@ impl<'bump> Eu5Workspace<'bump> {
         game_data: impl Into<Arc<GameData>>,
     ) -> Result<Self, crate::game_data::GameDataError> {
         let game_data = game_data.into();
+        let map_layout_key = crate::map_projection::layout_key(gamestate.metadata());
 
         let mut overlord_of = gamestate.countries.create_index(None);
         for dep in gamestate.diplomacy_manager.dependencies() {
@@ -273,6 +276,7 @@ impl<'bump> Eu5Workspace<'bump> {
             fill_donors,
             religion_fill_donors: OnceLock::new(),
             current_map_mode: MapMode::Political,
+            map_layout_key,
             location_arrays,
             gpu_indices,
             current_map_legend: crate::gradient::MapLegend::Qualitative,

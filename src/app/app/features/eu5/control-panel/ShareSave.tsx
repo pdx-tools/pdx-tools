@@ -94,13 +94,17 @@ export function useShareState(): ShareState {
  * when it lands the permalink and its Copy button take the same row, so the
  * eye that watched the track fill is already where the link appears.
  */
-export function ShareRow() {
+export function ShareRow({ unavailable = false }: { unavailable?: boolean }) {
   const state = useShareState();
 
   return (
     <div
+      inert={unavailable}
+      aria-disabled={unavailable || undefined}
+      title={unavailable ? "Available when the selected save has loaded" : undefined}
       className={cx(
         footRow,
+        unavailable && "opacity-50",
         "relative",
         state.kind === "shared" && state.origin === "session" && styles.landed,
       )}
