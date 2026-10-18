@@ -22,7 +22,6 @@ type HistoryState = {
   issues: string[];
   cancel: (() => void) | null;
   add: (snapshots: SnapshotMetadata[], sources?: Record<string, SourceObservation>) => void;
-  clear: () => void;
 };
 
 export function isAnalysisPaused(
@@ -68,5 +67,4 @@ export const useHistory = create<HistoryState>()((set) => ({
         sources: { ...state.sources, ...sources },
       };
     }),
-  clear: () => set({ snapshots: [], sources: {}, issues: [] }),
 }));

@@ -46,8 +46,10 @@ const observation = (hash = "eu5:abc", campaignId = "campaign") =>
 let entries: LocalSaveEntry[];
 beforeEach(() => {
   vi.resetAllMocks();
-  useHistory.getState().clear();
   useHistory.setState({
+    snapshots: [],
+    sources: {},
+    issues: [],
     progress: null,
     cancel: null,
     analysisPaused: false,

@@ -6,7 +6,6 @@ const store = new CampaignAnalysisStore();
 const readers = new Map<string, () => void>();
 export const analysisApi = {
   append: (save: SaveAnalysis) => store.append(save),
-  timeline: (campaignId: string, layoutKey?: string) => store.timeline(campaignId, layoutKey),
   connectFrames: (id: string, port: MessagePort) => {
     readers.get(id)?.();
     readers.set(

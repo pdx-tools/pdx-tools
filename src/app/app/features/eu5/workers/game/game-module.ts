@@ -614,7 +614,6 @@ const loadSaveInner = async (
       return app.get_state_efficacy();
     },
 
-    getMarketIdAtCenter: (center: number) => app.market_id_at_center(center),
     getCampaignIdentities: (profiles: ActiveProfileIdentity[]) =>
       campaignIdentities(app, countryIndex, profiles),
     restoreCampaignView: async (carry: Eu5Carry) => {

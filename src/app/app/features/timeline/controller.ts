@@ -52,7 +52,6 @@ export type TimelapseProgress = {
 export type TimelineController = {
   /** Human-readable playback rate when observations replace continuous history. */
   playbackHint?: string;
-  navigation?: "saves";
   beginScrub?: () => void;
   /** Commit a previewed seek when the pointer is released. */
   commitDayOffset?: (day: number) => void;
