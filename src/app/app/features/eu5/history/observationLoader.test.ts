@@ -153,3 +153,37 @@ it("ignores a superseded loading completion and then services the latest selecti
   expect(state.engine.trigger.clearMapProjection).toHaveBeenCalledOnce();
   expect(state.setInsightPanelOpen).not.toHaveBeenCalled();
 });
+
+it.each(["clearing", "inspection"] as const)(
+  "retains the original carry when a date changes during %s",
+  async (stage) => {
+    const original = {
+      mapMode: "control" as const,
+      selection: { kind: "country" as const, tag: "FRA", focusedLocation: null },
+      viewport: null,
+      insightPanel: { open: false, width: 640 },
+    };
+    useHistory.setState({ previewCarries: { campaign: original } });
+    const gate = Promise.withResolvers<void>();
+    const pending =
+      stage === "clearing"
+        ? state.engine.trigger.clearMapProjection
+        : state.engine.trigger.replayMapInteraction;
+    pending.mockReturnValueOnce(gate.promise);
+    const interaction = {
+      kind: "click" as const,
+      event: { kind: "update" as const, locationIdx: 42, modifiers: 0 },
+    };
+    const request = ensureObservationLoaded("campaign", "first", navigation, interaction);
+    const rejected = expect(request).rejects.toMatchObject({ name: "AbortError" });
+    await vi.waitFor(() => expect(pending).toHaveBeenCalledOnce());
+    useHistory.setState({ selectedObservations: { campaign: "second" } });
+    cancelObservationLoad("campaign");
+    gate.resolve();
+    await rejected;
+    expect(useHistory.getState().previewCarries.campaign).toEqual(original);
+    expect(state.setInsightPanelOpen).not.toHaveBeenCalled();
+    if (stage === "clearing")
+      expect(state.engine.trigger.replayMapInteraction).not.toHaveBeenCalled();
+  },
+);

@@ -80,7 +80,11 @@ async function loadObservation(campaignId: string, request: LoadRequest, current
     if (!active || active.getState().playthroughId !== campaignId) throw changed();
     if (alreadyOpen) {
       await active.getState().engine.trigger.clearMapProjection();
-      if (interaction) await active.getState().engine.trigger.replayMapInteraction(interaction);
+      check();
+      if (interaction) {
+        await active.getState().engine.trigger.replayMapInteraction(interaction);
+        check();
+      }
     }
     if (interaction) active.getState().setInsightPanelOpen(true);
     useHistory.setState((state) => ({
