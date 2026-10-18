@@ -1,54 +1,51 @@
-import type { MapInteraction } from "./mapInteraction";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useState,
-  useRef,
-  useCallback,
-  useLayoutEffect,
-} from "react";
-import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
-import { isAbortError } from "@/lib/abortController";
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useState } from "react";
 import { useCampaign } from "@/features/campaign/CampaignProvider";
-import { ensureObservationLoaded, cancelObservationLoad } from "./observationLoader";
-import { holdsRef, localSaveRegistry } from "@/features/campaign/localSaves";
-import { sameFileVersion } from "@/features/campaign/types";
+import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { addDays, addMonths, addYears, daysBetween } from "@/features/timeline/date";
+import type { DateComponents } from "@/features/timeline/date";
 import type { TimelineController } from "@/features/timeline/controller";
+import type { GradientConfig } from "@/wasm/wasm_eu5";
 import {
-  activeEu5Store,
-  useEu5MapMode,
-  useEu5MapProjection,
-  useEu5SelectionState,
+  useEu5Context,
   useEu5Engine,
+  useEu5MapMode,
   useEu5PlaythroughId,
   useEu5SaveDate,
-  useEu5Input,
-  useEu5SaveInput,
-  useSetEu5InsightPanelOpen,
 } from "../store";
 import { CampaignAnalysis } from "./CampaignAnalysis";
-import { campaignAnalysis, connectAnalysisFrames } from "./analysisClient";
+import { campaignAnalysis } from "./analysisClient";
 import type { MapObservation as MapFrame } from "./analysisTypes";
+import { MapHistoryContext } from "./context";
 import {
-  publishedMapFrames,
-  mapTimelineBounds,
   mapFrameDate,
+  mapTimelineBounds,
   nearestMapFrame,
+  publishedMapFrames,
 } from "./mapPlayback";
+import {
+  bindPreviewNavigation,
+  cancelPreview,
+  connectFrames,
+  loadedSnapshotHash,
+  openPreview,
+  previewSnapshot,
+  repaintPreview,
+  setPreviewPlayback,
+  usePreviewPlayback,
+  usePreviewSession,
+} from "./previewSession";
 import { useHistory } from "./store";
-import { captureEu5Carry } from "../campaignCarry";
+import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
 
 const EMPTY_FRAMES: MapFrame[] = [];
 
+/** The playhead waits this long before the app opens the save at the playhead. */
+const OPEN_DELAY_MS = 250;
+
 function useMapHistoryState() {
+  const store = useEu5Context();
   const engine = useEu5Engine();
   const currentMapMode = useEu5MapMode();
-  const mapProjection = useEu5MapProjection();
-  const selectionState = useEu5SelectionState();
   const campaignId = useEu5PlaythroughId();
   const featureEnabled = useIsCampaignAnalysisEnabled();
   const enabled = useHistory(
@@ -56,11 +53,11 @@ function useMapHistoryState() {
       featureEnabled && !!campaignId && state.analysisEnabledCampaigns.includes(campaignId),
   );
   const saveDate = useEu5SaveDate();
-  const setPanelOpen = useSetEu5InsightPanelOpen();
   const campaign = useCampaign();
   const progress = useHistory((history) => history.progress);
   const imported = useHistory((history) => history.snapshots);
   const speed = useHistory((history) => history.playbackSpeed);
+  const preview = usePreviewSession();
   const [layout, setLayout] = useState<{ engine: typeof engine; key: string } | null>(null);
   const frames = useMemo(
     () =>
@@ -69,128 +66,29 @@ function useMapHistoryState() {
         : EMPTY_FRAMES,
     [layout, engine, campaignId, imported],
   );
-  const selectedHash =
-    useHistory((history) => (campaignId ? history.selectedObservations[campaignId] : undefined)) ??
-    mapProjection?.hash;
-  const input = useEu5Input(),
-    parsed = useEu5SaveInput();
-  const sources = useHistory((history) => history.sources);
-  const entries = localSaveRegistry.useEntries();
-  const openEntry =
-    input.kind === "server" ? undefined : entries.find((entry) => holdsRef(entry, input));
-  const openSource = openEntry && sources[openEntry.id];
-  const loadedHash =
-    parsed.kind === "file" && openSource && sameFileVersion(parsed.file, openSource.version)
-      ? openSource.hash
-      : undefined;
-  const [scrubbing, setScrubbing] = useState(false);
-  const attemptedSettlement = useRef<string | null>(null);
-  const settling = useHistory((history) => history.settlingObservation?.campaignId === campaignId);
+  // Read again when the sources or the registry change.
+  useHistory((history) => history.sources);
+  localSaveRegistry.useEntries();
+  const loadedHash = loadedSnapshotHash(store);
+  const previewing = preview.kind !== "live" && preview.campaignId === campaignId;
+  const selectedHash = previewing ? preview.hash : loadedHash;
   const index = selectedHash
     ? frames.findIndex((frame) => frame.hash === selectedHash)
     : frames.findIndex((frame) => daysBetween(mapFrameDate(frame), saveDate) === 0);
   const selectedFrame = frames[index];
-  const selectedAvailable = !!selectedFrame;
-  const readyHashes = useMemo(
-    () =>
-      new Set(
-        imported
-          .filter(
-            (snapshot) =>
-              layout?.engine === engine &&
-              snapshot.campaignId === campaignId &&
-              "layoutKey" in snapshot &&
-              snapshot.layoutKey === layout.key,
-          )
-          .map((snapshot) => snapshot.hash),
-      ),
-    [imported, layout, engine, campaignId],
-  );
-  const requestedFrame = useRef<{ engine: typeof engine; mode: string; hash: string } | null>(null);
-  const previousMode = useRef({ engine, mode: currentMapMode });
-  const [painted, setPainted] = useState(0);
-  const [requestedPlaying, setPlaying] = useState(false);
-  const playing = frames.length > 0 && requestedPlaying;
-  const [inspecting, setInspecting] = useState(false);
-  const inspection = useRef(false);
+  const readyHashes = useMemo(() => new Set(frames.map((frame) => frame.hash)), [frames]);
+  const [scrubbing, setScrubbing] = useState(false);
+  // Playback belongs to the map mode it started in.
+  const playingMode = usePreviewPlayback((playback) => playback.mode);
+  const playing = frames.length > 0 && playingMode === currentMapMode;
+  const setPlaying = (next: boolean) => setPreviewPlayback(next ? currentMapMode : null);
   const [error, setError] = useState<string | null>(null);
-  const mounted = useRef(true);
+
   useLayoutEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  const currentEngine = useRef<typeof engine | null>(engine);
-  useLayoutEffect(() => {
-    currentEngine.current = engine;
-    return () => {
-      currentEngine.current = null;
-    };
-  }, [engine]);
-  const connection = useRef<Promise<() => void> | null>(null);
-  const paint = useCallback(
-    async (frame: MapFrame) => {
-      const selection = useHistory.getState().selectedObservations[frame.campaignId];
-      if (
-        frame.campaignId !== campaignId ||
-        currentEngine.current !== engine ||
-        engine.getState().currentMapMode === "political"
-      )
-        return;
-      const active = activeEu5Store();
-      if (
-        active &&
-        !engine.getState().mapProjection &&
-        !useHistory.getState().previewCarries[frame.campaignId]
-      ) {
-        const carry = await captureEu5Carry(active);
-        if (
-          currentEngine.current !== engine ||
-          useHistory.getState().selectedObservations[frame.campaignId] !== selection
-        )
-          return;
-        useHistory.setState((history) => ({
-          previewCarries: {
-            ...history.previewCarries,
-            [frame.campaignId]: history.previewCarries[frame.campaignId] ?? carry,
-          },
-        }));
-      }
-      await connection.current;
-      if (
-        currentEngine.current !== engine ||
-        engine.getState().currentMapMode === "political" ||
-        useHistory.getState().selectedObservations[frame.campaignId] !== selection
-      )
-        return;
-      await engine.trigger.showMapProjection(frame);
-      if (currentEngine.current === engine && engine.getState().currentMapMode !== "political")
-        setPainted(frame.dateSort);
-    },
-    [engine, campaignId],
-  );
-  const failed = useCallback((failure: unknown) => {
-    setError(String(failure));
-    setPlaying(false);
-  }, []);
-  useEffect(() => {
-    let cancelled = false;
-    if (!enabled) return;
-    const pending = connectAnalysisFrames(engine.trigger.connectMapFrames);
-    connection.current = pending;
-    void pending.then((disconnect) => {
-      if (cancelled) disconnect();
-    }, failed);
-    return () => {
-      cancelled = true;
-      void engine.trigger.stopMapProjection().catch(() => {});
-      void pending.then(
-        (disconnect) => disconnect(),
-        () => {},
-      );
-    };
-  }, [engine, failed, enabled]);
+    bindPreviewNavigation(campaign);
+  }, [campaign]);
+
+  useEffect(() => (enabled ? connectFrames(engine) : undefined), [engine, enabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,71 +109,25 @@ function useMapHistoryState() {
     };
   }, [engine, campaignId, enabled]);
 
-  const requestFrame = (frame: MapFrame) => {
-    requestedFrame.current = { engine, mode: currentMapMode, hash: frame.hash };
-    void paint(frame).catch((failure) => {
-      if (!isAbortError(failure)) failed(failure);
-    });
-  };
-  const changeMode = useEffectEvent(() => {
-    if (previousMode.current.engine !== engine || previousMode.current.mode !== currentMapMode) {
-      if (previousMode.current.mode !== currentMapMode) setPlaying(false);
-      previousMode.current = { engine, mode: currentMapMode };
-    }
-    if (campaign?.opening) {
-      // A user can resume playback while an earlier automatic parse finishes.
-      // Only an explicit save change ends that playback.
-      if (!settling) {
-        setPlaying(false);
-        setScrubbing(false);
-      }
-      requestedFrame.current = null;
-      return;
-    }
-    if (inspection.current) return;
-    // A freshly opened entity owns the rich save view. Background timeline
-    // discovery must not replace it with an overview projection.
-    if (!mapProjection && selectionState?.isEmpty === false) return;
-    if (currentMapMode === "political") {
-      requestedFrame.current = null;
-      void engine.trigger.stopMapProjection();
-    } else {
-      const previous = requestedFrame.current;
-      if (
-        selectedFrame &&
-        (playing || scrubbing || !!mapProjection || selectedFrame.hash !== loadedHash) &&
-        !settling &&
-        !(
-          previous?.engine === engine &&
-          previous.mode === currentMapMode &&
-          previous.hash === selectedFrame.hash
-        )
-      )
-        requestFrame(selectedFrame);
-    }
+  // Only the political mode has a history in the loaded save, so it shows that save.
+  const followEngine = useEffectEvent(() => {
+    // Playback stops when the mode changes, and does not resume on a return.
+    if (playingMode !== null && playingMode !== currentMapMode) setPreviewPlayback(null);
+    if (currentMapMode === "political") cancelPreview();
+    else repaintPreview(engine, currentMapMode);
   });
   useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) changeMode();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [engine, currentMapMode, selectedFrame?.hash, loadedHash, settling, campaign?.opening]);
+    followEngine();
+  }, [engine, currentMapMode]);
+
+  const opening = previewing && preview.kind === "opening";
 
   const move = (next: number) => {
-    if (inspection.current || currentMapMode === "political" || !frames.length) return;
-    const clamped = Math.max(0, Math.min(next, frames.length - 1));
-    if (!campaignId) return;
-    useHistory.setState((history) => ({
-      selectedObservations: { ...history.selectedObservations, [campaignId]: frames[clamped].hash },
-    }));
-    void cancelObservationLoad(campaignId);
-    attemptedSettlement.current = null;
-    setError(null);
+    if (currentMapMode === "political" || !frames.length || !campaignId) return;
+    const frame = frames[Math.max(0, Math.min(next, frames.length - 1))];
     engine.trigger.pauseTimeline();
-    requestFrame(frames[clamped]);
+    if (!previewing && frame.hash === loadedHash) return;
+    previewSnapshot(engine, campaignId, frame.hash, currentMapMode);
   };
   const advance = useEffectEvent(() => {
     if (index >= frames.length - 1) {
@@ -288,89 +140,26 @@ function useMapHistoryState() {
     return () => clearInterval(timer);
   }, [playing, currentMapMode, speed]);
 
-  const inspect = async (interaction?: MapInteraction) => {
-    if (!campaignId || !campaign || inspection.current) return;
-    if (!interaction && campaign.opening) return;
-    const hash = selectedFrame?.hash ?? mapProjection?.hash;
-    if (!hash) {
-      if (interaction) setPanelOpen(true);
-      return;
-    }
-    inspection.current = !!interaction;
-    if (interaction) {
-      setPlaying(false);
-      setInspecting(true);
-    }
-    setError(null);
-    try {
-      useHistory.setState((history) => ({
-        selectedObservations: { ...history.selectedObservations, [campaignId]: hash },
-      }));
-      await ensureObservationLoaded(campaignId, hash, campaign, interaction);
-    } catch (failure) {
-      if (
-        !isAbortError(failure) &&
-        mounted.current &&
-        useHistory.getState().selectedObservations[campaignId] === hash
-      ) {
-        setError(String(failure));
-        const active = activeEu5Store()?.getState().engine;
-        if (active && selectedFrame && activeEu5Store()?.getState().playthroughId === campaignId) {
-          try {
-            const disconnect = await connectAnalysisFrames(active.trigger.connectMapFrames);
-            await active.trigger.showMapProjection(selectedFrame);
-            disconnect();
-          } catch {
-            /* Keep the original loading failure. */
-          }
-        }
-      }
-    } finally {
-      inspection.current = false;
-      if (mounted.current) setInspecting(false);
-    }
-  };
-  const settle = useEffectEvent(() => {
-    attemptedSettlement.current = selectedHash ?? null;
-    void inspect();
+  const open = useEffectEvent(() => {
+    if (campaign) void openPreview(campaign);
   });
+  const waiting = previewing && preview.kind === "preview" && !preview.error;
   useEffect(() => {
-    if (
-      !enabled ||
-      campaign?.opening ||
-      playing ||
-      scrubbing ||
-      !selectedHash ||
-      !selectedAvailable ||
-      settling ||
-      attemptedSettlement.current === selectedHash ||
-      (selectedHash === loadedHash && !mapProjection) ||
-      currentMapMode === "political"
-    )
-      return;
-    const timer = setTimeout(settle, 250);
+    if (!waiting || playing || scrubbing) return;
+    const timer = setTimeout(open, OPEN_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [
-    enabled,
-    campaign?.opening,
-    playing,
-    scrubbing,
-    selectedHash,
-    selectedAvailable,
-    loadedHash,
-    settling,
-    mapProjection,
-    currentMapMode,
-  ]);
+  }, [waiting, playing, scrubbing, selectedHash]);
+
+  const retry = () => {
+    setError(null);
+    if (campaign) void openPreview(campaign);
+  };
+
   const clearCampaign = async () => {
-    if (!campaignId || inspection.current || progress !== null) return;
-    inspection.current = true;
-    setInspecting(true);
+    if (!campaignId || progress !== null) return;
     setPlaying(false);
+    cancelPreview();
     try {
-      await engine.trigger.stopMapProjection();
-      if (!mounted.current || currentEngine.current !== engine) return;
-      await engine.trigger.clearMapProjection();
       await campaignAnalysis().clearCampaign(campaignId);
       useHistory.setState((history) => {
         const snapshots = history.snapshots.filter((row) => row.campaignId !== campaignId);
@@ -384,31 +173,12 @@ function useMapHistoryState() {
           analysisPausedCampaigns: [...new Set([...history.analysisPausedCampaigns, campaignId])],
         };
       });
-      useHistory.setState((history) => ({
-        selectedObservations: Object.fromEntries(
-          Object.entries(history.selectedObservations).filter(([id]) => id !== campaignId),
-        ),
-      }));
-      requestedFrame.current = null;
     } catch (failure) {
-      if (mounted.current) setError(String(failure));
-    } finally {
-      inspection.current = false;
-      if (mounted.current) setInspecting(false);
+      setError(String(failure));
     }
   };
-  const requestInspection = useEffectEvent((interaction: MapInteraction) => {
-    void inspect(interaction);
-  });
-  useEffect(() => {
-    void engine.trigger.onMapInspect((interaction) => {
-      requestInspection(interaction);
-    });
-    return () => {
-      void engine.trigger.onMapInspect(null).catch(() => {});
-    };
-  }, [engine]);
 
+  const shown = previewing ? preview.shown : null;
   let controller: TimelineController | null = null;
   if (enabled && currentMapMode !== "political" && campaignId) {
     const { start, end } = mapTimelineBounds(
@@ -418,7 +188,6 @@ function useMapHistoryState() {
         [],
     );
     const date = selectedFrame ? mapFrameDate(selectedFrame) : saveDate;
-    const paintedFrame = frames.find((frame) => frame.dateSort === painted);
     const setDate: TimelineController["setDate"] = (next) => {
       setPlaying(false);
       move(nearestMapFrame(frames, next));
@@ -437,13 +206,10 @@ function useMapHistoryState() {
       live: daysBetween(date, end) === 0,
       playback: playing ? "playing" : "paused",
       playing,
-      locked: inspecting || frames.length === 0,
+      locked: frames.length === 0,
       totalDays: daysBetween(start, end),
       dayOffset: daysBetween(start, date),
-      mapDayOffset: daysBetween(
-        start,
-        paintedFrame ? mapFrameDate(paintedFrame) : (mapProjection?.date ?? saveDate),
-      ),
+      mapDayOffset: daysBetween(start, shown?.date ?? saveDate),
       setDate,
       beginScrub: () => setScrubbing(true),
       commitDayOffset: (day) => {
@@ -471,29 +237,29 @@ function useMapHistoryState() {
       },
     };
   }
+
+  // The date and legend follow the frame that the map shows, not the request.
+  const previewView: {
+    shown: { date: DateComponents; gradient: GradientConfig | null } | null;
+  } | null = previewing ? { shown: shown && { date: shown.date, gradient: shown.gradient } } : null;
   return {
     controller,
     enabled,
     progress,
     frames: frames.length,
     readyHashes,
-    error,
-    inspecting,
-    settling,
-    preview: mapProjection,
-    inspect,
+    error: (previewing ? preview.error : null) ?? error,
+    opening,
+    preview: previewView,
+    retry,
     clearCampaign,
     playing,
   };
 }
 
-const MapHistoryContext = createContext<ReturnType<typeof useMapHistoryState> | null>(null);
-/** Keep history subscriptions and worker connections outside the normal viewer. */
-export function CampaignAnalysisProvider({ children }: { children: React.ReactNode }) {
-  const enabled = useIsCampaignAnalysisEnabled();
-  return enabled ? <MapHistoryProvider>{children}</MapHistoryProvider> : children;
-}
+export type MapHistoryValue = ReturnType<typeof useMapHistoryState>;
 
+/** Keep history subscriptions and worker connections outside the normal viewer. */
 export function MapHistoryProvider({ children }: { children: React.ReactNode }) {
   const value = useMapHistoryState();
   return (
@@ -502,8 +268,4 @@ export function MapHistoryProvider({ children }: { children: React.ReactNode }) 
       {children}
     </MapHistoryContext.Provider>
   );
-}
-export function useMapHistory() {
-  const value = useContext(MapHistoryContext);
-  return value;
 }

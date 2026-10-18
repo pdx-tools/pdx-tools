@@ -3,11 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type * as Zustand from "zustand";
 import { beforeEach, expect, it, vi } from "vitest";
 import { Eu5UIEngine } from "../ui-engine";
-import type { AppState } from "../ui-engine";
 import type { GameInstance, PaletteGradients, TimelineData } from "../game-adapter";
 import { createEu5Store, Eu5Context } from "../store/eu5Store";
 import type { Eu5Store } from "../store/eu5Store";
-import { CampaignAnalysisProvider, MapHistoryProvider, useMapHistory } from "./MapHistory";
+import { CampaignAnalysisProvider } from "./CampaignAnalysisProvider";
+import { MapHistoryProvider } from "./MapHistory";
+import { useMapHistory } from "./context";
 
 const feature = vi.hoisted(() => ({ enabled: false }));
 
@@ -30,9 +31,17 @@ vi.mock("./analysisClient", () => ({
   campaignAnalysis: vi.fn(),
   connectAnalysisFrames: vi.fn(),
 }));
-vi.mock("./observationLoader", () => ({
-  ensureObservationLoaded: vi.fn(),
-  cancelObservationLoad: vi.fn(),
+vi.mock("./previewSession", () => ({
+  usePreviewSession: () => ({ kind: "live" }),
+  usePreviewPlayback: (select: (playback: { mode: null }) => unknown) => select({ mode: null }),
+  setPreviewPlayback: vi.fn(),
+  bindPreviewNavigation: vi.fn(),
+  cancelPreview: vi.fn(),
+  connectFrames: vi.fn(),
+  loadedSnapshotHash: () => undefined,
+  openPreview: vi.fn(),
+  previewSnapshot: vi.fn(),
+  repaintPreview: vi.fn(),
 }));
 vi.mock("../store", async () => ({
   ...(await import("../store/eu5Store")),
@@ -77,7 +86,8 @@ function historyStore() {
 }
 
 function Preview() {
-  return <span>{useMapHistory()?.preview?.hash ?? "live"}</span>;
+  const history = useMapHistory();
+  return <span>{history ? (history.preview ? "preview" : "live") : "none"}</span>;
 }
 
 function render(store: Eu5Store) {
@@ -115,27 +125,18 @@ it("keeps history subscriptions stable for hover and camera updates with analysi
   for (const select of subscriptions) expect(select(after)).toBe(select(before));
 });
 
-it("still observes map modes, selections and new projected dates", () => {
+it("still observes map modes and engine changes", () => {
   const store = historyStore();
   render(store);
   const before = store.getState();
-  const updates: Partial<AppState>[] = [
-    { currentMapMode: "control" },
-    { selectionState: { isEmpty: false } as AppState["selectionState"] },
-    {
-      mapProjection: {
-        hash: "later",
-        date: { year: 1341, month: 4, day: 1 },
-        world: before.world,
-      },
-    },
+  const updates: Partial<State>[] = [
+    { appState: { ...before.appState, currentMapMode: "markets" } },
+    { engine: historyStore().getState().engine },
   ];
   for (const update of updates) {
-    const after = { ...before, appState: { ...before.appState, ...update } };
+    const after = { ...before, ...update };
     expect(subscriptions.some((select) => !Object.is(select(after), select(before)))).toBe(true);
   }
-  store.setState({ appState: { ...before.appState, ...updates[2] } });
-  expect(render(store)).toBe("<span>later</span>");
 });
 
 it("does not mount campaign history for an ordinary user", () => {
@@ -146,21 +147,24 @@ it("does not mount campaign history for an ordinary user", () => {
         <Preview />
       </CampaignAnalysisProvider>,
     ),
-  ).toBe("<span>live</span>");
+  ).toBe("<span>none</span>");
   expect(subscriptions).toHaveLength(0);
 });
 
-it("mounts campaign history behind the developer flag without activating analysis", () => {
+it("loads campaign history behind the developer flag without activating analysis", async () => {
   feature.enabled = true;
   const store = historyStore();
-  expect(
+  const page = () =>
     renderToStaticMarkup(
       <Eu5Context.Provider value={store}>
         <CampaignAnalysisProvider>
           <Preview />
         </CampaignAnalysisProvider>
       </Eu5Context.Provider>,
-    ),
-  ).toBe("<span>live</span>");
+    );
+  // The page shows at once, and the history follows when its module loads.
+  expect(page()).toBe("<span>none</span>");
+  await import("./MapHistory");
+  await vi.waitFor(() => expect(page()).toBe("<span>live</span>"));
   expect(subscriptions.length).toBeGreaterThan(0);
 });

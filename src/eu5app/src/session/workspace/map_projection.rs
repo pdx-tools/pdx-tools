@@ -168,18 +168,27 @@ impl LocationValues for FrameValues<'_> {
     }
 }
 
+/// A snapshot painted for the overlay. The loaded save's buffers stay as
+/// they are.
+pub struct ProjectionPaint {
+    pub arrays: pdx_map::LocationArrays,
+    /// The group of each GPU location, for box selection.
+    pub groups: Vec<u32>,
+    pub legend: crate::gradient::MapLegend,
+}
+
 impl Eu5Workspace<'_> {
     pub fn map_projection_layout_key(&self) -> &str {
         &self.map_layout_key
     }
 
-    /// Repaint observations against shared terrain, without rebuilding a save model.
-    /// All compatibility checks precede buffer changes.
-    pub fn apply_map_projection(
-        &mut self,
+    /// Paint a snapshot frame against the shared terrain, into a copy of the
+    /// location buffers. All compatibility checks come before the paint.
+    pub fn paint_map_projection(
+        &self,
         frame: MapProjectionData<'_>,
         mode: MapMode,
-    ) -> Result<Vec<u32>, MapProjectionError> {
+    ) -> Result<ProjectionPaint, MapProjectionError> {
         frame.validate(&self.map_layout_key, &self.gamestate.locations)?;
         let values = FrameValues::new(
             &frame,
@@ -195,14 +204,15 @@ impl Eu5Workspace<'_> {
             selection: None,
         };
         let painted = map_painter::paint(&values, &layout, &request);
-        painted.write(&self.gpu_indices, &mut self.location_arrays);
-        let mut groups = vec![u32::MAX; self.location_arrays.len()];
+        let mut arrays = self.location_arrays.clone();
+        painted.write(&self.gpu_indices, &mut arrays);
+        let mut groups = vec![u32::MAX; arrays.len()];
         for index in 0..values.location_count() {
             let idx = LocationIdx::new(index as u32);
             let Some(gpu) = self.gpu_indices[idx] else {
                 continue;
             };
-            let mut location = self.location_arrays.get_mut(gpu);
+            let mut location = arrays.get_mut(gpu);
             location.set_border_color(map_painter::border_color(&values, &layout, idx));
             location.flags_mut().clear(LocationFlags::INTERACTION);
             if layout.terrain[idx].is_passable() {
@@ -214,13 +224,10 @@ impl Eu5Workspace<'_> {
             groups[gpu.value() as usize] =
                 map_painter::group_id(mode, frame.owners[index], frame.markets[index]);
         }
-        self.current_map_mode = mode;
-        self.current_map_legend = painted.legend;
-        Ok(groups)
-    }
-
-    pub fn restore_map_projection(&mut self) {
-        self.build_location_arrays();
-        self.apply_map_mode(self.current_map_mode);
+        Ok(ProjectionPaint {
+            arrays,
+            groups,
+            legend: painted.legend,
+        })
     }
 }

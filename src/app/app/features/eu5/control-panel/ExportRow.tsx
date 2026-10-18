@@ -1,4 +1,4 @@
-import { useMapHistory } from "../history/MapHistory";
+import { useMapHistory } from "../history/context";
 import CameraIcon from "@heroicons/react/24/outline/CameraIcon";
 import FireIcon from "@heroicons/react/24/solid/FireIcon";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
@@ -69,7 +69,8 @@ function ScreenshotButton() {
   const isGeneratingScreenshot = useEu5IsGeneratingScreenshot();
   // The screenshot is the map as it stands, which on a scrubbed timeline is
   // a past date; the file is named for what it shows, not for the save.
-  const mapDate = useEu5TimelineMapDate();
+  const liveDate = useEu5TimelineMapDate();
+  const mapDate = useMapHistory()?.preview?.shown?.date ?? liveDate;
   const playthroughName = useEu5PlaythroughName();
 
   const { isLoading, run } = useTriggeredAction({

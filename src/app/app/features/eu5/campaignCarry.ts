@@ -2,7 +2,7 @@ import type { MapMode, UiCountryId } from "@/wasm/wasm_eu5";
 import type { MapViewport } from "@pdx.tools/timelapse";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Store } from "./store/eu5Store";
-import type { MapInteraction } from "./history/mapInteraction";
+import type { LocationClickChangeEvent } from "./workers/map/map-module";
 
 export { findCarriedCountry } from "./carriedCountry";
 export type { CountryIdentity } from "./carriedCountry";
@@ -14,8 +14,8 @@ export type StableProfile =
 
 /** What the next EU5 save of the campaign keeps of the view. */
 export type Eu5Carry = {
-  /** Apply an analytical selection after the destination save has loaded. */
-  inspection?: { interaction?: MapInteraction };
+  /** A click on a snapshot, to apply after the save of the snapshot loads. */
+  inspection?: { click: LocationClickChangeEvent };
   mapMode: MapMode;
   viewport: MapViewport["viewport"] | null;
   insightPanel: { open: boolean; width: number };
@@ -61,8 +61,6 @@ export async function captureEu5Carry(store: Eu5Store): Promise<Eu5Carry> {
  */
 export async function applyEu5Carry(engine: AppEngine, carry: Eu5Carry): Promise<void> {
   await engine.trigger.restoreCampaignView(carry);
-  if (carry.inspection?.interaction)
-    await engine.trigger.replayMapInteraction(carry.inspection.interaction);
   // The camera comes last, so that nothing above moves it.
   if (carry.viewport !== null) await engine.trigger.fitWorldRect(carry.viewport);
 }

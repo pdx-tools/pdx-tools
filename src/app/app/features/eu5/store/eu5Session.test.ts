@@ -1,4 +1,3 @@
-vi.mock("../history/analysisClient", () => ({ connectAnalysisFrames: async () => () => {} }));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SaveGameInput } from "@/features/engine/engineStore";
 import type { Eu5SaveInput } from "./types";
@@ -8,7 +7,6 @@ import { findEu5Session, getEu5Session, stepEu5Session, terminateEu5Session } fr
 import { terminateCurrentAnalysis } from "@/features/engine/analysisLifecycle";
 import { campaignTransitions } from "@/features/campaign/transitions";
 import { toPlaythroughId } from "@/features/campaign/types";
-import { useHistory } from "../history/store";
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -19,7 +17,6 @@ const mocks = vi.hoisted(() => ({
   supported: vi.fn(() => true),
   emit: vi.fn(),
   applyCarry: vi.fn(),
-  project: vi.fn(),
 }));
 
 vi.mock("@/lib/canvas_courier", () => ({
@@ -89,10 +86,6 @@ async function openSession(input = save("previous")) {
 beforeEach(() => {
   vi.resetAllMocks();
   campaignTransitions.failed();
-  useHistory.setState({
-    selectedObservations: {},
-    settlingObservation: null,
-  });
   mocks.supported.mockReturnValue(true);
   mocks.read.mockImplementation(async (input: Eu5SaveInput) => ({
     save: input.kind === "handle" ? { kind: "file", file: await input.file.getFile() } : input,
@@ -106,8 +99,6 @@ beforeEach(() => {
     engine: {
       trigger: {
         selectMapMode: vi.fn(),
-        connectMapFrames: vi.fn(),
-        showMapProjection: mocks.project,
       },
       destroy: vi.fn(),
       getState: () => ({ ownerBordersEnabled: true, hoverDisplayData: null }),
@@ -124,12 +115,9 @@ beforeEach(() => {
 afterEach(() => terminateEu5Session());
 
 describe("EU5 campaign transitions", () => {
-  it("passes a carried map inspection to the destination save", async () => {
+  it("passes a carried map click to the destination save", async () => {
     await openSession();
-    const interaction = {
-      kind: "click" as const,
-      event: { kind: "update" as const, locationIdx: 42, modifiers: 1 },
-    };
+    const click = { kind: "update" as const, locationIdx: 42, modifiers: 1 };
     const transition = campaignTransitions.begin("local-save")!;
     transition.preserveView(toPlaythroughId("campaign")!, {
       game: "eu5",
@@ -138,7 +126,7 @@ describe("EU5 campaign transitions", () => {
         viewport: null,
         selection: null,
         insightPanel: { open: true, width: 640 },
-        inspection: { interaction },
+        inspection: { click },
       },
     });
     mocks.applyCarry.mockResolvedValueOnce([]);
@@ -147,7 +135,7 @@ describe("EU5 campaign transitions", () => {
 
     expect(mocks.applyCarry).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ inspection: { interaction } }),
+      expect.objectContaining({ inspection: { click } }),
     );
     expect(shownInput(findEu5Session(save("local-save"))!)).toEqual(save("local-save"));
     transition.complete();
@@ -286,37 +274,4 @@ describe("EU5 campaign transitions", () => {
     await rejection;
     loading.resolve(game(save("next")));
   });
-});
-
-it("does not display a settled save after the requested observation changes during parsing", async () => {
-  const session = await openSession();
-  const gate = Promise.withResolvers<ReturnType<typeof game>>();
-  const stale = game(save("stale"));
-  mocks.load.mockReturnValueOnce(gate.promise);
-  useHistory.setState({
-    selectedObservations: { campaign: "stale" },
-    settlingObservation: { campaignId: "campaign", hash: "stale" },
-  });
-  const step = stepEu5Session(save("stale"));
-  const rejected = expect(step).rejects.toMatchObject({ name: "AbortError" });
-  await vi.waitFor(() => expect(mocks.load).toHaveBeenCalledOnce());
-  useHistory.setState({
-    selectedObservations: { campaign: "latest" },
-    snapshots: [
-      {
-        hash: "latest",
-        layoutKey: "layout",
-        world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
-      } as never,
-    ],
-  });
-  gate.resolve(stale);
-  await rejected;
-  expect(mocks.project).toHaveBeenCalledWith(expect.objectContaining({ hash: "latest" }));
-  expect(mocks.project.mock.invocationCallOrder[0]).toBeLessThan(
-    stale.show.mock.invocationCallOrder[0],
-  );
-  useHistory.setState({ settlingObservation: { campaignId: "campaign", hash: "latest" } });
-  await stepEu5Session(save("latest"));
-  expect(shownInput(session)).toEqual(save("latest"));
 });

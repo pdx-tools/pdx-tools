@@ -4945,6 +4945,7 @@ dependencies = [
 name = "wasm-eu5"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "eu5app",
  "eu5save",
  "js-sys",

@@ -1,5 +1,5 @@
 import { useHistory } from "../history/store";
-import { useMapHistory } from "../history/MapHistory";
+import { useMapHistory } from "../history/context";
 import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { TimelapseExport } from "./TimelapseExport";
@@ -88,7 +88,7 @@ export function TimelineBar() {
           className="mt-1 flex items-center gap-2 rounded-panel bg-game-panel px-3 py-2 text-xs text-game-ink-300"
         >
           <span>{history.error}</span>
-          <button className="underline" onClick={() => void history.inspect()}>
+          <button className="underline" onClick={history.retry}>
             Retry loading
           </button>
         </div>

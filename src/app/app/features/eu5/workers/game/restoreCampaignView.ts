@@ -1,20 +1,36 @@
 import { findCarriedCountry } from "../../campaignCarry";
 import type { Eu5Carry, StableProfile } from "../../campaignCarry";
+import type { LocationClickChangeEvent } from "../map/map-module";
+import { SharedCanvasModifierBits } from "@/lib/canvas_courier";
 import type { ActiveProfileIdentity, Eu5App, MapChangeData } from "@/wasm/wasm_eu5";
 
 type Countries = ReturnType<Eu5App["get_countries"]>["countries"];
-type ViewApp = Pick<
+type ClickApp = Pick<
   Eu5App,
-  | "set_map_mode"
-  | "select_players"
-  | "select_country"
-  | "select_market"
-  | "set_focused_location"
-  | "market_id_at_center"
-  | "get_market_profile"
-  | "get_location_profile"
-  | "get_selection_summary"
+  "add_entity" | "remove_entity" | "select_entity" | "clear_focus_or_selection"
 >;
+
+type ViewApp = ClickApp &
+  Pick<
+    Eu5App,
+    | "set_map_mode"
+    | "select_players"
+    | "select_country"
+    | "select_market"
+    | "set_focused_location"
+    | "market_id_at_center"
+    | "get_market_profile"
+    | "get_location_profile"
+    | "get_selection_summary"
+  >;
+
+/** Change the selection as a click on the map does. */
+export function clickChange(app: ClickApp, event: LocationClickChangeEvent): MapChangeData {
+  if (event.kind === "clear") return app.clear_focus_or_selection();
+  if (event.modifiers & SharedCanvasModifierBits.Shift) return app.add_entity(event.locationIdx);
+  if (event.modifiers & SharedCanvasModifierBits.Alt) return app.remove_entity(event.locationIdx);
+  return app.select_entity(event.locationIdx);
+}
 
 /** Restore a campaign view within the game worker, before publishing its buffers. */
 export function restoreCampaignView(app: ViewApp, countries: Countries, carry: Eu5Carry) {
@@ -43,6 +59,8 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
   } else if (selection?.kind === "location") {
     merge(app.set_focused_location(selection.locationIdx));
   }
+  // A click on a snapshot applies to the save of that snapshot.
+  if (carry.inspection) merge(clickChange(app, carry.inspection.click));
 
   return { change, selection: app.get_selection_summary() };
 }

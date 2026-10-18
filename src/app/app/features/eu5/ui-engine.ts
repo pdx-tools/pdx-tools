@@ -1,6 +1,6 @@
-import type { MapInteraction } from "./history/mapInteraction";
-import type { MapObservation } from "./history/analysisTypes";
 import type { Eu5Carry, StableProfile } from "./campaignCarry";
+import type { OverlayReply } from "./workers/game/game-module";
+import type { LocationClickChangeEvent } from "./workers/map/map-module";
 import type {
   BoxSelectOverlayRect,
   CursorHint,
@@ -108,8 +108,6 @@ const TIMELAPSE_IDLE: TimelapseState = { status: "idle", frame: 0, frames: 0 };
 export type TimelapseRecording = TimelapseFile;
 
 export interface AppState {
-  /** A compact map preview. Rich queries still describe the retained full save. */
-  mapProjection?: { hash: string; date: Eu5DateComponents; world: WorldSummary };
   currentMapMode: MapMode;
   hoverDisplayData: DisplayData | null;
   isGeneratingScreenshot: boolean;
@@ -162,13 +160,19 @@ export type SearchResult =
     };
 
 export interface AppTriggers {
-  replayMapInteraction(interaction: MapInteraction): Promise<void>;
   connectMapFrames(id: string, port: MessagePort | null): Promise<void>;
-  stopMapProjection(): Promise<void>;
   getMapLayoutKey(): Promise<string>;
-  showMapProjection(frame: MapObservation): Promise<void>;
-  clearMapProjection(): Promise<void>;
-  onMapInspect(callback: ((interaction: MapInteraction) => void) | null): Promise<void>;
+  /**
+   * Show a snapshot over the loaded save, which does not change. The reply
+   * tells if the map accepted the frame.
+   */
+  presentOverlay(hash: string, mode: MapMode, token: number): Promise<OverlayReply>;
+  /** Stop the snapshot paint in progress, if there is one. */
+  stopOverlay(): Promise<void>;
+  /** Show the loaded save again. Frames with an older token have no effect. */
+  clearOverlay(token: number): Promise<void>;
+  /** Send map clicks to `onClick`, and ignore hover and box select. Null ends this. */
+  setInputGate(onClick: ((event: LocationClickChangeEvent) => void) | null): Promise<void>;
   getCampaignIdentities(profiles: ActiveProfileIdentity[]): Promise<(StableProfile | null)[]>;
   restoreCampaignView(carry: Eu5Carry): Promise<void>;
   selectMapMode(mode: MapMode): Promise<void>;
@@ -243,17 +247,7 @@ export class Eu5UIEngine implements AppEngine {
     initialState?: Partial<AppState>,
   ) {
     this.queries = gameInstance.queries;
-    this.commands = new Proxy(gameInstance.commands, {
-      get: (target, key) => {
-        const original = Reflect.get(target, key);
-        return (...args: number[]) => {
-          if (!this._state.mapProjection) return original(...args);
-          if (key === "highlightMapHoverTarget" || key === "clearMapHoverHighlight")
-            return Promise.resolve();
-          return gameInstance.requestMapInspection({ kind: "command", name: String(key), args });
-        };
-      },
-    });
+    this.commands = gameInstance.commands;
     this._state = {
       currentMapMode: "political",
       hoverDisplayData: null,
@@ -311,38 +305,12 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   public readonly trigger: AppTriggers = {
-    replayMapInteraction: (interaction) => this.gameInstance.replayMapInteraction(interaction),
     connectMapFrames: (id, port) => this.gameInstance.connectMapFrames(id, port),
-    stopMapProjection: () => this.gameInstance.stopMapProjection(),
     getMapLayoutKey: () => this.gameInstance.getMapLayoutKey(),
-    showMapProjection: async (frame) => {
-      if (this.destroyed || this._state.currentMapMode === "political") return;
-      const mode = this._state.currentMapMode;
-      const { change, observation } = await this.gameInstance.showMapProjection(frame, mode);
-      if (this.destroyed || this._state.currentMapMode !== mode) return;
-      this.updateState((state) => ({
-        mapProjection: {
-          hash: observation.hash,
-          date: {
-            year: Math.floor(observation.dateSort / 10000),
-            month: Math.floor(observation.dateSort / 100) % 100,
-            day: observation.dateSort % 100,
-          },
-          world: observation.world,
-        },
-        hoverDisplayData: null,
-        selectionState: null,
-        mapModeGradient: change.gradient ?? null,
-        selectionRevision: state.selectionRevision + 1,
-      }));
-    },
-    clearMapProjection: async () => {
-      const projection = this._state.mapProjection;
-      await this.gameInstance.clearMapProjection();
-      if (!this.destroyed && this._state.mapProjection === projection)
-        this.updateState(() => ({ mapProjection: undefined }));
-    },
-    onMapInspect: (callback) => this.gameInstance.onMapInspect(callback),
+    presentOverlay: (hash, mode, token) => this.gameInstance.presentOverlay(hash, mode, token),
+    stopOverlay: () => this.gameInstance.stopOverlay(),
+    clearOverlay: (token) => this.gameInstance.clearOverlay(token),
+    setInputGate: (onClick) => this.gameInstance.setInputGate(onClick),
     getCampaignIdentities: (profiles) => this.gameInstance.getCampaignIdentities(profiles),
     restoreCampaignView: async (carry) => {
       const restored = await this.gameInstance.restoreCampaignView(carry);
@@ -417,10 +385,6 @@ export class Eu5UIEngine implements AppEngine {
       this.handlePauseTimeline();
     }
     try {
-      if (this._state.mapProjection && mode !== "political") {
-        this.updateState(() => ({ currentMapMode: mode }));
-        return;
-      }
       const change = await this.gameInstance.setMapMode(mode);
       this.applyTimelineChange(change);
     } catch (error) {
@@ -432,7 +396,6 @@ export class Eu5UIEngine implements AppEngine {
   /** Adopt the worker's view of the timeline after any call that can move it. */
   private applyTimelineChange(change: TimelineChange): void {
     this.updateState(() => ({
-      mapProjection: undefined,
       currentMapMode: change.mapMode,
       timelineMapDate: change.date,
       // The requested date stays ahead of the map only while a request is
