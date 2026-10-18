@@ -14,7 +14,6 @@ import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/ec
 import type { MapMode } from "@/wasm/wasm_eu5";
 import { useHistory } from "@/features/eu5/history/store";
 import { useMapHistory } from "./MapHistory";
-import { campaignKey } from "@/features/eu5/history/types";
 import styles from "@/features/eu5/history/Timeline.module.css";
 import { useEu5PlaythroughId } from "../store";
 import { useCurrentHistorySnapshot } from "./currentSnapshot";
@@ -403,7 +402,7 @@ export function SaveHistory({
                     <div>
                       <span className={styles.eyebrow}>
                         {dates.length} SAVED DATES
-                        {currentSnapshot && campaignKey(currentSnapshot) === playthroughId
+                        {currentSnapshot && currentSnapshot.campaignId === playthroughId
                           ? ` · ${currentSnapshot.date}`
                           : ""}
                       </span>
@@ -424,7 +423,7 @@ export function SaveHistory({
                     <HistoryPlot
                       option={option}
                       date={
-                        currentSnapshot && campaignKey(currentSnapshot) === playthroughId
+                        currentSnapshot && currentSnapshot.campaignId === playthroughId
                           ? currentSnapshot.date
                           : undefined
                       }

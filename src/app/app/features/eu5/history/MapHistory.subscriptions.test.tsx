@@ -10,6 +10,8 @@ import { CampaignAnalysisProvider } from "./CampaignAnalysisProvider";
 import { MapHistoryProvider } from "./MapHistory";
 import { useMapHistory } from "./context";
 
+import { useCurrentHistorySnapshot } from "./currentSnapshot";
+
 const feature = vi.hoisted(() => ({ enabled: false }));
 
 type State = ReturnType<Eu5Store["getState"]>;
@@ -90,12 +92,10 @@ function Preview() {
   return <span>{history ? (history.preview ? "preview" : "live") : "none"}</span>;
 }
 
-function render(store: Eu5Store) {
+function render(store: Eu5Store, children: React.ReactNode = <Preview />) {
   return renderToStaticMarkup(
     <Eu5Context.Provider value={store}>
-      <MapHistoryProvider>
-        <Preview />
-      </MapHistoryProvider>
+      <MapHistoryProvider>{children}</MapHistoryProvider>
     </Eu5Context.Provider>,
   );
 }
@@ -167,4 +167,19 @@ it("loads campaign history behind the developer flag without activating analysis
   await import("./MapHistory");
   await vi.waitFor(() => expect(page()).toBe("<span>live</span>"));
   expect(subscriptions.length).toBeGreaterThan(0);
+});
+
+it("keeps analytical snapshot queries stable for unrelated viewer updates", () => {
+  function Snapshot() {
+    useCurrentHistorySnapshot(undefined);
+    return null;
+  }
+  const store = historyStore();
+  render(store, <Snapshot />);
+  const before = store.getState();
+  const after: State = {
+    ...before,
+    appState: { ...before.appState, hoverDisplayData: { kind: "clear" }, cursorHint: "move" },
+  };
+  for (const select of subscriptions) expect(select(after)).toBe(select(before));
 });

@@ -1031,6 +1031,22 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
+    pub fn country_index_from_id(&self, id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .countries
+            .get(eu5save::models::CountryId::new(id))
+            .map(|idx| idx.value())
+    }
+    #[wasm_bindgen]
+    pub fn location_index_from_id(&self, id: u32) -> Option<u32> {
+        self.app()
+            .gamestate()
+            .locations
+            .get(eu5save::models::LocationId::new(id))
+            .map(|idx| idx.value())
+    }
+    #[wasm_bindgen]
     pub fn map_projection_layout_key(&self) -> String {
         self.app().map_projection_layout_key().to_owned()
     }
