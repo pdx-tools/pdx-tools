@@ -223,8 +223,12 @@ function useMapHistoryState() {
       previousMode.current = { engine, mode: currentMapMode };
     }
     if (campaign?.opening) {
-      setPlaying(false);
-      setScrubbing(false);
+      // A user can resume playback while an earlier automatic parse finishes.
+      // Only an explicit save change ends that playback.
+      if (!settling) {
+        setPlaying(false);
+        setScrubbing(false);
+      }
       requestedFrame.current = null;
       return;
     }
