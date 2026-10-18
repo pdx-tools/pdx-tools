@@ -7,7 +7,5 @@ export type Snapshot = SaveSnapshot & {
   marketLabels: Record<string, string>;
 };
 
-export const campaignKey = (s: Pick<Snapshot, "campaignId">) => s.campaignId;
-
 export type SnapshotMetadata = Omit<Snapshot, "countries" | "markets"> &
   Partial<Pick<MapObservation, "world" | "layoutKey">>;
