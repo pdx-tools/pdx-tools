@@ -131,6 +131,7 @@ function useMapHistoryState() {
   const connection = useRef<Promise<() => void> | null>(null);
   const paint = useCallback(
     async (frame: MapFrame) => {
+      const selection = useHistory.getState().selectedObservations[frame.campaignId];
       if (
         frame.campaignId !== campaignId ||
         currentEngine.current !== engine ||
@@ -144,6 +145,11 @@ function useMapHistoryState() {
         !useHistory.getState().previewCarries[frame.campaignId]
       ) {
         const carry = await captureEu5Carry(active);
+        if (
+          currentEngine.current !== engine ||
+          useHistory.getState().selectedObservations[frame.campaignId] !== selection
+        )
+          return;
         useHistory.setState((history) => ({
           previewCarries: {
             ...history.previewCarries,
@@ -152,7 +158,11 @@ function useMapHistoryState() {
         }));
       }
       await connection.current;
-      if (currentEngine.current !== engine || engine.getState().currentMapMode === "political")
+      if (
+        currentEngine.current !== engine ||
+        engine.getState().currentMapMode === "political" ||
+        useHistory.getState().selectedObservations[frame.campaignId] !== selection
+      )
         return;
       await engine.trigger.showMapProjection(frame);
       if (currentEngine.current === engine && engine.getState().currentMapMode !== "political")
@@ -212,6 +222,12 @@ function useMapHistoryState() {
       if (previousMode.current.mode !== currentMapMode) setPlaying(false);
       previousMode.current = { engine, mode: currentMapMode };
     }
+    if (campaign?.opening) {
+      setPlaying(false);
+      setScrubbing(false);
+      requestedFrame.current = null;
+      return;
+    }
     if (inspection.current) return;
     // A freshly opened entity owns the rich save view. Background timeline
     // discovery must not replace it with an overview projection.
@@ -242,7 +258,7 @@ function useMapHistoryState() {
     return () => {
       cancelled = true;
     };
-  }, [engine, currentMapMode, selectedFrame?.hash, loadedHash, settling]);
+  }, [engine, currentMapMode, selectedFrame?.hash, loadedHash, settling, campaign?.opening]);
 
   const move = (next: number) => {
     if (inspection.current || currentMapMode === "political" || !frames.length) return;
@@ -251,7 +267,7 @@ function useMapHistoryState() {
     useHistory.setState((history) => ({
       selectedObservations: { ...history.selectedObservations, [campaignId]: frames[clamped].hash },
     }));
-    cancelObservationLoad(campaignId);
+    void cancelObservationLoad(campaignId);
     attemptedSettlement.current = null;
     setError(null);
     engine.trigger.pauseTimeline();
@@ -270,6 +286,7 @@ function useMapHistoryState() {
 
   const inspect = async (interaction?: MapInteraction) => {
     if (!campaignId || !campaign || inspection.current) return;
+    if (!interaction && campaign.opening) return;
     const hash = selectedFrame?.hash ?? mapProjection?.hash;
     if (!hash) {
       if (interaction) setPanelOpen(true);
@@ -287,7 +304,11 @@ function useMapHistoryState() {
       }));
       await ensureObservationLoaded(campaignId, hash, campaign, interaction);
     } catch (failure) {
-      if (!isAbortError(failure) && mounted.current) {
+      if (
+        !isAbortError(failure) &&
+        mounted.current &&
+        useHistory.getState().selectedObservations[campaignId] === hash
+      ) {
         setError(String(failure));
         const active = activeEu5Store()?.getState().engine;
         if (active && selectedFrame && activeEu5Store()?.getState().playthroughId === campaignId) {
@@ -312,6 +333,7 @@ function useMapHistoryState() {
   useEffect(() => {
     if (
       !enabled ||
+      campaign?.opening ||
       playing ||
       scrubbing ||
       !selectedHash ||
@@ -326,6 +348,7 @@ function useMapHistoryState() {
     return () => clearTimeout(timer);
   }, [
     enabled,
+    campaign?.opening,
     playing,
     scrubbing,
     selectedHash,

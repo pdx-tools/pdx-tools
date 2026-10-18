@@ -109,5 +109,5 @@ export function ensureObservationLoaded(
   return loader.request({ hash, navigation, interaction });
 }
 export function cancelObservationLoad(campaignId: string) {
-  void loaders.get(campaignId)?.stop();
+  return loaders.get(campaignId)?.stop() ?? Promise.resolve();
 }

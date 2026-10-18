@@ -4,6 +4,8 @@ import { CampaignProvider } from "@/features/campaign/CampaignProvider";
 import type { CampaignAdapter } from "@/features/campaign/useCampaignNav";
 import type { CampaignStepTarget, OpenSave } from "@/features/campaign/types";
 import { captureEu5Carry } from "./campaignCarry";
+import { useHistory } from "./history/store";
+import { cancelObservationLoad } from "./history/observationLoader";
 import {
   stepEu5Session,
   useEu5Context,
@@ -65,7 +67,32 @@ export function Eu5CampaignProvider({ children }: { children: React.ReactNode })
   const adapter = useMemo(
     (): CampaignAdapter => ({
       completion: "before-navigation",
-      captureCarry: async () => ({ game: "eu5", payload: await captureEu5Carry(store) }),
+      captureCarry: async () => {
+        // Explicit navigation captures its own carry. Settling supplies a carry
+        // to nav.open directly, so it must not cancel its own loading operation.
+        const { playthroughId, engine, appState } = store.getState();
+        const history = useHistory.getState();
+        if (
+          playthroughId &&
+          (appState.mapProjection ||
+            history.selectedObservations[playthroughId] ||
+            history.settlingObservation?.campaignId === playthroughId)
+        ) {
+          useHistory.setState((state) => ({
+            selectedObservations: Object.fromEntries(
+              Object.entries(state.selectedObservations).filter(([id]) => id !== playthroughId),
+            ),
+          }));
+          await cancelObservationLoad(playthroughId);
+          await engine.trigger.stopMapProjection();
+          // Restore the retained save's selection before capturing its stable IDs.
+          await engine.trigger.clearMapProjection();
+          useHistory.setState((state) => ({
+            previewCarries: { ...state.previewCarries, [playthroughId]: undefined },
+          }));
+        }
+        return { game: "eu5", payload: await captureEu5Carry(store) };
+      },
       // Reuse the map when the target stays on the current route.
       prepare: async (target) => {
         if (onSameRoute(input, target)) await stepEu5Session(stepInput(target));
