@@ -7,7 +7,9 @@ import type { AppState } from "../ui-engine";
 import type { GameInstance, PaletteGradients, TimelineData } from "../game-adapter";
 import { createEu5Store, Eu5Context } from "../store/eu5Store";
 import type { Eu5Store } from "../store/eu5Store";
-import { MapHistoryProvider, useMapHistory } from "./MapHistory";
+import { CampaignAnalysisProvider, MapHistoryProvider, useMapHistory } from "./MapHistory";
+
+const feature = vi.hoisted(() => ({ enabled: false }));
 
 type State = ReturnType<Eu5Store["getState"]>;
 const subscriptions: Array<(state: State) => unknown> = [];
@@ -21,7 +23,7 @@ vi.mock("zustand", async (original) => ({
     return select(store.getState());
   },
 }));
-vi.mock("@/features/account", () => ({ useIsDeveloper: () => false }));
+vi.mock("@/features/account", () => ({ useIsDeveloper: () => feature.enabled }));
 vi.mock("@/features/campaign/CampaignProvider", () => ({ useCampaign: () => null }));
 vi.mock("./CampaignAnalysis", () => ({ CampaignAnalysis: () => null }));
 vi.mock("./analysisClient", () => ({
@@ -88,7 +90,10 @@ function render(store: Eu5Store) {
   );
 }
 
-beforeEach(() => subscriptions.splice(0));
+beforeEach(() => {
+  subscriptions.splice(0);
+  feature.enabled = false;
+});
 
 it("keeps history subscriptions stable for hover and camera updates with analysis disabled", () => {
   const store = historyStore();
@@ -131,4 +136,31 @@ it("still observes map modes, selections and new projected dates", () => {
   }
   store.setState({ appState: { ...before.appState, ...updates[2] } });
   expect(render(store)).toBe("<span>later</span>");
+});
+
+it("does not mount campaign history for an ordinary user", () => {
+  // There is deliberately no EU5 store: mounting the provider would subscribe to it and fail.
+  expect(
+    renderToStaticMarkup(
+      <CampaignAnalysisProvider>
+        <Preview />
+      </CampaignAnalysisProvider>,
+    ),
+  ).toBe("<span>live</span>");
+  expect(subscriptions).toHaveLength(0);
+});
+
+it("mounts campaign history behind the developer flag without activating analysis", () => {
+  feature.enabled = true;
+  const store = historyStore();
+  expect(
+    renderToStaticMarkup(
+      <Eu5Context.Provider value={store}>
+        <CampaignAnalysisProvider>
+          <Preview />
+        </CampaignAnalysisProvider>
+      </Eu5Context.Provider>,
+    ),
+  ).toBe("<span>live</span>");
+  expect(subscriptions.length).toBeGreaterThan(0);
 });

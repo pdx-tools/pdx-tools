@@ -10,7 +10,7 @@ import {
   useCallback,
   useLayoutEffect,
 } from "react";
-import { useIsDeveloper } from "@/features/account";
+import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
 import { isAbortError } from "@/lib/abortController";
 import { useCampaign } from "@/features/campaign/CampaignProvider";
 import { ensureObservationLoaded, cancelObservationLoad } from "./observationLoader";
@@ -50,9 +50,10 @@ function useMapHistoryState() {
   const mapProjection = useEu5MapProjection();
   const selectionState = useEu5SelectionState();
   const campaignId = useEu5PlaythroughId();
-  const isDeveloper = useIsDeveloper();
+  const featureEnabled = useIsCampaignAnalysisEnabled();
   const enabled = useHistory(
-    (state) => isDeveloper && !!campaignId && state.analysisEnabledCampaigns.includes(campaignId),
+    (state) =>
+      featureEnabled && !!campaignId && state.analysisEnabledCampaigns.includes(campaignId),
   );
   const saveDate = useEu5SaveDate();
   const setPanelOpen = useSetEu5InsightPanelOpen();
@@ -460,6 +461,12 @@ function useMapHistoryState() {
 }
 
 const MapHistoryContext = createContext<ReturnType<typeof useMapHistoryState> | null>(null);
+/** Keep history subscriptions and worker connections outside the normal viewer. */
+export function CampaignAnalysisProvider({ children }: { children: React.ReactNode }) {
+  const enabled = useIsCampaignAnalysisEnabled();
+  return enabled ? <MapHistoryProvider>{children}</MapHistoryProvider> : children;
+}
+
 export function MapHistoryProvider({ children }: { children: React.ReactNode }) {
   const value = useMapHistoryState();
   return (

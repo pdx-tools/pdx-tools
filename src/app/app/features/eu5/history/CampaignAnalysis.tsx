@@ -1,6 +1,6 @@
 import { sameFileVersion } from "@/features/campaign/types";
 import { useEffect, useRef } from "react";
-import { useIsDeveloper } from "@/features/account";
+import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { useEu5PlaythroughId } from "../store";
@@ -44,7 +44,7 @@ export function pendingCampaignAnalysis(
 /** Analyze newly selected files in the background while campaign navigation stays available. */
 export function CampaignAnalysis() {
   const entries = localSaveRegistry.useEntries();
-  const isDeveloper = useIsDeveloper();
+  const featureEnabled = useIsCampaignAnalysisEnabled();
   const playthroughId = useEu5PlaythroughId();
   const paused = useHistory((state) => isAnalysisPaused(state, playthroughId));
   const progress = useHistory((state) => state.progress);
@@ -53,7 +53,7 @@ export function CampaignAnalysis() {
   );
   const attempted = useRef(new Set<string>());
   useEffect(() => {
-    if (!isDeveloper || !enabled || !playthroughId || progress || paused) return;
+    if (!featureEnabled || !enabled || !playthroughId || progress || paused) return;
     const pending = pendingCampaignAnalysis(entries, playthroughId, attempted.current);
     if (!pending.length) return;
     for (const entry of pending)
@@ -70,6 +70,6 @@ export function CampaignAnalysis() {
             attempted.current.add(`${playthroughId}:${campaignAnalysisSourceKey(current)}`);
         }
       });
-  }, [entries, playthroughId, progress, paused, isDeveloper, enabled]);
+  }, [entries, playthroughId, progress, paused, featureEnabled, enabled]);
   return null;
 }

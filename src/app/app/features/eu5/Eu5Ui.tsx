@@ -1,4 +1,4 @@
-import { MapHistoryProvider, useMapHistory } from "./history/MapHistory";
+import { CampaignAnalysisProvider, useMapHistory } from "./history/MapHistory";
 import "@fontsource/public-sans/latin-400.css";
 import "@fontsource/public-sans/latin-500.css";
 import "@fontsource/public-sans/latin-600.css";
@@ -79,9 +79,9 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       {load.status === "success" && host !== null ? (
         <Eu5StoreProvider store={load.data}>
           <Eu5CampaignProvider>
-            <MapHistoryProvider>
+            <CampaignAnalysisProvider>
               <Eu5UiContent cursorRef={cursorRef} host={host} busy={stepping} />
-            </MapHistoryProvider>
+            </CampaignAnalysisProvider>
           </Eu5CampaignProvider>
         </Eu5StoreProvider>
       ) : null}

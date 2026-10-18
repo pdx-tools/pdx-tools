@@ -1,5 +1,5 @@
 import { useMapHistory } from "../history/MapHistory";
-import { useIsDeveloper } from "@/features/account";
+import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
 import { GameButton } from "@/components/game/Button";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { useEu5PlaythroughId } from "../store";
@@ -32,7 +32,7 @@ export const Eu5ControlPanel = () => {
 };
 
 function CampaignAnalysisControls() {
-  const isDeveloper = useIsDeveloper();
+  const featureEnabled = useIsCampaignAnalysisEnabled();
   const playthroughId = useEu5PlaythroughId();
   const localSaves = localSaveRegistry.useEntries();
   const progress = useHistory((state) => state.progress);
@@ -42,7 +42,7 @@ function CampaignAnalysisControls() {
   const enabled = useHistory(
     (state) => !!playthroughId && state.analysisEnabledCampaigns.includes(playthroughId),
   );
-  if (!isDeveloper) return null;
+  if (!featureEnabled) return null;
   const entries = localSaves.filter(
     (entry) =>
       entry.game === "eu5" && (!entry.identity || entry.identity.playthroughId === playthroughId),
