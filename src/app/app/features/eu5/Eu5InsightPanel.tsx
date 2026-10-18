@@ -1,6 +1,7 @@
 import { useAnalysisHistory } from "./history/useAnalysisHistory";
 import { useMapHistory } from "./history/context";
 import { useHistory } from "./history/store";
+import { useIsCampaignAnalysisEnabled } from "./history/useIsCampaignAnalysisEnabled";
 import { ContextGraphs } from "./history/ContextGraphs";
 import { useCurrentHistorySnapshot } from "./history/currentSnapshot";
 import { SaveHistory } from "./history/SaveHistory";
@@ -46,7 +47,8 @@ type Eu5InsightPanelProps = {
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
   const projection = useMapHistory();
   const preview = projection?.preview;
-  const historyOpen = useHistory((state) => state.panelOpen);
+  const featureEnabled = useIsCampaignAnalysisEnabled();
+  const historyOpen = useHistory((state) => featureEnabled && state.panelOpen);
   const setHistoryOpen = useHistory((state) => state.showPanel);
   const currentMapMode = useEu5MapMode();
   const setInsightPanelWidth = useSetEu5InsightPanelWidth();
@@ -92,26 +94,28 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         <ResizablePanel.Content>
           {open && (
             <>
-              <div className="flex gap-2 border-b border-game-line p-2">
-                <GameButton
-                  variant={historyOpen ? "ghost" : "default"}
-                  onClick={() => {
-                    setHistoryOpen(false);
-                  }}
-                >
-                  Current save
-                </GameButton>
-                <GameButton
-                  variant={historyOpen ? "default" : "ghost"}
-                  onClick={() => setHistoryOpen(true)}
-                >
-                  Over time
-                </GameButton>
-              </div>
+              {featureEnabled && (
+                <div className="flex gap-2 border-b border-game-line p-2">
+                  <GameButton
+                    variant={historyOpen ? "ghost" : "default"}
+                    onClick={() => {
+                      setHistoryOpen(false);
+                    }}
+                  >
+                    Current save
+                  </GameButton>
+                  <GameButton
+                    variant={historyOpen ? "default" : "ghost"}
+                    onClick={() => setHistoryOpen(true)}
+                  >
+                    Over time
+                  </GameButton>
+                </div>
+              )}
               {!historyOpen && (
                 <>
                   <PanelContentInner />
-                  <InlineHistory />
+                  {featureEnabled && <InlineHistory />}
                 </>
               )}
             </>

@@ -122,7 +122,7 @@ export function SaveHistory({
       for (const [center, name] of Object.entries(row.marketLabels)) result[center] = human(name);
     return result;
   }, [metadata]);
-  const focusCenters = useCountryMarketCenters(playthroughId ?? "", focusTag);
+  const focusCenters = useCountryMarketCenters(playthroughId ?? "", focusTag, visible);
   const { marketIds, activeMarkets } = useMemo(() => {
     const marketIds = Object.keys(labels)
       .filter((id) =>
@@ -156,12 +156,15 @@ export function SaveHistory({
     [countries, countryNames],
   );
   const activeCountry = focusTag ?? (countries.includes(country) ? country : "world");
-  const { dates, loading, error } = useAnalysisHistory({
-    campaignId: playthroughId ?? "",
-    country: activeCountry,
-    good: isMarket ? activeGood : undefined,
-    centers: activeMarkets.map(Number),
-  });
+  const { dates, loading, error } = useAnalysisHistory(
+    {
+      campaignId: playthroughId ?? "",
+      country: activeCountry,
+      good: isMarket ? activeGood : undefined,
+      centers: activeMarkets.map(Number),
+    },
+    visible,
+  );
   const entities = useMemo(
     () => (isMarket ? activeMarkets : [activeCountry]),
     [isMarket, activeMarkets, activeCountry],
@@ -295,7 +298,9 @@ export function SaveHistory({
             </h1>
             <p>
               {campaign ? `${campaign.saves.length} campaign saves available for navigation. ` : ""}
-              Saves are analyzed automatically in the background.
+              {mapHistory?.enabled
+                ? "New saves are analyzed automatically unless analysis is paused."
+                : "Choose Analyze campaign in the left sidebar to start analysis."}
             </p>
           </div>
         </header>
@@ -307,7 +312,7 @@ export function SaveHistory({
           <section className={styles.empty}>
             <h2>Start with two or more saves</h2>
             <p>
-              Add saves using the left sidebar. Analysis starts automatically. Navigation remains
+              Add saves using the left sidebar, then choose Analyze campaign. Navigation remains
               available while observations are extracted in background workers.
             </p>
             <p>

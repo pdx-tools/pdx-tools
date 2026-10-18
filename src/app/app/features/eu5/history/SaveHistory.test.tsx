@@ -5,9 +5,10 @@ import type { Snapshot } from "./types";
 const mocks = vi.hoisted(() => ({
   snapshots: [] as Snapshot[],
   playthroughId: "campaign" as string | null,
+  activated: true,
 }));
 vi.mock("./MapHistory", () => ({
-  useMapHistory: () => ({ clearCampaign: vi.fn(), inspecting: false }),
+  useMapHistory: () => ({ clearCampaign: vi.fn(), inspecting: false, enabled: mocks.activated }),
 }));
 vi.mock("./store", () => ({
   isAnalysisPaused: () => false,
@@ -49,6 +50,7 @@ vi.mock("./ContextGraphs", () => ({
 import { SaveHistory } from "./SaveHistory";
 
 beforeEach(() => {
+  mocks.activated = true;
   mocks.playthroughId = "campaign";
   mocks.snapshots = [
     { campaignId: "campaign", version: "1.0.0", date: "1337-01-01" },
@@ -80,4 +82,13 @@ it("does not show cached observations when no campaign is open", () => {
   const html = renderToString(<SaveHistory mapMode="population" />);
   expect(html).toContain("Start with two or more saves");
   expect(html).not.toContain("data-dates");
+});
+
+it("explains explicit activation instead of promising automatic analysis before activation", () => {
+  mocks.activated = false;
+  mocks.snapshots = [];
+  const html = renderToString(<SaveHistory mapMode="population" />);
+  expect(html).toContain("Choose Analyze campaign in the left sidebar to start analysis.");
+  expect(html).not.toContain("Analysis starts automatically");
+  expect(html).not.toContain("Saves are analyzed automatically in the background");
 });

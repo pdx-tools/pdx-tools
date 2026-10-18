@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import { campaignAnalysis } from "./analysisClient";
 import { useHistory } from "./store";
+import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
 import type { HistoryQuery } from "./analysisTypes";
 import type { Snapshot } from "./types";
+
+function useAnalysisQueryEnabled(campaignId: string, requested: boolean) {
+  const featureEnabled = useIsCampaignAnalysisEnabled();
+  return useHistory(
+    (state) => requested && featureEnabled && state.analysisEnabledCampaigns.includes(campaignId),
+  );
+}
+
 /** Request only the country and market series currently shown by the history panel. */
-export function useAnalysisHistory(query: HistoryQuery, enabled = true) {
+export function useAnalysisHistory(query: HistoryQuery, requested = true) {
+  const enabled = useAnalysisQueryEnabled(query.campaignId, requested);
   const revision = useHistory((state) => state.snapshots);
   const centers = JSON.stringify(query.centers ?? []);
   const key = JSON.stringify([query.campaignId, query.country, query.good, centers]);
@@ -43,7 +53,12 @@ export function useAnalysisHistory(query: HistoryQuery, enabled = true) {
     : { dates: [], loading: enabled, error: null };
 }
 
-export function useCountryMarketCenters(campaignId: string, country?: string): number[] | null {
+export function useCountryMarketCenters(
+  campaignId: string,
+  country?: string,
+  requested = true,
+): number[] | null {
+  const enabled = useAnalysisQueryEnabled(campaignId, requested);
   const revision = useHistory((state) => state.snapshots);
   const [result, setResult] = useState<{
     campaignId: string;
@@ -51,7 +66,7 @@ export function useCountryMarketCenters(campaignId: string, country?: string): n
     centers: number[];
   } | null>(null);
   useEffect(() => {
-    if (!country) return;
+    if (!enabled || !country) return;
     let cancelled = false;
     void campaignAnalysis()
       .marketCenters(campaignId, country)
@@ -66,9 +81,9 @@ export function useCountryMarketCenters(campaignId: string, country?: string): n
     return () => {
       cancelled = true;
     };
-  }, [campaignId, country, revision]);
+  }, [campaignId, country, revision, enabled]);
   return country
-    ? result?.campaignId === campaignId && result.country === country
+    ? enabled && result?.campaignId === campaignId && result.country === country
       ? result.centers
       : []
     : null;

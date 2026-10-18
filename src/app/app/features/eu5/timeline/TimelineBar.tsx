@@ -1,4 +1,5 @@
 import { useMapHistory } from "../history/context";
+import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { useCampaign } from "@/features/campaign/CampaignProvider";
@@ -44,6 +45,7 @@ function usePresence(open: boolean) {
  * to seek and play through saved observations.
  */
 export function TimelineBar() {
+  const featureEnabled = useIsCampaignAnalysisEnabled();
   const ownership = useTimelineController();
   const control = useMapHistory();
   const controller = control?.controller ?? ownership;
@@ -123,7 +125,7 @@ export function TimelineBar() {
         ) : (
           <TimelapseExport controller={controller} />
         )}
-        {saveNavigation && (
+        {featureEnabled && saveNavigation && (
           <GameButton
             variant="ghost"
             onClick={() => {
