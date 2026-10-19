@@ -68,8 +68,8 @@ it("keeps completed file versions analyzed across UI remounts", async () => {
   const { useHistory } = await import("./store");
   const a = entry("finished");
   useHistory.setState({
-    sources: { finished: { hash: "done", version: { size: 4, lastModified: 1 } } },
-    snapshots: [{ hash: "done", campaignId: "campaign" } as never],
+    sources: { finished: { snapshotId: "done", version: { size: 4, lastModified: 1 } } },
+    snapshots: [{ id: "done", campaignId: "campaign" } as never],
   });
   expect(pendingCampaignAnalysis([a], "campaign", new Set())).toEqual([]);
   expect(

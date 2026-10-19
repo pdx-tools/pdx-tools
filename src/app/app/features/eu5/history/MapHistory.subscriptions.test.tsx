@@ -38,7 +38,7 @@ vi.mock("./previewSession", () => ({
   bindPreviewNavigation: vi.fn(),
   cancelPreview: vi.fn(),
   connectFrames: vi.fn(),
-  loadedSnapshotHash: () => undefined,
+  loadedSnapshotId: () => undefined,
   openPreview: vi.fn(),
   previewSnapshot: vi.fn(),
   repaintPreview: vi.fn(),

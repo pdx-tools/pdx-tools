@@ -166,7 +166,7 @@ export interface AppTriggers {
    * Show a snapshot over the loaded save, which does not change. The reply
    * tells if the map accepted the frame.
    */
-  presentOverlay(hash: string, mode: MapMode, token: number): Promise<OverlayReply>;
+  presentOverlay(snapshotId: string, mode: MapMode, token: number): Promise<OverlayReply>;
   /** Stop the snapshot paint in progress, if there is one. */
   stopOverlay(): Promise<void>;
   /** Show the loaded save again. Frames with an older token have no effect. */
@@ -307,7 +307,8 @@ export class Eu5UIEngine implements AppEngine {
   public readonly trigger: AppTriggers = {
     connectMapFrames: (id, port) => this.gameInstance.connectMapFrames(id, port),
     getMapLayoutKey: () => this.gameInstance.getMapLayoutKey(),
-    presentOverlay: (hash, mode, token) => this.gameInstance.presentOverlay(hash, mode, token),
+    presentOverlay: (snapshotId, mode, token) =>
+      this.gameInstance.presentOverlay(snapshotId, mode, token),
     stopOverlay: () => this.gameInstance.stopOverlay(),
     clearOverlay: (token) => this.gameInstance.clearOverlay(token),
     setInputGate: (onClick) => this.gameInstance.setInputGate(onClick),

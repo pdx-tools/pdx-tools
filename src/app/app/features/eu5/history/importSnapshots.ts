@@ -1,15 +1,16 @@
 import { createWorkerQueue } from "@/lib/workerQueue";
 import type { WorkerQueue } from "@/lib/workerQueue";
 import { appendAnalysis, campaignAnalysis } from "./analysisClient";
-import type { SnapshotMetadata } from "./types";
+import { MEMORY_LIMIT_ERROR } from "@/features/campaign/analysis/residentStore";
+import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 import type { ImportPhaseState } from "./importTiming";
 import type { parseImport } from "./snapshot-worker";
 export type ImportOptions = {
   signal: AbortSignal;
   concurrency?: number;
   onSnapshots: (
-    snapshots: SnapshotMetadata[],
-    sources: { snapshot: SnapshotMetadata; file: File }[],
+    snapshots: Eu5SnapshotDescriptor[],
+    sources: { snapshot: Eu5SnapshotDescriptor; file: File }[],
   ) => void;
   onProgress: (
     completed: number,
@@ -30,7 +31,9 @@ export async function importTimeline(files: File[], options: ImportOptions) {
   let stopping = false,
     completed = 0,
     next = 0,
-    sinkFailure: unknown;
+    sinkFailure: unknown,
+    memoryFull: string | null = null,
+    refused = 0;
   const abort = () => {
     stopping = true;
     for (const queue of queues) queue.terminate(abortError());
@@ -59,7 +62,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
       }
       jobs.push(file);
     }
-    const residentMiB = (await campaignAnalysis().memoryBytes()) / 1024 ** 2;
+    const residentMiB = (await campaignAnalysis().memory()).bufferBytes / 1024 ** 2;
     const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
     const budgetMiB = memory * 1024 * 0.65 - 512;
     const largest = jobs.reduce((size, file) => Math.max(size, 768 + file.size / 1024 ** 2), 768);
@@ -83,7 +86,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
           { idleMs: 0, timeoutMs: 300_000 },
         );
         queues.push(queue);
-        while (next < jobs.length && !stopping && lane < capacity) {
+        while (next < jobs.length && !stopping && !memoryFull && lane < capacity) {
           signal.throwIfAborted();
           const file = jobs[next++];
           active.add(file);
@@ -95,7 +98,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
                 taskSignal.throwIfAborted();
                 signal.throwIfAborted();
                 // Waiting for append bounds unwritten analytical output to the active parser count.
-                const descriptor = await appendAnalysis(result);
+                const { descriptor } = await appendAnalysis(result);
                 // Once append succeeds the observation is committed, even if cancellation
                 // arrived while the worker was accepting it. Publish that committed result.
                 try {
@@ -106,7 +109,9 @@ export async function importTimeline(files: File[], options: ImportOptions) {
                   throw error;
                 }
                 if (!signal.aborted) {
-                  capacity = capacityFor((await campaignAnalysis().memoryBytes()) / 1024 ** 2);
+                  capacity = capacityFor(
+                    (await campaignAnalysis().memory()).bufferBytes / 1024 ** 2,
+                  );
                   phase = { ...phase, concurrency: capacity };
                 }
               },
@@ -115,7 +120,11 @@ export async function importTimeline(files: File[], options: ImportOptions) {
           } catch (error) {
             if (sinkFailure) throw sinkFailure;
             signal.throwIfAborted();
-            errors.push({ fileName: file.name, error: String(error) });
+            if (error instanceof Error && error.name === MEMORY_LIMIT_ERROR) {
+              // More saves cannot fit, so do not parse them.
+              memoryFull ??= error.message;
+              refused++;
+            } else errors.push({ fileName: file.name, error: String(error) });
           } finally {
             active.delete(file);
             options.onActiveFiles?.([...active]);
@@ -125,7 +134,12 @@ export async function importTimeline(files: File[], options: ImportOptions) {
       }),
     );
     if (sinkFailure) throw sinkFailure;
-    return { errors, completed: files.length };
+    refused += jobs.length - next;
+    return {
+      errors,
+      completed: files.length,
+      memoryFull: memoryFull && { message: memoryFull, refused },
+    };
   } finally {
     abort();
     signal.removeEventListener("abort", abort);

@@ -1,6 +1,7 @@
 import { afterEach, expect, it } from "vitest";
-import { MapFrameReader, serveMapFrames } from "./framePort";
-import type { MapFrame } from "./analysisTypes";
+import { FrameReader, serveFrames } from "./framePort";
+
+type Frame = { snapshotId: string; ids: Uint32Array<ArrayBuffer> };
 const cleanup: (() => void)[] = [];
 afterEach(() => {
   for (const close of cleanup.splice(0)) close();
@@ -8,33 +9,30 @@ afterEach(() => {
 it("transfers a frame copy directly without detaching resident columns", async () => {
   const original = new Uint32Array([42, 73]);
   const channel = new MessageChannel();
-  const serve = serveMapFrames(
-    channel.port1,
-    () => ({ hash: "save", locationIds: original }) as MapFrame,
-  );
-  const reader = new MapFrameReader(channel.port2);
+  const serve = serveFrames<Frame>(channel.port1, (snapshotId) => ({ snapshotId, ids: original }));
+  const reader = new FrameReader<Frame>(channel.port2);
   cleanup.push(serve, () => reader.close());
   const first = await reader.read("save");
-  expect(first.locationIds).toEqual(original);
-  first.locationIds[0] = 99;
+  expect(first.ids).toEqual(original);
+  first.ids[0] = 99;
   expect(original[0]).toBe(42);
   expect(original.byteLength).toBe(8);
-  expect((await reader.read("save")).locationIds[0]).toBe(42);
+  expect((await reader.read("save")).ids[0]).toBe(42);
 });
 it("reports a missing frame and keeps the connection usable", async () => {
   const channel = new MessageChannel();
-  const serve = serveMapFrames(channel.port1, (hash) => {
-    if (hash === "missing") throw Error("Missing observation");
-    return { hash } as MapFrame;
+  const serve = serveFrames(channel.port1, (snapshotId) => {
+    if (snapshotId === "missing") throw Error("Missing observation");
+    return { snapshotId };
   });
-  const reader = new MapFrameReader(channel.port2);
+  const reader = new FrameReader<{ snapshotId: string }>(channel.port2);
   cleanup.push(serve, () => reader.close());
   await expect(reader.read("missing")).rejects.toThrow("Missing observation");
-  await expect(reader.read("present")).resolves.toMatchObject({ hash: "present" });
+  await expect(reader.read("present")).resolves.toMatchObject({ snapshotId: "present" });
 });
 it("rejects in-flight requests when the storage connection closes", async () => {
   const channel = new MessageChannel();
-  const reader = new MapFrameReader(channel.port2);
+  const reader = new FrameReader(channel.port2);
   cleanup.push(
     () => channel.port1.close(),
     () => reader.close(),

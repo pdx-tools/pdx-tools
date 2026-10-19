@@ -1,23 +1,16 @@
 import { expose } from "comlink";
-import { CampaignAnalysisStore } from "./analysisStore";
-import { serveMapFrames } from "./framePort";
+import { frameServer } from "@/features/campaign/analysis/framePort";
+import { residentMemoryLimit } from "@/features/campaign/analysis/residentStore";
+import { Eu5CampaignAnalysis } from "./analysisStore";
 import type { SaveAnalysis } from "./analysisTypes";
-const store = new CampaignAnalysisStore();
-const readers = new Map<string, () => void>();
+
+const analysis = new Eu5CampaignAnalysis(
+  residentMemoryLimit((navigator as Navigator & { deviceMemory?: number }).deviceMemory),
+);
 export const analysisApi = {
-  append: (save: SaveAnalysis) => store.append(save),
-  connectFrames: (id: string, port: MessagePort) => {
-    readers.get(id)?.();
-    readers.set(
-      id,
-      serveMapFrames(port, (hash) => store.mapFrame(hash)),
-    );
-  },
-  disconnectFrames: (id: string) => {
-    readers.get(id)?.();
-    readers.delete(id);
-  },
-  clearCampaign: (campaignId?: string) => store.clearCampaign(campaignId),
-  memoryBytes: () => store.memoryBytes(),
+  append: (save: SaveAnalysis) => analysis.append(save),
+  ...frameServer((id) => analysis.mapFrame(id)),
+  clearCampaign: (campaignId?: string) => analysis.store.clear(campaignId),
+  memory: () => analysis.store.memory(),
 };
 expose(analysisApi);

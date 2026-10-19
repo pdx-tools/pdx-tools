@@ -14,7 +14,7 @@ import {
 } from "../store";
 import { CampaignAnalysis } from "./CampaignAnalysis";
 import { campaignAnalysis } from "./analysisClient";
-import type { MapObservation as MapFrame } from "./analysisTypes";
+import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 import { MapHistoryContext } from "./context";
 import {
   mapFrameDate,
@@ -26,7 +26,7 @@ import {
   bindPreviewNavigation,
   cancelPreview,
   connectFrames,
-  loadedSnapshotHash,
+  loadedSnapshotId,
   openPreview,
   previewSnapshot,
   repaintPreview,
@@ -37,7 +37,7 @@ import {
 import { useHistory } from "./store";
 import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
 
-const EMPTY_FRAMES: MapFrame[] = [];
+const EMPTY_FRAMES: Eu5SnapshotDescriptor[] = [];
 
 /** The playhead waits this long before the app opens the save at the playhead. */
 const OPEN_DELAY_MS = 250;
@@ -69,14 +69,14 @@ function useMapHistoryState() {
   // Read again when the sources or the registry change.
   useHistory((history) => history.sources);
   localSaveRegistry.useEntries();
-  const loadedHash = loadedSnapshotHash(store);
+  const loadedId = loadedSnapshotId(store);
   const previewing = preview.kind !== "live" && preview.campaignId === campaignId;
-  const selectedHash = previewing ? preview.hash : loadedHash;
-  const index = selectedHash
-    ? frames.findIndex((frame) => frame.hash === selectedHash)
+  const selectedId = previewing ? preview.snapshotId : loadedId;
+  const index = selectedId
+    ? frames.findIndex((frame) => frame.id === selectedId)
     : frames.findIndex((frame) => daysBetween(mapFrameDate(frame), saveDate) === 0);
   const selectedFrame = frames[index];
-  const readyHashes = useMemo(() => new Set(frames.map((frame) => frame.hash)), [frames]);
+  const readyIds = useMemo(() => new Set(frames.map((frame) => frame.id)), [frames]);
   const [scrubbing, setScrubbing] = useState(false);
   // Playback belongs to the map mode it started in.
   const playingMode = usePreviewPlayback((playback) => playback.mode);
@@ -126,8 +126,8 @@ function useMapHistoryState() {
     if (currentMapMode === "political" || !frames.length || !campaignId) return;
     const frame = frames[Math.max(0, Math.min(next, frames.length - 1))];
     engine.trigger.pauseTimeline();
-    if (!previewing && frame.hash === loadedHash) return;
-    previewSnapshot(engine, campaignId, frame.hash, currentMapMode);
+    if (!previewing && frame.id === loadedId) return;
+    previewSnapshot(engine, campaignId, frame.id, currentMapMode);
   };
   const advance = useEffectEvent(() => {
     if (index >= frames.length - 1) {
@@ -148,7 +148,7 @@ function useMapHistoryState() {
     if (!waiting || playing || scrubbing) return;
     const timer = setTimeout(open, OPEN_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [waiting, playing, scrubbing, selectedHash]);
+  }, [waiting, playing, scrubbing, selectedId]);
 
   const retry = () => {
     setError(null);
@@ -163,11 +163,11 @@ function useMapHistoryState() {
       await campaignAnalysis().clearCampaign(campaignId);
       useHistory.setState((history) => {
         const snapshots = history.snapshots.filter((row) => row.campaignId !== campaignId);
-        const hashes = new Set(snapshots.map((row) => row.hash));
+        const ids = new Set(snapshots.map((row) => row.id));
         return {
           snapshots,
           sources: Object.fromEntries(
-            Object.entries(history.sources).filter(([, source]) => hashes.has(source.hash)),
+            Object.entries(history.sources).filter(([, source]) => ids.has(source.snapshotId)),
           ),
           issues: [],
           analysisPausedCampaigns: [...new Set([...history.analysisPausedCampaigns, campaignId])],
@@ -247,7 +247,7 @@ function useMapHistoryState() {
     enabled,
     progress,
     frames: frames.length,
-    readyHashes,
+    readyIds,
     error: (previewing ? preview.error : null) ?? error,
     opening,
     preview: previewView,

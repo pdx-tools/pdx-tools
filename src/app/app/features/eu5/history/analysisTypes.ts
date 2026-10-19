@@ -1,3 +1,9 @@
+import type { SnapshotDescriptor } from "@/features/campaign/analysis/descriptor";
+import type { WorldSummary } from "@/wasm/wasm_eu5";
+
+/** Equal to `eu5app::map_projection::EXTRACTOR_VERSION`. The store refuses other versions. */
+export const EU5_EXTRACTOR_VERSION = 1;
+
 export type MapProjection = {
   layoutKey: string;
   locationIds: Uint32Array<ArrayBuffer>;
@@ -11,17 +17,17 @@ export type MapProjection = {
   owners: Uint32Array<ArrayBuffer>;
   countries: Uint32Array<ArrayBuffer>;
 };
-import type { WorldSummary } from "@/wasm/wasm_eu5";
-export type MapObservation = {
-  hash: string;
-  campaignId: string;
-  date: string;
-  dateSort: number;
-  version: string;
+
+/** An EU5 snapshot. The layout key identifies the map artifact. */
+export type Eu5SnapshotDescriptor = SnapshotDescriptor & {
+  game: "eu5";
   layoutKey: string;
-  fileName: string;
   world: WorldSummary;
 };
-export type MapFrame = MapProjection & MapObservation;
-export type SaveAnalysis = { observation: MapObservation; projection: MapProjection };
-export type AnalysisDescriptor = MapObservation;
+/** What a game worker reads to paint a snapshot. */
+export type MapFrame = { descriptor: Eu5SnapshotDescriptor; projection: MapProjection };
+
+export type Eu5Payload = { projection: MapProjection };
+
+/** The parser output for one save. */
+export type SaveAnalysis = { descriptor: Eu5SnapshotDescriptor; payload: Eu5Payload };
