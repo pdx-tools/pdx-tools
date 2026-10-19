@@ -1,3 +1,4 @@
+import type { OverviewData } from "@/wasm/wasm_eu5";
 import { wrap, transfer } from "comlink";
 import type { Remote } from "comlink";
 import type { analysisApi } from "./analysis-worker";
@@ -104,4 +105,11 @@ export async function connectAnalysisFrames(
     channel.port2.close();
     throw error;
   }
+}
+
+export async function queryAnalysisOverview<K extends keyof OverviewData>(hash: string, key: K) {
+  return (await campaignAnalysis().queryOverview(hash, key)) as {
+    hash: string;
+    data: OverviewData[K];
+  };
 }

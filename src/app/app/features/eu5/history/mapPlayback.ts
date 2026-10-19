@@ -17,7 +17,8 @@ export function publishedMapFrames(
 ): MapFrame[] {
   return compatibleMapFrames(
     snapshots.flatMap((snapshot) => {
-      if (!("layoutKey" in snapshot) || typeof snapshot.layoutKey !== "string") return [];
+      if (!("layoutKey" in snapshot) || typeof snapshot.layoutKey !== "string" || !snapshot.world)
+        return [];
       const { hash, campaignId, date, dateSort, version, layoutKey, fileName, world } = snapshot;
       return [{ hash, campaignId, date, dateSort, version, layoutKey, fileName, world }];
     }),

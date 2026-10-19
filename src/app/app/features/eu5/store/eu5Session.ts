@@ -1,3 +1,5 @@
+import { useHistory } from "../history/store";
+import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { CanvasCourierHost } from "@/lib/canvas_courier";
 import type { CanvasCourierSurface, CanvasCourierTransport } from "@/lib/canvas_courier";
 import { captureException } from "@/lib/captureException";
@@ -236,8 +238,9 @@ class Eu5Session {
 
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
     const reload = this.pendingStep?.failure != null;
+    let profiles = reload ? useHistory.getState().viewedProfiles : [];
     if (carry !== null) {
-      await this.applyCarry(opened.engine, carry);
+      profiles = await this.applyCarry(opened.engine, carry);
       if (!this.isCurrent(generation)) {
         opened.engine.destroy();
         return;
@@ -250,6 +253,7 @@ class Eu5Session {
     const { save: saveInput } = await source;
     this.show(createEu5Store({ opened, input: save, saveInput, view }), {
       reload,
+      profiles,
     });
   }
 
@@ -316,9 +320,10 @@ class Eu5Session {
     }
 
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
+    let profiles = reload ? useHistory.getState().viewedProfiles : [];
     if (carry !== null) {
       // The retained canvas already has the current camera position.
-      await this.applyCarry(opened.engine, { ...carry, viewport: null });
+      profiles = await this.applyCarry(opened.engine, { ...carry, viewport: null });
     }
 
     await game.show();
@@ -333,20 +338,29 @@ class Eu5Session {
       saveInput: source.save,
       view: eu5ViewState(previous),
     });
-    this.show(store, { reload });
+    this.show(store, { reload, profiles });
   }
 
-  private async applyCarry(...args: Parameters<typeof applyEu5Carry>): Promise<void> {
+  private async applyCarry(
+    ...args: Parameters<typeof applyEu5Carry>
+  ): Promise<ActiveProfileIdentity[]> {
     try {
-      await applyEu5Carry(...args);
+      const profiles = await applyEu5Carry(...args);
+      return Array.isArray(profiles) ? profiles : [];
     } catch (error) {
       captureException(error, { tags: { msg: "campaign-carry" } });
-      return;
+      return [];
     }
   }
 
   /** Exclude recovery loads from parse analytics. */
-  private show(store: Eu5Store, { reload = false }: { reload?: boolean } = {}): void {
+  private show(
+    store: Eu5Store,
+    {
+      reload = false,
+      profiles = [],
+    }: { reload?: boolean; profiles?: ActiveProfileIdentity[] } = {},
+  ): void {
     if (!reload) {
       emitEvent({
         kind: "Save parsed",
@@ -355,6 +369,7 @@ class Eu5Session {
       });
     }
     this.update({ status: "success", data: store, stepping: false });
+    useHistory.getState().remapViewedProfiles(profiles);
     const step = this.pendingStep;
     if (step !== null && sameEu5Save(step.save, store.getState().input)) {
       this.pendingStep = null;

@@ -1,8 +1,8 @@
 import type React from "react";
 import { cx } from "class-variance-authority";
 import type { CountryRef, MarketRef } from "@/wasm/wasm_eu5";
-import { usePanelNav, entityProfileEntry } from "./PanelNavContext";
-import { usePanToEntity } from "../../usePanToEntity";
+import { useAnalysisEntityNavigation } from "./useAnalysisEntityNavigation";
+import { useMapHistory } from "../../history/context";
 import { useEu5Engine } from "../../store";
 import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
@@ -93,8 +93,8 @@ function LinkBody({
   children,
   ...rest
 }: LinkBodyProps) {
-  const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
+  const openEntity = useAnalysisEntityNavigation();
+  const preview = useMapHistory()?.preview;
   const s = sizeClasses[size];
   const hoverProps = useEu5MapHoverTarget(hoverTarget);
   const nameClass = cx(
@@ -131,11 +131,11 @@ function LinkBody({
       onClick={(event) => {
         event.stopPropagation();
         if (event.altKey) {
-          onAltActivate();
+          if (preview) void openEntity(kind, id, name, anchorLocationIdx, backLabel, true);
+          else onAltActivate();
           return;
         }
-        nav.pushMany([entityProfileEntry(kind, id, name)], backLabel);
-        panToEntity(anchorLocationIdx);
+        void openEntity(kind, id, name, anchorLocationIdx, backLabel);
       }}
       {...hoverProps}
       className={cx(

@@ -39,7 +39,9 @@ it("publishes the restored map mode, date, selection and gradient together", asy
     selection: null,
     insightPanel: { open: true, width: 640 },
   };
-  await engine.trigger.restoreCampaignView(carry);
+  expect(await engine.trigger.restoreCampaignView(carry)).toEqual([
+    { kind: "country", country: { key: 77, name: "France" } },
+  ]);
   expect(restore).toHaveBeenCalledExactlyOnceWith(carry);
   expect(listener).toHaveBeenCalledTimes(1);
   expect(engine.state).toMatchObject({

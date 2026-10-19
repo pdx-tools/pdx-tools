@@ -14,6 +14,7 @@ const frame = (
   layoutKey = "layout",
 ) =>
   ({
+    world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
     dateSort,
     hash,
     campaignId,
@@ -59,7 +60,7 @@ it("publishes completed observations during import without retaining duplicated 
       campaignId: "campaign",
       layoutKey: "layout",
       fileName: undefined,
-      world: undefined,
+      world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
       date: "1360-04-01",
       dateSort: 13600401,
       version: "1.4.0",

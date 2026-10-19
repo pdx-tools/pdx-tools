@@ -1,3 +1,4 @@
+import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
 import { create } from "zustand";
 import type { FileVersion } from "@/features/campaign/types";
 import type { ImportProgressState } from "./importTiming";
@@ -5,6 +6,12 @@ import type { SnapshotMetadata } from "./types";
 
 export type SourceObservation = { hash: string; version: FileVersion };
 type HistoryState = {
+  viewedProfiles: ActiveProfileIdentity[];
+  setViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
+  remapRevision: number;
+  remapViewedProfiles: (profiles: ActiveProfileIdentity[]) => void;
+  panelOpen: boolean;
+  showPanel: (open: boolean) => void;
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
   snapshots: SnapshotMetadata[];
@@ -32,6 +39,13 @@ export function isAnalysisPaused(
 
 /** Historical data only. Campaign navigation owns files and the active save. */
 export const useHistory = create<HistoryState>()((set) => ({
+  viewedProfiles: [],
+  setViewedProfiles: (viewedProfiles) => set({ viewedProfiles }),
+  remapRevision: 0,
+  remapViewedProfiles: (viewedProfiles) =>
+    set((state) => ({ viewedProfiles, remapRevision: state.remapRevision + 1 })),
+  panelOpen: false,
+  showPanel: (panelOpen) => set({ panelOpen }),
   playbackSpeed: 1,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   snapshots: [],

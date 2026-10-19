@@ -2,6 +2,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEu5Engine } from "./store";
 import type { AppEngine } from "./ui-engine";
+import { useMapHistory } from "./history/context";
 
 export type Eu5MapHoverTarget =
   | { kind: "location"; locationIdx: number }
@@ -65,15 +66,17 @@ function removeHoverSource(id: number) {
 
 export function useEu5MapHoverSource() {
   const engine = useEu5Engine();
+  const previewing = !!useMapHistory()?.preview;
   const [sourceId] = useState(() => nextHoverSourceId++);
 
   const clear = useCallback(() => {
     removeHoverSource(sourceId);
-    applyHoverTarget(engine, topHoverTarget());
-  }, [engine, sourceId]);
+    applyHoverTarget(engine, previewing ? null : topHoverTarget());
+  }, [engine, sourceId, previewing]);
 
   const highlightTarget = useCallback(
     (target: Eu5MapHoverTarget | null | undefined) => {
+      if (previewing) return;
       if (target) {
         upsertHoverSource(sourceId, target);
       } else {
@@ -81,7 +84,7 @@ export function useEu5MapHoverSource() {
       }
       applyHoverTarget(engine, topHoverTarget());
     },
-    [engine, sourceId],
+    [engine, sourceId, previewing],
   );
 
   useEffect(() => clear, [clear]);

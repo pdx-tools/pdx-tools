@@ -1,10 +1,10 @@
 import { useEffectEvent } from "react";
 import type * as echarts from "echarts/core";
 import type { EntityKind } from "@/wasm/wasm_eu5";
-import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
+import { useAnalysisEntityNavigation } from "../profiles/useAnalysisEntityNavigation";
 import { useEu5Engine } from "../../store";
-import { usePanToEntity } from "../../usePanToEntity";
 import { useEu5MapHoverSource } from "../../useEu5MapHoverTarget";
+import { useMapHistory } from "../../history/context";
 
 type EntityChartTarget = {
   id: number;
@@ -17,10 +17,10 @@ export function useEu5EntityChartClick(opts: {
   backLabel: string;
   getTarget: (params: echarts.ECElementEvent) => EntityChartTarget | null | undefined;
 }) {
-  const nav = usePanelNav();
+  const openEntity = useAnalysisEntityNavigation();
   const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
   const hoverSource = useEu5MapHoverSource();
+  const preview = useMapHistory()?.preview;
 
   const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
     const target = opts.getTarget(params);
@@ -28,14 +28,24 @@ export function useEu5EntityChartClick(opts: {
     const ev = params.event?.event as MouseEvent | undefined;
 
     if (ev?.altKey) {
+      if (preview) {
+        void openEntity(
+          opts.kind,
+          target.id,
+          target.label,
+          target.anchorLocationIdx,
+          opts.backLabel,
+          true,
+        );
+        return;
+      }
       void (opts.kind === "country"
         ? engine.commands.removeCountry(target.id)
         : engine.commands.removeMarket(target.id));
       return;
     }
 
-    nav.pushMany([entityProfileEntry(opts.kind, target.id, target.label)], opts.backLabel);
-    panToEntity(target.anchorLocationIdx);
+    void openEntity(opts.kind, target.id, target.label, target.anchorLocationIdx, opts.backLabel);
   });
 
   const handleMouseover = useEffectEvent((params: echarts.ECElementEvent) => {

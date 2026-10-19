@@ -562,6 +562,10 @@ const loadSaveInner = async (
       await syncAll(restored.change);
       return restored;
     },
+    getSaveVersion: () => {
+      const version = app.meta().version;
+      return `${version.major}.${version.minor}.${version.patch}`;
+    },
     getCountryProfile: (countryIdx: number): CountryProfile | null => {
       return timeSync("Get country profile", () => app.get_country_profile(countryIdx) ?? null);
     },

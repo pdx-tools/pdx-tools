@@ -174,7 +174,7 @@ export interface AppTriggers {
   /** Send map clicks to `onClick`, and ignore hover and box select. Null ends this. */
   setInputGate(onClick: ((event: LocationClickChangeEvent) => void) | null): Promise<void>;
   getCampaignIdentities(profiles: ActiveProfileIdentity[]): Promise<(StableProfile | null)[]>;
-  restoreCampaignView(carry: Eu5Carry): Promise<void>;
+  restoreCampaignView(carry: Eu5Carry): Promise<ActiveProfileIdentity[]>;
   selectMapMode(mode: MapMode): Promise<void>;
   /**
    * Show the map on a date. Calls coalesce: only the latest date renders.
@@ -322,6 +322,7 @@ export class Eu5UIEngine implements AppEngine {
         selectionState: restored.selection,
         selectionRevision: state.selectionRevision + 1,
       }));
+      return restored.profiles;
     },
     selectMapMode: (mode) => this.handleSelectMapMode(mode),
     setTimelineDate: (date) => this.handleSetTimelineDate(date),
