@@ -114,9 +114,9 @@ function campaignSave(
 }
 it("shares the location IDs of equal layouts", () => {
   const analysis = new Eu5CampaignAnalysis();
-  analysis.append(save("later", 13600401));
+  analysis.append(0, save("later", 13600401));
   const before = analysis.mapFrame(id("later"));
-  analysis.append(save());
+  analysis.append(0, save());
   expect(analysis.store.timeline("campaign").map((row) => row.contentHash)).toEqual([
     "first",
     "later",
@@ -126,16 +126,16 @@ it("shares the location IDs of equal layouts", () => {
 });
 it("rejects incomplete columns and incompatible layouts", () => {
   const analysis = new Eu5CampaignAnalysis();
-  analysis.append(save());
+  analysis.append(0, save());
   const broken = save("broken", 13600401);
   broken.payload.projection.metrics = new Float32Array(1);
-  expect(() => analysis.append(broken)).toThrow("Incomplete");
+  expect(() => analysis.append(0, broken)).toThrow("Incomplete");
   const mismatch = save("mismatch", 13600401);
   mismatch.descriptor.layoutKey = "other";
-  expect(() => analysis.append(mismatch)).toThrow("Incomplete");
+  expect(() => analysis.append(0, mismatch)).toThrow("Incomplete");
   const other = save("other", 13600401);
   other.payload.projection.locationIds[0] = 77;
-  expect(() => analysis.append(other)).toThrow("Incompatible");
+  expect(() => analysis.append(0, other)).toThrow("Incompatible");
   expect(analysis.store.timeline("campaign")).toHaveLength(1);
 });
 
@@ -144,10 +144,10 @@ it("rejects tables with a missing row or from a different version", () => {
   const broken = save();
   broken.payload.tables = tables([{ id: 1, tag: "AAA", population: 1 }]);
   broken.payload.tables.countryValues = new Float64Array(1);
-  expect(() => analysis.append(broken)).toThrow("Incomplete snapshot tables");
+  expect(() => analysis.append(0, broken)).toThrow("Incomplete snapshot tables");
   const other = save();
   other.payload.tables.countryMetrics = ["population"];
-  expect(() => analysis.append(other)).toThrow("different version");
+  expect(() => analysis.append(0, other)).toThrow("different version");
   expect(analysis.store.timeline("campaign")).toHaveLength(0);
 });
 
@@ -156,6 +156,7 @@ describe("queries", () => {
   const reused = 0x0100_0007;
   const store = new Eu5CampaignAnalysis();
   store.append(
+    0,
     campaignSave(
       "a",
       14000101,
@@ -168,6 +169,7 @@ describe("queries", () => {
     ),
   );
   store.append(
+    0,
     campaignSave(
       "b",
       14100101,
@@ -182,6 +184,7 @@ describe("queries", () => {
     ),
   );
   store.append(
+    0,
     campaignSave(
       "c",
       14200101,
@@ -195,32 +198,33 @@ describe("queries", () => {
   );
 
   it("follows a country by its full ID across a tag change", () => {
-    const result = store.countryHistory("campaign", { kind: "country", id: 7 });
-    expect(result.snapshots).toBe(3);
+    const reply = store.countryHistory("campaign", { kind: "country", id: 7 });
+    expect(reply.snapshotIds).toEqual([id("a"), id("b"), id("c")]);
+    const result = reply.value;
     expect(result.rows.map((row) => row.value?.population ?? null)).toEqual([10, 12, null]);
     expect(result.rows.map((row) => row.value?.tag ?? null)).toEqual(["OLD", "NEW", null]);
     expect(result.rows[1].value?.religions.get("catholic")).toBe(12);
     expect(result.rows[0].value?.greatPowerRank).toBeNull();
-    const next = store.countryHistory("campaign", { kind: "country", id: reused });
+    const next = store.countryHistory("campaign", { kind: "country", id: reused }).value;
     expect(next.rows.map((row) => row.value?.population ?? null)).toEqual([null, null, 3]);
   });
 
   it("sums all countries for the world", () => {
-    const result = store.countryHistory("campaign", { kind: "world" });
+    const result = store.countryHistory("campaign", { kind: "world" }).value;
     expect(result.rows.map((row) => row.value?.population)).toEqual([30, 33, 25]);
     expect(result.rows[0].value?.religions.get("catholic")).toBe(10);
   });
 
   it("sums a fixed set of locations, and a missing location is a gap", () => {
-    const result = store.locationPopulation("campaign", [42, 43]);
+    const result = store.locationPopulation("campaign", [42, 43]).value;
     expect(result.rows.map((row) => row.value)).toEqual([150, 180, null]);
-    expect(store.locationPopulation("campaign", [42]).rows.map((row) => row.value)).toEqual([
+    expect(store.locationPopulation("campaign", [42]).value.rows.map((row) => row.value)).toEqual([
       100, 120, 130,
     ]);
   });
 
   it("follows a market by its center, with a gap where the center has no market", () => {
-    const result = store.marketHistory("campaign", "wheat", [42, 43]);
+    const result = store.marketHistory("campaign", "wheat", [42, 43]).value;
     expect(result.rows.map((row) => row.value?.map((m) => m?.price ?? null))).toEqual([
       [2, null],
       [null, 5],
@@ -228,7 +232,7 @@ describe("queries", () => {
     ]);
     expect(result.rows[0].value?.[0]?.stockpile).toBeNull();
     expect(result.rows[0].value?.[0]?.centerName).toBe("paris");
-    expect(store.marketCatalog("campaign")).toEqual({
+    expect(store.marketCatalog("campaign").value).toEqual({
       goods: ["wheat"],
       centers: [
         { center: 42, name: "paris" },
@@ -237,13 +241,27 @@ describe("queries", () => {
     });
   });
 
+  it("refuses an append from a cleared session", () => {
+    const session = new Eu5CampaignAnalysis();
+    session.session.control().clear(1);
+    expect(() => session.append(0, save())).toThrow("cleared");
+    expect(session.store.timeline("campaign")).toEqual([]);
+    expect(session.countryHistory("campaign", { kind: "world" }).generation).toBe(1);
+  });
+
   it("uses the snapshots that the store has when the query runs", () => {
     const growing = new Eu5CampaignAnalysis();
-    growing.append(campaignSave("x", 14000101, [1, 1], [{ id: 1, tag: "A", population: 1 }], []));
+    growing.append(
+      0,
+      campaignSave("x", 14000101, [1, 1], [{ id: 1, tag: "A", population: 1 }], []),
+    );
     const before = growing.countryHistory("campaign", { kind: "world" });
-    growing.append(campaignSave("y", 14100101, [1, 1], [{ id: 1, tag: "A", population: 2 }], []));
-    expect(before.snapshots).toBe(1);
-    expect(before.rows).toHaveLength(1);
-    expect(growing.countryHistory("campaign", { kind: "world" }).snapshots).toBe(2);
+    growing.append(
+      0,
+      campaignSave("y", 14100101, [1, 1], [{ id: 1, tag: "A", population: 2 }], []),
+    );
+    expect(before.snapshotIds).toEqual([id("x")]);
+    expect(before.value.rows).toHaveLength(1);
+    expect(growing.countryHistory("campaign", { kind: "world" }).snapshotIds).toHaveLength(2);
   });
 });

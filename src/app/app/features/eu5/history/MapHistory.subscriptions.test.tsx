@@ -28,7 +28,7 @@ vi.mock("@/features/account", () => ({ useIsDeveloper: () => feature.enabled }))
 vi.mock("@/features/campaign/CampaignProvider", () => ({ useCampaign: () => null }));
 vi.mock("./CampaignAnalysis", () => ({ CampaignAnalysis: () => null }));
 vi.mock("./analysisClient", () => ({
-  campaignAnalysis: vi.fn(),
+  clearAnalysis: vi.fn(),
   connectAnalysisFrames: vi.fn(),
 }));
 vi.mock("./previewSession", () => ({

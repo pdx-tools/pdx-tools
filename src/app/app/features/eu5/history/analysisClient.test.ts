@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
-  api: { memory: vi.fn(), connectFrames: vi.fn(), disconnectFrames: vi.fn() },
+  api: {
+    open: vi.fn(async () => {}),
+    memory: vi.fn(),
+    connectFrames: vi.fn(),
+    disconnectFrames: vi.fn(),
+  },
   cancel: vi.fn(),
   setState: vi.fn(),
   workers: [] as Worker[],

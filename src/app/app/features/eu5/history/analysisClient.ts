@@ -1,11 +1,13 @@
 import { transfer } from "comlink";
 import { createAnalysisWorker } from "@/features/campaign/analysis/workerClient";
+import type { AnalysisSink } from "@/features/campaign/analysis/importScheduler";
 import { collectBuffers } from "@/features/campaign/analysis/transferBuffers";
 import type { analysisApi } from "./analysis-worker";
-import type { SaveAnalysis } from "./analysisTypes";
+import type { Eu5SnapshotDescriptor, SaveAnalysis } from "./analysisTypes";
 import { useHistory } from "./store";
 
 const worker = createAnalysisWorker<typeof analysisApi>({
+  session: "eu5",
   start: () => new Worker(new URL("./analysis-worker.ts", import.meta.url), { type: "module" }),
   onFailure: (error) => {
     useHistory.getState().cancel?.();
@@ -27,8 +29,14 @@ const worker = createAnalysisWorker<typeof analysisApi>({
 });
 
 export const campaignAnalysis = worker.remote;
+export const analysisGeneration = worker.generation;
+export const clearAnalysis = worker.clear;
 export const connectAnalysisFrames = worker.connectFrames;
 
-export function appendAnalysis(save: SaveAnalysis) {
-  return campaignAnalysis().append(transfer(save, collectBuffers(save)));
-}
+/** Where the import scheduler stores EU5 parser output. */
+export const eu5AnalysisSink: AnalysisSink<SaveAnalysis, Eu5SnapshotDescriptor> = {
+  generation: worker.generation,
+  append: (generation, save) =>
+    campaignAnalysis().append(generation, transfer(save, collectBuffers(save))),
+  refreshResident: worker.refreshResident,
+};

@@ -1,10 +1,9 @@
-import { descriptorDate } from "@/features/campaign/analysis/descriptor";
-import type { SourceAssociation } from "@/features/campaign/analysis/descriptor";
-import { fileVersion, sameFileVersion } from "@/features/campaign/types";
+import { importBatch } from "@/features/campaign/analysis/importScheduler";
+import { associateSources, readSources } from "@/features/campaign/analysis/sources";
 import { localSaveRegistry, holdsRef } from "@/features/campaign/localSaves";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
-import { toPlaythroughId } from "@/features/campaign/types";
-import { importTimeline } from "./importSnapshots";
+import { eu5AnalysisSink } from "./analysisClient";
+import { eu5ParserAdapter } from "./parserAdapter";
 import { useHistory } from "./store";
 
 /** Analyze local campaign entries without opening a save or controlling navigation. */
@@ -16,6 +15,10 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
   const controller = new AbortController();
   const startedAt = performance.now();
   const issues: string[] = [];
+  const pause = (state: { analysisPausedCampaigns: string[] }) =>
+    state.analysisPausedCampaigns.includes(playthroughId)
+      ? state.analysisPausedCampaigns
+      : [...state.analysisPausedCampaigns, playthroughId];
   useHistory.setState((state) => ({
     analysisPaused: false,
     analysisPausedCampaigns: state.analysisPausedCampaigns.filter((id) => id !== playthroughId),
@@ -23,41 +26,21 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
     analyzingEntryIds: [],
     issues: [],
     cancel: () => {
-      useHistory.setState((state) => ({
-        analysisPausedCampaigns: state.analysisPausedCampaigns.includes(playthroughId)
-          ? state.analysisPausedCampaigns
-          : [...state.analysisPausedCampaigns, playthroughId],
-      }));
+      useHistory.setState((state) => ({ analysisPausedCampaigns: pause(state) }));
       controller.abort();
     },
   }));
   const { signal } = controller;
-  let rejectAborted!: (error: DOMException) => void;
-  const aborted = new Promise<never>((_, reject) => {
-    rejectAborted = reject;
-  });
-  const onAbort = () => rejectAborted(new DOMException("Import cancelled", "AbortError"));
-  signal.addEventListener("abort", onAbort, { once: true });
-  void aborted.catch(() => {});
   try {
-    const resolved = await Promise.race([
-      Promise.allSettled(
-        entries.map(async (entry) => ({
-          entry,
-          file: entry.ref.kind === "handle" ? await entry.ref.file.getFile() : entry.ref.file,
-        })),
-      ),
-      aborted,
-    ]);
-    const sources = resolved.flatMap((result, i) => {
-      if (result.status === "fulfilled") return [result.value];
-      issues.push(`${entries[i].name}: ${String(result.reason)}`);
-      return [];
-    });
+    const { sources, failures } = await readSources(entries, signal);
+    issues.push(...failures.map(({ entry, error }) => `${entry.name}: ${error}`));
     if (signal.aborted) return;
+    const unread = failures.length;
     let lastProgress = 0;
-    const result = await importTimeline(
+    const result = await importBatch(
       sources.map((source) => source.file),
+      eu5ParserAdapter,
+      eu5AnalysisSink,
       {
         signal,
         onActiveFiles: (active) => {
@@ -72,84 +55,47 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
               .map(({ entry }) => entry.id),
           });
         },
-        onProgress: (completed, total, fileName, phase) => {
+        onProgress: ({ completed, total, fileName, active }) => {
           const now = performance.now();
-          if (completed === total || phase?.completed === 0 || now - lastProgress > 150) {
-            lastProgress = now;
-            useHistory.setState({
-              progress: {
-                completed: completed + (entries.length - sources.length),
-                total: total + (entries.length - sources.length),
-                startedAt,
-                fileName,
-                phase,
-              },
-            });
-          }
+          if (completed !== total && now - lastProgress <= 150) return;
+          lastProgress = now;
+          useHistory.setState({
+            progress: {
+              completed: completed + unread,
+              total: total + unread,
+              startedAt,
+              fileName,
+              phase: { phase: "import", completed, total, startedAt, concurrency: active || 1 },
+            },
+          });
         },
-        onSnapshots: (snapshots, observations) => {
-          const associations: Record<string, SourceAssociation> = {};
-          for (const { snapshot, file: parsedFile } of observations) {
-            for (const { entry, file } of sources) {
-              if (parsedFile !== file) continue;
-              const current = localSaveRegistry.get(entry.id);
-              // A removed or replaced entry cannot receive a stale result.
-              if (!current || !holdsRef(current, entry.ref)) continue;
-              // Navigation may have already read a newer version of this handle.
-              const versionChanged =
-                current.version &&
-                (current.version.size !== entry.version?.size ||
-                  current.version.lastModified !== entry.version?.lastModified);
-              if (versionChanged && current.version && !sameFileVersion(file, current.version))
-                continue;
-              localSaveRegistry.recordIdentity(
-                entry.id,
-                {
-                  playthroughId: toPlaythroughId(snapshot.campaignId),
-                  campaignIdHint: null,
-                  date: descriptorDate(snapshot),
-                },
-                fileVersion(file),
-              );
-              associations[entry.id] = { snapshotId: snapshot.id, version: fileVersion(file) };
-            }
-            if (snapshot.campaignId !== playthroughId)
-              issues.push(
-                `${parsedFile.name}: belongs to another campaign; excluded from these charts.`,
-              );
-          }
-          useHistory.getState().add(
-            snapshots.filter((snapshot) => snapshot.campaignId === playthroughId),
-            associations,
-          );
+        onCommitted: (descriptor, file) => {
+          const associations = associateSources(sources, file, descriptor);
+          const included = descriptor.campaignId === playthroughId;
+          if (!included)
+            issues.push(`${file.name}: belongs to another campaign; excluded from these charts.`);
+          useHistory.getState().add(included ? [descriptor] : [], associations);
         },
       },
     );
-    issues.push(...result.errors.map((error) => `${error.fileName}: ${error.error}`));
+    issues.push(...result.failures.map(({ fileName, error }) => `${fileName}: ${error}`));
     if (result.memoryFull) {
-      const { message, refused } = result.memoryFull;
-      const saves = refused === 1 ? "1 save was" : `${refused} saves were`;
+      const left = result.outcomes.refused + result.outcomes.unprocessed;
+      const saves = left === 1 ? "1 save was" : `${left} saves were`;
       useHistory.setState((state) => ({
-        memoryFull: `${message} ${saves} not analyzed. Clear the campaign analysis to analyze other saves.`,
+        memoryFull: `${result.memoryFull} ${saves} not analyzed. Clear the campaign analysis to analyze other saves.`,
         // Do not parse more saves that cannot fit.
-        analysisPausedCampaigns: state.analysisPausedCampaigns.includes(playthroughId)
-          ? state.analysisPausedCampaigns
-          : [...state.analysisPausedCampaigns, playthroughId],
+        analysisPausedCampaigns: pause(state),
       }));
     }
   } catch (error) {
-    if (!signal.aborted) {
-      issues.push(String(error));
-    }
+    if (!signal.aborted) issues.push(String(error));
   } finally {
-    signal.removeEventListener("abort", onAbort);
-    useHistory.setState((state) => {
-      return {
-        progress: null,
-        analyzingEntryIds: [],
-        cancel: null,
-        issues: signal.aborted ? [...new Set([...state.issues, ...issues])] : issues,
-      };
-    });
+    useHistory.setState((state) => ({
+      progress: null,
+      analyzingEntryIds: [],
+      cancel: null,
+      issues: signal.aborted ? [...new Set([...state.issues, ...issues])] : issues,
+    }));
   }
 }

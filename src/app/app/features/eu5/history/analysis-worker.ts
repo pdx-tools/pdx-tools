@@ -9,7 +9,8 @@ const analysis = new Eu5CampaignAnalysis(
   residentMemoryLimit((navigator as Navigator & { deviceMemory?: number }).deviceMemory),
 );
 export const analysisApi = {
-  append: (save: SaveAnalysis) => analysis.append(save),
+  ...analysis.session.control(),
+  append: (generation: number, save: SaveAnalysis) => analysis.append(generation, save),
   ...frameServer((id) => analysis.mapFrame(id)),
   countryHistory: (campaignId: string, entity: CountryEntity) =>
     analysis.countryHistory(campaignId, entity),
@@ -21,7 +22,5 @@ export const analysisApi = {
   marketCenters: (campaignId: string, countryId: number) =>
     analysis.marketCenters(campaignId, countryId),
   exportObservations: (campaignId: string) => analysis.exportObservations(campaignId),
-  clearCampaign: (campaignId?: string) => analysis.store.clear(campaignId),
-  memory: () => analysis.store.memory(),
 };
 expose(analysisApi);

@@ -359,7 +359,7 @@ function MarketHistory({
 function HistoryHeading({ name, result }: { name: string; result: HistoryResult<unknown> }) {
   return (
     <p className="font-game-num text-[11px] text-game-ink-500 tabular-nums">
-      {name} · {result.snapshots} saved dates
+      {name} · {result.rows.length} saved dates
     </p>
   );
 }

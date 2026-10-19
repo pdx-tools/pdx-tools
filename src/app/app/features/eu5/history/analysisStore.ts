@@ -1,5 +1,7 @@
 import { ResidentStore } from "@/features/campaign/analysis/residentStore";
 import type { PayloadAdapter } from "@/features/campaign/analysis/residentStore";
+import { AnalysisSession } from "@/features/campaign/analysis/session";
+import type { QueryReply } from "@/features/campaign/analysis/session";
 import { EU5_EXTRACTOR_VERSION } from "./analysisTypes";
 import type { Eu5Payload, Eu5SnapshotDescriptor, MapFrame, SaveAnalysis } from "./analysisTypes";
 import {
@@ -21,12 +23,7 @@ export type HistoryRow<T> = {
   gameVersion: string;
   value: T | null;
 };
-export type HistoryResult<T> = {
-  campaignId: string;
-  /** The number of snapshots of the campaign when the query ran. */
-  snapshots: number;
-  rows: HistoryRow<T>[];
-};
+export type HistoryResult<T> = { campaignId: string; rows: HistoryRow<T>[] };
 
 /** A country by its full ID (`UiCountryId`), or all countries. */
 export type CountryEntity = { kind: "world" } | { kind: "country"; id: number };
@@ -63,13 +60,15 @@ export const eu5PayloadAdapter: PayloadAdapter<Eu5SnapshotDescriptor, Eu5Payload
 /** The EU5 queries over one resident session. */
 export class Eu5CampaignAnalysis {
   readonly store: ResidentStore<Eu5SnapshotDescriptor, Eu5Payload>;
+  readonly session: AnalysisSession<Eu5SnapshotDescriptor, Eu5Payload>;
 
   constructor(limitBytes = Infinity) {
     this.store = new ResidentStore(eu5PayloadAdapter, limitBytes);
+    this.session = new AnalysisSession(this.store);
   }
 
-  append({ descriptor, payload }: SaveAnalysis) {
-    return this.store.append(descriptor, payload);
+  append(generation: number, { descriptor, payload }: SaveAnalysis) {
+    return this.session.append(generation, descriptor, payload);
   }
 
   mapFrame(id: string): MapFrame {
@@ -81,11 +80,9 @@ export class Eu5CampaignAnalysis {
   private history<T>(
     campaignId: string,
     read: (payload: Eu5Payload) => T | null,
-  ): HistoryResult<T> {
-    const timeline = this.store.timeline(campaignId);
-    return {
+  ): QueryReply<HistoryResult<T>> {
+    return this.session.query(campaignId, (timeline) => ({
       campaignId,
-      snapshots: timeline.length,
       rows: timeline.map(({ id, contentHash, date, dateSort, gameVersion }) => ({
         id,
         contentHash,
@@ -94,11 +91,14 @@ export class Eu5CampaignAnalysis {
         gameVersion,
         value: read(this.store.read(id).payload),
       })),
-    };
+    }));
   }
 
   /** A country by its full ID. A snapshot without that country is a gap. */
-  countryHistory(campaignId: string, entity: CountryEntity): HistoryResult<CountryObservation> {
+  countryHistory(
+    campaignId: string,
+    entity: CountryEntity,
+  ): QueryReply<HistoryResult<CountryObservation>> {
     return this.history(campaignId, ({ tables }) => {
       if (entity.kind === "world") return worldAt(tables);
       const row = countryRow(tables, entity.id);
@@ -110,7 +110,10 @@ export class Eu5CampaignAnalysis {
    * The population of a fixed set of locations, by location ID. If a snapshot
    * does not have one of the locations, its total is a gap.
    */
-  locationPopulation(campaignId: string, locationIds: readonly number[]): HistoryResult<number> {
+  locationPopulation(
+    campaignId: string,
+    locationIds: readonly number[],
+  ): QueryReply<HistoryResult<number>> {
     return this.history(campaignId, ({ projection }) => {
       if (!locationIds.length) return null;
       const rows = this.store.rowIndex(projection.layoutKey);
@@ -133,7 +136,7 @@ export class Eu5CampaignAnalysis {
     campaignId: string,
     good: string,
     centers: readonly number[],
-  ): HistoryResult<(MarketObservation | null)[]> {
+  ): QueryReply<HistoryResult<(MarketObservation | null)[]>> {
     return this.history(campaignId, ({ tables }) =>
       centers.map((center) => {
         const row = marketRow(tables, center, good);
@@ -144,9 +147,13 @@ export class Eu5CampaignAnalysis {
 
   /** The goods and market centers in all snapshots of the campaign. */
   marketCatalog(campaignId: string) {
+    return this.session.query(campaignId, (timeline) => this.catalog(timeline));
+  }
+
+  private catalog(timeline: readonly Eu5SnapshotDescriptor[]) {
     const goods = new Set<string>();
     const centers = new Map<number, string | null>();
-    for (const { id } of this.store.timeline(campaignId)) {
+    for (const { id } of timeline) {
       const { tables } = this.store.read(id).payload;
       const seen = new Set<number>();
       for (let row = 0; row < tables.marketCenters.length; row++) {
@@ -166,17 +173,19 @@ export class Eu5CampaignAnalysis {
   }
 
   /** The market centers where a country owned locations at some snapshot. */
-  marketCenters(campaignId: string, countryId: number): number[] {
-    const centers = new Set<number>();
-    for (const { id } of this.store.timeline(campaignId)) {
-      const { tables } = this.store.read(id).payload;
-      const row = countryRow(tables, countryId);
-      if (row < 0) continue;
-      const start = tables.countryMarketOffsets[row];
-      const end = tables.countryMarketOffsets[row + 1];
-      for (let i = start; i < end; i++) centers.add(tables.countryMarkets[i]);
-    }
-    return [...centers];
+  marketCenters(campaignId: string, countryId: number): QueryReply<number[]> {
+    return this.session.query(campaignId, (timeline) => {
+      const centers = new Set<number>();
+      for (const { id } of timeline) {
+        const { tables } = this.store.read(id).payload;
+        const row = countryRow(tables, countryId);
+        if (row < 0) continue;
+        const start = tables.countryMarketOffsets[row];
+        const end = tables.countryMarketOffsets[row + 1];
+        for (let i = start; i < end; i++) centers.add(tables.countryMarkets[i]);
+      }
+      return [...centers];
+    });
   }
 
   /** All country and market observations of a campaign, as JSON. */

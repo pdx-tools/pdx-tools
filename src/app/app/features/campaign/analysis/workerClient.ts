@@ -1,6 +1,9 @@
 import { transfer, wrap } from "comlink";
 import type { Remote } from "comlink";
 import { trackWorker } from "@/lib/sentryWorker";
+import { parserAdmission } from "./admission";
+import type { ParserAdmission } from "./admission";
+import type { SessionControl } from "./session";
 
 /** The frame methods that an analysis worker gives to game workers. */
 export type FrameServer = {
@@ -8,16 +11,28 @@ export type FrameServer = {
   disconnectFrames: (id: string) => void;
 };
 
+/** The methods that each analysis worker gives. */
+export type AnalysisWorkerApi = FrameServer & SessionControl;
+
 export type AnalysisWorkerOptions = {
+  /** The name of the session in the parser admission, such as the game. */
+  session: string;
+  admission?: () => ParserAdmission;
   /** Construct the worker with new Worker(new URL(...)) so the bundler can find it. */
   start: () => Worker;
   /** Remove the state that the lost worker held. Calls after this start a new worker. */
   onFailure: (error: Error) => void;
 };
 
-export type AnalysisWorkerClient<Api extends FrameServer> = {
+export type AnalysisWorkerClient<Api extends AnalysisWorkerApi> = {
   /** The worker API. A worker failure rejects each pending call. */
   remote: () => Remote<Api>;
+  /** Changes when the session clears or the worker stops. */
+  generation: () => number;
+  /** Release the snapshots of one campaign, or of all campaigns. */
+  clear: (campaignId?: string) => Promise<void>;
+  /** Give the resident bytes of the session to the parser admission. */
+  refreshResident: () => Promise<void>;
   /** Connect a game worker to the frames of this worker. Return the disconnect. */
   connectFrames: (
     connect: (id: string, port: MessagePort | null) => Promise<void>,
@@ -28,11 +43,14 @@ const FAILURE_MESSAGE =
   "Campaign analysis stopped unexpectedly. Reimport the original saves to rebuild it.";
 
 /** Start one analysis worker when it is first used, and start a new one after a failure. */
-export function createAnalysisWorker<Api extends FrameServer>({
+export function createAnalysisWorker<Api extends AnalysisWorkerApi>({
+  session,
+  admission = parserAdmission,
   start,
   onFailure,
 }: AnalysisWorkerOptions): AnalysisWorkerClient<Api> {
   let client: Remote<Api> | undefined;
+  let generation = 1;
   const frameConnections = new Map<string, () => void>();
 
   const remote = (): Remote<Api> => {
@@ -81,12 +99,27 @@ export function createAnalysisWorker<Api extends FrameServer>({
       worker.removeEventListener("messageerror", failed);
       worker.terminate();
       untrack();
+      generation++;
+      admission().setResident(session, 0);
       onFailure(failure);
     };
     worker.addEventListener("error", failed);
     worker.addEventListener("messageerror", failed);
     client = guarded;
+    // The worker reads messages in order, so this comes before other calls.
+    void guarded.open(generation).catch(() => {});
     return client;
+  };
+
+  const refreshResident = async () => {
+    const { bufferBytes, stringBytes, indexBytes } = await remote().memory();
+    admission().setResident(session, bufferBytes + stringBytes + indexBytes);
+  };
+
+  const clear = async (campaignId?: string) => {
+    generation++;
+    await remote().clear(generation, campaignId);
+    await refreshResident();
   };
 
   let sequence = 0;
@@ -114,5 +147,5 @@ export function createAnalysisWorker<Api extends FrameServer>({
     }
   };
 
-  return { remote, connectFrames };
+  return { remote, generation: () => generation, clear, refreshResident, connectFrames };
 }
