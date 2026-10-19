@@ -49,7 +49,8 @@ A neighboring analyzer that uploads the save to a server, or that only supports 
 
 - **EU5 is the future.** New surfaces target EU5 first.
 - **EU4 stays first-class.** EU4 keeps full feature parity, its achievement leaderboard, and its upload/share flow.
-- **CK3, HOI4, Victoria 3, and Imperator** are supported for melting (binary to plaintext) only. Do not imply analysis features for them.
+- **HOI4 is a tier-2 analysis game** (confirmed 2026-10-16). It gets real surfaces (a map with political, occupation, faction, and ideology modes, and the One Stack column), and EU5 stays first for new work. HOI4 has no leaderboard and no achievements board.
+- **CK3, Victoria 3, and Imperator** are supported for melting (binary to plaintext) only. Do not imply analysis features for them.
 
 ### Confirmed functionality
 
@@ -74,7 +75,7 @@ A neighboring analyzer that uploads the save to a server, or that only supports 
 ### Undecided
 
 - No accessibility standard has been formally adopted. See Accessibility below.
-- Whether melt-only games will ever gain analysis surfaces is not decided.
+- Whether the remaining melt-only games will gain analysis surfaces is not decided.
 
 ## Brand Commitments
 
