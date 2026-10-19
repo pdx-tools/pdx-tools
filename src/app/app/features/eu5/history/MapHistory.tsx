@@ -5,6 +5,7 @@ import { addDays, addMonths, addYears, daysBetween } from "@/features/timeline/d
 import type { DateComponents } from "@/features/timeline/date";
 import type { TimelineController } from "@/features/timeline/controller";
 import type { GradientConfig } from "@/wasm/wasm_eu5";
+import type { TimelapseOptions } from "@pdx.tools/timelapse";
 import {
   useEu5Context,
   useEu5Engine,
@@ -29,9 +30,11 @@ import {
   loadedSnapshotId,
   openPreview,
   previewSnapshot,
+  recordSavedDates,
   repaintPreview,
   setPreviewPlayback,
   usePreviewPlayback,
+  usePreviewRecording,
   usePreviewSession,
 } from "./previewSession";
 import { useHistory } from "./store";
@@ -83,6 +86,10 @@ function useMapHistoryState() {
   const playing = frames.length > 0 && playingMode === currentMapMode;
   const setPlaying = (next: boolean) => setPreviewPlayback(next ? currentMapMode : null);
   const [error, setError] = useState<string | null>(null);
+  // The playhead follows a recording of the saved dates.
+  const recordingDate = usePreviewRecording((recording) => recording.date);
+  const recordingGradient = usePreviewRecording((recording) => recording.gradient);
+  const recording = recordingDate !== null;
 
   useLayoutEffect(() => {
     bindPreviewNavigation(campaign);
@@ -145,10 +152,10 @@ function useMapHistoryState() {
   });
   const waiting = previewing && preview.kind === "preview" && !preview.error;
   useEffect(() => {
-    if (!waiting || playing || scrubbing) return;
+    if (!waiting || playing || scrubbing || recording) return;
     const timer = setTimeout(open, OPEN_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [waiting, playing, scrubbing, selectedId]);
+  }, [waiting, playing, scrubbing, recording, selectedId]);
 
   const retry = () => {
     setError(null);
@@ -156,7 +163,7 @@ function useMapHistoryState() {
   };
 
   const clearCampaign = async () => {
-    if (!campaignId || progress !== null) return;
+    if (!campaignId || progress !== null || recording) return;
     setPlaying(false);
     cancelPreview();
     try {
@@ -178,6 +185,14 @@ function useMapHistoryState() {
     }
   };
 
+  const record = (options: TimelapseOptions) =>
+    recordSavedDates(
+      engine,
+      frames.map((frame) => ({ id: frame.id, date: mapFrameDate(frame) })),
+      currentMapMode,
+      options,
+    );
+
   const shown = previewing ? preview.shown : null;
   let controller: TimelineController | null = null;
   if (enabled && currentMapMode !== "political" && campaignId) {
@@ -187,7 +202,7 @@ function useMapHistoryState() {
       campaign?.saves.filter((save) => save.membership !== "different").map((save) => save.date) ??
         [],
     );
-    const date = selectedFrame ? mapFrameDate(selectedFrame) : saveDate;
+    const date = recordingDate ?? (selectedFrame ? mapFrameDate(selectedFrame) : saveDate);
     const setDate: TimelineController["setDate"] = (next) => {
       setPlaying(false);
       move(nearestMapFrame(frames, next));
@@ -206,10 +221,10 @@ function useMapHistoryState() {
       live: daysBetween(date, end) === 0,
       playback: playing ? "playing" : "paused",
       playing,
-      locked: frames.length === 0,
+      locked: frames.length === 0 || recording,
       totalDays: daysBetween(start, end),
       dayOffset: daysBetween(start, date),
-      mapDayOffset: daysBetween(start, shown?.date ?? saveDate),
+      mapDayOffset: daysBetween(start, recordingDate ?? shown?.date ?? saveDate),
       setDate,
       beginScrub: () => setScrubbing(true),
       commitDayOffset: (day) => {
@@ -239,9 +254,14 @@ function useMapHistoryState() {
   }
 
   // The date and legend follow the frame that the map shows, not the request.
+  // A recording shows its snapshots, with or without a preview.
   const previewView: {
     shown: { date: DateComponents; gradient: GradientConfig | null } | null;
-  } | null = previewing ? { shown: shown && { date: shown.date, gradient: shown.gradient } } : null;
+  } | null = recordingDate
+    ? { shown: { date: recordingDate, gradient: recordingGradient } }
+    : previewing
+      ? { shown: shown && { date: shown.date, gradient: shown.gradient } }
+      : null;
   return {
     controller,
     enabled,
@@ -254,6 +274,7 @@ function useMapHistoryState() {
     retry,
     clearCampaign,
     playing,
+    record,
   };
 }
 

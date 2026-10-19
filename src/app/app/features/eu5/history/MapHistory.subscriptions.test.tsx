@@ -34,6 +34,8 @@ vi.mock("./analysisClient", () => ({
 vi.mock("./previewSession", () => ({
   usePreviewSession: () => ({ kind: "live" }),
   usePreviewPlayback: (select: (playback: { mode: null }) => unknown) => select({ mode: null }),
+  usePreviewRecording: (select: (recording: { date: null }) => unknown) => select({ date: null }),
+  recordSavedDates: vi.fn(),
   setPreviewPlayback: vi.fn(),
   bindPreviewNavigation: vi.fn(),
   cancelPreview: vi.fn(),

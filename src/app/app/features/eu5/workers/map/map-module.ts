@@ -797,7 +797,8 @@ export const createMapEngine = async (
     },
 
     /**
-     * Render and encode one frame of the open recording, for `date`.
+     * Render and encode one frame of the open recording, for `date`. The
+     * film holds the frame for `repeat` frames.
      *
      * Call it once the game worker has answered for that date: its colors
      * are then waiting here, and go to the GPU before the frame is drawn.
@@ -805,7 +806,10 @@ export const createMapEngine = async (
      * recording never waits on the display's refresh, and runs on in a
      * background tab, where the loop stops.
      */
-    recordTimelapseFrame: async (date: Eu5DateComponents): Promise<TimelapseFrameTiming> => {
+    recordTimelapseFrame: async (
+      date: Eu5DateComponents,
+      repeat = 1,
+    ): Promise<TimelapseFrameTiming> => {
       if (recording === null) {
         throw new Error("No timelapse recording is open");
       }
@@ -814,7 +818,7 @@ export const createMapEngine = async (
       const { rect, canvas, encoder } = recording;
       recording.renderer.render_world_rect(rect.x, rect.y, rect.width, rect.height);
       const renderMs = performance.now() - renderStart;
-      const encodeMs = await encoder.addFrame(canvas, date);
+      const encodeMs = await encoder.addFrame(canvas, date, repeat);
       return { renderMs, encodeMs };
     },
 

@@ -393,8 +393,8 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
     }): Promise<TimelapseFrameLayout> => {
       return mapEngine.beginTimelapseRecording(options);
     },
-    recordTimelapseFrame: (date: Eu5DateComponents): Promise<TimelapseFrameTiming> => {
-      return mapEngine.recordTimelapseFrame(date);
+    recordTimelapseFrame: (date: Eu5DateComponents, repeat = 1): Promise<TimelapseFrameTiming> => {
+      return mapEngine.recordTimelapseFrame(date, repeat);
     },
     finishTimelapseRecording: (): Promise<TimelapseFile> => {
       return mapEngine.finishTimelapseRecording();

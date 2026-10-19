@@ -5,7 +5,8 @@ import { sameFileVersion } from "@/features/campaign/types";
 import { isAbortError } from "@/lib/abortController";
 import type { Eu5DateComponents, GradientConfig, MapMode, WorldSummary } from "@/wasm/wasm_eu5";
 import type { LocationClickChangeEvent } from "../workers/map/map-module";
-import type { AppTriggers } from "../ui-engine";
+import type { AppTriggers, TimelapseRecording } from "../ui-engine";
+import type { TimelapseOptions } from "@pdx.tools/timelapse";
 import type { Eu5Store } from "../store/eu5Store";
 import { activeEu5Store, subscribeEu5Session } from "../store/eu5Session";
 import { captureEu5Carry } from "../campaignCarry";
@@ -52,6 +53,15 @@ export const usePreviewPlayback = create<{ mode: MapMode | null }>()(() => ({ mo
 export function setPreviewPlayback(mode: MapMode | null) {
   usePreviewPlayback.setState({ mode });
 }
+
+/** The snapshot that a recording shows. The date is null when no recording runs. */
+export const usePreviewRecording = create<{
+  date: Eu5DateComponents | null;
+  gradient: GradientConfig | null;
+}>()(() => ({ date: null, gradient: null }));
+
+const isRecording = () => usePreviewRecording.getState().date !== null;
+const endRecording = () => usePreviewRecording.setState({ date: null, gradient: null });
 
 /** The engine calls that the preview uses. */
 export type PreviewEngine = {
@@ -148,6 +158,8 @@ function endPreview() {
 
 /** End the preview and the playback, and do not open the saves that wait. */
 export function cancelPreview() {
+  // An explicit open stops a recording: the recording needs the loaded save.
+  if (isRecording()) activeEu5Store()?.getState().engine.trigger.stopTimelapse();
   setPreviewPlayback(null);
   void opens.stop();
   if (get().kind !== "live") endPreview();
@@ -233,7 +245,8 @@ const opens = new LatestRequest<OpenRequest, void>(openSnapshotSave);
 /** Open the save of the snapshot at the playhead. The overlay stays until that save is ready. */
 export function openPreview(navigation: CampaignNav, click?: LocationClickChangeEvent) {
   const state = get();
-  if (state.kind === "live") return Promise.resolve();
+  // A recording uses the loaded save until it is done.
+  if (state.kind === "live" || isRecording()) return Promise.resolve();
   const { id, campaignId, snapshotId } = state;
   set({ ...state, kind: "opening", error: null });
   return opens.request({ campaignId, snapshotId, navigation, click }).catch((error) => {
@@ -254,14 +267,76 @@ export function bindPreviewNavigation(next: CampaignNav | null) {
 
 /** A click on the map during a preview opens the save of the snapshot at once. */
 function onPreviewClick(event: LocationClickChangeEvent) {
-  if (!navigation || get().kind === "live") return;
+  // A recording uses the loaded save until it is done.
+  if (!navigation || get().kind === "live" || isRecording()) return;
   // The playhead stops on the clicked snapshot.
   setPreviewPlayback(null);
   void openPreview(navigation, event);
 }
 
+/** The engine calls that a recording of saved dates uses. */
+export type RecordingEngine = PreviewEngine & {
+  trigger: Pick<AppTriggers, "recordSavedDates">;
+};
+
+/**
+ * Record the saved dates of a campaign to a video file. Playback stops, and
+ * the map shows each snapshot in turn, as playback shows it. After the
+ * recording, the map shows again what it showed before.
+ */
+export async function recordSavedDates(
+  engine: RecordingEngine,
+  snapshots: { id: string; date: Eu5DateComponents }[],
+  mode: MapMode,
+  options: TimelapseOptions,
+): Promise<TimelapseRecording | null> {
+  setPreviewPlayback(null);
+  // An open that has started can replace the save. The recording does not
+  // start until it is done.
+  await opens.stop();
+  if (activeEu5Store()?.getState().engine !== engine) {
+    throw Error("The save changed. Export the video again.");
+  }
+  await connections.get(engine);
+  usePreviewRecording.setState({ date: snapshots[0]?.date ?? null });
+  // Clicks during a preview already have the gate. Without a preview, the
+  // gate keeps clicks off the loaded save, which the map does not show.
+  const gated = get().kind === "live";
+  if (gated) void engine.trigger.setInputGate(ignore).catch(ignore);
+  try {
+    return await engine.trigger.recordSavedDates(options, {
+      snapshots,
+      present: async (snapshotId) => {
+        const reply = await engine.trigger.presentOverlay(snapshotId, mode, ++lastToken);
+        if (reply.accepted) {
+          const date = descriptorDate(reply.observation);
+          usePreviewRecording.setState({ date, gradient: reply.gradient });
+        }
+        return reply.accepted;
+      },
+    });
+  } finally {
+    endRecording();
+    // The save can change during the recording. The new save shows itself.
+    const active = activeEu5Store()?.getState().engine;
+    if (active === engine) {
+      const state = get();
+      if (state.kind === "live") {
+        const token = ++lastToken;
+        shownToken = token;
+        void engine.trigger.clearOverlay(token).catch(ignore);
+        if (gated) void engine.trigger.setInputGate(null).catch(ignore);
+      } else {
+        present(engine, state.snapshotId, mode);
+      }
+    }
+  }
+}
+
 // The workers of another session have no overlay and no gate.
 subscribeEu5Session(() => {
   setPreviewPlayback(null);
+  // A recording in the old workers can stop without an answer.
+  endRecording();
   if (get().kind !== "live") set({ kind: "live" });
 });

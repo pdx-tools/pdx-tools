@@ -134,6 +134,42 @@ export function timelapsePlan({
   };
 }
 
+/**
+ * How long each saved date holds the screen in a film of saved dates. Each
+ * one is a still frame, not a step of a smooth advance, so it holds long
+ * enough to read.
+ */
+export const SECONDS_PER_SAVED_DATE = 1;
+
+/**
+ * The film's shape for a playback of `dates` saved dates, in date order.
+ *
+ * Each date holds for one second. A campaign of more dates than the target
+ * length has seconds shares the target length between them instead, so the
+ * film never runs longer than the target. `holds[i]` is how many frames the
+ * date at `i` holds; the holds round so that their sum is the film's length
+ * in frames. With more dates than frames, a date can hold for no frames at
+ * all, and the film then does not show it.
+ */
+export function savedDatePlan({ dates, options }: { dates: number; options: TimelapseOptions }) {
+  const quality = timelapseQuality(options.quality);
+  const seconds = Math.min(TIMELAPSE_SECONDS, dates * SECONDS_PER_SAVED_DATE);
+  const frames = Math.round(seconds * TIMELAPSE_FPS);
+  const holds = Array.from(
+    { length: dates },
+    (_, i) => Math.round(((i + 1) * frames) / dates) - Math.round((i * frames) / dates),
+  );
+  const bitrate = timelapseBitrate(quality);
+
+  return {
+    quality,
+    frames,
+    holds,
+    seconds: frames / TIMELAPSE_FPS,
+    bytes: Math.round((bitrate / 8) * (frames / TIMELAPSE_FPS)),
+  };
+}
+
 /** `0:24`, `1:08` — the duration as a player reads it off a video player. */
 export function formatDuration(seconds: number): string {
   const whole = Math.round(seconds);
