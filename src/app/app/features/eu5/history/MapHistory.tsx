@@ -2,9 +2,7 @@ import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useState } from "r
 import { useCampaign } from "@/features/campaign/CampaignProvider";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { addDays, addMonths, addYears, daysBetween } from "@/features/timeline/date";
-import type { DateComponents } from "@/features/timeline/date";
 import type { TimelineController } from "@/features/timeline/controller";
-import type { GradientConfig } from "@/wasm/wasm_eu5";
 import {
   useEu5Context,
   useEu5Engine,
@@ -239,9 +237,7 @@ function useMapHistoryState() {
   }
 
   // The date and legend follow the frame that the map shows, not the request.
-  const previewView: {
-    shown: { date: DateComponents; gradient: GradientConfig | null } | null;
-  } | null = previewing ? { shown: shown && { date: shown.date, gradient: shown.gradient } } : null;
+  const previewView = previewing ? { shown } : null;
   return {
     controller,
     enabled,
