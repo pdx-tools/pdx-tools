@@ -9,13 +9,14 @@ import type { AppTriggers } from "../ui-engine";
 import type { Eu5Store } from "../store/eu5Store";
 import { activeEu5Store, subscribeEu5Session } from "../store/eu5Session";
 import { captureEu5Carry } from "../campaignCarry";
+import { descriptorDate } from "@/features/campaign/analysis/descriptor";
 import { connectAnalysisFrames } from "./analysisClient";
 import { LatestRequest } from "./latestRequest";
 import { useHistory } from "./store";
 
 /** The snapshot that the map shows. It changes only when the map accepts a frame. */
 export type ShownSnapshot = {
-  hash: string;
+  snapshotId: string;
   date: Eu5DateComponents;
   world: WorldSummary;
   gradient: GradientConfig | null;
@@ -34,7 +35,7 @@ export type PreviewState =
       id: number;
       campaignId: string;
       /** The snapshot at the playhead. */
-      hash: string;
+      snapshotId: string;
       shown: ShownSnapshot | null;
       error: string | null;
     };
@@ -84,25 +85,21 @@ export function connectFrames(engine: PreviewEngine): () => void {
   };
 }
 
-function present(engine: PreviewEngine, hash: string, mode: MapMode) {
+function present(engine: PreviewEngine, snapshotId: string, mode: MapMode) {
   const before = get();
   if (before.kind === "live") return;
   const token = ++lastToken;
   paintToken = token;
   void (async () => {
     await connections.get(engine);
-    const reply = await engine.trigger.presentOverlay(hash, mode, token);
+    const reply = await engine.trigger.presentOverlay(snapshotId, mode, token);
     if (!reply.accepted || token <= shownToken) return;
     shownToken = token;
     const state = get();
     if (state.kind === "live") return;
-    const { dateSort, world } = reply.observation;
-    const date = {
-      year: Math.floor(dateSort / 10000),
-      month: Math.floor(dateSort / 100) % 100,
-      day: dateSort % 100,
-    };
-    set({ ...state, shown: { hash, date, world, gradient: reply.gradient } });
+    const { world } = reply.observation;
+    const date = descriptorDate(reply.observation);
+    set({ ...state, shown: { snapshotId, date, world, gradient: reply.gradient } });
   })().catch((error) => {
     const state = get();
     if (isAbortError(error) || token !== paintToken) return;
@@ -114,18 +111,18 @@ function present(engine: PreviewEngine, hash: string, mode: MapMode) {
 export function previewSnapshot(
   engine: PreviewEngine,
   campaignId: string,
-  hash: string,
+  snapshotId: string,
   mode: MapMode,
 ) {
   const state = get();
   if (state.kind === "live") {
     void engine.trigger.setInputGate(onPreviewClick).catch(ignore);
-    set({ kind: "preview", id: ++previewId, campaignId, hash, shown: null, error: null });
-  } else if (state.hash !== hash || state.campaignId !== campaignId) {
+    set({ kind: "preview", id: ++previewId, campaignId, snapshotId, shown: null, error: null });
+  } else if (state.snapshotId !== snapshotId || state.campaignId !== campaignId) {
     // An open in progress continues, but the overlay follows the playhead.
-    set({ ...state, kind: "preview", campaignId, hash, error: null });
+    set({ ...state, kind: "preview", campaignId, snapshotId, error: null });
   }
-  present(engine, hash, mode);
+  present(engine, snapshotId, mode);
 }
 
 /** Paint the snapshot at the playhead again, for a new engine or map mode. */
@@ -134,7 +131,7 @@ export function repaintPreview(engine: PreviewEngine, mode: MapMode) {
   if (state.kind === "live") return;
   // New workers do not have the gate.
   void engine.trigger.setInputGate(onPreviewClick).catch(ignore);
-  present(engine, state.hash, mode);
+  present(engine, state.snapshotId, mode);
 }
 
 /** Show the loaded save again. */
@@ -157,36 +154,36 @@ export function cancelPreview() {
 }
 
 /** The snapshot of the loaded save, if the campaign analysis has it. */
-export function loadedSnapshotHash(store: Eu5Store): string | undefined {
+export function loadedSnapshotId(store: Eu5Store): string | undefined {
   const { input, saveInput } = store.getState();
   if (input.kind === "server" || saveInput.kind !== "file") return undefined;
   const { entryId } = localSaveRegistry.sourceFor("eu5", input, saveInput.file);
   const source = entryId === null ? undefined : useHistory.getState().sources[entryId];
-  return source && sameFileVersion(saveInput.file, source.version) ? source.hash : undefined;
+  return source && sameFileVersion(saveInput.file, source.version) ? source.snapshotId : undefined;
 }
 
 type OpenRequest = {
   campaignId: string;
-  hash: string;
+  snapshotId: string;
   navigation: CampaignNav;
   click?: LocationClickChangeEvent;
 };
 
 async function openSnapshotSave(
-  { campaignId, hash, navigation, click }: OpenRequest,
+  { campaignId, snapshotId, navigation, click }: OpenRequest,
   current: () => boolean,
 ) {
   const loaded = activeEu5Store();
   if (!loaded || loaded.getState().playthroughId !== campaignId) throw changed();
   const state = loaded.getState();
-  if (loadedSnapshotHash(loaded) !== hash) {
+  if (loadedSnapshotId(loaded) !== snapshotId) {
     const sources = useHistory.getState().sources;
     const target = navigation.saves.find(
       (save) =>
         save.membership === "same" &&
         save.source.kind === "local" &&
         save.source.entryId !== null &&
-        sources[save.source.entryId]?.hash === hash,
+        sources[save.source.entryId]?.snapshotId === snapshotId,
     );
     if (!target || target.source.kind !== "local" || target.source.entryId === null)
       throw Error("Reselect the original save to inspect this date.");
@@ -227,7 +224,7 @@ async function openSnapshotSave(
 
   // Show the loaded save only when the playhead is still on it and no other save waits.
   const after = get();
-  if (current() && after.kind === "opening" && after.hash === hash) endPreview();
+  if (current() && after.kind === "opening" && after.snapshotId === snapshotId) endPreview();
 }
 
 /** One open at a time. A new target replaces the target that waits. */
@@ -237,11 +234,11 @@ const opens = new LatestRequest<OpenRequest, void>(openSnapshotSave);
 export function openPreview(navigation: CampaignNav, click?: LocationClickChangeEvent) {
   const state = get();
   if (state.kind === "live") return Promise.resolve();
-  const { id, campaignId, hash } = state;
+  const { id, campaignId, snapshotId } = state;
   set({ ...state, kind: "opening", error: null });
-  return opens.request({ campaignId, hash, navigation, click }).catch((error) => {
+  return opens.request({ campaignId, snapshotId, navigation, click }).catch((error) => {
     const now = get();
-    if (now.kind === "live" || now.id !== id || now.hash !== hash) return;
+    if (now.kind === "live" || now.id !== id || now.snapshotId !== snapshotId) return;
     if (isAbortError(error)) {
       if (now.kind === "opening") set({ ...now, kind: "preview" });
     } else set({ ...now, kind: "preview", error: String(error) });

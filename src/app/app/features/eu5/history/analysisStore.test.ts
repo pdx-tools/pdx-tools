@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CampaignAnalysisStore, MEMORY_LIMIT_ERROR } from "./analysisStore";
+import { snapshotId } from "@/features/campaign/analysis/descriptor";
+import { Eu5CampaignAnalysis } from "./analysisStore";
 import type { SaveAnalysis, SnapshotTables } from "./analysisTypes";
 import { BREAKDOWNS, COUNTRY_METRICS, MARKET_METRICS } from "./snapshotTables";
 
@@ -52,31 +53,37 @@ function tables(countries: TestCountry[] = [], markets: TestMarket[] = []): Snap
   };
 }
 
+const id = (hash: string) => snapshotId("eu5", 1, hash);
 const save = (hash = "first", dateSort = 13600101, campaignId = "campaign"): SaveAnalysis => ({
-  observation: {
-    hash,
+  descriptor: {
+    id: id(hash),
+    game: "eu5",
+    contentHash: hash,
+    extractorVersion: 1,
+    artifacts: ["observations", "map"],
     dateSort,
     date: "1360-01-01",
     campaignId,
-    version: "1.4.0",
+    gameVersion: "1.4.0",
     layoutKey: "same",
-    fileName: "save.eu5",
     world: { locationCount: 1, countryCount: 1, totalPopulation: 10 },
   },
-  projection: {
-    layoutKey: "same",
-    locationIds: new Uint32Array([42]),
-    fractions: new Uint16Array([49151, 65535]),
-    metrics: new Float32Array([12, 10, 3, 2, 3, 1, 0.1]),
-    owners: new Uint32Array([7]),
-    controllers: new Uint32Array([7]),
-    religions: new Uint32Array([1]),
-    markets: new Uint32Array([4]),
-    countries: new Uint32Array([7, 1, 1, 1]),
-    religionColors: new Uint32Array([1, 1]),
-    marketColors: new Uint32Array([4, 42, 1]),
+  payload: {
+    projection: {
+      layoutKey: "same",
+      locationIds: new Uint32Array([42]),
+      fractions: new Uint16Array([49151, 65535]),
+      metrics: new Float32Array([12, 10, 3, 2, 3, 1, 0.1]),
+      owners: new Uint32Array([7]),
+      controllers: new Uint32Array([7]),
+      religions: new Uint32Array([1]),
+      markets: new Uint32Array([4]),
+      countries: new Uint32Array([7, 1, 1, 1]),
+      religionColors: new Uint32Array([1, 1]),
+      marketColors: new Uint32Array([4, 42, 1]),
+    },
+    tables: tables(),
   },
-  tables: tables(),
 });
 
 /** A save with two locations, 42 and 43, whose populations are given. */
@@ -90,9 +97,9 @@ function campaignSave(
   const base = save(hash, dateSort);
   const n = population.length;
   const layoutKey = n === 2 ? "two" : "one";
-  base.observation.layoutKey = layoutKey;
-  base.projection = {
-    ...base.projection,
+  base.descriptor.layoutKey = layoutKey;
+  base.payload.projection = {
+    ...base.payload.projection,
     layoutKey,
     locationIds: Uint32Array.from([42, 43].slice(0, n)),
     fractions: new Uint16Array(n * 2),
@@ -102,68 +109,52 @@ function campaignSave(
     religions: new Uint32Array(n),
     markets: new Uint32Array(n),
   };
-  base.tables = tables(countries, markets);
+  base.payload.tables = tables(countries, markets);
   return base;
 }
-it("appends in either order without copying old columns and shares compatible location IDs", () => {
-  const store = new CampaignAnalysisStore(),
-    later = save("later", 13600401),
-    earlier = save();
-  store.append(later);
-  const before = store.mapFrame("later");
-  store.append(earlier);
-  expect(store.timeline("campaign").map((row) => row.hash)).toEqual(["first", "later"]);
-  expect(store.mapFrame("first").locationIds).toBe(before.locationIds);
-  expect(store.mapFrame("later").metrics).toBe(before.metrics);
-});
-it("deduplicates files and rejects alternate saves on the same date before changing the store", () => {
-  const store = new CampaignAnalysisStore();
-  store.append(save());
-  store.append(save());
-  expect(store.timeline("campaign")).toHaveLength(1);
-  expect(() => store.append(save("alternate"))).toThrow("already occupies");
-  expect(store.timeline("campaign")).toHaveLength(1);
+it("shares the location IDs of equal layouts", () => {
+  const analysis = new Eu5CampaignAnalysis();
+  analysis.append(save("later", 13600401));
+  const before = analysis.mapFrame(id("later"));
+  analysis.append(save());
+  expect(analysis.store.timeline("campaign").map((row) => row.contentHash)).toEqual([
+    "first",
+    "later",
+  ]);
+  expect(analysis.mapFrame(id("first")).projection.locationIds).toBe(before.projection.locationIds);
+  expect(analysis.mapFrame(id("first")).descriptor.layoutKey).toBe("same");
 });
 it("rejects incomplete columns and incompatible layouts", () => {
-  const store = new CampaignAnalysisStore();
-  store.append(save());
+  const analysis = new Eu5CampaignAnalysis();
+  analysis.append(save());
   const broken = save("broken", 13600401);
-  broken.projection.metrics = new Float32Array(1);
-  expect(() => store.append(broken)).toThrow("Incomplete");
+  broken.payload.projection.metrics = new Float32Array(1);
+  expect(() => analysis.append(broken)).toThrow("Incomplete");
+  const mismatch = save("mismatch", 13600401);
+  mismatch.descriptor.layoutKey = "other";
+  expect(() => analysis.append(mismatch)).toThrow("Incomplete");
   const other = save("other", 13600401);
-  other.projection.locationIds[0] = 77;
-  expect(() => store.append(other)).toThrow("Incompatible");
-});
-it("counts shared buffers once and clears only the requested campaign", () => {
-  const store = new CampaignAnalysisStore();
-  store.append(save());
-  const bytes = store.memoryBytes();
-  store.append(save("other", 13600401, "other"));
-  expect(store.memoryBytes()).toBe(bytes * 2 - 4);
-  store.clearCampaign("campaign");
-  expect(store.memoryBytes()).toBe(bytes);
-  expect(() => store.mapFrame("first")).toThrow("no longer available");
-  expect(store.timeline("other")).toHaveLength(1);
-  store.clearCampaign();
-  expect(store.memoryBytes()).toBe(0);
+  other.payload.projection.locationIds[0] = 77;
+  expect(() => analysis.append(other)).toThrow("Incompatible");
+  expect(analysis.store.timeline("campaign")).toHaveLength(1);
 });
 
 it("rejects tables with a missing row or from a different version", () => {
-  const store = new CampaignAnalysisStore();
+  const analysis = new Eu5CampaignAnalysis();
   const broken = save();
-  broken.tables = tables([{ id: 1, tag: "AAA", population: 1 }]);
-  broken.tables.countryValues = new Float64Array(1);
-  expect(() => store.append(broken)).toThrow("Incomplete snapshot tables");
+  broken.payload.tables = tables([{ id: 1, tag: "AAA", population: 1 }]);
+  broken.payload.tables.countryValues = new Float64Array(1);
+  expect(() => analysis.append(broken)).toThrow("Incomplete snapshot tables");
   const other = save();
-  other.tables.countryMetrics = ["population"];
-  expect(() => store.append(other)).toThrow("different version");
-  expect(store.timeline("campaign")).toHaveLength(0);
+  other.payload.tables.countryMetrics = ["population"];
+  expect(() => analysis.append(other)).toThrow("different version");
+  expect(analysis.store.timeline("campaign")).toHaveLength(0);
 });
 
 describe("queries", () => {
   // Country 0x0100_0007 takes the low bits of country 7 after country 7 ends.
   const reused = 0x0100_0007;
-  const store = new CampaignAnalysisStore();
+  const store = new Eu5CampaignAnalysis();
   store.append(
     campaignSave(
       "a",
@@ -247,7 +238,7 @@ describe("queries", () => {
   });
 
   it("uses the snapshots that the store has when the query runs", () => {
-    const growing = new CampaignAnalysisStore();
+    const growing = new Eu5CampaignAnalysis();
     growing.append(campaignSave("x", 14000101, [1, 1], [{ id: 1, tag: "A", population: 1 }], []));
     const before = growing.countryHistory("campaign", { kind: "world" });
     growing.append(campaignSave("y", 14100101, [1, 1], [{ id: 1, tag: "A", population: 2 }], []));
@@ -255,24 +246,4 @@ describe("queries", () => {
     expect(before.rows).toHaveLength(1);
     expect(growing.countryHistory("campaign", { kind: "world" }).snapshots).toBe(2);
   });
-});
-
-it("refuses a save above the memory limit and keeps the store unchanged", () => {
-  const first = save();
-  const bytes = new CampaignAnalysisStore();
-  bytes.append(save());
-  const limit = bytes.memoryBytes() + 10;
-  const store = new CampaignAnalysisStore(limit);
-  store.append(first);
-  let error: unknown;
-  try {
-    store.append(save("later", 13600401));
-  } catch (e) {
-    error = e;
-  }
-  expect(error).toBeInstanceOf(Error);
-  expect((error as Error).name).toBe(MEMORY_LIMIT_ERROR);
-  expect((error as Error).message).toContain("Campaign analysis is full");
-  expect(store.timeline("campaign")).toHaveLength(1);
-  expect(store.memoryBytes()).toBe(bytes.memoryBytes());
 });

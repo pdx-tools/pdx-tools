@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { MapFrame } from "../../history/analysisTypes";
-import { serveMapFrames } from "../../history/framePort";
+import { serveFrames } from "@/features/campaign/analysis/framePort";
 import type { GradientConfig } from "@/wasm/wasm_eu5";
 import type { LocationClickChangeEvent, LocationHoverChangeEvent } from "../map/map-module";
 import type { BoxSelectCommitEvent } from "../../types/box-select";
@@ -52,25 +52,33 @@ const gradient: GradientConfig = {
 };
 const cleanup: (() => void)[] = [];
 
-const frame = (hash: string): MapFrame => ({
-  hash,
-  campaignId: "campaign",
-  date: "1360-01-01",
-  dateSort: 13600101,
-  version: "1.0",
-  layoutKey: "same",
-  fileName: `${hash}.eu5`,
-  world: { locationCount: 0, countryCount: 0, totalPopulation: 0 },
-  locationIds: new Uint32Array(),
-  fractions: new Uint16Array(),
-  metrics: new Float32Array(),
-  owners: new Uint32Array(),
-  controllers: new Uint32Array(),
-  religions: new Uint32Array(),
-  markets: new Uint32Array(),
-  countries: new Uint32Array(),
-  religionColors: new Uint32Array(),
-  marketColors: new Uint32Array(),
+const frame = (id: string): MapFrame => ({
+  descriptor: {
+    id,
+    game: "eu5",
+    campaignId: "campaign",
+    contentHash: id,
+    date: "1360-01-01",
+    dateSort: 13600101,
+    gameVersion: "1.0",
+    extractorVersion: 1,
+    artifacts: ["observations", "map"],
+    layoutKey: "same",
+    world: { locationCount: 0, countryCount: 0, totalPopulation: 0 },
+  },
+  projection: {
+    layoutKey: "same",
+    locationIds: new Uint32Array(),
+    fractions: new Uint16Array(),
+    metrics: new Float32Array(),
+    owners: new Uint32Array(),
+    controllers: new Uint32Array(),
+    religions: new Uint32Array(),
+    markets: new Uint32Array(),
+    countries: new Uint32Array(),
+    religionColors: new Uint32Array(),
+    marketColors: new Uint32Array(),
+  },
 });
 
 beforeEach(() => {
@@ -127,7 +135,7 @@ async function open() {
   ))!;
   await save.show();
   const channel = new MessageChannel();
-  const stop = serveMapFrames(channel.port1, frame);
+  const stop = serveFrames(channel.port1, frame);
   save.connectMapFrames("test", channel.port2);
   cleanup.push(() => {
     save.connectMapFrames("test", null);
@@ -152,7 +160,7 @@ it("paints a snapshot into the overlay and leaves the buffers of the save alone"
 
   const reply = await save.presentOverlay("second", "control", 7);
 
-  expect(reply).toMatchObject({ accepted: true, gradient, observation: { hash: "second" } });
+  expect(reply).toMatchObject({ accepted: true, gradient, observation: { id: "second" } });
   expect(mocks.app.paint_map_projection).toHaveBeenCalledWith(
     "control",
     "same",

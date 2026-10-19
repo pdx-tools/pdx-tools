@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
-import type { SnapshotMetadata as Snapshot } from "./types";
+import type { Eu5SnapshotDescriptor as Snapshot } from "./analysisTypes";
 import { isAnalysisPaused, useHistory } from "./store";
 
 const mocks = vi.hoisted(() => ({
@@ -33,15 +33,13 @@ const entry = (
   problem: null,
   batch: 1,
 });
-const observation = (hash = "eu5:abc", campaignId = "campaign") =>
+const observation = (id = "eu5:abc", campaignId = "campaign") =>
   ({
-    hash,
+    id,
     campaignId,
-    version: "1.0.0",
+    gameVersion: "1.0.0",
     date: "1360-01-01",
     dateSort: 13600101,
-
-    fileName: file.name,
   }) as Snapshot;
 let entries: LocalSaveEntry[];
 beforeEach(() => {
@@ -83,7 +81,7 @@ describe("campaign analysis", () => {
     });
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().sources.first).toEqual({
-      hash: "eu5:abc",
+      snapshotId: "eu5:abc",
       version: { size: file.size, lastModified: 100 },
     });
     expect(useHistory.getState().snapshots).toHaveLength(1);
@@ -127,8 +125,8 @@ describe("campaign analysis", () => {
     expect(useHistory.getState().analysisPaused).toBe(false);
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other-campaign"]);
     expect(isAnalysisPaused(useHistory.getState(), "campaign")).toBe(false);
-    expect(useHistory.getState().snapshots.map(({ hash }) => hash)).toEqual(["good-observation"]);
-    expect(useHistory.getState().sources.good.hash).toBe("good-observation");
+    expect(useHistory.getState().snapshots.map(({ id }) => id)).toEqual(["good-observation"]);
+    expect(useHistory.getState().sources.good.snapshotId).toBe("good-observation");
     expect(useHistory.getState().issues).toEqual(["bad.eu5: invalid date"]);
 
     const added = entry("added", {
@@ -161,7 +159,7 @@ describe("campaign analysis", () => {
       }),
     ];
     useHistory.getState().add([observation("old")], {
-      handle: { hash: "old", version: { size: file.size, lastModified: 100 } },
+      handle: { snapshotId: "old", version: { size: file.size, lastModified: 100 } },
     });
     mocks.importTimeline.mockImplementation(async (files, options) => {
       expect(files).toEqual([newer]);
@@ -171,8 +169,8 @@ describe("campaign analysis", () => {
     });
     await analyzeCampaign(entries, "campaign");
     expect(getFile).toHaveBeenCalledOnce();
-    expect(useHistory.getState().sources.handle.hash).toBe("new");
-    expect(useHistory.getState().snapshots.map((s) => s.hash)).toEqual(["old", "new"]);
+    expect(useHistory.getState().sources.handle.snapshotId).toBe("new");
+    expect(useHistory.getState().snapshots.map((s) => s.id)).toEqual(["old", "new"]);
   });
 
   it("retains individual associations for duplicate byte-identical files", async () => {
@@ -190,8 +188,8 @@ describe("campaign analysis", () => {
       return { errors: [] };
     });
     await analyzeCampaign(entries, "campaign");
-    expect(useHistory.getState().sources.first.hash).toBe("eu5:abc");
-    expect(useHistory.getState().sources.copy.hash).toBe("eu5:abc");
+    expect(useHistory.getState().sources.first.snapshotId).toBe("eu5:abc");
+    expect(useHistory.getState().sources.copy.snapshotId).toBe("eu5:abc");
     expect(useHistory.getState().snapshots).toHaveLength(1);
   });
 
@@ -206,7 +204,7 @@ describe("campaign analysis", () => {
       throw new DOMException("Stopped", "AbortError");
     });
     await analyzeCampaign(entries, "campaign");
-    expect(useHistory.getState().snapshots.map((s) => s.hash)).toEqual(["eu5:abc", "late"]);
+    expect(useHistory.getState().snapshots.map((s) => s.id)).toEqual(["eu5:abc", "late"]);
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
     expect(useHistory.getState().progress).toBeNull();
     expect(useHistory.getState().issues).toEqual([]);

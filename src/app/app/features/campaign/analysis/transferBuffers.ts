@@ -1,5 +1,5 @@
 /** Collect each transferable backing buffer once, preserving shared column identities. */
-export function analyticalBuffers(value: unknown): ArrayBuffer[] {
+export function collectBuffers(value: unknown): ArrayBuffer[] {
   const buffers = new Set<ArrayBuffer>();
   const visit = (item: unknown) => {
     if (ArrayBuffer.isView(item)) {

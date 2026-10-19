@@ -16,9 +16,9 @@ export function indexedValues(values: readonly (number | null)[]): (number | nul
   );
 }
 
-/** One CSV row for each snapshot and line. Each row has the save hash and version. */
+/** One CSV row for each snapshot and line. Each row has the content hash and game version. */
 export function historyCsv(
-  rows: readonly Pick<HistoryRow<unknown>, "hash" | "date" | "version">[],
+  rows: readonly Pick<HistoryRow<unknown>, "contentHash" | "date" | "gameVersion">[],
   campaignId: string,
   lines: readonly HistoryLine[],
   options: { metric: string; good?: string; indexed?: boolean },
@@ -38,13 +38,13 @@ export function historyCsv(
     lines.map((line) => [
       row.date,
       campaignId,
-      row.version,
+      row.gameVersion,
       line.name,
       options.good ?? "",
       options.metric,
       options.indexed ? "first_observation_100" : "raw",
       line.values[index] == null ? "" : String(line.values[index]),
-      row.hash,
+      row.contentHash,
     ]),
   );
   return [header, ...body]

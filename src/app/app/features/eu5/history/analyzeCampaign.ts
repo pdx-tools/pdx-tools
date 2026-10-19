@@ -1,10 +1,11 @@
+import { descriptorDate } from "@/features/campaign/analysis/descriptor";
+import type { SourceAssociation } from "@/features/campaign/analysis/descriptor";
 import { fileVersion, sameFileVersion } from "@/features/campaign/types";
 import { localSaveRegistry, holdsRef } from "@/features/campaign/localSaves";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { toPlaythroughId } from "@/features/campaign/types";
 import { importTimeline } from "./importSnapshots";
 import { useHistory } from "./store";
-import type { SourceObservation } from "./store";
 
 /** Analyze local campaign entries without opening a save or controlling navigation. */
 export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: string) {
@@ -87,7 +88,7 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
           }
         },
         onSnapshots: (snapshots, observations) => {
-          const associations: Record<string, SourceObservation> = {};
+          const associations: Record<string, SourceAssociation> = {};
           for (const { snapshot, file: parsedFile } of observations) {
             for (const { entry, file } of sources) {
               if (parsedFile !== file) continue;
@@ -106,19 +107,15 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
                 {
                   playthroughId: toPlaythroughId(snapshot.campaignId),
                   campaignIdHint: null,
-                  date: {
-                    year: Math.floor(snapshot.dateSort / 10000),
-                    month: Math.floor(snapshot.dateSort / 100) % 100,
-                    day: snapshot.dateSort % 100,
-                  },
+                  date: descriptorDate(snapshot),
                 },
                 fileVersion(file),
               );
-              associations[entry.id] = { hash: snapshot.hash, version: fileVersion(file) };
+              associations[entry.id] = { snapshotId: snapshot.id, version: fileVersion(file) };
             }
             if (snapshot.campaignId !== playthroughId)
               issues.push(
-                `${snapshot.fileName}: belongs to another campaign; excluded from these charts.`,
+                `${parsedFile.name}: belongs to another campaign; excluded from these charts.`,
               );
           }
           useHistory.getState().add(

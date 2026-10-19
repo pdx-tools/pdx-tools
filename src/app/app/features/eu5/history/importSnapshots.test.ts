@@ -10,20 +10,19 @@ vi.mock("comlink", () => ({ wrap: () => mocks }));
 vi.mock("@/lib/sentryWorker", () => ({ trackWorker: vi.fn(() => vi.fn()) }));
 vi.mock("./analysisClient", () => ({
   appendAnalysis: mocks.append,
-  campaignAnalysis: () => ({ memoryBytes: mocks.memory }),
+  campaignAnalysis: () => ({
+    memory: async () => ({ bufferBytes: await mocks.memory() }),
+  }),
 }));
 import { importTimeline } from "./importSnapshots";
 const descriptor = (id: number) => ({
-  hash: `eu5:${id}`,
+  id: `eu5:1:${id}`,
   campaignId: "campaign",
   date: `1360-${String(id + 1).padStart(2, "0")}-01`,
   dateSort: 13600101 + id * 100,
-  version: "1.4.0",
-  fileName: `save-${id}.eu5`,
-  population: 0,
-  development: 0,
-  marketLabels: {},
+  gameVersion: "1.4.0",
 });
+const appended = (id: number) => ({ descriptor: descriptor(id), duplicate: false });
 function options(extra: Partial<ImportOptions> = {}): ImportOptions {
   return {
     signal: new AbortController().signal,
@@ -49,7 +48,7 @@ beforeEach(() => {
   mocks.memory.mockResolvedValue(0);
   mocks.parseImport.mockImplementation(async (file: File) => ({ name: file.name }));
   mocks.append.mockImplementation(async (result: { name: string }) =>
-    descriptor(Number(result.name.match(/\d+/)?.[0] ?? 0)),
+    appended(Number(result.name.match(/\d+/)?.[0] ?? 0)),
   );
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -143,7 +142,7 @@ it("aborts the remaining import when publication fails", async () => {
 
 it("publishes an observation committed during cancellation", async () => {
   const controller = new AbortController();
-  let finish!: (value: ReturnType<typeof descriptor>) => void;
+  let finish!: (value: ReturnType<typeof appended>) => void;
   mocks.append.mockImplementation(
     () =>
       new Promise((resolve) => {
@@ -155,7 +154,7 @@ it("publishes an observation committed during cancellation", async () => {
   const failure = expect(run).rejects.toMatchObject({ name: "AbortError" });
   await vi.waitFor(() => expect(mocks.append).toHaveBeenCalledOnce());
   controller.abort();
-  finish(descriptor(0));
+  finish(appended(0));
   await failure;
   await vi.waitFor(() => expect(opts.onSnapshots).toHaveBeenCalledOnce());
 });
@@ -219,7 +218,7 @@ it("reuses parser workers between saves, including a failed parse, and releases 
 
 it("stops parsing when the store is full and counts the saves that it refused", async () => {
   const full = Object.assign(Error("Campaign analysis is full."), { name: "AnalysisMemoryLimit" });
-  mocks.append.mockImplementationOnce(async () => descriptor(0)).mockRejectedValueOnce(full);
+  mocks.append.mockImplementationOnce(async () => appended(0)).mockRejectedValueOnce(full);
   const opts = options({ concurrency: 1 });
   const result = await importTimeline(
     [0, 1, 2, 3].map((i) => new File(["save"], `save-${i}.eu5`)),

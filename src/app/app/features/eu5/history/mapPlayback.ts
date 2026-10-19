@@ -1,26 +1,18 @@
 import { daysBetween } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
-import type { MapObservation as MapFrame } from "./analysisTypes";
-import type { SnapshotMetadata } from "./types";
+import { descriptorDate } from "@/features/campaign/analysis/descriptor";
+import type { Eu5SnapshotDescriptor as MapFrame } from "./analysisTypes";
 
-export const mapFrameDate = (frame: MapFrame): DateComponents => ({
-  year: Math.floor(frame.dateSort / 10000),
-  month: Math.floor(frame.dateSort / 100) % 100,
-  day: frame.dateSort % 100,
-});
+export const mapFrameDate = (frame: MapFrame): DateComponents => descriptorDate(frame);
 
 /** Frame discovery uses published metadata, not another copy of all campaign descriptors. */
 export function publishedMapFrames(
-  snapshots: readonly SnapshotMetadata[],
+  snapshots: readonly MapFrame[],
   campaign: string,
   layout: string,
 ): MapFrame[] {
   return compatibleMapFrames(
-    snapshots.flatMap((snapshot) => {
-      if (!("layoutKey" in snapshot) || typeof snapshot.layoutKey !== "string") return [];
-      const { hash, campaignId, date, dateSort, version, layoutKey, fileName, world } = snapshot;
-      return [{ hash, campaignId, date, dateSort, version, layoutKey, fileName, world }];
-    }),
+    snapshots.filter((snapshot) => snapshot.artifacts.includes("map")),
     campaign,
     layout,
   );
@@ -44,7 +36,7 @@ export function mapTimelineBounds(
 /** Never paint another campaign or an incompatible terrain/location mapping. */
 export function compatibleMapFrames(frames: MapFrame[], campaign: string, layout: string) {
   const dates = new Map<number, MapFrame>();
-  for (const frame of [...frames].sort((a, b) => a.hash.localeCompare(b.hash))) {
+  for (const frame of [...frames].sort((a, b) => a.id.localeCompare(b.id))) {
     if (frame.campaignId === campaign && frame.layoutKey === layout)
       dates.set(frame.dateSort, frame);
   }

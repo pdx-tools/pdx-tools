@@ -1,6 +1,6 @@
-import type { MapObservation } from "../../history/analysisTypes";
+import type { Eu5SnapshotDescriptor, MapFrame } from "../../history/analysisTypes";
 import { LatestRequest } from "../../history/latestRequest";
-import { MapFrameReader } from "../../history/framePort";
+import { FrameReader } from "@/features/campaign/analysis/framePort";
 import { campaignIdentities, clickChange, restoreCampaignView } from "./restoreCampaignView";
 import type { Eu5Carry } from "../../campaignCarry";
 import { fetchOk } from "@/lib/fetch";
@@ -148,7 +148,7 @@ export type OverlayReply = {
   /** False when the map refused the frame because a newer token came first. */
   accepted: boolean;
   gradient: GradientConfig | null;
-  observation: MapObservation;
+  observation: Eu5SnapshotDescriptor;
 };
 
 function closeSave() {
@@ -392,7 +392,7 @@ const loadSaveInner = async (
     },
   };
 
-  let frameSource: { id: string; reader: MapFrameReader } | undefined;
+  let frameSource: { id: string; reader: FrameReader<MapFrame> } | undefined;
   const opened: OpenSave = {
     events: held ? null : events,
     close: () => {
@@ -404,38 +404,34 @@ const loadSaveInner = async (
   openSave = opened;
 
   // Paint a snapshot into the overlay. The buffers of this save do not change.
-  const overlays = new LatestRequest<{ hash: string; mode: MapMode; token: number }, OverlayReply>(
-    async ({ hash, mode, token }, current) => {
-      if (!frameSource) throw Error("Campaign frame connection is not ready");
-      const frame = await frameSource.reader.read(hash);
-      if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
-      const paint = app.paint_map_projection(
-        mode,
-        frame.layoutKey,
-        frame.locationIds,
-        frame.fractions,
-        frame.metrics,
-        frame.owners,
-        frame.controllers,
-        frame.religions,
-        frame.markets,
-        frame.countries,
-        frame.religionColors,
-        frame.marketColors,
-      );
-      const { colors, flags, groups, change } = paint;
-      paint.free();
-      const accepted = await map.presentOverlay(
-        transfer({ token, colors, flags, groups }, [colors.buffer, flags.buffer, groups.buffer]),
-      );
-      const { campaignId, date, dateSort, version, layoutKey, fileName, world } = frame;
-      return {
-        accepted,
-        gradient: change.gradient ?? null,
-        observation: { hash, campaignId, date, dateSort, version, layoutKey, fileName, world },
-      };
-    },
-  );
+  const overlays = new LatestRequest<
+    { snapshotId: string; mode: MapMode; token: number },
+    OverlayReply
+  >(async ({ snapshotId, mode, token }, current) => {
+    if (!frameSource) throw Error("Campaign frame connection is not ready");
+    const { descriptor, projection: frame } = await frameSource.reader.read(snapshotId);
+    if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
+    const paint = app.paint_map_projection(
+      mode,
+      frame.layoutKey,
+      frame.locationIds,
+      frame.fractions,
+      frame.metrics,
+      frame.owners,
+      frame.controllers,
+      frame.religions,
+      frame.markets,
+      frame.countries,
+      frame.religionColors,
+      frame.marketColors,
+    );
+    const { colors, flags, groups, change } = paint;
+    paint.free();
+    const accepted = await map.presentOverlay(
+      transfer({ token, colors, flags, groups }, [colors.buffer, flags.buffer, groups.buffer]),
+    );
+    return { accepted, gradient: change.gradient ?? null, observation: descriptor };
+  });
   return proxy({
     show: async (): Promise<void> => {
       if (!held || openSave !== opened) return;
@@ -450,11 +446,11 @@ const loadSaveInner = async (
     connectMapFrames: (id: string, port: MessagePort | null) => {
       if (!port && frameSource?.id !== id) return;
       frameSource?.reader.close();
-      frameSource = port ? { id, reader: new MapFrameReader(port) } : undefined;
+      frameSource = port ? { id, reader: new FrameReader<MapFrame>(port) } : undefined;
     },
     stopOverlay: () => overlays.stop(),
-    presentOverlay: (hash: string, mode: MapMode, token: number) =>
-      overlays.request({ hash, mode, token }),
+    presentOverlay: (snapshotId: string, mode: MapMode, token: number) =>
+      overlays.request({ snapshotId, mode, token }),
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       const change = app.set_map_mode(mode);
       await syncAll(change);

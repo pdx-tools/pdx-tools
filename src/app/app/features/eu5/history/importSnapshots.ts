@@ -1,16 +1,16 @@
 import { createWorkerQueue } from "@/lib/workerQueue";
 import type { WorkerQueue } from "@/lib/workerQueue";
 import { appendAnalysis, campaignAnalysis } from "./analysisClient";
-import { MEMORY_LIMIT_ERROR } from "./analysisStore";
-import type { SnapshotMetadata } from "./types";
+import { MEMORY_LIMIT_ERROR } from "@/features/campaign/analysis/residentStore";
+import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 import type { ImportPhaseState } from "./importTiming";
 import type { parseImport } from "./snapshot-worker";
 export type ImportOptions = {
   signal: AbortSignal;
   concurrency?: number;
   onSnapshots: (
-    snapshots: SnapshotMetadata[],
-    sources: { snapshot: SnapshotMetadata; file: File }[],
+    snapshots: Eu5SnapshotDescriptor[],
+    sources: { snapshot: Eu5SnapshotDescriptor; file: File }[],
   ) => void;
   onProgress: (
     completed: number,
@@ -62,7 +62,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
       }
       jobs.push(file);
     }
-    const residentMiB = (await campaignAnalysis().memoryBytes()) / 1024 ** 2;
+    const residentMiB = (await campaignAnalysis().memory()).bufferBytes / 1024 ** 2;
     const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
     const budgetMiB = memory * 1024 * 0.65 - 512;
     const largest = jobs.reduce((size, file) => Math.max(size, 768 + file.size / 1024 ** 2), 768);
@@ -98,7 +98,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
                 taskSignal.throwIfAborted();
                 signal.throwIfAborted();
                 // Waiting for append bounds unwritten analytical output to the active parser count.
-                const descriptor = await appendAnalysis(result);
+                const { descriptor } = await appendAnalysis(result);
                 // Once append succeeds the observation is committed, even if cancellation
                 // arrived while the worker was accepting it. Publish that committed result.
                 try {
@@ -109,7 +109,9 @@ export async function importTimeline(files: File[], options: ImportOptions) {
                   throw error;
                 }
                 if (!signal.aborted) {
-                  capacity = capacityFor((await campaignAnalysis().memoryBytes()) / 1024 ** 2);
+                  capacity = capacityFor(
+                    (await campaignAnalysis().memory()).bufferBytes / 1024 ** 2,
+                  );
                   phase = { ...phase, concurrency: capacity };
                 }
               },

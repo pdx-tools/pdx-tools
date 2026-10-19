@@ -7,6 +7,11 @@
 use eu5save::models::{Gamestate, LocationRank};
 use std::collections::HashMap;
 
+/// The version of the campaign analysis payload: the map projection and
+/// these tables. Increase it when their schema, calculations, or precision
+/// change, so that the store does not mix old and new snapshots.
+pub const EXTRACTOR_VERSION: u32 = 1;
+
 /// A country column, in table order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CountryMetric {

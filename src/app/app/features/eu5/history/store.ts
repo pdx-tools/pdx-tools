@@ -1,17 +1,17 @@
 import { create } from "zustand";
-import type { FileVersion } from "@/features/campaign/types";
+import { compareDescriptors } from "@/features/campaign/analysis/descriptor";
+import type { SourceAssociation } from "@/features/campaign/analysis/descriptor";
 import type { ImportProgressState } from "./importTiming";
-import type { SnapshotMetadata } from "./types";
+import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 
-export type SourceObservation = { hash: string; version: FileVersion };
 type HistoryState = {
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
   /** The history section of the insight panel is open. It stays open when a save opens. */
   panelOpen: boolean;
   setPanelOpen: (open: boolean) => void;
-  snapshots: SnapshotMetadata[];
-  sources: Record<string, SourceObservation>;
+  snapshots: Eu5SnapshotDescriptor[];
+  sources: Record<string, SourceAssociation>;
   analyzingEntryIds: readonly string[];
   analysisEnabledCampaigns: readonly string[];
   enableAnalysis: (campaignId: string) => void;
@@ -22,7 +22,7 @@ type HistoryState = {
   /** Why the store refused saves, or null when it has space. */
   memoryFull: string | null;
   cancel: (() => void) | null;
-  add: (snapshots: SnapshotMetadata[], sources?: Record<string, SourceObservation>) => void;
+  add: (snapshots: Eu5SnapshotDescriptor[], sources?: Record<string, SourceAssociation>) => void;
 };
 
 export function isAnalysisPaused(
@@ -59,12 +59,10 @@ export const useHistory = create<HistoryState>()((set) => ({
   cancel: null,
   add: (snapshots, sources = {}) =>
     set((state) => {
-      const byHash = new Map(state.snapshots.map((snapshot) => [snapshot.hash, snapshot]));
-      for (const snapshot of snapshots) byHash.set(snapshot.hash, snapshot);
+      const byId = new Map(state.snapshots.map((snapshot) => [snapshot.id, snapshot]));
+      for (const snapshot of snapshots) byId.set(snapshot.id, snapshot);
       return {
-        snapshots: [...byHash.values()].sort(
-          (a, b) => a.dateSort - b.dateSort || a.hash.localeCompare(b.hash),
-        ),
+        snapshots: [...byId.values()].sort(compareDescriptors),
         sources: { ...state.sources, ...sources },
       };
     }),

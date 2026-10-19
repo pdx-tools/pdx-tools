@@ -363,8 +363,8 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
     getMapLayoutKey: () => save.getMapLayoutKey(),
     connectMapFrames: (id: string, port: MessagePort | null) =>
       save.connectMapFrames(id, port ? transfer(port, [port]) : null),
-    presentOverlay: (hash: string, mode: MapMode, token: number) =>
-      save.presentOverlay(hash, mode, token),
+    presentOverlay: (snapshotId: string, mode: MapMode, token: number) =>
+      save.presentOverlay(snapshotId, mode, token),
     stopOverlay: () => save.stopOverlay(),
     // The overlay and the input gate belong to the workers, not to this save.
     clearOverlay: (token: number) => mapEngine.clearOverlay(token),

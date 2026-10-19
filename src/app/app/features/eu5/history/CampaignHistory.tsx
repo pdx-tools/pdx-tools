@@ -25,8 +25,8 @@ export type HistoryFocus =
 
 type ChartProps = {
   campaignId: string;
-  playheadHash: string | null;
-  onSelectSnapshot?: (hash: string) => void;
+  playheadId: string | null;
+  onSelectSnapshot?: (snapshotId: string) => void;
 };
 
 const MAX_MARKETS = 6;
@@ -376,7 +376,7 @@ function HistoryChart({
   rows,
   lines,
   campaignId,
-  playheadHash,
+  playheadId,
   onSelectSnapshot,
   csv,
 }: ChartProps & {
@@ -386,7 +386,7 @@ function HistoryChart({
   lines: HistoryLine[];
   csv?: { metric: string; good?: string; indexed?: boolean };
 }) {
-  const playhead = rows.find((row) => row.hash === playheadHash)?.date;
+  const playhead = rows.find((row) => row.id === playheadId)?.date;
   const option = useMemo((): EChartsOption => {
     const theme = getEChartsTheme();
     const time = (date: string) => Date.parse(`${date}T00:00:00Z`);
@@ -453,7 +453,7 @@ function HistoryChart({
 
   const select = useEffectEvent((dataIndex: number) => {
     const row = rows[dataIndex];
-    if (row) onSelectSnapshot?.(row.hash);
+    if (row) onSelectSnapshot?.(row.id);
   });
   const onInit = (chart: ECharts) => {
     chart.on("click", (params) => select(params.dataIndex));

@@ -1,10 +1,13 @@
 import { expose, transfer } from "comlink";
 import { registerWebWorker } from "@sentry/react-router";
+import { snapshotId } from "@/features/campaign/analysis/descriptor";
+import { collectBuffers } from "@/features/campaign/analysis/transferBuffers";
 import init, { set_tokens, ImportLoader } from "@/wasm/wasm_eu5";
+import type { MapImportMetadata } from "@/wasm/wasm_eu5";
 import wasmUrl from "@/wasm/wasm_eu5_bg.wasm?url";
 import tokenUrl from "../../../../../../assets/tokens/eu5.bin?url";
-import { analyticalBuffers } from "./transferBuffers";
-import type { SaveAnalysis } from "./analysisTypes";
+import { EU5_EXTRACTOR_VERSION } from "./analysisTypes";
+import type { Eu5Payload, SaveAnalysis } from "./analysisTypes";
 registerWebWorker({ self: globalThis });
 let initialized: Promise<unknown> | undefined;
 const initialize = () =>
@@ -26,13 +29,23 @@ export async function parseImport(file: File): Promise<SaveAnalysis> {
   try {
     if (!parser.meta().playthroughId) throw Error("Save has no campaign ID");
     consumed = true;
-    const result = parser.parse_import() as SaveAnalysis;
-    result.observation = {
-      ...result.observation,
-      hash: `eu5:${result.observation.hash}`,
-      fileName: file.name,
+    const { observation, projection, tables } = parser.parse_import() as Eu5Payload & {
+      observation: MapImportMetadata;
     };
-    return transfer(result, analyticalBuffers(result));
+    if (observation.extractorVersion !== EU5_EXTRACTOR_VERSION)
+      throw Error(
+        `The save parser gives extractor version ${observation.extractorVersion}, but campaign analysis accepts ${EU5_EXTRACTOR_VERSION}`,
+      );
+    const result: SaveAnalysis = {
+      descriptor: {
+        ...observation,
+        id: snapshotId("eu5", observation.extractorVersion, observation.contentHash),
+        game: "eu5",
+        artifacts: ["observations", "map"],
+      },
+      payload: { projection, tables },
+    };
+    return transfer(result, collectBuffers(result));
   } finally {
     if (!consumed) parser.free();
   }

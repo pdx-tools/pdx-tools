@@ -60,7 +60,7 @@ export function PanelHistory({ mode }: { mode: MapMode }) {
       campaignId={history.campaignId}
       mode={mode}
       focus={focus}
-      playheadHash={history.shownHash}
+      playheadId={history.shownId}
       onSelectSnapshot={history.showSnapshot ?? undefined}
     />
   );
