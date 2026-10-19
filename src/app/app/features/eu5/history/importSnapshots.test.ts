@@ -229,3 +229,12 @@ it("stops parsing when the store is full and counts the saves that it refused", 
   expect(result.errors).toEqual([]);
   expect(result.memoryFull).toEqual({ message: "Campaign analysis is full.", refused: 3 });
 });
+
+it("reports failed files by identity when names match", async () => {
+  const bad = new File(["bad"], "same.eu5");
+  const good = new File(["good"], "same.eu5");
+  mocks.parseImport.mockRejectedValueOnce(Error("invalid save"));
+  const onFileError = vi.fn();
+  await importTimeline([bad, good], options({ concurrency: 1, onFileError }));
+  expect(onFileError).toHaveBeenCalledExactlyOnceWith(bad, "Error: invalid save");
+});

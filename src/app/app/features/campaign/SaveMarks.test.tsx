@@ -4,7 +4,7 @@ import type { CampaignSave } from "./types";
 
 const mocks = vi.hoisted(() => ({ saves: [] as CampaignSave[] }));
 vi.mock("./CampaignProvider", () => ({
-  useCampaign: () => ({ saves: mocks.saves, opening: null }),
+  useCampaignTimeline: () => ({ saves: mocks.saves, opening: null }),
 }));
 vi.mock("./SaveList", () => ({ SaveList: () => null }));
 vi.mock("@/components/Popover", () => ({
@@ -25,12 +25,26 @@ const save = (key: string, day = 1): CampaignSave => ({
   membership: "same",
   problem: null,
 });
-function Track({ ready, analyzing = new Set() }: { ready?: Set<string>; analyzing?: Set<string> }) {
+function Track({
+  ready,
+  analyzing = new Set(),
+  failed = new Set(),
+}: {
+  ready?: Set<string>;
+  analyzing?: Set<string>;
+  failed?: Set<string>;
+}) {
   const campaign = useTimelineCampaign(
     start,
     ready &&
       ((save) =>
-        ready.has(save.key) ? "ready" : analyzing.has(save.key) ? "analyzing" : "pending"),
+        ready.has(save.key)
+          ? "ready"
+          : failed.has(save.key)
+            ? "failed"
+            : analyzing.has(save.key)
+              ? "analyzing"
+              : "pending"),
   );
   return <>{campaign?.lane({ px: (day) => day, width: 100, trackY: 20, top: 30, height: 16 })}</>;
 }
@@ -85,4 +99,21 @@ it("marks a grouped bookmark ready only when every save is analyzed", () => {
   expect(html).toContain("2 analyzed");
   expect(html).toContain("fill-emerald-400");
   expect(html).not.toContain("fill-amber-400");
+});
+
+it("keeps failed saves visible in red, including mixed clusters", () => {
+  const single = renderToString(<Track ready={new Set()} failed={new Set(["first"])} />);
+  expect(single).toContain('data-analysis="failed"');
+  expect(single).toContain("Analysis failed");
+  expect(single).toContain("fill-red-400");
+  mocks.saves = [save("first"), save("second", 2), save("third", 3)];
+  const mixed = renderToString(
+    <Track
+      ready={new Set(["first"])}
+      analyzing={new Set(["second"])}
+      failed={new Set(["third"])}
+    />,
+  );
+  expect(mixed).toContain('data-analysis="failed"');
+  expect(mixed).toContain("1 analyzed, 1 analyzing, 1 failed");
 });

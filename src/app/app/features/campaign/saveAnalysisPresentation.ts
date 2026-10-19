@@ -12,6 +12,12 @@ export const saveAnalysisPresentation = {
     dotClass: "bg-amber-400",
     bookmarkClass: "fill-amber-400 stroke-amber-300",
   },
+  failed: {
+    label: "Failed",
+    description: "Analysis failed",
+    dotClass: "bg-red-400",
+    bookmarkClass: "fill-red-400 stroke-red-300",
+  },
   pending: {
     label: "Waiting",
     description: "Waiting for analysis",

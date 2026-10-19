@@ -6,7 +6,7 @@ import { sectionLabel } from "@/components/game/SectionTitle";
 import { daysBetween, formatLongDate } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
 import type { SaveLaneGeometry, TimelineCampaign } from "@/features/timeline/TimelineScrubber";
-import { useCampaign } from "./CampaignProvider";
+import { useCampaignTimeline } from "./CampaignProvider";
 import type { CampaignNav } from "./useCampaignNav";
 import { saveLabel } from "./saveText";
 import { SaveList } from "./SaveList";
@@ -53,10 +53,16 @@ function clusterSaves(
 
 /** A mixed cluster stays active while any save is being analyzed. */
 function summarizeAnalysis(saves: readonly CampaignSave[], statusOf: AnalysisStatus) {
-  const counts = { ready: 0, analyzing: 0, pending: 0 };
+  const counts = { ready: 0, analyzing: 0, pending: 0, failed: 0 };
   for (const save of saves) counts[statusOf(save)]++;
   const status: SaveAnalysisStatus =
-    counts.ready === saves.length ? "ready" : counts.analyzing > 0 ? "analyzing" : "pending";
+    counts.failed > 0
+      ? "failed"
+      : counts.ready === saves.length
+        ? "ready"
+        : counts.analyzing > 0
+          ? "analyzing"
+          : "pending";
   const label =
     saves.length === 1
       ? saveAnalysisPresentation[status].description
@@ -64,6 +70,7 @@ function summarizeAnalysis(saves: readonly CampaignSave[], statusOf: AnalysisSta
           counts.ready && `${counts.ready} analyzed`,
           counts.analyzing && `${counts.analyzing} analyzing`,
           counts.pending && `${counts.pending} waiting`,
+          counts.failed && `${counts.failed} failed`,
         ]
           .filter(Boolean)
           .join(", ");
@@ -75,7 +82,7 @@ export function useTimelineCampaign(
   start: DateComponents | undefined,
   analysisStatus?: AnalysisStatus,
 ): TimelineCampaign | undefined {
-  const nav = useCampaign();
+  const nav = useCampaignTimeline();
   if (
     nav === null ||
     start === undefined ||

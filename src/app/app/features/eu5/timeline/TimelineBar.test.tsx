@@ -7,9 +7,13 @@ import type * as HistoryStore from "../history/store";
 
 const mocks = vi.hoisted(() => ({
   mode: "political",
+  pending: 0,
   history: null as MapHistoryValue | null,
   status: undefined as ((save: CampaignSave) => SaveAnalysisStatus) | undefined,
   entry: null as { ref: { kind: "file"; file: { size: number; lastModified: number } } } | null,
+}));
+vi.mock("@/features/campaign/CampaignProvider", () => ({
+  useCampaign: () => ({ pending: mocks.pending }),
 }));
 vi.mock("../history/context", () => ({ useMapHistory: () => mocks.history }));
 vi.mock("../history/store", async (original) => {
@@ -53,10 +57,11 @@ import { useHistory } from "../history/store";
 
 beforeEach(() => {
   mocks.mode = "political";
+  mocks.pending = 0;
   mocks.history = null;
   mocks.status = undefined;
   mocks.entry = { ref: { kind: "file", file: { size: 10, lastModified: 1 } } };
-  useHistory.setState({ sources: {}, analyzingEntryIds: [] });
+  useHistory.setState({ sources: {}, analyzingEntryIds: [], failedSources: {} });
 });
 
 it("preserves political playback and exports without analysis", () => {
@@ -104,4 +109,24 @@ it("marks only matching file versions with resident map frames as ready", () => 
       source: { kind: "upload", saveId: "upload", uploaderId: null, userName: "" },
     }),
   ).toBe("pending");
+});
+
+it("shows a reading indicator while new timeline dates are withheld", () => {
+  mocks.pending = 12;
+  expect(renderToStaticMarkup(<TimelineBar />)).toContain("12 remaining");
+});
+it("uses red for a failed file until it succeeds or its version changes", () => {
+  mocks.history = { enabled: true, readyHashes: new Set() } as MapHistoryValue;
+  const save = { source: { kind: "local", entryId: "entry" } } as CampaignSave;
+  useHistory.setState({
+    failedSources: { entry: { version: { size: 10, lastModified: 1 }, error: "parse error" } },
+  });
+  renderToStaticMarkup(<TimelineBar />);
+  expect(mocks.status?.(save)).toBe("failed");
+  mocks.entry!.ref.file.lastModified = 2;
+  expect(mocks.status?.(save)).toBe("pending");
+  mocks.entry!.ref.file.lastModified = 1;
+  useHistory.setState({ analyzingEntryIds: ["entry"] });
+  renderToStaticMarkup(<TimelineBar />);
+  expect(mocks.status?.(save)).toBe("analyzing");
 });

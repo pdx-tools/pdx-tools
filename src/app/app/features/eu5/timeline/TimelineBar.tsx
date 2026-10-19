@@ -1,3 +1,4 @@
+import { useCampaign } from "@/features/campaign/CampaignProvider";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
 import type { CampaignSave } from "@/features/campaign/types";
@@ -43,11 +44,13 @@ function usePresence(open: boolean) {
  * from the same compact analytical timeline.
  */
 export function TimelineBar() {
+  const pendingDates = useCampaign()?.pending ?? 0;
   const ownership = useTimelineController();
   const history = useMapHistory();
   const mapMode = useEu5MapMode();
   const controller = history?.controller ?? (isHistoricalMapMode(mapMode) ? ownership : null);
   const sources = useHistory((state) => state.sources);
+  const failedSources = useHistory((state) => state.failedSources);
   const analyzingEntryIds = useHistory((state) => state.analyzingEntryIds);
   const analysisStatus = useCallback(
     (save: CampaignSave): SaveAnalysisStatus => {
@@ -62,9 +65,17 @@ export function TimelineBar() {
         !!history?.readyHashes.has(source.hash)
       )
         return "ready";
-      return analyzingEntryIds.includes(save.source.entryId) ? "analyzing" : "pending";
+      if (analyzingEntryIds.includes(save.source.entryId)) return "analyzing";
+      const failure = failedSources[save.source.entryId];
+      if (entry?.problem && entry.problem.kind !== "moved") return "failed";
+      if (
+        failure &&
+        (failure.version === null || (!!version && sameFileVersion(version, failure.version)))
+      )
+        return "failed";
+      return "pending";
     },
-    [sources, history?.readyHashes, analyzingEntryIds],
+    [sources, history?.readyHashes, analyzingEntryIds, failedSources],
   );
   const campaign = useTimelineCampaign(
     controller?.timeline.start,
@@ -130,6 +141,15 @@ export function TimelineBar() {
           </span>
         )}
       </div>
+      {pendingDates > 0 && (
+        <div
+          role="status"
+          className="mt-1 rounded-panel bg-game-panel px-3 py-2 text-xs text-game-ink-300"
+        >
+          Reading save dates… {pendingDates} remaining. New bookmarks will appear when reading
+          finishes.
+        </div>
+      )}
       {history?.error && (
         <div
           role="status"

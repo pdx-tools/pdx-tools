@@ -47,6 +47,7 @@ beforeEach(() => {
   useHistory.setState({
     snapshots: [],
     sources: {},
+    failedSources: {},
     issues: [],
     progress: null,
     cancel: null,
@@ -300,4 +301,40 @@ it("identifies active saves by their file reference and clears the UI state on c
   });
   await analyzeCampaign(entries, "campaign");
   expect(useHistory.getState().analyzingEntryIds).toEqual([]);
+});
+
+it("tracks a parse failure by file identity and clears it on a successful retry", async () => {
+  mocks.importTimeline.mockImplementation(async (_files, options) => {
+    options.onFileError(file, "invalid save");
+    return { errors: [{ fileName: file.name, error: "invalid save" }] };
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources.first).toEqual({
+    version: { size: file.size, lastModified: 100 },
+    error: "invalid save",
+  });
+  mocks.importTimeline.mockImplementation(async (_files, options) => {
+    const snapshot = observation();
+    options.onSnapshots([snapshot], [{ snapshot, file }]);
+    return { errors: [] };
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources).toEqual({});
+});
+it("does not mark an entry replaced during a failed parse as failed", async () => {
+  mocks.importTimeline.mockImplementation(async (_files, options) => {
+    entries = [entry("first", { kind: "file", file: new File(["replacement"], file.name) })];
+    options.onFileError(file, "old file failed");
+    return { errors: [{ fileName: file.name, error: "old file failed" }] };
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources).toEqual({});
+});
+it("does not mark an aborted import as failed", async () => {
+  mocks.importTimeline.mockImplementation(async () => {
+    useHistory.getState().cancel!();
+    throw new DOMException("Stopped", "AbortError");
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources).toEqual({});
 });

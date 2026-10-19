@@ -39,6 +39,21 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
   const onAbort = () => rejectAborted(new DOMException("Import cancelled", "AbortError"));
   signal.addEventListener("abort", onAbort, { once: true });
   void aborted.catch(() => {});
+  const recordFailure = (entry: LocalSaveEntry, error: unknown, file?: File) => {
+    const current = localSaveRegistry.get(entry.id);
+    if (!current || !holdsRef(current, entry.ref)) return;
+    const version = file ? fileVersion(file) : entry.version;
+    if (
+      file &&
+      current.version &&
+      current.version !== entry.version &&
+      !sameFileVersion(file, current.version)
+    )
+      return;
+    useHistory.setState((state) => ({
+      failedSources: { ...state.failedSources, [entry.id]: { version, error: String(error) } },
+    }));
+  };
   try {
     const resolved = await Promise.race([
       Promise.allSettled(
@@ -52,6 +67,7 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
     const sources = resolved.flatMap((result, i) => {
       if (result.status === "fulfilled") return [result.value];
       issues.push(`${entries[i].name}: ${String(result.reason)}`);
+      recordFailure(entries[i], result.reason);
       return [];
     });
     if (signal.aborted) return;
@@ -60,6 +76,10 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
       sources.map((source) => source.file),
       {
         signal,
+        onFileError: (file, error) => {
+          for (const source of sources)
+            if (source.file === file) recordFailure(source.entry, error, file);
+        },
         onActiveFiles: (active) => {
           if (signal.aborted) return;
           const files = new Set(active);

@@ -10,6 +10,7 @@ type HistoryState = {
   snapshots: Eu5SnapshotDescriptor[];
   sources: Record<string, SourceAssociation>;
   analyzingEntryIds: readonly string[];
+  failedSources: Record<string, { version: FileVersion | null; error: string }>;
   analysisEnabledCampaigns: readonly string[];
   enableAnalysis: (campaignId: string) => void;
   analysisPaused: boolean;
@@ -37,6 +38,7 @@ export const useHistory = create<HistoryState>()((set) => ({
   snapshots: [],
   sources: {},
   analyzingEntryIds: [],
+  failedSources: {},
   analysisEnabledCampaigns: [],
   enableAnalysis: (campaignId) =>
     set((state) => ({
@@ -53,7 +55,10 @@ export const useHistory = create<HistoryState>()((set) => ({
     set((state) => {
       const byId = new Map(state.snapshots.map((snapshot) => [snapshot.id, snapshot]));
       for (const snapshot of snapshots) byId.set(snapshot.id, snapshot);
+      const failedSources = { ...state.failedSources };
+      for (const id of Object.keys(sources)) delete failedSources[id];
       return {
+        failedSources,
         snapshots: [...byId.values()].sort(compareDescriptors),
         sources: { ...state.sources, ...sources },
       };

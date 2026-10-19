@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import PlusIcon from "@heroicons/react/16/solid/PlusIcon";
 import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
+import { saveProblemText } from "@/features/campaign/saveText";
 import { GameButton } from "@/components/game/Button";
 import { holdsRef, localSaveRegistry, registerLocalSaves } from "@/features/campaign/localSaves";
 import { useEu5Input, useEu5PlaythroughId } from "../store";
@@ -29,6 +30,9 @@ export function AddCampaignSaves() {
       (entry.identity === null ||
         entry.identity.playthroughId === playthroughId ||
         (currentInput.kind !== "server" && holdsRef(entry, currentInput))),
+  );
+  const undatedFailures = localSaves.filter(
+    (entry) => entry.game === "eu5" && entry.identity === null && entry.problem !== null,
   );
   const addFiles = async (list: FileList | null) => {
     const files = Array.from(list ?? []).filter((file) => /\.eu5$/i.test(file.name));
@@ -104,6 +108,21 @@ export function AddCampaignSaves() {
         <div className="mt-3">
           <ImportProgress progress={progress} onCancel={() => cancel?.()} />
         </div>
+      )}
+      {undatedFailures.length > 0 && (
+        <details className="mt-2 text-xs text-red-400">
+          <summary className="cursor-pointer">
+            {undatedFailures.length} failed {undatedFailures.length === 1 ? "save" : "saves"}{" "}
+            without readable dates
+          </summary>
+          <ul className="mt-2 space-y-2 break-words">
+            {undatedFailures.map((entry) => (
+              <li key={entry.id}>
+                {entry.name}: {saveProblemText(entry.problem!)}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {issues.length > 0 && (
         <details className="mt-2 text-xs text-game-ink-300">
