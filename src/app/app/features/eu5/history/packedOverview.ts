@@ -1,3 +1,4 @@
+import { StringTable } from "./stringTable";
 import type { OverviewData } from "@/wasm/wasm_eu5";
 
 type Column =
@@ -24,17 +25,7 @@ const absent = 0xffffffff,
 
 /** Transpose nested overview rows into lossless columns. No per-row objects survive import. */
 export function packOverviews(overviews: OverviewData): PackedOverviews {
-  const strings: string[] = [],
-    dictionary = new Map<string, number>();
-  const intern = (value: string) => {
-    let key = dictionary.get(value);
-    if (key === undefined) {
-      key = strings.length;
-      dictionary.set(value, key);
-      strings.push(value);
-    }
-    return key;
-  };
+  const strings = new StringTable();
   const referenceRows: unknown[] = [],
     referenceIds = new Map<string, number>();
   const column = (values: unknown[], key = "", allowReferences = true): Column => {
@@ -67,7 +58,7 @@ export function packOverviews(overviews: OverviewData): PackedOverviews {
       return {
         kind: "string",
         values: Uint32Array.from(values, (value) =>
-          value === undefined ? absent : value === null ? nil : intern(String(value)),
+          value === undefined ? absent : value === null ? nil : strings.intern(String(value)),
         ),
       };
     if (typeof sample === "boolean")
@@ -144,7 +135,7 @@ export function packOverviews(overviews: OverviewData): PackedOverviews {
     throw Error("Unsupported analytical overview value");
   };
   const root = column([overviews]);
-  return { strings, root, references: column(referenceRows, "", false) };
+  return { strings: strings.values, root, references: column(referenceRows, "", false) };
 }
 function valueAt(node: Column, index: number, strings: string[], references?: Column): unknown {
   if ("presence" in node && node.presence && node.presence[index] !== 1)

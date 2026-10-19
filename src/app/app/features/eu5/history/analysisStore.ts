@@ -20,19 +20,23 @@ import type {
 import type { Snapshot } from "./types";
 import type { OverviewData } from "@/wasm/wasm_eu5";
 
+type StoredAnalysis = Omit<SaveAnalysis, "observation"> & {
+  observation: AnalysisDescriptor;
+  worldSnapshot: Snapshot["countries"][number] | undefined;
+};
+
 /** Lives in one worker. The UI never retains the campaign's raw analytical columns. */
-export class CampaignAnalysisStore extends MapColumnStore<SaveAnalysis> {
+export class CampaignAnalysisStore extends MapColumnStore<StoredAnalysis> {
   private strings = new Map<string, string>();
-  private descriptors = new Map<string, AnalysisDescriptor>();
-  private worlds = new Map<string, Snapshot["countries"][number] | undefined>();
   override append(save: SaveAnalysis): AnalysisDescriptor {
     const snapshot = save.snapshot;
 
     if (!snapshot.hash || !snapshot.campaignId) throw Error("Invalid analytical observation");
     validateSnapshot(snapshot);
-    if (this.saves.has(snapshot.hash)) return this.descriptors.get(snapshot.hash)!;
+    const existing = this.saves.get(snapshot.hash);
+    if (existing) return existing.observation;
     const descriptor = this.describe(save);
-    const world = this.world(save.snapshot);
+    const worldSnapshot = this.world(snapshot);
     const intern = (label: string) => {
       const shared = this.strings.get(label);
       if (shared !== undefined) return shared;
@@ -43,17 +47,10 @@ export class CampaignAnalysisStore extends MapColumnStore<SaveAnalysis> {
     save.overviews.strings = save.overviews.strings.map(intern);
     for (const [id, name] of Object.entries(save.countryNames))
       save.countryNames[id] = intern(name);
-    super.append({ ...save, observation: descriptor });
-    this.descriptors.set(snapshot.hash, descriptor);
-    this.worlds.set(snapshot.hash, world);
-    return descriptor;
+    return super.append({ ...save, observation: descriptor, worldSnapshot });
   }
   private describe(save: SaveAnalysis): AnalysisDescriptor {
-    const {
-      countries: _countries,
-      markets: _markets,
-      ...metadata
-    } = { ...snapshotMetadata(save.snapshot), countries: [], markets: [] };
+    const metadata = snapshotMetadata(save.snapshot);
     return {
       ...metadata,
       world: save.observation.world,
@@ -62,11 +59,7 @@ export class CampaignAnalysisStore extends MapColumnStore<SaveAnalysis> {
       goods: snapshotGoods(save.snapshot),
     };
   }
-  override timeline(campaignId: string, layoutKey?: string): AnalysisDescriptor[] {
-    return super.timeline(campaignId, layoutKey) as AnalysisDescriptor[];
-  }
-
-  private require(hash: string): SaveAnalysis {
+  private require(hash: string): StoredAnalysis {
     const save = this.saves.get(hash);
     if (!save)
       throw Error("This observation is no longer available. Import the original saves again.");
@@ -100,7 +93,7 @@ export class CampaignAnalysisStore extends MapColumnStore<SaveAnalysis> {
       const country =
         query.country && query.country !== "world"
           ? snapshotCountry(source, query.country)
-          : this.worlds.get(row.hash);
+          : this.require(row.hash).worldSnapshot;
       const packed = this.require(row.hash).snapshot,
         markets: Snapshot["markets"] = [];
       const good = query.good ? packed.strings.indexOf(query.good) : -1;
@@ -180,14 +173,6 @@ export class CampaignAnalysisStore extends MapColumnStore<SaveAnalysis> {
     );
   }
   override clearCampaign(campaignId?: string): void {
-    for (const row of this.timeline(campaignId ?? "")) {
-      this.descriptors.delete(row.hash);
-      this.worlds.delete(row.hash);
-    }
-    if (!campaignId) {
-      this.descriptors.clear();
-      this.worlds.clear();
-    }
     super.clearCampaign(campaignId);
     if (!this.saves.size) this.strings.clear();
   }

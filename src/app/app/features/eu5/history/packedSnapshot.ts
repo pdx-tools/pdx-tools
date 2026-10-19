@@ -1,3 +1,4 @@
+import { StringTable } from "./stringTable";
 import type { SaveSnapshot } from "@/wasm/wasm_eu5";
 import type { Snapshot } from "./types";
 
@@ -37,17 +38,7 @@ export type PackedSnapshot = Omit<Snapshot, "countries" | "markets"> & {
 /** Charts keep f64 values; only dictionary IDs and offsets use integer columns. */
 export function packSnapshot(snapshot: Snapshot): PackedSnapshot {
   const { countries = [], markets = [], ...metadata } = snapshot;
-  const labels: string[] = [],
-    dictionary = new Map<string, number>();
-  const intern = (label: string) => {
-    let index = dictionary.get(label);
-    if (index === undefined) {
-      index = labels.length;
-      labels.push(label);
-      dictionary.set(label, index);
-    }
-    return index;
-  };
+  const strings = new StringTable();
   const countryValues = new Float64Array(countries.length * numericFields.length);
   const countryIds = new Uint32Array(countries.length * 3);
   const countryOffsets = new Uint32Array(countries.length * 8);
@@ -58,13 +49,13 @@ export function packSnapshot(snapshot: Snapshot): PackedSnapshot {
     numericFields.forEach((field, column) => {
       countryValues[index * numericFields.length + column] = country[field] ?? NaN;
     });
-    countryIds.set([intern(country.tag), country.locations, country.countryId], index * 3);
+    countryIds.set([strings.intern(country.tag), country.locations, country.countryId], index * 3);
     breakdowns.forEach((field, column) => {
       const start = keys.length;
       for (const [name, value] of country[field] instanceof Map
         ? country[field].entries()
         : Object.entries(country[field] as unknown as Record<string, number>)) {
-        keys.push(intern(name));
+        keys.push(strings.intern(name));
         values.push(value);
       }
       countryOffsets.set([start, keys.length - start], index * 8 + column * 2);
@@ -84,17 +75,17 @@ export function packSnapshot(snapshot: Snapshot): PackedSnapshot {
       marketMetadata.push(
         market.marketId,
         market.center,
-        market.centerName == null ? missing : intern(market.centerName),
+        market.centerName == null ? missing : strings.intern(market.centerName),
       );
     }
-    marketIds.set([slot, intern(market.good)], index * 2);
+    marketIds.set([slot, strings.intern(market.good)], index * 2);
     marketFields.forEach((field, column) => {
       marketValues[index * 4 + column] = market[field] ?? NaN;
     });
   });
   return {
     ...metadata,
-    strings: labels,
+    strings: strings.values,
     countryValues,
     countryIds,
     countryOffsets,

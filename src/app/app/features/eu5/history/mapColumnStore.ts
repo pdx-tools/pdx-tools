@@ -1,13 +1,13 @@
 import { analyticalBuffers } from "./transferBuffers";
-import type { MapObservation, MapFrame, MapSaveAnalysis } from "./analysisTypes";
+import type { MapFrame, MapSaveAnalysis } from "./analysisTypes";
 /** Own independent map column blocks; appending never copies previous observations. */
 export class MapColumnStore<T extends MapSaveAnalysis = MapSaveAnalysis> {
   private bufferRefs = new Map<ArrayBuffer, number>();
   private residentBytes = 0;
   protected saves = new Map<string, T>();
   private layouts = new Map<string, Uint32Array<ArrayBuffer>>();
-  private campaigns = new Map<string, MapObservation[]>();
-  append(save: T): MapObservation {
+  private campaigns = new Map<string, T["observation"][]>();
+  append(save: T): T["observation"] {
     const row = save.observation;
     if (!row.hash || !row.campaignId || !Number.isInteger(row.dateSort))
       throw Error("Invalid map observation");
@@ -46,7 +46,7 @@ export class MapColumnStore<T extends MapSaveAnalysis = MapSaveAnalysis> {
     this.campaigns.set(row.campaignId, campaign);
     return row;
   }
-  timeline(campaignId: string, layoutKey?: string): MapObservation[] {
+  timeline(campaignId: string, layoutKey?: string): T["observation"][] {
     return (this.campaigns.get(campaignId) ?? []).filter(
       (row) => !layoutKey || row.layoutKey === layoutKey,
     );
