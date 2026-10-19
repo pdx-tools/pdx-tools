@@ -4,6 +4,7 @@ import type { MapViewport } from "@pdx.tools/timelapse";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Store } from "./store/eu5Store";
 import type { LocationClickChangeEvent } from "./workers/map/map-module";
+import type { AnalysisEntity } from "./history/analysisTypes";
 
 export { findCarriedCountry } from "./carriedCountry";
 export type { CountryIdentity } from "./carriedCountry";
@@ -16,7 +17,7 @@ export type StableProfile =
 /** What the next EU5 save of the campaign keeps of the view. */
 export type Eu5Carry = {
   /** Apply an analytical selection after the destination save has loaded. */
-  inspection?: { click: LocationClickChangeEvent };
+  inspection?: { click: LocationClickChangeEvent } | { entity: AnalysisEntity; remove?: boolean };
   profiles?: StableProfile[];
   mapMode: MapMode;
   viewport: MapViewport["viewport"] | null;

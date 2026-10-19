@@ -7,6 +7,7 @@ import { findEu5Session, getEu5Session, stepEu5Session, terminateEu5Session } fr
 import { terminateCurrentAnalysis } from "@/features/engine/analysisLifecycle";
 import { campaignTransitions } from "@/features/campaign/transitions";
 import { toPlaythroughId } from "@/features/campaign/types";
+import { useHistory } from "../history/store";
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),

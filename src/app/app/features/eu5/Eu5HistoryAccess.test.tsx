@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/features/account", () => ({ useIsDeveloper: () => mocks.developer }));
 vi.mock("@/features/campaign/CampaignProvider", () => ({ useCampaign: () => ({ saves: [] }) }));
-vi.mock("./history/MapHistory", () => ({
+vi.mock("./history/context", () => ({
   useMapHistory: () => ({ enabled: false, controller: null, readyHashes: new Set() }),
 }));
 vi.mock("./history/SaveHistory", () => ({ SaveHistory: mocks.historyPanel }));

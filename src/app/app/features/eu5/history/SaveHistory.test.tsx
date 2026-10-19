@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   playthroughId: "campaign" as string | null,
   activated: true,
 }));
-vi.mock("./MapHistory", () => ({
+vi.mock("./context", () => ({
   useMapHistory: () => ({ clearCampaign: vi.fn(), inspecting: false, enabled: mocks.activated }),
 }));
 vi.mock("./store", () => ({

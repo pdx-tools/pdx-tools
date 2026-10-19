@@ -1,13 +1,8 @@
 import { localSaveRegistry, holdsRef } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
-import {
-  useEu5MapProjection,
-  useEu5Input,
-  useEu5PlaythroughId,
-  useEu5SaveDate,
-  useEu5SaveInput,
-} from "../store";
+import { useEu5Input, useEu5PlaythroughId, useEu5SaveDate, useEu5SaveInput } from "../store";
 import { useHistory } from "./store";
+import { useMapHistory } from "./context";
 import type { SourceObservation } from "./store";
 import type { SnapshotMetadata } from "./types";
 
@@ -39,7 +34,7 @@ export function currentHistorySnapshot(
 
 /** Both inline and expanded history must identify the same parsed file version. */
 export function useCurrentHistorySnapshot(version: string | undefined) {
-  const projection = useEu5MapProjection();
+  const preview = useMapHistory()?.preview;
   const snapshots = useHistory((state) => state.snapshots);
   const sources = useHistory((state) => state.sources);
   const entries = localSaveRegistry.useEntries();
@@ -51,7 +46,7 @@ export function useCurrentHistorySnapshot(version: string | undefined) {
     input.kind === "server"
       ? undefined
       : entries.find((entry) => entry.game === "eu5" && holdsRef(entry, input));
-  if (projection) return snapshots.find((snapshot) => snapshot.hash === projection.hash);
+  if (preview) return snapshots.find((snapshot) => snapshot.hash === preview.shown?.hash);
   return currentHistorySnapshot(snapshots, {
     campaignId,
     version,

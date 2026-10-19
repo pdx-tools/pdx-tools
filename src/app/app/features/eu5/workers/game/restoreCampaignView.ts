@@ -22,6 +22,9 @@ type ViewApp = ClickApp &
     | "get_market_profile"
     | "get_location_profile"
     | "get_selection_summary"
+    | "location_index_from_id"
+    | "remove_country"
+    | "remove_market"
   >;
 
 /** Change the selection as a click on the map does. */
@@ -60,7 +63,26 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
     merge(app.set_focused_location(selection.locationIdx));
   }
   // A click on a snapshot applies to the save of that snapshot.
-  if (carry.inspection) merge(clickChange(app, carry.inspection.click));
+  if (carry.inspection && "click" in carry.inspection)
+    merge(clickChange(app, carry.inspection.click));
+  else if (carry.inspection && "entity" in carry.inspection) {
+    const entity = carry.inspection.entity;
+    if (entity.kind === "country") {
+      const match = countries.find((country) => country.id === entity.id);
+      if (!match) throw Error("Country is absent from this save");
+      merge(
+        carry.inspection.remove
+          ? app.remove_country(match.country.key)
+          : app.select_country(match.country.key),
+      );
+    } else if (entity.kind === "market")
+      merge(carry.inspection.remove ? app.remove_market(entity.id) : app.select_market(entity.id));
+    else {
+      const index = app.location_index_from_id(entity.id);
+      if (index == null) throw Error("Location is absent from this save");
+      merge(app.set_focused_location(index));
+    }
+  }
 
   const profiles: ActiveProfileIdentity[] = [];
   for (const profile of carry.profiles ?? []) {

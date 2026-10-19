@@ -373,8 +373,11 @@ function InsightPanelTitle() {
  * on the map does.
  */
 function InsightScopeLine() {
-  const selection = useEu5SelectionState();
-  const world = useEu5World();
+  const liveSelection = useEu5SelectionState();
+  const liveWorld = useEu5World();
+  const preview = useMapHistory()?.preview;
+  const selection = preview ? null : liveSelection;
+  const world = preview?.shown?.world ?? liveWorld;
 
   const parts: string[] = [];
   if (selection == null || selection.isEmpty) {

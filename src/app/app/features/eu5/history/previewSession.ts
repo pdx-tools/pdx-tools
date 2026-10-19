@@ -9,7 +9,8 @@ import type { AppTriggers } from "../ui-engine";
 import type { Eu5Store } from "../store/eu5Store";
 import { activeEu5Store, subscribeEu5Session } from "../store/eu5Session";
 import { captureEu5Carry } from "../campaignCarry";
-import { connectAnalysisFrames } from "./analysisClient";
+import type { Eu5Carry } from "../campaignCarry";
+import { campaignAnalysis, connectAnalysisFrames } from "./analysisClient";
 import { LatestRequest } from "./latestRequest";
 import { useHistory } from "./store";
 
@@ -169,16 +170,21 @@ type OpenRequest = {
   campaignId: string;
   hash: string;
   navigation: CampaignNav;
-  click?: LocationClickChangeEvent;
+  inspection?: Eu5Carry["inspection"];
 };
 
 async function openSnapshotSave(
-  { campaignId, hash, navigation, click }: OpenRequest,
+  { campaignId, hash, navigation, inspection: requested }: OpenRequest,
   current: () => boolean,
 ) {
   const loaded = activeEu5Store();
   if (!loaded || loaded.getState().playthroughId !== campaignId) throw changed();
   const state = loaded.getState();
+  const inspection =
+    requested && "entity" in requested
+      ? { ...requested, entity: await campaignAnalysis().resolveEntity(hash, requested.entity) }
+      : requested;
+  if (!current()) throw changed();
   if (loadedSnapshotHash(loaded) !== hash) {
     const sources = useHistory.getState().sources;
     const target = navigation.saves.find(
@@ -206,45 +212,55 @@ async function openSnapshotSave(
         payload: {
           ...carry,
           insightPanel: {
-            open: click ? true : state.insightPanelOpen,
+            open: inspection ? true : state.insightPanelOpen,
             width: state.insightPanelWidth,
           },
-          inspection: click ? { click } : undefined,
+          inspection,
         },
       },
     );
     if (result.kind === "cancelled") throw changed();
     if (result.kind !== "navigated")
       throw Error("Could not open this save. Try selecting it in the campaign list.");
-  } else if (click) {
+  } else if (inspection) {
     // The save of the snapshot is open, so the click applies to it now.
     const carry = await captureEu5Carry(loaded);
-    await state.engine.trigger.restoreCampaignView({ ...carry, inspection: { click } });
+    if (!current()) throw changed();
+    await state.engine.trigger.restoreCampaignView({ ...carry, inspection });
   }
   // A save that loads in place keeps the panel state of the previous save,
   // so the carry alone does not open the panel.
-  if (click) activeEu5Store()?.getState().setInsightPanelOpen(true);
 
   // Show the loaded save only when the playhead is still on it and no other save waits.
   const after = get();
-  if (current() && after.kind === "opening" && after.hash === hash) endPreview();
+  if (current() && after.kind === "opening" && after.hash === hash) {
+    if (inspection) activeEu5Store()?.getState().setInsightPanelOpen(true);
+    endPreview();
+    return true;
+  }
+  return false;
 }
 
 /** One open at a time. A new target replaces the target that waits. */
-const opens = new LatestRequest<OpenRequest, void>(openSnapshotSave);
+const opens = new LatestRequest<OpenRequest, boolean>(openSnapshotSave);
 
 /** Open the save of the snapshot at the playhead. The overlay stays until that save is ready. */
-export function openPreview(navigation: CampaignNav, click?: LocationClickChangeEvent) {
+export function openPreview(navigation: CampaignNav, inspection?: Eu5Carry["inspection"]) {
   const state = get();
-  if (state.kind === "live") return Promise.resolve();
-  const { id, campaignId, hash } = state;
-  set({ ...state, kind: "opening", error: null });
-  return opens.request({ campaignId, hash, navigation, click }).catch((error) => {
+  if (state.kind === "live") return Promise.resolve(false);
+  if (inspection && !state.shown) return Promise.resolve(false);
+  const { id, campaignId } = state;
+  // A chart or map click belongs to the accepted frame, not a pending playhead.
+  const hash = inspection ? state.shown!.hash : state.hash;
+  if (inspection) setPreviewPlayback(null);
+  set({ ...state, hash, kind: "opening", error: null });
+  return opens.request({ campaignId, hash, navigation, inspection }).catch((error) => {
     const now = get();
-    if (now.kind === "live" || now.id !== id || now.hash !== hash) return;
+    if (now.kind === "live" || now.id !== id || now.hash !== hash) return false;
     if (isAbortError(error)) {
       if (now.kind === "opening") set({ ...now, kind: "preview" });
     } else set({ ...now, kind: "preview", error: String(error) });
+    return false;
   });
 }
 
@@ -260,7 +276,7 @@ function onPreviewClick(event: LocationClickChangeEvent) {
   if (!navigation || get().kind === "live") return;
   // The playhead stops on the clicked snapshot.
   setPreviewPlayback(null);
-  void openPreview(navigation, event);
+  void openPreview(navigation, { click: event });
 }
 
 // The workers of another session have no overlay and no gate.

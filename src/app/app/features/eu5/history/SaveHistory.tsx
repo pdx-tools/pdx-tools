@@ -13,7 +13,7 @@ import type { EChartsOption } from "@/components/viz";
 import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/echartsTheme";
 import type { MapMode } from "@/wasm/wasm_eu5";
 import { useHistory } from "@/features/eu5/history/store";
-import { useMapHistory } from "./MapHistory";
+import { useMapHistory } from "./context";
 import styles from "@/features/eu5/history/Timeline.module.css";
 import { useEu5PlaythroughId } from "../store";
 import { useCurrentHistorySnapshot } from "./currentSnapshot";
@@ -485,7 +485,7 @@ export function SaveHistory({
                 !playthroughId ||
                 !history.snapshots.length ||
                 !mapHistory ||
-                mapHistory.inspecting
+                mapHistory.opening
               }
               onClick={() => {
                 void mapHistory?.clearCampaign();
