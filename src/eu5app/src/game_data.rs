@@ -19,6 +19,23 @@ pub struct GoodsData {
     pub goods: FxHashMap<String, GoodData>,
 }
 
+/// On-disk bundle format for production methods, keyed by method name.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct ProductionMethodsData {
+    pub methods: FxHashMap<String, ProductionMethodData>,
+}
+
+/// A production method that makes a good. The game files define methods in
+/// two places: in a building type (`unique_production_methods`) and in the
+/// shared `production_methods` directory. Methods that make no good (upkeep
+/// and maintenance only) are not kept.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ProductionMethodData {
+    pub produced: String,
+    /// The base output for each level of employment, before modifiers.
+    pub output: f64,
+}
+
 /// On-disk bundle format for the flat localization map. Constructs a
 /// runtime [`Localization`] on load.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -53,12 +70,17 @@ impl Localization {
 pub struct GameData {
     pub locations: Vec<GameLocation>,
     pub goods: FxHashMap<String, GoodData>,
+    pub production_methods: FxHashMap<String, ProductionMethodData>,
     pub topology: TopologyIndex,
 }
 
 impl GameData {
     pub fn good(&self, name: &str) -> Option<&GoodData> {
         self.goods.get(name)
+    }
+
+    pub fn production_method(&self, name: &str) -> Option<&ProductionMethodData> {
+        self.production_methods.get(name)
     }
 }
 
@@ -67,6 +89,7 @@ impl std::fmt::Debug for GameData {
         f.debug_struct("OwnedGameData")
             .field("locations_count", &self.locations.len())
             .field("goods_count", &self.goods.len())
+            .field("production_methods_count", &self.production_methods.len())
             .field("topology_len", &self.topology.len())
             .finish()
     }

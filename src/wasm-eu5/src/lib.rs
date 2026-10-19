@@ -1,8 +1,8 @@
 use eu5app::Eu5SaveMetadata;
 use eu5app::TableCell as Eu5TableCell;
 use eu5app::entity_profile::country::presentation::{
-    ActiveProfileIdentity, CountryPopulationProfile, CountryProfile, DiplomacySection,
-    EntityHeader, LocationsSection,
+    ActiveProfileIdentity, CountryPopulationProfile, CountryProductionProfile, CountryProfile,
+    DiplomacySection, EntityHeader, LocationsSection,
 };
 use eu5app::entity_profile::location::presentation::LocationProfile;
 use eu5app::entity_profile::market::presentation::{MarketGoodsSection, MarketProfile};
@@ -15,7 +15,8 @@ use eu5app::insights::buildings::presentation::BuildingLevelsInsightData;
 use eu5app::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
 use eu5app::insights::development::presentation::DevelopmentInsightData;
 use eu5app::insights::markets::presentation::{
-    MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
+    GoodProducersData, MarketInsightData, MarketProductionLocationSummary, ProductionByCountryData,
+    ScopedGoodSummary,
 };
 use eu5app::insights::population::presentation::PopulationInsightData;
 use eu5app::insights::population_growth::presentation::PopulationGrowthInsightData;
@@ -1254,6 +1255,24 @@ impl Eu5App {
             .map(|(id, _)| id.value())
     }
 
+    /// Production profile resolved from `country_idx`: its estimated production
+    /// value in all markets, its rank in the world, and its goods, independent
+    /// of current map mode.
+    #[wasm_bindgen]
+    pub fn get_country_production_profile(
+        &self,
+        country_idx: u32,
+    ) -> Result<Option<Ts<CountryProductionProfile>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        option_into_ts(
+            self.localized()
+                .presenter()
+                .country_production_profile_for(idx),
+        )
+    }
+
     /// Full market profile resolved from `market_id`, independent of current map mode.
     #[wasm_bindgen]
     pub fn get_market_profile(&self, market_id: u32) -> Result<Option<Ts<MarketProfile>>, JsError> {
@@ -1336,6 +1355,39 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_market_insight(&self) -> Result<Ts<MarketInsightData>, JsError> {
         into_ts(self.localized().presenter().calculate_market_insight())
+    }
+
+    /// The producers of one good in one market, or in the markets of the
+    /// current filter when no market is given. The totals are exact and the
+    /// country split is an estimate.
+    #[wasm_bindgen]
+    pub fn get_good_producers(
+        &self,
+        good: &str,
+        market_id: Option<u32>,
+    ) -> Result<Ts<GoodProducersData>, JsError> {
+        let market = market_id.map(eu5save::models::MarketId::new);
+        into_ts(
+            self.localized()
+                .presenter()
+                .calculate_good_producers(good, market),
+        )
+    }
+
+    /// The estimated production value of each country, in the markets of the
+    /// current filter when no market is given, or in one market when it is.
+    /// The totals are exact and the country split is an estimate.
+    #[wasm_bindgen]
+    pub fn get_production_by_country(
+        &self,
+        market_id: Option<u32>,
+    ) -> Result<Ts<ProductionByCountryData>, JsError> {
+        let market = market_id.map(eu5save::models::MarketId::new);
+        into_ts(
+            self.localized()
+                .presenter()
+                .calculate_production_by_country(market),
+        )
     }
 
     /// Population insight data: scoped country population, concentration curve,
