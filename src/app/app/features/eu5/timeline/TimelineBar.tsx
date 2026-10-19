@@ -1,6 +1,10 @@
+import { localSaveRegistry } from "@/features/campaign/localSaves";
+import { sameFileVersion } from "@/features/campaign/types";
+import type { CampaignSave } from "@/features/campaign/types";
+import type { SaveAnalysisStatus } from "@/features/campaign/SaveMarks";
 import { useHistory } from "../history/store";
 import { useMapHistory } from "../history/context";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { SavedDateExport, TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
@@ -42,7 +46,29 @@ export function TimelineBar() {
   const history = useMapHistory();
   const mapMode = useEu5MapMode();
   const controller = history?.controller ?? (isHistoricalMapMode(mapMode) ? ownership : null);
-  const campaign = useTimelineCampaign(controller?.timeline.start);
+  const sources = useHistory((state) => state.sources);
+  const analyzingEntryIds = useHistory((state) => state.analyzingEntryIds);
+  const analysisStatus = useCallback(
+    (save: CampaignSave): SaveAnalysisStatus => {
+      if (save.source.kind !== "local" || !save.source.entryId) return "pending";
+      const source = sources[save.source.entryId];
+      const entry = localSaveRegistry.get(save.source.entryId);
+      const version = entry?.ref.kind === "file" ? entry.ref.file : entry?.version;
+      if (
+        !!source &&
+        !!version &&
+        sameFileVersion(version, source.version) &&
+        !!history?.readyHashes.has(source.hash)
+      )
+        return "ready";
+      return analyzingEntryIds.includes(save.source.entryId) ? "analyzing" : "pending";
+    },
+    [sources, history?.readyHashes, analyzingEntryIds],
+  );
+  const campaign = useTimelineCampaign(
+    controller?.timeline.start,
+    history?.enabled ? analysisStatus : undefined,
+  );
   const speed = useHistory((state) => state.playbackSpeed);
   const insets = useViewportInsets();
   useTimelineKeyboard(controller);
@@ -85,6 +111,31 @@ export function TimelineBar() {
           </div>
         ) : (
           <TimelapseExport controller={controller} />
+        )}
+        {history?.enabled && (
+          <span
+            className="flex flex-col gap-0.5 text-[10px] leading-tight text-game-ink-500"
+            aria-label="Save analysis status"
+          >
+            <span>
+              <span
+                aria-hidden
+                className="mr-1 inline-block size-1.5 rounded-full bg-emerald-400"
+              />
+              Analyzed
+            </span>
+            <span>
+              <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-amber-400" />
+              Analyzing
+            </span>
+            <span>
+              <span
+                aria-hidden
+                className="mr-1 inline-block size-1.5 rounded-full bg-game-ink-700"
+              />
+              Waiting
+            </span>
+          </span>
         )}
       </div>
       {history?.error && (
