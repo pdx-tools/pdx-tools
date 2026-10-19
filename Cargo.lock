@@ -5022,6 +5022,7 @@ dependencies = [
  "rawzip",
  "schemas",
  "serde",
+ "serde_json",
  "tsify",
  "wasm-bindgen",
  "wasm-pdx-core",

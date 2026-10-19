@@ -20,13 +20,16 @@ zstd_rust = ["pdx-zstd/zstd_rust", "hoi4app/zstd_rust"]
 [dependencies]
 schemas = { workspace = true }
 wasm-bindgen = { workspace = true }
-serde = { features = ["derive"] , workspace = true }
+serde = { features = ["derive"], workspace = true }
 hoi4app = { workspace = true, features = ["tsify"] }
 hoi4save = { workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }
-tsify = { default-features = false, features = ["js"] , workspace = true }
+tsify = { default-features = false, features = ["js"], workspace = true }
 rawzip = { workspace = true }
 wasm-pdx-core = { workspace = true }
 web-sys = { workspace = true, features = ["Blob"] }
 
+
+[dev-dependencies]
+serde_json = { workspace = true }

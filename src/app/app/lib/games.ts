@@ -1,15 +1,18 @@
 /**
  * The games PDX Tools knows, and how much it can do with each.
  *
- * A game is `analysis` when the tool analyzes its saves, and `melt` when it
- * only converts a binary save to plaintext. A `melt` game needs no page.
+ * A game is `analysis` when the tool analyzes its saves and shares them,
+ * `explore` when the tool analyzes its saves but has no upload, share, or
+ * leaderboard, and `melt` when it only converts a binary save to plaintext.
+ * An `explore` or `melt` game has no row in the header menu, because that
+ * row leads to uploaded saves.
  *
  * A hub route is a separate step. An `analysis` game gets one only when it
  * has a surface whose content exists only for that game. Until then, its
  * menu row leads to its campaigns in the saves feed. Adding a hub is a `to`
  * here plus the hub it earned, and never a change to the header.
  */
-export type GameTier = "analysis" | "melt";
+export type GameTier = "analysis" | "explore" | "melt";
 
 export type GameId = "eu4" | "eu5" | "ck3" | "hoi4" | "vic3" | "imperator";
 
@@ -53,8 +56,8 @@ export const games: readonly Game[] = [
     id: "hoi4",
     label: "HOI4",
     name: "Hearts of Iron IV",
-    tier: "melt",
-    since: "1.0",
+    tier: "explore",
+    since: "1.10",
   },
   {
     id: "vic3",
@@ -73,6 +76,7 @@ export const games: readonly Game[] = [
 ];
 
 export const analysisGames = games.filter((x) => x.tier === "analysis");
+export const exploreGames = games.filter((x) => x.tier === "explore");
 export const meltGames = games.filter((x) => x.tier === "melt");
 
 /** The short name of a game, as in a menu row. */

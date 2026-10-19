@@ -6,12 +6,24 @@ mod color;
 mod game_data;
 #[cfg(feature = "game-install")]
 pub mod game_install;
+mod overview;
+pub mod save;
 mod world;
 
 pub use bundle::*;
 pub use color::{fallback_color, hsv_to_rgb};
 pub use game_data::*;
+pub use overview::*;
 pub use world::*;
+
+/// Read the model of a plaintext save (with or without the "HOI4txt"
+/// header). Binary saves go through `hoi4save::file::Hoi4Modeller`.
+pub fn parse_save_model(data: &[u8]) -> Result<save::SaveModel, hoi4save::Hoi4Error> {
+    let body = data.strip_prefix(b"HOI4txt").unwrap_or(data);
+    hoi4save::file::Hoi4TextReader::from_reader(body)
+        .deserializer()
+        .deserialize()
+}
 
 /// The asset bundle version (major.minor) of a save's game version.
 ///

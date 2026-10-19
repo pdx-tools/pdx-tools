@@ -8,7 +8,7 @@ workspace = true
 
 [features]
 default = ["zstd_rust"]
-game-install = ["dep:jomini", "dep:rawbmp"]
+game-install = ["dep:rawbmp"]
 tsify = ["dep:tsify", "dep:wasm-bindgen"]
 zstd_c = ["pdx-zstd/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust"]
@@ -16,7 +16,7 @@ zstd_rust = ["pdx-zstd/zstd_rust"]
 [dependencies]
 bytemuck = { workspace = true }
 hoi4save = { workspace = true }
-jomini = { workspace = true, optional = true }
+jomini = { workspace = true }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false }
 postcard = { workspace = true, features = ["use-std"] }

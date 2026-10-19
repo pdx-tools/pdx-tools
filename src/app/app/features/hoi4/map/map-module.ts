@@ -64,9 +64,11 @@ export async function createMap(
   );
   const textures = timeSync("Decode HOI4 map textures", () => Hoi4MapTextures.open(mapData));
   const app = timeSync("Create HOI4 renderer", () => Hoi4MapRenderer.create(surface, textures));
+  renderer = app;
   startRenderLoop(app, display, inputConfig, callbacks);
 }
 
+let renderer: Hoi4MapRenderer | null = null;
 let pendingLocations: Uint32Array | null = null;
 let pendingFlags: Uint32Array | null = null;
 let pendingCenter: number | null = null;
@@ -85,6 +87,51 @@ export function syncFlags(data: Uint32Array) {
 /** Center the view on a province after the next location sync */
 export function centerOnProvince(provinceId: number) {
   pendingCenter = provinceId;
+}
+
+/**
+ * Render the whole world as a PNG, independent of the visible view. The
+ * normal size is the size of the map texture; full resolution doubles it.
+ */
+export async function generateWorldScreenshot(fullResolution: boolean): Promise<Blob> {
+  const app = renderer;
+  if (app === null) {
+    throw new Error("The map is not ready");
+  }
+  applyPendingSyncTo(app);
+
+  const [worldWidth, worldHeight] = app.world_size();
+  const scale = fullResolution ? 2 : 1;
+  const output = { width: worldWidth * scale, height: worldHeight * scale };
+  const composite = new OffscreenCanvas(output.width, output.height);
+  const ctx = composite.getContext("2d");
+  if (!ctx) {
+    throw new Error("Failed to get a 2D context for the screenshot");
+  }
+
+  const tile = new OffscreenCanvas(output.width / 2, output.height);
+  const tileRenderer = app.create_screenshot_renderer(tile);
+  try {
+    tileRenderer.render_west_tile();
+    ctx.drawImage(tile, 0, 0);
+    tileRenderer.render_east_tile();
+    ctx.drawImage(tile, output.width / 2, 0);
+    return await composite.convertToBlob({ type: "image/png" });
+  } finally {
+    tileRenderer.free();
+  }
+}
+
+/** Apply the syncs that wait for the next frame, so a screenshot is current */
+function applyPendingSyncTo(app: Hoi4MapRenderer) {
+  if (pendingLocations !== null) {
+    app.sync_location_array(pendingLocations);
+    pendingLocations = null;
+  }
+  if (pendingFlags !== null) {
+    app.sync_flag_array(pendingFlags);
+    pendingFlags = null;
+  }
 }
 
 function startRenderLoop(

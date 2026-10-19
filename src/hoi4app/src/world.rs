@@ -1,11 +1,43 @@
-use crate::{GameData, GameProvince, ProvinceId, ProvinceKind, StateId, color::fallback_color};
-use hoi4save::{
-    CountryTag,
-    models::{Country, Hoi4Save},
+use crate::{
+    GameData, GameProvince, ProvinceId, ProvinceKind, StateId,
+    color::fallback_color,
+    overview::IDEOLOGIES,
+    save::{Country, SaveModel},
 };
+use hoi4save::CountryTag;
 use pdx_map::{GpuColor, LocationArrays, LocationFlags, LocationId};
-use serde::Serialize;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+
+/// The color of land that is in no faction, or that no occupation names
+const NEUTRAL_LAND: [u8; 3] = [94, 94, 94];
+
+/// What the map colors
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub enum MapMode {
+    /// The controller of each province, with the owner on the border
+    Political,
+    /// Only the states of occupation records, in the occupier's color
+    Occupation,
+    /// The faction of the controller
+    Factions,
+    /// The ruling ideology of the controller
+    Ideology,
+}
+
+/// The land that a panel level names: the provinces that `countries`
+/// control and the provinces of `states`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct MapMatch {
+    #[serde(default)]
+    pub countries: Vec<String>,
+    #[serde(default)]
+    pub states: Vec<u32>,
+}
 
 /// How a country looks on the map and in the interface
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -45,7 +77,9 @@ pub enum ProvinceDetailsKind {
 #[derive(Debug, Clone)]
 struct CountryStyle {
     name: String,
+    base_name: String,
     color: [u8; 3],
+    ideology: Option<[u8; 3]>,
 }
 
 /// Who owns and controls a province, indexed like the provinces of the game
@@ -70,10 +104,13 @@ pub struct Hoi4World {
     landed: Vec<CountryTag>,
     capitals: HashMap<CountryTag, ProvinceId>,
     province_indices: HashMap<ProvinceId, usize>,
+    faction_colors: HashMap<CountryTag, [u8; 3]>,
+    /// The occupier of each state that an occupation record names
+    occupied_states: HashMap<u32, CountryTag>,
 }
 
 impl Hoi4World {
-    pub fn new(save: &Hoi4Save, game: GameData) -> Self {
+    pub fn new(save: &SaveModel, game: GameData) -> Self {
         let countries = save
             .countries
             .iter()
@@ -116,6 +153,33 @@ impl Hoi4World {
             .filter_map(|(idx, x)| Some((x.id?, idx)))
             .collect();
 
+        let faction_colors = save
+            .factions
+            .iter()
+            .flat_map(|faction| {
+                let color = faction.rgb().unwrap_or(NEUTRAL_LAND);
+                faction.members.iter().map(move |tag| (*tag, color))
+            })
+            .collect();
+
+        let occupied_states = save
+            .countries
+            .iter()
+            .flat_map(|(occupier, country)| {
+                country
+                    .occupation_status
+                    .occupation
+                    .iter()
+                    .flat_map(move |(_, x)| x.states.iter().map(move |state| (*state, *occupier)))
+            })
+            .filter(|(state, occupier)| {
+                save.states
+                    .get(state)
+                    .and_then(|x| x.owner)
+                    .is_some_and(|owner| owner != *occupier)
+            })
+            .collect();
+
         Self {
             game,
             countries,
@@ -123,6 +187,8 @@ impl Hoi4World {
             landed,
             capitals,
             province_indices,
+            faction_colors,
+            occupied_states,
         }
     }
 
@@ -145,6 +211,11 @@ impl Hoi4World {
     /// front lines. The political borders follow the owners, so an occupied
     /// country keeps its borders.
     pub fn political_location_arrays(&self) -> LocationArrays {
+        self.location_arrays(MapMode::Political)
+    }
+
+    /// Location arrays for a map mode. The borders always follow the owners.
+    pub fn location_arrays(&self, mode: MapMode) -> LocationArrays {
         let len = self.game.provinces().len();
         let mut ids = Vec::with_capacity(len);
         let mut fills = Vec::with_capacity(len);
@@ -161,7 +232,35 @@ impl Hoi4World {
                 }
                 (ProvinceDetailsKind::Land, Some(owner)) => {
                     let border = self.country_color(owner);
-                    let fill = control.controller.map_or(border, |x| self.country_color(x));
+                    let controller = control.controller.unwrap_or(owner);
+                    let fill = match mode {
+                        MapMode::Political => self.country_color(controller),
+                        MapMode::Factions => GpuColor::from(
+                            self.faction_colors
+                                .get(&controller)
+                                .copied()
+                                .unwrap_or(NEUTRAL_LAND),
+                        ),
+                        MapMode::Ideology => GpuColor::from(
+                            self.countries
+                                .get(&controller)
+                                .and_then(|x| x.ideology)
+                                .unwrap_or(NEUTRAL_LAND),
+                        ),
+                        MapMode::Occupation => {
+                            let occupier = province
+                                .state_id
+                                .and_then(|x| self.occupied_states.get(&x.value()));
+                            match occupier {
+                                Some(tag) => self.country_color(*tag),
+                                None => GpuColor::from(muted(self.country_rgb(controller))),
+                            }
+                        }
+                    };
+                    let border = match mode {
+                        MapMode::Political | MapMode::Occupation => border,
+                        _ => fill,
+                    };
                     (fill, border)
                 }
                 (ProvinceDetailsKind::Land, None) => (GpuColor::UNOWNED, GpuColor::UNOWNED),
@@ -178,6 +277,32 @@ impl Hoi4World {
         arrays.set_border_colors(&borders);
         arrays.set_flags(&self.location_flags(None));
         arrays
+    }
+
+    /// Flags for each location: land outside `focus` is dimmed and land in
+    /// `hover` is highlighted. An empty match has no effect.
+    pub fn match_flags(&self, focus: &MapMatch, hover: &MapMatch) -> Vec<LocationFlags> {
+        let focus = MatchSet::new(focus);
+        let hover = MatchSet::new(hover);
+        self.game
+            .provinces()
+            .iter()
+            .zip(self.location_flags(None))
+            .zip(&self.control)
+            .map(|((province, mut flags), control)| {
+                if control.kind != ProvinceDetailsKind::Land || control.owner.is_none() {
+                    return flags;
+                }
+                let state = province.state_id.map(StateId::value);
+                if !focus.is_empty() && !focus.matches(control.controller, state) {
+                    flags.set(LocationFlags::DIMMED);
+                }
+                if !hover.is_empty() && hover.matches(control.controller, state) {
+                    flags.set(LocationFlags::HIGHLIGHTED);
+                }
+                flags
+            })
+            .collect()
     }
 
     /// Flags for each location. The provinces that `highlight` owns are
@@ -215,6 +340,14 @@ impl Hoi4World {
         }
     }
 
+    /// The name of the tag without its ideology or cosmetic tag. A dynamic
+    /// tag has no such name, so it keeps its full name.
+    pub fn base_name(&self, tag: CountryTag) -> String {
+        self.countries
+            .get(&tag)
+            .map_or_else(|| tag.to_string(), |x| x.base_name.clone())
+    }
+
     /// Countries that own at least one state
     pub fn landed_countries(&self) -> Vec<CountryDisplay> {
         self.landed.iter().map(|tag| self.country(*tag)).collect()
@@ -243,7 +376,37 @@ impl Hoi4World {
     }
 }
 
-fn province_control(save: &Hoi4Save, game: &GameData, province: &GameProvince) -> ProvinceControl {
+/// Countries and states that a [`MapMatch`] names
+struct MatchSet {
+    countries: HashSet<CountryTag>,
+    states: HashSet<u32>,
+}
+
+impl MatchSet {
+    fn new(x: &MapMatch) -> Self {
+        Self {
+            countries: x.countries.iter().filter_map(|x| x.parse().ok()).collect(),
+            states: x.states.iter().copied().collect(),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.countries.is_empty() && self.states.is_empty()
+    }
+
+    fn matches(&self, controller: Option<CountryTag>, state: Option<u32>) -> bool {
+        controller.is_some_and(|x| self.countries.contains(&x))
+            || state.is_some_and(|x| self.states.contains(&x))
+    }
+}
+
+/// A dark version of a color, for land that a map mode does not describe
+fn muted([r, g, b]: [u8; 3]) -> [u8; 3] {
+    let mix = |x: u8, ground: f32| (f32::from(x) * 0.3 + ground) as u8;
+    [mix(r, 14.0), mix(g, 17.0), mix(b, 22.0)]
+}
+
+fn province_control(save: &SaveModel, game: &GameData, province: &GameProvince) -> ProvinceControl {
     let game_state = province.state_id.and_then(|x| game.state(x));
     let kind = match province.kind {
         ProvinceKind::Sea => ProvinceDetailsKind::Sea,
@@ -283,8 +446,16 @@ fn country_style(game: &GameData, tag: CountryTag, country: &Country) -> Country
         .as_ref()
         .and_then(|x| x.ruling_party.as_deref());
 
-    let mut name_keys = Vec::with_capacity(4);
-    for key in cosmetic.into_iter().chain(std::iter::once(tag.as_str())) {
+    // A dynamic tag (eg: D02) has no name of its own. The game names it from
+    // the original tag and the ruling ideology (eg: FRA_fascism).
+    let original = country.original_tag.filter(|x| *x != tag);
+    let original = original.as_ref().map(CountryTag::as_str);
+    let mut name_keys = Vec::with_capacity(6);
+    for key in cosmetic
+        .into_iter()
+        .chain(std::iter::once(tag.as_str()))
+        .chain(original)
+    {
         if let Some(ideology) = ideology {
             name_keys.push(format!("{key}_{ideology}"));
         }
@@ -297,7 +468,23 @@ fn country_style(game: &GameData, tag: CountryTag, country: &Country) -> Country
         .map(String::from)
         .unwrap_or_else(|| tag.to_string());
 
-    CountryStyle { name, color }
+    let base_name = game
+        .localize(tag.as_str())
+        .map_or_else(|| name.clone(), String::from);
+
+    let ideology = ideology.and_then(|x| {
+        IDEOLOGIES
+            .iter()
+            .find(|(key, _, _)| *key == x)
+            .map(|(_, _, color)| *color)
+    });
+
+    CountryStyle {
+        name,
+        base_name,
+        color,
+        ideology,
+    }
 }
 
 #[cfg(test)]
@@ -305,7 +492,7 @@ mod tests {
     use super::*;
     use crate::{CountryColor, GameState};
 
-    fn save() -> Hoi4Save {
+    fn save() -> SaveModel {
         let data = br#"HOI4txt
 player="FRA"
 date="1938.1.1.12"
@@ -322,9 +509,7 @@ provinces={
 	11={ controller="GER" }
 }
 "#;
-        let file = hoi4save::Hoi4File::from_slice(data).unwrap();
-        let resolver = hoi4save::BasicTokenResolver::from_text_lines(&b""[..]).unwrap();
-        file.parse_save(&resolver).unwrap()
+        crate::parse_save_model(&data[..]).unwrap()
     }
 
     fn game() -> GameData {

@@ -19,4 +19,4 @@ export * from "./Eu5MapDataTable";
 export * from "./Skeleton";
 export * from "./EmptyNote";
 export * from "./StatItem";
-export * from "./Segmented";
+export * from "@/components/game/Segmented";

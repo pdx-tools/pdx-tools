@@ -1,8 +1,9 @@
-use hoi4app::{Hoi4World, ProvinceDetails, ProvinceId};
+use hoi4app::{
+    Hoi4Overview, Hoi4World, MapMatch, MapMode, ProvinceDetails, ProvinceId, save::SaveModel,
+};
 use hoi4save::{
     CountryTag, Encoding, FailedResolveStrategy, Hoi4Error, Hoi4File, MeltOptions,
     file::{Hoi4Modeller, Hoi4TextReader},
-    models::Hoi4Save,
 };
 use rawzip::{RangeReader, ReaderAt};
 use std::{collections::HashMap, io::Cursor};
@@ -22,7 +23,7 @@ const COUNTRY_TAG_TYPE: &'static str = r#"export type CountryTag = string;"#;
 
 #[derive(Debug)]
 pub struct SaveFileImpl {
-    save: Hoi4Save,
+    save: SaveModel,
     encoding: Encoding,
     world: Option<Hoi4World>,
 }
@@ -50,10 +51,38 @@ impl SaveFile {
         Ok(())
     }
 
-    /// The location arrays that color the map by owner and controller
-    pub fn location_arrays(&self) -> Result<js_sys::Uint32Array, JsError> {
-        let arrays = self.0.world()?.political_location_arrays();
+    /// Describe the save without game data, when no asset bundle matches the
+    /// save. Countries are then named by their tags.
+    pub fn load_without_game_bundle(&mut self) {
+        self.0.world = Some(Hoi4World::new(&self.0.save, hoi4app::GameData::default()));
+    }
+
+    /// The location arrays that color the map in a map mode
+    pub fn location_arrays(&self, mode: Ts<MapMode>) -> Result<js_sys::Uint32Array, JsError> {
+        let arrays = self.0.world()?.location_arrays(mode.to_rust()?);
         Ok(js_sys::Uint32Array::from(arrays.as_data()))
+    }
+
+    /// The flags of each location: land outside `focus` is dimmed and land
+    /// in `hover` is highlighted
+    pub fn match_flags(
+        &self,
+        focus: Ts<MapMatch>,
+        hover: Ts<MapMatch>,
+    ) -> Result<js_sys::Uint32Array, JsError> {
+        let flags: Vec<u32> = self
+            .0
+            .world()?
+            .match_flags(&focus.to_rust()?, &hover.to_rust()?)
+            .into_iter()
+            .map(|x| x.bits())
+            .collect();
+        Ok(js_sys::Uint32Array::from(flags.as_slice()))
+    }
+
+    /// The countries, factions, occupations, wars, and events of the save
+    pub fn overview(&self) -> Result<Ts<Hoi4Overview>, JsError> {
+        Ok(self.0.world()?.overview(&self.0.save).into_ts()?)
     }
 
     /// The flags of each location with the provinces of `tag` highlighted
@@ -166,7 +195,7 @@ fn parse_reader<R: ReaderAt + 'static>(reader: R, size: u64) -> Result<SaveFile,
     let encoding = Hoi4File::from_slice(&header)?.encoding();
 
     let body = RangeReader::new(reader, HEADER_LEN..size);
-    let save: Hoi4Save = match encoding {
+    let save: SaveModel = match encoding {
         Encoding::Plaintext => Hoi4TextReader::from_reader(body)
             .deserializer()
             .deserialize()?,
@@ -227,9 +256,18 @@ mod tests {
             .unwrap();
 
         let size = data.len() as u64;
-        let file = parse_reader(data, size).unwrap().0;
+        let mut file = parse_reader(data, size).unwrap().0;
         assert_eq!(file.save.player, expected.player);
         assert_eq!(file.save.date, expected.date);
         assert_eq!(file.save.countries.len(), expected.countries.len());
+
+        let bundle = std::fs::read(root.join("assets/game/hoi4/1.19/game.zip")).unwrap();
+        let game = hoi4app::read_game_bundle(&bundle).unwrap();
+        file.world = Some(Hoi4World::new(&file.save, game));
+        let overview = file.world.as_ref().unwrap().overview(&file.save);
+        if std::env::var_os("HOI4_OVERVIEW").is_some() {
+            println!("{}", serde_json::to_string_pretty(&overview).unwrap());
+        }
+        assert!(overview.total_factories > 0);
     }
 }

@@ -16,7 +16,7 @@ import { CreatorReel } from "./CreatorReel";
 import { HomeLeaderboard } from "./HomeLeaderboard";
 import { AchievementMarquee } from "./AchievementMarquee";
 import { cx } from "class-variance-authority";
-import { analysisGames, meltGames } from "@/lib/games";
+import { analysisGames, exploreGames, meltGames } from "@/lib/games";
 import { DISCORD_INVITE_URL } from "@/lib/links";
 import type { Game } from "@/lib/games";
 
@@ -224,6 +224,7 @@ export const Home = ({ subtitle }: HomeProps) => {
               Melting turns an ironman save into plaintext you can read, and it still loads in game.
             </p>
             <GameList title="Flagship" list={analysisGames} />
+            <GameList title="Map and analysis" list={exploreGames} />
             <GameList title="Melt only" list={meltGames} />
           </div>
           <div>

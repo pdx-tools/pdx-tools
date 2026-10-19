@@ -1,5 +1,5 @@
 import { wasm } from "./common";
-import type { Hoi4Metadata } from "./types";
+import type { Hoi4Metadata, MapMatch, MapMode } from "./types";
 import { fetchOk } from "@/lib/fetch";
 import { transfer } from "comlink";
 
@@ -23,15 +23,25 @@ export async function loadGameBundle(url: string) {
   return wasm.save.landed_countries().countries;
 }
 
-/** The location arrays of the political map, ready to send to the map worker */
-export function locationArrays() {
-  const data = wasm.save.location_arrays();
+/** Describe the save without game data, when no asset bundle matches it */
+export function loadWithoutGameBundle() {
+  wasm.save.load_without_game_bundle();
+}
+
+/** The countries, factions, occupations, wars, and events of the save */
+export function overview() {
+  return wasm.save.overview();
+}
+
+/** The location arrays of a map mode, ready to send to the map worker */
+export function locationArrays(mode: MapMode) {
+  const data = wasm.save.location_arrays(mode);
   return transfer(data, [data.buffer]);
 }
 
-/** Location flags with the provinces of `tag` highlighted */
-export function locationFlags(tag: string | null) {
-  const data = wasm.save.location_flags(tag);
+/** Location flags with the land outside `focus` dimmed and `hover` lit */
+export function matchFlags(focus: MapMatch, hover: MapMatch) {
+  const data = wasm.save.match_flags(focus, hover);
   return transfer(data, [data.buffer]);
 }
 

@@ -9,7 +9,14 @@ import { getLogLevel } from "@/lib/isDeveloper";
 import { trackWorker } from "@/lib/sentryWorker";
 import { registerAnalysisTerminator } from "@/features/engine/analysisLifecycle";
 import { getHoi4Worker } from "../worker";
-import type { CountryDisplay, Hoi4Metadata, ProvinceDetails } from "../worker/types";
+import type {
+  CountryDisplay,
+  Hoi4Metadata,
+  Hoi4Overview,
+  MapMatch,
+  MapMode,
+  ProvinceDetails,
+} from "../worker/types";
 import { resolveHoi4Bundle } from "./bundles";
 import type * as MapModule from "./map-module";
 
@@ -26,7 +33,13 @@ export type Hoi4MapSnapshot = {
   status: Hoi4MapStatus;
   /** Countries that own land, with their names and map colors */
   countries: CountryDisplay[];
+  /** The analysis of the save. It arrives after the game data loads. */
+  overview: Hoi4Overview | null;
+  /** The asset bundle version that the map uses, if any */
+  bundleVersion: string | null;
 };
+
+const NO_MATCH: MapMatch = { countries: [], states: [] };
 
 /**
  * Coordinates the map worker and the save worker for one save.
@@ -37,7 +50,16 @@ export type Hoi4MapSnapshot = {
 export class Hoi4MapSession {
   /** Owns the canvas, which stays with the session while the page shows it */
   readonly host: CanvasCourierHost;
-  private snapshot: Hoi4MapSnapshot = { status: { kind: "waiting" }, countries: [] };
+  private snapshot: Hoi4MapSnapshot = {
+    status: { kind: "waiting" },
+    countries: [],
+    overview: null,
+    bundleVersion: null,
+  };
+  private mode: MapMode = "political";
+  private focus: MapMatch = NO_MATCH;
+  private hoverMatch: MapMatch = NO_MATCH;
+  private modeSequence = 0;
   private listeners = new Set<() => void>();
   // The hovered province changes often, so it has a store that is separate
   // from the snapshot. Thus a hover does not render the side panel again.
@@ -53,7 +75,7 @@ export class Hoi4MapSession {
   private hoverSequence = 0;
   private highlightSequence = 0;
   private unregisterTerminator: () => void;
-  private onSelectCountry: ((tag: string) => void) | null = null;
+  private onSelectProvince: ((province: ProvinceDetails) => void) | null = null;
 
   constructor(readonly file: File) {
     this.host = new CanvasCourierHost(CANVAS_CLASS, (surface, transport) =>
@@ -71,12 +93,12 @@ export class Hoi4MapSession {
 
   getSnapshot = (): Hoi4MapSnapshot => this.snapshot;
 
-  /** Listen for clicks on provinces that a country owns. Returns an unsubscribe function. */
-  listenForCountryClicks(listener: (tag: string) => void): () => void {
-    this.onSelectCountry = listener;
+  /** Listen for clicks on land. Returns an unsubscribe function. */
+  listenForProvinceClicks(listener: (province: ProvinceDetails) => void): () => void {
+    this.onSelectProvince = listener;
     return () => {
-      if (this.onSelectCountry === listener) {
-        this.onSelectCountry = null;
+      if (this.onSelectProvince === listener) {
+        this.onSelectProvince = null;
       }
     };
   }
@@ -111,17 +133,49 @@ export class Hoi4MapSession {
     void this.start();
   }
 
-  /** Highlight the provinces that `tag` owns. Null removes the highlight. */
-  async highlightCountry(tag: string | null): Promise<void> {
+  /** Color the map by `mode`. The focus and hover stay. */
+  async setMode(mode: MapMode): Promise<void> {
+    if (mode === this.mode) {
+      return;
+    }
+    this.mode = mode;
+    const sequence = ++this.modeSequence;
+    if (this.snapshot.status.kind !== "ready" || this.mapWorker === null) {
+      return;
+    }
+
+    const arrays = await getHoi4Worker().locationArrays(mode);
+    if (sequence === this.modeSequence && !this.destroyed) {
+      await this.mapWorker.syncLocations(transfer(arrays, [arrays.buffer]));
+      await this.syncMatch();
+    }
+  }
+
+  /** Dim the land outside `focus` and light the land in `hover` */
+  async setMatch(focus: MapMatch | null, hover: MapMatch | null): Promise<void> {
+    this.focus = focus ?? NO_MATCH;
+    this.hoverMatch = hover ?? NO_MATCH;
+    await this.syncMatch();
+  }
+
+  private async syncMatch(): Promise<void> {
     const sequence = ++this.highlightSequence;
     if (this.snapshot.status.kind !== "ready" || this.mapWorker === null) {
       return;
     }
 
-    const flags = await getHoi4Worker().locationFlags(tag);
+    const flags = await getHoi4Worker().matchFlags(this.focus, this.hoverMatch);
     if (sequence === this.highlightSequence && !this.destroyed) {
       await this.mapWorker.syncFlags(transfer(flags, [flags.buffer]));
     }
+  }
+
+  /** The whole world as a PNG */
+  async screenshot(fullResolution: boolean): Promise<Blob> {
+    if (this.mapWorker === null) {
+      throw new Error("The map is not available");
+    }
+    return this.mapWorker.generateWorldScreenshot(fullResolution);
   }
 
   /** Center the map on the capital of `tag` */
@@ -147,22 +201,30 @@ export class Hoi4MapSession {
     const transport = this.transport;
     const meta = this.meta;
 
+    const saveWorker = getHoi4Worker();
     const bundle = resolveHoi4Bundle(meta.bundleVersion);
     if (bundle === null) {
+      // The analysis does not need the map. It names countries by tag.
+      await saveWorker.loadWithoutGameBundle();
+      const overview = await saveWorker.overview();
       this.update({
-        status: { kind: "unavailable", reason: "The HOI4 map assets are not available." },
+        overview,
+        status: {
+          kind: "unavailable",
+          reason: `No map assets match this save${meta.version ? ` (${meta.version})` : ""}.`,
+        },
       });
       return;
     }
 
-    this.update({ status: { kind: "loading" } });
-    const saveWorker = getHoi4Worker();
+    this.update({ status: { kind: "loading" }, bundleVersion: bundle.version });
     // This handles its own failure, because the paths below that stop
     // early do not await it.
     const countriesLoaded = saveWorker.loadGameBundle(bundle.game).then(
-      (countries) => {
+      async (countries) => {
+        const overview = await saveWorker.overview();
         if (!this.destroyed) {
-          this.update({ countries });
+          this.update({ countries, overview });
         }
         return true;
       },
@@ -207,7 +269,7 @@ export class Hoi4MapSession {
         this.releaseMap();
         return;
       }
-      const arrays = await saveWorker.locationArrays();
+      const arrays = await saveWorker.locationArrays(this.mode);
       await mapWorker.syncLocations(transfer(arrays, [arrays.buffer]));
 
       const capital = meta.player ? await saveWorker.capitalProvince(meta.player) : null;
@@ -217,6 +279,11 @@ export class Hoi4MapSession {
 
       if (!this.destroyed) {
         this.update({ status: { kind: "ready" } });
+        // A mode or focus chosen while the map loaded applies now.
+        const mode = this.mode;
+        this.mode = "political";
+        await this.setMode(mode);
+        await this.syncMatch();
       }
     } catch (error) {
       if (this.destroyed) {
@@ -252,7 +319,7 @@ export class Hoi4MapSession {
 
     const details = await getHoi4Worker().provinceDetails(provinceId);
     if (details?.owner && !this.destroyed) {
-      this.onSelectCountry?.(details.owner.tag);
+      this.onSelectProvince?.(details);
     }
   }
 
