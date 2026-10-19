@@ -251,10 +251,10 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      # Closed pull requests can lose their merge ref.
+      # Closed pull requests can lose their merge ref and their base branch.
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
+          ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - uses: jdx/mise-action@v4
