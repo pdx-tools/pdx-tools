@@ -48,12 +48,12 @@ it("shows a single pending save before analysis and changes its bookmark when re
 });
 
 it("reports every status in a grouped bookmark", () => {
-  mocks.saves = [save("first"), save("second", 2)];
+  mocks.saves = [save("first"), save("second", 2), save("third", 3)];
   const partial = renderToString(
     <Track ready={new Set(["first"])} analyzing={new Set(["second"])} />,
   );
   expect(partial).toContain('data-analysis="analyzing"');
-  expect(partial).toContain("1 analyzed, 1 analyzing");
+  expect(partial).toContain("1 analyzed, 1 analyzing, 1 waiting");
   expect(partial).toContain("fill-amber-400");
 });
 
@@ -76,4 +76,13 @@ it("keeps queued saves grey and active saves amber", () => {
   expect(mixed).toContain('data-analysis="pending"');
   expect(mixed).toContain("1 analyzed, 1 waiting");
   expect(mixed).not.toContain("fill-amber-400");
+});
+
+it("marks a grouped bookmark ready only when every save is analyzed", () => {
+  mocks.saves = [save("first"), save("second", 2)];
+  const html = renderToString(<Track ready={new Set(["first", "second"])} />);
+  expect(html).toContain('data-analysis="ready"');
+  expect(html).toContain("2 analyzed");
+  expect(html).toContain("fill-emerald-400");
+  expect(html).not.toContain("fill-amber-400");
 });

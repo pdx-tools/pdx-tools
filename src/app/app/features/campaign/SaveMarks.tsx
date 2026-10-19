@@ -11,19 +11,18 @@ import type { CampaignNav } from "./useCampaignNav";
 import { saveLabel } from "./saveText";
 import { SaveList } from "./SaveList";
 import type { CampaignSave } from "./types";
+import { saveAnalysisPresentation } from "./saveAnalysisPresentation";
+import type { SaveAnalysisStatus } from "./saveAnalysisPresentation";
 
 /** Marks closer than this, in px, share one mark. */
 const MIN_GAP_PX = 10;
 
 const MARK_WIDTH = 14;
 
-export type SaveAnalysisStatus = "ready" | "analyzing" | "pending";
 type Cluster = {
   x: number;
   saves: readonly CampaignSave[];
-  analyzed?: number;
-  analysisStatus?: SaveAnalysisStatus;
-  analysisLabel?: string;
+  analysis?: { status: SaveAnalysisStatus; label: string; hasReady: boolean };
 };
 type AnalysisStatus = (save: CampaignSave) => SaveAnalysisStatus;
 
@@ -50,6 +49,25 @@ function clusterSaves(
     const x = openAt >= 0 ? xs[openAt] : xs.reduce((a, b) => a + b, 0) / xs.length;
     return { x, saves };
   });
+}
+
+/** A mixed cluster stays active while any save is being analyzed. */
+function summarizeAnalysis(saves: readonly CampaignSave[], statusOf: AnalysisStatus) {
+  const counts = { ready: 0, analyzing: 0, pending: 0 };
+  for (const save of saves) counts[statusOf(save)]++;
+  const status: SaveAnalysisStatus =
+    counts.ready === saves.length ? "ready" : counts.analyzing > 0 ? "analyzing" : "pending";
+  const label =
+    saves.length === 1
+      ? saveAnalysisPresentation[status].description
+      : [
+          counts.ready && `${counts.ready} analyzed`,
+          counts.analyzing && `${counts.analyzing} analyzing`,
+          counts.pending && `${counts.pending} waiting`,
+        ]
+          .filter(Boolean)
+          .join(", ");
+  return { status, label, hasReady: counts.ready > 0 };
 }
 
 /** Extend the timeline to the latest campaign save. */
@@ -86,33 +104,10 @@ function SaveMarks({
   geometry: SaveLaneGeometry;
   analysisStatus?: AnalysisStatus;
 }) {
-  const clusters: Cluster[] = clusterSaves(nav.saves, start, geometry.px).map((cluster) => {
-    if (!analysisStatus) return cluster;
-    const statuses = cluster.saves.map(analysisStatus);
-    const analyzed = statuses.filter((status) => status === "ready").length;
-    const analyzing = statuses.filter((status) => status === "analyzing").length;
-    const waiting = statuses.length - analyzed - analyzing;
-    const status = analyzed === statuses.length ? "ready" : analyzing > 0 ? "analyzing" : "pending";
-    return {
-      ...cluster,
-      analyzed,
-      analysisStatus: status,
-      analysisLabel:
-        statuses.length === 1
-          ? status === "ready"
-            ? "Analysis ready"
-            : status === "analyzing"
-              ? "Analyzing save"
-              : "Waiting for analysis"
-          : [
-              analyzed && `${analyzed} analyzed`,
-              analyzing && `${analyzing} analyzing`,
-              waiting && `${waiting} waiting`,
-            ]
-              .filter(Boolean)
-              .join(", "),
-    };
-  });
+  const clusters = clusterSaves(nav.saves, start, geometry.px).map((cluster) => ({
+    ...cluster,
+    analysis: analysisStatus && summarizeAnalysis(cluster.saves, analysisStatus),
+  }));
   const ribbonTop = geometry.top + 2;
 
   return (
@@ -132,7 +127,7 @@ function SaveMarks({
             y2={ribbonTop}
             strokeWidth={1}
             className={
-              cluster.analyzed === cluster.saves.length
+              cluster.analysis?.status === "ready"
                 ? "stroke-emerald-400/60"
                 : cluster.saves.some((x) => x.isOpen)
                   ? "stroke-game-accent-300/60"
@@ -155,7 +150,7 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
   const isOpen = saves.some((x) => x.isOpen);
   const opening = saves.some((x) => x.key === nav.opening);
   const problem = saves.every((x) => x.problem !== null && x.problem.kind !== "moved");
-  const { analysisLabel } = cluster;
+  const analysisLabel = cluster.analysis?.label;
   const label =
     saves.length === 1
       ? saveLabel(saves[0])
@@ -171,7 +166,7 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
             .join(", ")}
           aria-busy={opening || undefined}
           title={analysisLabel}
-          data-analysis={cluster.analysisStatus}
+          data-analysis={cluster.analysis?.status}
           className={cx(
             "group absolute z-10 grid -translate-x-1/2 cursor-pointer place-items-start justify-center rounded-[var(--radius-plate)]",
             focusRing,
@@ -184,8 +179,8 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
                 d="M3.5 -1.5 H10.5 V9.5 L7 7 L3.5 9.5 Z"
                 className={cx(
                   "transition-colors duration-100",
-                  cluster.analyzed != null
-                    ? cluster.analyzed > 0
+                  cluster.analysis
+                    ? cluster.analysis.hasReady
                       ? "fill-emerald-600"
                       : "fill-game-ink-700"
                     : isOpen
@@ -199,12 +194,8 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
               strokeWidth={1}
               className={cx(
                 "transition-colors duration-100",
-                cluster.analyzed != null
-                  ? cluster.analyzed === saves.length
-                    ? "fill-emerald-400 stroke-emerald-300"
-                    : cluster.analysisStatus === "analyzing"
-                      ? "fill-amber-400 stroke-amber-300"
-                      : "fill-game-ink-700 stroke-game-ink-500 group-hover:stroke-game-ink-100"
+                cluster.analysis
+                  ? saveAnalysisPresentation[cluster.analysis.status].bookmarkClass
                   : isOpen || opening
                     ? "fill-game-accent-300 stroke-game-accent-300"
                     : problem

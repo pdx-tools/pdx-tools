@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { CampaignSave } from "@/features/campaign/types";
-import type { SaveAnalysisStatus } from "@/features/campaign/SaveMarks";
+import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import type { MapHistoryValue } from "../history/MapHistory";
 import type * as HistoryStore from "../history/store";
 

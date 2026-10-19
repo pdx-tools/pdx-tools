@@ -1,7 +1,8 @@
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
 import type { CampaignSave } from "@/features/campaign/types";
-import type { SaveAnalysisStatus } from "@/features/campaign/SaveMarks";
+import { saveAnalysisPresentation } from "@/features/campaign/saveAnalysisPresentation";
+import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import { useHistory } from "../history/store";
 import { useMapHistory } from "../history/context";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
@@ -117,24 +118,15 @@ export function TimelineBar() {
             className="flex flex-col gap-0.5 text-[10px] leading-tight text-game-ink-500"
             aria-label="Save analysis status"
           >
-            <span>
-              <span
-                aria-hidden
-                className="mr-1 inline-block size-1.5 rounded-full bg-emerald-400"
-              />
-              Analyzed
-            </span>
-            <span>
-              <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-amber-400" />
-              Analyzing
-            </span>
-            <span>
-              <span
-                aria-hidden
-                className="mr-1 inline-block size-1.5 rounded-full bg-game-ink-700"
-              />
-              Waiting
-            </span>
+            {Object.entries(saveAnalysisPresentation).map(([status, { label, dotClass }]) => (
+              <span key={status}>
+                <span
+                  aria-hidden
+                  className={cx("mr-1 inline-block size-1.5 rounded-full", dotClass)}
+                />
+                {label}
+              </span>
+            ))}
           </span>
         )}
       </div>
