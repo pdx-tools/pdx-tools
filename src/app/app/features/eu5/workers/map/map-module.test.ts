@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SharedCanvasEventAction, SharedCanvasInputWriter } from "@/lib/canvas_courier/ring_buffer";
+import type { Eu5MapEndpoint } from "./map-module";
 
 const mocks = vi.hoisted(() => ({
   expose: vi.fn(),
@@ -12,6 +13,8 @@ const mocks = vi.hoisted(() => ({
     gpu_loc_to_app: vi.fn(() => 1),
     sync_location_array: vi.fn(),
     sync_grouping_table: vi.fn(),
+    sync_color_array: vi.fn(),
+    sync_flag_array: vi.fn(),
     on_key_down: vi.fn(),
     on_key_up: vi.fn(),
     on_cursor_move: vi.fn(),
@@ -74,12 +77,10 @@ async function openMap() {
     { mapBundle: { fetch: async () => new Uint8Array() } },
   );
   await module.initialize({} as MessagePort, "info");
-  const endpoint = mocks.expose.mock.calls[0][0] as {
-    syncSave(save: { locations: Uint32Array; groupingTable: Uint32Array }): Promise<void>;
-  };
+  const endpoint = mocks.expose.mock.calls[0][0] as Eu5MapEndpoint;
   await endpoint.syncSave({ locations: new Uint32Array([1]), groupingTable: new Uint32Array([1]) });
   await nextFrame();
-  return { writer, engine };
+  return { writer, engine, endpoint };
 }
 
 function key(code: string): KeyboardEvent {
@@ -153,5 +154,59 @@ describe("EU5 map input lifecycle", () => {
     writer.enqueueKeyboard(key("KeyW"));
     await nextFrame();
     expect(mocks.app.on_key_down.mock.calls).toEqual([["KeyW"], ["KeyW"]]);
+  });
+});
+
+describe("EU5 map overlay", () => {
+  const overlay = (token: number) => ({
+    token,
+    colors: new Uint32Array([10 + token]),
+    flags: new Uint32Array([20 + token]),
+    groups: new Uint32Array([30 + token]),
+  });
+
+  it("refuses a frame older than the newest frame or clear", async () => {
+    const { engine, endpoint } = await openMap();
+    expect(await endpoint.presentOverlay(overlay(2))).toBe(true);
+    expect(await endpoint.presentOverlay(overlay(1))).toBe(false);
+    await engine.clearOverlay(3);
+    // A paint that was in flight when the preview ended arrives late.
+    expect(await endpoint.presentOverlay(overlay(2))).toBe(false);
+    await nextFrame();
+    expect(mocks.app.sync_color_array).not.toHaveBeenCalled();
+    expect(mocks.app.sync_flag_array).not.toHaveBeenCalled();
+  });
+
+  it("keeps the save under the overlay and shows it again when the overlay clears", async () => {
+    const { engine, endpoint } = await openMap();
+    mocks.app.sync_location_array.mockClear();
+    mocks.app.sync_grouping_table.mockClear();
+    await endpoint.presentOverlay(overlay(1));
+    await nextFrame();
+    expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
+    expect(mocks.app.sync_flag_array).toHaveBeenLastCalledWith(overlay(1).flags);
+    expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(overlay(1).groups);
+
+    // The save changes below the overlay, as when its selection is restored.
+    const colors = new Uint32Array([7]);
+    await endpoint.syncMapData({ colors });
+    await endpoint.syncGroupingTable(new Uint32Array([8]));
+    await nextFrame();
+    expect(mocks.app.sync_color_array).toHaveBeenCalledTimes(1);
+
+    // A new save under the overlay gets its locations, and the overlay stays on top.
+    const locations = new Uint32Array([9]);
+    await endpoint.syncSave({ locations, groupingTable: new Uint32Array([6]) });
+    await nextFrame();
+    expect(mocks.app.sync_location_array).toHaveBeenLastCalledWith(locations);
+    expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
+    expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(overlay(1).groups);
+
+    await engine.clearOverlay(2);
+    await nextFrame();
+    expect(mocks.app.sync_location_array).toHaveBeenLastCalledWith(locations);
+    expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(new Uint32Array([6]));
+    expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
+    expect(mocks.app.sync_color_array).toHaveBeenCalledTimes(2);
   });
 });

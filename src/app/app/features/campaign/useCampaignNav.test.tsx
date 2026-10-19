@@ -233,12 +233,7 @@ describe("campaign navigation", () => {
         viewport: null,
         selection: null,
         insightPanel: { open: true, width: 640 },
-        inspection: {
-          interaction: {
-            kind: "click",
-            event: { kind: "update", locationIdx: 42, modifiers: 1 },
-          },
-        },
+        inspection: { click: { kind: "update", locationIdx: 42, modifiers: 1 } },
       },
     };
 

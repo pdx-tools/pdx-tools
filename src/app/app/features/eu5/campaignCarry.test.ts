@@ -13,7 +13,6 @@ const engine = () => ({
     restoreCampaignView: vi
       .fn()
       .mockResolvedValue([{ kind: "country", country: { key: 77, name: "France" } }]),
-    replayMapInteraction: vi.fn().mockResolvedValue(undefined),
     fitWorldRect: vi.fn(),
   },
 });
@@ -48,34 +47,6 @@ describe("campaign profile carry", () => {
     expect(next.trigger.restoreCampaignView).toHaveBeenCalledExactlyOnceWith(view);
     expect(profiles).toBeUndefined();
     expect(next.trigger.fitWorldRect).not.toHaveBeenCalled();
-  });
-  it("replays a carried map interaction after restoring the view", async () => {
-    const next = engine();
-    const interaction = {
-      kind: "click" as const,
-      event: { kind: "update" as const, locationIdx: 42, modifiers: 1 },
-    };
-    const order: string[] = [];
-    next.trigger.restoreCampaignView.mockImplementation(async () => {
-      order.push("restore");
-      return [];
-    });
-    next.trigger.replayMapInteraction.mockImplementation(async () => {
-      order.push("interaction");
-    });
-    next.trigger.fitWorldRect.mockImplementation(async () => {
-      order.push("camera");
-    });
-    const view = carry({
-      viewport: { x: 1, y: 2, width: 3, height: 4 },
-      inspection: { interaction },
-    });
-
-    const profiles = await applyEu5Carry(next as unknown as AppEngine, view);
-
-    expect(order).toEqual(["restore", "interaction", "camera"]);
-    expect(next.trigger.replayMapInteraction).toHaveBeenCalledExactlyOnceWith(interaction);
-    expect(profiles).toBeUndefined();
   });
   it("captures a country and its focused location with one identity lookup", async () => {
     const previous = engine();

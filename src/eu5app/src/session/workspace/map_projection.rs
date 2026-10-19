@@ -1,22 +1,180 @@
+use super::map_painter::{self, LocationMarket, LocationValues, MapLayout, PaintRequest};
+use super::terrain_fill::FillComponents;
 use super::*;
-use crate::gradient::{self, GradientScale};
-use crate::map_projection::{FRACTION_SCALE, MapProjectionData, MapProjectionError};
-use crate::map_render_source::{self, MapRenderSource};
-use std::collections::BTreeMap;
-struct ProjectedMapSource<'a, 'bump> {
-    workspace: &'a Eu5Workspace<'bump>,
+use crate::map_projection::{Fraction, MapProjectionData, MapProjectionError, Metric};
+use std::cell::OnceCell;
+use std::sync::OnceLock;
+
+/// The values of a snapshot frame. They do not depend on the loaded save.
+struct FrameValues<'a> {
     frame: &'a MapProjectionData<'a>,
+    fill: &'a FillComponents,
+    /// The index of each location ID. It is the same for every frame of the
+    /// layout, so the workspace keeps it.
+    location_index: &'a OnceLock<FxHashMap<LocationId, LocationIdx>>,
+    /// [historical owner color, current controller color, primary religion]
+    countries: FxHashMap<u32, [u32; 3]>,
+    religions: OnceCell<FxHashMap<u32, GpuColor>>,
+    markets: OnceCell<FxHashMap<u32, (Option<LocationIdx>, GpuColor)>>,
+    owner_fill: OnceCell<LocationIndexedVec<Option<LocationIdx>>>,
+    religion_fill: OnceCell<LocationIndexedVec<Option<LocationIdx>>>,
 }
-impl MapRenderSource for ProjectedMapSource<'_, '_> {
+
+impl<'a> FrameValues<'a> {
+    fn new(
+        frame: &'a MapProjectionData<'a>,
+        fill: &'a FillComponents,
+        location_index: &'a OnceLock<FxHashMap<LocationId, LocationIdx>>,
+    ) -> Self {
+        let countries = frame
+            .countries
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| (p[0], [p[1], p[2], p[3]]))
+            .collect();
+        Self {
+            frame,
+            fill,
+            location_index,
+            countries,
+            religions: OnceCell::new(),
+            markets: OnceCell::new(),
+            owner_fill: OnceCell::new(),
+            religion_fill: OnceCell::new(),
+        }
+    }
+
+    fn column(values: &[u32], idx: LocationIdx) -> Option<u32> {
+        Some(values[idx.value() as usize]).filter(|&id| id != u32::MAX)
+    }
+
+    fn country_color(&self, country: Option<u32>, column: usize) -> GpuColor {
+        country
+            .and_then(|id| self.countries.get(&id))
+            .map_or(GpuColor::UNOWNED, |p| GpuColor::from_packed(p[column]))
+    }
+
+    fn religions(&self) -> &FxHashMap<u32, GpuColor> {
+        self.religions.get_or_init(|| {
+            self.frame
+                .religion_colors
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|p| (p[0], GpuColor::from_packed(p[1])))
+                .collect()
+        })
+    }
+
+    fn markets(&self) -> &FxHashMap<u32, (Option<LocationIdx>, GpuColor)> {
+        self.markets.get_or_init(|| {
+            // Validation makes sure that the frame has the location IDs of
+            // the layout, so one index serves every frame.
+            let locations = self.location_index.get_or_init(|| {
+                self.frame
+                    .location_ids
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, &id)| (LocationId::new(id), LocationIdx::new(idx as u32)))
+                    .collect()
+            });
+            self.frame
+                .market_colors
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .map(|p| {
+                    let center = locations.get(&LocationId::new(p[1])).copied();
+                    (p[0], (center, GpuColor::from_packed(p[2])))
+                })
+                .collect()
+        })
+    }
+}
+
+impl LocationValues for FrameValues<'_> {
     fn location_count(&self) -> usize {
         self.frame.location_ids.len()
     }
-    fn terrain(&self, index: LocationIdx) -> Terrain {
-        self.workspace.location_terrain(index)
+
+    fn owner(&self, idx: LocationIdx) -> Option<u32> {
+        Self::column(self.frame.owners, idx)
     }
-    fn owned(&self, index: LocationIdx) -> bool {
-        self.frame.owners[index.value() as usize] != u32::MAX
+
+    fn controller(&self, idx: LocationIdx) -> Option<u32> {
+        Self::column(self.frame.controllers, idx)
     }
+
+    fn religion(&self, idx: LocationIdx) -> Option<u32> {
+        Self::column(self.frame.religions, idx)
+    }
+
+    fn fraction(&self, idx: LocationIdx, fraction: Fraction) -> f64 {
+        let column = idx.value() as usize * Fraction::ALL.len() + fraction as usize;
+        f64::from(self.frame.fractions[column]) / crate::map_projection::FRACTION_SCALE
+    }
+
+    fn metric(&self, idx: LocationIdx, metric: Metric) -> f64 {
+        let column = idx.value() as usize * Metric::ALL.len() + metric as usize;
+        f64::from(self.frame.metrics[column])
+    }
+
+    fn owner_color(&self, idx: LocationIdx) -> GpuColor {
+        self.country_color(self.owner(idx), 0)
+    }
+
+    fn controller_color(&self, idx: LocationIdx) -> GpuColor {
+        self.country_color(self.controller(idx), 1)
+    }
+
+    fn religion_color(&self, idx: LocationIdx) -> Option<GpuColor> {
+        let religion = self.religion(idx)?;
+        Some(
+            self.religions()
+                .get(&religion)
+                .copied()
+                .unwrap_or(GpuColor::DEBUG),
+        )
+    }
+
+    fn owner_religion_color(&self, idx: LocationIdx) -> Option<GpuColor> {
+        let country = self.countries.get(&self.owner(idx)?)?;
+        self.religions().get(&country[2]).copied()
+    }
+
+    fn market(&self, idx: LocationIdx) -> LocationMarket {
+        let Some(market) = Self::column(self.frame.markets, idx) else {
+            return LocationMarket::None;
+        };
+        match self.markets().get(&market) {
+            Some(&(center, color)) => LocationMarket::Member { color, center },
+            None => LocationMarket::Unknown,
+        }
+    }
+
+    fn has_controllers(&self) -> bool {
+        true
+    }
+
+    fn owner_fill(&self) -> &LocationIndexedVec<Option<LocationIdx>> {
+        self.owner_fill
+            .get_or_init(|| map_painter::owner_fill(self.fill, self))
+    }
+
+    fn religion_fill(&self) -> &LocationIndexedVec<Option<LocationIdx>> {
+        self.religion_fill
+            .get_or_init(|| map_painter::religion_fill(self.fill, self))
+    }
+}
+
+/// A snapshot painted for the overlay. The loaded save's buffers stay as
+/// they are.
+pub struct ProjectionPaint {
+    pub arrays: pdx_map::LocationArrays,
+    /// The group of each GPU location, for box selection.
+    pub groups: Vec<u32>,
+    pub legend: crate::gradient::MapLegend,
 }
 
 impl Eu5Workspace<'_> {
@@ -24,225 +182,52 @@ impl Eu5Workspace<'_> {
         &self.map_layout_key
     }
 
-    /// Repaint observations against shared terrain, without rebuilding a save model.
-    /// All compatibility checks precede buffer changes.
-    pub fn apply_map_projection(
-        &mut self,
+    /// Paint a snapshot frame against the shared terrain, into a copy of the
+    /// location buffers. All compatibility checks come before the paint.
+    pub fn paint_map_projection(
+        &self,
         frame: MapProjectionData<'_>,
         mode: MapMode,
-    ) -> Result<Vec<u32>, MapProjectionError> {
-        let n = frame.location_ids.len();
+    ) -> Result<ProjectionPaint, MapProjectionError> {
         frame.validate(&self.map_layout_key, &self.gamestate.locations)?;
-        let countries: BTreeMap<_, _> = frame
-            .countries
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| (p[0], [p[1], p[2], p[3]]))
-            .collect();
-        let religions: BTreeMap<_, _> = frame
-            .religion_colors
-            .as_chunks::<2>()
-            .0
-            .iter()
-            .map(|p| (p[0], GpuColor::from_packed(p[1])))
-            .collect();
-        let markets: BTreeMap<_, _> = frame
-            .market_colors
-            .as_chunks::<3>()
-            .0
-            .iter()
-            .map(|p| (p[0], (p[1], GpuColor::from_packed(p[2]))))
-            .collect();
-        let fraction = |index: usize, column: usize| {
-            f64::from(frame.fractions[index * 2 + column]) / FRACTION_SCALE
+        let values = FrameValues::new(
+            &frame,
+            &self.fill_components,
+            &self.projection_location_index,
+        );
+        let layout = MapLayout {
+            terrain: &self.location_terrain,
+            fill: &self.fill_components,
         };
-        let metric = |index: usize, column: usize| f64::from(frame.metrics[index * 7 + column]);
-        let value = |index| match mode {
-            MapMode::Control => fraction(index, 0),
-            MapMode::Development => metric(index, 0),
-            MapMode::Population => metric(index, 1),
-            MapMode::BuildingLevels => metric(index, 2),
-            MapMode::RgoLevel => metric(index, 3),
-            MapMode::Wealth => metric(index, 4),
-            MapMode::UnrealizedTaxBase => metric(index, 5),
-            MapMode::PopulationGrowth => metric(index, 6),
-            MapMode::StateEfficacy => metric(index, 0) * fraction(index, 0),
-            _ => 0.0,
+        let request = PaintRequest {
+            mode,
+            selection: None,
         };
-        let render_source = ProjectedMapSource {
-            workspace: self,
-            frame: &frame,
-        };
-        let mut domain = map_render_source::gradient_domains(
-            &render_source,
-            &|idx| value(idx.value() as usize),
-            &|_| true,
-            (mode == MapMode::PopulationGrowth).then_some(0.95),
-        )
-        .0;
-        if mode == MapMode::Control {
-            domain = 1.0;
-        }
-        let scale = if mode == MapMode::Population {
-            GradientScale::Log
-        } else {
-            GradientScale::Linear
-        };
-        let owner_donors = self.fill_components.resolve_all(|idx| {
-            let owner = frame.owners[idx.value() as usize];
-            (owner != u32::MAX).then_some(owner)
-        });
-        let control_donors = (mode == MapMode::Political).then(|| {
-            self.fill_components.resolve_all(|idx| {
-                let index = idx.value() as usize;
-                let owner = frame.owners[index];
-                (owner != u32::MAX).then_some((owner, frame.controllers[index]))
-            })
-        });
-        let religion_donors = (mode == MapMode::Religion).then(|| {
-            self.fill_components.resolve_all(|idx| {
-                let index = idx.value() as usize;
-                let owner = frame.owners[index];
-                (owner != u32::MAX).then_some((owner, frame.religions[index]))
-            })
-        });
-        let terrain_color = |index: usize| {
-            map_render_source::terrain_color(&render_source, LocationIdx::new(index as u32))
-        };
-        let political = |index: usize, controller: bool| {
-            terrain_color(index).unwrap_or_else(|| {
-                let id = if controller {
-                    frame.controllers[index]
-                } else {
-                    frame.owners[index]
-                };
-                countries
-                    .get(&id)
-                    .map(|p| GpuColor::from_packed(p[usize::from(controller)]))
-                    .unwrap_or(GpuColor::UNOWNED)
-            })
-        };
-        let religion = |index: usize| {
-            terrain_color(index).unwrap_or_else(|| {
-                if frame.religions[index] == u32::MAX {
-                    GpuColor::UNOWNED
-                } else {
-                    religions
-                        .get(&frame.religions[index])
-                        .copied()
-                        .unwrap_or(GpuColor::DEBUG)
-                }
-            })
-        };
-        // Center colors are shared across all locations in a market.
-        let market_colors: BTreeMap<_, _> = markets
-            .iter()
-            .map(|(&id, &(center, color))| {
-                let owner = self
-                    .gamestate
-                    .locations
-                    .get(eu5save::models::LocationId::new(center))
-                    .map(|idx| political(idx.value() as usize, false))
-                    .unwrap_or(GpuColor::UNOWNED);
-                (id, map_render_source::market_center_color(color, owner))
-            })
-            .collect();
-        let mut painted = Vec::with_capacity(n);
-        for (index, entry) in self.gamestate.locations.iter().enumerate() {
-            let source = owner_donors[entry.idx()].unwrap_or(entry.idx()).value() as usize;
-            let border = terrain_color(index).unwrap_or_else(|| political(source, false));
-            let (primary, secondary) = match mode {
-                MapMode::Political => {
-                    let primary = political(source, false);
-                    let source = if owner_donors[entry.idx()].is_none() {
-                        Some(entry.idx())
-                    } else {
-                        control_donors.as_ref().unwrap()[entry.idx()]
-                    };
-                    (
-                        primary,
-                        source
-                            .map(|idx| political(idx.value() as usize, true))
-                            .unwrap_or(primary),
-                    )
-                }
-                MapMode::Religion => {
-                    let source = religion_donors.as_ref().unwrap()[entry.idx()]
-                        .unwrap_or(entry.idx())
-                        .value() as usize;
-                    let primary = religion(source);
-                    let secondary = countries
-                        .get(&frame.owners[source])
-                        .and_then(|p| religions.get(&p[2]))
-                        .copied()
-                        .unwrap_or(primary);
-                    (primary, secondary)
-                }
-                MapMode::Markets => {
-                    let id = frame.markets[index];
-                    let color = if id == u32::MAX {
-                        terrain_color(index).unwrap_or(GpuColor::UNOWNED)
-                    } else {
-                        market_colors
-                            .get(&id)
-                            .map(|color| {
-                                map_render_source::market_access_color(*color, fraction(index, 1))
-                            })
-                            .unwrap_or(GpuColor::DEBUG)
-                    };
-                    (color, color)
-                }
-                _ => {
-                    let divisor = if mode == MapMode::Population {
-                        1000.0
-                    } else {
-                        1.0
-                    };
-                    let color = map_render_source::quantitative_color(
-                        &render_source,
-                        entry.idx(),
-                        value(index) / divisor,
-                        domain / divisor,
-                        scale,
-                    );
-                    (color, color)
-                }
-            };
-            painted.push((primary, secondary, border));
-        }
-        let mut groups = vec![u32::MAX; self.location_arrays.len()];
-        for (index, entry) in self.gamestate.locations.iter().enumerate() {
-            let Some(gpu) = self.gpu_indices[entry.idx()] else {
+        let painted = map_painter::paint(&values, &layout, &request);
+        let mut arrays = self.location_arrays.clone();
+        painted.write(&self.gpu_indices, &mut arrays);
+        let mut groups = vec![u32::MAX; arrays.len()];
+        for index in 0..values.location_count() {
+            let idx = LocationIdx::new(index as u32);
+            let Some(gpu) = self.gpu_indices[idx] else {
                 continue;
             };
-            let (primary, secondary, border) = painted[index];
-            let terrain = self.location_terrain(entry.idx());
-            let mut location = self.location_arrays.get_mut(gpu);
-            location.set_primary_color(primary);
-            location.set_secondary_color(secondary);
-            location.set_border_color(border);
+            let mut location = arrays.get_mut(gpu);
+            location.set_border_color(map_painter::border_color(&values, &layout, idx));
             location.flags_mut().clear(LocationFlags::INTERACTION);
-            if terrain.is_passable() {
+            if layout.terrain[idx].is_passable() {
                 super::map_render::set_unowned_flag(
                     location.flags_mut(),
-                    frame.owners[index] == u32::MAX,
+                    values.owner(idx).is_none(),
                 );
             }
             groups[gpu.value() as usize] =
-                map_render_source::group_id(mode, frame.owners[index], frame.markets[index]);
+                map_painter::group_id(mode, frame.owners[index], frame.markets[index]);
         }
-        self.current_map_mode = mode;
-        self.current_map_legend = match mode {
-            MapMode::Political | MapMode::Religion | MapMode::Markets => {
-                gradient::MapLegend::Qualitative
-            }
-            _ => gradient::MapLegend::Quantitative(gradient::sequential(scale, 0.0, domain)),
-        };
-        Ok(groups)
-    }
-    pub fn restore_map_projection(&mut self) {
-        self.build_location_arrays();
-        self.apply_map_mode(self.current_map_mode);
+        Ok(ProjectionPaint {
+            arrays,
+            groups,
+            legend: painted.legend,
+        })
     }
 }

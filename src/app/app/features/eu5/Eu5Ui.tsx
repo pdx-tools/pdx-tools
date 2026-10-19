@@ -1,4 +1,5 @@
-import { CampaignAnalysisProvider, useMapHistory } from "./history/MapHistory";
+import { CampaignAnalysisProvider } from "./history/CampaignAnalysisProvider";
+import { useMapHistory } from "./history/context";
 import "@fontsource/public-sans/latin-400.css";
 import "@fontsource/public-sans/latin-500.css";
 import "@fontsource/public-sans/latin-600.css";
@@ -154,7 +155,6 @@ const Eu5UiContent = ({
   const engine = useEu5Engine();
   const wasEmptyRef = useRef(true);
   const preview = useMapHistory()?.preview;
-  const settling = useMapHistory()?.settling;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -185,7 +185,9 @@ const Eu5UiContent = ({
   return (
     <div
       className="pointer-events-none absolute inset-0"
-      inert={busy && !settling}
+      // A save that loads for a preview keeps the timeline usable, also
+      // when the playhead moves during the load.
+      inert={busy && !preview}
       aria-busy={busy || undefined}
     >
       {/* Left sidebar — always visible */}

@@ -1,4 +1,4 @@
-import { useMapHistory } from "../history/MapHistory";
+import { useMapHistory } from "../history/context";
 import { Link } from "react-router";
 import { cx } from "class-variance-authority";
 import HomeIcon from "@heroicons/react/24/outline/HomeIcon";
@@ -21,7 +21,7 @@ function SaveDateReadout({ date }: { date: Eu5DateComponents }) {
 export function PanelHeader() {
   const { resetSaveAnalysis } = useEngineActions();
   const loadedDate = useEu5SaveDate();
-  const saveDate = useMapHistory()?.preview?.date ?? loadedDate;
+  const saveDate = useMapHistory()?.preview?.shown?.date ?? loadedDate;
   const playthroughName = useEu5PlaythroughName();
 
   return (

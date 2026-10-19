@@ -2,7 +2,7 @@ import { useId } from "react";
 import { SidebarNav } from "../components/SidebarNav";
 import { useEu5Engine, useEu5MapMode, useEu5Timelapse, useEu5TimelineLive } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
-import { useMapHistory } from "../history/MapHistory";
+import { useMapHistory } from "../history/context";
 import { MAP_MODES } from "./modeConfig";
 import type { ModeConfig } from "./modeConfig";
 import type { MapMode } from "@/wasm/wasm_eu5";

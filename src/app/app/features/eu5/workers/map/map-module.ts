@@ -64,6 +64,24 @@ let viewportCallback: ((viewport: MapViewport) => void) | null = null;
 let lastViewport: MapViewport | null = null;
 let newGroupingTable: Uint32Array | null = null;
 let newMapData: MapDataSync | null = null;
+
+/**
+ * The last buffers of the loaded save. The map shows them again when the
+ * overlay clears.
+ */
+const live: {
+  locations: Uint32Array | null;
+  colors?: Uint32Array;
+  flags?: Uint32Array;
+  groups: Uint32Array | null;
+} = { locations: null, groups: null };
+
+/** A snapshot that shows over the loaded save, which does not change. */
+let overlay: { colors: Uint32Array; flags: Uint32Array; groups: Uint32Array } | null = null;
+/** The overlay must go to the GPU at the next sync. */
+let overlayDirty = false;
+/** The newest presentation token. An older frame or clear has no effect. */
+let presentationToken = 0;
 let renderOrQueue: () => void = () => {};
 
 /**
@@ -95,6 +113,35 @@ let lastCursorPosition: { x: number; y: number } | null = null;
 let mouseDownPos: { x: number; y: number } | null = null;
 const pressedKeys = new Set<string>();
 
+/**
+ * Show a snapshot over the loaded save. Return false, and show nothing, when
+ * a newer frame or clear has come first.
+ */
+async function presentOverlay(frame: OverlayFrame): Promise<boolean> {
+  if (frame.token <= presentationToken) return false;
+  presentationToken = frame.token;
+  overlay = { colors: frame.colors, flags: frame.flags, groups: frame.groups };
+  overlayDirty = true;
+  // The live buffers are kept, and go to the GPU when the overlay clears.
+  newMapData = null;
+  newGroupingTable = null;
+  renderOrQueue();
+  return true;
+}
+
+/** Show the loaded save again. An older frame cannot show the overlay again. */
+async function clearOverlay(token: number) {
+  if (token <= presentationToken) return;
+  presentationToken = token;
+  if (!overlay) return;
+  overlay = null;
+  overlayDirty = false;
+  newLocations = live.locations;
+  newMapData = { colors: live.colors, flags: live.flags };
+  newGroupingTable = live.groups;
+  renderOrQueue();
+}
+
 const mapGameEndpoint = () => {
   return {
     /** Replace location data and grouping together on one frame. */
@@ -105,17 +152,25 @@ const mapGameEndpoint = () => {
       locations: Uint32Array;
       groupingTable: Uint32Array;
     }) {
+      live.locations = locations;
+      live.groups = groupingTable;
+      live.colors = undefined;
+      live.flags = undefined;
       newLocations = locations;
-      newGroupingTable = groupingTable;
+      newGroupingTable = overlay ? null : groupingTable;
       newMapData = null;
       renderOrQueue();
     },
 
     async syncGroupingTable(raw: Uint32Array) {
-      newGroupingTable = raw;
+      live.groups = raw;
+      if (!overlay) newGroupingTable = raw;
     },
 
     async syncMapData(data: MapDataSync) {
+      live.colors = data.colors ?? live.colors;
+      live.flags = data.flags ?? live.flags;
+      if (overlay) return;
       // A later buffer replaces an earlier pending one of the same kind.
       newMapData = {
         colors: data.colors ?? newMapData?.colors,
@@ -123,6 +178,8 @@ const mapGameEndpoint = () => {
       };
       renderOrQueue();
     },
+
+    presentOverlay,
 
     async open_view(view: OpeningView) {
       const app = await appTask;
@@ -536,6 +593,8 @@ export const createMapEngine = async (
       hasLocationInformation = true;
       app.sync_location_array(newLocations);
       newLocations = null;
+      // The location array has colors too, so the overlay goes over it again.
+      overlayDirty = overlay !== null;
 
       // Invalidate hover state when the displayed save changes.
       lastKnownLocationId = null;
@@ -553,6 +612,12 @@ export const createMapEngine = async (
     if (newGroupingTable) {
       app.sync_grouping_table(newGroupingTable);
       newGroupingTable = null;
+    }
+    if (overlay && overlayDirty) {
+      app.sync_color_array(overlay.colors);
+      app.sync_flag_array(overlay.flags);
+      app.sync_grouping_table(overlay.groups);
+      overlayDirty = false;
     }
   };
 
@@ -814,6 +879,8 @@ export const createMapEngine = async (
       if (lastViewport !== null) callback(lastViewport);
     },
 
+    clearOverlay,
+
     startHoverTracking: startHoverTracking,
 
     stopHoverTracking: stopHoverTracking,
@@ -821,6 +888,14 @@ export const createMapEngine = async (
 };
 
 export type MapCommand = { kind: "setOwnerBorders"; enabled: boolean } | { kind: "render" };
+
+/** A snapshot for the overlay, in the format of the live buffers. */
+export type OverlayFrame = {
+  token: number;
+  colors: Uint32Array;
+  flags: Uint32Array;
+  groups: Uint32Array;
+};
 
 /** The location buffers the game worker sends after a change. */
 export type MapDataSync = {

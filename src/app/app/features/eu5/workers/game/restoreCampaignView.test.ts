@@ -31,6 +31,10 @@ function app() {
     get_market_profile: vi.fn(() => ({ centerId: 100, header: { name: "Paris" } })),
     get_location_profile: vi.fn(() => ({ header: { location: { key: 100, name: "Paris" } } })),
     get_selection_summary: vi.fn(() => ({ preset: null })),
+    add_entity: vi.fn(change),
+    remove_entity: vi.fn(change),
+    select_entity: vi.fn(change),
+    clear_focus_or_selection: vi.fn(change),
   };
 }
 const restore = (a: ReturnType<typeof app>, view: Eu5Carry) =>
@@ -140,4 +144,21 @@ it("keeps selections and breadcrumb profiles on the same country across a tag ch
       { kind: "country", country: { key: 5, name: "Yamato" } },
     ]),
   ).toEqual([{ kind: "country", id: id(611), tag: "YMT" }]);
+});
+
+it("applies a carried click after the carried selection", () => {
+  const a = app();
+  restore(
+    a,
+    carry({
+      selection: { kind: "players" },
+      inspection: { click: { kind: "update", locationIdx: 42, modifiers: 1 } },
+    }),
+  );
+  // Shift adds the clicked entity to the carried selection.
+  expect(a.add_entity).toHaveBeenCalledExactlyOnceWith(42);
+  expect(a.select_players.mock.invocationCallOrder[0]).toBeLessThan(
+    a.add_entity.mock.invocationCallOrder[0],
+  );
+  expect(a.select_entity).not.toHaveBeenCalled();
 });

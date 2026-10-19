@@ -1018,13 +1018,15 @@ impl Eu5App {
         self.app().map_projection_layout_key().to_owned()
     }
 
+    /// Paint a snapshot frame for the map overlay. The buffers of the loaded
+    /// save do not change.
     #[wasm_bindgen]
     #[allow(
         clippy::too_many_arguments,
         reason = "Typed WASM columns avoid deserializing and allocating per-location JS objects"
     )]
-    pub fn apply_map_projection(
-        &mut self,
+    pub fn paint_map_projection(
+        &self,
         mode: Ts<MapMode>,
         key: &str,
         ids: &[u32],
@@ -1037,7 +1039,7 @@ impl Eu5App {
         countries: &[u32],
         religion_colors: &[u32],
         market_colors: &[u32],
-    ) -> Result<js_sys::Uint32Array, JsError> {
+    ) -> Result<ProjectionPaintData, JsError> {
         let frame = eu5app::map_projection::MapProjectionData {
             layout_key: key,
             location_ids: ids,
@@ -1051,24 +1053,21 @@ impl Eu5App {
             religion_colors,
             market_colors,
         };
-        let groups = self
-            .app
-            .apply_map_projection(frame, mode.to_rust()?.into())
+        let paint = self
+            .app()
+            .paint_map_projection(frame, mode.to_rust()?.into())
             .map_err(|e| JsError::new(&e.to_string()))?;
-        Ok(js_sys::Uint32Array::from(groups.as_slice()))
-    }
-
-    #[wasm_bindgen]
-    pub fn map_projection_change(&self) -> Result<Ts<TimelineChange>, JsError> {
-        self.timeline_change(
-            self.app().no_map_change(),
-            self.app().selection_state().selection_generation(),
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn restore_map_projection(&mut self) {
-        self.app.restore_map_projection();
+        let flags: &[u32] = bytemuck::cast_slice(paint.arrays.buffers().state_flags());
+        Ok(ProjectionPaintData {
+            colors: js_sys::Uint32Array::from(paint.arrays.color_data()),
+            flags: js_sys::Uint32Array::from(flags),
+            groups: js_sys::Uint32Array::from(paint.groups.as_slice()),
+            change: MapChange {
+                dirty: MapDirty::ALL,
+                legend: paint.legend,
+            }
+            .into(),
+        })
     }
 
     /// Return the grouping table for the current map mode as a flat Uint32Array.
@@ -1460,6 +1459,41 @@ pub fn setup_eu5_wasm(level: Ts<wasm_pdx_core::log_level::LogLevel>) -> Result<(
     wasm_pdx_core::console_error_panic_hook::set_once();
     wasm_pdx_core::console_writer::init_with_level(level.into());
     Ok(())
+}
+
+/// The buffers of a snapshot for the map overlay, in the format of the live
+/// buffers.
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct ProjectionPaintData {
+    colors: js_sys::Uint32Array,
+    flags: js_sys::Uint32Array,
+    groups: js_sys::Uint32Array,
+    change: MapChangeData,
+}
+
+#[wasm_bindgen]
+impl ProjectionPaintData {
+    #[wasm_bindgen(getter)]
+    pub fn colors(&self) -> js_sys::Uint32Array {
+        self.colors.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn flags(&self) -> js_sys::Uint32Array {
+        self.flags.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn groups(&self) -> js_sys::Uint32Array {
+        self.groups.clone()
+    }
+
+    /// The legend of the painted mode.
+    #[wasm_bindgen(getter)]
+    pub fn change(&self) -> Result<Ts<MapChangeData>, JsError> {
+        into_ts(self.change.clone())
+    }
 }
 
 #[wasm_bindgen]

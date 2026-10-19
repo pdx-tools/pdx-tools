@@ -1,4 +1,3 @@
-import type { Eu5Carry } from "../campaignCarry";
 import { create } from "zustand";
 import type { FileVersion } from "@/features/campaign/types";
 import type { ImportProgressState } from "./importTiming";
@@ -9,9 +8,6 @@ type HistoryState = {
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
   snapshots: SnapshotMetadata[];
-  selectedObservations: Record<string, string>;
-  previewCarries: Record<string, Eu5Carry | undefined>;
-  settlingObservation: { campaignId: string; hash: string } | null;
   sources: Record<string, SourceObservation>;
   analyzingEntryIds: readonly string[];
   analysisEnabledCampaigns: readonly string[];
@@ -39,9 +35,6 @@ export const useHistory = create<HistoryState>()((set) => ({
   playbackSpeed: 1,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   snapshots: [],
-  selectedObservations: {},
-  previewCarries: {},
-  settlingObservation: null,
   sources: {},
   analyzingEntryIds: [],
   analysisEnabledCampaigns: [],

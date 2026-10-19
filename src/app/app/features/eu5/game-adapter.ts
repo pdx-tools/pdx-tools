@@ -1,5 +1,3 @@
-import type { MapInteraction } from "./history/mapInteraction";
-import type { MapObservation } from "./history/analysisTypes";
 import type { Eu5Carry } from "./campaignCarry";
 import { wrap, transfer, proxy, releaseProxy } from "comlink";
 import type { Remote } from "comlink";
@@ -23,7 +21,7 @@ import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
 import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
 import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import type { BoxSelectOverlayRect } from "./types/box-select";
-import type { CursorHint } from "./workers/map/map-module";
+import type { CursorHint, LocationClickChangeEvent } from "./workers/map/map-module";
 import type {
   DatePlateColors,
   DatePlateFonts,
@@ -180,7 +178,7 @@ export class Eu5GameAdapter {
     if (saveEngine === null) {
       throw new Error("The first save did not choose the bundles of the map");
     }
-    return saveWorker(saveEngine, mapEngine);
+    return saveWorker(saveEngine, mapEngine, this.eu5Worker);
   }
 
   /**
@@ -219,7 +217,7 @@ export class Eu5GameAdapter {
       }),
     );
 
-    return saveEngine === null ? null : saveWorker(saveEngine, mapEngine);
+    return saveEngine === null ? null : saveWorker(saveEngine, mapEngine, this.eu5Worker);
   }
 
   terminate(): void {
@@ -297,7 +295,7 @@ export function guardRelease<T extends object>(
   });
 }
 
-function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
+function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu5Worker) {
   // The UI can still hold a save after a save change releases it.
   let isReleased = false;
   const save = guardRelease(
@@ -361,17 +359,16 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine) {
     commands,
 
     show: () => save.show(),
-    replayMapInteraction: (interaction: MapInteraction) => save.replayMapInteraction(interaction),
-    requestMapInspection: (interaction: MapInteraction) => save.requestMapInspection(interaction),
     getMapLayoutKey: () => save.getMapLayoutKey(),
     connectMapFrames: (id: string, port: MessagePort | null) =>
       save.connectMapFrames(id, port ? transfer(port, [port]) : null),
-    stopMapProjection: () => save.stopMapProjection(),
-    showMapProjection: (frame: MapObservation, mode: MapMode) =>
-      save.showMapObservation(frame.hash, mode),
-    clearMapProjection: () => save.clearMapProjection(),
-    onMapInspect: (callback: ((interaction: MapInteraction) => void) | null) =>
-      save.onMapInspect(callback ? proxy(callback) : null),
+    presentOverlay: (hash: string, mode: MapMode, token: number) =>
+      save.presentOverlay(hash, mode, token),
+    stopOverlay: () => save.stopOverlay(),
+    // The overlay and the input gate belong to the workers, not to this save.
+    clearOverlay: (token: number) => mapEngine.clearOverlay(token),
+    setInputGate: (onClick: ((event: LocationClickChangeEvent) => void) | null) =>
+      gameWorker.setInputGate(onClick ? proxy(onClick) : null),
 
     release: () => {
       isReleased = true;

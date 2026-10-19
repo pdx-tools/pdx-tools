@@ -166,16 +166,46 @@ fn run_workspace_scenario<'bump, T>(
 }
 
 fn workspace_snapshot(ws: &mut Eu5Workspace, localization: &Localization) -> serde_json::Value {
-    let mut map_modes: BTreeMap<&'static str, serde_json::Value> = BTreeMap::new();
-    for mode in ALL_MAP_MODES {
-        ws.set_map_mode(mode);
-        map_modes.insert(
-            mode_name(mode),
-            utils::summarize_location_arrays(ws.location_arrays()),
-        );
-    }
+    let map_modes = map_mode_summaries(ws);
 
+    // The same modes with one country selected: dimming and the domains of
+    // the selected locations change.
+    let selected = find_owned_location(ws).map(|location| {
+        ws.select_country_at(location);
+        let mut locations: Vec<u32> = ws
+            .selection_state()
+            .selected_locations()
+            .iter()
+            .map(|idx| idx.value())
+            .collect();
+        locations.sort_unstable();
+        serde_json::json!({
+            "locations": utils::hash_u32s(&locations),
+            "map_modes": map_mode_summaries(ws),
+        })
+    });
     ws.clear_selection();
+
+    // The political mode on a past date, when the save has a history.
+    let timeline = ws.timeline_summary();
+    // Reconciliation can put changes on the save date, which is not a past date.
+    let past_dates: Vec<_> = timeline
+        .change_dates
+        .iter()
+        .copied()
+        .filter(|&date| date < timeline.end)
+        .collect();
+    let past_political = timeline.available.then(|| {
+        let date = past_dates[past_dates.len() / 2];
+        ws.set_map_mode(MapMode::Political);
+        ws.set_timeline_date(date);
+        let summary = map_mode_summary(ws, ws.no_map_change().legend);
+        ws.set_timeline_date(timeline.end);
+        summary
+    });
+    ws.set_map_mode(MapMode::Political);
+
+    let projection = eu5app::map_projection::extract(ws.gamestate()).unwrap();
     assert_eq!(ws.selection_state().selected_locations().len(), 0);
 
     let mut after_select = 0;
@@ -231,6 +261,9 @@ fn workspace_snapshot(ws: &mut Eu5Workspace, localization: &Localization) -> ser
             "location_without_market": find_location_without_market(ws).is_some(),
         },
         "map_modes": map_modes,
+        "selected": selected,
+        "past_political": past_political,
+        "projection": utils::hash_projection(&projection),
         "location": [{
             "id": location.id().value(),
             "name": localized.presenter().location_display_name(location.idx()),
@@ -246,6 +279,29 @@ fn workspace_snapshot(ws: &mut Eu5Workspace, localization: &Localization) -> ser
             "after_remove": after_remove,
         },
     })
+}
+
+/// Paint each map mode and summarize its buffers, grouping table and legend.
+fn map_mode_summaries(ws: &mut Eu5Workspace) -> BTreeMap<&'static str, serde_json::Value> {
+    ALL_MAP_MODES
+        .into_iter()
+        .map(|mode| {
+            let change = ws.set_map_mode(mode);
+            (mode_name(mode), map_mode_summary(ws, change.legend))
+        })
+        .collect()
+}
+
+fn map_mode_summary(ws: &Eu5Workspace, legend: eu5app::gradient::MapLegend) -> serde_json::Value {
+    let groups: Vec<u32> = ws
+        .build_grouping_table()
+        .iter()
+        .map(|(_, group)| group.raw())
+        .collect();
+    let mut summary = utils::summarize_location_arrays(ws.location_arrays());
+    summary["groups"] = utils::hash_u32s(&groups).into();
+    summary["legend"] = format!("{legend:?}").into();
+    summary
 }
 
 fn market_selection_uses_location_anchors(ws: &mut Eu5Workspace, localization: &Localization) {

@@ -1,106 +1,142 @@
-use crate::gradient::{self, GradientScale};
-use crate::population::location_reproduction_rate;
+use super::map_painter::{self, LocationMarket, LocationValues, MapLayout, PaintRequest};
+use super::*;
+use crate::gradient;
+use crate::map_projection::{Fraction, Metric};
 use eu5save::models::Color;
 
-use super::*;
-use crate::map_render_source::{self, MapRenderSource};
+/// The values of the loaded save. Owners and their colors are those on the
+/// timeline date.
+pub(super) struct LiveValues<'a, 'bump> {
+    workspace: &'a Eu5Workspace<'bump>,
+    /// False reads the owners of the save and ignores the timeline.
+    timeline: bool,
+}
 
-impl MapRenderSource for Eu5Workspace<'_> {
+impl LiveValues<'_, '_> {
+    fn location(&self, idx: LocationIdx) -> &eu5save::models::Location<'_> {
+        self.workspace.gamestate.locations.index(idx).location()
+    }
+
+    fn owner_id(&self, idx: LocationIdx) -> CountryId {
+        if self.timeline {
+            self.workspace.owner_at_timeline_date(idx)
+        } else {
+            self.location(idx).owner
+        }
+    }
+}
+
+impl LocationValues for LiveValues<'_, '_> {
     fn location_count(&self) -> usize {
-        self.gamestate.locations.len()
+        self.workspace.gamestate.locations.len()
     }
-    fn terrain(&self, index: LocationIdx) -> Terrain {
-        self.location_terrain(index)
+
+    fn owner(&self, idx: LocationIdx) -> Option<u32> {
+        self.owner_id(idx)
+            .real_id()
+            .map(|id| id.country_id().value())
     }
-    fn owned(&self, index: LocationIdx) -> bool {
-        !self
-            .gamestate
-            .locations
-            .index(index)
-            .location()
-            .owner
-            .is_dummy()
+
+    fn controller(&self, idx: LocationIdx) -> Option<u32> {
+        let controller = self.location(idx).controller.real_id();
+        controller.map(|id| id.country_id().value())
+    }
+
+    fn religion(&self, idx: LocationIdx) -> Option<u32> {
+        self.location(idx).religion.map(|id| id.value())
+    }
+
+    fn fraction(&self, idx: LocationIdx, fraction: Fraction) -> f64 {
+        fraction.of(self.location(idx))
+    }
+
+    fn metric(&self, idx: LocationIdx, metric: Metric) -> f64 {
+        let workspace = self.workspace;
+        metric.of(&workspace.gamestate, self.location(idx), || {
+            workspace.get_location_building_levels()[idx]
+        })
+    }
+
+    fn owner_color(&self, idx: LocationIdx) -> GpuColor {
+        let owner = self.owner_id(idx);
+        if owner.is_dummy() {
+            return GpuColor::UNOWNED;
+        }
+        self.workspace.country_color_at_timeline_date(owner)
+    }
+
+    fn controller_color(&self, idx: LocationIdx) -> GpuColor {
+        let countries = &self.workspace.gamestate.countries;
+        let Some(country_idx) = self
+            .location(idx)
+            .controller
+            .real_id()
+            .and_then(|id| countries.get(id))
+        else {
+            return GpuColor::UNOWNED;
+        };
+        let color_of = |idx| countries.index(idx).data().map(|data| data.color);
+        let Some(color) = color_of(country_idx) else {
+            return GpuColor::UNOWNED;
+        };
+        self.workspace
+            .subject_blended_color(country_idx, color, color_of)
+    }
+
+    fn religion_color(&self, idx: LocationIdx) -> Option<GpuColor> {
+        let religion = self.location(idx).religion?;
+        let religion = self.workspace.gamestate.religion_manager.lookup(religion);
+        Some(religion.map_or(GpuColor::DEBUG, |religion| GpuColor::from(religion.color.0)))
+    }
+
+    fn owner_religion_color(&self, idx: LocationIdx) -> Option<GpuColor> {
+        let game = &self.workspace.gamestate;
+        let country_idx = game.countries.get(self.location(idx).owner)?;
+        let religion = game.countries.index(country_idx).data()?.primary_religion?;
+        let religion = game.religion_manager.lookup(religion)?;
+        Some(GpuColor::from(religion.color.0))
+    }
+
+    fn market(&self, idx: LocationIdx) -> LocationMarket {
+        let game = &self.workspace.gamestate;
+        let Some(market) = self.location(idx).market else {
+            return LocationMarket::None;
+        };
+        let Some(market) = game.market_manager.get(market) else {
+            return LocationMarket::Unknown;
+        };
+        LocationMarket::Member {
+            color: GpuColor::from(market.color.0),
+            center: game.locations.get(market.center),
+        }
+    }
+
+    fn has_controllers(&self) -> bool {
+        self.workspace.is_timeline_live()
+    }
+
+    fn owner_fill(&self) -> &LocationIndexedVec<Option<LocationIdx>> {
+        &self.workspace.fill_donors
+    }
+
+    fn religion_fill(&self) -> &LocationIndexedVec<Option<LocationIdx>> {
+        self.workspace.religion_fill_donors()
     }
 }
 
 impl<'bump> Eu5Workspace<'bump> {
-    /// Compute gradient domain bounds for a quantitative mode in a single pass.
-    ///
-    /// Returns `(global_max, filtered_max)`:
-    fn gradient_domain(
-        &self,
-        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
-    ) -> (f64, f64) {
-        map_render_source::gradient_domains(
-            self,
-            &|idx| extract(idx, self.gamestate.locations.index(idx).location()),
-            &|idx| self.selection_state.is_empty() || self.selection_state.contains(idx),
-            None,
-        )
+    pub(super) fn live_values(&self) -> LiveValues<'_, 'bump> {
+        LiveValues {
+            workspace: self,
+            timeline: true,
+        }
     }
 
-    /// Like [`Self::gradient_domain`], but each bound is the value at
-    /// `percentile` (0.0 to 1.0) instead of the max. Use this for a metric
-    /// with a long tail of outliers, so that the outliers saturate at the top
-    /// color instead of compressing everything else into the bottom colors.
-    fn gradient_domain_percentile(
-        &self,
-        extract: impl Fn(eu5save::models::LocationIdx, &eu5save::models::Location) -> f64,
-        percentile: f64,
-    ) -> (f64, f64) {
-        map_render_source::gradient_domains(
-            self,
-            &|idx| extract(idx, self.gamestate.locations.index(idx).location()),
-            &|idx| self.selection_state.is_empty() || self.selection_state.contains(idx),
-            Some(percentile),
-        )
-    }
-
-    /// The reproduction gradient stops at this percentile. A pop of a few
-    /// hundred people that records a single birth has an annual rate many
-    /// times the median, and a handful of such locations must not flatten
-    /// the rest of the map.
-    const REPRODUCTION_PERCENTILE: f64 = 0.95;
-
-    /// Effective max for the development gradient (filtered when selection active).
-    pub fn max_development(&self) -> f64 {
-        self.gradient_domain(|_, loc| loc.development).1
-    }
-
-    /// Effective max for the RGO level gradient (filtered when selection active).
-    pub fn max_rgo_level(&self) -> f64 {
-        self.gradient_domain(|_, loc| loc.rgo_level).1
-    }
-
-    /// Effective max for the population gradient (filtered when selection active).
-    pub fn max_population(&self) -> f64 {
-        self.gradient_domain(|_, loc| self.gamestate.location_population(loc))
-            .1
-    }
-
-    /// Effective max for the building levels gradient (filtered when selection active).
-    pub fn max_building_levels(&self) -> f64 {
-        let levels = self.get_location_building_levels();
-        self.gradient_domain(|idx, _| levels[idx]).1
-    }
-
-    /// Effective max for the wealth gradient (filtered when selection active).
-    pub fn max_wealth(&self) -> f64 {
-        self.gradient_domain(|_, loc| loc.possible_tax).1
-    }
-
-    /// Effective max for the effective development gradient (filtered when selection active).
-    pub fn max_state_efficacy(&self) -> f64 {
-        self.gradient_domain(|_, loc| loc.control * loc.development)
-            .1
-    }
-
-    /// Gradient bounds for the reproduction mode, see [`Self::gradient_domain`].
-    fn reproduction_domain(&self) -> (f64, f64) {
-        self.gradient_domain_percentile(
-            |_, loc| location_reproduction_rate(&self.gamestate, loc),
-            Self::REPRODUCTION_PERCENTILE,
-        )
+    pub(super) fn map_layout(&self) -> MapLayout<'_> {
+        MapLayout {
+            terrain: &self.location_terrain,
+            fill: &self.fill_components,
+        }
     }
 
     /// Lazily computes and caches building levels for all locations.
@@ -150,236 +186,23 @@ impl<'bump> Eu5Workspace<'bump> {
         self.fill_donors[idx].unwrap_or(idx)
     }
 
-    /// The religion fill of surrounded terrain. The key holds the owner too,
-    /// so that the donor's country is the one country around the terrain and
-    /// a hover or a selection can name it. Religion has no history, so the
-    /// religion mode only shows the save date and the fill is computed once.
+    /// The religion fill of surrounded terrain. Religion has no history, so
+    /// the religion mode only shows the save date and the fill is computed
+    /// once.
     fn religion_fill_donors(&self) -> &LocationIndexedVec<Option<eu5save::models::LocationIdx>> {
         self.religion_fill_donors.get_or_init(|| {
-            self.fill_components.resolve_all(|loc| {
-                let location = self.gamestate.locations.index(loc).location();
-                Some((location.owner.real_id()?, location.religion))
-            })
+            let values = LiveValues {
+                workspace: self,
+                timeline: false,
+            };
+            map_painter::religion_fill(&self.fill_components, &values)
         })
     }
 
     /// The owner color on the timeline date. At the save date the timeline
     /// owners equal the current owners, so one path serves every date.
     pub fn location_political_color(&self, key: eu5save::models::LocationIdx) -> GpuColor {
-        let terrain = self.location_terrain(key);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let owner = self.owner_at_timeline_date(key);
-        if owner.is_dummy() {
-            return GpuColor::UNOWNED;
-        }
-        self.country_color_at_timeline_date(owner)
-    }
-
-    pub fn location_control_color(&self, key: eu5save::models::LocationIdx) -> GpuColor {
-        self.get_country_color_for_location(key, |loc| loc.controller.real_id())
-    }
-
-    pub fn location_development_color(&self, location_idx: LocationIdx, max_dev: f64) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            loc.development,
-            max_dev,
-            GradientScale::Linear,
-        )
-    }
-
-    pub fn location_population_color(&self, location_idx: LocationIdx, max_pop: f64) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            self.gamestate.location_population(loc) / 1000.0,
-            max_pop / 1000.0,
-            GradientScale::Log,
-        )
-    }
-
-    pub fn location_control_value_color(&self, location_idx: LocationIdx) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            loc.control,
-            1.0,
-            GradientScale::Linear,
-        )
-    }
-
-    pub fn location_market_color(&self, location_idx: eu5save::models::LocationIdx) -> GpuColor {
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        let Some(market_id) = save_location.market else {
-            let terrain = self.location_terrain(location_idx);
-            if terrain.is_water() {
-                return GpuColor::WATER;
-            } else if !terrain.is_passable() {
-                return GpuColor::IMPASSABLE;
-            } else {
-                return GpuColor::UNOWNED;
-            }
-        };
-
-        let Some(market) = self.gamestate.market_manager.get(market_id) else {
-            return GpuColor::DEBUG;
-        };
-
-        // Get the market center location's owner color
-        let market_center_owner_color = self
-            .gamestate
-            .locations
-            .get(market.center)
-            .map(|center_idx| self.location_political_color(center_idx))
-            .unwrap_or(GpuColor::UNOWNED);
-
-        let market_color = GpuColor::from(market.color.0);
-
-        map_render_source::market_access_color(
-            map_render_source::market_center_color(market_color, market_center_owner_color),
-            save_location.market_access,
-        )
-    }
-
-    pub fn location_rgo_level_color(
-        &self,
-        location_idx: LocationIdx,
-        max_rgo_level: f64,
-    ) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            loc.rgo_level,
-            max_rgo_level,
-            GradientScale::Linear,
-        )
-    }
-
-    pub fn location_building_levels_color(
-        &self,
-        location_idx: LocationIdx,
-        max_building_levels: f64,
-    ) -> GpuColor {
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            self.get_location_building_levels()[location_idx],
-            max_building_levels,
-            GradientScale::Linear,
-        )
-    }
-
-    pub fn location_wealth_color(&self, location_idx: LocationIdx, max_wealth: f64) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            loc.possible_tax,
-            max_wealth,
-            GradientScale::Linear,
-        )
-    }
-
-    pub fn location_unrealized_tax_base_color(
-        &self,
-        location_idx: LocationIdx,
-        max_gap: f64,
-    ) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            (loc.possible_tax - loc.tax).max(0.0),
-            max_gap,
-            GradientScale::Linear,
-        )
-    }
-
-    pub fn location_state_efficacy_color(
-        &self,
-        location_idx: LocationIdx,
-        max_efficacy: f64,
-    ) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            loc.control * loc.development,
-            max_efficacy,
-            GradientScale::Linear,
-        )
-    }
-
-    pub fn location_reproduction_color(
-        &self,
-        location_idx: LocationIdx,
-        max_rate: f64,
-    ) -> GpuColor {
-        let loc = self.gamestate.locations.index(location_idx).location();
-        map_render_source::quantitative_color(
-            self,
-            location_idx,
-            location_reproduction_rate(&self.gamestate, loc),
-            max_rate,
-            GradientScale::Linear,
-        )
-    }
-
-    pub(crate) fn get_country_color_for_location<F>(
-        &self,
-        location_idx: eu5save::models::LocationIdx,
-        get_country: F,
-    ) -> GpuColor
-    where
-        F: Fn(&eu5save::models::Location) -> Option<eu5save::models::RealCountryId>,
-    {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-        let Some(country_id) = get_country(save_location) else {
-            return GpuColor::UNOWNED;
-        };
-
-        let Some(country_idx) = self.gamestate.countries.get(country_id) else {
-            return GpuColor::UNOWNED;
-        };
-
-        let country_color = self
-            .gamestate
-            .countries
-            .index(country_idx)
-            .data()
-            .map(|data| data.color);
-
-        let Some(country_color) = country_color else {
-            return GpuColor::UNOWNED;
-        };
-
-        self.subject_blended_color(country_idx, country_color, |idx| {
-            self.gamestate
-                .countries
-                .index(idx)
-                .data()
-                .map(|data| data.color)
-        })
+        map_painter::political_color(&self.live_values(), &self.map_layout(), key)
     }
 
     /// The map color of a country: its own color, or when it is a subject,
@@ -391,81 +214,17 @@ impl<'bump> Eu5Workspace<'bump> {
         country_color: Color,
         color_of: impl Fn(CountryIdx) -> Option<Color>,
     ) -> GpuColor {
-        let mut current_overlord = country_idx;
-        let mut current_overlord_color = country_color;
-        while let Some(dep) = self.overlord_of[current_overlord] {
-            current_overlord = dep;
-            if let Some(dep_color) = color_of(dep) {
-                current_overlord_color = dep_color;
-            }
-        }
-
-        if current_overlord != country_idx {
-            // Subject country - blend
-            let (r, g, b) = subject_color::blend_color(
-                (country_color.0[0], country_color.0[1], country_color.0[2]),
-                (
-                    current_overlord_color.0[0],
-                    current_overlord_color.0[1],
-                    current_overlord_color.0[2],
-                ),
-            );
-            GpuColor::from_rgb(r, g, b)
-        } else {
-            GpuColor::from(country_color.0)
-        }
-    }
-
-    pub fn location_religion_color(&self, location_idx: eu5save::models::LocationIdx) -> GpuColor {
-        let terrain = self.location_terrain(location_idx);
-        if terrain.is_water() {
-            return GpuColor::WATER;
-        } else if !terrain.is_passable() {
-            return GpuColor::IMPASSABLE;
-        }
-
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-
-        let Some(religion_id) = save_location.religion else {
-            return GpuColor::UNOWNED;
-        };
-
-        let Some(religion) = self.gamestate.religion_manager.lookup(religion_id) else {
-            return GpuColor::DEBUG;
-        };
-
-        GpuColor::from(religion.color.0)
-    }
-
-    pub fn owner_religion_color(&self, location_idx: eu5save::models::LocationIdx) -> GpuColor {
-        let save_location_entry = self.gamestate.locations.index(location_idx);
-        let save_location = save_location_entry.location();
-        let owner_id = save_location.owner;
-
-        let Some(country_idx) = self.gamestate.countries.get(owner_id) else {
-            return self.location_religion_color(location_idx);
-        };
-
-        let Some(country) = self.gamestate.countries.index(country_idx).data() else {
-            return self.location_religion_color(location_idx);
-        };
-
-        let Some(owner_religion_id) = country.primary_religion else {
-            return self.location_religion_color(location_idx);
-        };
-
-        let Some(owner_religion) = self.gamestate.religion_manager.lookup(owner_religion_id) else {
-            return self.location_religion_color(location_idx);
-        };
-
-        GpuColor::from(owner_religion.color.0)
+        subject_color::subject_map_color(
+            country_idx,
+            country_color,
+            self.gamestate.countries.len(),
+            |idx| self.overlord_of[idx],
+            color_of,
+        )
     }
 
     pub(super) fn build_location_arrays(&mut self) {
-        self.fill_donors = self
-            .fill_components
-            .resolve_all(|loc| self.owner_at_timeline_date(loc).real_id());
+        self.fill_donors = map_painter::owner_fill(&self.fill_components, &self.live_values());
 
         for location in self.gamestate.locations.iter() {
             let Some(gpu_index) = self.gpu_indices[location.idx()] else {
@@ -474,10 +233,8 @@ impl<'bump> Eu5Workspace<'bump> {
             };
 
             let terrain = self.location_terrain(location.idx());
-            // Filled terrain shows the owner color of its donor so that it
-            // merges with the country around it, owner borders included.
             let owner_color =
-                self.location_political_color(self.political_fill_source(location.idx()));
+                map_painter::border_color(&self.live_values(), &self.map_layout(), location.idx());
             let unowned = self.owner_at_timeline_date(location.idx()).is_dummy();
 
             let mut gpu_location = self.location_arrays.get_mut(gpu_index);
@@ -513,7 +270,7 @@ impl<'bump> Eu5Workspace<'bump> {
             set_unowned_flag(gpu_location.flags_mut(), unowned);
         }
 
-        self.apply_political_colors();
+        self.paint_live(MapMode::Political);
     }
 
     pub fn location_arrays(&self) -> &pdx_map::LocationArrays {
@@ -555,20 +312,7 @@ impl<'bump> Eu5Workspace<'bump> {
     pub(super) fn apply_map_mode(&mut self, mode: MapMode) -> MapChange {
         self.current_map_mode = mode;
 
-        let gradient = match mode {
-            MapMode::Political => self.apply_political_colors(),
-            MapMode::Control => self.apply_control_colors(),
-            MapMode::Development => self.apply_development_colors(),
-            MapMode::Population => self.apply_population_colors(),
-            MapMode::Markets => self.apply_markets_colors(),
-            MapMode::RgoLevel => self.apply_rgo_level_colors(),
-            MapMode::BuildingLevels => self.apply_building_levels_colors(),
-            MapMode::Wealth => self.apply_wealth_colors(),
-            MapMode::UnrealizedTaxBase => self.apply_unrealized_tax_base_colors(),
-            MapMode::Religion => self.apply_religion_colors(),
-            MapMode::StateEfficacy => self.apply_state_efficacy_colors(),
-            MapMode::PopulationGrowth => self.apply_reproduction_colors(),
-        };
+        let gradient = self.paint_live(mode);
 
         self.current_map_legend = gradient;
         self.painted_selection_generation = self.selection_state.selection_generation();
@@ -681,407 +425,15 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    fn apply_political_colors(&mut self) -> gradient::MapLegend {
-        // Occupation has no history in the save, so a past date shows no
-        // controller stripes. Filled terrain shows stripes only when one
-        // controller holds all the land around it. The key holds the owner
-        // too, so a location has a control donor only when it has a fill
-        // donor.
-        let control_donors = self.is_timeline_live().then(|| {
-            self.fill_components.resolve_all(|loc| {
-                let location = self.gamestate.locations.index(loc).location();
-                Some((location.owner.real_id()?, location.controller.real_id()))
-            })
-        });
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[location_idx] else {
-                continue;
-            };
-
-            let primary = self.location_political_color(self.political_fill_source(location_idx));
-            let controller = match &control_donors {
-                Some(control_donors) => {
-                    let control_source = if self.fill_donors[location_idx].is_none() {
-                        Some(location_idx)
-                    } else {
-                        control_donors[location_idx]
-                    };
-                    control_source.map_or(primary, |source| self.location_control_color(source))
-                }
-                None => primary,
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(primary);
-            gpu_location.set_secondary_color(controller);
-        }
-        gradient::MapLegend::Qualitative
-    }
-
-    fn apply_control_colors(&mut self) -> gradient::MapLegend {
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let control_color = self.location_control_value_color(location_idx);
-            color_data.push((idx, control_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Control mode: copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(GradientScale::Linear, 0.0, 1.0))
-    }
-
-    fn apply_development_colors(&mut self) -> gradient::MapLegend {
-        let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.development);
-
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            let development_color = self.location_development_color(location_idx, max);
-            color_data.push((idx, development_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Linear,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_population_colors(&mut self) -> gradient::MapLegend {
-        let (global_max, filtered_max) =
-            self.gradient_domain(|_, loc| self.gamestate.location_population(loc));
-
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            let population_color = self.location_population_color(location_idx, max);
-            color_data.push((idx, population_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Log,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_markets_colors(&mut self) -> gradient::MapLegend {
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let market_color = self.location_market_color(location_idx);
-            color_data.push((idx, market_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Qualitative
-    }
-
-    fn apply_rgo_level_colors(&mut self) -> gradient::MapLegend {
-        let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.rgo_level);
-
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            let rgo_level_color = self.location_rgo_level_color(location_idx, max);
-            color_data.push((idx, rgo_level_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Linear,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_building_levels_colors(&mut self) -> gradient::MapLegend {
-        let levels = self.get_location_building_levels();
-        let (global_max, filtered_max) = self.gradient_domain(|idx, _| levels[idx]);
-
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            let building_levels_color = self.location_building_levels_color(location_idx, max);
-            color_data.push((idx, building_levels_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Linear,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_wealth_colors(&mut self) -> gradient::MapLegend {
-        let (global_max, filtered_max) = self.gradient_domain(|_, loc| loc.possible_tax);
-
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            let wealth_color = self.location_wealth_color(location_idx, max);
-            color_data.push((idx, wealth_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Linear,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_unrealized_tax_base_colors(&mut self) -> gradient::MapLegend {
-        let (global_max, filtered_max) =
-            self.gradient_domain(|_, loc| (loc.possible_tax - loc.tax).max(0.0));
-
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            color_data.push((
-                idx,
-                self.location_unrealized_tax_base_color(location_idx, max),
-            ));
-        }
-
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Linear,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_state_efficacy_colors(&mut self) -> gradient::MapLegend {
-        let (global_max, filtered_max) =
-            self.gradient_domain(|_, loc| loc.control * loc.development);
-
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            let efficacy_color = self.location_state_efficacy_color(location_idx, max);
-            color_data.push((idx, efficacy_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Linear,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_reproduction_colors(&mut self) -> gradient::MapLegend {
-        let (global_max, filtered_max) = self.reproduction_domain();
-
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let max = if self.selection_state.contains(location_idx) {
-                filtered_max
-            } else {
-                global_max
-            };
-            let reproduction_color = self.location_reproduction_color(location_idx, max);
-            color_data.push((idx, reproduction_color));
-        }
-
-        // Apply colors
-        for (idx, color) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(color);
-        }
-
-        // Copy primary colors to secondary to disable stripes
-        self.location_arrays.copy_primary_to_secondary();
-
-        gradient::MapLegend::Quantitative(gradient::sequential(
-            GradientScale::Linear,
-            0.0,
-            filtered_max,
-        ))
-    }
-
-    fn apply_religion_colors(&mut self) -> gradient::MapLegend {
-        // Collect color data first to avoid borrow conflicts
-        let mut color_data = Vec::new();
-        for idx in 0..self.gamestate.locations.len() {
-            let location_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let source = self.fill_source(location_idx);
-            let religion_color = self.location_religion_color(source);
-            let owner_religion_color = self.owner_religion_color(source);
-            color_data.push((idx, religion_color, owner_religion_color));
-        }
-
-        // Apply colors
-        for (idx, primary, secondary) in color_data {
-            let gpu_idx = eu5save::models::LocationIdx::new(idx as u32);
-            let Some(gpu_index) = self.gpu_indices[gpu_idx] else {
-                continue;
-            };
-            let mut gpu_location = self.location_arrays.get_mut(gpu_index);
-            gpu_location.set_primary_color(primary);
-            gpu_location.set_secondary_color(secondary);
-        }
-
-        gradient::MapLegend::Qualitative
+    /// Paint `mode` from the loaded save and return its legend.
+    fn paint_live(&mut self, mode: MapMode) -> gradient::MapLegend {
+        let request = PaintRequest {
+            mode,
+            selection: Some(&self.selection_state),
+        };
+        let painted = map_painter::paint(&self.live_values(), &self.map_layout(), &request);
+        painted.write(&self.gpu_indices, &mut self.location_arrays);
+        painted.legend
     }
 
     pub fn get_map_mode(&self) -> MapMode {

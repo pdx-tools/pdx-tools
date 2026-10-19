@@ -1,4 +1,4 @@
-import { useMapHistory } from "../history/MapHistory";
+import { useMapHistory } from "../history/context";
 import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
 import { GameButton } from "@/components/game/Button";
 import { localSaveRegistry } from "@/features/campaign/localSaves";

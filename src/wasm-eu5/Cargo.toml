@@ -16,6 +16,7 @@ doctest = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+bytemuck = { workspace = true }
 eu5app = { workspace = true, default-features = false, features = ["tsify"] }
 eu5save = { workspace = true }
 js-sys = { workspace = true }

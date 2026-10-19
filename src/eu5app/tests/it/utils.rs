@@ -154,3 +154,31 @@ pub fn hash_location_arrays(arrays: &LocationArrays) -> String {
         result[0], result[1], result[2], result[3]
     )
 }
+
+/// A short fingerprint of a list of values.
+pub fn hash_u32s(values: &[u32]) -> String {
+    let mut hasher = highway::HighwayHasher::new(highway::Key::default());
+    hasher.append(bytemuck::cast_slice(values));
+    format!("0x{:016x}", hasher.finalize64())
+}
+
+/// A short fingerprint of every column and table of a map projection.
+pub fn hash_projection(projection: &eu5app::map_projection::MapProjection) -> String {
+    let mut hasher = highway::HighwayHasher::new(highway::Key::default());
+    hasher.append(projection.layout_key.as_bytes());
+    hasher.append(bytemuck::cast_slice(&projection.location_ids));
+    hasher.append(bytemuck::cast_slice(&projection.fractions));
+    hasher.append(bytemuck::cast_slice(&projection.metrics));
+    for values in [
+        &projection.owners,
+        &projection.controllers,
+        &projection.religions,
+        &projection.markets,
+        &projection.countries,
+        &projection.religion_colors,
+        &projection.market_colors,
+    ] {
+        hasher.append(bytemuck::cast_slice(values));
+    }
+    format!("0x{:016x}", hasher.finalize64())
+}

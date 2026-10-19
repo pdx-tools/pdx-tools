@@ -1,8 +1,7 @@
-import type { MapInteraction } from "../../history/mapInteraction";
-import type { MapFrame, MapObservation } from "../../history/analysisTypes";
+import type { MapObservation } from "../../history/analysisTypes";
 import { LatestRequest } from "../../history/latestRequest";
 import { MapFrameReader } from "../../history/framePort";
-import { campaignIdentities, restoreCampaignView } from "./restoreCampaignView";
+import { campaignIdentities, clickChange, restoreCampaignView } from "./restoreCampaignView";
 import type { Eu5Carry } from "../../campaignCarry";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
@@ -54,7 +53,6 @@ import type {
 import wasmPath from "../../../../wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
 import { proxy, transfer, wrap } from "comlink";
-import { SharedCanvasModifierBits } from "@/lib/canvas_courier";
 
 const tokensTask = fetchOk(tokenPath).then((x) => x.arrayBuffer());
 
@@ -131,6 +129,27 @@ type OpenSave = {
 };
 
 let openSave: OpenSave | null = null;
+
+/**
+ * Set while the map shows a snapshot over the loaded save. Hover and box
+ * select then do nothing, and a click goes here instead of to the save.
+ */
+let previewClick: ((event: LocationClickChangeEvent) => void) | null = null;
+
+/** Keep map input away from the loaded save while the map shows a snapshot. */
+export function setInputGate(onClick: ((event: LocationClickChangeEvent) => void) | null) {
+  // The tooltip must not show live data for a past date.
+  if (onClick && !previewClick) openSave?.events?.hover({ kind: "clear" });
+  previewClick = onClick;
+}
+
+/** The result of a snapshot paint. */
+export type OverlayReply = {
+  /** False when the map refused the frame because a newer token came first. */
+  accepted: boolean;
+  gradient: GradientConfig | null;
+  observation: MapObservation;
+};
 
 function closeSave() {
   const save = openSave;
@@ -275,8 +294,6 @@ const loadSaveInner = async (
   });
   if (!app) return null;
   let held = hold;
-  let projectionActive = false;
-  let inspectProjection: ((interaction: MapInteraction) => void) | null = null;
 
   // Search indexes belong only to the currently open save.
   const { countries: countryIndex, locations: locationIndex } = searchIndexes(app);
@@ -340,7 +357,6 @@ const loadSaveInner = async (
 
   const events: MapEvents = {
     hover: (event) => {
-      if (projectionActive) return;
       // Hover resolution is synchronous and worker messages are ordered. If
       // this handler becomes asynchronous, carry a generation through it.
       app.clear_highlights();
@@ -356,31 +372,10 @@ const loadSaveInner = async (
     },
 
     click: (event) => {
-      if (projectionActive) {
-        inspectProjection?.({ kind: "click", event });
-        return;
-      }
-      let change: MapChangeData;
-      if (event.kind === "update") {
-        const mods = event.modifiers;
-        if (mods & SharedCanvasModifierBits.Shift) {
-          change = app.add_entity(event.locationIdx);
-        } else if (mods & SharedCanvasModifierBits.Alt) {
-          change = app.remove_entity(event.locationIdx);
-        } else {
-          change = app.select_entity(event.locationIdx);
-        }
-      } else {
-        change = app.clear_focus_or_selection();
-      }
-      afterMutation(change);
+      afterMutation(clickChange(app, event));
     },
 
     boxSelect: (event) => {
-      if (projectionActive) {
-        inspectProjection?.({ kind: "box", event });
-        return Promise.resolve();
-      }
       let change: MapChangeData;
       switch (event.operation) {
         case "add":
@@ -402,55 +397,45 @@ const loadSaveInner = async (
     events: held ? null : events,
     close: () => {
       frameSource?.reader.close();
-      void projections.stop();
+      void overlays.stop();
       app.free();
     },
   };
   openSave = opened;
 
-  const applyProjection = async (frame: MapFrame, mode: MapMode): Promise<TimelineChange> => {
-    if (openSave !== opened) throw Error("This save is no longer open");
-    const groups = app.apply_map_projection(
-      mode,
-      frame.layoutKey,
-      frame.locationIds,
-      frame.fractions,
-      frame.metrics,
-      frame.owners,
-      frame.controllers,
-      frame.religions,
-      frame.markets,
-      frame.countries,
-      frame.religionColors,
-      frame.marketColors,
-    );
-    const change = app.map_projection_change();
-    projectionActive = true;
-    hoverDisplayCallback?.({ kind: "clear" });
-    await Promise.all([
-      syncMapData({
-        colors: cloneBuffer(app.location_color_data()),
-        flags: cloneBuffer(app.location_flag_data()),
-      }),
-      held ? Promise.resolve() : map.syncGroupingTable(transfer(groups, [groups.buffer])),
-    ]);
-    if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
-    return change;
-  };
-  const projections = new LatestRequest<
-    { hash: string; mode: MapMode },
-    { change: TimelineChange; observation: MapObservation }
-  >(async ({ hash, mode }, current) => {
-    if (!frameSource) throw Error("Campaign frame connection is not ready");
-    const frame = await frameSource.reader.read(hash);
-    if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
-    const change = await applyProjection(frame, mode);
-    const { campaignId, date, dateSort, version, layoutKey, fileName, world } = frame;
-    return {
-      change,
-      observation: { hash, campaignId, date, dateSort, version, layoutKey, fileName, world },
-    };
-  });
+  // Paint a snapshot into the overlay. The buffers of this save do not change.
+  const overlays = new LatestRequest<{ hash: string; mode: MapMode; token: number }, OverlayReply>(
+    async ({ hash, mode, token }, current) => {
+      if (!frameSource) throw Error("Campaign frame connection is not ready");
+      const frame = await frameSource.reader.read(hash);
+      if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
+      const paint = app.paint_map_projection(
+        mode,
+        frame.layoutKey,
+        frame.locationIds,
+        frame.fractions,
+        frame.metrics,
+        frame.owners,
+        frame.controllers,
+        frame.religions,
+        frame.markets,
+        frame.countries,
+        frame.religionColors,
+        frame.marketColors,
+      );
+      const { colors, flags, groups, change } = paint;
+      paint.free();
+      const accepted = await map.presentOverlay(
+        transfer({ token, colors, flags, groups }, [colors.buffer, flags.buffer, groups.buffer]),
+      );
+      const { campaignId, date, dateSort, version, layoutKey, fileName, world } = frame;
+      return {
+        accepted,
+        gradient: change.gradient ?? null,
+        observation: { hash, campaignId, date, dateSort, version, layoutKey, fileName, world },
+      };
+    },
+  );
   return proxy({
     show: async (): Promise<void> => {
       if (!held || openSave !== opened) return;
@@ -458,61 +443,19 @@ const loadSaveInner = async (
       await syncSave(app);
       if (openSave === opened) opened.events = events;
     },
-    replayMapInteraction: (interaction: MapInteraction) => {
-      if (projectionActive || openSave !== opened) return;
-      if (interaction.kind === "click") events.click(interaction.event);
-      else if (interaction.kind === "box") return events.boxSelect(interaction.event);
-      else {
-        const id = interaction.args[0];
-        const commands: Record<string, () => MapChangeData> = {
-          selectCountry: () => app.select_country(id),
-          addCountry: () => app.add_country(id),
-          removeCountry: () => app.remove_country(id),
-          selectMarket: () => app.select_market(id),
-          addMarket: () => app.add_market(id),
-          removeMarket: () => app.remove_market(id),
-          setFocusedLocation: () => app.set_focused_location(id),
-          clearFocus: () => app.clear_focus(),
-          clearFocusOrSelection: () => app.clear_focus_or_selection(),
-          selectPlayers: () => app.select_players(),
-          clearSelection: () => app.clear_selection(),
-        };
-        const command = commands[interaction.name];
-        if (command) return afterMutation(command());
-      }
-    },
-    requestMapInspection: (interaction: MapInteraction) => {
-      if (projectionActive) inspectProjection?.(interaction);
-    },
     getMapLayoutKey: () => {
       if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
       return app.map_projection_layout_key();
-    },
-    onMapInspect: (callback: ((interaction: MapInteraction) => void) | null) => {
-      inspectProjection = callback;
     },
     connectMapFrames: (id: string, port: MessagePort | null) => {
       if (!port && frameSource?.id !== id) return;
       frameSource?.reader.close();
       frameSource = port ? { id, reader: new MapFrameReader(port) } : undefined;
     },
-    stopMapProjection: () => projections.stop(),
-    showMapObservation: (hash: string, mode: MapMode) => projections.request({ hash, mode }),
-    clearMapProjection: async (): Promise<void> => {
-      if (!projectionActive || openSave !== opened) return;
-      projectionActive = false;
-      app.restore_map_projection();
-      const gradient = app.map_projection_change().gradient ?? undefined;
-      const sync = syncAll({ colorsChanged: true, flagsChanged: true, gradient });
-      // Publish before awaiting map sync, in order with subsequent selections and previews.
-      pushSelection(gradient, true);
-      await sync;
-    },
+    stopOverlay: () => overlays.stop(),
+    presentOverlay: (hash: string, mode: MapMode, token: number) =>
+      overlays.request({ hash, mode, token }),
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
-      if (projectionActive) {
-        projectionActive = false;
-        app.restore_map_projection();
-      }
       const change = app.set_map_mode(mode);
       await syncAll(change);
       if (openSave !== opened) throw new DOMException("Save changed", "AbortError");
@@ -523,10 +466,6 @@ const loadSaveInner = async (
       return app.get_timeline();
     },
     setTimelineDate: async (date: Eu5DateComponents): Promise<TimelineChange> => {
-      if (projectionActive) {
-        projectionActive = false;
-        app.restore_map_projection();
-      }
       const before = app.get_map_mode();
       const change = app.set_timeline_date(date);
       // A date can force the political mode, which is a mode change like any
@@ -594,7 +533,6 @@ const loadSaveInner = async (
     selectPlayers: () => afterMutation(app.select_players()),
     clearSelection: () => afterMutation(app.clear_selection()),
     highlightMapHoverTarget: (target: Eu5MapHoverTarget) => {
-      if (projectionActive) return Promise.resolve();
       app.clear_highlights();
       switch (target.kind) {
         case "location":
@@ -610,7 +548,6 @@ const loadSaveInner = async (
       return syncFlagData();
     },
     clearMapHoverHighlight: () => {
-      if (projectionActive) return Promise.resolve();
       app.clear_highlights();
       return syncFlagData();
     },
@@ -743,9 +680,17 @@ export async function initialize(port: MessagePort, level: wasm_eu5.LogLevel) {
   mapEndpoint = map;
 
   // Keep input handlers stable while changing the active save.
-  map.onLocationHoverUpdate(proxy((event) => openSave?.events?.hover(event)));
-  map.onLocationClickUpdate(proxy((event) => openSave?.events?.click(event)));
-  map.onBoxSelectCommit(proxy((event) => openSave?.events?.boxSelect(event)));
+  map.onLocationHoverUpdate(
+    proxy((event) => {
+      if (!previewClick) openSave?.events?.hover(event);
+    }),
+  );
+  map.onLocationClickUpdate(
+    proxy((event) => (previewClick ? previewClick(event) : openSave?.events?.click(event))),
+  );
+  map.onBoxSelectCommit(
+    proxy((event) => (previewClick ? undefined : openSave?.events?.boxSelect(event))),
+  );
 
   await initialized;
   timeSync("Setup EU5 Wasm", () => wasm_eu5.setup_eu5_wasm(level));
