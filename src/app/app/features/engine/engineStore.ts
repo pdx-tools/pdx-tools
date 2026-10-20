@@ -17,7 +17,7 @@ export type DetectedDataType = SaveGameInput["kind"];
 
 export function extensionType(filename: string): DetectedDataType {
   const splits = filename.split(".");
-  const extension = splits[splits.length - 1];
+  const extension = splits[splits.length - 1].toLowerCase();
   switch (extension) {
     case "rome":
       return "imperator";
@@ -59,4 +59,16 @@ const useEngineStore = create<EngineState>()((set, get) => ({
 
 export const useSaveFileInput = () => useEngineStore((x) => x.input);
 export const useEngineActions = () => useEngineStore((x) => x.actions);
-export const isSaveLoaded = () => useEngineStore.getState().input !== null;
+const campaignViewers = new Set<symbol>();
+
+/** Include uploaded-save viewers, whose input belongs to their route rather than this store. */
+export function registerCampaignViewer() {
+  const token = Symbol("campaign viewer");
+  campaignViewers.add(token);
+  return () => {
+    campaignViewers.delete(token);
+  };
+}
+
+export const isSaveLoaded = () =>
+  useEngineStore.getState().input !== null || campaignViewers.size > 0;

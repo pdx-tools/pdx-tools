@@ -58,7 +58,7 @@ it("shows a single pending save before analysis and changes its bookmark when re
   expect(pending).toContain('data-analysis="pending"');
   expect(pending).toContain("Waiting for analysis");
   expect(ready).toContain('data-analysis="ready"');
-  expect(ready).toContain("fill-emerald-400");
+  expect(ready).toContain("fill-game-ink-300");
 });
 
 it("reports every status in a grouped bookmark", () => {
@@ -68,7 +68,7 @@ it("reports every status in a grouped bookmark", () => {
   );
   expect(partial).toContain('data-analysis="analyzing"');
   expect(partial).toContain("1 analyzed, 1 analyzing, 1 waiting");
-  expect(partial).toContain("fill-amber-400");
+  expect(partial).toContain("motion-safe:animate-pulse");
 });
 
 it("preserves ordinary campaign bookmarks when analytical status is not requested", () => {
@@ -80,16 +80,16 @@ it("preserves ordinary campaign bookmarks when analytical status is not requeste
   expect(normal).toContain("fill-game-ink-300");
 });
 
-it("keeps queued saves grey and active saves amber", () => {
+it("keeps waiting saves hollow and active saves pulsing", () => {
   const active = renderToString(<Track ready={new Set()} analyzing={new Set(["first"])} />);
   expect(active).toContain('data-analysis="analyzing"');
   expect(active).toContain("Analyzing save");
-  expect(active).toContain("fill-amber-400");
+  expect(active).toContain("motion-safe:animate-pulse");
   mocks.saves.push(save("second", 2));
   const mixed = renderToString(<Track ready={new Set(["first"])} />);
   expect(mixed).toContain('data-analysis="pending"');
   expect(mixed).toContain("1 analyzed, 1 waiting");
-  expect(mixed).not.toContain("fill-amber-400");
+  expect(mixed).not.toContain("motion-safe:animate-pulse");
 });
 
 it("marks a grouped bookmark ready only when every save is analyzed", () => {
@@ -97,15 +97,15 @@ it("marks a grouped bookmark ready only when every save is analyzed", () => {
   const html = renderToString(<Track ready={new Set(["first", "second"])} />);
   expect(html).toContain('data-analysis="ready"');
   expect(html).toContain("2 analyzed");
-  expect(html).toContain("fill-emerald-400");
-  expect(html).not.toContain("fill-amber-400");
+  expect(html).toContain("fill-game-ink-300");
+  expect(html).not.toContain("motion-safe:animate-pulse");
 });
 
 it("keeps failed saves visible in red, including mixed clusters", () => {
   const single = renderToString(<Track ready={new Set()} failed={new Set(["first"])} />);
   expect(single).toContain('data-analysis="failed"');
   expect(single).toContain("Analysis failed");
-  expect(single).toContain("fill-red-400");
+  expect(single).toContain("stroke-game-err");
   mocks.saves = [save("first"), save("second", 2), save("third", 3)];
   const mixed = renderToString(
     <Track
@@ -117,3 +117,21 @@ it("keeps failed saves visible in red, including mixed clusters", () => {
   expect(mixed).toContain('data-analysis="failed"');
   expect(mixed).toContain("1 analyzed, 1 analyzing, 1 failed");
 });
+
+it.each(["ready", "pending", "analyzing", "failed"] as const)(
+  "preserves the selected bookmark highlight for %s saves",
+  (status) => {
+    mocks.saves = [{ ...save("first"), isOpen: true }];
+    const html = renderToString(
+      <Track
+        ready={new Set(status === "ready" ? ["first"] : [])}
+        analyzing={new Set(status === "analyzing" ? ["first"] : [])}
+        failed={new Set(status === "failed" ? ["first"] : [])}
+      />,
+    );
+    expect(html).toContain('aria-current="date"');
+    expect(html).toContain("stroke-game-accent-300");
+    expect(html).toContain(`data-analysis="${status}"`);
+    if (status === "failed") expect(html).toContain("M2.5 3 L6.5 7 M6.5 3 L2.5 7");
+  },
+);

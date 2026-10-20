@@ -3,26 +3,22 @@ export const saveAnalysisPresentation = {
   ready: {
     label: "Analyzed",
     description: "Analysis ready",
-    dotClass: "bg-emerald-400",
-    bookmarkClass: "fill-emerald-400 stroke-emerald-300",
+    bookmarkClass: "fill-game-ink-300 stroke-game-ink-300",
   },
   analyzing: {
     label: "Analyzing",
     description: "Analyzing save",
-    dotClass: "bg-amber-400",
-    bookmarkClass: "fill-amber-400 stroke-amber-300",
+    bookmarkClass: "fill-transparent stroke-game-ink-500 motion-safe:animate-pulse",
   },
   failed: {
     label: "Failed",
     description: "Analysis failed",
-    dotClass: "bg-red-400",
-    bookmarkClass: "fill-red-400 stroke-red-300",
+    bookmarkClass: "fill-transparent stroke-game-err",
   },
   pending: {
     label: "Waiting",
     description: "Waiting for analysis",
-    dotClass: "bg-game-ink-700",
-    bookmarkClass: "fill-game-ink-700 stroke-game-ink-500 group-hover:stroke-game-ink-100",
+    bookmarkClass: "fill-transparent stroke-game-ink-500 group-hover:stroke-game-ink-100",
   },
 } as const;
 

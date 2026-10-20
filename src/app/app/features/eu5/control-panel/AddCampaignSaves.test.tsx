@@ -1,13 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import type * as HistoryStore from "../history/store";
 
 const mocks = vi.hoisted(() => ({
   developer: false,
-  actions: [] as Array<() => void>,
+  actions: [] as Array<() => unknown>,
+  publish: vi.fn(async () => {}),
   analyze: vi.fn(async () => {}),
 }));
+vi.mock("@/features/engine", () => ({ useFilePublisher: () => mocks.publish }));
 vi.mock("../history/useIsCampaignAnalysisEnabled", () => ({
   useIsCampaignAnalysisEnabled: () => mocks.developer,
 }));
@@ -48,6 +50,7 @@ beforeEach(() => {
   mocks.developer = false;
   mocks.actions = [];
   mocks.analyze.mockClear();
+  mocks.publish.mockClear();
   useHistory.setState({
     analysisEnabledCampaigns: [],
     analysisPaused: false,
@@ -87,4 +90,50 @@ it("resumes a paused campaign through the existing importer", () => {
   mocks.actions[2]();
   expect(useHistory.getState().analysisPausedCampaigns).toEqual([]);
   expect(mocks.analyze).toHaveBeenCalledWith(expect.any(Array), "campaign");
+});
+
+afterEach(() => vi.unstubAllGlobals());
+it("passes native file handles to the shared publisher", async () => {
+  const handle = { kind: "file", name: "save.eu5" };
+  const picker = vi.fn(async () => [handle]);
+  vi.stubGlobal("window", { showOpenFilePicker: picker });
+  renderToStaticMarkup(<AddCampaignSaves />);
+  await mocks.actions[0]();
+  expect(picker).toHaveBeenCalledWith(expect.objectContaining({ multiple: true }));
+  expect(mocks.publish).toHaveBeenCalledWith([{ kind: "handle", file: handle }]);
+});
+it("keeps handles from nested folders and ignores non-save files", async () => {
+  const first = { kind: "file", name: "first.eu5" },
+    second = { kind: "file", name: "second.EU5" };
+  const nested = {
+    kind: "directory",
+    async *values() {
+      yield second;
+      yield { kind: "file", name: "notes.txt" };
+    },
+  };
+  const directory = {
+    async *values() {
+      yield first;
+      yield nested;
+    },
+  };
+  vi.stubGlobal("window", { showDirectoryPicker: vi.fn(async () => directory) });
+  renderToStaticMarkup(<AddCampaignSaves />);
+  await mocks.actions[1]();
+  expect(mocks.publish).toHaveBeenCalledWith([
+    { kind: "handle", file: first },
+    { kind: "handle", file: second },
+  ]);
+});
+it("does not report a cancelled native picker as an import failure", async () => {
+  vi.stubGlobal("window", {
+    showOpenFilePicker: vi.fn(async () => {
+      throw new DOMException("Cancelled", "AbortError");
+    }),
+  });
+  renderToStaticMarkup(<AddCampaignSaves />);
+  await mocks.actions[0]();
+  expect(mocks.publish).not.toHaveBeenCalled();
+  expect(useHistory.getState().issues).toEqual([]);
 });

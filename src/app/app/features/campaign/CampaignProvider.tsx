@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { registerCampaignViewer } from "@/features/engine/engineStore";
 import { useCampaignNav } from "./useCampaignNav";
 import type { CampaignAdapter, CampaignNav } from "./useCampaignNav";
 import { publishCampaignTimeline } from "./campaignTimeline";
@@ -20,6 +21,8 @@ type CampaignProviderProps = {
 /** Keep campaign controls available across save changes without replacing the page. */
 export function CampaignProvider({ open, adapter, loadError, children }: CampaignProviderProps) {
   const nav = useCampaignNav(open, adapter, loadError);
+  const hasOpenSave = open !== null;
+  useEffect(() => (hasOpenSave ? registerCampaignViewer() : undefined), [hasOpenSave]);
   const key =
     open &&
     JSON.stringify([

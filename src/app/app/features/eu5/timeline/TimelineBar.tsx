@@ -2,6 +2,7 @@ import { useCampaign } from "@/features/campaign/CampaignProvider";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
 import type { CampaignSave } from "@/features/campaign/types";
+import { SaveAnalysisGlyph } from "@/features/campaign/SaveAnalysisGlyph";
 import { saveAnalysisPresentation } from "@/features/campaign/saveAnalysisPresentation";
 import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import { useHistory } from "../history/store";
@@ -129,12 +130,15 @@ export function TimelineBar() {
             className="flex flex-col gap-0.5 text-[10px] leading-tight text-game-ink-500"
             aria-label="Save analysis status"
           >
-            {Object.entries(saveAnalysisPresentation).map(([status, { label, dotClass }]) => (
+            {Object.entries(saveAnalysisPresentation).map(([status, { label }]) => (
               <span key={status}>
-                <span
+                <svg
                   aria-hidden
-                  className={cx("mr-1 inline-block size-1.5 rounded-full", dotClass)}
-                />
+                  viewBox="0 0 10 13"
+                  className="mr-1 inline-block h-3 w-2.5 overflow-visible"
+                >
+                  <SaveAnalysisGlyph status={status as SaveAnalysisStatus} />
+                </svg>
                 {label}
               </span>
             ))}

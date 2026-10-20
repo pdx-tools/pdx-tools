@@ -1,5 +1,5 @@
 import type { FileKind } from "@/hooks/useFileDrop";
-import { extensionType, useEngineActions } from "../engineStore";
+import { extensionType, isSaveLoaded, useEngineActions } from "../engineStore";
 import type { SaveGameInput } from "../engineStore";
 import { localSaveInput, registerLocalSaves } from "@/features/campaign/localSaves";
 import { localSaveName } from "@/features/campaign/types";
@@ -77,7 +77,7 @@ async function resolveFile(input: AnalyzeInput): Promise<ResolvedFile> {
   return { input, ref, lastModified: file.lastModified };
 }
 
-/** Open the latest selected save and retain its companion files for campaign navigation. */
+/** Register campaign files and return the newest candidate for an initial load. */
 async function publishFiles(inputs: AnalyzeInput[]): Promise<SaveGameInput | null> {
   // One unreadable file must not block the other selected files.
   const results = await Promise.allSettled(inputs.map(resolveFile));
@@ -111,6 +111,9 @@ export function useFilePublisher() {
   const { fileInput } = useEngineActions();
   return async (input: AnalyzeInput | AnalyzeInput[]) => {
     const save = await publishFiles(Array.isArray(input) ? input : [input]);
-    if (save !== null) fileInput(save);
+    if (save === null) return;
+    // Check at dispatch time: another selection may have opened a save while we waited.
+    if ((save.kind === "eu4" || save.kind === "eu5") && isSaveLoaded()) return;
+    fileInput(save);
   };
 }

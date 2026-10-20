@@ -1,15 +1,19 @@
 import { useRef, useState } from "react";
+import { useFilePublisher } from "@/features/engine";
+import type { FileKind } from "@/hooks/useFileDrop";
+import { isAbortError } from "@/lib/abortController";
 import PlusIcon from "@heroicons/react/16/solid/PlusIcon";
 import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
 import { saveProblemText } from "@/features/campaign/saveText";
 import { GameButton } from "@/components/game/Button";
-import { holdsRef, localSaveRegistry, registerLocalSaves } from "@/features/campaign/localSaves";
+import { holdsRef, localSaveRegistry } from "@/features/campaign/localSaves";
 import { useEu5Input, useEu5PlaythroughId } from "../store";
 import { isAnalysisPaused, useHistory } from "../history/store";
 import { ImportProgress } from "../history/ImportProgress";
 import { analyzeCampaign } from "../history/analyzeCampaign";
 
 export function AddCampaignSaves() {
+  const publishFile = useFilePublisher();
   const featureEnabled = useIsCampaignAnalysisEnabled();
   const input = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);
@@ -34,15 +38,12 @@ export function AddCampaignSaves() {
   const undatedFailures = localSaves.filter(
     (entry) => entry.game === "eu5" && entry.identity === null && entry.problem !== null,
   );
-  const addFiles = async (list: FileList | null) => {
-    const files = Array.from(list ?? []).filter((file) => /\.eu5$/i.test(file.name));
-    if (!files.length) return;
+  const addFiles = async (files: FileKind[]) => {
+    const saves = files.filter((input) => /\.eu5$/i.test(input.file.name));
+    if (!saves.length) return;
     setBusy(true);
     try {
-      await registerLocalSaves(
-        "eu5",
-        files.map((file) => ({ kind: "file", file })),
-      );
+      await publishFile(saves);
     } catch (error) {
       useHistory.setState({ issues: [String(error)] });
     } finally {
@@ -50,16 +51,46 @@ export function AddCampaignSaves() {
     }
   };
   const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    void addFiles(event.currentTarget.files);
+    void addFiles(Array.from(event.currentTarget.files ?? [], (file) => ({ kind: "file", file })));
     event.currentTarget.value = "";
+  };
+  const chooseFiles = async () => {
+    if (!("showOpenFilePicker" in window)) {
+      input.current?.click();
+      return;
+    }
+    try {
+      const handles = await window.showOpenFilePicker({
+        multiple: true,
+        types: [{ description: "EU5 saves", accept: { "application/pdx": [".eu5"] } }],
+      });
+      await addFiles(handles.map((file) => ({ kind: "handle", file })));
+    } catch (error) {
+      if (!isAbortError(error)) useHistory.setState({ issues: [String(error)] });
+    }
+  };
+  const chooseFolder = async () => {
+    if (!("showDirectoryPicker" in window)) {
+      folder.current?.click();
+      return;
+    }
+    try {
+      const directory = await window.showDirectoryPicker({ mode: "read" });
+      setBusy(true);
+      await addFiles(await folderSaves(directory));
+    } catch (error) {
+      if (!isAbortError(error)) useHistory.setState({ issues: [String(error)] });
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <div className="border-b border-game-line px-3.5 py-2">
       <div className="flex items-center gap-2">
-        <GameButton className="flex-1" disabled={busy} onClick={() => input.current?.click()}>
+        <GameButton className="flex-1" disabled={busy} onClick={chooseFiles}>
           <PlusIcon aria-hidden className="size-4" /> Add saves
         </GameButton>
-        <GameButton variant="ghost" disabled={busy} onClick={() => folder.current?.click()}>
+        <GameButton variant="ghost" disabled={busy} onClick={chooseFolder}>
           Add folder
         </GameButton>
       </div>
@@ -110,7 +141,7 @@ export function AddCampaignSaves() {
         </div>
       )}
       {undatedFailures.length > 0 && (
-        <details className="mt-2 text-xs text-red-400">
+        <details className="mt-2 text-xs text-game-err">
           <summary className="cursor-pointer">
             {undatedFailures.length} failed {undatedFailures.length === 1 ? "save" : "saves"}{" "}
             without readable dates
@@ -136,4 +167,14 @@ export function AddCampaignSaves() {
       )}
     </div>
   );
+}
+
+/** Keep file handles when selecting a folder, including nested save directories. */
+async function folderSaves(directory: FileSystemDirectoryHandle): Promise<FileKind[]> {
+  const files: FileKind[] = [];
+  for await (const handle of directory.values()) {
+    if (handle.kind === "directory") files.push(...(await folderSaves(handle)));
+    else if (/\.eu5$/i.test(handle.name)) files.push({ kind: "handle", file: handle });
+  }
+  return files;
 }
