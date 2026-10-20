@@ -2,7 +2,7 @@ import { useHistory } from "../history/store";
 import { useMapHistory } from "../history/context";
 import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
-import { TimelapseExport } from "./TimelapseExport";
+import { SavedDateExport, TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
 import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
 import { useTimelineCampaign } from "@/features/campaign/SaveMarks";
@@ -66,18 +66,23 @@ export function TimelineBar() {
           <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
         {history?.controller ? (
-          <select
-            aria-label="Saved-date playback speed"
-            value={speed}
-            className="rounded-control border border-game-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300"
-            onChange={(event) => useHistory.getState().setPlaybackSpeed(Number(event.target.value))}
-          >
-            {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
-              <option key={value} value={value}>
-                {value}×
-              </option>
-            ))}
-          </select>
+          <div className="flex shrink-0 items-center gap-2">
+            <select
+              aria-label="Saved-date playback speed"
+              value={speed}
+              className="rounded-control border border-game-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300"
+              onChange={(event) =>
+                useHistory.getState().setPlaybackSpeed(Number(event.target.value))
+              }
+            >
+              {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
+                <option key={value} value={value}>
+                  {value}×
+                </option>
+              ))}
+            </select>
+            {history.frames > 0 && <SavedDateExport controller={controller} history={history} />}
+          </div>
         ) : (
           <TimelapseExport controller={controller} />
         )}

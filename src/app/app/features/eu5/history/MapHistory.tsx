@@ -5,6 +5,7 @@ import { addDays, addMonths, addYears, daysBetween } from "@/features/timeline/d
 import type { DateComponents } from "@/features/timeline/date";
 import type { TimelineController } from "@/features/timeline/controller";
 import type { GradientConfig } from "@/wasm/wasm_eu5";
+import type { TimelapseOptions } from "@pdx.tools/timelapse";
 import {
   useEu5Context,
   useEu5Engine,
@@ -14,7 +15,7 @@ import {
 } from "../store";
 import { CampaignAnalysis } from "./CampaignAnalysis";
 import { campaignAnalysis } from "./analysisClient";
-import type { MapObservation as MapFrame } from "./analysisTypes";
+import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 import { MapHistoryContext } from "./context";
 import {
   mapFrameDate,
@@ -26,18 +27,20 @@ import {
   bindPreviewNavigation,
   cancelPreview,
   connectFrames,
-  loadedSnapshotHash,
+  loadedSnapshotId,
   openPreview,
   previewSnapshot,
+  recordSavedDates,
   repaintPreview,
   setPreviewPlayback,
   usePreviewPlayback,
+  usePreviewRecording,
   usePreviewSession,
 } from "./previewSession";
 import { useHistory } from "./store";
 import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
 
-const EMPTY_FRAMES: MapFrame[] = [];
+const EMPTY_FRAMES: Eu5SnapshotDescriptor[] = [];
 
 /** The playhead waits this long before the app opens the save at the playhead. */
 const OPEN_DELAY_MS = 250;
@@ -69,20 +72,24 @@ function useMapHistoryState() {
   // Read again when the sources or the registry change.
   useHistory((history) => history.sources);
   localSaveRegistry.useEntries();
-  const loadedHash = loadedSnapshotHash(store);
+  const loadedId = loadedSnapshotId(store);
   const previewing = preview.kind !== "live" && preview.campaignId === campaignId;
-  const selectedHash = previewing ? preview.hash : loadedHash;
-  const index = selectedHash
-    ? frames.findIndex((frame) => frame.hash === selectedHash)
+  const selectedId = previewing ? preview.snapshotId : loadedId;
+  const index = selectedId
+    ? frames.findIndex((frame) => frame.id === selectedId)
     : frames.findIndex((frame) => daysBetween(mapFrameDate(frame), saveDate) === 0);
   const selectedFrame = frames[index];
-  const readyHashes = useMemo(() => new Set(frames.map((frame) => frame.hash)), [frames]);
+  const readyIds = useMemo(() => new Set(frames.map((frame) => frame.id)), [frames]);
   const [scrubbing, setScrubbing] = useState(false);
   // Playback belongs to the map mode it started in.
   const playingMode = usePreviewPlayback((playback) => playback.mode);
   const playing = frames.length > 0 && playingMode === currentMapMode;
   const setPlaying = (next: boolean) => setPreviewPlayback(next ? currentMapMode : null);
   const [error, setError] = useState<string | null>(null);
+  // The playhead follows a recording of the saved dates.
+  const recordingDate = usePreviewRecording((recording) => recording.date);
+  const recordingGradient = usePreviewRecording((recording) => recording.gradient);
+  const recording = recordingDate !== null;
 
   useLayoutEffect(() => {
     bindPreviewNavigation(campaign);
@@ -126,8 +133,8 @@ function useMapHistoryState() {
     if (currentMapMode === "political" || !frames.length || !campaignId) return;
     const frame = frames[Math.max(0, Math.min(next, frames.length - 1))];
     engine.trigger.pauseTimeline();
-    if (!previewing && frame.hash === loadedHash) return;
-    previewSnapshot(engine, campaignId, frame.hash, currentMapMode);
+    if (!previewing && frame.id === loadedId) return;
+    previewSnapshot(engine, campaignId, frame.id, currentMapMode);
   };
   const advance = useEffectEvent(() => {
     if (index >= frames.length - 1) {
@@ -145,10 +152,10 @@ function useMapHistoryState() {
   });
   const waiting = previewing && preview.kind === "preview" && !preview.error;
   useEffect(() => {
-    if (!waiting || playing || scrubbing) return;
+    if (!waiting || playing || scrubbing || recording) return;
     const timer = setTimeout(open, OPEN_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [waiting, playing, scrubbing, selectedHash]);
+  }, [waiting, playing, scrubbing, recording, selectedId]);
 
   const retry = () => {
     setError(null);
@@ -156,18 +163,18 @@ function useMapHistoryState() {
   };
 
   const clearCampaign = async () => {
-    if (!campaignId || progress !== null) return;
+    if (!campaignId || progress !== null || recording) return;
     setPlaying(false);
     cancelPreview();
     try {
       await campaignAnalysis().clearCampaign(campaignId);
       useHistory.setState((history) => {
         const snapshots = history.snapshots.filter((row) => row.campaignId !== campaignId);
-        const hashes = new Set(snapshots.map((row) => row.hash));
+        const ids = new Set(snapshots.map((row) => row.id));
         return {
           snapshots,
           sources: Object.fromEntries(
-            Object.entries(history.sources).filter(([, source]) => hashes.has(source.hash)),
+            Object.entries(history.sources).filter(([, source]) => ids.has(source.snapshotId)),
           ),
           issues: [],
           analysisPausedCampaigns: [...new Set([...history.analysisPausedCampaigns, campaignId])],
@@ -178,6 +185,14 @@ function useMapHistoryState() {
     }
   };
 
+  const record = (options: TimelapseOptions) =>
+    recordSavedDates(
+      engine,
+      frames.map((frame) => ({ id: frame.id, date: mapFrameDate(frame) })),
+      currentMapMode,
+      options,
+    );
+
   const shown = previewing ? preview.shown : null;
   let controller: TimelineController | null = null;
   if (enabled && currentMapMode !== "political" && campaignId) {
@@ -187,7 +202,7 @@ function useMapHistoryState() {
       campaign?.saves.filter((save) => save.membership !== "different").map((save) => save.date) ??
         [],
     );
-    const date = selectedFrame ? mapFrameDate(selectedFrame) : saveDate;
+    const date = recordingDate ?? (selectedFrame ? mapFrameDate(selectedFrame) : saveDate);
     const setDate: TimelineController["setDate"] = (next) => {
       setPlaying(false);
       move(nearestMapFrame(frames, next));
@@ -206,10 +221,10 @@ function useMapHistoryState() {
       live: daysBetween(date, end) === 0,
       playback: playing ? "playing" : "paused",
       playing,
-      locked: frames.length === 0,
+      locked: frames.length === 0 || recording,
       totalDays: daysBetween(start, end),
       dayOffset: daysBetween(start, date),
-      mapDayOffset: daysBetween(start, shown?.date ?? saveDate),
+      mapDayOffset: daysBetween(start, recordingDate ?? shown?.date ?? saveDate),
       setDate,
       beginScrub: () => setScrubbing(true),
       commitDayOffset: (day) => {
@@ -239,21 +254,27 @@ function useMapHistoryState() {
   }
 
   // The date and legend follow the frame that the map shows, not the request.
+  // A recording shows its snapshots, with or without a preview.
   const previewView: {
     shown: { date: DateComponents; gradient: GradientConfig | null } | null;
-  } | null = previewing ? { shown: shown && { date: shown.date, gradient: shown.gradient } } : null;
+  } | null = recordingDate
+    ? { shown: { date: recordingDate, gradient: recordingGradient } }
+    : previewing
+      ? { shown: shown && { date: shown.date, gradient: shown.gradient } }
+      : null;
   return {
     controller,
     enabled,
     progress,
     frames: frames.length,
-    readyHashes,
+    readyIds,
     error: (previewing ? preview.error : null) ?? error,
     opening,
     preview: previewView,
     retry,
     clearCampaign,
     playing,
+    record,
   };
 }
 

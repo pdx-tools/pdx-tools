@@ -426,11 +426,12 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
 #[derive(Debug, Serialize, Tsify)]
 #[serde(rename_all = "camelCase")]
 pub struct MapImportMetadata {
-    pub hash: String,
+    pub content_hash: String,
+    pub extractor_version: u32,
     pub campaign_id: String,
     pub date: String,
     pub date_sort: i32,
-    pub version: String,
+    pub game_version: String,
     pub layout_key: String,
     pub world: eu5app::insights::WorldSummary,
 }
@@ -446,13 +447,14 @@ fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result
         let projection =
             eu5app::map_projection::extract(&game).map_err(|e| JsError::new(&e.to_string()))?;
         let observation = MapImportMetadata {
-            hash: String::new(),
+            content_hash: String::new(),
+            extractor_version: eu5app::map_projection::EXTRACTOR_VERSION,
             campaign_id: meta.playthrough_id.to_str().to_owned(),
             date: format!("{:04}-{:02}-{:02}", date.year, date.month, date.day),
             date_sort: i32::from(date.year) * 10000
                 + i32::from(date.month) * 100
                 + i32::from(date.day),
-            version: format!(
+            game_version: format!(
                 "{}.{}.{}",
                 meta.version.major, meta.version.minor, meta.version.patch
             ),
@@ -461,7 +463,7 @@ fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result
         };
         (observation, map_projection::into_js(&projection)?)
     };
-    observation.hash = loaded.into_observer().finish();
+    observation.content_hash = loaded.into_observer().finish();
     let result = js_sys::Object::new();
     js_sys::Reflect::set(
         &result,

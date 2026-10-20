@@ -19,7 +19,7 @@ export function pendingCampaignAnalysis(
 ) {
   const history = useHistory.getState();
   const completed = new Set(
-    history.snapshots.filter((row) => row.campaignId === playthroughId).map((row) => row.hash),
+    history.snapshots.filter((row) => row.campaignId === playthroughId).map((row) => row.id),
   );
   return entries
     .filter((entry) => {
@@ -28,7 +28,7 @@ export function pendingCampaignAnalysis(
       return (
         !source ||
         !version ||
-        !completed.has(source.hash) ||
+        !completed.has(source.snapshotId) ||
         !sameFileVersion(version, source.version)
       );
     })

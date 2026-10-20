@@ -224,6 +224,20 @@ function Segmented<T extends string | number>({
   );
 }
 
+/** What the panel states about a film before it is recorded. */
+export type TimelapseExportPlan = {
+  /** What the film covers, such as `377 years`. */
+  span: string;
+  seconds: number;
+  bytes: number;
+};
+
+/** The plan of a film that advances through the whole timeline at one pace. */
+function timelineExportPlan(totalDays: number, options: TimelapseOptions): TimelapseExportPlan {
+  const plan = timelapsePlan({ totalDays, options });
+  return { span: formatCampaignSpan(totalDays), seconds: plan.seconds, bytes: plan.bytes };
+}
+
 export type TimelapseExportProps = {
   controller: TimelineController;
   timelapse: TimelapseProgress;
@@ -240,6 +254,11 @@ export type TimelapseExportProps = {
   onOpenChange?: (open: boolean) => void;
   /** The film's file name, without its extension. */
   fileName: string;
+  /**
+   * What the film will be for the given choices. When not given, the film
+   * advances through the whole timeline of the controller at one pace.
+   */
+  plan?: (options: TimelapseOptions) => TimelapseExportPlan;
   /** How the shared world outline maps onto this game's map. */
   world: WorldSilhouette;
   /**
@@ -265,6 +284,7 @@ export function TimelapseExport({
   mapViewport,
   onOpenChange,
   fileName,
+  plan,
   world,
   record,
   stop,
@@ -276,7 +296,6 @@ export function TimelapseExport({
     onOpenChange?.(next);
   };
 
-  const { totalDays } = controller;
   const [options, setOptions] = useState<TimelapseOptions>({
     framing: "world",
     quality: "1080p",
@@ -409,7 +428,9 @@ export function TimelapseExport({
           />
         </div>
 
-        <ExportFacts totalDays={totalDays} options={options} />
+        <ExportFacts
+          plan={plan ? plan(options) : timelineExportPlan(controller.totalDays, options)}
+        />
 
         <GameButton variant="commit" className="mt-3.5 h-8 w-full" onClick={onRecord}>
           Export video
@@ -419,11 +440,10 @@ export function TimelapseExport({
   );
 }
 
-function ExportFacts({ totalDays, options }: { totalDays: number; options: TimelapseOptions }) {
-  const plan = timelapsePlan({ totalDays, options });
+function ExportFacts({ plan }: { plan: TimelapseExportPlan }) {
   return (
     <p className="mt-3.5 flex items-baseline gap-1.5 border-t border-game-line pt-2.5 font-game-num text-[11px] text-game-ink-300 tabular-nums">
-      <span>{formatCampaignSpan(totalDays)}</span>
+      <span>{plan.span}</span>
       <span className="text-game-ink-700">·</span>
       <span className="text-game-ink-100">{formatDuration(plan.seconds)}</span>
       <span className="text-game-ink-700">·</span>
