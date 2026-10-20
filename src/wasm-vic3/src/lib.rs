@@ -4,19 +4,25 @@ use models::{
 };
 use std::io::Cursor;
 use tsify::{Ts, Tsify};
+use vic3app::{ProvinceDetails, ProvinceId, Vic3MapSave, Vic3World};
 use vic3save::markets::{Vic3GoodEstimationError, goods_price_based_on_buildings};
 use vic3save::savefile::Vic3Country;
 use vic3save::stats::{Vic3CountryStatsRateIter, Vic3StatsGDPIter};
 use vic3save::{DeserializeVic3, MeltOptions, Vic3Melt};
-use vic3save::{FailedResolveStrategy, Vic3Error, Vic3File, savefile::Vic3Save};
+use vic3save::{
+    FailedResolveStrategy, ReaderAt, SaveHeader, SaveHeaderKind, Vic3Error, Vic3File,
+    savefile::Vic3Save,
+};
 use wasm_bindgen::prelude::*;
+use wasm_pdx_core::blob::{BlobReader, read_blob_start};
 
 mod models;
+mod save_model;
 mod tokens;
 pub use tokens::*;
 
-use crate::models::Vic3GraphResponse;
 use crate::models::Vic3MarketResponse;
+use crate::models::{LandedCountries, Vic3GraphResponse};
 
 #[wasm_bindgen(typescript_custom_section)]
 const VIC3_DATE_TYPE: &'static str = r#"export type Vic3Date = string;"#;
@@ -24,7 +30,9 @@ const VIC3_DATE_TYPE: &'static str = r#"export type Vic3Date = string;"#;
 #[derive(Debug)]
 pub struct SaveFileImpl {
     save: Vic3Save,
+    map_save: Vic3MapSave,
     is_meltable: bool,
+    world: Option<Vic3World>,
 }
 
 #[wasm_bindgen]
@@ -60,15 +68,73 @@ impl SaveFile {
         let prices = self.0.get_country_goods_prices(tag)?;
         Ok(Vic3MarketResponse { prices }.into_ts()?)
     }
+
+    /// Load the game data of the asset bundle (game.zip) so that the save
+    /// can describe and color the map.
+    pub fn load_game_bundle(&mut self, data: &[u8]) -> Result<(), JsError> {
+        let game = vic3app::read_game_bundle(data)
+            .map_err(|e| JsError::new(&format!("Failed to open game bundle: {e}")))?;
+        self.0.world = Some(Vic3World::new(&self.0.map_save, game));
+        Ok(())
+    }
+
+    /// The location arrays that color the map by owner
+    pub fn location_arrays(&self) -> Result<js_sys::Uint32Array, JsError> {
+        let arrays = self.0.world()?.political_location_arrays();
+        Ok(js_sys::Uint32Array::from(arrays.as_data()))
+    }
+
+    /// The flags of each location with the provinces of `tag` highlighted
+    pub fn location_flags(&self, tag: Option<String>) -> Result<js_sys::Uint32Array, JsError> {
+        let flags: Vec<u32> = self
+            .0
+            .world()?
+            .location_flags(tag.as_deref())
+            .into_iter()
+            .map(|x| x.bits())
+            .collect();
+        Ok(js_sys::Uint32Array::from(flags.as_slice()))
+    }
+
+    pub fn province_details(
+        &self,
+        province_id: u32,
+    ) -> Result<Option<Ts<ProvinceDetails>>, JsError> {
+        let details = self.0.world()?.province(ProvinceId::new(province_id));
+        Ok(details.map(|x| x.into_ts()).transpose()?)
+    }
+
+    /// The countries that own land, with their names and colors
+    pub fn landed_countries(&self) -> Result<Ts<LandedCountries>, JsError> {
+        let countries = self.0.world()?.landed_countries();
+        Ok(LandedCountries { countries }.into_ts()?)
+    }
+
+    /// The capital province of the country
+    pub fn capital_province(&self, tag: String) -> Result<Option<u32>, JsError> {
+        Ok(self
+            .0
+            .world()?
+            .capital_province(&tag)
+            .map(ProvinceId::value))
+    }
 }
 
 impl SaveFileImpl {
+    fn world(&self) -> Result<&Vic3World, JsError> {
+        self.world
+            .as_ref()
+            .ok_or_else(|| JsError::new("game bundle is not loaded"))
+    }
+
     pub fn metadata(&self) -> Vic3Metadata {
         Vic3Metadata {
             date: self.save.meta_data.game_date,
             is_meltable: self.is_meltable(),
             last_played_tag: self.save.get_last_played_country().definition.clone(),
             available_tags: self.get_available_tags(),
+            version: self.save.meta_data.version.clone(),
+            bundle_version: vic3app::bundle_version(&self.save.meta_data.version),
         }
     }
 
@@ -166,19 +232,43 @@ impl SaveFileImpl {
     }
 }
 
-fn _parse_save(data: &[u8]) -> Result<SaveFile, Vic3Error> {
-    let file = Vic3File::from_slice(data)?;
-    let save: Vic3Save = (&file).deserialize(tokens::get_tokens())?;
+/// The maximum length of the save header
+const SAVE_HEADER_MAX_LEN: u64 = 33;
+
+/// Stream an uncompressed save, so the large file is not in memory. Read a
+/// compressed save at once, because one read is faster.
+async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
+    let start = read_blob_start(&save, SAVE_HEADER_MAX_LEN)?;
+    let uncompressed = SaveHeader::from_slice(&start)
+        .is_ok_and(|header| matches!(header.kind(), SaveHeaderKind::Text | SaveHeaderKind::Binary));
+
+    if uncompressed {
+        BlobReader::streaming(save)
+    } else {
+        BlobReader::buffered(&save).await
+    }
+}
+
+fn parse_file<R: ReaderAt>(file: &Vic3File<R>) -> Result<SaveFile, Vic3Error> {
+    let model: save_model::SaveModel = (&*file).deserialize(tokens::get_tokens())?;
+    let (save, map_save) = model.split();
 
     Ok(SaveFile(SaveFileImpl {
         save,
+        map_save,
         is_meltable: file.header().kind().is_binary(),
+        world: None,
     }))
 }
 
+/// Parse a save from a `Blob`, such as a `File`. The save is never copied
+/// completely into wasm memory.
 #[wasm_bindgen]
-pub fn parse_save(data: &[u8]) -> Result<SaveFile, JsError> {
-    let s = _parse_save(data)?;
+pub async fn parse_save(save: web_sys::Blob) -> Result<SaveFile, JsError> {
+    let reader = open_save(save).await?;
+    let size = reader.size();
+    let file = Vic3File::from_reader_at(reader, size)?;
+    let s = parse_file(&file)?;
     Ok(s)
 }
 
@@ -195,4 +285,89 @@ pub fn melt(data: &[u8]) -> Result<js_sys::Uint8Array, JsError> {
     _melt(data)
         .map(|x| js_sys::Uint8Array::from(x.as_slice()))
         .map_err(JsError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pdx_map::{GpuColor, LocationFlags};
+
+    /// Parse the save at VIC3_SAVE in parts, when it is set.
+    #[test]
+    fn test_parse_save() {
+        let Some(save_path) = std::env::var_os("VIC3_SAVE") else {
+            return;
+        };
+
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        set_tokens(std::fs::read(root.join("assets/tokens/vic3.bin")).unwrap());
+        let data = std::fs::read(save_path).unwrap();
+        let expected = parse_file(&Vic3File::from_slice(&data).unwrap()).unwrap().0;
+
+        let size = data.len() as u64;
+        let file = parse_file(&Vic3File::from_reader_at(data, size).unwrap())
+            .unwrap()
+            .0;
+        assert_eq!(
+            file.metadata().last_played_tag,
+            expected.metadata().last_played_tag
+        );
+        assert_eq!(file.metadata().date, expected.metadata().date);
+        assert_eq!(file.is_meltable, expected.is_meltable);
+    }
+
+    /// Parse the save at VIC3_SAVE and color the map with the bundle at
+    /// VIC3_GAME_BUNDLE (a compiled game.zip), when both are set.
+    #[test]
+    fn test_map_of_save() {
+        let (Some(save_path), Some(bundle_path)) = (
+            std::env::var_os("VIC3_SAVE"),
+            std::env::var_os("VIC3_GAME_BUNDLE"),
+        ) else {
+            return;
+        };
+
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        set_tokens(std::fs::read(root.join("assets/tokens/vic3.bin")).unwrap());
+        let save = std::fs::read(save_path).unwrap();
+        let mut file = parse_file(&Vic3File::from_slice(&save).unwrap()).unwrap().0;
+        let game = vic3app::read_game_bundle(&std::fs::read(bundle_path).unwrap()).unwrap();
+        file.world = Some(Vic3World::new(&file.map_save, game));
+        let world = file.world().unwrap();
+
+        let tag = file.metadata().last_played_tag;
+        let capital = world.capital_province(&tag).unwrap();
+        let details = world.province(capital).unwrap();
+        assert_eq!(details.owner.map(|x| x.tag), Some(tag.clone()));
+
+        let flags = world.location_flags(Some(&tag));
+        let highlighted = flags
+            .iter()
+            .filter(|x| x.contains(LocationFlags::HIGHLIGHTED))
+            .count();
+        assert!(highlighted > 0);
+
+        let arrays = world.political_location_arrays();
+        let buffers = arrays.buffers();
+        let owned = buffers
+            .primary_colors()
+            .iter()
+            .filter(|x| ![GpuColor::WATER, GpuColor::UNOWNED, GpuColor::IMPASSABLE].contains(x))
+            .count();
+        let colored = world
+            .landed_countries()
+            .iter()
+            .filter(|x| x.color != vic3app_fallback_hex(&x.tag))
+            .count();
+        println!(
+            "{tag}: capital {capital} in {:?}, {highlighted} highlighted, {owned} owned provinces, {} landed countries ({colored} with game colors)",
+            details.region_name,
+            world.landed_countries().len(),
+        );
+    }
+
+    fn vic3app_fallback_hex(tag: &str) -> String {
+        let [r, g, b] = vic3app::fallback_color(tag);
+        format!("#{r:02x}{g:02x}{b:02x}")
+    }
 }

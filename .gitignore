@@ -14,6 +14,7 @@ assets/game/eu4/common/images/achievements/*
 !assets/game/eu4/common/images/achievements/10000.png
 assets/game/eu5
 assets/game/hoi4
+assets/game/vic3
 assets/tokens
 assets/vendored/
 .env

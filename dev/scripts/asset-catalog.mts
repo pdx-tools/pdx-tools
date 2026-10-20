@@ -14,7 +14,7 @@ export type AssetRelease = CatalogRelease & {
 };
 
 /** Games that the catalog lists */
-export const catalogGames = ["eu4", "eu5", "hoi4"] as const;
+export const catalogGames = ["eu4", "eu5", "hoi4", "vic3"] as const;
 export type CatalogGame = (typeof catalogGames)[number];
 
 export type AssetCatalog = {
