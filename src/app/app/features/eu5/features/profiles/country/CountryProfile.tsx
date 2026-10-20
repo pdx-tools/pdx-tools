@@ -2,6 +2,7 @@ import { GameTabs } from "../../../components";
 import { CountryOverviewTabContent } from "./EconomyTab";
 import { ReligionTabContent } from "./ReligionTab";
 import { CountryPopulationTabContent } from "./PopulationTab";
+import { CountryProductionTabContent } from "./ProductionTab";
 import { LocationsTabContent } from "./LocationsTab";
 import { DiplomacyTabContent } from "./DiplomacyTab";
 import { useEu5MapMode } from "../../../store";
@@ -31,6 +32,7 @@ export function CountryProfile({ countryIdx }: { countryIdx: number }) {
           <GameTabs.Trigger value="overview">Overview</GameTabs.Trigger>
           <GameTabs.Trigger value="religion">Religion</GameTabs.Trigger>
           <GameTabs.Trigger value="population">Population</GameTabs.Trigger>
+          <GameTabs.Trigger value="production">Production</GameTabs.Trigger>
           <GameTabs.Trigger value="locations">Locations</GameTabs.Trigger>
           <GameTabs.Trigger value="diplomacy">Diplomacy</GameTabs.Trigger>
         </GameTabs.List>
@@ -58,6 +60,12 @@ export function CountryProfile({ countryIdx }: { countryIdx: number }) {
             locations={profile.locations.locations}
             historicalPopulation={profile.overview.historicalPopulation}
           />
+        </GameTabs.Content>
+        <GameTabs.Content
+          value="production"
+          className="min-h-0 flex-1 basis-0 overflow-y-auto px-4 py-4"
+        >
+          <CountryProductionTabContent countryIdx={countryIdx} />
         </GameTabs.Content>
         <GameTabs.Content
           value="locations"

@@ -408,6 +408,8 @@ pub mod markets {
             market_count: u32,
             producing_location_count: u32,
             default_market_price: Option<f64>,
+            // Monthly production in the scoped markets, from all sources.
+            production: f64,
         }
 
         pub ScopedMarketSummary {
@@ -455,6 +457,65 @@ pub mod markets {
             total_taken: f64,
             balance_ratio: f64,
             imbalance_value: f64,
+        }
+
+        // One country's estimated production of a good in the scoped
+        // markets, in units for each month.
+        pub GoodProducer {
+            country: crate::presentation::CountryRefSource => CountryRef,
+            units: f64,
+            raw_material_units: f64,
+            building_units: f64,
+            location_count: u32,
+        }
+
+        // Who makes a good in the scoped markets. The totals come from the
+        // market records and are exact. The country split is an estimate.
+        pub GoodProducersData<'a> {
+            good: crate::presentation::GoodRefSource<'a> => crate::presentation::GoodRef,
+            base_price: Option<f64>,
+            market_count: u32,
+            total_units: f64,
+            world_units: f64,
+            raw_material_units: f64,
+            building_units: f64,
+            // Sum of building level times method output, over the buildings
+            // in the scoped markets that use a method that makes the good.
+            // This is the base output, with no modifiers.
+            building_base_output: f64,
+            // The same two values for all markets.
+            world_building_units: f64,
+            world_building_base_output: f64,
+            // Production from sources that no location gets (`Base`).
+            other_units: f64,
+            countries: Vec<workspace::GoodProducer> => Vec<presentation::GoodProducer>,
+        }
+
+        // One country's estimated production in the scoped markets, in value.
+        // Units of different goods are never summed. Only values are summed.
+        pub CountryProductionValue<'a> {
+            country: crate::presentation::CountryRefSource => CountryRef,
+            base_value: f64,
+            market_value: f64,
+            // The number of different goods that the country makes in scope.
+            good_count: u32,
+            // At most 3 goods, largest base value first.
+            top_goods: Vec<crate::presentation::GoodRefSource<'a>> => Vec<crate::presentation::GoodRef>,
+        }
+
+        // The production value of each country in the scoped markets. The
+        // totals come from the market records and are exact. The country
+        // split is an estimate.
+        pub ProductionByCountryData<'a> {
+            market_count: u32,
+            // Recorded production in the scoped markets, all goods and sources.
+            total_base_value: f64,
+            total_market_value: f64,
+            // Recorded production in all markets.
+            world_base_value: f64,
+            world_market_value: f64,
+            // Sorted by base value, largest first.
+            countries: Vec<workspace::CountryProductionValue<'a>> => Vec<presentation::CountryProductionValue>,
         }
 
         pub MarketInsightData<'a> {
