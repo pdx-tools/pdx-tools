@@ -1,6 +1,18 @@
 @import "tailwindcss";
 
 @theme inline {
+  --animate-analysis-pulse: analysis-pulse 2s ease-in-out infinite;
+
+  @keyframes analysis-pulse {
+    0%,
+    100% {
+      stroke: var(--game-ink-500);
+    }
+    50% {
+      stroke: white;
+    }
+  }
+
   --animate-enter: enter 150ms cubic-bezier(0.22, 1, 0.36, 1);
   --animate-exit: exit 150ms cubic-bezier(0.4, 0, 1, 1);
   --animate-dialog-enter: enter 200ms cubic-bezier(0.22, 1, 0.36, 1);

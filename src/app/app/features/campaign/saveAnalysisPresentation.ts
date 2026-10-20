@@ -8,7 +8,7 @@ export const saveAnalysisPresentation = {
   analyzing: {
     label: "Analyzing",
     description: "Analyzing save",
-    bookmarkClass: "fill-transparent stroke-game-ink-500 motion-safe:animate-pulse",
+    bookmarkClass: "fill-transparent stroke-game-ink-500 motion-safe:animate-analysis-pulse",
   },
   failed: {
     label: "Failed",

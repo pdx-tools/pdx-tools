@@ -68,7 +68,7 @@ it("reports every status in a grouped bookmark", () => {
   );
   expect(partial).toContain('data-analysis="analyzing"');
   expect(partial).toContain("1 analyzed, 1 analyzing, 1 waiting");
-  expect(partial).toContain("motion-safe:animate-pulse");
+  expect(partial).toContain("motion-safe:animate-analysis-pulse");
 });
 
 it("preserves ordinary campaign bookmarks when analytical status is not requested", () => {
@@ -84,12 +84,12 @@ it("keeps waiting saves hollow and active saves pulsing", () => {
   const active = renderToString(<Track ready={new Set()} analyzing={new Set(["first"])} />);
   expect(active).toContain('data-analysis="analyzing"');
   expect(active).toContain("Analyzing save");
-  expect(active).toContain("motion-safe:animate-pulse");
+  expect(active).toContain("motion-safe:animate-analysis-pulse");
   mocks.saves.push(save("second", 2));
   const mixed = renderToString(<Track ready={new Set(["first"])} />);
   expect(mixed).toContain('data-analysis="pending"');
   expect(mixed).toContain("1 analyzed, 1 waiting");
-  expect(mixed).not.toContain("motion-safe:animate-pulse");
+  expect(mixed).not.toContain("motion-safe:animate-analysis-pulse");
 });
 
 it("marks a grouped bookmark ready only when every save is analyzed", () => {
@@ -98,7 +98,7 @@ it("marks a grouped bookmark ready only when every save is analyzed", () => {
   expect(html).toContain('data-analysis="ready"');
   expect(html).toContain("2 analyzed");
   expect(html).toContain("fill-game-ink-300");
-  expect(html).not.toContain("motion-safe:animate-pulse");
+  expect(html).not.toContain("motion-safe:animate-analysis-pulse");
 });
 
 it("keeps failed saves visible in red, including mixed clusters", () => {

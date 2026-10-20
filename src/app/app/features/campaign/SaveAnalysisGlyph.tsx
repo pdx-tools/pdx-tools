@@ -27,7 +27,7 @@ export function SaveAnalysisGlyph({
           selected && status === "ready"
             ? "fill-game-accent-300 stroke-game-accent-300"
             : saveAnalysisPresentation[status].bookmarkClass,
-          opening && "motion-safe:animate-pulse",
+          opening && status !== "analyzing" && "motion-safe:animate-pulse",
         )}
       />
       {status === "failed" && (
