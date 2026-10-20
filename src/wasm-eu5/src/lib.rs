@@ -426,6 +426,7 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
 #[derive(Debug, Serialize, Tsify)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveAnalysisImport {
+    pub extractor_version: u32,
     pub snapshot: eu5app::snapshot::SaveSnapshot,
     pub hash: String,
     pub overviews: eu5app::analysis::OverviewData,
@@ -475,6 +476,7 @@ fn analysis_result(
     };
     let hash = loaded.into_observer().finish();
     let result: JsValue = into_ts(SaveAnalysisImport {
+        extractor_version: eu5app::map_projection::EXTRACTOR_VERSION,
         snapshot,
         hash,
         overviews,

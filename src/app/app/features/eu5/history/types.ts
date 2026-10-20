@@ -1,4 +1,4 @@
-import type { MapObservation } from "./analysisTypes";
+import type { WorldSummary } from "@/wasm/wasm_eu5";
 import type { SaveSnapshot } from "@/wasm/wasm_eu5";
 
 export type Snapshot = SaveSnapshot & {
@@ -7,5 +7,7 @@ export type Snapshot = SaveSnapshot & {
   marketLabels: Record<string, string>;
 };
 
-export type SnapshotMetadata = Omit<Snapshot, "countries" | "markets"> &
-  Partial<Pick<MapObservation, "world" | "layoutKey">>;
+export type SnapshotMetadata = Omit<Snapshot, "countries" | "markets"> & {
+  world?: WorldSummary;
+  layoutKey?: string;
+};

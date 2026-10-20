@@ -1,8 +1,11 @@
-import { MapColumnStore } from "./mapColumnStore";
+import { ResidentStore } from "@/features/campaign/analysis/residentStore";
+import type { PayloadAdapter } from "@/features/campaign/analysis/residentStore";
+import { EU5_EXTRACTOR_VERSION } from "./analysisTypes";
+import type { Eu5Payload, Eu5SnapshotDescriptor, MapFrame, SaveAnalysis } from "./analysisTypes";
+
 import {
   snapshotView,
   snapshotCountry,
-  snapshotGoods,
   snapshotMetadata,
   countryAt,
   marketAt,
@@ -10,77 +13,63 @@ import {
 } from "./packedSnapshot";
 import { overview } from "./packedOverview";
 import { exportSnapshots } from "./exportSnapshots";
-import type {
-  AnalysisDescriptor,
-  AnalysisEntity,
-  HistoryQuery,
-  MapFrame,
-  SaveAnalysis,
-} from "./analysisTypes";
+import type { AnalysisEntity, HistoryQuery } from "./analysisTypes";
 import type { Snapshot } from "./types";
 import type { OverviewData } from "@/wasm/wasm_eu5";
 
-type StoredAnalysis = Omit<SaveAnalysis, "observation"> & {
-  observation: AnalysisDescriptor;
-  worldSnapshot: Snapshot["countries"][number] | undefined;
+const LOCATION_WIDTH = 7;
+
+export const eu5PayloadAdapter: PayloadAdapter<Eu5SnapshotDescriptor, Eu5Payload> = {
+  game: "eu5",
+  extractorVersion: EU5_EXTRACTOR_VERSION,
+  validate: (descriptor, { projection: frame, snapshot }) => {
+    validateSnapshot(snapshot);
+    if (
+      snapshot.hash !== descriptor.id ||
+      snapshot.campaignId !== descriptor.campaignId ||
+      snapshot.dateSort !== descriptor.dateSort
+    )
+      throw Error("Analytical snapshot does not match descriptor");
+    const n = frame.locationIds.length;
+    if (
+      frame.layoutKey !== descriptor.layoutKey ||
+      frame.metrics.length !== n * LOCATION_WIDTH ||
+      frame.fractions.length !== n * 2 ||
+      [frame.owners, frame.controllers, frame.religions, frame.markets].some(
+        (ids) => ids.length !== n,
+      )
+    )
+      throw Error("Incomplete analytical map columns");
+  },
+  layouts: ({ projection }) => [{ key: projection.layoutKey, ids: projection.locationIds }],
+  useLayout: ({ projection }, _key, ids) => {
+    projection.locationIds = ids;
+  },
 };
 
-/** Lives in one worker. The UI never retains the campaign's raw analytical columns. */
-export class CampaignAnalysisStore extends MapColumnStore<StoredAnalysis> {
-  private strings = new Map<string, string>();
-  override append(save: SaveAnalysis): AnalysisDescriptor {
-    const snapshot = save.snapshot;
+/** The EU5 snapshots of one resident session. */
+export class Eu5CampaignAnalysis {
+  readonly store: ResidentStore<Eu5SnapshotDescriptor, Eu5Payload>;
 
-    if (!snapshot.hash || !snapshot.campaignId) throw Error("Invalid analytical observation");
-    validateSnapshot(snapshot);
-    const existing = this.saves.get(snapshot.hash);
-    if (existing) return existing.observation;
-    const descriptor = this.describe(save);
-    const worldSnapshot = this.world(snapshot);
-    const intern = (label: string) => {
-      const shared = this.strings.get(label);
-      if (shared !== undefined) return shared;
-      this.strings.set(label, label);
-      return label;
-    };
-    snapshot.strings = snapshot.strings.map(intern);
-    save.overviews.strings = save.overviews.strings.map(intern);
-    for (const [id, name] of Object.entries(save.countryNames))
-      save.countryNames[id] = intern(name);
-    return super.append({ ...save, observation: descriptor, worldSnapshot });
-  }
-  private describe(save: SaveAnalysis): AnalysisDescriptor {
-    const metadata = snapshotMetadata(save.snapshot);
-    return {
-      ...metadata,
-      world: save.observation.world,
-      layoutKey: save.projection.layoutKey,
-      countryNames: save.countryNames,
-      goods: snapshotGoods(save.snapshot),
-    };
-  }
-  private require(hash: string): StoredAnalysis {
-    const save = this.saves.get(hash);
-    if (!save)
-      throw Error("This observation is no longer available. Import the original saves again.");
-    return save;
-  }
-  override mapFrame(hash: string): MapFrame {
-    const save = this.require(hash);
-    const { campaignId, date, dateSort, version, layoutKey, fileName, world } = save.observation;
-    return {
-      ...save.projection,
-      hash,
-      campaignId,
-      date,
-      dateSort,
-      version,
-      layoutKey,
-      fileName,
-      world,
-    };
+  constructor(limitBytes = Infinity) {
+    this.store = new ResidentStore(eu5PayloadAdapter, limitBytes);
   }
 
+  append({ descriptor, payload }: SaveAnalysis) {
+    payload.worldSnapshot = this.world(payload.snapshot);
+    return this.store.append(descriptor, payload);
+  }
+  timeline(campaignId: string) {
+    return this.store.timeline(campaignId);
+  }
+  private require(id: string) {
+    return this.store.read(id).payload;
+  }
+
+  mapFrame(id: string): MapFrame {
+    const { descriptor, payload } = this.store.read(id);
+    return { descriptor, projection: payload.projection };
+  }
   queryOverview<K extends keyof OverviewData>(
     hash: string,
     key: K,
@@ -89,12 +78,12 @@ export class CampaignAnalysisStore extends MapColumnStore<StoredAnalysis> {
   }
   queryHistory(query: HistoryQuery): Snapshot[] {
     return this.timeline(query.campaignId).map((row) => {
-      const source = this.require(row.hash).snapshot;
+      const source = this.require(row.id).snapshot;
       const country =
         query.country && query.country !== "world"
           ? snapshotCountry(source, query.country)
-          : this.require(row.hash).worldSnapshot;
-      const packed = this.require(row.hash).snapshot,
+          : this.require(row.id).worldSnapshot;
+      const packed = this.require(row.id).snapshot,
         markets: Snapshot["markets"] = [];
       const good = query.good ? packed.strings.indexOf(query.good) : -1;
       if (good >= 0)
@@ -104,17 +93,11 @@ export class CampaignAnalysisStore extends MapColumnStore<StoredAnalysis> {
           if (!query.centers?.length || query.centers.includes(center))
             markets.push(marketAt(source, i / 2));
         }
-      const {
-        layoutKey: _layout,
-        countryNames: _names,
-        goods: _goods,
-        marketLabels: _labels,
-        ...metadata
-      } = row;
+      const metadata = snapshotMetadata(source);
       return { ...metadata, marketLabels: {}, countries: country ? [{ ...country }] : [], markets };
     });
   }
-  private world(source: SaveAnalysis["snapshot"]): Snapshot["countries"][number] | undefined {
+  private world(source: Eu5Payload["snapshot"]): Snapshot["countries"][number] | undefined {
     const countries = Array.from({ length: source.countryIds.length / 3 }, (_, i) =>
       countryAt(source, i),
     );
@@ -146,7 +129,7 @@ export class CampaignAnalysisStore extends MapColumnStore<StoredAnalysis> {
   marketCenters(campaignId: string, country: string): number[] {
     const centers = new Set<number>();
     for (const row of this.timeline(campaignId)) {
-      const snapshot = this.require(row.hash).snapshot;
+      const snapshot = this.require(row.id).snapshot;
       for (const center of snapshotCountry(snapshot, country)?.marketCenters ?? [])
         centers.add(center);
     }
@@ -169,11 +152,7 @@ export class CampaignAnalysisStore extends MapColumnStore<StoredAnalysis> {
   }
   exportObservations(campaignId: string): Blob {
     return exportSnapshots(
-      this.timeline(campaignId).map((row) => snapshotView(this.require(row.hash).snapshot)),
+      this.timeline(campaignId).map((row) => snapshotView(this.require(row.id).snapshot)),
     );
-  }
-  override clearCampaign(campaignId?: string): void {
-    super.clearCampaign(campaignId);
-    if (!this.saves.size) this.strings.clear();
   }
 }

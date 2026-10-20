@@ -45,6 +45,7 @@ beforeEach(() => {
       development: 0,
     },
     hash: "checksum",
+    extractorVersion: 1,
     projection: {},
     overviews: { world: { population: 0 } },
     countryIds: [7],
@@ -67,10 +68,10 @@ it("uses one full parser and returns transferable analytical columns without dis
   const result = await parseImport(new File(["save"], "test.eu5"));
   expect(mocks.parse).toHaveBeenCalledOnce();
   expect(mocks.open).toHaveBeenCalledOnce();
-  expect(result.snapshot.hash).toBe("eu5:checksum");
-  expect(snapshotView(result.snapshot).countries).toEqual([]);
-  expect(result.countryIds).toEqual(new Uint32Array([7]));
-  expect(result.countryNames).toEqual({ 7: "England" });
+  expect(result.payload.snapshot.hash).toBe("eu5:1:checksum");
+  expect(snapshotView(result.payload.snapshot).countries).toEqual([]);
+  expect(result.payload.countryIds).toEqual(new Uint32Array([7]));
+  expect(result.descriptor.countryNames).toEqual({ 7: "England" });
   expect(result).not.toHaveProperty("recording");
 });
 it("keeps unnamed market centers selectable with an ID-based label", async () => {
@@ -89,6 +90,7 @@ it("keeps unnamed market centers selectable with an ID-based label", async () =>
       development: 0,
     },
     hash: "checksum",
+    extractorVersion: 1,
     projection: {},
     overviews: { world: { population: 0 } },
     countryIds: [7],
@@ -97,7 +99,7 @@ it("keeps unnamed market centers selectable with an ID-based label", async () =>
 
   const result = await parseImport(new File(["save"], "test.eu5"));
 
-  expect(result.snapshot.marketLabels).toEqual({ 42: "New York", 73: "Location 73" });
+  expect(result.payload.snapshot.marketLabels).toEqual({ 42: "New York", 73: "Location 73" });
 });
 it.each(["SAV01000text", "PKcompressed"])(
   "passes the original Blob to the format-aware loader (%s)",

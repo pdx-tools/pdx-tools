@@ -195,4 +195,4 @@ export function overview<K extends keyof OverviewData>(
     throw Error("Overview is not available");
   return valueAt(packed.root.fields[key], 0, packed.strings, packed.references) as OverviewData[K];
 }
-export { analyticalBuffers } from "./transferBuffers";
+export { collectBuffers as analyticalBuffers } from "@/features/campaign/analysis/transferBuffers";

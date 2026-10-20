@@ -5,21 +5,21 @@ import {
   publishedMapFrames,
   mapTimelineBounds,
 } from "./mapPlayback";
-import type { MapFrame } from "./analysisTypes";
-import type { SnapshotMetadata } from "./types";
+import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 const frame = (
   dateSort: number,
-  hash = String(dateSort),
+  id = String(dateSort),
   campaignId = "campaign",
   layoutKey = "layout",
+  artifacts = ["observations", "map"],
 ) =>
   ({
-    world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
     dateSort,
-    hash,
+    id,
     campaignId,
     layoutKey,
-  }) as MapFrame;
+    artifacts,
+  }) as unknown as Eu5SnapshotDescriptor;
 
 it("isolates campaign and map layouts while keeping one deterministic observation per date", () => {
   const a = frame(13600101, "a");
@@ -45,29 +45,14 @@ it("snaps arbitrary scrubbing to observed dates, including campaign ends", () =>
   expect(nearestMapFrame(frames, { year: 1361, month: 1, day: 1 })).toBe(2);
 });
 
-it("publishes completed observations during import without retaining duplicated display metadata", () => {
-  const snapshot = {
-    ...frame(13600401),
-    date: "1360-04-01",
-    version: "1.4.0",
-    countryNames: { "1": "A country" },
-    marketLabels: { "1": "A market" },
-  } as unknown as SnapshotMetadata;
-  const frames = publishedMapFrames([snapshot], "campaign", "layout");
-  expect(frames).toEqual([
-    {
-      hash: "13600401",
-      campaignId: "campaign",
-      layoutKey: "layout",
-      fileName: undefined,
-      world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
-      date: "1360-04-01",
-      dateSort: 13600401,
-      version: "1.4.0",
-    },
-  ]);
+it("publishes the snapshots that have a map of the campaign and layout, without a copy", () => {
+  const snapshot = frame(13600401);
+  const [published] = publishedMapFrames([snapshot], "campaign", "layout");
+  expect(published).toBe(snapshot);
   expect(publishedMapFrames([snapshot], "campaign", "incompatible")).toEqual([]);
   expect(publishedMapFrames([snapshot], "other", "layout")).toEqual([]);
+  const noMap = frame(13600401, "x", "campaign", "layout", ["observations"]);
+  expect(publishedMapFrames([noMap], "campaign", "layout")).toEqual([]);
 });
 
 it("keeps pending dates in the timeline range before any analysis completes", () => {

@@ -1,3 +1,12 @@
+import type { PackedSnapshot } from "./packedSnapshot";
+import type { PackedOverviews } from "./packedOverview";
+import type { Snapshot } from "./types";
+import type { SnapshotDescriptor } from "@/features/campaign/analysis/descriptor";
+import type { WorldSummary } from "@/wasm/wasm_eu5";
+
+/** Equal to `eu5app::map_projection::EXTRACTOR_VERSION`. The store refuses other versions. */
+export const EU5_EXTRACTOR_VERSION = 1;
+
 export type MapProjection = {
   layoutKey: string;
   locationIds: Uint32Array<ArrayBuffer>;
@@ -11,22 +20,33 @@ export type MapProjection = {
   owners: Uint32Array<ArrayBuffer>;
   countries: Uint32Array<ArrayBuffer>;
 };
-import type { PackedSnapshot } from "./packedSnapshot";
-import type { PackedOverviews } from "./packedOverview";
-import type { SnapshotMetadata } from "./types";
-export type SaveAnalysis = MapSaveAnalysis & {
-  snapshot: PackedSnapshot;
+
+/** An EU5 snapshot. The layout key identifies the map artifact. */
+export type Eu5SnapshotDescriptor = SnapshotDescriptor & {
+  game: "eu5";
+  layoutKey: string;
+  world: WorldSummary;
+  fileName: string;
+  countryNames: Record<string, string>;
+  goods: string[];
+  marketLabels: Record<string, string>;
+  population: number;
+  development: number;
+};
+/** What a game worker reads to paint a snapshot. */
+export type MapFrame = { descriptor: Eu5SnapshotDescriptor; projection: MapProjection };
+
+export type Eu5Payload = {
   projection: MapProjection;
+  snapshot: PackedSnapshot;
   overviews: PackedOverviews;
   countryIds: Uint32Array<ArrayBuffer>;
-  countryNames: Record<string, string>;
+  worldSnapshot?: Snapshot["countries"][number];
 };
-export type AnalysisDescriptor = MapObservation &
-  SnapshotMetadata & {
-    layoutKey: string;
-    countryNames: Record<string, string>;
-    goods: string[];
-  };
+
+/** The parser output for one save. */
+export type SaveAnalysis = { descriptor: Eu5SnapshotDescriptor; payload: Eu5Payload };
+
 export type HistoryQuery = {
   campaignId: string;
   country?: string;
@@ -34,17 +54,3 @@ export type HistoryQuery = {
   centers?: number[];
 };
 export type AnalysisEntity = { kind: "country" | "market" | "location"; id: number };
-
-import type { WorldSummary } from "@/wasm/wasm_eu5";
-export type MapObservation = {
-  hash: string;
-  campaignId: string;
-  layoutKey: string;
-  date: string;
-  dateSort: number;
-  version: string;
-  fileName: string;
-  world: WorldSummary;
-};
-export type MapFrame = MapProjection & MapObservation;
-export type MapSaveAnalysis = { observation: MapObservation; projection: MapProjection };

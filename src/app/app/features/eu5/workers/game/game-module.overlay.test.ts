@@ -56,6 +56,12 @@ const frame = (id: string): MapFrame => ({
   descriptor: {
     id,
     game: "eu5",
+    fileName: "test.eu5",
+    countryNames: {},
+    goods: [],
+    marketLabels: {},
+    population: 0,
+    development: 0,
     campaignId: "campaign",
     contentHash: id,
     date: "1360-01-01",

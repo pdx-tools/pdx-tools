@@ -12,7 +12,9 @@ import tokenUrl from "../../../../../../assets/tokens/eu5.bin?url";
 import { getBundleUrls, resolveBundleVersion } from "../bundleUrls";
 import { packSnapshot } from "./packedSnapshot";
 import { packOverviews } from "./packedOverview";
-import { analyticalBuffers } from "./transferBuffers";
+import { collectBuffers } from "@/features/campaign/analysis/transferBuffers";
+import { snapshotId } from "@/features/campaign/analysis/descriptor";
+import { EU5_EXTRACTOR_VERSION } from "./analysisTypes";
 import type { MapProjection, SaveAnalysis } from "./analysisTypes";
 registerWebWorker({ self: globalThis });
 let initialized: Promise<unknown> | undefined;
@@ -83,35 +85,50 @@ export async function parseImport(file: File): Promise<SaveAnalysis> {
     const raw = parser.parse_import(data.game, data.localization) as SaveAnalysisImport & {
       projection: MapProjection;
     };
+    if (raw.extractorVersion !== EU5_EXTRACTOR_VERSION)
+      throw Error(
+        `The save parser gives extractor version ${raw.extractorVersion}, but campaign analysis accepts ${EU5_EXTRACTOR_VERSION}`,
+      );
     const marketLabels: Record<string, string> = {};
     for (const market of raw.snapshot.markets)
       marketLabels[market.center] =
         market.centerName?.replaceAll("_", " ") || `Location ${market.center}`;
     const names =
       raw.countryNames instanceof Map ? Object.fromEntries(raw.countryNames) : raw.countryNames;
+    const id = snapshotId("eu5", EU5_EXTRACTOR_VERSION, raw.hash);
     const result: SaveAnalysis = {
-      observation: {
-        hash: `eu5:${raw.hash}`,
+      descriptor: {
+        id,
+        game: "eu5",
+        contentHash: raw.hash,
+        extractorVersion: EU5_EXTRACTOR_VERSION,
+        artifacts: ["observations", "map", "charts"],
+        countryNames: names,
+        goods: [...new Set(raw.snapshot.markets.map((m) => m.good))],
+        marketLabels,
+        population: raw.snapshot.population,
+        development: raw.snapshot.development,
         campaignId: raw.snapshot.campaignId,
         date: raw.snapshot.date,
         dateSort: raw.snapshot.dateSort,
-        version: raw.snapshot.version,
+        gameVersion: raw.snapshot.version,
         layoutKey: raw.projection.layoutKey,
         fileName: file.name,
         world: raw.overviews.world,
       },
-      snapshot: packSnapshot({
-        ...raw.snapshot,
-        hash: `eu5:${raw.hash}`,
-        fileName: file.name,
-        marketLabels,
-      }),
-      projection: raw.projection,
-      overviews: packOverviews(raw.overviews),
-      countryIds: Uint32Array.from(raw.countryIds),
-      countryNames: names,
+      payload: {
+        snapshot: packSnapshot({
+          ...raw.snapshot,
+          hash: id,
+          fileName: file.name,
+          marketLabels,
+        }),
+        projection: raw.projection,
+        overviews: packOverviews(raw.overviews),
+        countryIds: Uint32Array.from(raw.countryIds),
+      },
     };
-    return transfer(result, analyticalBuffers(result));
+    return transfer(result, collectBuffers(result));
   } finally {
     if (!consumed) parser.free();
   }

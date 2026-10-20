@@ -47,7 +47,7 @@ export function useEu5SelectionTrigger<T>(
   deps: DependencyList = [],
 ): { data: T | undefined; error: Error | undefined; loading: boolean } {
   const selectionRevision = useEu5SelectionRevision();
-  const hash = useMapHistory()?.preview?.shown?.hash;
+  const hash = useMapHistory()?.preview?.shown?.snapshotId;
   return useEu5Trigger(
     (engine) => fetch({ queries: hash ? overviewQueries(engine.queries, hash) : engine.queries }),
     [selectionRevision, hash, ...deps],
