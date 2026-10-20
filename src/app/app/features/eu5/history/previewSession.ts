@@ -317,17 +317,19 @@ export async function recordSavedDates(
     });
   } finally {
     endRecording();
-    // The save can change during the recording. The new save shows itself.
+    // The save can change in place during the recording. The overlay and the
+    // gate belong to the workers, which the new engine keeps, so clean up
+    // through the engine that is active now.
     const active = activeEu5Store()?.getState().engine;
-    if (active === engine) {
+    if (active) {
       const state = get();
       if (state.kind === "live") {
         const token = ++lastToken;
         shownToken = token;
-        void engine.trigger.clearOverlay(token).catch(ignore);
-        if (gated) void engine.trigger.setInputGate(null).catch(ignore);
+        void active.trigger.clearOverlay(token).catch(ignore);
+        if (gated) void active.trigger.setInputGate(null).catch(ignore);
       } else {
-        present(engine, state.snapshotId, mode);
+        present(active, state.snapshotId, mode);
       }
     }
   }
