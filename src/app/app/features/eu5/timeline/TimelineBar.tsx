@@ -63,7 +63,7 @@ export function TimelineBar() {
         !!source &&
         !!version &&
         sameFileVersion(version, source.version) &&
-        !!history?.readyHashes.has(source.hash)
+        !!history?.readyIds.has(source.snapshotId)
       )
         return "ready";
       if (analyzingEntryIds.includes(save.source.entryId)) return "analyzing";
@@ -76,7 +76,7 @@ export function TimelineBar() {
         return "failed";
       return "pending";
     },
-    [sources, history?.readyHashes, analyzingEntryIds, failedSources],
+    [sources, history?.readyIds, analyzingEntryIds, failedSources],
   );
   const campaign = useTimelineCampaign(
     controller?.timeline.start,

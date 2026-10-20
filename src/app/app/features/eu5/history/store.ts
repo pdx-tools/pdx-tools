@@ -1,3 +1,4 @@
+import type { FileVersion } from "@/features/campaign/types";
 import { create } from "zustand";
 import { compareDescriptors } from "@/features/campaign/analysis/descriptor";
 import type { SourceAssociation } from "@/features/campaign/analysis/descriptor";

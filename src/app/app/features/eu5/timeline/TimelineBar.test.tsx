@@ -81,7 +81,7 @@ it("shows the timeline while analysis has no completed frames", () => {
   mocks.mode = "control";
   mocks.history = {
     enabled: true,
-    readyHashes: new Set(),
+    readyIds: new Set(),
     controller: { timeline: { start: { year: 1337, month: 1, day: 1 } }, locked: true },
   } as unknown as MapHistoryValue;
   const html = renderToStaticMarkup(<TimelineBar />);
@@ -91,10 +91,10 @@ it("shows the timeline while analysis has no completed frames", () => {
 });
 
 it("marks only matching file versions with resident map frames as ready", () => {
-  mocks.history = { enabled: true, readyHashes: new Set(["hash"]) } as MapHistoryValue;
+  mocks.history = { enabled: true, readyIds: new Set(["hash"]) } as MapHistoryValue;
   const save = { source: { kind: "local", entryId: "entry" } } as CampaignSave;
   useHistory.setState({
-    sources: { entry: { hash: "hash", version: { size: 10, lastModified: 1 } } },
+    sources: { entry: { snapshotId: "hash", version: { size: 10, lastModified: 1 } } },
   });
   renderToStaticMarkup(<TimelineBar />);
   expect(mocks.status?.(save)).toBe("ready");
@@ -116,7 +116,7 @@ it("shows a reading indicator while new timeline dates are withheld", () => {
   expect(renderToStaticMarkup(<TimelineBar />)).toContain("12 remaining");
 });
 it("uses red for a failed file until it succeeds or its version changes", () => {
-  mocks.history = { enabled: true, readyHashes: new Set() } as MapHistoryValue;
+  mocks.history = { enabled: true, readyIds: new Set() } as MapHistoryValue;
   const save = { source: { kind: "local", entryId: "entry" } } as CampaignSave;
   useHistory.setState({
     failedSources: { entry: { version: { size: 10, lastModified: 1 }, error: "parse error" } },
