@@ -95,6 +95,12 @@ export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allo
       stashed = stashOp;
     }
 
+    /** Record the source of a save that the parser reads itself, for a later melt */
+    setSource(stashOp: StashOp) {
+      bytes = new Uint8Array();
+      stashed = stashOp;
+    }
+
     supportsFileObserver() {
       return stashed?.kind === "handle";
     }
