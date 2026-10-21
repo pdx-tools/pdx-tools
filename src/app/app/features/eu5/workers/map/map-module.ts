@@ -29,6 +29,7 @@ import { layoutTimelapseFrame } from "@pdx.tools/timelapse";
 import type {
   DatePlateColors,
   DatePlateFonts,
+  TimelapseTrack,
   MapViewport,
   TimelapseEncoder,
   TimelapseFile,
@@ -758,11 +759,13 @@ export const createMapEngine = async (
       output,
       colors,
       fonts,
+      track,
     }: {
       framing: TimelapseFraming;
       output: { width: number; height: number };
       colors: DatePlateColors;
       fonts: DatePlateFonts;
+      track: TimelapseTrack;
     }): Promise<TimelapseFrameLayout> => {
       await closeRecording()?.encoder.abort();
 
@@ -787,7 +790,14 @@ export const createMapEngine = async (
       try {
         // Loaded on demand: the muxer is large, and most sessions never record.
         const { TimelapseEncoder } = await import("@pdx.tools/timelapse/encoder");
-        const encoder = await TimelapseEncoder.create({ layout, output, colors, fonts, log });
+        const encoder = await TimelapseEncoder.create({
+          layout,
+          output,
+          colors,
+          fonts,
+          track,
+          log,
+        });
         recording = { canvas, renderer, encoder, rect: layout.rect };
       } catch (e) {
         renderer.free();

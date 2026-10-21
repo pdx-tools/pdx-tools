@@ -401,6 +401,8 @@ export const createEu4Store = async ({
             output: { width: plan.quality.width, height: plan.quality.height },
             colors: readDatePlateColors(),
             fonts: readDatePlateFonts(),
+            // A continuous film skips nothing, so the track has no saved dates.
+            track: { start: timeline.start, end: timeline.end, saves: [] },
           });
           let due = performance.now();
           for (let frame = 0; frame < plan.frames; frame += 1) {

@@ -1,5 +1,6 @@
 /**
- * The one thing burned into an exported timelapse: the date, to the month.
+ * The date burned into an exported timelapse, to the month. The track beside
+ * it (see `track.ts`) places that date in the campaign.
  *
  * The month is what ties the plate to the map: a border that moves mid-year
  * moves against a date that is visibly advancing, where a plate that only
@@ -53,6 +54,26 @@ export type DatePlateColors = {
   line: string;
   year: string;
   month: string;
+  /** The track ahead of the playhead, and the round-year notches. */
+  track: string;
+  /** The track behind the playhead. */
+  trackPlayed: string;
+  /** A saved date on the track. */
+  trackSave: string;
+  /** The years at the two ends of the track. */
+  trackLabel: string;
+};
+
+/** Where the plate was drawn, in output pixels, for the track beside it. */
+export type DatePlateBox = {
+  /** True when the plate sits in the matte below the map. */
+  inMatte: boolean;
+  y: number;
+  height: number;
+  right: number;
+  radius: number;
+  /** The distance from the frame's edge to the plate. */
+  inset: number;
 };
 
 export type DatePlateFace = { weight: string; url: string };
@@ -124,7 +145,7 @@ export function drawDatePlate({
   bandBottom: number;
   /** The frame's matte color, for the strip the plate sits in below the map. */
   matte: string;
-}) {
+}): DatePlateBox {
   const height = PLATE_HEIGHT * scale;
   const radius = PLATE_RADIUS * scale;
   const padding = PLATE_PADDING * scale;
@@ -189,4 +210,6 @@ export function drawDatePlate({
   ctx.fillStyle = colors.month;
   ctx.fillText(monthText, yearRight + FIGURE_GAP * scale, baselineY);
   ctx.restore();
+
+  return { inMatte, y, height, right: inset + width, radius, inset };
 }

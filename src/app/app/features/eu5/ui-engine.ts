@@ -29,7 +29,12 @@ import {
   timelapseQuality,
 } from "@pdx.tools/timelapse";
 import { readDatePlateColors, readDatePlateFonts } from "@/features/timeline/datePlate";
-import type { MapViewport, TimelapseFile, TimelapseOptions } from "@pdx.tools/timelapse";
+import type {
+  MapViewport,
+  TimelapseFile,
+  TimelapseOptions,
+  TimelapseTrack,
+} from "@pdx.tools/timelapse";
 import type {
   TimelapseProgress,
   TimelapseStatus,
@@ -601,6 +606,7 @@ export class Eu5UIEngine implements AppEngine {
     try {
       return await this.runRecording({
         options,
+        track: { start: timeline.start, end: timeline.end, saves: [] },
         steps: plan.frames,
         bytes: plan.bytes,
         step: async (frame) => {
@@ -648,6 +654,13 @@ export class Eu5UIEngine implements AppEngine {
 
     return this.runRecording({
       options,
+      // The track marks each date the film shows, so a gap between two saves
+      // is visible as a stretch with no mark.
+      track: {
+        start: steps[0].date,
+        end: steps[steps.length - 1].date,
+        saves: steps.map((step) => step.date),
+      },
       steps: steps.length,
       bytes: plan.bytes,
       step: async (index) => {
@@ -681,11 +694,13 @@ export class Eu5UIEngine implements AppEngine {
    */
   private async runRecording({
     options,
+    track,
     steps,
     bytes,
     step,
   }: {
     options: TimelapseOptions;
+    track: TimelapseTrack;
     steps: number;
     /** The planned file size, for the log. */
     bytes: number;
@@ -709,6 +724,7 @@ export class Eu5UIEngine implements AppEngine {
         output,
         colors: readDatePlateColors(),
         fonts: readDatePlateFonts(),
+        track,
       });
 
       // When the frame on screen should give way to the next one.

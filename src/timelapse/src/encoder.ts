@@ -2,7 +2,7 @@
  * Encodes a campaign timelapse into a file a player can post.
  *
  * Each frame is the rendered map on the recording surface; this composes it
- * into the output frame — matte, map, date — and hands it to the platform's
+ * into the output frame — matte, map, date, track — and hands it to the platform's
  * video encoder. MP4 is asked for first, because that is what Reddit and
  * Discord play inline, with WebM as the fallback when a browser cannot
  * produce H.264.
@@ -27,6 +27,8 @@ import { repairAvcDescription } from "./avc";
 import { TIMELAPSE_FPS, timelapseBitrate } from "./options";
 import { drawDatePlate, loadDatePlateFonts } from "./datePlate";
 import type { DatePlateColors, DatePlateFonts } from "./datePlate";
+import { drawTimelapseTrack } from "./track";
+import type { TimelapseTrack } from "./track";
 
 export type VideoEncoding = "mp4" | "webm";
 
@@ -76,6 +78,7 @@ export class TimelapseEncoder {
     private layout: TimelapseFrameLayout,
     private colors: DatePlateColors,
     private fonts: DatePlateFonts,
+    private track: TimelapseTrack,
     readonly extension: VideoEncoding,
     private log: TimelapseLog,
   ) {
@@ -120,14 +123,24 @@ export class TimelapseEncoder {
     const ctx = this.ctx2d;
     ctx.drawImage(surface, offset.x, offset.y, band.width, band.height);
 
-    drawDatePlate({
+    const scale = ctx.canvas.height / 1080;
+    const plate = drawDatePlate({
       ctx,
       date,
-      scale: ctx.canvas.height / 1080,
+      scale,
       colors: this.colors,
       fonts: this.fonts,
       bandBottom: offset.y + band.height,
       matte: MATTE,
+    });
+    drawTimelapseTrack({
+      ctx,
+      track: this.track,
+      date,
+      scale,
+      colors: this.colors,
+      fonts: this.fonts,
+      plate,
     });
 
     const duration = 1_000_000 / TIMELAPSE_FPS; // microseconds
@@ -197,12 +210,14 @@ export class TimelapseEncoder {
     output,
     colors,
     fonts,
+    track,
     log = () => {},
   }: {
     layout: TimelapseFrameLayout;
     output: { width: number; height: number };
     colors: DatePlateColors;
     fonts: DatePlateFonts;
+    track: TimelapseTrack;
     log?: TimelapseLog;
   }): Promise<TimelapseEncoder> {
     // H.264 encodes even dimensions only.
@@ -270,6 +285,7 @@ export class TimelapseEncoder {
       layout,
       colors,
       fonts,
+      track,
       encoding,
       log,
     );

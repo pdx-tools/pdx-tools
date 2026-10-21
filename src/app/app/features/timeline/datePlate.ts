@@ -41,6 +41,10 @@ export function readDatePlateColors(): DatePlateColors {
       line: "rgba(255, 255, 255, 0.1)",
       year: resolve("--game-ink-100", "#f0ebe3"),
       month: resolve("--game-ink-300", "#cdc6bb"),
+      track: resolve("--game-ink-700", "#5a5753"),
+      trackPlayed: resolve("--game-ink-300", "#cdc6bb"),
+      trackSave: resolve("--game-ink-500", "#a39d94"),
+      trackLabel: resolve("--game-ink-500", "#a39d94"),
     };
   } finally {
     probe.remove();

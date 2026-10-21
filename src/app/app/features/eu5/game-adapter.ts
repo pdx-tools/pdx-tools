@@ -25,6 +25,7 @@ import type { CursorHint, LocationClickChangeEvent } from "./workers/map/map-mod
 import type {
   DatePlateColors,
   DatePlateFonts,
+  TimelapseTrack,
   MapViewport,
   TimelapseFile,
   TimelapseFraming,
@@ -390,6 +391,7 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
       output: { width: number; height: number };
       colors: DatePlateColors;
       fonts: DatePlateFonts;
+      track: TimelapseTrack;
     }): Promise<TimelapseFrameLayout> => {
       return mapEngine.beginTimelapseRecording(options);
     },

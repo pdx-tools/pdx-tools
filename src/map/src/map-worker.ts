@@ -26,6 +26,7 @@ import type {
   DateComponents,
   DatePlateColors,
   DatePlateFonts,
+  TimelapseTrack,
   TimelapseEncoder,
   TimelapseFile,
   TimelapseFraming,
@@ -38,6 +39,7 @@ export type RecordingOptions = {
   output: { width: number; height: number };
   colors: DatePlateColors;
   fonts: DatePlateFonts;
+  track: TimelapseTrack;
 };
 
 type OpenRecording = {
@@ -436,6 +438,7 @@ export async function beginRecording(
       output: options.output,
       colors: options.colors,
       fonts: options.fonts,
+      track: options.track,
     });
   } catch (e) {
     releaseRecordingMap(map);
