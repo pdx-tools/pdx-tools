@@ -129,6 +129,12 @@ const reply = (snapshotId: string, accepted = true): OverlayReply => ({
   observation: {
     id: snapshotId,
     game: "eu5",
+    fileName: "test.eu5",
+    countryNames: {},
+    goods: [],
+    marketLabels: {},
+    population: 0,
+    development: 0,
     campaignId: "campaign",
     contentHash: snapshotId,
     date: "1360-01-01",

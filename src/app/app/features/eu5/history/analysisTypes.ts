@@ -1,3 +1,6 @@
+import type { PackedSnapshot } from "./packedSnapshot";
+import type { PackedOverviews } from "./packedOverview";
+import type { Snapshot } from "./types";
 import type { SnapshotDescriptor } from "@/features/campaign/analysis/descriptor";
 import type { WorldSummary } from "@/wasm/wasm_eu5";
 
@@ -23,11 +26,31 @@ export type Eu5SnapshotDescriptor = SnapshotDescriptor & {
   game: "eu5";
   layoutKey: string;
   world: WorldSummary;
+  fileName: string;
+  countryNames: Record<string, string>;
+  goods: string[];
+  marketLabels: Record<string, string>;
+  population: number;
+  development: number;
 };
 /** What a game worker reads to paint a snapshot. */
 export type MapFrame = { descriptor: Eu5SnapshotDescriptor; projection: MapProjection };
 
-export type Eu5Payload = { projection: MapProjection };
+export type Eu5Payload = {
+  projection: MapProjection;
+  snapshot: PackedSnapshot;
+  overviews: PackedOverviews;
+  countryIds: Uint32Array<ArrayBuffer>;
+  worldSnapshot?: Snapshot["countries"][number];
+};
 
 /** The parser output for one save. */
 export type SaveAnalysis = { descriptor: Eu5SnapshotDescriptor; payload: Eu5Payload };
+
+export type HistoryQuery = {
+  campaignId: string;
+  country?: string;
+  good?: string;
+  centers?: number[];
+};
+export type AnalysisEntity = { kind: "country" | "market" | "location"; id: number };

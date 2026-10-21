@@ -269,11 +269,17 @@ function useMapHistoryState() {
   // The date and legend follow the frame that the map shows, not the request.
   // A recording shows its snapshots, with or without a preview.
   const previewView: {
-    shown: { date: DateComponents; gradient: GradientConfig | null } | null;
+    shown: { date: DateComponents; gradient: GradientConfig | null; snapshotId?: string } | null;
   } | null = recordingDate
     ? { shown: { date: recordingDate, gradient: recordingGradient } }
     : previewing
-      ? { shown: shown && { date: shown.date, gradient: shown.gradient } }
+      ? {
+          shown: shown && {
+            date: shown.date,
+            gradient: shown.gradient,
+            snapshotId: shown.snapshotId,
+          },
+        }
       : null;
   return {
     controller,

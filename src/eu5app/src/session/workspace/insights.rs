@@ -226,7 +226,51 @@ fn percentile_desc(sorted_desc: &[(LocationIdx, f64)], q: f64) -> f64 {
     sorted_desc[last - ascending_rank].1
 }
 
-impl<'bump> Eu5Workspace<'bump> {
+use crate::map_measurements::location_building_levels;
+
+pub(crate) struct InsightContext<'a, 'bump> {
+    gamestate: &'a Gamestate<'bump>,
+    selection_state: &'a SelectionState,
+    pub(super) current_map_mode: MapMode,
+    game_data: &'a GameData,
+    building_levels: &'a OnceLock<LocationIndexedVec<f64>>,
+}
+impl<'a, 'bump> InsightContext<'a, 'bump> {
+    pub(crate) fn new(
+        gamestate: &'a Gamestate<'bump>,
+        selection_state: &'a SelectionState,
+        current_map_mode: MapMode,
+        game_data: &'a GameData,
+        building_levels: &'a OnceLock<LocationIndexedVec<f64>>,
+    ) -> Self {
+        Self {
+            gamestate,
+            selection_state,
+            current_map_mode,
+            game_data,
+            building_levels,
+        }
+    }
+    fn country_ref_from_country_idx(&self, country_idx: CountryIdx) -> CountryRefSource {
+        CountryRefSource { country_idx }
+    }
+    fn owner_country_ref_for_location(
+        &self,
+        loc: &eu5save::models::Location<'_>,
+    ) -> Option<CountryRefSource> {
+        let country_idx = self
+            .gamestate
+            .countries
+            .get(loc.owner.real_id()?.country_id())?;
+        Some(CountryRefSource { country_idx })
+    }
+    fn get_location_building_levels(&self) -> &LocationIndexedVec<f64> {
+        self.building_levels
+            .get_or_init(|| location_building_levels(self.gamestate))
+    }
+}
+
+impl<'a, 'bump> InsightContext<'a, 'bump> {
     pub(crate) fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
         #[derive(Default)]
         struct PoliticalCountryAgg {
@@ -457,8 +501,6 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Returns a histogram distribution of per-location metric values for the
     /// current map mode over the current selection (or all locations if empty).
     pub(crate) fn selection_location_distribution(&self) -> LocationDistribution {
-        let building_levels = self.get_location_building_levels();
-
         let metric_label = match self.current_map_mode {
             MapMode::Control => "Control",
             MapMode::Population => "Population",
@@ -481,11 +523,11 @@ impl<'bump> Eu5Workspace<'bump> {
                 MapMode::Control => loc.control,
                 MapMode::Population => self.gamestate.location_population(loc),
                 MapMode::RgoLevel => loc.rgo_level,
-                MapMode::BuildingLevels => building_levels[idx],
+                MapMode::BuildingLevels => self.get_location_building_levels()[idx],
                 MapMode::Wealth | MapMode::Markets => loc.possible_tax,
                 MapMode::UnrealizedTaxBase => loc.possible_tax - loc.tax,
                 MapMode::StateEfficacy => loc.control * loc.development,
-                MapMode::PopulationGrowth => location_reproduction_rate(&self.gamestate, loc),
+                MapMode::PopulationGrowth => location_reproduction_rate(self.gamestate, loc),
                 _ => loc.development,
             };
             metrics.push((idx, value));
@@ -820,7 +862,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// location sits inside the current location filter (or every market if the
     /// selection is empty). Production-opportunity rows only include locations
     /// in the current scope.
-    pub(crate) fn calculate_market_insight(&self) -> MarketInsightData<'_> {
+    pub(crate) fn calculate_market_insight(&self) -> MarketInsightData<'a> {
         use eu5save::models::LocationId;
 
         let is_empty_selection = self.selection_state.is_empty();
@@ -993,7 +1035,7 @@ impl<'bump> Eu5Workspace<'bump> {
             }
         }
 
-        let mut goods: Vec<ScopedGoodSummary<'_>> = good_aggs
+        let mut goods: Vec<ScopedGoodSummary<'a>> = good_aggs
             .into_iter()
             .map(|(name, agg)| {
                 let weighted_price = if agg.price_weighted_denom > 0.0 {
@@ -1440,7 +1482,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// The whole map: owned locations, owning countries, and their people.
     pub fn world_summary(&self) -> WorldSummary {
-        crate::map_projection::world_summary(&self.gamestate)
+        crate::map_projection::world_summary(self.gamestate)
     }
 
     /// Owned locations per country over the whole map, used to tell a fully
@@ -1485,7 +1527,7 @@ impl<'bump> Eu5Workspace<'bump> {
             };
 
             let births = location_yearly_births(loc);
-            let rate = location_reproduction_rate(&self.gamestate, loc);
+            let rate = location_reproduction_rate(self.gamestate, loc);
             let population = self.gamestate.location_population(loc) as u32;
             scoped.push((idx, rate, births, population));
 
@@ -1770,7 +1812,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub(crate) fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData<'_> {
+    pub(crate) fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData<'bump> {
         use crate::presentation::BuildingKeyRef;
         use eu5save::models::CountryId;
 
@@ -2128,7 +2170,7 @@ impl<'bump> Eu5Workspace<'bump> {
         }
     }
 
-    pub(crate) fn calculate_rgo_insight(&self) -> RgoInsightData<'_> {
+    pub(crate) fn calculate_rgo_insight(&self) -> RgoInsightData<'bump> {
         const TOP_LOCATIONS_CAP: usize = 50;
         const PROFILE_DELTA_CAP: usize = 20;
 
@@ -2535,6 +2577,66 @@ impl<'bump> Eu5Workspace<'bump> {
             scatter_countries,
             top_locations,
         }
+    }
+}
+
+impl<'bump> Eu5Workspace<'bump> {
+    fn analysis_context(&self) -> InsightContext<'_, 'bump> {
+        InsightContext::new(
+            &self.gamestate,
+            &self.selection_state,
+            self.current_map_mode,
+            &self.game_data,
+            &self.location_building_levels,
+        )
+    }
+    pub(crate) fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
+        self.analysis_context()
+            .calculate_political_world_scoreboard()
+    }
+    pub(crate) fn calculate_state_efficacy_insight(&self) -> StateEfficacyInsightData {
+        self.analysis_context().calculate_state_efficacy_insight()
+    }
+    pub(crate) fn calculate_development_insight(&self) -> DevelopmentInsightData {
+        self.analysis_context().calculate_development_insight()
+    }
+    pub(crate) fn calculate_wealth_insight(&self) -> WealthInsightData {
+        self.analysis_context().calculate_wealth_insight()
+    }
+    pub(crate) fn calculate_unrealized_tax_base_insight(&self) -> UnrealizedTaxBaseInsightData {
+        self.analysis_context()
+            .calculate_unrealized_tax_base_insight()
+    }
+    pub(crate) fn calculate_market_insight(&self) -> MarketInsightData<'_> {
+        self.analysis_context().calculate_market_insight()
+    }
+    pub(crate) fn calculate_population_insight(&self) -> PopulationInsightData {
+        self.analysis_context().calculate_population_insight()
+    }
+    pub fn world_summary(&self) -> WorldSummary {
+        self.analysis_context().world_summary()
+    }
+    pub(crate) fn calculate_population_growth_insight(&self) -> PopulationGrowthInsightData {
+        self.analysis_context()
+            .calculate_population_growth_insight()
+    }
+    pub(crate) fn calculate_religion_insight(&self) -> ReligionInsightData {
+        self.analysis_context().calculate_religion_insight()
+    }
+    pub(crate) fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData<'_> {
+        self.analysis_context().calculate_building_levels_insight()
+    }
+    pub fn get_wealth_scope(&self) -> WealthScope {
+        self.analysis_context().get_wealth_scope()
+    }
+    pub fn get_unrealized_tax_base_scope(&self) -> UnrealizedTaxBaseScope {
+        self.analysis_context().get_unrealized_tax_base_scope()
+    }
+    pub(crate) fn calculate_rgo_insight(&self) -> RgoInsightData<'_> {
+        self.analysis_context().calculate_rgo_insight()
+    }
+    pub(crate) fn calculate_control_insight(&self) -> ControlInsightData {
+        self.analysis_context().calculate_control_insight()
     }
 }
 

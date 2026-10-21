@@ -1,3 +1,4 @@
+import type { OverviewData } from "@/wasm/wasm_eu5";
 import { transfer } from "comlink";
 import { createAnalysisWorker } from "@/features/campaign/analysis/workerClient";
 import { collectBuffers } from "@/features/campaign/analysis/transferBuffers";
@@ -30,4 +31,11 @@ export const connectAnalysisFrames = worker.connectFrames;
 
 export function appendAnalysis(save: SaveAnalysis) {
   return campaignAnalysis().append(transfer(save, collectBuffers(save)));
+}
+
+export async function queryAnalysisOverview<K extends keyof OverviewData>(hash: string, key: K) {
+  return (await campaignAnalysis().queryOverview(hash, key)) as {
+    hash: string;
+    data: OverviewData[K];
+  };
 }
