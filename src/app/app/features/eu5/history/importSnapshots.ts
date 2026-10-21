@@ -20,6 +20,8 @@ export type ImportOptions = {
   ) => void;
   /** Files currently assigned to parser workers, including analytical publication. */
   onActiveFiles?: (files: readonly File[]) => void;
+  /** Preserve file identity for status display, even when names are duplicated. */
+  onFileError?: (file: File, error: string) => void;
 };
 /** Stream normal-parser output into one resident analysis worker, without disk writes. */
 export async function importTimeline(files: File[], options: ImportOptions) {
@@ -57,6 +59,7 @@ export async function importTimeline(files: File[], options: ImportOptions) {
       signal.throwIfAborted();
       if (!file.name.toLowerCase().endsWith(".eu5")) {
         errors.push({ fileName: file.name, error: "Not an EU5 save" });
+        options.onFileError?.(file, "Not an EU5 save");
         progress(file.name);
         continue;
       }
@@ -124,7 +127,10 @@ export async function importTimeline(files: File[], options: ImportOptions) {
               // More saves cannot fit, so do not parse them.
               memoryFull ??= error.message;
               refused++;
-            } else errors.push({ fileName: file.name, error: String(error) });
+            } else {
+              errors.push({ fileName: file.name, error: String(error) });
+              options.onFileError?.(file, String(error));
+            }
           } finally {
             active.delete(file);
             options.onActiveFiles?.([...active]);

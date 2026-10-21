@@ -219,7 +219,8 @@ it("reuses parser workers between saves, including a failed parse, and releases 
 it("stops parsing when the store is full and counts the saves that it refused", async () => {
   const full = Object.assign(Error("Campaign analysis is full."), { name: "AnalysisMemoryLimit" });
   mocks.append.mockImplementationOnce(async () => appended(0)).mockRejectedValueOnce(full);
-  const opts = options({ concurrency: 1 });
+  const onFileError = vi.fn();
+  const opts = options({ concurrency: 1, onFileError });
   const result = await importTimeline(
     [0, 1, 2, 3].map((i) => new File(["save"], `save-${i}.eu5`)),
     opts,
@@ -228,4 +229,14 @@ it("stops parsing when the store is full and counts the saves that it refused", 
   expect(opts.onSnapshots).toHaveBeenCalledOnce();
   expect(result.errors).toEqual([]);
   expect(result.memoryFull).toEqual({ message: "Campaign analysis is full.", refused: 3 });
+  expect(onFileError).not.toHaveBeenCalled();
+});
+
+it("reports failed files by identity when names match", async () => {
+  const bad = new File(["bad"], "same.eu5");
+  const good = new File(["good"], "same.eu5");
+  mocks.parseImport.mockRejectedValueOnce(Error("invalid save"));
+  const onFileError = vi.fn();
+  await importTimeline([bad, good], options({ concurrency: 1, onFileError }));
+  expect(onFileError).toHaveBeenCalledExactlyOnceWith(bad, "Error: invalid save");
 });

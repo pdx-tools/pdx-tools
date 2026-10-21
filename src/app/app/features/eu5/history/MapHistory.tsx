@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useState } from "react";
-import { useCampaign } from "@/features/campaign/CampaignProvider";
+import { useCampaign, useCampaignTimeline } from "@/features/campaign/CampaignProvider";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { addDays, addMonths, addYears, daysBetween } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
@@ -57,17 +57,29 @@ function useMapHistoryState() {
   );
   const saveDate = useEu5SaveDate();
   const campaign = useCampaign();
+  const timelineCampaign = useCampaignTimeline();
   const progress = useHistory((history) => history.progress);
   const imported = useHistory((history) => history.snapshots);
   const speed = useHistory((history) => history.playbackSpeed);
   const preview = usePreviewSession();
   const [layout, setLayout] = useState<{ engine: typeof engine; key: string } | null>(null);
+  const timelinePending = timelineCampaign?.pending ?? 0;
+  const timelineSaves = timelineCampaign?.saves;
+  const publishedDates = useMemo(
+    () =>
+      timelinePending
+        ? new Set(timelineSaves?.map(({ date }) => date.year * 10000 + date.month * 100 + date.day))
+        : null,
+    [timelinePending, timelineSaves],
+  );
   const frames = useMemo(
     () =>
       layout?.engine === engine && campaignId
-        ? publishedMapFrames(imported, campaignId, layout.key)
+        ? publishedMapFrames(imported, campaignId, layout.key).filter(
+            (frame) => !publishedDates || publishedDates.has(frame.dateSort),
+          )
         : EMPTY_FRAMES,
-    [layout, engine, campaignId, imported],
+    [layout, engine, campaignId, imported, publishedDates],
   );
   // Read again when the sources or the registry change.
   useHistory((history) => history.sources);
@@ -199,8 +211,9 @@ function useMapHistoryState() {
     const { start, end } = mapTimelineBounds(
       saveDate,
       frames,
-      campaign?.saves.filter((save) => save.membership !== "different").map((save) => save.date) ??
-        [],
+      timelineCampaign?.saves
+        .filter((save) => save.membership !== "different")
+        .map((save) => save.date) ?? [],
     );
     const date = recordingDate ?? (selectedFrame ? mapFrameDate(selectedFrame) : saveDate);
     const setDate: TimelineController["setDate"] = (next) => {
