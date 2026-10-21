@@ -9,7 +9,12 @@ const mocks = vi.hoisted(() => ({
   publish: vi.fn(async () => {}),
   analyze: vi.fn(async () => {}),
 }));
-vi.mock("@/features/engine", () => ({ useFilePublisher: () => mocks.publish }));
+vi.mock("@/features/engine", () => ({
+  useFilePublisher: (options: { openSave?: boolean }) => {
+    expect(options).toEqual({ openSave: false });
+    return mocks.publish;
+  },
+}));
 vi.mock("../history/useIsCampaignAnalysisEnabled", () => ({
   useIsCampaignAnalysisEnabled: () => mocks.developer,
 }));

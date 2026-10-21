@@ -17,7 +17,7 @@ import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import type { TimelineController } from "@/features/timeline/controller";
 import { useTimelineController } from "./useTimelineController";
-import { useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
+import { useEu5Input, useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";
 import styles from "./TimelineBar.module.css";
@@ -45,7 +45,12 @@ function usePresence(open: boolean) {
  * from the same compact analytical timeline.
  */
 export function TimelineBar() {
-  const pendingDates = useCampaign()?.pending ?? 0;
+  const navigation = useCampaign();
+  const pendingDates = navigation?.pending ?? 0;
+  const input = useEu5Input();
+  const hasLocalSaves =
+    input.kind !== "server" ||
+    navigation?.saves.some((save) => save.source.kind === "local" && save.source.entryId);
   const ownership = useTimelineController();
   const history = useMapHistory();
   const mapMode = useEu5MapMode();
@@ -54,8 +59,8 @@ export function TimelineBar() {
   const failedSources = useHistory((state) => state.failedSources);
   const analyzingEntryIds = useHistory((state) => state.analyzingEntryIds);
   const analysisStatus = useCallback(
-    (save: CampaignSave): SaveAnalysisStatus => {
-      if (save.source.kind !== "local" || !save.source.entryId) return "pending";
+    (save: CampaignSave): SaveAnalysisStatus | undefined => {
+      if (save.source.kind !== "local" || !save.source.entryId) return undefined;
       const source = sources[save.source.entryId];
       const entry = localSaveRegistry.get(save.source.entryId);
       const version = entry?.ref.kind === "file" ? entry.ref.file : entry?.version;
@@ -125,7 +130,7 @@ export function TimelineBar() {
         ) : (
           <TimelapseExport controller={controller} />
         )}
-        {history?.enabled && (
+        {history?.enabled && hasLocalSaves && (
           <span
             className="flex flex-col gap-0.5 text-[10px] leading-tight text-game-ink-500"
             aria-label="Save analysis status"

@@ -1,5 +1,5 @@
 import type { FileKind } from "@/hooks/useFileDrop";
-import { extensionType, isSaveLoaded, useEngineActions } from "../engineStore";
+import { extensionType, useEngineActions } from "../engineStore";
 import type { SaveGameInput } from "../engineStore";
 import { localSaveInput, registerLocalSaves } from "@/features/campaign/localSaves";
 import { localSaveName } from "@/features/campaign/types";
@@ -107,13 +107,12 @@ async function publishFiles(inputs: AnalyzeInput[]): Promise<SaveGameInput | nul
   return localSaveInput(game, opened.ref);
 }
 
-export function useFilePublisher() {
+/** Drops and home-page selections open a save; sidebar additions only extend the campaign. */
+export function useFilePublisher({ openSave = true }: { openSave?: boolean } = {}) {
   const { fileInput } = useEngineActions();
   return async (input: AnalyzeInput | AnalyzeInput[]) => {
     const save = await publishFiles(Array.isArray(input) ? input : [input]);
-    if (save === null) return;
-    // Check at dispatch time: another selection may have opened a save while we waited.
-    if ((save.kind === "eu4" || save.kind === "eu5") && isSaveLoaded()) return;
+    if (save === null || !openSave) return;
     fileInput(save);
   };
 }

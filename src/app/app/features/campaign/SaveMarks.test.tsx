@@ -38,13 +38,15 @@ function Track({
     start,
     ready &&
       ((save) =>
-        ready.has(save.key)
-          ? "ready"
-          : failed.has(save.key)
-            ? "failed"
-            : analyzing.has(save.key)
-              ? "analyzing"
-              : "pending"),
+        save.source.kind === "upload"
+          ? undefined
+          : ready.has(save.key)
+            ? "ready"
+            : failed.has(save.key)
+              ? "failed"
+              : analyzing.has(save.key)
+                ? "analyzing"
+                : "pending"),
   );
   return <>{campaign?.lane({ px: (day) => day, width: 100, trackY: 20, top: 30, height: 16 })}</>;
 }
@@ -135,3 +137,26 @@ it.each(["ready", "pending", "analyzing", "failed"] as const)(
     if (status === "failed") expect(html).toContain("M2.5 3 L6.5 7 M6.5 3 L2.5 7");
   },
 );
+
+it("keeps uploaded saves as ordinary navigation bookmarks when analysis is enabled", () => {
+  mocks.saves = [save("upload"), save("another", 20)].map((s) => ({
+    ...s,
+    source: { kind: "upload", saveId: s.key, uploaderId: null, userName: "" },
+  }));
+  const html = renderToString(<Track ready={new Set()} />);
+  expect(html).not.toContain("data-analysis");
+  expect(html).not.toContain("Waiting for analysis");
+  expect(html).not.toContain("animate-analysis-pulse");
+  expect(html).toContain("fill-game-ink-300");
+});
+it("does not count uploaded saves as unfinished members of a local analysis cluster", () => {
+  const uploaded: CampaignSave = {
+    ...save("upload", 2),
+    source: { kind: "upload", saveId: "upload", uploaderId: null, userName: "" },
+  };
+  mocks.saves = [save("local"), uploaded];
+  const html = renderToString(<Track ready={new Set(["local"])} />);
+  expect(html).toContain('data-analysis="ready"');
+  expect(html).not.toContain("waiting");
+  expect(html).not.toContain("analyzing");
+});

@@ -25,7 +25,8 @@ type Cluster = {
   saves: readonly CampaignSave[];
   analysis?: { status: SaveAnalysisStatus; label: string };
 };
-type AnalysisStatus = (save: CampaignSave) => SaveAnalysisStatus;
+/** Undefined keeps unsupported sources as ordinary navigation bookmarks. */
+type AnalysisStatus = (save: CampaignSave) => SaveAnalysisStatus | undefined;
 
 function clusterSaves(
   saves: readonly CampaignSave[],
@@ -55,17 +56,24 @@ function clusterSaves(
 /** A mixed cluster stays active while any save is being analyzed. */
 function summarizeAnalysis(saves: readonly CampaignSave[], statusOf: AnalysisStatus) {
   const counts = { ready: 0, analyzing: 0, pending: 0, failed: 0 };
-  for (const save of saves) counts[statusOf(save)]++;
+  let supported = 0;
+  for (const save of saves) {
+    const status = statusOf(save);
+    if (status === undefined) continue;
+    counts[status]++;
+    supported++;
+  }
+  if (supported === 0) return undefined;
   const status: SaveAnalysisStatus =
     counts.failed > 0
       ? "failed"
-      : counts.ready === saves.length
+      : counts.ready === supported
         ? "ready"
         : counts.analyzing > 0
           ? "analyzing"
           : "pending";
   const label =
-    saves.length === 1
+    supported === 1
       ? saveAnalysisPresentation[status].description
       : [
           counts.ready && `${counts.ready} analyzed`,

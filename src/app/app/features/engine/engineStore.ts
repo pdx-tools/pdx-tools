@@ -59,16 +59,4 @@ const useEngineStore = create<EngineState>()((set, get) => ({
 
 export const useSaveFileInput = () => useEngineStore((x) => x.input);
 export const useEngineActions = () => useEngineStore((x) => x.actions);
-const campaignViewers = new Set<symbol>();
-
-/** Include uploaded-save viewers, whose input belongs to their route rather than this store. */
-export function registerCampaignViewer() {
-  const token = Symbol("campaign viewer");
-  campaignViewers.add(token);
-  return () => {
-    campaignViewers.delete(token);
-  };
-}
-
-export const isSaveLoaded = () =>
-  useEngineStore.getState().input !== null || campaignViewers.size > 0;
+export const isSaveLoaded = () => useEngineStore.getState().input !== null;

@@ -13,7 +13,7 @@ import { ImportProgress } from "../history/ImportProgress";
 import { analyzeCampaign } from "../history/analyzeCampaign";
 
 export function AddCampaignSaves() {
-  const publishFile = useFilePublisher();
+  const publishFile = useFilePublisher({ openSave: false });
   const featureEnabled = useIsCampaignAnalysisEnabled();
   const input = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);

@@ -8,12 +8,14 @@ import type * as HistoryStore from "../history/store";
 const mocks = vi.hoisted(() => ({
   mode: "political",
   pending: 0,
+  inputKind: "file" as "file" | "server",
+  saves: [] as CampaignSave[],
   history: null as MapHistoryValue | null,
   status: undefined as ((save: CampaignSave) => SaveAnalysisStatus) | undefined,
   entry: null as { ref: { kind: "file"; file: { size: number; lastModified: number } } } | null,
 }));
 vi.mock("@/features/campaign/CampaignProvider", () => ({
-  useCampaign: () => ({ pending: mocks.pending }),
+  useCampaign: () => ({ pending: mocks.pending, saves: mocks.saves }),
 }));
 vi.mock("../history/context", () => ({ useMapHistory: () => mocks.history }));
 vi.mock("../history/store", async (original) => {
@@ -37,6 +39,7 @@ vi.mock("@/features/campaign/SaveMarks", () => ({
   },
 }));
 vi.mock("../store", () => ({
+  useEu5Input: () => ({ kind: mocks.inputKind }),
   useEu5MapMode: () => mocks.mode,
   useSetEu5TimelineBarHeight: () => vi.fn(),
 }));
@@ -58,6 +61,8 @@ import { useHistory } from "../history/store";
 beforeEach(() => {
   mocks.mode = "political";
   mocks.pending = 0;
+  mocks.inputKind = "file";
+  mocks.saves = [];
   mocks.history = null;
   mocks.status = undefined;
   mocks.entry = { ref: { kind: "file", file: { size: 10, lastModified: 1 } } };
@@ -108,7 +113,7 @@ it("marks only matching file versions with resident map frames as ready", () => 
       ...save,
       source: { kind: "upload", saveId: "upload", uploaderId: null, userName: "" },
     }),
-  ).toBe("pending");
+  ).toBeUndefined();
 });
 
 it("shows a reading indicator while new timeline dates are withheld", () => {
@@ -129,4 +134,24 @@ it("uses red for a failed file until it succeeds or its version changes", () => 
   useHistory.setState({ analyzingEntryIds: ["entry"] });
   renderToStaticMarkup(<TimelineBar />);
   expect(mocks.status?.(save)).toBe("analyzing");
+});
+
+it("keeps uploaded-only timelines out of analysis status and its pulsing legend", () => {
+  mocks.inputKind = "server";
+  mocks.history = { enabled: true, readyIds: new Set() } as MapHistoryValue;
+  const upload = {
+    source: { kind: "upload", saveId: "uploaded", uploaderId: null, userName: "" },
+  } as CampaignSave;
+  mocks.saves = [upload, { ...upload, key: "other" }];
+  const html = renderToStaticMarkup(<TimelineBar />);
+  expect(html).not.toContain("Save analysis status");
+  expect(mocks.status?.(upload)).toBeUndefined();
+});
+it("shows local analysis status alongside uploaded campaign saves", () => {
+  mocks.inputKind = "server";
+  mocks.history = { enabled: true, readyIds: new Set() } as MapHistoryValue;
+  const local = { source: { kind: "local", entryId: "local", uploadedBy: null } } as CampaignSave;
+  mocks.saves = [local];
+  expect(renderToStaticMarkup(<TimelineBar />)).toContain("Save analysis status");
+  expect(mocks.status?.(local)).toBe("pending");
 });

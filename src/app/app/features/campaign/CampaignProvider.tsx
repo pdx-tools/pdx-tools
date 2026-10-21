@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { registerCampaignViewer } from "@/features/engine/engineStore";
+import { createContext, useContext, useState } from "react";
 import { useCampaignNav } from "./useCampaignNav";
 import type { CampaignAdapter, CampaignNav } from "./useCampaignNav";
 import { publishCampaignTimeline } from "./campaignTimeline";
@@ -21,16 +20,7 @@ type CampaignProviderProps = {
 /** Keep campaign controls available across save changes without replacing the page. */
 export function CampaignProvider({ open, adapter, loadError, children }: CampaignProviderProps) {
   const nav = useCampaignNav(open, adapter, loadError);
-  const hasOpenSave = open !== null;
-  useEffect(() => (hasOpenSave ? registerCampaignViewer() : undefined), [hasOpenSave]);
-  const key =
-    open &&
-    JSON.stringify([
-      open.game,
-      open.playthroughId ??
-        open.campaignIdHint ??
-        (open.source.kind === "upload" ? open.source.saveId : (open.source.entryId ?? open.name)),
-    ]);
+  const key = open && JSON.stringify([open.game, open.playthroughId]);
   const [published, setPublished] = useState<PublishedCampaignTimeline>({
     key: null,
     saves: EMPTY_SAVES,
