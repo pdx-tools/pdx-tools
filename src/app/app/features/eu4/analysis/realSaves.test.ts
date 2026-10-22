@@ -2,7 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { MEMORY_LIMIT_ERROR, STALE_GENERATION_ERROR } from "@/features/campaign/analysis/session";
-import type { Eu4Query, Eu4Snapshot } from "@/wasm/wasm_eu4";
+import type { Eu4Query } from "@/wasm/wasm_eu4";
+import type { Eu4Snapshot } from "./analysisTypes";
 
 const root = join(import.meta.dirname, "../../../../../..");
 const wasmDir = join(root, "src/app/app/wasm");
@@ -59,6 +60,9 @@ it.skipIf(!ready)(
     const stored = store.snapshot(parsed[0].descriptor.id);
     expect(stored.descriptor).toEqual(parsed[0].descriptor);
     expect(stored.data).toEqual(parsed[0].data);
+    // A flattened Rust descriptor must reach JavaScript as an object, not a Map.
+    expect(Object.getPrototypeOf(stored.descriptor)).toBe(Object.prototype);
+    expect(stored.data).toBeInstanceOf(Uint8Array);
 
     const run = (query: Eu4Query) => {
       const reply = store.query({ generation: 1, campaignId, query });

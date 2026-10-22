@@ -1,19 +1,22 @@
 import { transfer, wrap } from "comlink";
-import type { Remote } from "comlink";
 import { trackWorker } from "@/lib/sentryWorker";
 import { isWorkerFailure } from "@/lib/workerQueue";
 import { analysisAdmission } from "./admission";
 import type { AnalysisAdmission, ImportLease } from "./admission";
-import { MEMORY_LIMIT_ERROR, staleGenerationError } from "./session";
+import { MEMORY_LIMIT_ERROR, isAnswerOf, staleGenerationError } from "./session";
 import type {
   AnalysisStore,
   AnswerValue,
-  AppendReplyOf,
+  Async,
   QueryOf,
+  QueryOutcome,
   QueryReply,
-  SessionApi,
   SnapshotOf,
   SnapshotSelection,
+  StoreApi,
+  StoreAppendReply,
+  StoreTypes,
+  TypesOf,
 } from "./session";
 
 /** The frame methods that an analysis worker gives to game workers. */
@@ -53,7 +56,7 @@ export type AnalysisWorkerClient<S extends AnalysisStore> = {
    * The worker methods that do not change the store. A worker failure rejects
    * each pending call. Use `append` and `clear` to change the store.
    */
-  remote: () => Remote<Pick<SessionApi<AnalysisStore>, "memory">>;
+  remote: () => Pick<StoreApi<StoreTypes>, "memory">;
   /** Changes when the session clears, releases or the worker stops. */
   generation: () => number;
   /** Aborts when the current generation ends. */
@@ -66,7 +69,7 @@ export type AnalysisWorkerClient<S extends AnalysisStore> = {
     generation: number,
     output: SnapshotOf<S>,
     lease: ImportLease,
-  ) => Promise<AppendReplyOf<S>>;
+  ) => Promise<StoreAppendReply<TypesOf<S>>>;
   /** Release all snapshots of the campaign and stop imports. */
   clear: () => Promise<void>;
   /**
@@ -79,7 +82,7 @@ export type AnalysisWorkerClient<S extends AnalysisStore> = {
   /** Run a game query in the current generation. */
   query: <Q extends QueryOf<S>>(
     call: QueryCall<Q>,
-  ) => Promise<QueryReply<AnswerValue<S, Q["kind"]>>>;
+  ) => Promise<QueryReply<AnswerValue<TypesOf<S>, Q["kind"]>>>;
 };
 
 /** A client of a worker that also serves frames, as `frameServer` gives them. */
@@ -119,14 +122,12 @@ function createSession<S extends AnalysisStore>({
   onRelease = () => {},
   appendTimeoutMs = 60_000,
 }: AnalysisWorkerOptions): FrameAnalysisWorkerClient<S> {
-  // The transport uses the shared store methods. The public methods above
-  // give the types of the game store `S`.
-  type Api = SessionApi<AnalysisStore> & FrameServer;
+  type Api = StoreApi<TypesOf<S>> & Async<FrameServer>;
   // The shared admission reads the device memory, so get it when first used.
   const admission = () => custom ?? analysisAdmission();
   /** One started worker. A call keeps the instance that it started on. */
   type Instance = {
-    client: Remote<Api>;
+    client: Api;
     /** Resolves when the worker answers its open. */
     ready: Promise<void>;
     /** The frame connections to this worker, by ID, with their disconnect. */
@@ -151,7 +152,10 @@ function createSession<S extends AnalysisStore>({
     if (current) return current;
     const worker = start();
     const untrack = trackWorker(worker);
-    const target = wrap<Api>(worker);
+    // comlink's Remote wraps each argument in a conditional type, which
+    // TypeScript cannot resolve for the bytes of a generic game. The Rust
+    // store has these methods.
+    const target = wrap(worker) as unknown as Api;
     const pending = new Set<(error: Error) => void>();
     let failure: Error | undefined;
     const client = new Proxy(target, {
@@ -233,11 +237,7 @@ function createSession<S extends AnalysisStore>({
     // worker stores appends one at a time, so the time includes earlier appends.
     const timer = setTimeout(() => worker.stop(new Error(FAILURE_MESSAGE)), appendTimeoutMs);
     const reply = await worker.client
-      .append(
-        requested,
-        transfer(output.data, [output.data.buffer]) as never,
-        lease.residentLimit(),
-      )
+      .append(requested, transfer(output.data, [output.data.buffer]), lease.residentLimit())
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === MEMORY_LIMIT_ERROR)
           error.message = `Campaign analysis is full. It keeps at most ${mib(admission().limits.residentBytes)} of snapshots in memory.`;
@@ -247,7 +247,7 @@ function createSession<S extends AnalysisStore>({
     // A clear after this append removed the snapshot, and the import stops.
     if (requested !== generation) throw staleGenerationError();
     admission().setResident(session, reply.memory.bufferBytes);
-    return reply as AppendReplyOf<S>;
+    return reply;
   };
 
   const clear = async () => {
@@ -269,19 +269,18 @@ function createSession<S extends AnalysisStore>({
     claimed = campaignId;
   };
 
-  const query: AnalysisWorkerClient<S>["query"] = async (call) => {
+  const query = async <Q extends QueryOf<S>>(
+    call: QueryCall<Q>,
+  ): Promise<QueryReply<AnswerValue<TypesOf<S>, Q["kind"]>>> => {
     const { identity, sequence, campaignId, selection = { kind: "all" }, query } = call;
-    const reply = await instance().client.query({
-      generation,
-      campaignId,
-      selection,
-      query,
-    } as never);
-    // Rust answers each query with the answer of its kind.
-    const outcome =
-      reply.outcome.status === "ok"
-        ? { status: "ok" as const, value: reply.outcome.answer.value as never }
-        : reply.outcome;
+    const reply = await instance().client.query({ generation, campaignId, selection, query });
+    let outcome: QueryOutcome<AnswerValue<TypesOf<S>, Q["kind"]>> = { status: "stale" };
+    if (reply.outcome.status === "ok") {
+      const { answer } = reply.outcome;
+      if (!isAnswerOf(answer, query.kind))
+        throw Error(`The ${query.kind} query got the answer of another query`);
+      outcome = { status: "ok", value: answer.value };
+    }
     return {
       generation: reply.generation,
       identity,

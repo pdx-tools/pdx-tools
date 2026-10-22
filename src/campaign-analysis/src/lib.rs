@@ -16,9 +16,7 @@ mod store;
 pub mod wasm;
 
 pub use columns::{Columns, DecodeError, Decoder, Encoder};
-pub use descriptor::{
-    Descriptor, DescriptorFields, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id,
-};
+pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
 pub use query::{
     History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, View,
 };
@@ -26,6 +24,7 @@ pub use session::Session;
 pub use snapshot::Observation;
 pub use store::{AnalysisError, AnalysisErrorName, Appended, Layout, Snapshot, Store, StoreMemory};
 
+use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
 
 /// The snapshot rules of one game and one extractor version.
@@ -35,8 +34,10 @@ pub trait Game: Sized + 'static {
     const EXTRACTOR_VERSION: u32;
     /// The kinds of data in the payload, such as "observations" or "map".
     const ARTIFACTS: &'static [&'static str];
-    /// The descriptor fields of this game.
-    type Detail: DescriptorFields;
+    /// The descriptor fields of this game: a struct with named fields, as
+    /// JavaScript reads them next to the common fields. A game without
+    /// fields uses an empty struct.
+    type Detail: Serialize + DeserializeOwned + Clone + fmt::Debug;
     /// The columns of a snapshot, without the geographic IDs of its layout.
     type Payload: Columns + fmt::Debug;
     type Query: Query<Self>;
@@ -63,7 +64,6 @@ mod tests {
     struct Tag {
         tag: u32,
     }
-    impl DescriptorFields for Tag {}
 
     fn sum(view: &View<'_, TestGame>, ids: Vec<u32>) -> History {
         view.sum_over(&ids, |snapshot, row| snapshot.payload().values[row])

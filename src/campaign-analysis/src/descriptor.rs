@@ -1,6 +1,5 @@
 use crate::Game;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::fmt;
+use serde::{Deserialize, Serialize};
 
 /// The fields that each game gives for a snapshot.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -67,16 +66,12 @@ pub fn snapshot_id(game: &str, extractor_version: u32, content_hash: &str) -> St
     format!("{game}:{extractor_version}:{content_hash}")
 }
 
-/// The game fields of a snapshot descriptor. JavaScript reads them in the
-/// descriptor object, next to the common fields, so implement this only
-/// for a struct with named fields. `()` adds no fields.
-pub trait DescriptorFields: Serialize + DeserializeOwned + Clone + fmt::Debug {}
-
-impl DescriptorFields for () {}
-
-/// The common fields and the game fields of a snapshot.
-#[derive(Debug, Clone, PartialEq)]
+/// The common fields and the game fields of a snapshot. JavaScript reads
+/// them in one object. In TypeScript this is `Descriptor<D>`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Descriptor<D> {
+    #[serde(flatten)]
     pub common: SnapshotDescriptor,
+    #[serde(flatten)]
     pub detail: D,
 }

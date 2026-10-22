@@ -17,38 +17,84 @@ export type ResidentMemory = StoreMemory;
 export type SnapshotSelection = Selection;
 
 /**
- * The store class that `campaign_analysis::wasm_store!` declares for a game.
- * Rust keeps the snapshots, the generation and the queries. The types of a
- * game come from its class: see `DescriptorOf`, `SnapshotOf` and `QueryOf`.
+ * The TypeScript types of the store of one game, as `wasm_store!` generates
+ * them. Rust keeps the snapshots, the generation and the queries.
  */
-export type AnalysisStore = {
+export type StoreTypes = {
+  descriptor: SnapshotDescriptor;
+  /** The opaque binary form of a snapshot. Only Rust reads it. */
+  data: Uint8Array<ArrayBuffer>;
+  query: { kind: string };
+  /** Each query gets the answer of its own kind. */
+  answer: { kind: string; value: unknown };
+};
+
+/** A parsed save: its descriptor and its binary form. */
+export type EncodedSnapshot<T extends StoreTypes> = {
+  descriptor: T["descriptor"];
+  data: T["data"];
+};
+
+export type StoreQueryRequest<T extends StoreTypes> = {
+  generation: number;
+  campaignId: string;
+  selection?: Selection;
+  query: T["query"];
+};
+
+export type StoreQueryReply<T extends StoreTypes> = {
+  generation: number;
+  snapshotIds: string[];
+  outcome: { status: "ok"; answer: T["answer"] } | { status: "stale" };
+};
+
+export type StoreAppendReply<T extends StoreTypes> = {
+  descriptor: T["descriptor"];
+  duplicate: boolean;
+  memory: StoreMemory;
+};
+
+/** The store class that `campaign_analysis::wasm_store!` declares for a game. */
+export type AnalysisStore<T extends StoreTypes = StoreTypes> = {
   open(generation: number): void;
-  append(
-    generation: number,
-    data: never,
-    limitBytes: number,
-  ): { descriptor: SnapshotDescriptor; duplicate: boolean; memory: StoreMemory };
+  append(generation: number, data: T["data"], limitBytes: number): StoreAppendReply<T>;
   clear(generation: number): StoreMemory;
-  query(request: never): {
-    generation: number;
-    snapshotIds: string[];
-    outcome: { status: "ok"; answer: { kind: string; value: unknown } } | { status: "stale" };
-  };
-  snapshot(id: string): { descriptor: SnapshotDescriptor; data: Uint8Array<ArrayBuffer> };
+  query(request: StoreQueryRequest<T>): StoreQueryReply<T>;
+  snapshot(id: string): EncodedSnapshot<T>;
   memory(): StoreMemory;
 };
 
-export type DescriptorOf<S extends AnalysisStore> = ReturnType<S["append"]>["descriptor"];
+/** The types of a generated store class. */
+export type TypesOf<S> = S extends {
+  append(
+    generation: number,
+    data: infer B extends Uint8Array<ArrayBuffer>,
+    limitBytes: number,
+  ): { descriptor: infer D extends SnapshotDescriptor };
+  query(request: { query: infer Q extends { kind: string } }): {
+    outcome: { status: "ok"; answer: infer A extends { kind: string; value: unknown } } | object;
+  };
+}
+  ? { descriptor: D; data: B; query: Q; answer: A }
+  : never;
+
+export type DescriptorOf<S> = TypesOf<S>["descriptor"];
 /** A parsed save of the game of `S`: its descriptor and its opaque binary form. */
-export type SnapshotOf<S extends AnalysisStore> = ReturnType<S["snapshot"]>;
-export type AppendReplyOf<S extends AnalysisStore> = ReturnType<S["append"]>;
-export type QueryOf<S extends AnalysisStore> = Parameters<S["query"]>[0]["query"];
-type AnswerOf<S extends AnalysisStore> = Extract<
-  ReturnType<S["query"]>["outcome"],
-  { status: "ok" }
->["answer"];
-/** The answer of a query kind. Rust gives each query the answer of its kind. */
-export type AnswerValue<S extends AnalysisStore, K> = Extract<AnswerOf<S>, { kind: K }>["value"];
+export type SnapshotOf<S> = EncodedSnapshot<TypesOf<S>>;
+export type QueryOf<S> = TypesOf<S>["query"];
+/** The answer of a query kind. */
+export type AnswerValue<T extends StoreTypes, K> = Extract<T["answer"], { kind: K }>["value"];
+
+/** True when an answer has the kind of its query. Rust always gives that kind. */
+export function isAnswerOf<A extends { kind: string }, K extends string>(
+  answer: A,
+  kind: K,
+): answer is Extract<A, { kind: K }> {
+  return answer.kind === kind;
+}
+
+/** The worker methods of a store, as the main thread calls them. */
+export type StoreApi<T extends StoreTypes> = Async<AnalysisStore<T>>;
 
 export type QueryOutcome<T> =
   | { status: "ok"; value: T }
@@ -67,7 +113,8 @@ export type QueryReply<T> = {
 
 const METHODS = ["open", "append", "clear", "query", "snapshot", "memory"] as const;
 type Method = (typeof METHODS)[number];
-type Async<S> = {
+/** The methods of `S`, as a call through a worker gives them. */
+export type Async<S> = {
   [K in keyof S]: S[K] extends (...args: infer A) => infer R ? (...args: A) => Promise<R> : never;
 };
 
@@ -86,5 +133,3 @@ export function sessionApi<S extends AnalysisStore>(opened: Promise<S>) {
     Pick<S, Method>
   >;
 }
-
-export type SessionApi<S extends AnalysisStore> = ReturnType<typeof sessionApi<S>>;

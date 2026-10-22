@@ -5,9 +5,7 @@ use crate::insights::WorldSummary;
 use crate::map_projection::{
     EXTRACTOR_VERSION, Fraction, MapProjection, MapProjectionData, Metric,
 };
-use campaign_analysis::{
-    DescriptorFields, Game, History, Observation, SnapshotDescriptor, SnapshotSource, View,
-};
+use campaign_analysis::{Game, History, Observation, SnapshotDescriptor, SnapshotSource, View};
 use serde::{Deserialize, Serialize};
 
 /// The EU5 fields of a snapshot descriptor.
@@ -107,8 +105,6 @@ pub fn observation(
         },
     }
 }
-
-impl DescriptorFields for Eu5Detail {}
 
 #[derive(Debug)]
 pub struct Eu5Analysis;

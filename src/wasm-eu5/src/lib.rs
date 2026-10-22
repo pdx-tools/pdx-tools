@@ -423,7 +423,9 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
     }
 }
 
-fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result<JsValue, JsValue> {
+fn analysis_result(
+    mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>,
+) -> Result<Ts<analysis::AnalysisSnapshot>, JsValue> {
     let (projection, world, campaign_id, date, game_version) = {
         let game = loaded.take_gamestate();
         let meta = game.metadata();
@@ -457,7 +459,7 @@ fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result
         game_version,
     };
     let observation = eu5app::analysis::observation(projection, world, source);
-    campaign_analysis::wasm::observation(&observation)
+    analysis::AnalysisSnapshot::observation(&observation)
 }
 
 #[wasm_bindgen]
@@ -485,8 +487,7 @@ impl ImportLoader {
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
-    #[wasm_bindgen(unchecked_return_type = "Eu5Snapshot")]
-    pub fn parse_import(self) -> Result<JsValue, JsValue> {
+    pub fn parse_import(self) -> Result<Ts<analysis::AnalysisSnapshot>, JsValue> {
         let loaded = self
             .parser
             .parse()
@@ -1011,7 +1012,7 @@ impl Eu5App {
     pub fn paint_map_projection(
         &self,
         mode: Ts<MapMode>,
-        #[wasm_bindgen(unchecked_param_type = "SnapshotData<\"eu5\">")] data: &[u8],
+        #[wasm_bindgen(unchecked_param_type = "AnalysisSnapshotData")] data: &[u8],
     ) -> Result<ProjectionPaintData, JsError> {
         let snapshot =
             campaign_analysis::Observation::<eu5app::analysis::Eu5Analysis>::decode(data)

@@ -1,15 +1,17 @@
 //! The JavaScript side of a [`Session`]. Use [`wasm_store!`](crate::wasm_store)
-//! to declare the store class of a game.
+//! to declare the store class of a game and its TypeScript types.
 
 use crate::{
-    AnalysisError, Descriptor, DescriptorFields, Game, Observation, Session, Snapshot, StoreMemory,
+    AnalysisError, Descriptor, Game, Observation, Query, QueryReply, QueryRequest, Session,
+    Snapshot, StoreMemory,
 };
-use js_sys::{Object, Reflect, Uint8Array};
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Serialize, Serializer};
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
 #[doc(hidden)]
 pub mod __private {
+    pub use tsify;
     pub use wasm_bindgen;
 }
 
@@ -17,35 +19,39 @@ pub mod __private {
 const TYPES: &str = r#"
 /** The binary form of a snapshot of game `G`. Only Rust reads it. */
 export type SnapshotData<G extends string> = Uint8Array<ArrayBuffer> & { readonly __snapshot: G };
-/** A snapshot from a parser, or from a store for a map frame. */
-export interface EncodedSnapshot<G extends string, D> { descriptor: D; data: SnapshotData<G> }
-export interface AppendReply<D> { descriptor: D; duplicate: boolean; memory: StoreMemory }
+/** The common fields of a snapshot and the fields of its game, in one object. */
+export type Descriptor<D> = SnapshotDescriptor & D;
 "#;
 
-/// The default serializer, so each value agrees with the TypeScript type
-/// that tsify declares for it: `None` is `undefined`, a map is a `Map`.
-pub fn to_js<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsValue> {
-    serde_wasm_bindgen::to_value(value).map_err(|error| JsError::new(&error.to_string()).into())
+/// What an append stored, and the memory of the store after it.
+#[derive(Debug, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct AppendReply<D> {
+    pub descriptor: Descriptor<D>,
+    pub duplicate: bool,
+    pub memory: StoreMemory,
 }
 
-fn set(target: &Object, name: &str, value: &JsValue) -> Result<(), JsValue> {
-    Reflect::set(target, &name.into(), value).map(|_| ())
+/// A snapshot from a parser, or from a store for a map frame.
+#[derive(Debug, Serialize, Tsify)]
+pub struct EncodedSnapshot<D> {
+    pub descriptor: Descriptor<D>,
+    /// JavaScript gets a copy as a `Uint8Array`, which it can transfer.
+    /// `wasm_store!` declares `AnalysisSnapshotData` for its game.
+    #[serde(serialize_with = "bytes")]
+    #[tsify(type = "AnalysisSnapshotData")]
+    pub data: Vec<u8>,
 }
 
-/// One object with the common fields and the game fields.
-fn descriptor_js<D: DescriptorFields>(descriptor: &Descriptor<D>) -> Result<JsValue, JsValue> {
-    let object: Object = to_js(&descriptor.common)?.unchecked_into();
-    let detail = to_js(&descriptor.detail)?;
-    if detail.is_object() {
-        Object::assign(&object, &detail.unchecked_into());
-    } else if !detail.is_null() && !detail.is_undefined() {
-        return Err(JsError::new("The game fields of a snapshot must be a struct").into());
-    }
-    Ok(object.into())
+fn bytes<S: Serializer>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_bytes(data)
 }
 
-pub fn from_js<T: DeserializeOwned>(value: JsValue) -> Result<T, JsValue> {
-    serde_wasm_bindgen::from_value(value).map_err(|error| JsError::new(&error.to_string()).into())
+/// Give a value to JavaScript as its TypeScript type.
+pub fn ts<T: Tsify + Serialize>(value: T) -> Result<Ts<T>, JsValue> {
+    value
+        .into_ts()
+        .map_err(|error| JsError::new(&error.to_string()).into())
 }
 
 /// A JavaScript error with the name of the analysis error.
@@ -55,28 +61,20 @@ pub fn error(error: AnalysisError) -> JsValue {
     js.into()
 }
 
-fn encoded<D: DescriptorFields>(
-    descriptor: &Descriptor<D>,
-    data: &[u8],
-) -> Result<JsValue, JsValue> {
-    let result = Object::new();
-    set(&result, "descriptor", &descriptor_js(descriptor)?)?;
-    set(&result, "data", &Uint8Array::from(data).into())?;
-    Ok(result.into())
-}
-
-/// The descriptor and the binary form of a parsed save.
-pub fn observation<G: Game>(observation: &Observation<G>) -> Result<JsValue, JsValue> {
-    let descriptor = Descriptor {
-        common: observation.descriptor.clone(),
-        detail: observation.detail.clone(),
-    };
-    encoded(&descriptor, &observation.encode())
-}
-
-/// The descriptor and the binary form of a stored snapshot.
-pub fn snapshot<G: Game>(snapshot: &Snapshot<G>) -> Result<JsValue, JsValue> {
-    encoded(&snapshot.described(), &snapshot.encode())
+/// True when two strings are equal, in a constant.
+pub const fn same_str(a: &str, b: &str) -> bool {
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut i = 0;
+    while i < a.len() {
+        if a[i] != b[i] {
+            return false;
+        }
+        i += 1;
+    }
+    true
 }
 
 fn wasm_bytes() -> usize {
@@ -87,11 +85,11 @@ fn wasm_bytes() -> usize {
         .byte_length() as usize
 }
 
-pub fn memory<G: Game>(session: &Session<G>) -> Result<JsValue, JsValue> {
-    to_js(&StoreMemory {
+pub fn memory<G: Game>(session: &Session<G>) -> StoreMemory {
+    StoreMemory {
         wasm_bytes: wasm_bytes(),
         ..session.memory()
-    })
+    }
 }
 
 pub fn append<G: Game>(
@@ -99,38 +97,61 @@ pub fn append<G: Game>(
     generation: u32,
     data: &[u8],
     limit_bytes: f64,
-) -> Result<JsValue, JsValue> {
+) -> Result<AppendReply<G::Detail>, JsValue> {
     // A limit above the largest size, such as Infinity, saturates.
     let appended = session
         .append(generation, data, limit_bytes as usize)
         .map_err(error)?;
-    let reply = Object::new();
-    set(&reply, "descriptor", &descriptor_js(&appended.descriptor)?)?;
-    set(&reply, "duplicate", &appended.duplicate.into())?;
-    set(&reply, "memory", &memory(session)?)?;
-    Ok(reply.into())
+    Ok(AppendReply {
+        descriptor: appended.descriptor,
+        duplicate: appended.duplicate,
+        memory: memory(session),
+    })
 }
 
-pub fn query<G: Game>(session: &Session<G>, request: JsValue) -> Result<JsValue, JsValue> {
-    to_js(&session.query(from_js(request)?))
+pub fn query<G: Game>(
+    session: &Session<G>,
+    request: QueryRequest<G::Query>,
+) -> QueryReply<<G::Query as Query<G>>::Answer> {
+    session.query(request)
 }
 
-pub fn frame<G: Game>(session: &Session<G>, id: &str) -> Result<JsValue, JsValue> {
-    snapshot(session.snapshot(id).map_err(error)?)
+/// The descriptor and the binary form of a parsed save.
+pub fn observation<G: Game>(observation: &Observation<G>) -> EncodedSnapshot<G::Detail> {
+    EncodedSnapshot {
+        descriptor: Descriptor {
+            common: observation.descriptor.clone(),
+            detail: observation.detail.clone(),
+        },
+        data: observation.encode(),
+    }
 }
 
-/// Declare the `#[wasm_bindgen]` store class of a game. The literals are the
-/// TypeScript types of the binary snapshot, the append reply, the query
-/// request, the query reply and the stored snapshot.
+/// The descriptor and the binary form of a stored snapshot.
+pub fn snapshot<G: Game>(snapshot: &Snapshot<G>) -> EncodedSnapshot<G::Detail> {
+    EncodedSnapshot {
+        descriptor: snapshot.described(),
+        data: snapshot.encode(),
+    }
+}
+
+/// Declare the `#[wasm_bindgen]` store class of a game, and its TypeScript
+/// types: `AnalysisSnapshotData`, `AnalysisDescriptor`, `AnalysisSnapshot`,
+/// `AnalysisAppendReply`, `AnalysisQueryRequest` and `AnalysisQueryReply`.
+/// A WASM module has one store, so these names do not change.
+///
+/// The detail, query and answer must be the associated types of the game.
+/// The macro needs their names, because tsify writes the type names that it
+/// reads, and it cannot resolve an associated type. A wrong name does not
+/// compile. The calling crate needs `serde`, `tsify` and `wasm-bindgen`.
 ///
 /// ```ignore
 /// campaign_analysis::wasm_store! {
 ///     pub struct Eu4AnalysisStore(Eu4Analysis) {
-///         data: "SnapshotData<\"eu4\">",
-///         appended: "AppendReply<Eu4SnapshotDescriptor>",
-///         request: "QueryRequest<Eu4Query>",
-///         reply: "QueryReply<Eu4Answer>",
-///         snapshot: "EncodedSnapshot<\"eu4\", Eu4SnapshotDescriptor>",
+///         game: "eu4",
+///         detail: Eu4Detail,
+///         query: Eu4Query,
+///         answer: Eu4Answer,
 ///     }
 /// }
 /// ```
@@ -139,13 +160,69 @@ macro_rules! wasm_store {
     (
         $(#[$meta:meta])*
         $vis:vis struct $name:ident($game:ty) {
-            data: $data:literal,
-            appended: $appended:literal,
-            request: $request:literal,
-            reply: $reply:literal,
-            snapshot: $snapshot:literal $(,)?
+            game: $tag:literal,
+            detail: $detail:ident,
+            query: $query:ident,
+            answer: $answer:ident $(,)?
         }
     ) => {
+        const _: () = assert!(
+            $crate::wasm::same_str(<$game as $crate::Game>::GAME, $tag),
+            "The game of wasm_store! must be the GAME of its game type",
+        );
+        const _: fn(<$game as $crate::Game>::Detail) -> $detail = |detail| detail;
+        const _: fn(<$game as $crate::Game>::Query) -> $query = |query| query;
+        const _: fn(
+            <<$game as $crate::Game>::Query as $crate::Query<$game>>::Answer,
+        ) -> $answer = |answer| answer;
+
+        #[wasm_bindgen::prelude::wasm_bindgen(typescript_custom_section)]
+        const ANALYSIS_SNAPSHOT_DATA: &str = concat!(
+            "/** The binary form of a snapshot of this game. */\n",
+            "export type AnalysisSnapshotData = SnapshotData<\"",
+            $tag,
+            "\">;",
+        );
+
+        /// The descriptor of a snapshot of this game.
+        #[allow(dead_code)]
+        #[derive(serde::Serialize, tsify::Tsify)]
+        #[tsify(hashmap_as_object)]
+        #[serde(transparent)]
+        pub struct AnalysisDescriptor(pub $crate::Descriptor<$detail>);
+
+        /// A snapshot of this game, from a parser or from the store.
+        #[derive(serde::Serialize, tsify::Tsify)]
+        #[tsify(hashmap_as_object)]
+        #[serde(transparent)]
+        pub struct AnalysisSnapshot(pub $crate::wasm::EncodedSnapshot<$detail>);
+
+        impl AnalysisSnapshot {
+            /// The snapshot of a parsed save, for JavaScript.
+            pub fn observation(
+                observation: &$crate::Observation<$game>,
+            ) -> Result<
+                $crate::wasm::__private::tsify::Ts<Self>,
+                $crate::wasm::__private::wasm_bindgen::JsValue,
+            > {
+                $crate::wasm::ts(Self($crate::wasm::observation(observation)))
+            }
+        }
+
+        #[derive(serde::Serialize, tsify::Tsify)]
+        #[tsify(hashmap_as_object)]
+        #[serde(transparent)]
+        pub struct AnalysisAppendReply(pub $crate::wasm::AppendReply<$detail>);
+
+        #[derive(serde::Deserialize, tsify::Tsify)]
+        #[serde(transparent)]
+        pub struct AnalysisQueryRequest(pub $crate::QueryRequest<$query>);
+
+        #[derive(serde::Serialize, tsify::Tsify)]
+        #[tsify(hashmap_as_object)]
+        #[serde(transparent)]
+        pub struct AnalysisQueryReply(pub $crate::QueryReply<$answer>);
+
         $(#[$meta])*
         #[$crate::wasm::__private::wasm_bindgen::prelude::wasm_bindgen(
             wasm_bindgen = $crate::wasm::__private::wasm_bindgen
@@ -172,64 +249,65 @@ macro_rules! wasm_store {
             /// Store the binary form of a snapshot from an import that
             /// started in `generation`. The error names are
             /// `AnalysisErrorName` values.
-            #[wasm_bindgen(unchecked_return_type = $appended)]
             pub fn append(
                 &mut self,
                 generation: u32,
-                #[wasm_bindgen(unchecked_param_type = $data)] data: &[u8],
+                #[wasm_bindgen(unchecked_param_type = "AnalysisSnapshotData")] data: &[u8],
                 limit_bytes: f64,
             ) -> Result<
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::tsify::Ts<AnalysisAppendReply>,
                 $crate::wasm::__private::wasm_bindgen::JsValue,
             > {
-                $crate::wasm::append(&mut self.session, generation, data, limit_bytes)
+                let reply = $crate::wasm::append(&mut self.session, generation, data, limit_bytes)?;
+                $crate::wasm::ts(AnalysisAppendReply(reply))
             }
 
             /// Start `generation`, and release all snapshots.
-            #[wasm_bindgen(unchecked_return_type = "StoreMemory")]
             pub fn clear(
                 &mut self,
                 generation: u32,
             ) -> Result<
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::tsify::Ts<$crate::StoreMemory>,
                 $crate::wasm::__private::wasm_bindgen::JsValue,
             > {
                 self.session.clear(generation);
-                $crate::wasm::memory(&self.session)
+                $crate::wasm::ts($crate::wasm::memory(&self.session))
             }
 
-            #[wasm_bindgen(unchecked_return_type = $reply)]
             pub fn query(
                 &self,
-                #[wasm_bindgen(unchecked_param_type = $request)]
-                request: $crate::wasm::__private::wasm_bindgen::JsValue,
+                request: $crate::wasm::__private::tsify::Ts<AnalysisQueryRequest>,
             ) -> Result<
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::tsify::Ts<AnalysisQueryReply>,
                 $crate::wasm::__private::wasm_bindgen::JsValue,
             > {
-                $crate::wasm::query(&self.session, request)
+                let AnalysisQueryRequest(request) = request.to_rust().map_err(|error| {
+                    $crate::wasm::__private::wasm_bindgen::JsValue::from(
+                        $crate::wasm::__private::wasm_bindgen::JsError::new(&error.to_string()),
+                    )
+                })?;
+                $crate::wasm::ts(AnalysisQueryReply($crate::wasm::query(&self.session, request)))
             }
 
             /// A new copy of a stored snapshot, with its descriptor.
-            #[wasm_bindgen(unchecked_return_type = $snapshot)]
             pub fn snapshot(
                 &self,
                 id: &str,
             ) -> Result<
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::tsify::Ts<AnalysisSnapshot>,
                 $crate::wasm::__private::wasm_bindgen::JsValue,
             > {
-                $crate::wasm::frame(&self.session, id)
+                let snapshot = self.session.snapshot(id).map_err($crate::wasm::error)?;
+                $crate::wasm::ts(AnalysisSnapshot($crate::wasm::snapshot(snapshot)))
             }
 
-            #[wasm_bindgen(unchecked_return_type = "StoreMemory")]
             pub fn memory(
                 &self,
             ) -> Result<
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::tsify::Ts<$crate::StoreMemory>,
                 $crate::wasm::__private::wasm_bindgen::JsValue,
             > {
-                $crate::wasm::memory(&self.session)
+                $crate::wasm::ts($crate::wasm::memory(&self.session))
             }
         }
     };

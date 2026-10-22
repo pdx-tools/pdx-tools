@@ -512,7 +512,6 @@ dependencies = [
  "js-sys",
  "postcard",
  "serde",
- "serde-wasm-bindgen",
  "tsify",
  "wasm-bindgen",
 ]

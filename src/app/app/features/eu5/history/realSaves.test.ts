@@ -69,6 +69,10 @@ it.skipIf(!ready)(
     const stored = store.snapshot(parsed.descriptor.id);
     expect(stored.descriptor).toEqual(parsed.descriptor);
     expect(stored.data).toEqual(parsed.data);
+    // A flattened Rust descriptor must reach JavaScript as an object, not a Map.
+    for (const descriptor of [parsed.descriptor, reply.descriptor, stored.descriptor])
+      expect(Object.getPrototypeOf(descriptor)).toBe(Object.prototype);
+    expect(stored.data).toBeInstanceOf(Uint8Array);
 
     const { campaignId } = parsed.descriptor;
     const world = store.query({ generation: 0, campaignId, query: { kind: "worldPopulation" } });

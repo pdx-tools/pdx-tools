@@ -37,6 +37,15 @@ impl ProvinceColumns {
     }
 }
 
+/// The EU4 descriptor fields. EU4 has none yet.
+#[allow(
+    clippy::empty_structs_with_brackets,
+    reason = "TypeScript reads a struct with fields as an object; a unit struct is null"
+)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct Eu4Detail {}
+
 /// Extract the observations from a full parse. The campaign identity comes
 /// from the parsed game state, not from the metadata.
 pub fn extract(query: &Query, content_hash: String) -> Observation<Eu4Analysis> {
@@ -76,7 +85,7 @@ pub fn extract(query: &Query, content_hash: String) -> Observation<Eu4Analysis> 
     );
     Observation {
         descriptor,
-        detail: (),
+        detail: Eu4Detail {},
         ids,
         payload: ProvinceColumns { development, owned },
     }
@@ -89,7 +98,7 @@ impl Game for Eu4Analysis {
     const GAME: &'static str = "eu4";
     const EXTRACTOR_VERSION: u32 = EXTRACTOR_VERSION;
     const ARTIFACTS: &'static [&'static str] = &["observations"];
-    type Detail = ();
+    type Detail = Eu4Detail;
     type Payload = ProvinceColumns;
     type Query = Eu4Query;
 
@@ -150,7 +159,7 @@ mod tests {
         );
         Observation {
             descriptor,
-            detail: (),
+            detail: Eu4Detail {},
             ids: ids.to_vec(),
             payload: ProvinceColumns {
                 development: development.to_vec(),
