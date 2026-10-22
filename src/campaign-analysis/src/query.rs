@@ -1,5 +1,6 @@
-use crate::{Game, Snapshot, Store};
+use crate::{Game, Layout, Snapshot, Store};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use std::collections::HashSet;
 
 /// The snapshots that a query reads.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -28,11 +29,14 @@ impl<'a, G: Game> View<'a, G> {
         } else {
             match selection {
                 Selection::All => store.snapshots().iter().collect(),
-                Selection::Ids { ids } => store
-                    .snapshots()
-                    .iter()
-                    .filter(|snapshot| ids.contains(&snapshot.descriptor().id))
-                    .collect(),
+                Selection::Ids { ids } => {
+                    let ids: HashSet<&str> = ids.iter().map(String::as_str).collect();
+                    store
+                        .snapshots()
+                        .iter()
+                        .filter(|snapshot| ids.contains(snapshot.descriptor().id.as_str()))
+                        .collect()
+                }
             }
         };
         Self { snapshots }
@@ -50,7 +54,7 @@ impl<'a, G: Game> View<'a, G> {
     }
 
     /// One value for each snapshot, in date order.
-    pub fn series(&self, read: impl Fn(&Snapshot<G>) -> Option<f64>) -> History {
+    pub fn series(&self, mut read: impl FnMut(&Snapshot<G>) -> Option<f64>) -> History {
         let rows = self
             .snapshots
             .iter()
@@ -68,12 +72,45 @@ impl<'a, G: Game> View<'a, G> {
             .collect();
         History { rows }
     }
+
+    /// One value for each snapshot from the rows of a fixed set of
+    /// geographic IDs. The rows are found once for each layout. If a layout
+    /// does not have one of the IDs, or the set is empty, the value is a gap.
+    pub fn series_over(
+        &self,
+        ids: &[u32],
+        read: impl Fn(&Snapshot<G>, &[usize]) -> f64,
+    ) -> History {
+        let mut found: Vec<(*const Layout, Option<Vec<usize>>)> = Vec::new();
+        self.series(|snapshot| {
+            if ids.is_empty() {
+                return None;
+            }
+            let layout = std::ptr::from_ref(snapshot.layout());
+            let at = match found.iter().position(|(key, _)| *key == layout) {
+                Some(at) => at,
+                None => {
+                    found.push((layout, snapshot.layout().rows(ids)));
+                    found.len() - 1
+                }
+            };
+            found[at].1.as_deref().map(|rows| read(snapshot, rows))
+        })
+    }
+
+    /// The sum of a value over a fixed set of geographic IDs, on each date.
+    /// If a layout does not have one of the IDs, or the set is empty, the
+    /// sum is a gap.
+    pub fn sum_over(&self, ids: &[u32], value: impl Fn(&Snapshot<G>, usize) -> f64) -> History {
+        self.series_over(ids, |snapshot, rows| {
+            rows.iter().map(|row| value(snapshot, *row)).sum()
+        })
+    }
 }
 
-/// One value for each snapshot that a query read. A missing value is null.
+/// One value for each snapshot that a query read. A gap has no value.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(missing_as_null))]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryRow {
     pub id: String,

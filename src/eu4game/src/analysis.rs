@@ -118,10 +118,8 @@ pub fn world_development(view: &View<'_, Eu4Analysis>) -> History {
 }
 
 pub fn fixed_province_development(view: &View<'_, Eu4Analysis>, province_ids: Vec<u32>) -> History {
-    view.series(|snapshot| {
-        snapshot.sum(&province_ids, |row| {
-            f64::from(snapshot.payload().development[row])
-        })
+    view.sum_over(&province_ids, |snapshot, row| {
+        f64::from(snapshot.payload().development[row])
     })
 }
 

@@ -5,7 +5,9 @@ use crate::insights::WorldSummary;
 use crate::map_projection::{
     EXTRACTOR_VERSION, Fraction, MapProjection, MapProjectionData, Metric,
 };
-use campaign_analysis::{Game, History, Observation, SnapshotDescriptor, SnapshotSource, View};
+use campaign_analysis::{
+    DescriptorFields, Game, History, Observation, SnapshotDescriptor, SnapshotSource, View,
+};
 use serde::{Deserialize, Serialize};
 
 /// The EU5 fields of a snapshot descriptor.
@@ -106,6 +108,8 @@ pub fn observation(
     }
 }
 
+impl DescriptorFields for Eu5Detail {}
+
 #[derive(Debug)]
 pub struct Eu5Analysis;
 
@@ -153,10 +157,8 @@ pub fn world_population(view: &View<'_, Eu5Analysis>) -> History {
 }
 
 pub fn location_population(view: &View<'_, Eu5Analysis>, location_ids: Vec<u32>) -> History {
-    view.series(|snapshot| {
-        snapshot.sum(&location_ids, |row| {
-            f64::from(snapshot.payload().metric(row, Metric::Population))
-        })
+    view.sum_over(&location_ids, |snapshot, row| {
+        f64::from(snapshot.payload().metric(row, Metric::Population))
     })
 }
 

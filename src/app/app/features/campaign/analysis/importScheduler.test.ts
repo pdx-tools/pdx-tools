@@ -279,9 +279,9 @@ describe("memory", () => {
     expect((await run).outcomes.accepted).toBe(12);
   });
 
-  it("runs fewer parsers when other sessions keep resident data", async () => {
+  it("runs fewer parsers when the session keeps resident data", async () => {
     const admission = new AnalysisAdmission({ residentBytes: 1000 * MiB, parserBytes: 300 * MiB });
-    admission.setResident("other-game", 150 * MiB);
+    admission.setResident("test", 150 * MiB);
     let active = 0;
     let peak = 0;
     mocks.parse.mockImplementation(async (file: File) => {

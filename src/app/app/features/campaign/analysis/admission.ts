@@ -27,26 +27,27 @@ export type ImportLease = {
  *
  * Only one import runs at a time. That import gets a lease, and its session
  * checks the resident limit of the lease when it appends. The tab keeps one
- * session, so the limit is not shared. Each session reports the bytes that it
- * keeps after an append, a clear, a release or a worker loss.
+ * session: a session that starts releases the others. The session reports
+ * the bytes that it keeps after an append, a clear, a release or a worker loss.
  */
 export class AnalysisAdmission {
-  /** The bytes of the backing buffers that each session keeps. */
-  private resident = new Map<string, number>();
+  /** The session that keeps resident data, and its bytes. */
+  private resident: { session: string; bytes: number } | null = null;
   private lease: ImportLease | undefined;
 
   constructor(readonly limits: AdmissionLimits) {}
 
-  /** Set the memory that a session keeps, after an append, a clear or a worker loss. */
+  /**
+   * Set the memory that a session keeps, after an append, a clear or a
+   * worker loss. Zero from a session that keeps nothing changes nothing.
+   */
   setResident(session: string, bufferBytes: number) {
-    if (bufferBytes > 0) this.resident.set(session, bufferBytes);
-    else this.resident.delete(session);
+    if (bufferBytes > 0) this.resident = { session, bytes: bufferBytes };
+    else if (this.resident?.session === session) this.resident = null;
   }
 
   residentBytes() {
-    let bytes = 0;
-    for (const bufferBytes of this.resident.values()) bytes += bufferBytes;
-    return bytes;
+    return this.resident?.bytes ?? 0;
   }
 
   /** Start an import. Throws if another import runs. */

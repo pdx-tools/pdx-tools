@@ -1,7 +1,9 @@
 //! The JavaScript side of a [`Session`]. Use [`wasm_store!`](crate::wasm_store)
 //! to declare the store class of a game.
 
-use crate::{AnalysisError, Descriptor, Game, Observation, Session, Snapshot, StoreMemory};
+use crate::{
+    AnalysisError, Descriptor, DescriptorFields, Game, Observation, Session, Snapshot, StoreMemory,
+};
 use js_sys::{Object, Reflect, Uint8Array};
 use serde::{Serialize, de::DeserializeOwned};
 use wasm_bindgen::prelude::*;
@@ -20,21 +22,26 @@ export interface EncodedSnapshot<G extends string, D> { descriptor: D; data: Sna
 export interface AppendReply<D> { descriptor: D; duplicate: boolean; memory: StoreMemory }
 "#;
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AppendReply<D> {
-    descriptor: Descriptor<D>,
-    duplicate: bool,
-    memory: StoreMemory,
+/// The default serializer, so each value agrees with the TypeScript type
+/// that tsify declares for it: `None` is `undefined`, a map is a `Map`.
+pub fn to_js<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsValue> {
+    serde_wasm_bindgen::to_value(value).map_err(|error| JsError::new(&error.to_string()).into())
 }
 
-pub fn to_js<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsValue> {
-    let serializer = serde_wasm_bindgen::Serializer::new()
-        .serialize_maps_as_objects(true)
-        .serialize_missing_as_null(true);
-    value
-        .serialize(&serializer)
-        .map_err(|error| JsError::new(&error.to_string()).into())
+fn set(target: &Object, name: &str, value: &JsValue) -> Result<(), JsValue> {
+    Reflect::set(target, &name.into(), value).map(|_| ())
+}
+
+/// One object with the common fields and the game fields.
+fn descriptor_js<D: DescriptorFields>(descriptor: &Descriptor<D>) -> Result<JsValue, JsValue> {
+    let object: Object = to_js(&descriptor.common)?.unchecked_into();
+    let detail = to_js(&descriptor.detail)?;
+    if detail.is_object() {
+        Object::assign(&object, &detail.unchecked_into());
+    } else if !detail.is_null() && !detail.is_undefined() {
+        return Err(JsError::new("The game fields of a snapshot must be a struct").into());
+    }
+    Ok(object.into())
 }
 
 pub fn from_js<T: DeserializeOwned>(value: JsValue) -> Result<T, JsValue> {
@@ -48,10 +55,13 @@ pub fn error(error: AnalysisError) -> JsValue {
     js.into()
 }
 
-fn encoded(descriptor: JsValue, data: &[u8]) -> Result<JsValue, JsValue> {
+fn encoded<D: DescriptorFields>(
+    descriptor: &Descriptor<D>,
+    data: &[u8],
+) -> Result<JsValue, JsValue> {
     let result = Object::new();
-    Reflect::set(&result, &"descriptor".into(), &descriptor)?;
-    Reflect::set(&result, &"data".into(), &Uint8Array::from(data).into())?;
+    set(&result, "descriptor", &descriptor_js(descriptor)?)?;
+    set(&result, "data", &Uint8Array::from(data).into())?;
     Ok(result.into())
 }
 
@@ -61,12 +71,12 @@ pub fn observation<G: Game>(observation: &Observation<G>) -> Result<JsValue, JsV
         common: observation.descriptor.clone(),
         detail: observation.detail.clone(),
     };
-    encoded(to_js(&descriptor)?, &observation.encode())
+    encoded(&descriptor, &observation.encode())
 }
 
 /// The descriptor and the binary form of a stored snapshot.
 pub fn snapshot<G: Game>(snapshot: &Snapshot<G>) -> Result<JsValue, JsValue> {
-    encoded(to_js(&snapshot.described())?, &snapshot.encode())
+    encoded(&snapshot.described(), &snapshot.encode())
 }
 
 fn wasm_bytes() -> usize {
@@ -94,14 +104,11 @@ pub fn append<G: Game>(
     let appended = session
         .append(generation, data, limit_bytes as usize)
         .map_err(error)?;
-    to_js(&AppendReply {
-        descriptor: appended.descriptor,
-        duplicate: appended.duplicate,
-        memory: StoreMemory {
-            wasm_bytes: wasm_bytes(),
-            ..session.memory()
-        },
-    })
+    let reply = Object::new();
+    set(&reply, "descriptor", &descriptor_js(&appended.descriptor)?)?;
+    set(&reply, "duplicate", &appended.duplicate.into())?;
+    set(&reply, "memory", &memory(session)?)?;
+    Ok(reply.into())
 }
 
 pub fn query<G: Game>(session: &Session<G>, request: JsValue) -> Result<JsValue, JsValue> {

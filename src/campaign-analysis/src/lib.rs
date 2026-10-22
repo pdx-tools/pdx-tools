@@ -16,7 +16,9 @@ mod store;
 pub mod wasm;
 
 pub use columns::{Columns, DecodeError, Decoder, Encoder};
-pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
+pub use descriptor::{
+    Descriptor, DescriptorFields, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id,
+};
 pub use query::{
     History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, View,
 };
@@ -24,7 +26,6 @@ pub use session::Session;
 pub use snapshot::Observation;
 pub use store::{AnalysisError, AnalysisErrorName, Appended, Layout, Snapshot, Store, StoreMemory};
 
-use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
 
 /// The snapshot rules of one game and one extractor version.
@@ -34,9 +35,8 @@ pub trait Game: Sized + 'static {
     const EXTRACTOR_VERSION: u32;
     /// The kinds of data in the payload, such as "observations" or "map".
     const ARTIFACTS: &'static [&'static str];
-    /// The descriptor fields of this game. They go into the descriptor
-    /// object that JavaScript reads.
-    type Detail: Serialize + DeserializeOwned + Clone + fmt::Debug;
+    /// The descriptor fields of this game.
+    type Detail: DescriptorFields;
     /// The columns of a snapshot, without the geographic IDs of its layout.
     type Payload: Columns + fmt::Debug;
     type Query: Query<Self>;
@@ -59,8 +59,14 @@ mod tests {
     }
     columns!(Values { values });
 
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    struct Tag {
+        tag: u32,
+    }
+    impl DescriptorFields for Tag {}
+
     fn sum(view: &View<'_, TestGame>, ids: Vec<u32>) -> History {
-        view.series(|snapshot| snapshot.sum(&ids, |row| snapshot.payload().values[row]))
+        view.sum_over(&ids, |snapshot, row| snapshot.payload().values[row])
     }
 
     fn count(view: &View<'_, TestGame>) -> usize {
@@ -78,7 +84,7 @@ mod tests {
         const GAME: &'static str = "test";
         const EXTRACTOR_VERSION: u32 = 3;
         const ARTIFACTS: &'static [&'static str] = &["observations"];
-        type Detail = u32;
+        type Detail = Tag;
         type Payload = Values;
         type Query = TestQuery;
 
@@ -114,7 +120,7 @@ mod tests {
     fn observation(descriptor: SnapshotDescriptor, ids: &[u32]) -> Observation<TestGame> {
         Observation {
             descriptor,
-            detail: 7,
+            detail: Tag { tag: 7 },
             ids: ids.to_vec(),
             payload: Values {
                 values: ids.iter().map(|id| f64::from(*id) * 10.0).collect(),
@@ -127,7 +133,7 @@ mod tests {
         descriptor: SnapshotDescriptor,
         ids: &[u32],
         limit: usize,
-    ) -> Result<Appended<u32>, AnalysisError> {
+    ) -> Result<Appended<Tag>, AnalysisError> {
         store.append(observation(descriptor, ids), limit)
     }
 
@@ -154,7 +160,7 @@ mod tests {
         let bytes = original.encode();
         let decoded = Observation::<TestGame>::decode(&bytes).unwrap();
         assert_eq!(decoded.descriptor, original.descriptor);
-        assert_eq!(decoded.detail, 7);
+        assert_eq!(decoded.detail, Tag { tag: 7 });
         assert_eq!(decoded.ids, [42, 43]);
         assert_eq!(decoded.payload, original.payload);
 
@@ -224,7 +230,7 @@ mod tests {
         let before = store.memory();
         let result = append(&mut store, first(), &[42, 43], 0).unwrap();
         assert!(result.duplicate);
-        assert_eq!(result.descriptor.detail, 7);
+        assert_eq!(result.descriptor.detail, Tag { tag: 7 });
         assert_eq!(store.memory(), before);
     }
 
@@ -359,7 +365,24 @@ mod tests {
             sum(vec![]),
             [(14000101, None), (14100101, None), (14200101, None)]
         );
-        assert!(session.memory().index_bytes > 0);
+        // Sorted IDs need no index.
+        assert_eq!(session.memory().index_bytes, 0);
+    }
+
+    #[test]
+    fn finds_the_rows_of_unsorted_ids() {
+        let mut store = Store::<TestGame>::new();
+        append(
+            &mut store,
+            descriptor("a", 14000101, "unsorted"),
+            &[43, 7, 42],
+            usize::MAX,
+        )
+        .unwrap();
+        let layout = store.snapshots()[0].layout();
+        assert_eq!(layout.rows(&[42, 43]), Some(vec![2, 0]));
+        assert_eq!(layout.rows(&[42, 1]), None);
+        assert!(store.memory().index_bytes > 0);
     }
 
     #[test]

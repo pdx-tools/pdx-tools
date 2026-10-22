@@ -12,6 +12,8 @@ use std::rc::Rc;
 pub struct Layout {
     key: String,
     ids: Vec<u32>,
+    /// Sorted IDs need no index: a binary search finds their rows.
+    sorted: bool,
     rows: OnceCell<HashMap<u32, usize>>,
 }
 
@@ -27,8 +29,20 @@ impl Layout {
         &self.ids
     }
 
+    fn new(key: String, ids: Vec<u32>) -> Self {
+        Self {
+            key,
+            sorted: ids.is_sorted(),
+            ids,
+            rows: OnceCell::new(),
+        }
+    }
+
     /// The row of a geographic ID.
     pub fn row(&self, id: u32) -> Option<usize> {
+        if self.sorted {
+            return self.ids.binary_search(&id).ok();
+        }
         let rows = self.rows.get_or_init(|| {
             let mut rows = HashMap::with_capacity(self.ids.len());
             for (row, id) in self.ids.iter().enumerate() {
@@ -37,6 +51,12 @@ impl Layout {
             rows
         });
         rows.get(&id).copied()
+    }
+
+    /// The rows of a set of IDs, or `None` if the layout does not have one
+    /// of them.
+    pub fn rows(&self, ids: &[u32]) -> Option<Vec<usize>> {
+        ids.iter().map(|id| self.row(*id)).collect()
     }
 
     fn index_bytes(&self) -> usize {
@@ -88,19 +108,6 @@ impl<G: Game> Snapshot<G> {
             &self.layout.ids,
             &self.payload,
         )
-    }
-
-    /// The sum of a value over a fixed set of geographic IDs. If the layout
-    /// does not have one of the IDs, or the set is empty, the sum is a gap.
-    pub fn sum(&self, ids: &[u32], value: impl Fn(usize) -> f64) -> Option<f64> {
-        if ids.is_empty() {
-            return None;
-        }
-        let mut total = 0.0;
-        for id in ids {
-            total += value(self.layout.row(*id)?);
-        }
-        Some(total)
     }
 }
 
@@ -313,11 +320,7 @@ impl<G: Game> Store<G> {
         let layout = match shared {
             Some(layout) => Rc::clone(layout),
             None => {
-                let layout = Rc::new(Layout {
-                    key: descriptor.layout_key.clone(),
-                    ids,
-                    rows: OnceCell::new(),
-                });
+                let layout = Rc::new(Layout::new(descriptor.layout_key.clone(), ids));
                 self.layouts
                     .insert(descriptor.layout_key.clone(), Rc::clone(&layout));
                 layout

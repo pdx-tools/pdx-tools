@@ -103,6 +103,24 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
     ws.clear_selection();
     let mut frame = eu5app::map_projection::extract(ws.gamestate()).unwrap();
     assert_eq!(frame.layout_key, ws.map_projection_layout_key());
+    // The store keeps the binary form, and the map paints from it.
+    let bytes = eu5app::analysis::observation(
+        eu5app::map_projection::extract(ws.gamestate()).unwrap(),
+        eu5app::map_projection::world_summary(ws.gamestate()),
+        campaign_analysis::SnapshotSource {
+            campaign_id: String::from("campaign"),
+            content_hash: String::from(save),
+            date: campaign_analysis::SaveDate {
+                year: 1617,
+                month: 4,
+                day: 1,
+            },
+            game_version: String::from("1.0.0"),
+        },
+    )
+    .encode();
+    let stored =
+        campaign_analysis::Observation::<eu5app::analysis::Eu5Analysis>::decode(&bytes).unwrap();
     use eu5app::MapMode::*;
     for mode in crate::ALL_MAP_MODES {
         ws.set_map_mode(mode);
@@ -113,6 +131,20 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
             .map(|(_, group)| group.raw())
             .collect();
         let paint = ws.paint_map_projection(frame.as_data(), mode).unwrap();
+        let from_bytes = ws
+            .paint_map_projection(
+                stored
+                    .payload
+                    .data(&stored.descriptor.layout_key, &stored.ids),
+                mode,
+            )
+            .unwrap();
+        assert_eq!(from_bytes.groups, paint.groups, "{mode:?} stored groups");
+        assert_eq!(
+            from_bytes.arrays.color_data(),
+            paint.arrays.color_data(),
+            "{mode:?} stored colors"
+        );
         assert_eq!(paint.groups, groups, "{mode:?} groups");
         assert_eq!(ws.location_arrays().as_data(), original, "{mode:?} live");
         let live = ws.location_arrays().buffers();

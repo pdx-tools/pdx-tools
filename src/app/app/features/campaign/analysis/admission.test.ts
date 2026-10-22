@@ -22,13 +22,19 @@ describe("import lease", () => {
     next.release();
   });
 
-  it("fits parsers next to the resident data of all sessions", () => {
+  it("fits parsers next to the resident data of the session", () => {
     const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 100 });
     const lease = admission.acquireImport();
     admission.setResident("eu5", 40);
-    admission.setResident("eu4", 20);
-    expect(lease.parsersFit(2, 20)).toBe(true);
-    expect(lease.parsersFit(3, 20)).toBe(false);
+    expect(lease.parsersFit(3, 20)).toBe(true);
+    expect(lease.parsersFit(4, 20)).toBe(false);
+    // The tab keeps one session. The next session replaces the count, and
+    // a late release of the previous session does not clear it.
+    admission.setResident("eu4", 60);
+    admission.setResident("eu5", 0);
+    expect(admission.residentBytes()).toBe(60);
+    admission.setResident("eu4", 0);
+    expect(admission.residentBytes()).toBe(0);
   });
 });
 
