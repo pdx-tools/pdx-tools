@@ -26,7 +26,6 @@ export type AppendResult<D> = { descriptor: D; duplicate: boolean };
 export type ResidentMemory = {
   /** Strict: the bytes of the backing buffers, each counted once. */
   bufferBytes: number;
-  limitBytes: number;
   snapshots: number;
   layouts: number;
 };
@@ -49,12 +48,13 @@ export class ResidentStore<D extends SnapshotDescriptor, P> {
   private bufferBytes = 0;
   private layouts = new Map<string, Layout>();
 
-  constructor(
-    private readonly adapter: PayloadAdapter<D, P>,
-    private readonly limitBytes = Infinity,
-  ) {}
+  constructor(private readonly adapter: PayloadAdapter<D, P>) {}
 
-  append(descriptor: D, payload: P): AppendResult<D> {
+  /**
+   * Add a snapshot. All buffers of the store, with the buffers that it adds,
+   * must fit in `limitBytes`, which the tab-wide admission gives.
+   */
+  append(descriptor: D, payload: P, limitBytes = Infinity): AppendResult<D> {
     const { adapter } = this;
     if (
       descriptor.game !== adapter.game ||
@@ -96,10 +96,8 @@ export class ResidentStore<D extends SnapshotDescriptor, P> {
     const added = buffers
       .filter((buffer) => !this.bufferRefs.has(buffer))
       .reduce((sum, buffer) => sum + buffer.byteLength, 0);
-    if (this.bufferBytes + added > this.limitBytes) {
-      const error = Error(
-        `Campaign analysis is full. It keeps at most ${mib(this.limitBytes)} of snapshots in memory.`,
-      );
+    if (this.bufferBytes + added > limitBytes) {
+      const error = Error("Campaign analysis is full. It has no memory for more snapshots.");
       error.name = MEMORY_LIMIT_ERROR;
       throw error;
     }
@@ -174,19 +172,8 @@ export class ResidentStore<D extends SnapshotDescriptor, P> {
   memory(): ResidentMemory {
     return {
       bufferBytes: this.bufferBytes,
-      limitBytes: this.limitBytes,
       snapshots: this.blocks.size,
       layouts: this.layouts.size,
     };
   }
-}
-
-const mib = (bytes: number) => `${Math.round(bytes / 1024 ** 2)} MiB`;
-
-/**
- * The limit for resident buffers: a quarter of the device memory, from
- * 256 MiB to 1.5 GiB. The browser reports at most 8 GiB.
- */
-export function residentMemoryLimit(deviceMemoryGiB = 4) {
-  return Math.min(1536, Math.max(256, (deviceMemoryGiB * 1024) / 4)) * 1024 ** 2;
 }

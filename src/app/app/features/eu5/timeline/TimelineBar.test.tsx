@@ -116,6 +116,16 @@ it("marks only matching file versions with resident map frames as ready", () => 
   ).toBeUndefined();
 });
 
+it("gives a save of another campaign no analysis status", () => {
+  mocks.history = { enabled: true, readyIds: new Set() } as MapHistoryValue;
+  const save = {
+    source: { kind: "local", entryId: "entry" },
+    membership: "different",
+  } as CampaignSave;
+  renderToStaticMarkup(<TimelineBar />);
+  expect(mocks.status?.(save)).toBeUndefined();
+});
+
 it("shows a reading indicator while new timeline dates are withheld", () => {
   mocks.pending = 12;
   expect(renderToStaticMarkup(<TimelineBar />)).toContain("12 remaining");

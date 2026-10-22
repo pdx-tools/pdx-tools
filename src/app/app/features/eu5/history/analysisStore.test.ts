@@ -1,10 +1,11 @@
 import { expect, it } from "vitest";
 import { snapshotId } from "@/features/campaign/analysis/descriptor";
-import { Eu5CampaignAnalysis } from "./analysisStore";
+import { ResidentStore } from "@/features/campaign/analysis/residentStore";
+import { eu5PayloadAdapter, mapFrame } from "./analysisStore";
 import type { SaveAnalysis } from "./analysisTypes";
 
 const id = (hash: string) => snapshotId("eu5", 1, hash);
-const save = (hash = "first", dateSort = 13600101, campaignId = "campaign"): SaveAnalysis => ({
+const save = (hash = "first", dateSort = 13600101): SaveAnalysis => ({
   descriptor: {
     id: id(hash),
     game: "eu5",
@@ -13,7 +14,7 @@ const save = (hash = "first", dateSort = 13600101, campaignId = "campaign"): Sav
     artifacts: ["observations", "map"],
     dateSort,
     date: "1360-01-01",
-    campaignId,
+    campaignId: "campaign",
     gameVersion: "1.4.0",
     layoutKey: "same",
     world: { locationCount: 1, countryCount: 1, totalPopulation: 10 },
@@ -35,8 +36,18 @@ const save = (hash = "first", dateSort = 13600101, campaignId = "campaign"): Sav
   },
 });
 
+/** A resident store with the EU5 payload rules. */
+function analysisStore() {
+  const store = new ResidentStore(eu5PayloadAdapter);
+  return {
+    store,
+    append: ({ descriptor, payload }: SaveAnalysis) => store.append(descriptor, payload),
+    mapFrame: (id: string) => mapFrame(store, id),
+  };
+}
+
 it("shares the location IDs of equal layouts", () => {
-  const analysis = new Eu5CampaignAnalysis();
+  const analysis = analysisStore();
   analysis.append(save("later", 13600401));
   const before = analysis.mapFrame(id("later"));
   analysis.append(save());
@@ -48,7 +59,7 @@ it("shares the location IDs of equal layouts", () => {
   expect(analysis.mapFrame(id("first")).descriptor.layoutKey).toBe("same");
 });
 it("rejects incomplete columns and incompatible layouts", () => {
-  const analysis = new Eu5CampaignAnalysis();
+  const analysis = analysisStore();
   analysis.append(save());
   const broken = save("broken", 13600401);
   broken.payload.projection.metrics = new Float32Array(1);

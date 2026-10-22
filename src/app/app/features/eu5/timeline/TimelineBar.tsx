@@ -61,6 +61,8 @@ export function TimelineBar() {
   const analysisStatus = useCallback(
     (save: CampaignSave): SaveAnalysisStatus | undefined => {
       if (save.source.kind !== "local" || !save.source.entryId) return undefined;
+      // Analysis never includes a save of another campaign, so it never waits for one.
+      if (save.membership === "different") return undefined;
       const source = sources[save.source.entryId];
       const entry = localSaveRegistry.get(save.source.entryId);
       const version = entry?.ref.kind === "file" ? entry.ref.file : entry?.version;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
-  api: { memory: vi.fn(), connectFrames: vi.fn(), disconnectFrames: vi.fn() },
+  api: { open: vi.fn(), memory: vi.fn(), connectFrames: vi.fn(), disconnectFrames: vi.fn() },
   cancel: vi.fn(),
   setState: vi.fn(),
   workers: [] as Worker[],
@@ -32,8 +32,8 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 it("stops the import and releases lost metadata when the worker fails", async () => {
-  const { campaignAnalysis } = await import("./analysisClient");
-  campaignAnalysis();
+  const { eu5Analysis } = await import("./analysisClient");
+  eu5Analysis.remote();
   mocks.workers[0].dispatchEvent(new Event("error"));
   expect(mocks.cancel).toHaveBeenCalledOnce();
   expect(mocks.setState).toHaveBeenCalledWith(
@@ -47,12 +47,12 @@ it("stops the import and releases lost metadata when the worker fails", async ()
   );
 });
 it("keeps every lost campaign retryable after another campaign resumes", async () => {
-  const { campaignAnalysis } = await import("./analysisClient");
+  const { eu5Analysis } = await import("./analysisClient");
   mocks.state = {
     snapshots: [{ campaignId: "a" }, { campaignId: "b" }, { campaignId: "a" }],
     analysisPausedCampaigns: ["paused"],
   };
-  campaignAnalysis();
+  eu5Analysis.remote();
   mocks.workers[0].dispatchEvent(new Event("error"));
   expect(mocks.setState).toHaveBeenCalledWith(
     expect.objectContaining({ analysisPausedCampaigns: ["paused", "a", "b"] }),

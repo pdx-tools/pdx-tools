@@ -14,7 +14,7 @@ import {
   useEu5SaveDate,
 } from "../store";
 import { CampaignAnalysis } from "./CampaignAnalysis";
-import { campaignAnalysis } from "./analysisClient";
+import { eu5Analysis } from "./analysisClient";
 import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 import { MapHistoryContext } from "./context";
 import {
@@ -179,7 +179,7 @@ function useMapHistoryState() {
     setPlaying(false);
     cancelPreview();
     try {
-      await campaignAnalysis().clearCampaign(campaignId);
+      await eu5Analysis.clear(campaignId);
       useHistory.setState((history) => {
         const snapshots = history.snapshots.filter((row) => row.campaignId !== campaignId);
         const ids = new Set(snapshots.map((row) => row.id));

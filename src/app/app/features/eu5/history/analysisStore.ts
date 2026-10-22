@@ -1,7 +1,6 @@
-import { ResidentStore } from "@/features/campaign/analysis/residentStore";
-import type { PayloadAdapter } from "@/features/campaign/analysis/residentStore";
+import type { PayloadAdapter, ResidentStore } from "@/features/campaign/analysis/residentStore";
 import { EU5_EXTRACTOR_VERSION } from "./analysisTypes";
-import type { Eu5Payload, Eu5SnapshotDescriptor, MapFrame, SaveAnalysis } from "./analysisTypes";
+import type { Eu5Payload, Eu5SnapshotDescriptor, MapFrame } from "./analysisTypes";
 
 const LOCATION_WIDTH = 7;
 
@@ -26,20 +25,8 @@ export const eu5PayloadAdapter: PayloadAdapter<Eu5SnapshotDescriptor, Eu5Payload
   },
 };
 
-/** The EU5 snapshots of one resident session. */
-export class Eu5CampaignAnalysis {
-  readonly store: ResidentStore<Eu5SnapshotDescriptor, Eu5Payload>;
-
-  constructor(limitBytes = Infinity) {
-    this.store = new ResidentStore(eu5PayloadAdapter, limitBytes);
-  }
-
-  append({ descriptor, payload }: SaveAnalysis) {
-    return this.store.append(descriptor, payload);
-  }
-
-  mapFrame(id: string): MapFrame {
-    const { descriptor, payload } = this.store.read(id);
-    return { descriptor, projection: payload.projection };
-  }
+/** The map columns that a game worker paints for a snapshot. */
+export function mapFrame(store: ResidentStore<Eu5SnapshotDescriptor, Eu5Payload>, id: string) {
+  const { descriptor, payload } = store.read(id);
+  return { descriptor, projection: payload.projection } satisfies MapFrame;
 }
