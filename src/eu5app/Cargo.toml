@@ -7,7 +7,7 @@ edition = "2024"
 default = ["zstd_rust"]
 game-install = ["dep:image", "dep:regex", "dep:walkdir"]
 track-parse = []
-tsify = ["dep:tsify", "dep:wasm-bindgen"]
+tsify = ["dep:tsify", "dep:wasm-bindgen", "campaign-analysis/tsify"]
 zstd_c = ["pdx-zstd/zstd_c", "jomini/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust", "jomini/zstd_rust"]
 
@@ -16,6 +16,7 @@ bumpalo = { workspace = true }
 arena-serde = { workspace = true }
 base64 = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
+campaign-analysis = { workspace = true }
 eu5save = { workspace = true }
 highway = { workspace = true }
 image = { workspace = true, features = ["png"], optional = true }
@@ -37,6 +38,7 @@ name = "it"
 path = "tests/it/main.rs"
 
 [dev-dependencies]
+campaign-analysis = { workspace = true }
 attohttpc = { workspace = true }
 bytemuck = { workspace = true }
 eu5app = { path = ".", default-features = false, features = ["game-install", "track-parse"] }

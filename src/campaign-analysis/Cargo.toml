@@ -1,0 +1,19 @@
+[package]
+name = "campaign-analysis"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+tsify = ["dep:tsify", "dep:wasm-bindgen"]
+
+[lib]
+doctest = false
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+tsify = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }

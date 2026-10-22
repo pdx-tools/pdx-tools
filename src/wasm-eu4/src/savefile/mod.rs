@@ -1017,7 +1017,7 @@ impl SaveFileImpl {
                 tax: prov.base_tax,
                 production: prov.base_production,
                 manpower: prov.base_manpower,
-                development: prov.base_tax + prov.base_production + prov.base_manpower,
+                development: eu4game::analysis::province_development(prov),
                 expand_infrastructure: prov.expand_infrastructure,
                 num_centralized_state: prov.num_centralize_state,
                 religion: prov.religion.clone(),

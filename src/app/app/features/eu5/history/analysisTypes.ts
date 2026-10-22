@@ -1,5 +1,5 @@
 import type { SnapshotDescriptor } from "@/features/campaign/analysis/descriptor";
-import type { ResidentSnapshot } from "@/features/campaign/analysis/residentStore";
+import type { ResidentSnapshot } from "@/features/campaign/analysis/session";
 import type { WorldSummary } from "@/wasm/wasm_eu5";
 
 /** Equal to `eu5app::map_projection::EXTRACTOR_VERSION`. The store refuses other versions. */

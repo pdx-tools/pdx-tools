@@ -5,10 +5,19 @@ import { isWorkerFailure } from "@/lib/workerQueue";
 import { analysisAdmission } from "./admission";
 import type { AnalysisAdmission, ImportLease } from "./admission";
 import type { SnapshotDescriptor } from "./descriptor";
-import { MEMORY_LIMIT_ERROR } from "./residentStore";
-import type { ResidentSnapshot } from "./residentStore";
-import { staleGenerationError } from "./session";
-import type { AppendReply, SessionApi } from "./session";
+import { MEMORY_LIMIT_ERROR, staleGenerationError } from "./session";
+import type {
+  AnalysisStore,
+  AppendReply,
+  QueryHandlers,
+  QueryOf,
+  QueryReply,
+  QueryRequest,
+  ResidentSnapshot,
+  ResultOf,
+  SessionApi,
+  SnapshotSelection,
+} from "./session";
 import { collectBuffers } from "./transferBuffers";
 
 /** The frame methods that an analysis worker gives to game workers. */
@@ -25,17 +34,33 @@ export type AnalysisWorkerOptions = {
   start: () => Worker;
   /** Remove the state that the lost worker held. Calls after this start a new worker. */
   onFailure: (error: Error) => void;
+  /** Remove the state of a campaign that the session no longer keeps. */
+  onRelease?: () => void;
   /** The time for an append, after which the worker has failed. */
   appendTimeoutMs?: number;
 };
 
-export type AnalysisWorkerClient<D extends SnapshotDescriptor, P> = {
+export type QueryCall<Q> = {
+  campaignId: string;
+  /** All snapshots of the campaign when not given. */
+  selection?: SnapshotSelection;
+  identity: string;
+  sequence: number;
+  query: Q;
+};
+
+export type AnalysisWorkerClient<
+  D extends SnapshotDescriptor,
+  P,
+  S extends AnalysisStore<D, P> = AnalysisStore<D, P>,
+  H extends QueryHandlers<S> = QueryHandlers<S>,
+> = {
   /**
    * The worker methods that do not change the store. A worker failure rejects
    * each pending call. Use `append` and `clear` to change the store.
    */
-  remote: () => Remote<Pick<SessionApi<D, P>, "memory"> & FrameServer>;
-  /** Changes when the session clears or the worker stops. */
+  remote: () => Remote<Pick<SessionApi<D, P, S, H>, "memory"> & FrameServer>;
+  /** Changes when the session clears, releases or the worker stops. */
   generation: () => number;
   /** Aborts when the current generation ends. */
   signal: () => AbortSignal;
@@ -48,8 +73,17 @@ export type AnalysisWorkerClient<D extends SnapshotDescriptor, P> = {
     output: ResidentSnapshot<D, P>,
     lease: ImportLease,
   ) => Promise<AppendReply<D>>;
-  /** Release the snapshots of one campaign, or of all campaigns, and stop imports. */
+  /** Release the snapshots of the campaign, or of any campaign, and stop imports. */
   clear: (campaignId?: string) => Promise<void>;
+  /**
+   * Keep only this campaign in the tab. Stop the workers of other games, and
+   * this worker when it keeps another campaign, so their memory is released.
+   */
+  claim: (campaignId: string) => void;
+  /** Stop the worker and forget its campaign. The next call starts a new worker. */
+  release: () => void;
+  /** Run a game query in the current generation. */
+  query: <Q extends QueryOf<H>>(call: QueryCall<Q>) => Promise<QueryReply<ResultOf<H, Q>>>;
   /** Connect a game worker to the frames of this worker. Return the disconnect. */
   connectFrames: (
     connect: (id: string, port: MessagePort | null) => Promise<void>,
@@ -59,28 +93,39 @@ export type AnalysisWorkerClient<D extends SnapshotDescriptor, P> = {
 const FAILURE_MESSAGE =
   "Campaign analysis stopped unexpectedly. Reimport the original saves to rebuild it.";
 
+/** The sessions of this tab. A claim releases the others. */
+const sessions = new Set<{ release: () => void }>();
+
 /** Start one analysis worker when it is first used, and start a new one after a failure. */
-export function createAnalysisWorker<D extends SnapshotDescriptor, P>({
+export function createAnalysisWorker<
+  D extends SnapshotDescriptor,
+  P,
+  S extends AnalysisStore<D, P> = AnalysisStore<D, P>,
+  H extends QueryHandlers<S> = QueryHandlers<S>,
+>({
   session,
   admission: custom,
   start,
   onFailure,
+  onRelease = () => {},
   appendTimeoutMs = 60_000,
-}: AnalysisWorkerOptions): AnalysisWorkerClient<D, P> {
-  type Api = SessionApi<D, P> & FrameServer;
+}: AnalysisWorkerOptions): AnalysisWorkerClient<D, P, S, H> {
+  type Api = SessionApi<D, P, S, H> & FrameServer;
   // The shared admission reads the device memory, so get it when first used.
   const admission = () => custom ?? analysisAdmission();
   let client: Remote<Api> | undefined;
   /** Resolves when the current worker answers its open. */
   let ready: Promise<void> = Promise.resolve();
-  /** Stop the current worker as failed. */
-  let fail: (() => void) | undefined;
+  /** Stop the current worker, as failed when an error is given. */
+  let stopWorker: ((failure?: Error) => void) | undefined;
   let generation = 1;
   let stop = new AbortController();
   const frameConnections = new Map<string, () => void>();
   /** The last generation that removed all snapshots, and that removed each campaign. */
   let allCleared = generation;
   const campaignCleared = new Map<string, number>();
+  /** The campaign that the worker keeps. */
+  let campaign: string | null = null;
 
   /** Start a new generation. Without a campaign, all snapshots are gone. */
   const advance = (reason: unknown, campaignId?: string) => {
@@ -131,11 +176,11 @@ export function createAnalysisWorker<D extends SnapshotDescriptor, P>({
       },
     });
     let opened = false;
-    const failed = () => {
+    const stopped = (lost?: Error) => {
       if (client !== guarded) return;
       client = undefined;
-      fail = undefined;
-      failure = new Error(FAILURE_MESSAGE);
+      stopWorker = undefined;
+      failure = lost ?? new DOMException("Campaign analysis was released", "AbortError");
       for (const reject of pending) reject(failure);
       pending.clear();
       for (const disconnect of frameConnections.values()) disconnect();
@@ -144,9 +189,11 @@ export function createAnalysisWorker<D extends SnapshotDescriptor, P>({
       worker.terminate();
       untrack();
       advance(failure);
+      campaign = null;
       admission().setResident(session, 0);
-      onFailure(failure);
+      if (lost) onFailure(lost);
     };
+    const failed = () => stopped(new Error(FAILURE_MESSAGE));
     // An uncaught exception before the open reply can mean that the worker
     // module did not load, so the worker cannot answer.
     const onError = (event: Event) => {
@@ -155,7 +202,7 @@ export function createAnalysisWorker<D extends SnapshotDescriptor, P>({
     worker.addEventListener("error", onError);
     worker.addEventListener("messageerror", failed);
     client = guarded;
-    fail = failed;
+    stopWorker = stopped;
     // The worker reads messages in order, so this comes before other calls.
     ready = guarded.open(generation).then(() => {
       opened = true;
@@ -164,20 +211,19 @@ export function createAnalysisWorker<D extends SnapshotDescriptor, P>({
     return client;
   };
 
-  const append: AnalysisWorkerClient<D, P>["append"] = async (requested, output, lease) => {
-    // Other sessions do not grow during an import, so the limit stays valid.
+  const append: AnalysisWorkerClient<D, P, S, H>["append"] = async (requested, output, lease) => {
     if (!lease.active()) throw Error("Campaign analysis can only store snapshots of an import");
     if (requested !== generation) throw staleGenerationError();
     const buffers = collectBuffers(output);
     const api = remote();
-    const stopWorker = fail;
+    const fail = stopWorker;
     // Do not count the time that a new worker takes to load.
     await ready;
     // A worker that does not answer has failed. This rejects the append. The
     // worker stores appends one at a time, so the time includes earlier appends.
-    const timer = setTimeout(() => stopWorker?.(), appendTimeoutMs);
+    const timer = setTimeout(() => fail?.(new Error(FAILURE_MESSAGE)), appendTimeoutMs);
     const reply = await api
-      .append(requested, transfer(output, buffers), lease.residentLimit(session))
+      .append(requested, transfer(output, buffers), lease.residentLimit())
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === MEMORY_LIMIT_ERROR)
           error.message = `Campaign analysis is full. It keeps at most ${mib(admission().limits.residentBytes)} of snapshots in memory.`;
@@ -187,19 +233,46 @@ export function createAnalysisWorker<D extends SnapshotDescriptor, P>({
     // A clear after this append ends the generation, and the import stops.
     // The snapshot stays if the clear was for a different campaign. The
     // reply of the clear then has the memory of the worker.
-    if (requested === generation) admission().setResident(session, reply.memory.bufferBytes);
-    else if (removedSince(requested, reply.descriptor.campaignId)) throw staleGenerationError();
+    if (requested === generation) {
+      campaign = reply.descriptor.campaignId;
+      admission().setResident(session, reply.memory.bufferBytes);
+    } else if (removedSince(requested, reply.descriptor.campaignId)) throw staleGenerationError();
     return reply;
   };
 
   const clear = async (campaignId?: string) => {
     advance(new DOMException("Campaign analysis was cleared", "AbortError"), campaignId);
+    if (campaignId === undefined || campaignId === campaign) campaign = null;
     const memory = await remote().clear(generation, campaignId);
     admission().setResident(session, memory.bufferBytes);
   };
 
+  const release = () => {
+    if (stopWorker) stopWorker();
+    else {
+      advance(new DOMException("Campaign analysis was released", "AbortError"));
+      campaign = null;
+    }
+    onRelease();
+  };
+
+  const claim = (campaignId: string) => {
+    for (const other of sessions) if (other !== self) other.release();
+    if (campaign !== null && campaign !== campaignId) release();
+  };
+
+  const query: AnalysisWorkerClient<D, P, S, H>["query"] = async (call) => {
+    const request: QueryRequest<QueryOf<H>> = {
+      selection: { kind: "all" },
+      ...call,
+      generation,
+    };
+    // The worker returns the result of the handler for this kind of query.
+    return (await remote().query(request)) as QueryReply<never>;
+  };
+
   let sequence = 0;
-  const connectFrames: AnalysisWorkerClient<D, P>["connectFrames"] = async (connect) => {
+  const connectFrames: AnalysisWorkerClient<D, P, S, H>["connectFrames"] = async (connect) => {
     const id = `frame:${++sequence}`;
     const channel = new MessageChannel();
     const storage = remote();
@@ -223,14 +296,19 @@ export function createAnalysisWorker<D extends SnapshotDescriptor, P>({
     }
   };
 
-  return {
+  const self: AnalysisWorkerClient<D, P, S, H> = {
     remote,
     generation: () => generation,
     signal: () => stop.signal,
     append,
     clear,
+    claim,
+    release,
+    query,
     connectFrames,
   };
+  sessions.add(self);
+  return self;
 }
 
 const mib = (bytes: number) => `${Math.round(bytes / 1024 ** 2)} MiB`;

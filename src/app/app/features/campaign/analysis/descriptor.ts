@@ -17,7 +17,7 @@ export type SnapshotDescriptor = {
   /** Identifies the payload schema and its calculations. */
   extractorVersion: number;
   /** The kinds of data in the payload, such as "observations" or "map". */
-  artifacts: readonly string[];
+  artifacts: string[];
 };
 
 /** Equal content from the same extractor gives the same snapshot. */

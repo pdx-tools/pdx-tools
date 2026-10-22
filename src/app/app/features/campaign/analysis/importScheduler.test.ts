@@ -3,7 +3,7 @@ import { AnalysisAdmission } from "./admission";
 import type { SnapshotDescriptor } from "./descriptor";
 import { importBatch } from "./importScheduler";
 import type { AnalysisSink, ImportOptions, ParserAdapter } from "./importScheduler";
-import type { AppendResult } from "./residentStore";
+import type { AppendResult } from "./session";
 import { staleGenerationError } from "./session";
 
 const mocks = vi.hoisted(() => ({

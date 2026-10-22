@@ -139,6 +139,7 @@ impl From<Eu5MapMode> for MapMode {
     }
 }
 
+mod analysis;
 mod map_projection;
 mod tokens;
 pub use tokens::set_tokens;
@@ -461,7 +462,7 @@ fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result
             layout_key: projection.layout_key.clone(),
             world: eu5app::map_projection::world_summary(&game),
         };
-        (observation, map_projection::into_js(&projection)?)
+        (observation, map_projection::into_js(projection.as_data())?)
     };
     observation.content_hash = loaded.into_observer().finish();
     let result = js_sys::Object::new();

@@ -4,6 +4,7 @@ import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { useEu5PlaythroughId } from "../store";
+import { eu5Analysis } from "./analysisClient";
 import { analyzeCampaign } from "./analyzeCampaign";
 import { isAnalysisPaused, useHistory } from "./store";
 
@@ -52,6 +53,14 @@ export function CampaignAnalysis() {
     (state) => !!playthroughId && state.analysisEnabledCampaigns.includes(playthroughId),
   );
   const attempted = useRef(new Set<string>());
+  // The tab keeps the analysis of one campaign. Another campaign releases it,
+  // so its saves can be analyzed again when the player comes back.
+  useEffect(() => {
+    if (!playthroughId) return;
+    eu5Analysis.claim(playthroughId);
+    for (const key of attempted.current)
+      if (!key.startsWith(`${playthroughId}:`)) attempted.current.delete(key);
+  }, [playthroughId]);
   useEffect(() => {
     if (!featureEnabled || !enabled || !playthroughId || progress || paused) return;
     const pending = pendingCampaignAnalysis(entries, playthroughId, attempted.current);

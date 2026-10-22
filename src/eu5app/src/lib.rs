@@ -1,3 +1,4 @@
+pub mod analysis;
 mod color;
 pub mod entity_profile;
 pub mod game_data;

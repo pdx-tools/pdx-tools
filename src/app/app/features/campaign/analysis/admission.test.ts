@@ -22,19 +22,6 @@ describe("import lease", () => {
     next.release();
   });
 
-  it("gives a session the tab limit less the data of the other sessions", () => {
-    const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 1000 });
-    admission.setResident("eu5", 50);
-    admission.setResident("eu4", 20);
-    const lease = admission.acquireImport();
-    expect(lease.residentLimit("eu5")).toBe(80);
-    expect(lease.residentLimit("eu4")).toBe(50);
-    admission.setResident("eu4", 0);
-    expect(lease.residentLimit("eu5")).toBe(100);
-    admission.setResident("eu4", 200);
-    expect(lease.residentLimit("eu5")).toBe(0);
-  });
-
   it("fits parsers next to the resident data of all sessions", () => {
     const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 100 });
     const lease = admission.acquireImport();

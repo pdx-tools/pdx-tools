@@ -6,17 +6,20 @@ const cleanup: (() => void)[] = [];
 afterEach(() => {
   for (const close of cleanup.splice(0)) close();
 });
-it("transfers a frame copy directly without detaching resident columns", async () => {
-  const original = new Uint32Array([42, 73]);
+it("transfers the copy that the lookup gives", async () => {
+  const copies: Uint32Array<ArrayBuffer>[] = [];
   const channel = new MessageChannel();
-  const serve = serveFrames<Frame>(channel.port1, (snapshotId) => ({ snapshotId, ids: original }));
+  const serve = serveFrames<Frame>(channel.port1, (snapshotId) => {
+    const ids = new Uint32Array([42, 73]);
+    copies.push(ids);
+    return { snapshotId, ids };
+  });
   const reader = new FrameReader<Frame>(channel.port2);
   cleanup.push(serve, () => reader.close());
   const first = await reader.read("save");
-  expect(first.ids).toEqual(original);
-  first.ids[0] = 99;
-  expect(original[0]).toBe(42);
-  expect(original.byteLength).toBe(8);
+  expect([...first.ids]).toEqual([42, 73]);
+  // The reply transferred the copy, so the analysis worker keeps nothing.
+  expect(copies[0].byteLength).toBe(0);
   expect((await reader.read("save")).ids[0]).toBe(42);
 });
 it("reports a missing frame and keeps the connection usable", async () => {

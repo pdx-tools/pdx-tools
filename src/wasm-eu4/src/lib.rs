@@ -39,6 +39,7 @@ where
     value.map(into_ts).transpose()
 }
 
+mod analysis;
 mod log;
 mod models;
 mod savefile;

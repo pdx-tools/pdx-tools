@@ -1,5 +1,6 @@
 use super::{fixtures, utils};
 use eu5app::{Eu5AnySaveLoader, Eu5DebugSaveLoader};
+use jomini::common::PdsDate;
 use std::io::Read;
 
 #[test]
@@ -204,4 +205,90 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
     let paint = ws.paint_map_projection(frame.as_data(), Control).unwrap();
     assert!(paint.groups.iter().all(|owner| *owner == u32::MAX));
     assert_eq!(ws.location_arrays().as_data(), original);
+}
+
+/// The world population of the map observations: the population of each
+/// owned location, as the world summary counts it.
+fn observed_world_population(projection: &eu5app::map_projection::MapProjection) -> u32 {
+    let width = eu5app::map_projection::Metric::ALL.len();
+    let population = eu5app::map_projection::Metric::ALL
+        .iter()
+        .position(|metric| *metric == eu5app::map_projection::Metric::Population)
+        .unwrap();
+    projection
+        .owners
+        .iter()
+        .enumerate()
+        .filter(|(_, owner)| **owner != u32::MAX)
+        .map(|(row, _)| projection.metrics[row * width + population] as u32)
+        .sum()
+}
+
+#[test]
+fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
+    use campaign_analysis::{Selection, SnapshotDescriptor, Store, snapshot_id};
+    use eu5app::analysis::{Eu5Analysis, Eu5SnapshotDescriptor, ProjectionColumns};
+    let mut layouts = Vec::new();
+    let mut store = Store::<Eu5Analysis>::new();
+    for (save, date, population) in [
+        ("Poland_1339-02-03.eu5", (1339, 2, 3), 355_459_580),
+        ("Poland_1455-01-01.eu5", (1455, 1, 1), 358_275_487),
+    ] {
+        let file = eu5save::Eu5File::from_file(fixtures::request_file(save)).unwrap();
+        if file.header().kind().is_binary()
+            && jomini::binary::TokenResolver::is_empty(utils::tokens())
+        {
+            assert!(
+                !utils::require_test_assets(),
+                "{save}: EU5 binary tokens not loaded"
+            );
+            return;
+        }
+        let mut loaded = eu5app::Eu5SaveLoader::open(file, utils::tokens())
+            .unwrap()
+            .parse()
+            .unwrap();
+        let game = loaded.take_gamestate();
+        let meta_date = game.metadata().date;
+        assert_eq!(
+            (meta_date.year(), meta_date.month(), meta_date.day()),
+            date,
+            "{save}"
+        );
+        let projection = eu5app::map_projection::extract(&game).unwrap();
+        let summary = eu5app::map_projection::world_summary(&game);
+        assert_eq!(summary.total_population, population, "{save}");
+        assert_eq!(
+            observed_world_population(&projection),
+            summary.total_population,
+            "{save}"
+        );
+        layouts.push(projection.layout_key.clone());
+
+        let version = eu5app::map_projection::EXTRACTOR_VERSION;
+        let descriptor = Eu5SnapshotDescriptor {
+            common: SnapshotDescriptor {
+                id: snapshot_id("eu5", version, save),
+                game: String::from("eu5"),
+                campaign_id: String::from("poland"),
+                content_hash: String::from(save),
+                date: format!("{}-{:02}-{:02}", date.0, date.1, date.2),
+                date_sort: i32::from(date.0) * 10000 + i32::from(date.1) * 100 + i32::from(date.2),
+                game_version: String::from("1.0.0"),
+                extractor_version: version,
+                artifacts: Vec::new(),
+            },
+            layout_key: projection.layout_key.clone(),
+            world: summary,
+        };
+        let (key, ids, columns) = ProjectionColumns::split(projection);
+        store
+            .append(descriptor, key, ids, columns, usize::MAX)
+            .unwrap();
+    }
+    assert_eq!(layouts[0], layouts[1]);
+    let world = eu5app::analysis::world_population(&store, "poland", &Selection::All);
+    let values: Vec<_> = world.rows.iter().map(|row| row.value).collect();
+    assert_eq!(values, [Some(355_459_580.0), Some(358_275_487.0)]);
+    assert_eq!(store.memory().layouts, 1);
 }

@@ -2,9 +2,8 @@ import type { Remote } from "comlink";
 import { createWorkerQueue } from "@/lib/workerQueue";
 import type { ImportLease } from "./admission";
 import type { SnapshotDescriptor } from "./descriptor";
-import { MEMORY_LIMIT_ERROR } from "./residentStore";
-import type { AppendResult } from "./residentStore";
-import { STALE_GENERATION_ERROR } from "./session";
+import { MEMORY_LIMIT_ERROR, STALE_GENERATION_ERROR } from "./session";
+import type { AppendResult } from "./session";
 
 /** The game rules to parse a save in a background worker. */
 export type ParserAdapter<Api, R> = {

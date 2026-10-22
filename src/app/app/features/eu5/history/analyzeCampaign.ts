@@ -19,6 +19,7 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
   if (entries.length > 1000) throw Error("Analyze at most 1000 saves at a time.");
   // One import runs in the tab, for all games.
   const lease = analysisAdmission().acquireImport();
+  eu5Analysis.claim(playthroughId);
   const controller = new AbortController();
   const startedAt = performance.now();
   const issues: string[] = [];
