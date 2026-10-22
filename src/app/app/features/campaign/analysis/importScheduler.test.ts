@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnalysisAdmission } from "./admission";
 import type { SnapshotDescriptor } from "./descriptor";
 import { importBatch } from "./importScheduler";
-import type { AnalysisSink, ImportOptions, ParserAdapter } from "./importScheduler";
-import type { AppendResult } from "./session";
+import type { AnalysisSink, AppendResult, ImportOptions, ParserAdapter } from "./importScheduler";
 import { staleGenerationError } from "./session";
 
 const mocks = vi.hoisted(() => ({

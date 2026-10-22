@@ -5,21 +5,14 @@ use crate::insights::WorldSummary;
 use crate::map_projection::{
     EXTRACTOR_VERSION, Fraction, MapProjection, MapProjectionData, Metric,
 };
-use campaign_analysis::{
-    Game, History, Layout, Selection, SnapshotDescriptor, Store, history, sum_ids,
-};
+use campaign_analysis::{Game, History, Observation, SnapshotDescriptor, SnapshotSource, View};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// The EU5 fields of a snapshot descriptor.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-// The flattened fields serialize as a map, so make it an object for JS.
-#[cfg_attr(feature = "tsify", tsify(hashmap_as_object))]
 #[serde(rename_all = "camelCase")]
-pub struct Eu5SnapshotDescriptor {
-    #[serde(flatten)]
-    pub common: SnapshotDescriptor,
-    /// Identifies the map artifact.
-    pub layout_key: String,
+pub struct Eu5Detail {
     pub world: WorldSummary,
 }
 
@@ -36,29 +29,28 @@ pub struct ProjectionColumns {
     pub religion_colors: Vec<u32>,
     pub market_colors: Vec<u32>,
 }
+campaign_analysis::columns!(ProjectionColumns {
+    fractions,
+    metrics,
+    owners,
+    controllers,
+    religions,
+    markets,
+    countries,
+    religion_colors,
+    market_colors,
+});
 
 impl ProjectionColumns {
-    /// Split a projection into its layout key, its location IDs and its columns.
-    pub fn split(projection: MapProjection) -> (String, Vec<u32>, Self) {
-        let columns = ProjectionColumns {
-            fractions: projection.fractions,
-            metrics: projection.metrics,
-            owners: projection.owners,
-            controllers: projection.controllers,
-            religions: projection.religions,
-            markets: projection.markets,
-            countries: projection.countries,
-            religion_colors: projection.religion_colors,
-            market_colors: projection.market_colors,
-        };
-        (projection.layout_key, projection.location_ids, columns)
-    }
-
     /// The projection that a game worker paints.
-    pub fn data<'a>(&'a self, layout: &'a Layout) -> MapProjectionData<'a> {
+    pub fn data<'a>(
+        &'a self,
+        layout_key: &'a str,
+        location_ids: &'a [u32],
+    ) -> MapProjectionData<'a> {
         MapProjectionData {
-            layout_key: layout.key(),
-            location_ids: layout.ids(),
+            layout_key,
+            location_ids,
             fractions: &self.fractions,
             metrics: &self.metrics,
             owners: &self.owners,
@@ -77,29 +69,57 @@ impl ProjectionColumns {
     }
 }
 
+/// The snapshot of a save from its map projection and its world summary.
+pub fn observation(
+    projection: MapProjection,
+    world: WorldSummary,
+    source: SnapshotSource,
+) -> Observation<Eu5Analysis> {
+    let MapProjection {
+        layout_key,
+        location_ids,
+        fractions,
+        metrics,
+        owners,
+        controllers,
+        religions,
+        markets,
+        countries,
+        religion_colors,
+        market_colors,
+    } = projection;
+    Observation {
+        descriptor: SnapshotDescriptor::new::<Eu5Analysis>(source, layout_key),
+        detail: Eu5Detail { world },
+        ids: location_ids,
+        payload: ProjectionColumns {
+            fractions,
+            metrics,
+            owners,
+            controllers,
+            religions,
+            markets,
+            countries,
+            religion_colors,
+            market_colors,
+        },
+    }
+}
+
 #[derive(Debug)]
 pub struct Eu5Analysis;
 
 impl Game for Eu5Analysis {
     const GAME: &'static str = "eu5";
     const EXTRACTOR_VERSION: u32 = EXTRACTOR_VERSION;
-    type Descriptor = Eu5SnapshotDescriptor;
+    const ARTIFACTS: &'static [&'static str] = &["observations", "map"];
+    type Detail = Eu5Detail;
     type Payload = ProjectionColumns;
+    type Query = Eu5Query;
 
-    fn common(descriptor: &Eu5SnapshotDescriptor) -> &SnapshotDescriptor {
-        &descriptor.common
-    }
-
-    fn validate(
-        descriptor: &Eu5SnapshotDescriptor,
-        layout_key: &str,
-        ids: &[u32],
-        payload: &ProjectionColumns,
-    ) -> Result<(), String> {
-        let n = ids.len();
-        let complete = layout_key == descriptor.layout_key
-            && payload.fractions.len() == n * Fraction::ALL.len()
-            && payload.metrics.len() == n * Metric::ALL.len()
+    fn validate(rows: usize, payload: &ProjectionColumns) -> Result<(), String> {
+        let complete = payload.fractions.len() == rows * Fraction::ALL.len()
+            && payload.metrics.len() == rows * Metric::ALL.len()
             && [
                 &payload.owners,
                 &payload.controllers,
@@ -107,51 +127,35 @@ impl Game for Eu5Analysis {
                 &payload.markets,
             ]
             .iter()
-            .all(|column| column.len() == n);
+            .all(|column| column.len() == rows);
         if complete {
             Ok(())
         } else {
             Err(String::from("Incomplete analytical map columns"))
         }
     }
+}
 
-    fn payload_bytes(payload: &ProjectionColumns) -> usize {
-        let ids = payload.owners.len()
-            + payload.controllers.len()
-            + payload.religions.len()
-            + payload.markets.len()
-            + payload.countries.len()
-            + payload.religion_colors.len()
-            + payload.market_colors.len();
-        payload.fractions.len() * size_of::<u16>()
-            + payload.metrics.len() * size_of::<f32>()
-            + ids * size_of::<u32>()
+campaign_analysis::queries! {
+    /// The EU5 history queries.
+    pub enum Eu5Query for Eu5Analysis => Eu5Answer {
+        /// The population of the world on each date, as the world summary of
+        /// the save counts it.
+        WorldPopulation => History = world_population,
+        /// The population of a fixed set of locations on each date. If a
+        /// snapshot does not have one of the locations, its total is a gap.
+        LocationPopulation { location_ids: Vec<u32> } => History = location_population,
     }
 }
 
-/// The population of the world on each date, as the world summary of the
-/// save counts it.
-pub fn world_population(
-    store: &Store<Eu5Analysis>,
-    campaign_id: &str,
-    selection: &Selection,
-) -> History {
-    history(store.select(campaign_id, selection), |snapshot| {
-        Some(f64::from(snapshot.descriptor.world.total_population))
-    })
+pub fn world_population(view: &View<'_, Eu5Analysis>) -> History {
+    view.series(|snapshot| Some(f64::from(snapshot.detail().world.total_population)))
 }
 
-/// The population of a fixed set of locations on each date. If a snapshot
-/// does not have one of the locations, its total is a gap.
-pub fn location_population(
-    store: &Store<Eu5Analysis>,
-    campaign_id: &str,
-    selection: &Selection,
-    location_ids: &[u32],
-) -> History {
-    history(store.select(campaign_id, selection), |snapshot| {
-        sum_ids(&snapshot.layout, location_ids, |row| {
-            f64::from(snapshot.payload.metric(row, Metric::Population))
+pub fn location_population(view: &View<'_, Eu5Analysis>, location_ids: Vec<u32>) -> History {
+    view.series(|snapshot| {
+        snapshot.sum(&location_ids, |row| {
+            f64::from(snapshot.payload().metric(row, Metric::Population))
         })
     })
 }
@@ -159,36 +163,18 @@ pub fn location_population(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use campaign_analysis::snapshot_id;
+    use campaign_analysis::{Query, SaveDate, Selection, Store};
 
     fn save(
         hash: &str,
         date_sort: i32,
         population: &[f32],
         world: u32,
-    ) -> (Eu5SnapshotDescriptor, Vec<u32>, ProjectionColumns) {
+    ) -> Observation<Eu5Analysis> {
         let n = population.len();
-        let layout_key = format!("layout-{n}");
-        let descriptor = Eu5SnapshotDescriptor {
-            common: SnapshotDescriptor {
-                id: snapshot_id("eu5", EXTRACTOR_VERSION, hash),
-                game: String::from("eu5"),
-                campaign_id: String::from("campaign"),
-                content_hash: String::from(hash),
-                date: date_sort.to_string(),
-                date_sort,
-                game_version: String::from("1.0.0"),
-                extractor_version: EXTRACTOR_VERSION,
-                artifacts: vec![String::from("observations"), String::from("map")],
-            },
-            layout_key,
-            world: WorldSummary {
-                location_count: n as u32,
-                country_count: 1,
-                total_population: world,
-            },
-        };
-        let columns = ProjectionColumns {
+        let projection = MapProjection {
+            layout_key: format!("layout-{n}"),
+            location_ids: [42, 43][..n].to_vec(),
             fractions: vec![0; n * Fraction::ALL.len()],
             metrics: population
                 .iter()
@@ -202,7 +188,22 @@ mod tests {
             religion_colors: Vec::new(),
             market_colors: Vec::new(),
         };
-        (descriptor, [42, 43][..n].to_vec(), columns)
+        let world = WorldSummary {
+            location_count: n as u32,
+            country_count: 1,
+            total_population: world,
+        };
+        let source = SnapshotSource {
+            campaign_id: String::from("campaign"),
+            content_hash: String::from(hash),
+            date: SaveDate {
+                year: date_sort / 10000,
+                month: (date_sort / 100 % 100) as u8,
+                day: (date_sort % 100) as u8,
+            },
+            game_version: String::from("1.0.0"),
+        };
+        observation(projection, world, source)
     }
 
     fn store() -> Store<Eu5Analysis> {
@@ -212,61 +213,61 @@ mod tests {
             ("b", 14100101, &[120.75, 60.5][..], 120),
             ("c", 14200101, &[130.0][..], 130),
         ] {
-            let (descriptor, ids, columns) = save(hash, date, population, world);
-            let key = descriptor.layout_key.clone();
             store
-                .append(descriptor, key, ids, columns, usize::MAX)
+                .append(save(hash, date, population, world), usize::MAX)
                 .unwrap();
         }
         store
     }
 
-    fn values(history: History) -> Vec<Option<f64>> {
+    fn values(store: &Store<Eu5Analysis>, campaign: &str, query: Eu5Query) -> Vec<Option<f64>> {
+        let view = View::select(store, campaign, &Selection::All);
+        let (Eu5Answer::WorldPopulation(history) | Eu5Answer::LocationPopulation(history)) =
+            query.answer(&view);
         history.rows.into_iter().map(|row| row.value).collect()
     }
 
     #[test]
     fn sums_a_fixed_set_of_locations_and_a_missing_location_is_a_gap() {
         let store = store();
-        let all = Selection::All;
-        assert_eq!(
-            values(location_population(&store, "campaign", &all, &[42, 43])),
-            [Some(150.0), Some(181.25), None]
-        );
-        assert_eq!(
-            values(location_population(&store, "campaign", &all, &[42])),
-            [Some(100.0), Some(120.75), Some(130.0)]
-        );
+        let fixed = |ids: &[u32]| {
+            values(
+                &store,
+                "campaign",
+                Eu5Query::LocationPopulation {
+                    location_ids: ids.to_vec(),
+                },
+            )
+        };
+        assert_eq!(fixed(&[42, 43]), [Some(150.0), Some(181.25), None]);
+        assert_eq!(fixed(&[42]), [Some(100.0), Some(120.75), Some(130.0)]);
     }
 
     #[test]
     fn world_population_comes_from_the_world_summary() {
         let store = store();
         assert_eq!(
-            values(world_population(&store, "campaign", &Selection::All)),
+            values(&store, "campaign", Eu5Query::WorldPopulation),
             [Some(150.0), Some(120.0), Some(130.0)]
         );
-        assert!(
-            world_population(&store, "other", &Selection::All)
-                .rows
-                .is_empty()
-        );
+        assert!(values(&store, "other", Eu5Query::WorldPopulation).is_empty());
     }
 
     #[test]
-    fn refuses_incomplete_columns_and_another_layout_key() {
+    fn the_binary_form_keeps_the_world_summary_and_the_map_columns() {
+        let original = save("a", 14000101, &[1.0, 2.0], 3);
+        let decoded = Observation::<Eu5Analysis>::decode(&original.encode()).unwrap();
+        assert_eq!(decoded.detail, original.detail);
+        assert_eq!(decoded.payload, original.payload);
+        assert_eq!(decoded.ids, original.ids);
+    }
+
+    #[test]
+    fn refuses_incomplete_columns() {
         let mut store = Store::<Eu5Analysis>::new();
-        let (descriptor, ids, mut columns) = save("a", 14000101, &[1.0], 1);
-        columns.metrics.pop();
-        let key = descriptor.layout_key.clone();
-        let error = store
-            .append(descriptor.clone(), key, ids.clone(), columns, usize::MAX)
-            .unwrap_err();
-        assert!(error.to_string().contains("Incomplete"));
-        let (_, _, columns) = save("a", 14000101, &[1.0], 1);
-        let error = store
-            .append(descriptor, String::from("other"), ids, columns, usize::MAX)
-            .unwrap_err();
+        let mut incomplete = save("a", 14000101, &[1.0], 1);
+        incomplete.payload.metrics.pop();
+        let error = store.append(incomplete, usize::MAX).unwrap_err();
         assert!(error.to_string().contains("Incomplete"));
         assert_eq!(store.memory().snapshots, 0);
     }

@@ -226,10 +226,10 @@ fn observed_world_population(projection: &eu5app::map_projection::MapProjection)
 
 #[test]
 fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
-    use campaign_analysis::{Selection, SnapshotDescriptor, Store, snapshot_id};
-    use eu5app::analysis::{Eu5Analysis, Eu5SnapshotDescriptor, ProjectionColumns};
+    use campaign_analysis::{Query, SaveDate, Selection, Session, SnapshotSource, View};
+    use eu5app::analysis::{Eu5Analysis, Eu5Answer, Eu5Query};
     let mut layouts = Vec::new();
-    let mut store = Store::<Eu5Analysis>::new();
+    let mut session = Session::<Eu5Analysis>::new();
     for (save, date, population) in [
         ("Poland_1339-02-03.eu5", (1339, 2, 3), 355_459_580),
         ("Poland_1455-01-01.eu5", (1455, 1, 1), 358_275_487),
@@ -265,30 +265,26 @@ fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
         );
         layouts.push(projection.layout_key.clone());
 
-        let version = eu5app::map_projection::EXTRACTOR_VERSION;
-        let descriptor = Eu5SnapshotDescriptor {
-            common: SnapshotDescriptor {
-                id: snapshot_id("eu5", version, save),
-                game: String::from("eu5"),
-                campaign_id: String::from("poland"),
-                content_hash: String::from(save),
-                date: format!("{}-{:02}-{:02}", date.0, date.1, date.2),
-                date_sort: i32::from(date.0) * 10000 + i32::from(date.1) * 100 + i32::from(date.2),
-                game_version: String::from("1.0.0"),
-                extractor_version: version,
-                artifacts: Vec::new(),
+        let source = SnapshotSource {
+            campaign_id: String::from("poland"),
+            content_hash: String::from(save),
+            date: SaveDate {
+                year: i32::from(date.0),
+                month: date.1,
+                day: date.2,
             },
-            layout_key: projection.layout_key.clone(),
-            world: summary,
+            game_version: String::from("1.0.0"),
         };
-        let (key, ids, columns) = ProjectionColumns::split(projection);
-        store
-            .append(descriptor, key, ids, columns, usize::MAX)
-            .unwrap();
+        let observed = eu5app::analysis::observation(projection, summary, source);
+        // The store reads the binary form that JavaScript moves.
+        session.append(0, &observed.encode(), usize::MAX).unwrap();
     }
     assert_eq!(layouts[0], layouts[1]);
-    let world = eu5app::analysis::world_population(&store, "poland", &Selection::All);
+    let view = View::select(session.store(), "poland", &Selection::All);
+    let Eu5Answer::WorldPopulation(world) = Eu5Query::WorldPopulation.answer(&view) else {
+        panic!("another answer kind");
+    };
     let values: Vec<_> = world.rows.iter().map(|row| row.value).collect();
     assert_eq!(values, [Some(355_459_580.0), Some(358_275_487.0)]);
-    assert_eq!(store.memory().layouts, 1);
+    assert_eq!(session.memory().layouts, 1);
 }

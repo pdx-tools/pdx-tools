@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// The whole map, as the scope every insight falls back to when nothing is
 /// selected. Computed once per save.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct WorldSummary {

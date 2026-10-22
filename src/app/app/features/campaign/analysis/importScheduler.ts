@@ -3,7 +3,9 @@ import { createWorkerQueue } from "@/lib/workerQueue";
 import type { ImportLease } from "./admission";
 import type { SnapshotDescriptor } from "./descriptor";
 import { MEMORY_LIMIT_ERROR, STALE_GENERATION_ERROR } from "./session";
-import type { AppendResult } from "./session";
+
+/** What the session did with parser output. */
+export type AppendResult<D> = { descriptor: D; duplicate: boolean };
 
 /** The game rules to parse a save in a background worker. */
 export type ParserAdapter<Api, R> = {

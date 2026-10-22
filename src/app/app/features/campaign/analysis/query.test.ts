@@ -153,15 +153,11 @@ describe("replies", () => {
     expect(shown("world")).toMatchObject({ result: "c", snapshotIds: ["c"] });
   });
 
-  it("that the worker marks stale do not show, and an unsupported query is an error", async () => {
+  it("that the worker marks stale do not show", async () => {
     query.update(input("world", "a"));
     calls[0].resolve({ status: "stale" });
     await vi.advanceTimersByTimeAsync(0);
     expect(shown("world")).toMatchObject({ result: null, error: null });
-    query.update(input("provinces", "a"));
-    calls[1].resolve({ status: "unsupported", kind: "provinces" });
-    await vi.advanceTimersByTimeAsync(0);
-    expect(shown("provinces").error).toContain("does not support");
   });
 
   it("that fail show the error for the current query", async () => {

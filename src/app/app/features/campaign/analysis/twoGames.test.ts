@@ -1,18 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type {
-  Eu4Payload,
-  Eu4SaveAnalysis,
-  Eu4SnapshotDescriptor,
-} from "@/features/eu4/analysis/analysisTypes";
+import type { Eu4Snapshot } from "@/features/eu4/analysis/analysisTypes";
 import { importEu4Campaign } from "@/features/eu4/analysis/importCampaign";
-import type {
-  Eu5Payload,
-  SaveAnalysis as Eu5SaveAnalysis,
-  Eu5SnapshotDescriptor,
-} from "@/features/eu5/history/analysisTypes";
+import type { Eu5Snapshot } from "@/features/eu5/history/analysisTypes";
 import { eu5ParserAdapter } from "@/features/eu5/history/parserAdapter";
+import type { Eu4AnalysisStore } from "@/wasm/wasm_eu4";
+import type { Eu5AnalysisStore } from "@/wasm/wasm_eu5";
 import { analysisAdmission, IMPORT_BUSY_ERROR } from "./admission";
-import { snapshotId } from "./descriptor";
 import type { SnapshotDescriptor } from "./descriptor";
 import { importBatch } from "./importScheduler";
 import { sessionApi } from "./session";
@@ -25,7 +18,7 @@ import type { AnalysisWorkerClient } from "./workerClient";
 const mocks = vi.hoisted(() => ({
   parse: new Map<string, (file: File) => Promise<unknown>>(),
   sessions: new Map<string, unknown>(),
-  eu4: null as AnalysisWorkerClient<Eu4SnapshotDescriptor, Eu4Payload> | null,
+  eu4: null as AnalysisWorkerClient<Eu4AnalysisStore> | null,
 }));
 vi.mock("@/features/eu4/analysis/analysisClient", () => ({
   get eu4Analysis() {
@@ -45,7 +38,7 @@ const gameOf = (url: string | URL) =>
   String(url).includes("/eu4/") ? "eu4" : String(url).includes("/eu5/") ? "eu5" : String(url);
 
 const descriptor = (game: string, hash: string, campaignId: string): SnapshotDescriptor => ({
-  id: snapshotId(game, 1, hash),
+  id: `${game}:1:${hash}`,
   game,
   campaignId,
   contentHash: hash,
@@ -53,61 +46,68 @@ const descriptor = (game: string, hash: string, campaignId: string): SnapshotDes
   dateSort: 14441111,
   gameVersion: "1.0.0",
   extractorVersion: 1,
+  layoutKey: game,
   artifacts: ["observations"],
 });
 
-function eu4Save(hash: string, campaignId = "eu4-campaign"): Eu4SaveAnalysis {
-  return {
-    descriptor: { ...descriptor("eu4", hash, campaignId), game: "eu4", layoutKey: "eu4" },
-    payload: {
-      provinces: {
-        layoutKey: "eu4",
-        provinceIds: new Uint32Array([1]),
-        development: new Float32Array([3]),
-        owned: new Uint8Array([1]),
-      },
-    },
-  };
+/** The descriptor in each opaque snapshot, as Rust reads it. */
+const encoded = new WeakMap<Uint8Array, SnapshotDescriptor>();
+function snapshot<S extends Eu4Snapshot | Eu5Snapshot>(descriptor: S["descriptor"]) {
+  const data = new Uint8Array(1) as S["data"];
+  encoded.set(data, descriptor);
+  return { descriptor, data } as S;
 }
 
-function eu5Save(hash: string): Eu5SaveAnalysis {
-  return {
-    descriptor: {
-      ...descriptor("eu5", hash, "eu5-campaign"),
-      game: "eu5",
-      layoutKey: "eu5",
-      world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
-    },
-    payload: { projection: {} as Eu5Payload["projection"] },
-  };
-}
+const eu4Save = (hash: string, campaignId = "eu4-campaign") =>
+  snapshot<Eu4Snapshot>({ ...descriptor("eu4", hash, campaignId), game: "eu4" });
+
+const eu5Save = (hash: string) =>
+  snapshot<Eu5Snapshot>({
+    ...descriptor("eu5", hash, "eu5-campaign"),
+    game: "eu5",
+    world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
+  });
 
 /** Keeps the descriptors of one campaign, as the Rust store does. */
-function fakeStore(): AnalysisStore<SnapshotDescriptor, unknown> {
+function fakeStore(): AnalysisStore {
   const rows: SnapshotDescriptor[] = [];
+  const memory = () => ({
+    bufferBytes: rows.length,
+    snapshots: rows.length,
+    layouts: 0,
+    indexBytes: 0,
+    wasmBytes: 0,
+  });
   return {
-    append: (row) => {
+    open: () => {},
+    append: (_generation, data: Uint8Array) => {
+      const row = encoded.get(data)!;
       rows.push(row);
-      return { descriptor: row, duplicate: false };
+      return { descriptor: row, duplicate: false, memory: memory() };
     },
-    clear: () => void rows.splice(0),
-    campaign: () => rows[0]?.campaignId,
-    memory: () => ({ bufferBytes: rows.length, snapshots: rows.length, layouts: 0, indexBytes: 0 }),
-    select: () => rows.map((row) => row.id),
+    clear: () => {
+      rows.splice(0);
+      return memory();
+    },
+    query: () => ({ generation: 0, snapshotIds: [], outcome: { status: "stale" } }),
+    snapshot: () => {
+      throw Error("No snapshot");
+    },
+    memory,
   };
 }
 
 function clients() {
-  mocks.sessions.set("eu4-analysis", sessionApi(Promise.resolve(fakeStore()), {}));
-  mocks.sessions.set("eu5-analysis", sessionApi(Promise.resolve(fakeStore()), {}));
+  mocks.sessions.set("eu4-analysis", sessionApi(Promise.resolve(fakeStore())));
+  mocks.sessions.set("eu5-analysis", sessionApi(Promise.resolve(fakeStore())));
   const options = (session: string) => ({
     session,
     start: () => new Worker(`${session}-analysis`),
     onFailure: () => {},
   });
   const result = {
-    eu4: createAnalysisWorker<Eu4SnapshotDescriptor, Eu4Payload>(options("eu4")),
-    eu5: createAnalysisWorker<Eu5SnapshotDescriptor, Eu5Payload>(options("eu5")),
+    eu4: createAnalysisWorker<Eu4AnalysisStore>(options("eu4")),
+    eu5: createAnalysisWorker<Eu5AnalysisStore>(options("eu5")),
   };
   mocks.eu4 = result.eu4;
   return result;

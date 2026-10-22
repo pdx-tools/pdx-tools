@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { AnalysisAdmission } from "./admission";
+import type { QueryReply, QueryRequest, SnapshotData } from "@/wasm/wasm_eu5";
 import type { SnapshotDescriptor } from "./descriptor";
-import type { AnalysisStore, QueryContext, ResidentMemory } from "./session";
+import type { AnalysisStore, ResidentMemory } from "./session";
 
 const mocks = vi.hoisted(() => ({
   api: {
@@ -19,9 +20,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock("comlink", () => ({ wrap: () => mocks.api, transfer: (value: unknown) => value }));
 vi.mock("@/lib/sentryWorker", () => ({ trackWorker: () => mocks.untrack }));
 
-type Payload = { values: Float64Array };
-type Store = AnalysisStore<SnapshotDescriptor, Payload>;
-type Handlers = { total: (context: QueryContext<Store>, args: null) => number };
+/** A store class as `campaign_analysis::wasm_store!` declares it. */
+type Store = AnalysisStore & {
+  append(
+    generation: number,
+    data: SnapshotData<"test">,
+    limitBytes: number,
+  ): { descriptor: SnapshotDescriptor; duplicate: boolean; memory: ResidentMemory };
+  query(request: QueryRequest<{ kind: "total" }>): QueryReply<{ kind: "total"; value: number }>;
+};
 const memory = (bufferBytes: number): ResidentMemory => ({
   bufferBytes,
   snapshots: 1,
@@ -31,7 +38,7 @@ const memory = (bufferBytes: number): ResidentMemory => ({
 });
 const output = (bytes = 80) => ({
   descriptor: { id: "test:1:a", campaignId: "campaign" } as SnapshotDescriptor,
-  payload: { values: new Float64Array(bytes / 8) },
+  data: new Uint8Array(bytes) as SnapshotData<"test">,
 });
 
 beforeEach(() => {
@@ -55,7 +62,7 @@ async function client(session = "test") {
   const onFailure = vi.fn();
   const onRelease = vi.fn();
   const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 1000 });
-  const worker = createAnalysisWorker<SnapshotDescriptor, Payload, Store, Handlers>({
+  const worker = createAnalysisWorker<Store>({
     session,
     admission,
     start: () => new Worker("worker.js"),
@@ -119,7 +126,7 @@ it("fails the worker when an append does not answer", async () => {
     const { createAnalysisWorker } = await import("./workerClient");
     const onFailure = vi.fn();
     const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 1000 });
-    const worker = createAnalysisWorker<SnapshotDescriptor, Payload, Store, Handlers>({
+    const worker = createAnalysisWorker<Store>({
       session: "test",
       admission,
       start: () => new Worker("worker.js"),
@@ -279,21 +286,23 @@ it("sends queries with the current generation and the requested snapshot selecti
   mocks.api.clear.mockResolvedValue(memory(0));
   mocks.api.query.mockImplementation(async (request) => ({
     generation: request.generation,
-    identity: request.identity,
-    sequence: request.sequence,
-    snapshotIds: [],
-    outcome: { status: "ok", value: 1 },
+    snapshotIds: ["a"],
+    outcome: { status: "ok", answer: { kind: "total", value: 7 } },
   }));
-  const call = {
-    campaignId: "c",
+  const call = { campaignId: "c", identity: "i", sequence: 3, query: { kind: "total" as const } };
+  expect(await worker.query(call)).toEqual({
+    generation: 1,
     identity: "i",
     sequence: 3,
-    query: { kind: "total" as const, args: null },
-  };
-  await worker.query(call);
-  expect(mocks.api.query).toHaveBeenLastCalledWith(
-    expect.objectContaining({ generation: 1, selection: { kind: "all" }, sequence: 3 }),
-  );
+    snapshotIds: ["a"],
+    outcome: { status: "ok", value: 7 },
+  });
+  expect(mocks.api.query).toHaveBeenLastCalledWith({
+    generation: 1,
+    campaignId: "c",
+    selection: { kind: "all" },
+    query: { kind: "total" },
+  });
   await worker.clear();
   await worker.query({ ...call, selection: { kind: "ids", ids: ["a"] } });
   expect(mocks.api.query).toHaveBeenLastCalledWith(

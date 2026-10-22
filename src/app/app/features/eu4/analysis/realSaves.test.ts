@@ -1,11 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { snapshotId } from "@/features/campaign/analysis/descriptor";
-import { sessionApi } from "@/features/campaign/analysis/session";
-import type { History, ProvinceImportMetadata } from "@/wasm/wasm_eu4";
-import { eu4Queries } from "./analysisQueries";
-import type { Eu4SaveAnalysis, ProvinceColumns } from "./analysisTypes";
+import { MEMORY_LIMIT_ERROR, STALE_GENERATION_ERROR } from "@/features/campaign/analysis/session";
+import type { Eu4Query, Eu4Snapshot } from "@/wasm/wasm_eu4";
 
 const root = join(import.meta.dirname, "../../../../../..");
 const wasmDir = join(root, "src/app/app/wasm");
@@ -38,52 +35,51 @@ it.skipIf(!ready)(
     wasm.set_tokens(new Uint8Array(readFileSync(tokens)));
 
     const store = new wasm.Eu4AnalysisStore();
-    const api = sessionApi(Promise.resolve(store), eu4Queries);
-    const campaigns = new Set<string>();
-    for (const name of saves) {
-      const { observation, provinces } = wasm.parse_analysis(await fixture(name)) as {
-        observation: ProvinceImportMetadata;
-        provinces: ProvinceColumns;
-      };
-      campaigns.add(observation.campaignId);
-      const output: Eu4SaveAnalysis = {
-        descriptor: {
-          ...observation,
-          id: snapshotId("eu4", observation.extractorVersion, observation.contentHash),
-          game: "eu4",
-          artifacts: ["observations"],
-        },
-        payload: { provinces },
-      };
-      expect((await api.append(0, output, Infinity)).duplicate).toBe(false);
-    }
+    const parsed: Eu4Snapshot[] = [];
+    for (const name of saves) parsed.push(wasm.parse_analysis(await fixture(name)));
+    const campaigns = new Set(parsed.map((snapshot) => snapshot.descriptor.campaignId));
     expect(campaigns.size).toBe(1);
     const [campaignId] = campaigns;
-    expect(store.memory()).toMatchObject({ snapshots: 3, layouts: 1 });
 
-    const run = async (query: Parameters<typeof api.query>[0]["query"]) => {
-      const reply = await api.query({
-        generation: 0,
-        campaignId,
-        selection: { kind: "all" },
-        identity: query.kind,
-        sequence: 1,
-        query,
-      });
+    // The store refuses a snapshot that does not fit, and one from a
+    // generation that a clear ended.
+    expect(() => store.append(0, parsed[0].data, 1)).toThrow(
+      expect.objectContaining({ name: MEMORY_LIMIT_ERROR }),
+    );
+    store.clear(1);
+    expect(() => store.append(0, parsed[0].data, Infinity)).toThrow(
+      expect.objectContaining({ name: STALE_GENERATION_ERROR }),
+    );
+    for (const { data, descriptor } of parsed) {
+      const reply = store.append(1, data, Infinity);
+      expect(reply.duplicate).toBe(false);
+      expect(reply.descriptor).toEqual(descriptor);
+    }
+    expect(store.memory()).toMatchObject({ snapshots: 3, layouts: 1 });
+    const stored = store.snapshot(parsed[0].descriptor.id);
+    expect(stored.descriptor).toEqual(parsed[0].descriptor);
+    expect(stored.data).toEqual(parsed[0].data);
+
+    const run = (query: Eu4Query) => {
+      const reply = store.query({ generation: 1, campaignId, query });
       if (reply.outcome.status !== "ok") throw Error(reply.outcome.status);
-      const { rows } = reply.outcome.value as History;
-      return rows.map((row) => [row.date, row.value]);
+      expect(reply.outcome.answer.kind).toBe(query.kind);
+      return reply.outcome.answer.value.rows.map((row) => [row.date, row.value]);
     };
     // These totals come from the save viewer's province list.
-    expect(await run({ kind: "worldDevelopment", args: null })).toEqual([
+    expect(run({ kind: "worldDevelopment" })).toEqual([
       ["1528-07-01", 19311],
       ["1528-08-01", 19316],
       ["1547-03-05", 19888],
     ]);
-    expect(await run({ kind: "provinceDevelopment", args: ITALY })).toEqual([
+    expect(run({ kind: "provinceDevelopment", provinceIds: ITALY })).toEqual([
       ["1528-07-01", 196],
       ["1528-08-01", 196],
       ["1547-03-05", 198],
     ]);
+    expect(
+      store.query({ generation: 0, campaignId, query: { kind: "worldDevelopment" } }).outcome,
+    ).toEqual({ status: "stale" });
+    store.free();
   },
 );

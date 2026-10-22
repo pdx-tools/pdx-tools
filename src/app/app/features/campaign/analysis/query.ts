@@ -149,10 +149,7 @@ export class AnalysisQuery<R> {
         generation,
         result: outcome?.status === "ok" ? outcome.value : null,
         snapshotIds: reply?.snapshotIds ?? [],
-        error:
-          outcome?.status === "unsupported"
-            ? `This analysis does not support the query ${outcome.kind}`
-            : error,
+        error,
       };
       for (const listener of this.listeners) listener();
     }
