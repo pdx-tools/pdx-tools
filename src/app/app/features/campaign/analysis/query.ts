@@ -21,7 +21,13 @@ export type QueryState<R> = {
   error: string | null;
 };
 
-type Request = { identity: string; dataset: string; generation: number; sequence: number };
+type Request = {
+  identity: string;
+  dataset: string;
+  generation: number;
+  sequence: number;
+  activation: number;
+};
 
 const EMPTY: QueryState<never> = {
   identity: "",
@@ -34,13 +40,14 @@ const EMPTY: QueryState<never> = {
 /**
  * The request lifecycle of one query subscription.
  *
- * - A new query, or the same query after a clear, runs now.
+ * - A new query, or the same query after a clear or a deactivation, runs now.
  * - When the dataset changes, the same query runs again at most one time in
  *   each `QUERY_REFRESH_MS`. The previous result stays until the next one.
  * - While a request is pending, changes wait. Then the query runs one time on
  *   the latest dataset.
  * - A reply is ignored when it is for another query, for another session
- *   generation, or for a request older than the shown result.
+ *   generation, for an earlier activation, or for a request older than the
+ *   shown result.
  */
 export class AnalysisQuery<R> {
   private input: QueryInput<R> | null = null;
@@ -51,7 +58,9 @@ export class AnalysisQuery<R> {
   private pending: Request | null = null;
   private last: (Request & { at: number }) | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private disposed = false;
+  private active = false;
+  /** Changes on each activation, so the replies of an earlier one are ignored. */
+  private activation = 0;
 
   constructor(
     private readonly generation: () => number,
@@ -73,16 +82,25 @@ export class AnalysisQuery<R> {
     return state.identity === identity && state.generation === this.generation() ? state : EMPTY;
   }
 
+  /** Set the query. The first update after a deactivation activates the query. */
   update(input: QueryInput<R>) {
-    this.disposed = false;
+    if (!this.active) {
+      this.active = true;
+      this.activation++;
+    }
     this.input = input;
     this.schedule();
   }
 
-  /** Stop timers and ignore replies until the next update. */
-  dispose() {
-    this.disposed = true;
+  /**
+   * Stop timers and ignore the replies of this activation. The shown result
+   * stays until a reply of the next activation replaces it.
+   */
+  deactivate() {
+    this.active = false;
     this.cancelTimer();
+    this.pending = null;
+    this.last = null;
   }
 
   private cancelTimer() {
@@ -92,7 +110,7 @@ export class AnalysisQuery<R> {
 
   private schedule() {
     const input = this.input;
-    if (this.disposed || !input?.run) return this.cancelTimer();
+    if (!this.active || !input?.run) return this.cancelTimer();
     const generation = this.generation();
     const { last, pending } = this;
     const same = last?.identity === input.identity && last.generation === generation;
@@ -114,12 +132,13 @@ export class AnalysisQuery<R> {
   private run() {
     this.timer = undefined;
     const input = this.input;
-    if (this.disposed || !input?.run) return;
+    if (!this.active || !input?.run) return;
     const request: Request = {
       identity: input.identity,
       dataset: input.dataset,
       generation: this.generation(),
       sequence: ++this.sequence,
+      activation: this.activation,
     };
     this.last = { ...request, at: this.now() };
     this.pending = request;
@@ -131,7 +150,7 @@ export class AnalysisQuery<R> {
 
   private settle(request: Request, reply: QueryReply<R> | null, error: string | null) {
     if (this.pending === request) this.pending = null;
-    if (this.disposed) return;
+    if (!this.active || request.activation !== this.activation) return;
     const generation = this.generation();
     const current =
       request.identity === this.input?.identity &&

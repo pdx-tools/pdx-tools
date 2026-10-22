@@ -62,7 +62,6 @@ beforeEach(() => {
     issues: [],
     progress: null,
     cancel: null,
-    analysisPaused: false,
     analysisPausedCampaigns: [],
   });
   entries = [entry("first")];
@@ -88,7 +87,7 @@ describe("campaign analysis", () => {
   it("attaches observations to campaign entries without owning navigation state", async () => {
     mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation();
-      options.onCommitted(snapshot, file);
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
       return done();
     });
     await analyzeCampaign(entries, "campaign");
@@ -123,7 +122,7 @@ describe("campaign analysis", () => {
     useHistory.setState({ failedSources: { first: { version: null, error: "old failure" } } });
     mocks.importBatch.mockImplementation(async (_files, options) => {
       const reason = options.refuseOutput({ descriptor: observation("other", "different") }, file);
-      options.onFileOutcome(file, "failed", reason);
+      options.onFileComplete({ status: "failed", file, error: reason });
       return { ...done(), failures: [{ fileName: file.name, error: reason }] };
     });
     await analyzeCampaign(entries, "campaign");
@@ -140,13 +139,12 @@ describe("campaign analysis", () => {
     useHistory.setState({ analysisPausedCampaigns: ["other-campaign"] });
     mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation("good-observation");
-      options.onCommitted(snapshot, good);
+      options.onFileComplete({ status: "accepted", file: good, descriptor: snapshot });
       return { ...done(), failures: [{ fileName: bad.name, error: "invalid date" }] };
     });
 
     await analyzeCampaign(entries, "campaign");
 
-    expect(useHistory.getState().analysisPaused).toBe(false);
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other-campaign"]);
     expect(isAnalysisPaused(useHistory.getState(), "campaign")).toBe(false);
     expect(useHistory.getState().snapshots.map(({ id }) => id)).toEqual(["good-observation"]);
@@ -188,7 +186,7 @@ describe("campaign analysis", () => {
     mocks.importBatch.mockImplementation(async (files, options) => {
       expect(files).toEqual([newer]);
       const snapshot = { ...observation("new"), dateSort: 13600401 };
-      options.onCommitted(snapshot, newer);
+      options.onFileComplete({ status: "accepted", file: newer, descriptor: snapshot });
       return done();
     });
     await analyzeCampaign(entries, "campaign");
@@ -202,8 +200,8 @@ describe("campaign analysis", () => {
     entries = [entry("first"), entry("copy", { kind: "file", file: duplicate })];
     mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation();
-      options.onCommitted(snapshot, file);
-      options.onCommitted(snapshot, duplicate);
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
+      options.onFileComplete({ status: "accepted", file: duplicate, descriptor: snapshot });
       return done();
     });
     await analyzeCampaign(entries, "campaign");
@@ -215,11 +213,11 @@ describe("campaign analysis", () => {
   it("preserves observations committed before or during cancellation", async () => {
     mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation();
-      options.onCommitted(snapshot, file);
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
       useHistory.getState().cancel!();
       expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
       expect(options.signal.aborted).toBe(true);
-      options.onCommitted(observation("late"), file);
+      options.onFileComplete({ status: "accepted", file, descriptor: observation("late") });
       return done();
     });
     await analyzeCampaign(entries, "campaign");
@@ -233,7 +231,7 @@ describe("campaign analysis", () => {
     mocks.importBatch.mockImplementation(async (_files, options) => {
       entries = [entry("first", { kind: "file", file: new File(["replacement"], file.name) })];
       const snapshot = observation();
-      options.onCommitted(snapshot, file);
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
       return { ...done(), failures: [{ fileName: "failed.eu5", error: "missing morale" }] };
     });
     await analyzeCampaign(entries, "campaign");
@@ -246,7 +244,7 @@ describe("campaign analysis", () => {
     mocks.importBatch.mockImplementation(async (_files, options) => {
       entries = [{ ...entry("first"), version: { size: 99, lastModified: 200 } }];
       const snapshot = observation();
-      options.onCommitted(snapshot, file);
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
       return done();
     });
     await analyzeCampaign(entries, "campaign");
@@ -335,7 +333,7 @@ it("identifies active saves by their file reference and clears the UI state on c
 
 it("tracks a parse failure by file identity and clears it on a successful retry", async () => {
   mocks.importBatch.mockImplementation(async (_files, options) => {
-    options.onFileOutcome(file, "failed", "invalid save");
+    options.onFileComplete({ status: "failed", file, error: "invalid save" });
     return { ...done(), failures: [{ fileName: file.name, error: "invalid save" }] };
   });
   await analyzeCampaign(entries, "campaign");
@@ -344,7 +342,7 @@ it("tracks a parse failure by file identity and clears it on a successful retry"
     error: "invalid save",
   });
   mocks.importBatch.mockImplementation(async (_files, options) => {
-    options.onCommitted(observation(), file);
+    options.onFileComplete({ status: "accepted", file, descriptor: observation() });
     return done();
   });
   await analyzeCampaign(entries, "campaign");
@@ -353,7 +351,7 @@ it("tracks a parse failure by file identity and clears it on a successful retry"
 it("does not mark an entry replaced during a failed parse as failed", async () => {
   mocks.importBatch.mockImplementation(async (_files, options) => {
     entries = [entry("first", { kind: "file", file: new File(["replacement"], file.name) })];
-    options.onFileOutcome(file, "failed", "old file failed");
+    options.onFileComplete({ status: "failed", file, error: "old file failed" });
     return { ...done(), failures: [{ fileName: file.name, error: "old file failed" }] };
   });
   await analyzeCampaign(entries, "campaign");
@@ -369,8 +367,8 @@ it("does not mark an aborted import as failed", async () => {
 });
 it("marks only failed files, not refused or cancelled ones", async () => {
   mocks.importBatch.mockImplementation(async (_files, options) => {
-    options.onFileOutcome(file, "refused");
-    options.onFileOutcome(file, "cancelled");
+    options.onFileComplete({ status: "refused", file });
+    options.onFileComplete({ status: "cancelled", file });
     return done();
   });
   await analyzeCampaign(entries, "campaign");

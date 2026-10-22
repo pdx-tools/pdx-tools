@@ -1,7 +1,9 @@
 use super::map_painter::{self, LocationMarket, LocationValues, MapLayout, PaintRequest};
 use super::terrain_fill::FillComponents;
 use super::*;
-use crate::map_projection::{Fraction, MapProjectionData, MapProjectionError, Metric};
+use crate::map_projection::{
+    Fraction, MapProjectionData, MapProjectionError, Metric, NO_ROW, UNKNOWN_ROW,
+};
 use std::cell::OnceCell;
 use std::sync::OnceLock;
 
@@ -12,10 +14,14 @@ struct FrameValues<'a> {
     /// The index of each location ID. It is the same for every frame of the
     /// layout, so the workspace keeps it.
     location_index: &'a OnceLock<FxHashMap<LocationId, LocationIdx>>,
-    /// [historical owner color, current controller color, primary religion]
-    countries: FxHashMap<u32, [u32; 3]>,
-    religions: OnceCell<FxHashMap<u32, GpuColor>>,
-    markets: OnceCell<FxHashMap<u32, (Option<LocationIdx>, GpuColor)>>,
+    /// [country ID, historical owner color, current controller color, primary religion ID]
+    countries: &'a [[u32; 4]],
+    /// [religion ID, color]
+    religions: &'a [[u32; 2]],
+    /// The color of each religion ID, for the primary religion of a country.
+    religion_ids: OnceCell<FxHashMap<u32, GpuColor>>,
+    /// The center and color of each market row.
+    markets: OnceCell<Vec<(Option<LocationIdx>, GpuColor)>>,
     owner_fill: OnceCell<LocationIndexedVec<Option<LocationIdx>>>,
     religion_fill: OnceCell<LocationIndexedVec<Option<LocationIdx>>>,
 }
@@ -26,48 +32,34 @@ impl<'a> FrameValues<'a> {
         fill: &'a FillComponents,
         location_index: &'a OnceLock<FxHashMap<LocationId, LocationIdx>>,
     ) -> Self {
-        let countries = frame
-            .countries
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| (p[0], [p[1], p[2], p[3]]))
-            .collect();
         Self {
             frame,
             fill,
             location_index,
-            countries,
-            religions: OnceCell::new(),
+            countries: frame.countries.as_chunks::<4>().0,
+            religions: frame.religion_colors.as_chunks::<2>().0,
+            religion_ids: OnceCell::new(),
             markets: OnceCell::new(),
             owner_fill: OnceCell::new(),
             religion_fill: OnceCell::new(),
         }
     }
 
-    fn column(values: &[u32], idx: LocationIdx) -> Option<u32> {
-        Some(values[idx.value() as usize]).filter(|&id| id != u32::MAX)
+    /// The table row of a location. Validation makes sure that the row is
+    /// in the table.
+    fn row(values: &[u16], idx: LocationIdx) -> Option<usize> {
+        Some(values[idx.value() as usize])
+            .filter(|&row| row != NO_ROW && row != UNKNOWN_ROW)
+            .map(usize::from)
     }
 
-    fn country_color(&self, country: Option<u32>, column: usize) -> GpuColor {
-        country
-            .and_then(|id| self.countries.get(&id))
-            .map_or(GpuColor::UNOWNED, |p| GpuColor::from_packed(p[column]))
-    }
-
-    fn religions(&self) -> &FxHashMap<u32, GpuColor> {
-        self.religions.get_or_init(|| {
-            self.frame
-                .religion_colors
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|p| (p[0], GpuColor::from_packed(p[1])))
-                .collect()
+    fn country_color(&self, row: Option<usize>, column: usize) -> GpuColor {
+        row.map_or(GpuColor::UNOWNED, |row| {
+            GpuColor::from_packed(self.countries[row][column])
         })
     }
 
-    fn markets(&self) -> &FxHashMap<u32, (Option<LocationIdx>, GpuColor)> {
+    fn markets(&self) -> &[(Option<LocationIdx>, GpuColor)] {
         self.markets.get_or_init(|| {
             // Validation makes sure that the frame has the location IDs of
             // the layout, so one index serves every frame.
@@ -86,10 +78,19 @@ impl<'a> FrameValues<'a> {
                 .iter()
                 .map(|p| {
                     let center = locations.get(&LocationId::new(p[1])).copied();
-                    (p[0], (center, GpuColor::from_packed(p[2])))
+                    (center, GpuColor::from_packed(p[2]))
                 })
                 .collect()
         })
+    }
+
+    /// The group of a location for box selection: the ID of its owner, or
+    /// of its market in the markets mode.
+    fn group(&self, mode: MapMode, idx: LocationIdx) -> u32 {
+        let owner = self.owner(idx).unwrap_or(u32::MAX);
+        let market = Self::row(self.frame.markets, idx)
+            .map_or(u32::MAX, |row| self.frame.market_colors[row * 3]);
+        map_painter::group_id(mode, owner, market)
     }
 }
 
@@ -99,15 +100,15 @@ impl LocationValues for FrameValues<'_> {
     }
 
     fn owner(&self, idx: LocationIdx) -> Option<u32> {
-        Self::column(self.frame.owners, idx)
+        Self::row(self.frame.owners, idx).map(|row| self.countries[row][0])
     }
 
     fn controller(&self, idx: LocationIdx) -> Option<u32> {
-        Self::column(self.frame.controllers, idx)
+        Self::row(self.frame.controllers, idx).map(|row| self.countries[row][0])
     }
 
     fn religion(&self, idx: LocationIdx) -> Option<u32> {
-        Self::column(self.frame.religions, idx)
+        Self::row(self.frame.religions, idx).map(|row| self.religions[row][0])
     }
 
     fn fraction(&self, idx: LocationIdx, fraction: Fraction) -> f64 {
@@ -121,35 +122,37 @@ impl LocationValues for FrameValues<'_> {
     }
 
     fn owner_color(&self, idx: LocationIdx) -> GpuColor {
-        self.country_color(self.owner(idx), 0)
+        self.country_color(Self::row(self.frame.owners, idx), 1)
     }
 
     fn controller_color(&self, idx: LocationIdx) -> GpuColor {
-        self.country_color(self.controller(idx), 1)
+        self.country_color(Self::row(self.frame.controllers, idx), 2)
     }
 
     fn religion_color(&self, idx: LocationIdx) -> Option<GpuColor> {
-        let religion = self.religion(idx)?;
-        Some(
-            self.religions()
-                .get(&religion)
-                .copied()
-                .unwrap_or(GpuColor::DEBUG),
-        )
+        let row = Self::row(self.frame.religions, idx)?;
+        Some(GpuColor::from_packed(self.religions[row][1]))
     }
 
     fn owner_religion_color(&self, idx: LocationIdx) -> Option<GpuColor> {
-        let country = self.countries.get(&self.owner(idx)?)?;
-        self.religions().get(&country[2]).copied()
+        let country = self.countries[Self::row(self.frame.owners, idx)?];
+        let colors = self.religion_ids.get_or_init(|| {
+            self.religions
+                .iter()
+                .map(|[id, color]| (*id, GpuColor::from_packed(*color)))
+                .collect()
+        });
+        colors.get(&country[3]).copied()
     }
 
     fn market(&self, idx: LocationIdx) -> LocationMarket {
-        let Some(market) = Self::column(self.frame.markets, idx) else {
-            return LocationMarket::None;
-        };
-        match self.markets().get(&market) {
-            Some(&(center, color)) => LocationMarket::Member { color, center },
-            None => LocationMarket::Unknown,
+        match self.frame.markets[idx.value() as usize] {
+            NO_ROW => LocationMarket::None,
+            UNKNOWN_ROW => LocationMarket::Unknown,
+            row => {
+                let (center, color) = self.markets()[usize::from(row)];
+                LocationMarket::Member { color, center }
+            }
         }
     }
 
@@ -221,8 +224,7 @@ impl Eu5Workspace<'_> {
                     values.owner(idx).is_none(),
                 );
             }
-            groups[gpu.value() as usize] =
-                map_painter::group_id(mode, frame.owners[index], frame.markets[index]);
+            groups[gpu.value() as usize] = values.group(mode, idx);
         }
         Ok(ProjectionPaint {
             arrays,

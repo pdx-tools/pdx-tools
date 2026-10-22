@@ -35,9 +35,31 @@ export async function readSources(entries: readonly LocalSaveEntry[], signal: Ab
   }
 }
 
+/** Group sources by the file that the import reads. Entries can share one file. */
+export function sourcesByFile(sources: readonly CampaignSource[]) {
+  const byFile = new Map<File, CampaignSource[]>();
+  for (const source of sources)
+    byFile.set(source.file, [...(byFile.get(source.file) ?? []), source]);
+  return byFile;
+}
+
 /**
- * Record the campaign identity of each entry that gave the parsed file, and
- * return their source associations. A removed or replaced entry gets nothing.
+ * The current registry entry of a source, or null when the import must not
+ * publish to it: the entry was removed or replaced, or navigation read a
+ * newer version of its file handle than the file that was parsed.
+ */
+export function currentEntry(entry: LocalSaveEntry, parsedFile?: File): LocalSaveEntry | null {
+  const current = localSaveRegistry.get(entry.id);
+  if (!current || !holdsRef(current, entry.ref)) return null;
+  const versionChanged =
+    !!current.version && (!entry.version || !sameFileVersion(current.version, entry.version));
+  if (parsedFile && versionChanged && !sameFileVersion(parsedFile, current.version!)) return null;
+  return current;
+}
+
+/**
+ * Record the campaign identity of each current entry of the parsed file, and
+ * return their source associations.
  */
 export function associateSources(
   sources: readonly CampaignSource[],
@@ -46,17 +68,8 @@ export function associateSources(
 ): Record<string, SourceAssociation> {
   const associations: Record<string, SourceAssociation> = {};
   const version = fileVersion(parsedFile);
-  for (const { entry, file } of sources) {
-    if (file !== parsedFile) continue;
-    const current = localSaveRegistry.get(entry.id);
-    if (!current || !holdsRef(current, entry.ref)) continue;
-    // Navigation can read a newer version of a file handle during the import.
-    const versionChanged =
-      current.version &&
-      (current.version.size !== entry.version?.size ||
-        current.version.lastModified !== entry.version?.lastModified);
-    if (versionChanged && current.version && !sameFileVersion(parsedFile, current.version))
-      continue;
+  for (const { entry } of sources) {
+    if (!currentEntry(entry, parsedFile)) continue;
     localSaveRegistry.recordIdentity(
       entry.id,
       {

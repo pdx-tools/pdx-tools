@@ -414,9 +414,7 @@ mod tests {
     fn a_new_generation_refuses_old_appends_and_old_queries() {
         let mut session = session();
         let late = observation(descriptor("late", 15000101, "late"), &[1]).encode();
-        // A clear of another campaign keeps the snapshots, but ends the generation.
-        session.clear(1, Some("other"));
-        assert_eq!(session.memory().snapshots, 3);
+        session.clear(1);
         assert_eq!(
             session.append(0, &late, usize::MAX).unwrap_err(),
             AnalysisError::Stale
@@ -427,8 +425,6 @@ mod tests {
                 .outcome,
             QueryOutcome::Stale
         ));
-        session.clear(2, Some("campaign"));
-        assert_eq!(session.memory().snapshots, 0);
         session.open(4);
         assert_eq!(
             AnalysisError::Stale.name().as_str(),
@@ -440,7 +436,7 @@ mod tests {
     #[test]
     fn clear_releases_everything() {
         let mut session = session();
-        session.clear(1, None);
+        session.clear(1);
         assert_eq!(
             session.memory(),
             StoreMemory {

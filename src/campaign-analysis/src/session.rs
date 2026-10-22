@@ -52,13 +52,11 @@ impl<G: Game> Session<G> {
         self.store.append(observation, limit_bytes)
     }
 
-    /// Start `generation`, and release the snapshots of the campaign. Without
-    /// a campaign, release all snapshots. Another campaign has none to release.
-    pub fn clear(&mut self, generation: u32, campaign_id: Option<&str>) {
+    /// Start `generation`, and release all snapshots. The store keeps one
+    /// campaign, so this clears that campaign.
+    pub fn clear(&mut self, generation: u32) {
         self.generation = generation;
-        if campaign_id.is_none_or(|campaign| self.store.campaign() == Some(campaign)) {
-            self.store.clear();
-        }
+        self.store.clear();
     }
 
     pub fn query(

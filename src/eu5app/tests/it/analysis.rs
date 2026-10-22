@@ -221,6 +221,19 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
             location: frame.location_ids[0]
         })
     );
+    let rows = (frame.countries.len() / 4) as u16;
+    let mut owners = frame.owners.clone();
+    owners[0] = rows;
+    let mut invalid = frame.as_data();
+    invalid.owners = &owners;
+    assert_eq!(
+        ws.paint_map_projection(invalid, Control).err(),
+        Some(eu5app::map_projection::MapProjectionError::TableRow {
+            column: "owners",
+            row: rows,
+            rows: usize::from(rows),
+        })
+    );
     let mut invalid = frame.as_data();
     invalid.countries = &frame.countries[..1];
     assert!(matches!(
@@ -233,7 +246,7 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
     // A frame with other owners does not change the loaded save.
     ws.set_map_mode(Control);
     let original = ws.location_arrays().as_data().to_vec();
-    frame.owners.fill(u32::MAX);
+    frame.owners.fill(eu5app::map_projection::NO_ROW);
     let paint = ws.paint_map_projection(frame.as_data(), Control).unwrap();
     assert!(paint.groups.iter().all(|owner| *owner == u32::MAX));
     assert_eq!(ws.location_arrays().as_data(), original);
@@ -251,7 +264,7 @@ fn observed_world_population(projection: &eu5app::map_projection::MapProjection)
         .owners
         .iter()
         .enumerate()
-        .filter(|(_, owner)| **owner != u32::MAX)
+        .filter(|(_, owner)| **owner != eu5app::map_projection::NO_ROW)
         .map(|(row, _)| projection.metrics[row * width + population] as u32)
         .sum()
 }

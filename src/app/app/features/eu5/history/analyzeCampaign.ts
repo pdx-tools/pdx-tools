@@ -1,16 +1,17 @@
 import { analysisAdmission } from "@/features/campaign/analysis/admission";
 import { importBatch } from "@/features/campaign/analysis/importScheduler";
-import { associateSources, readSources } from "@/features/campaign/analysis/sources";
-import { localSaveRegistry, holdsRef } from "@/features/campaign/localSaves";
+import {
+  associateSources,
+  currentEntry,
+  readSources,
+  sourcesByFile,
+} from "@/features/campaign/analysis/sources";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
-import { fileVersion, sameFileVersion } from "@/features/campaign/types";
+import { fileVersion } from "@/features/campaign/types";
 import { eu5Analysis } from "./analysisClient";
 import type { ImportPhaseState } from "./importTiming";
 import { eu5ParserAdapter } from "./parserAdapter";
 import { useHistory } from "./store";
-
-const pause = (paused: string[], campaignId: string) =>
-  paused.includes(campaignId) ? paused : [...paused, campaignId];
 
 /** Analyze local campaign entries without opening a save or controlling navigation. */
 export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: string) {
@@ -24,30 +25,18 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
   const startedAt = performance.now();
   const issues: string[] = [];
   useHistory.setState((state) => ({
-    analysisPaused: false,
     analysisPausedCampaigns: state.analysisPausedCampaigns.filter((id) => id !== playthroughId),
     progress: { completed: 0, total: entries.length, startedAt },
     analyzingEntryIds: [],
     issues: [],
     cancel: () => {
-      useHistory.setState((state) => ({
-        analysisPausedCampaigns: pause(state.analysisPausedCampaigns, playthroughId),
-      }));
+      useHistory.getState().pauseAnalysis(playthroughId);
       controller.abort();
     },
   }));
   const { signal } = controller;
   const recordFailure = (entry: LocalSaveEntry, error: string, file?: File) => {
-    const current = localSaveRegistry.get(entry.id);
-    if (!current || !holdsRef(current, entry.ref)) return;
-    // Navigation can read a newer version of a file handle during the import.
-    if (
-      file &&
-      current.version &&
-      current.version !== entry.version &&
-      !sameFileVersion(file, current.version)
-    )
-      return;
+    if (!currentEntry(entry, file)) return;
     const version = file ? fileVersion(file) : entry.version;
     useHistory.setState((state) => ({
       failedSources: { ...state.failedSources, [entry.id]: { version, error } },
@@ -64,6 +53,8 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
       recordFailure(entry, error);
     }
     const unavailable = entries.length - sources.length;
+    const byFile = sourcesByFile(sources);
+    const sourcesOf = (file: File) => byFile.get(file) ?? [];
     // These saves are not failures. Their identity moves them to another campaign.
     const otherCampaign = new Set<File>();
     let lastProgress = 0;
@@ -80,21 +71,23 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
       {
         signal,
         lease,
-        onFileOutcome: (file, outcome, error) => {
-          if (outcome !== "failed" || otherCampaign.has(file)) return;
-          for (const source of sources)
-            if (source.file === file) recordFailure(source.entry, error ?? "", file);
+        onFileComplete: (completion) => {
+          const { file } = completion;
+          if ("descriptor" in completion) {
+            const { descriptor } = completion;
+            useHistory
+              .getState()
+              .add([descriptor], associateSources(sourcesOf(file), file, descriptor));
+          } else if (completion.status === "failed" && !otherCampaign.has(file)) {
+            for (const { entry } of sourcesOf(file)) recordFailure(entry, completion.error, file);
+          }
         },
         onActiveFiles: (active) => {
           if (signal.aborted) return;
-          const files = new Set(active);
           useHistory.setState({
-            analyzingEntryIds: sources
-              .filter(({ entry, file }) => {
-                const current = localSaveRegistry.get(entry.id);
-                return files.has(file) && current && holdsRef(current, entry.ref);
-              })
-              .map(({ entry }) => entry.id),
+            analyzingEntryIds: active.flatMap((file) =>
+              sourcesOf(file).flatMap(({ entry }) => (currentEntry(entry) ? [entry.id] : [])),
+            ),
           });
         },
         onProgress: ({ completed, total, fileName, active }) => {
@@ -122,16 +115,13 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
           if (descriptor.campaignId === playthroughId) return null;
           // The local save remembers its campaign, so navigation does not show it here.
           otherCampaign.add(file);
-          const ids = Object.keys(associateSources(sources, file, descriptor));
+          const ids = Object.keys(associateSources(sourcesOf(file), file, descriptor));
           useHistory.setState((state) => ({
             failedSources: Object.fromEntries(
               Object.entries(state.failedSources).filter(([id]) => !ids.includes(id)),
             ),
           }));
           return "belongs to another campaign; not analyzed with this campaign.";
-        },
-        onCommitted: (snapshot, file) => {
-          useHistory.getState().add([snapshot], associateSources(sources, file, snapshot));
         },
       },
     );
@@ -142,10 +132,8 @@ export async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: 
       issues.push(
         `${result.memoryFull} ${saves} not analyzed. Clear the campaign analysis to analyze other saves.`,
       );
-      useHistory.setState((state) => ({
-        // Do not parse more saves that cannot fit.
-        analysisPausedCampaigns: pause(state.analysisPausedCampaigns, playthroughId),
-      }));
+      // Do not parse more saves that cannot fit.
+      useHistory.getState().pauseAnalysis(playthroughId);
     }
   } catch (error) {
     if (!signal.aborted) issues.push(String(error));

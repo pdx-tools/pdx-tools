@@ -6,7 +6,7 @@ import type { Eu4SnapshotDescriptor } from "./analysisTypes";
 import { eu4ParserAdapter } from "./parserAdapter";
 
 export type Eu4ImportOptions = Partial<
-  Pick<ImportOptions<Eu4SnapshotDescriptor>, "onCommitted" | "onProgress" | "onFileOutcome">
+  Pick<ImportOptions<Eu4SnapshotDescriptor>, "onFileComplete" | "onProgress">
 > & { signal?: AbortSignal };
 
 /**
@@ -19,7 +19,7 @@ export async function importEu4Campaign(
   playthroughId: string,
   {
     signal = new AbortController().signal,
-    onCommitted = () => {},
+    onFileComplete = () => {},
     ...options
   }: Eu4ImportOptions = {},
 ) {
@@ -31,7 +31,7 @@ export async function importEu4Campaign(
       ...options,
       signal,
       lease,
-      onCommitted,
+      onFileComplete,
       refuseOutput: ({ descriptor }) =>
         descriptor.campaignId === playthroughId
           ? null

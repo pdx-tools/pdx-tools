@@ -150,7 +150,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     }
   },
   "past_political": null,
-  "projection": "0xe218c24c5343afb4",
+  "projection": "0xb49cd287e8dbdbc6",
   "save_version": "1.0.4",
   "selected": {
     "locations": "0xb78b40bd8af7fc72",

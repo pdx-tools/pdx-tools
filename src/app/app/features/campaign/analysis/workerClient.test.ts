@@ -58,11 +58,11 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 async function client(session = "test") {
-  const { createAnalysisWorker } = await import("./workerClient");
+  const { createFrameAnalysisWorker } = await import("./workerClient");
   const onFailure = vi.fn();
   const onRelease = vi.fn();
   const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 1000 });
-  const worker = createAnalysisWorker<Store>({
+  const worker = createFrameAnalysisWorker<Store>({
     session,
     admission,
     start: () => new Worker("worker.js"),
@@ -118,6 +118,17 @@ it("fails a worker that throws before it opens, as it cannot answer", async () =
   worker.remote();
   mocks.workers[0].dispatchEvent(Object.assign(new Event("error"), { message: "bad module" }));
   expect(onFailure).toHaveBeenCalledOnce();
+});
+
+it("starts a new worker when the worker cannot open, such as after a failed WASM download", async () => {
+  const { worker, onFailure, lease } = await client();
+  mocks.api.open.mockRejectedValueOnce(new Error("download failed"));
+  await expect(worker.append(1, output(), lease)).rejects.toThrow("download failed");
+  expect(onFailure).toHaveBeenCalledOnce();
+  expect(mocks.workers[0].terminate).toHaveBeenCalledOnce();
+  mocks.api.append.mockResolvedValue({ descriptor: output().descriptor, memory: memory(80) });
+  await worker.append(worker.generation(), output(), lease);
+  expect(mocks.workers).toHaveLength(2);
 });
 
 it("fails the worker when an append does not answer", async () => {
@@ -244,10 +255,10 @@ it("ends the generation on a clear, so an import stops and its appends are stale
   mocks.api.clear.mockResolvedValue(memory(0));
   const pending = worker.append(1, output(), lease);
   await vi.waitFor(() => expect(mocks.api.append).toHaveBeenCalledOnce());
-  await worker.clear("campaign");
+  await worker.clear();
   expect(signal.aborted).toBe(true);
   expect(worker.signal().aborted).toBe(false);
-  expect(mocks.api.clear).toHaveBeenCalledWith(2, "campaign");
+  expect(mocks.api.clear).toHaveBeenCalledWith(2);
   // The worker stored the snapshot before it read the clear.
   resolve({ descriptor: output().descriptor, duplicate: false, memory: memory(80) });
   await expect(pending).rejects.toMatchObject({ name: "AnalysisStaleGeneration" });
@@ -258,16 +269,15 @@ it("ends the generation on a clear, so an import stops and its appends are stale
   expect(mocks.api.append).toHaveBeenCalledOnce();
 });
 
-it("keeps an append that a clear of another campaign follows", async () => {
-  const { worker, lease } = await client();
-  const { promise: stored, resolve } = Promise.withResolvers<unknown>();
-  mocks.api.append.mockReturnValue(stored);
-  mocks.api.clear.mockResolvedValue(memory(80));
-  const pending = worker.append(1, output(), lease);
-  await vi.waitFor(() => expect(mocks.api.append).toHaveBeenCalledOnce());
-  await worker.clear("other");
-  resolve({ descriptor: output().descriptor, duplicate: false, memory: memory(80) });
-  await expect(pending).resolves.toMatchObject({ duplicate: false });
+it("stops a worker without snapshots when another campaign is claimed", async () => {
+  const { worker, onFailure } = await client();
+  worker.claim("campaign");
+  worker.remote();
+  worker.claim("next");
+  expect(mocks.workers[0].terminate).toHaveBeenCalledOnce();
+  worker.remote();
+  mocks.workers[1].dispatchEvent(new Event("messageerror"));
+  expect(onFailure).toHaveBeenCalledWith(expect.any(Error), "next");
 });
 
 it("sends each append without waiting for the reply before it", async () => {

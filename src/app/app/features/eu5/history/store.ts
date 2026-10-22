@@ -14,22 +14,22 @@ type HistoryState = {
   failedSources: Record<string, { version: FileVersion | null; error: string }>;
   analysisEnabledCampaigns: readonly string[];
   enableAnalysis: (campaignId: string) => void;
-  analysisPaused: boolean;
+  /** The campaigns that do not start imports until the player resumes them. */
   analysisPausedCampaigns: string[];
+  pauseAnalysis: (campaignId: string) => void;
   progress: ImportProgressState | null;
   issues: string[];
   cancel: (() => void) | null;
   add: (snapshots: Eu5SnapshotDescriptor[], sources?: Record<string, SourceAssociation>) => void;
+  /** Remove the snapshots and the source associations to them. */
+  removeSnapshots: () => void;
 };
 
 export function isAnalysisPaused(
-  state: Pick<HistoryState, "analysisPaused" | "analysisPausedCampaigns">,
+  state: Pick<HistoryState, "analysisPausedCampaigns">,
   playthroughId: string | null | undefined,
 ) {
-  return (
-    state.analysisPaused ||
-    (!!playthroughId && state.analysisPausedCampaigns.includes(playthroughId))
-  );
+  return !!playthroughId && state.analysisPausedCampaigns.includes(playthroughId);
 }
 
 /** Historical data only. Campaign navigation owns files and the active save. */
@@ -44,11 +44,15 @@ export const useHistory = create<HistoryState>()((set) => ({
   enableAnalysis: (campaignId) =>
     set((state) => ({
       analysisEnabledCampaigns: [...new Set([...state.analysisEnabledCampaigns, campaignId])],
-      analysisPaused: false,
       analysisPausedCampaigns: state.analysisPausedCampaigns.filter((id) => id !== campaignId),
     })),
-  analysisPaused: false,
   analysisPausedCampaigns: [],
+  pauseAnalysis: (campaignId) =>
+    set((state) =>
+      state.analysisPausedCampaigns.includes(campaignId)
+        ? state
+        : { analysisPausedCampaigns: [...state.analysisPausedCampaigns, campaignId] },
+    ),
   progress: null,
   issues: [],
   cancel: null,
@@ -64,4 +68,5 @@ export const useHistory = create<HistoryState>()((set) => ({
         sources: { ...state.sources, ...sources },
       };
     }),
+  removeSnapshots: () => set({ snapshots: [], sources: {} }),
 }));

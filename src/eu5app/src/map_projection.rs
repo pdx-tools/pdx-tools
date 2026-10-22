@@ -1,5 +1,6 @@
 //! Compact, save-independent inputs for replaying observed map modes.
 use crate::{SaveCheckSummer, subject_color, timeline::CountryIdentities};
+use eu5save::hash::FxHashMap;
 use eu5save::models::{CountryId, Gamestate, Location, Locations, Metadata};
 use pdx_map::GpuColor;
 use std::{collections::BTreeMap, io::Write};
@@ -7,9 +8,14 @@ use std::{collections::BTreeMap, io::Write};
 /// The version of the campaign analysis payload. Increase it when the schema,
 /// calculations, or precision of the projection change, so that the store does
 /// not mix old and new snapshots.
-pub const EXTRACTOR_VERSION: u32 = 1;
+pub const EXTRACTOR_VERSION: u32 = 2;
 
 pub const FRACTION_SCALE: f64 = u16::MAX as f64;
+
+/// A location with no owner, controller, religion or market.
+pub const NO_ROW: u16 = u16::MAX;
+/// A location in a market that the save names but has no record of.
+pub const UNKNOWN_ROW: u16 = u16::MAX - 1;
 
 /// A fraction column of a location, in frame order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,6 +96,14 @@ pub enum MapProjectionError {
         width: usize,
         actual: usize,
     },
+    #[error("snapshot column {column} names row {row} of a table with {rows} rows")]
+    TableRow {
+        column: &'static str,
+        row: u16,
+        rows: usize,
+    },
+    #[error("snapshot table {table} has more rows than a location column can name")]
+    TableSize { table: &'static str },
     #[error("snapshot location {index} has id {actual}, expected {expected}")]
     LocationMismatch {
         index: usize,
@@ -100,17 +114,23 @@ pub enum MapProjectionError {
     NonFinite { location: u32 },
 }
 
-/// A compact observed map: fractions use u16, measurements f32, identities u32.
+/// A compact observed map: fractions use u16 and measurements f32. The
+/// owner, controller, religion and market of a location are rows of the
+/// tables of the frame, or [`NO_ROW`].
 #[derive(Debug, PartialEq)]
 pub struct MapProjection {
     pub layout_key: String,
     pub location_ids: Vec<u32>,
     pub fractions: Vec<u16>,
     pub metrics: Vec<f32>,
-    pub owners: Vec<u32>,
-    pub controllers: Vec<u32>,
-    pub religions: Vec<u32>,
-    pub markets: Vec<u32>,
+    /// A row of `countries`.
+    pub owners: Vec<u16>,
+    /// A row of `countries`.
+    pub controllers: Vec<u16>,
+    /// A row of `religion_colors`.
+    pub religions: Vec<u16>,
+    /// A row of `market_colors`, or [`UNKNOWN_ROW`].
+    pub markets: Vec<u16>,
     /// [country ID, historical owner color, current controller color, primary religion]
     pub countries: Vec<u32>,
     /// [religion ID, packed color]
@@ -124,10 +144,10 @@ pub struct MapProjectionData<'a> {
     pub location_ids: &'a [u32],
     pub fractions: &'a [u16],
     pub metrics: &'a [f32],
-    pub owners: &'a [u32],
-    pub controllers: &'a [u32],
-    pub religions: &'a [u32],
-    pub markets: &'a [u32],
+    pub owners: &'a [u16],
+    pub controllers: &'a [u16],
+    pub religions: &'a [u16],
+    pub markets: &'a [u16],
     pub countries: &'a [u32],
     pub religion_colors: &'a [u32],
     pub market_colors: &'a [u32],
@@ -171,6 +191,22 @@ impl MapProjectionData<'_> {
                     width,
                     actual,
                 });
+            }
+        }
+        for (column, values, table, width) in [
+            ("owners", self.owners, self.countries, 4),
+            ("controllers", self.controllers, self.countries, 4),
+            ("religions", self.religions, self.religion_colors, 2),
+            ("markets", self.markets, self.market_colors, 3),
+        ] {
+            let rows = table.len() / width;
+            let named = |row: u16| {
+                row == NO_ROW
+                    || usize::from(row) < rows
+                    || (column == "markets" && row == UNKNOWN_ROW)
+            };
+            if let Some(&row) = values.iter().find(|row| !named(**row)) {
+                return Err(MapProjectionError::TableRow { column, row, rows });
             }
         }
         for (index, (entry, &actual)) in locations.iter().zip(self.location_ids).enumerate() {
@@ -255,6 +291,43 @@ fn compact(value: f64, location: u32) -> Result<f32, MapProjectionError> {
     Ok(result)
 }
 
+/// A table of a frame: rows of an ID and `N` values, in the order that the
+/// locations first name them.
+struct Table<const N: usize> {
+    name: &'static str,
+    rows: FxHashMap<u32, u16>,
+    values: Vec<u32>,
+}
+
+impl<const N: usize> Table<N> {
+    fn new(name: &'static str) -> Self {
+        Self {
+            name,
+            rows: FxHashMap::default(),
+            values: Vec::new(),
+        }
+    }
+
+    /// The row of an ID. A new ID gets the next row.
+    fn row(
+        &mut self,
+        id: u32,
+        values: impl FnOnce() -> [u32; N],
+    ) -> Result<u16, MapProjectionError> {
+        if let Some(row) = self.rows.get(&id) {
+            return Ok(*row);
+        }
+        let row = u16::try_from(self.rows.len())
+            .ok()
+            .filter(|row| *row < UNKNOWN_ROW)
+            .ok_or(MapProjectionError::TableSize { table: self.name })?;
+        self.rows.insert(id, row);
+        self.values.push(id);
+        self.values.extend(values());
+        Ok(row)
+    }
+}
+
 pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError> {
     let identities = CountryIdentities::new(game);
     let date = game.metadata().date;
@@ -290,9 +363,9 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
         .packed()
     };
     let buildings = crate::map_measurements::location_building_levels(game);
-    let mut countries = BTreeMap::new();
-    let mut religion_colors = BTreeMap::new();
-    let mut market_colors = BTreeMap::new();
+    let mut countries = Table::<3>::new("countries");
+    let mut religions = Table::<1>::new("religion_colors");
+    let mut markets = Table::<2>::new("market_colors");
     let mut result = MapProjection {
         layout_key: layout_key(game.metadata()),
         location_ids: Vec::with_capacity(game.locations.len()),
@@ -307,13 +380,13 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
         market_colors: Vec::new(),
     };
     let mut religion = |id: eu5save::models::ReligionId| {
-        religion_colors.entry(id.value()).or_insert_with(|| {
-            game.religion_manager
+        religions.row(id.value(), || {
+            [game
+                .religion_manager
                 .lookup(id)
                 .map(|r| GpuColor::from(r.color.0).packed())
-                .unwrap_or(GpuColor::DEBUG.packed())
-        });
-        id.value()
+                .unwrap_or(GpuColor::DEBUG.packed())]
+        })
     };
     for entry in game.locations.iter() {
         let location = entry.location();
@@ -338,56 +411,47 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
             (location.controller, &mut result.controllers),
         ] {
             let Some(id) = id.real_id() else {
-                values.push(u32::MAX);
+                values.push(NO_ROW);
                 continue;
             };
             let id: CountryId = id.into();
-            values.push(id.value());
-            countries.entry(id.value()).or_insert_with(|| {
-                let primary = game
-                    .countries
-                    .get(id)
-                    .and_then(|idx| game.countries.index(idx).data())
-                    .and_then(|c| c.primary_religion)
-                    .filter(|id| game.religion_manager.lookup(*id).is_some())
-                    .map(&mut religion)
-                    .unwrap_or(u32::MAX);
+            let primary = game
+                .countries
+                .get(id)
+                .and_then(|idx| game.countries.index(idx).data())
+                .and_then(|c| c.primary_religion)
+                .filter(|id| game.religion_manager.lookup(*id).is_some());
+            // The table keeps the religion ID, and the religion gets a row.
+            if let Some(primary) = primary {
+                religion(primary)?;
+            }
+            let primary = primary.map_or(u32::MAX, |id| id.value());
+            values.push(countries.row(id.value(), || {
                 [blended(id, true), blended(id, false), primary]
-            });
+            })?);
         }
-        result
-            .religions
-            .push(location.religion.map(&mut religion).unwrap_or(u32::MAX));
-        result.markets.push(
-            location
-                .market
-                .map(|id| {
-                    if let Some(market) = game.market_manager.get(id) {
-                        market_colors.insert(
-                            id.value(),
-                            [
-                                market.center.value(),
-                                GpuColor::from(market.color.0).packed(),
-                            ],
-                        );
-                    }
-                    id.value()
-                })
-                .unwrap_or(u32::MAX),
-        );
+        let religion = match location.religion {
+            Some(id) => religion(id)?,
+            None => NO_ROW,
+        };
+        result.religions.push(religion);
+        let market = match location.market {
+            None => NO_ROW,
+            Some(id) => match game.market_manager.get(id) {
+                Some(market) => markets.row(id.value(), || {
+                    [
+                        market.center.value(),
+                        GpuColor::from(market.color.0).packed(),
+                    ]
+                })?,
+                None => UNKNOWN_ROW,
+            },
+        };
+        result.markets.push(market);
     }
-    result.countries = countries
-        .into_iter()
-        .flat_map(|(id, [a, b, c])| [id, a, b, c])
-        .collect();
-    result.religion_colors = religion_colors
-        .into_iter()
-        .flat_map(|(id, color)| [id, color])
-        .collect();
-    result.market_colors = market_colors
-        .into_iter()
-        .flat_map(|(id, [center, color])| [id, center, color])
-        .collect();
+    result.countries = countries.values;
+    result.religion_colors = religions.values;
+    result.market_colors = markets.values;
     Ok(result)
 }
 
@@ -404,6 +468,22 @@ mod tests {
         }
         assert_eq!(compact(12.5, 42), Ok(12.5));
     }
+    #[test]
+    fn a_table_gives_each_id_one_row_and_refuses_more_rows_than_a_column_names() {
+        let mut table = Table::<1>::new("test");
+        assert_eq!(table.row(42, || [7]), Ok(0));
+        assert_eq!(table.row(43, || [8]), Ok(1));
+        assert_eq!(table.row(42, || [9]), Ok(0));
+        assert_eq!(table.values, [42, 7, 43, 8]);
+        for id in 2..u32::from(UNKNOWN_ROW) {
+            table.row(id + 100, || [0]).unwrap();
+        }
+        assert_eq!(
+            table.row(1, || [0]),
+            Err(MapProjectionError::TableSize { table: "test" })
+        );
+    }
+
     #[test]
     fn fixed_point_control_preserves_range_and_precision() {
         assert_eq!(quantize(-1.0), 0);

@@ -28,7 +28,7 @@ export type AnalysisStore = {
     data: never,
     limitBytes: number,
   ): { descriptor: SnapshotDescriptor; duplicate: boolean; memory: StoreMemory };
-  clear(generation: number, campaignId?: string | null): StoreMemory;
+  clear(generation: number): StoreMemory;
   query(request: never): {
     generation: number;
     snapshotIds: string[];

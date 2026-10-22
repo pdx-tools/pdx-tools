@@ -23,10 +23,10 @@ pub struct Eu5Detail {
 pub struct ProjectionColumns {
     pub fractions: Vec<u16>,
     pub metrics: Vec<f32>,
-    pub owners: Vec<u32>,
-    pub controllers: Vec<u32>,
-    pub religions: Vec<u32>,
-    pub markets: Vec<u32>,
+    pub owners: Vec<u16>,
+    pub controllers: Vec<u16>,
+    pub religions: Vec<u16>,
+    pub markets: Vec<u16>,
     pub countries: Vec<u32>,
     pub religion_colors: Vec<u32>,
     pub market_colors: Vec<u32>,
@@ -165,6 +165,7 @@ pub fn location_population(view: &View<'_, Eu5Analysis>, location_ids: Vec<u32>)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::map_projection::NO_ROW;
     use campaign_analysis::{Query, SaveDate, Selection, Store};
 
     fn save(
@@ -182,10 +183,10 @@ mod tests {
                 .iter()
                 .flat_map(|p| [0.0, *p, 0.0, 0.0, 0.0, 0.0, 0.0])
                 .collect(),
-            owners: vec![7; n],
-            controllers: vec![7; n],
-            religions: vec![0; n],
-            markets: vec![0; n],
+            owners: vec![NO_ROW; n],
+            controllers: vec![NO_ROW; n],
+            religions: vec![NO_ROW; n],
+            markets: vec![NO_ROW; n],
             countries: Vec::new(),
             religion_colors: Vec::new(),
             market_colors: Vec::new(),

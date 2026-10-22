@@ -174,6 +174,10 @@ pub fn hash_projection(projection: &eu5app::map_projection::MapProjection) -> St
         &projection.controllers,
         &projection.religions,
         &projection.markets,
+    ] {
+        hasher.append(bytemuck::cast_slice(values));
+    }
+    for values in [
         &projection.countries,
         &projection.religion_colors,
         &projection.market_colors,

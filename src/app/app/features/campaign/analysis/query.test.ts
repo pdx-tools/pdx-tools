@@ -52,7 +52,7 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
-  query.dispose();
+  query.deactivate();
   vi.useRealTimers();
 });
 
@@ -168,28 +168,52 @@ describe("replies", () => {
   });
 });
 
-it("stops a scheduled refresh after dispose", async () => {
+it("stops a scheduled refresh after deactivation", async () => {
   const listener = vi.fn();
   query.subscribe(listener);
   query.update(input("world", "a"));
   calls[0].resolve();
   await vi.advanceTimersByTimeAsync(0);
   query.update(input("world", "a,b"));
-  query.dispose();
+  query.deactivate();
   await vi.advanceTimersByTimeAsync(QUERY_REFRESH_MS * 2);
   expect(calls).toHaveLength(1);
   expect(listener).toHaveBeenCalledOnce();
 });
 
-it("ignores a pending reply after dispose", async () => {
+it("ignores a pending reply after deactivation", async () => {
   const listener = vi.fn();
   query.subscribe(listener);
   query.update(input("world", "a"));
   query.update(input("world", "a,b"));
-  query.dispose();
+  query.deactivate();
   calls[0].resolve();
   await vi.advanceTimersByTimeAsync(QUERY_REFRESH_MS * 2);
   expect(shown("world").result).toBeNull();
   expect(listener).not.toHaveBeenCalled();
   expect(calls).toHaveLength(1);
+});
+
+it("runs the query again after deactivation ignores its pending reply", async () => {
+  query.update(input("world", "a"));
+  query.deactivate();
+  calls[0].resolve();
+  await vi.advanceTimersByTimeAsync(0);
+  query.update(input("world", "a"));
+  expect(calls).toHaveLength(2);
+  calls[1].resolve();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(shown("world").result).toBe("a");
+});
+
+it("ignores a reply of an earlier activation", async () => {
+  query.update(input("world", "a"));
+  query.deactivate();
+  query.update(input("world", "a,b"));
+  calls[0].resolve();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(shown("world").result).toBeNull();
+  calls[1].resolve();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(shown("world").result).toBe("a,b");
 });

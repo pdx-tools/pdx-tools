@@ -68,10 +68,18 @@ function options(
       residentBytes: 1000 * MiB,
       parserBytes: 10_000 * MiB,
     }).acquireImport(),
-    onCommitted: vi.fn(),
+    onFileComplete: vi.fn(),
     ...extra,
   };
 }
+
+/** The descriptors that a batch gave to its caller to publish. */
+const published = (opts: ImportOptions<SnapshotDescriptor, Output>) =>
+  vi
+    .mocked(opts.onFileComplete)
+    .mock.calls.flatMap(([completion]) =>
+      "descriptor" in completion ? [completion.descriptor] : [],
+    );
 
 const memoryFull = () =>
   Object.assign(Error("Campaign analysis is full."), { name: "AnalysisMemoryLimit" });
@@ -129,18 +137,18 @@ describe("outcomes", () => {
     const opts = options({ concurrency: 1 });
     const result = await importBatch(files(3), parser, session, opts);
     expect(result.files).toEqual(["accepted", "duplicate", "duplicate"]);
-    expect(opts.onCommitted).toHaveBeenCalledTimes(3);
+    expect(published(opts)).toHaveLength(3);
   });
 
   it("report each failed file by identity when names match", async () => {
     const bad = new File(["bad"], "same.sav");
     const good = new File(["good"], "same.sav");
     mocks.parse.mockRejectedValueOnce(Error("invalid save"));
-    const onFileOutcome = vi.fn();
-    await importBatch([bad, good], parser, sink(), options({ concurrency: 1, onFileOutcome }));
-    expect(onFileOutcome.mock.calls).toEqual([
-      [bad, "failed", "Error: invalid save"],
-      [good, "accepted", undefined],
+    const onFileComplete = vi.fn();
+    await importBatch([bad, good], parser, sink(), options({ concurrency: 1, onFileComplete }));
+    expect(onFileComplete.mock.calls).toEqual([
+      [{ status: "failed", file: bad, error: "Error: invalid save" }],
+      [{ status: "accepted", file: good, descriptor: expect.anything() }],
     ]);
   });
 });
@@ -188,7 +196,7 @@ describe("cancellation", () => {
     resolve({ descriptor: descriptor("save-0.sav"), duplicate: false });
     const result = await run;
     expect(result.files).toEqual(["accepted", "cancelled"]);
-    expect(opts.onCommitted).toHaveBeenCalledWith(descriptor("save-0.sav"), expect.any(File));
+    expect(published(opts)).toEqual([descriptor("save-0.sav")]);
     expect(mocks.parse).toHaveBeenCalledOnce();
   });
 });
@@ -234,7 +242,7 @@ describe("session clear", () => {
     session.clear();
     resolve({ descriptor: descriptor("save-0.sav"), duplicate: false });
     expect((await run).files).toEqual(["cancelled", "cancelled"]);
-    expect(opts.onCommitted).not.toHaveBeenCalled();
+    expect(published(opts)).toEqual([]);
     expect(session.appended).toEqual([]);
   });
 });
@@ -261,7 +269,7 @@ describe("memory", () => {
     const result = await run;
     expect(result.files).toEqual(["refused", "accepted", "unprocessed", "unprocessed"]);
     expect(parses.size).toBe(2);
-    expect(opts.onCommitted).toHaveBeenCalledOnce();
+    expect(published(opts)).toHaveLength(1);
   });
 
   it("bounds output that waits for an append to the active parsers", async () => {
@@ -393,21 +401,10 @@ it("reports active files and clears them after a failure or cancellation", async
   expect(active.at(-1)).toEqual([]);
 });
 
-it("stops new parses and throws when an outcome callback fails", async () => {
-  const opts = options({
-    concurrency: 1,
-    onFileOutcome: () => {
-      throw Error("status failed");
-    },
-  });
-  await expect(importBatch(files(2), parser, sink(), opts)).rejects.toThrow("status failed");
-  expect(mocks.parse).toHaveBeenCalledOnce();
-});
-
 it("stops new parses and throws when publication fails", async () => {
   const opts = options({
     concurrency: 1,
-    onCommitted: () => {
+    onFileComplete: () => {
       throw Error("sink failed");
     },
   });

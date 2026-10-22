@@ -145,7 +145,7 @@ it("refuses an import of one game while an import of the other game runs", async
   const running = importBatch([new File(["save"], "a.eu5")], eu5ParserAdapter, eu5, {
     signal: new AbortController().signal,
     lease,
-    onCommitted: () => {},
+    onFileComplete: () => {},
   });
   await expect(
     importEu4Campaign([new File(["save"], "a.eu4")], "eu4-campaign"),
@@ -167,7 +167,7 @@ it("releases the session of the other game when an import starts", async () => {
     await importBatch([new File(["save"], "a.eu5")], eu5ParserAdapter, eu5, {
       signal: new AbortController().signal,
       lease,
-      onCommitted: () => {},
+      onFileComplete: () => {},
     });
   } finally {
     lease.release();
@@ -187,20 +187,21 @@ it("stores and publishes only saves from the requested campaign", async () => {
   mocks.parse.set("eu4", async (file) =>
     file.name === "other.eu4" ? eu4Save("other", "other-campaign") : eu4Save("accepted"),
   );
-  const onCommitted = vi.fn();
+  const onFileComplete = vi.fn();
   const result = await importEu4Campaign(
     [new File([""], "other.eu4"), new File([""], "accepted.eu4")],
     "eu4-campaign",
-    { onCommitted },
+    { onFileComplete },
   );
   expect(result.files).toEqual(["failed", "accepted"]);
   expect(result.failures).toEqual([
     { fileName: "other.eu4", error: expect.stringContaining("another campaign") },
   ]);
-  expect(onCommitted).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ campaignId: "eu4-campaign" }),
-    expect.objectContaining({ name: "accepted.eu4" }),
-  );
+  expect(onFileComplete).toHaveBeenCalledWith({
+    status: "accepted",
+    file: expect.objectContaining({ name: "accepted.eu4" }),
+    descriptor: expect.objectContaining({ campaignId: "eu4-campaign" }),
+  });
 });
 
 it("can import again after a consumer stops the import with an error", async () => {
@@ -208,7 +209,7 @@ it("can import again after a consumer stops the import with an error", async () 
   mocks.parse.set("eu4", async () => eu4Save("a"));
   await expect(
     importEu4Campaign([new File([""], "a.eu4")], "eu4-campaign", {
-      onCommitted: () => {
+      onFileComplete: () => {
         throw Error("consumer failed");
       },
     }),

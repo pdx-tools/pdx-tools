@@ -42,6 +42,15 @@ export type ImportOutcome =
   | "unprocessed"
   | "cancelled";
 
+/**
+ * The outcome of one input file. A stored snapshot, new or duplicate, has its
+ * descriptor, and a failure has its reason.
+ */
+export type FileCompletion<D> =
+  | { status: "accepted" | "duplicate"; file: File; descriptor: D }
+  | { status: "failed"; file: File; error: string }
+  | { status: "refused" | "unprocessed" | "cancelled"; file: File };
+
 export type ImportProgress = {
   completed: number;
   total: number;
@@ -61,15 +70,13 @@ export type ImportOptions<D, R = unknown> = {
    * The file then fails with this reason, and the session does not get it.
    */
   refuseOutput?: (output: R, file: File) => string | null;
-  /** Called for each stored snapshot, also after cancellation. */
-  onCommitted: (descriptor: D, file: File) => void;
+  /**
+   * Called one time for each file that the batch started. A stored snapshot
+   * gets this call also after cancellation, so the caller can publish it.
+   */
+  onFileComplete: (completion: FileCompletion<D>) => void;
   onProgress?: (progress: ImportProgress) => void;
   onActiveFiles?: (files: readonly File[]) => void;
-  /**
-   * Called when a file gets its outcome, with the reason of a failure. A file
-   * that the batch did not start gets no call.
-   */
-  onFileOutcome?: (file: File, outcome: ImportOutcome, error?: string) => void;
 };
 
 export type ImportResult = {
@@ -130,12 +137,25 @@ export async function importBatch<Api, R, D extends SnapshotDescriptor>(
       halt.abort(error);
     }
   };
-  const finish = (index: number, outcome: ImportOutcome, error?: unknown) => {
-    outcomes[index] = outcome;
-    const reason = outcome === "failed" ? String(error) : undefined;
-    if (reason !== undefined) failures.push({ fileName: files[index].name, error: reason });
+  const finish = (
+    index: number,
+    outcome: Exclude<ImportOutcome, "accepted" | "duplicate">,
+    error?: unknown,
+  ) => {
+    const file = files[index];
+    complete(
+      index,
+      outcome === "failed"
+        ? { status: outcome, file, error: String(error) }
+        : { status: outcome, file },
+    );
+  };
+  const complete = (index: number, completion: FileCompletion<D>) => {
+    outcomes[index] = completion.status;
+    if (completion.status === "failed")
+      failures.push({ fileName: completion.file.name, error: completion.error });
     completed++;
-    notify(() => options.onFileOutcome?.(files[index], outcome, reason));
+    notify(() => options.onFileComplete(completion));
     notify(() =>
       options.onProgress?.({
         completed,
@@ -211,8 +231,11 @@ export async function importBatch<Api, R, D extends SnapshotDescriptor>(
             } else finish(index, "failed", error);
             continue;
           }
-          finish(index, stored.duplicate ? "duplicate" : "accepted");
-          notify(() => options.onCommitted(stored.descriptor, file));
+          complete(index, {
+            status: stored.duplicate ? "duplicate" : "accepted",
+            file,
+            descriptor: stored.descriptor,
+          });
         } finally {
           setActive(file, false);
         }

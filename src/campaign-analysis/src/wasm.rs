@@ -185,18 +185,16 @@ macro_rules! wasm_store {
                 $crate::wasm::append(&mut self.session, generation, data, limit_bytes)
             }
 
-            /// Start `generation`, and release the snapshots of the
-            /// campaign, or of any campaign.
+            /// Start `generation`, and release all snapshots.
             #[wasm_bindgen(unchecked_return_type = "StoreMemory")]
             pub fn clear(
                 &mut self,
                 generation: u32,
-                campaign_id: Option<String>,
             ) -> Result<
                 $crate::wasm::__private::wasm_bindgen::JsValue,
                 $crate::wasm::__private::wasm_bindgen::JsValue,
             > {
-                self.session.clear(generation, campaign_id.as_deref());
+                self.session.clear(generation);
                 $crate::wasm::memory(&self.session)
             }
 

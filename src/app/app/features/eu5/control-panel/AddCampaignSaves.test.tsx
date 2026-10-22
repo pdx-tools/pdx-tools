@@ -24,11 +24,18 @@ vi.mock("../store", () => ({
 }));
 vi.mock("@/features/campaign/localSaves", () => ({
   localSaveRegistry: {
-    useEntries: () => [{ game: "eu5", identity: { playthroughId: "campaign" } }],
+    useEntries: () => [
+      { id: "done", game: "eu5", identity: { playthroughId: "campaign" }, ...file("done") },
+      { id: "new", game: "eu5", identity: { playthroughId: "campaign" }, ...file("new") },
+    ],
   },
   registerLocalSaves: vi.fn(),
   holdsRef: () => false,
 }));
+const file = (name: string) => ({
+  version: { size: 4, lastModified: 1 },
+  ref: { kind: "file", file: new File(["save"], `${name}.eu5`, { lastModified: 1 }) },
+});
 vi.mock("../history/analyzeCampaign", () => ({ analyzeCampaign: mocks.analyze }));
 vi.mock("@/components/game/Button", () => ({
   GameButton: ({ onClick, ...props }: ComponentProps<"button">) => {
@@ -58,10 +65,11 @@ beforeEach(() => {
   mocks.publish.mockClear();
   useHistory.setState({
     analysisEnabledCampaigns: [],
-    analysisPaused: false,
     analysisPausedCampaigns: [],
     progress: null,
     issues: [],
+    snapshots: [],
+    sources: {},
   });
 });
 
@@ -95,6 +103,19 @@ it("resumes a paused campaign through the existing importer", () => {
   mocks.actions[2]();
   expect(useHistory.getState().analysisPausedCampaigns).toEqual([]);
   expect(mocks.analyze).toHaveBeenCalledWith(expect.any(Array), "campaign");
+});
+
+it("retries only the saves that have no analysis", () => {
+  mocks.developer = true;
+  useHistory.setState({
+    analysisEnabledCampaigns: ["campaign"],
+    issues: ["new.eu5: invalid save"],
+    snapshots: [{ id: "snapshot", campaignId: "campaign" } as never],
+    sources: { done: { snapshotId: "snapshot", version: { size: 4, lastModified: 1 } } },
+  });
+  expect(renderToStaticMarkup(<AddCampaignSaves />)).toContain("Retry import");
+  mocks.actions[2]();
+  expect(mocks.analyze).toHaveBeenCalledWith([expect.objectContaining({ id: "new" })], "campaign");
 });
 
 afterEach(() => vi.unstubAllGlobals());
