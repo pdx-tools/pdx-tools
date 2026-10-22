@@ -1,3 +1,4 @@
+import { AnimatedValue } from "../components/AnimatedValue";
 import type { ReactNode } from "react";
 import { usePanelNav } from "./profiles/PanelNavContext";
 import { Skeleton } from "../components";
@@ -33,7 +34,7 @@ export function InsightReadout({
       <div className="flex items-baseline justify-between gap-4">
         <div className="flex items-baseline gap-1.5 leading-none">
           <span className="font-game-num text-[20px] font-medium text-game-ink-100 tabular-nums">
-            {figure}
+            <AnimatedValue value={figure} />
           </span>
           <span className="font-game-ui text-[12.5px] whitespace-nowrap text-game-ink-300">
             {unit}
@@ -51,7 +52,9 @@ export function InsightReadout({
 export function ReadoutFigure({ value, label }: { value: string; label?: string }) {
   return (
     <span className="whitespace-nowrap">
-      <span className="text-game-ink-100">{value}</span>
+      <span className="text-game-ink-100">
+        <AnimatedValue value={value} />
+      </span>
       {label ? ` ${label}` : null}
     </span>
   );
