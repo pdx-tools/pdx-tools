@@ -1,4 +1,5 @@
 import type { SnapshotDescriptor } from "@/features/campaign/analysis/descriptor";
+import type { ResidentSnapshot } from "@/features/campaign/analysis/residentStore";
 import type { WorldSummary } from "@/wasm/wasm_eu5";
 
 /** Equal to `eu5app::map_projection::EXTRACTOR_VERSION`. The store refuses other versions. */
@@ -30,4 +31,4 @@ export type MapFrame = { descriptor: Eu5SnapshotDescriptor; projection: MapProje
 export type Eu5Payload = { projection: MapProjection };
 
 /** The parser output for one save. */
-export type SaveAnalysis = { descriptor: Eu5SnapshotDescriptor; payload: Eu5Payload };
+export type SaveAnalysis = ResidentSnapshot<Eu5SnapshotDescriptor, Eu5Payload>;

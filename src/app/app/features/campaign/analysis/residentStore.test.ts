@@ -80,9 +80,11 @@ describe("append", () => {
   });
 
   it("refuses each invalid append and leaves the store unchanged", () => {
-    const store = new ResidentStore(adapter, IDS + VALUES * 2);
+    const store = new ResidentStore(adapter);
     store.append(descriptor("first"), payload());
     const before = store.memory();
+    // The limit has room for one more snapshot with a shared layout.
+    const limit = before.bufferBytes + VALUES;
     const refusals: [SnapshotDescriptor, Payload, string][] = [
       [descriptor("alternate"), payload(), "already occupies"],
       [{ ...descriptor("x", 13600401), game: "other" }, payload(), "accepts test snapshots"],
@@ -95,16 +97,18 @@ describe("append", () => {
       [descriptor("x", 13600401), payload("other"), "Campaign analysis is full"],
     ];
     for (const [row, data, message] of refusals) {
-      expect(() => store.append(row, data)).toThrow(message);
+      expect(() => store.append(row, data, limit)).toThrow(message);
       expect(store.memory()).toEqual(before);
       expect(store.timeline("campaign")).toHaveLength(1);
     }
-    expect(() => store.append(descriptor("x", 13600401), payload("other"))).toThrow(
+    expect(() => store.append(descriptor("x", 13600401), payload("other"), limit)).toThrow(
       expect.objectContaining({ name: MEMORY_LIMIT_ERROR }),
     );
     // A shared layout adds only the values, so this fits.
-    store.append(descriptor("x", 13600401), payload());
+    store.append(descriptor("x", 13600401), payload(), limit);
     expect(store.memory().bufferBytes).toBe(IDS + VALUES * 2);
+    // A duplicate adds nothing, so it fits in any limit.
+    expect(store.append(descriptor("x", 13600401), payload(), 0).duplicate).toBe(true);
   });
 });
 
@@ -123,7 +127,6 @@ describe("clear", () => {
     store.clear();
     expect(store.memory()).toEqual({
       bufferBytes: 0,
-      limitBytes: Infinity,
       snapshots: 0,
       layouts: 0,
     });
@@ -170,11 +173,13 @@ describe("adapter callbacks", () => {
       const ids = new Uint32Array([42, 43, 0, 0]).subarray(0, 2);
       return [descriptor(contentHash, 13600101, campaignId), { ...payload(), ids }] as const;
     };
-    const store = new ResidentStore({ ...adapter, useLayout: undefined }, 2 * (16 + VALUES));
+    const store = new ResidentStore({ ...adapter, useLayout: undefined });
     store.append(...inline("a", "campaign"));
     store.append(...inline("b", "second"));
     expect(store.memory().bufferBytes).toBe(2 * (16 + VALUES));
-    expect(() => store.append(...inline("c", "third"))).toThrow("Campaign analysis is full");
+    // The payload keeps its own IDs, so it needs more than the values.
+    const limit = store.memory().bufferBytes + VALUES;
+    expect(() => store.append(...inline("c", "third"), limit)).toThrow("Campaign analysis is full");
     // The layout keeps the IDs of the first snapshot after that snapshot goes.
     store.clear("campaign");
     expect(store.memory().bufferBytes).toBe(16 + 16 + VALUES);

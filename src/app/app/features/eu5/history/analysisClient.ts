@@ -1,11 +1,10 @@
-import { transfer } from "comlink";
 import { createAnalysisWorker } from "@/features/campaign/analysis/workerClient";
-import { collectBuffers } from "@/features/campaign/analysis/transferBuffers";
-import type { analysisApi } from "./analysis-worker";
-import type { SaveAnalysis } from "./analysisTypes";
+import type { Eu5Payload, Eu5SnapshotDescriptor } from "./analysisTypes";
 import { useHistory } from "./store";
 
-const worker = createAnalysisWorker<typeof analysisApi>({
+/** The EU5 analysis session of this tab. */
+export const eu5Analysis = createAnalysisWorker<Eu5SnapshotDescriptor, Eu5Payload>({
+  session: "eu5",
   start: () => new Worker(new URL("./analysis-worker.ts", import.meta.url), { type: "module" }),
   onFailure: (error) => {
     useHistory.getState().cancel?.();
@@ -25,9 +24,4 @@ const worker = createAnalysisWorker<typeof analysisApi>({
   },
 });
 
-export const campaignAnalysis = worker.remote;
-export const connectAnalysisFrames = worker.connectFrames;
-
-export function appendAnalysis(save: SaveAnalysis) {
-  return campaignAnalysis().append(transfer(save, collectBuffers(save)));
-}
+export const connectAnalysisFrames = eu5Analysis.connectFrames;
