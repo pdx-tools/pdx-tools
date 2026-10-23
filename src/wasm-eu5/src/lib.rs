@@ -458,7 +458,8 @@ fn analysis_result(
         date,
         game_version,
     };
-    let observation = eu5app::analysis::observation(projection, world, source);
+    let observation = eu5app::analysis::observation(projection, world, source)
+        .map_err(campaign_analysis::wasm::error)?;
     analysis::AnalysisSnapshot::observation(&observation)
 }
 
@@ -1017,12 +1018,10 @@ impl Eu5App {
         let snapshot =
             campaign_analysis::Observation::<eu5app::analysis::Eu5Analysis>::decode(data)
                 .map_err(|e| JsError::new(&e.to_string()))?;
-        let frame = snapshot
-            .payload
-            .data(&snapshot.descriptor.layout_key, &snapshot.ids);
+        let frame = eu5app::analysis::frame(&snapshot);
         let paint = self
             .app()
-            .paint_map_projection(frame, mode.to_rust()?.into())
+            .paint_validated_map_projection(frame, mode.to_rust()?.into())
             .map_err(|e| JsError::new(&e.to_string()))?;
         let flags: &[u32] = bytemuck::cast_slice(paint.arrays.buffers().state_flags());
         Ok(ProjectionPaintData {

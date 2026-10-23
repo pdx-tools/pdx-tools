@@ -1,7 +1,7 @@
 //! Compact, save-independent inputs for replaying observed map modes.
 use crate::{SaveCheckSummer, subject_color, timeline::CountryIdentities};
 use eu5save::hash::FxHashMap;
-use eu5save::models::{CountryId, Gamestate, Location, Locations, Metadata};
+use eu5save::models::{CountryId, Gamestate, Location, LocationId, Locations, Metadata};
 use pdx_map::GpuColor;
 use std::{collections::BTreeMap, io::Write};
 
@@ -120,9 +120,16 @@ pub enum MapProjectionError {
 #[derive(Debug, PartialEq)]
 pub struct MapProjection {
     pub layout_key: String,
-    pub location_ids: Vec<u32>,
-    pub fractions: Vec<u16>,
-    pub metrics: Vec<f32>,
+    pub location_ids: Vec<LocationId>,
+    pub control: Vec<u16>,
+    pub market_access: Vec<u16>,
+    pub development: Vec<f32>,
+    pub population: Vec<f32>,
+    pub building_levels: Vec<f32>,
+    pub rgo_level: Vec<f32>,
+    pub wealth: Vec<f32>,
+    pub unrealized_tax_base: Vec<f32>,
+    pub population_growth: Vec<f32>,
     /// A row of `countries`.
     pub owners: Vec<u16>,
     /// A row of `countries`.
@@ -141,9 +148,16 @@ pub struct MapProjection {
 
 pub struct MapProjectionData<'a> {
     pub layout_key: &'a str,
-    pub location_ids: &'a [u32],
-    pub fractions: &'a [u16],
-    pub metrics: &'a [f32],
+    pub location_ids: &'a [LocationId],
+    pub control: &'a [u16],
+    pub market_access: &'a [u16],
+    pub development: &'a [f32],
+    pub population: &'a [f32],
+    pub building_levels: &'a [f32],
+    pub rgo_level: &'a [f32],
+    pub wealth: &'a [f32],
+    pub unrealized_tax_base: &'a [f32],
+    pub population_growth: &'a [f32],
     pub owners: &'a [u16],
     pub controllers: &'a [u16],
     pub religions: &'a [u16],
@@ -152,21 +166,49 @@ pub struct MapProjectionData<'a> {
     pub religion_colors: &'a [u32],
     pub market_colors: &'a [u32],
 }
+/// A frame borrowed from a validated observation. Its fields cannot change.
+/// Use `analysis::frame` after local observation decode.
+pub struct ValidatedMapProjectionData<'a>(MapProjectionData<'a>);
+impl<'a> ValidatedMapProjectionData<'a> {
+    pub(crate) fn new(data: MapProjectionData<'a>) -> Self {
+        Self(data)
+    }
+    pub(crate) fn into_data(self) -> MapProjectionData<'a> {
+        self.0
+    }
+}
 impl MapProjectionData<'_> {
-    /// Validate the entire observation before modifying any renderer buffers.
-    pub fn validate(
-        &self,
-        layout: &str,
-        locations: &Locations<'_>,
-    ) -> Result<(), MapProjectionError> {
-        if self.layout_key != layout {
-            return Err(MapProjectionError::LayoutMismatch);
+    pub fn metric(&self, metric: Metric) -> &[f32] {
+        match metric {
+            Metric::Development => self.development,
+            Metric::Population => self.population,
+            Metric::BuildingLevels => self.building_levels,
+            Metric::RgoLevel => self.rgo_level,
+            Metric::Wealth => self.wealth,
+            Metric::UnrealizedTaxBase => self.unrealized_tax_base,
+            Metric::PopulationGrowth => self.population_growth,
         }
-        let n = locations.len();
+    }
+    pub fn fraction(&self, fraction: Fraction) -> &[u16] {
+        match fraction {
+            Fraction::Control => self.control,
+            Fraction::MarketAccess => self.market_access,
+        }
+    }
+    /// Check columns, dictionary widths, references, and finite values.
+    pub fn validate_intrinsic(&self) -> Result<(), MapProjectionError> {
+        let n = self.location_ids.len();
         for (column, actual, expected) in [
             ("location_ids", self.location_ids.len(), n),
-            ("fractions", self.fractions.len(), n * Fraction::ALL.len()),
-            ("metrics", self.metrics.len(), n * Metric::ALL.len()),
+            ("control", self.control.len(), n),
+            ("market_access", self.market_access.len(), n),
+            ("development", self.development.len(), n),
+            ("population", self.population.len(), n),
+            ("building_levels", self.building_levels.len(), n),
+            ("rgo_level", self.rgo_level.len(), n),
+            ("wealth", self.wealth.len(), n),
+            ("unrealized_tax_base", self.unrealized_tax_base.len(), n),
+            ("population_growth", self.population_growth.len(), n),
             ("owners", self.owners.len(), n),
             ("controllers", self.controllers.len(), n),
             ("religions", self.religions.len(), n),
@@ -200,6 +242,10 @@ impl MapProjectionData<'_> {
             ("markets", self.markets, self.market_colors, 3),
         ] {
             let rows = table.len() / width;
+            if rows > usize::from(UNKNOWN_ROW) {
+                return Err(MapProjectionError::TableSize { table: column });
+            }
+
             let named = |row: u16| {
                 row == NO_ROW
                     || usize::from(row) < rows
@@ -209,20 +255,51 @@ impl MapProjectionData<'_> {
                 return Err(MapProjectionError::TableRow { column, row, rows });
             }
         }
-        for (index, (entry, &actual)) in locations.iter().zip(self.location_ids).enumerate() {
-            let expected = entry.id().value();
-            if actual != expected {
-                return Err(MapProjectionError::LocationMismatch {
-                    index,
-                    expected,
-                    actual,
+        for metric in Metric::ALL {
+            if let Some(index) = self
+                .metric(metric)
+                .iter()
+                .position(|value| !value.is_finite())
+            {
+                return Err(MapProjectionError::NonFinite {
+                    location: self.location_ids[index].value(),
                 });
             }
         }
-        if let Some(index) = self.metrics.iter().position(|value| !value.is_finite()) {
-            return Err(MapProjectionError::NonFinite {
-                location: self.location_ids[index / Metric::ALL.len()],
+        Ok(())
+    }
+    /// Check the frame against the loaded map before changing renderer buffers.
+    pub fn validate(
+        &self,
+        layout: &str,
+        locations: &Locations<'_>,
+    ) -> Result<(), MapProjectionError> {
+        self.validate_intrinsic()?;
+        self.validate_compatibility(layout, locations)
+    }
+    pub(crate) fn validate_compatibility(
+        &self,
+        layout: &str,
+        locations: &Locations<'_>,
+    ) -> Result<(), MapProjectionError> {
+        if self.layout_key != layout {
+            return Err(MapProjectionError::LayoutMismatch);
+        }
+        if self.location_ids.len() != locations.len() {
+            return Err(MapProjectionError::ColumnLength {
+                column: "location_ids",
+                expected: locations.len(),
+                actual: self.location_ids.len(),
             });
+        }
+        for (index, (entry, actual)) in locations.iter().zip(self.location_ids).enumerate() {
+            if entry.id() != *actual {
+                return Err(MapProjectionError::LocationMismatch {
+                    index,
+                    expected: entry.id().value(),
+                    actual: actual.value(),
+                });
+            }
         }
         Ok(())
     }
@@ -232,8 +309,15 @@ impl MapProjection {
         MapProjectionData {
             layout_key: &self.layout_key,
             location_ids: &self.location_ids,
-            fractions: &self.fractions,
-            metrics: &self.metrics,
+            control: &self.control,
+            market_access: &self.market_access,
+            development: &self.development,
+            population: &self.population,
+            building_levels: &self.building_levels,
+            rgo_level: &self.rgo_level,
+            wealth: &self.wealth,
+            unrealized_tax_base: &self.unrealized_tax_base,
+            population_growth: &self.population_growth,
             owners: &self.owners,
             controllers: &self.controllers,
             religions: &self.religions,
@@ -369,8 +453,15 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
     let mut result = MapProjection {
         layout_key: layout_key(game.metadata()),
         location_ids: Vec::with_capacity(game.locations.len()),
-        fractions: Vec::with_capacity(game.locations.len() * Fraction::ALL.len()),
-        metrics: Vec::with_capacity(game.locations.len() * Metric::ALL.len()),
+        control: Vec::with_capacity(game.locations.len()),
+        market_access: Vec::with_capacity(game.locations.len()),
+        development: Vec::with_capacity(game.locations.len()),
+        population: Vec::with_capacity(game.locations.len()),
+        building_levels: Vec::with_capacity(game.locations.len()),
+        rgo_level: Vec::with_capacity(game.locations.len()),
+        wealth: Vec::with_capacity(game.locations.len()),
+        unrealized_tax_base: Vec::with_capacity(game.locations.len()),
+        population_growth: Vec::with_capacity(game.locations.len()),
         owners: Vec::with_capacity(game.locations.len()),
         controllers: Vec::with_capacity(game.locations.len()),
         religions: Vec::with_capacity(game.locations.len()),
@@ -398,14 +489,41 @@ pub fn extract(game: &Gamestate<'_>) -> Result<MapProjection, MapProjectionError
                 location: entry.id().value(),
             });
         }
-        result.location_ids.push(entry.id().value());
+        result.location_ids.push(entry.id());
         result
-            .fractions
-            .extend(Fraction::ALL.map(|fraction| quantize(fraction.of(location))));
-        for metric in Metric::ALL {
-            let value = metric.of(game, location, || buildings[entry.idx()]);
-            result.metrics.push(compact(value, entry.id().value())?);
-        }
+            .control
+            .push(quantize(Fraction::Control.of(location)));
+        result
+            .market_access
+            .push(quantize(Fraction::MarketAccess.of(location)));
+        result.development.push(compact(
+            Metric::Development.of(game, location, || buildings[entry.idx()]),
+            entry.id().value(),
+        )?);
+        result.population.push(compact(
+            Metric::Population.of(game, location, || buildings[entry.idx()]),
+            entry.id().value(),
+        )?);
+        result.building_levels.push(compact(
+            Metric::BuildingLevels.of(game, location, || buildings[entry.idx()]),
+            entry.id().value(),
+        )?);
+        result.rgo_level.push(compact(
+            Metric::RgoLevel.of(game, location, || buildings[entry.idx()]),
+            entry.id().value(),
+        )?);
+        result.wealth.push(compact(
+            Metric::Wealth.of(game, location, || buildings[entry.idx()]),
+            entry.id().value(),
+        )?);
+        result.unrealized_tax_base.push(compact(
+            Metric::UnrealizedTaxBase.of(game, location, || buildings[entry.idx()]),
+            entry.id().value(),
+        )?);
+        result.population_growth.push(compact(
+            Metric::PopulationGrowth.of(game, location, || buildings[entry.idx()]),
+            entry.id().value(),
+        )?);
         for (id, values) in [
             (location.owner, &mut result.owners),
             (location.controller, &mut result.controllers),

@@ -5,6 +5,9 @@
 //! [`queries!`]. A parser gives the binary form of a snapshot
 //! ([`Observation::encode`]). JavaScript moves those bytes to the analysis
 //! worker and does not read them. The worker keeps them in a [`Session`].
+//!
+//! Tables keep typed keys and immutable row columns. See the crate README
+//! and `examples/market_goods.rs` for payload, registry, and query examples.
 
 mod columns;
 mod descriptor;
@@ -12,17 +15,27 @@ mod query;
 mod session;
 mod snapshot;
 mod store;
+mod table;
+mod text;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
-pub use columns::{Columns, DecodeError, Decoder, Encoder};
+pub use columns::{
+    ColumnError, Columns, DecodeError, Decoder, Encoder, NullableColumn, PayloadError,
+    ReferenceError, RowColumns, check_length,
+};
 pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
 pub use query::{
     History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, View,
 };
 pub use session::Session;
 pub use snapshot::Observation;
-pub use store::{AnalysisError, AnalysisErrorName, Appended, Layout, Snapshot, Store, StoreMemory};
+pub use store::{AnalysisError, AnalysisErrorName, Appended, Snapshot, Store, StoreMemory};
+pub use table::{
+    BoundRows, Column, IndexId, IndexRegistry, KeyError, PrefixKey, PreparedIndex, RegistryMemory,
+    ResolvedBatch, Row, RowError, RowRange, RowSelect, SelectionRows, Table, TableError,
+};
+pub use text::{PreparedText, TextRegistry, decode_text_dictionary, encode_text_dictionary};
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
@@ -38,12 +51,26 @@ pub trait Game: Sized + 'static {
     /// JavaScript reads them next to the common fields. A game without
     /// fields uses an empty struct.
     type Detail: Serialize + DeserializeOwned + Clone + fmt::Debug;
-    /// The columns of a snapshot, without the geographic IDs of its layout.
+    /// The concrete tables and dictionaries of a snapshot.
     type Payload: Columns + fmt::Debug;
     type Query: Query<Self>;
 
-    /// Refuse a payload that does not have `rows` rows.
-    fn validate(rows: usize, payload: &Self::Payload) -> Result<(), String>;
+    type Shared: Default + fmt::Debug;
+    type Prepared;
+
+    /// Check rules that require the complete payload. Construction and decode
+    /// call this hook. Append accepts only a constructed observation.
+    fn validate(payload: &Self::Payload) -> Result<(), PayloadError>;
+    /// Prepare references against typed registries without changing the store.
+    fn prepare(
+        payload: &mut Self::Payload,
+        layout: &str,
+        shared: &Self::Shared,
+    ) -> Result<Self::Prepared, AnalysisError>;
+    fn added_bytes(prepared: &Self::Prepared) -> usize;
+    /// Commit a prepared append after admission. This operation cannot fail.
+    fn commit(shared: &mut Self::Shared, prepared: Self::Prepared);
+    fn shared_memory(shared: &Self::Shared) -> RegistryMemory;
 }
 
 #[cfg(test)]
@@ -56,9 +83,24 @@ mod tests {
 
     #[derive(Debug, Clone, PartialEq)]
     struct Values {
-        values: Vec<f64>,
+        table: Table<u32, Vec<f64>>,
     }
-    columns!(Values { values });
+    impl Columns for Values {
+        fn encode(&self, out: &mut Encoder) {
+            self.table.encode_with(out, |keys, out| out.column(keys));
+        }
+        fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
+            Ok(Self {
+                table: Table::decode_map_order_with(input, |input| input.column())?,
+            })
+        }
+        fn heap_bytes(&self) -> usize {
+            self.table.columns().heap_bytes()
+        }
+        fn allocated_bytes(&self) -> usize {
+            self.table.columns().allocated_bytes()
+        }
+    }
 
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     struct Tag {
@@ -66,7 +108,20 @@ mod tests {
     }
 
     fn sum(view: &View<'_, TestGame>, ids: Vec<u32>) -> History {
-        view.sum_over(&ids, |snapshot, row| snapshot.payload().values[row])
+        let mut selection = RowSelect::new(&ids);
+        view.series(|snapshot| {
+            let table = &snapshot.payload().table;
+            match selection.resolve(table) {
+                SelectionRows::Rows(rows) => Some(
+                    rows.bind(table)
+                        .unwrap()
+                        .values(|values| values)
+                        .copied()
+                        .sum(),
+                ),
+                _ => None,
+            }
+        })
     }
 
     fn count(view: &View<'_, TestGame>) -> usize {
@@ -80,6 +135,8 @@ mod tests {
         }
     }
 
+    thread_local! {static VALIDATIONS: std::cell::Cell<usize> = const {std::cell::Cell::new(0)};}
+
     impl Game for TestGame {
         const GAME: &'static str = "test";
         const EXTRACTOR_VERSION: u32 = 3;
@@ -87,13 +144,28 @@ mod tests {
         type Detail = Tag;
         type Payload = Values;
         type Query = TestQuery;
+        type Shared = IndexRegistry<u32>;
+        type Prepared = PreparedIndex<u32>;
 
-        fn validate(rows: usize, payload: &Values) -> Result<(), String> {
-            if payload.values.len() == rows {
-                Ok(())
-            } else {
-                Err(String::from("Incomplete columns"))
-            }
+        fn validate(_: &Values) -> Result<(), PayloadError> {
+            VALIDATIONS.with(|count| count.set(count.get() + 1));
+            Ok(())
+        }
+        fn prepare(
+            payload: &mut Values,
+            layout: &str,
+            shared: &Self::Shared,
+        ) -> Result<Self::Prepared, AnalysisError> {
+            shared.prepare(&mut payload.table, Some(layout))
+        }
+        fn added_bytes(prepared: &Self::Prepared) -> usize {
+            prepared.added_bytes()
+        }
+        fn commit(shared: &mut Self::Shared, prepared: Self::Prepared) {
+            shared.commit(prepared);
+        }
+        fn shared_memory(shared: &Self::Shared) -> RegistryMemory {
+            shared.memory()
         }
     }
 
@@ -118,14 +190,18 @@ mod tests {
     }
 
     fn observation(descriptor: SnapshotDescriptor, ids: &[u32]) -> Observation<TestGame> {
-        Observation {
+        Observation::new(
             descriptor,
-            detail: Tag { tag: 7 },
-            ids: ids.to_vec(),
-            payload: Values {
-                values: ids.iter().map(|id| f64::from(*id) * 10.0).collect(),
+            Tag { tag: 7 },
+            Values {
+                table: Table::map_order(
+                    ids.to_vec(),
+                    ids.iter().map(|id| f64::from(*id) * 10.0).collect(),
+                )
+                .unwrap(),
             },
-        }
+        )
+        .unwrap()
     }
 
     fn append(
@@ -161,8 +237,8 @@ mod tests {
         let decoded = Observation::<TestGame>::decode(&bytes).unwrap();
         assert_eq!(decoded.descriptor, original.descriptor);
         assert_eq!(decoded.detail, Tag { tag: 7 });
-        assert_eq!(decoded.ids, [42, 43]);
-        assert_eq!(decoded.payload, original.payload);
+        assert_eq!(decoded.payload().table.keys(), [42, 43]);
+        assert_eq!(decoded.payload(), original.payload());
 
         let mut store = Store::new();
         store.append(decoded, usize::MAX).unwrap();
@@ -214,6 +290,9 @@ mod tests {
             store.memory(),
             StoreMemory {
                 buffer_bytes: IDS + VALUES * 2,
+                allocated_bytes: IDS + VALUES * 2,
+                allocated_column_bytes: VALUES * 2,
+                allocated_key_bytes: IDS,
                 snapshots: 2,
                 layouts: 1,
                 index_bytes: 0,
@@ -290,7 +369,7 @@ mod tests {
             // A new layout adds its IDs, so it does not fit.
             (
                 descriptor("x", 13600401, "other"),
-                vec![42, 43],
+                vec![42, 44],
                 "Campaign analysis is full",
             ),
         ];
@@ -299,12 +378,7 @@ mod tests {
             assert!(error.to_string().contains(message), "{error}");
             assert_eq!(store.memory(), before);
         }
-        let mut incomplete = observation(next(), &[42, 43]);
-        incomplete.payload.values.pop();
-        assert_eq!(
-            store.append(incomplete, limit).unwrap_err(),
-            AnalysisError::Payload(String::from("Incomplete columns"))
-        );
+        Table::map_order(vec![42u32, 43], vec![1.0f64]).unwrap_err();
         // A shared layout adds only the values, so this fits.
         append(&mut store, next(), &[42, 43], limit).unwrap();
         assert_eq!(store.memory().buffer_bytes, IDS + VALUES * 2);
@@ -379,9 +453,9 @@ mod tests {
             usize::MAX,
         )
         .unwrap();
-        let layout = store.snapshots()[0].layout();
-        assert_eq!(layout.rows(&[42, 43]), Some(vec![2, 0]));
-        assert_eq!(layout.rows(&[42, 1]), None);
+        let table = &store.snapshots()[0].payload().table;
+        assert_eq!(*table.value(table.row(&42).unwrap(), |x| x).unwrap(), 420.0);
+        assert!(table.row(&1).is_none());
         assert!(store.memory().index_bytes > 0);
     }
 
@@ -441,6 +515,9 @@ mod tests {
             session.memory(),
             StoreMemory {
                 buffer_bytes: 0,
+                allocated_bytes: 0,
+                allocated_column_bytes: 0,
+                allocated_key_bytes: 0,
                 snapshots: 0,
                 layouts: 0,
                 index_bytes: 0,
@@ -451,5 +528,23 @@ mod tests {
         // Another save at the same date is accepted after a clear.
         let bytes = observation(descriptor("z", 14000101, "layout"), &[7]).encode();
         session.append(1, &bytes, usize::MAX).unwrap();
+    }
+    #[test]
+    fn append_does_not_repeat_construction_validation_or_build_lookups() {
+        let original = observation(descriptor("a", 15000101, "map"), &[43, 42]);
+        let bytes = original.encode();
+        let decoded = Observation::<TestGame>::decode(&bytes).unwrap();
+        let count = VALIDATIONS.with(std::cell::Cell::get);
+        let mut store = Store::new();
+        store.append(decoded, usize::MAX).unwrap();
+        assert_eq!(VALIDATIONS.with(std::cell::Cell::get), count);
+        assert_eq!(store.memory().index_bytes, 0);
+        let mut next = Observation::<TestGame>::decode(&bytes).unwrap();
+        next.descriptor = descriptor("b", 15000102, "map");
+        let count = VALIDATIONS.with(std::cell::Cell::get);
+        let before = store.memory();
+        store.append(next, 0).unwrap_err();
+        assert_eq!(store.memory(), before);
+        assert_eq!(VALIDATIONS.with(std::cell::Cell::get), count);
     }
 }

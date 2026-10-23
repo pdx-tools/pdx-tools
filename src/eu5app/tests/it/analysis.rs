@@ -118,6 +118,7 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
             game_version: String::from("1.0.0"),
         },
     )
+    .unwrap()
     .encode();
     let stored =
         campaign_analysis::Observation::<eu5app::analysis::Eu5Analysis>::decode(&bytes).unwrap();
@@ -132,12 +133,7 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
             .collect();
         let paint = ws.paint_map_projection(frame.as_data(), mode).unwrap();
         let from_bytes = ws
-            .paint_map_projection(
-                stored
-                    .payload
-                    .data(&stored.descriptor.layout_key, &stored.ids),
-                mode,
-            )
+            .paint_validated_map_projection(eu5app::analysis::frame(&stored), mode)
             .unwrap();
         assert_eq!(from_bytes.groups, paint.groups, "{mode:?} stored groups");
         assert_eq!(
@@ -194,31 +190,31 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
         Some(eu5app::map_projection::MapProjectionError::LayoutMismatch)
     );
     let mut invalid = frame.as_data();
-    invalid.metrics = &frame.metrics[..1];
+    invalid.population = &frame.population[..1];
     assert!(matches!(
         ws.paint_map_projection(invalid, Control),
         Err(eu5app::map_projection::MapProjectionError::ColumnLength {
-            column: "metrics",
+            column: "population",
             actual: 1,
             ..
         })
     ));
     let mut ids = frame.location_ids.clone();
-    ids[0] = ids[0].wrapping_add(1);
+    ids[0] = eu5save::models::LocationId::new(ids[0].value().wrapping_add(1));
     let mut invalid = frame.as_data();
     invalid.location_ids = &ids;
     assert!(matches!(
         ws.paint_map_projection(invalid, Control),
         Err(eu5app::map_projection::MapProjectionError::LocationMismatch { index: 0, .. })
     ));
-    let mut measurements = frame.metrics.clone();
+    let mut measurements = frame.population.clone();
     measurements[0] = f32::NAN;
     let mut invalid = frame.as_data();
-    invalid.metrics = &measurements;
+    invalid.population = &measurements;
     assert_eq!(
         ws.paint_map_projection(invalid, Control).err(),
         Some(eu5app::map_projection::MapProjectionError::NonFinite {
-            location: frame.location_ids[0]
+            location: frame.location_ids[0].value()
         })
     );
     let rows = (frame.countries.len() / 4) as u16;
@@ -255,17 +251,12 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
 /// The world population of the map observations: the population of each
 /// owned location, as the world summary counts it.
 fn observed_world_population(projection: &eu5app::map_projection::MapProjection) -> u32 {
-    let width = eu5app::map_projection::Metric::ALL.len();
-    let population = eu5app::map_projection::Metric::ALL
-        .iter()
-        .position(|metric| *metric == eu5app::map_projection::Metric::Population)
-        .unwrap();
     projection
         .owners
         .iter()
         .enumerate()
         .filter(|(_, owner)| **owner != eu5app::map_projection::NO_ROW)
-        .map(|(row, _)| projection.metrics[row * width + population] as u32)
+        .map(|(row, _)| projection.population[row] as u32)
         .sum()
 }
 
@@ -320,7 +311,7 @@ fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
             },
             game_version: String::from("1.0.0"),
         };
-        let observed = eu5app::analysis::observation(projection, summary, source);
+        let observed = eu5app::analysis::observation(projection, summary, source).unwrap();
         // The store reads the binary form that JavaScript moves.
         session.append(0, &observed.encode(), usize::MAX).unwrap();
     }

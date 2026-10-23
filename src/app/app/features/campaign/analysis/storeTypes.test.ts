@@ -5,6 +5,7 @@ import type {
   Eu4Detail,
   Eu4Query,
   parse_analysis,
+  ProvinceId,
 } from "@/wasm/wasm_eu4";
 import type {
   Eu5AnalysisStore,
@@ -40,6 +41,9 @@ it("gives each store and parser the types of its own game", () => {
   expectTypeOf<Eu4SnapshotDescriptor>().toEqualTypeOf<SnapshotDescriptor & Eu4Detail>();
   expectTypeOf<SnapshotOf<Eu4AnalysisStore>>().toEqualTypeOf<Eu4Snapshot>();
   expectTypeOf<ReturnType<typeof parse_analysis>>().toEqualTypeOf<Eu4Snapshot>();
+  expectTypeOf<Extract<Eu4Query, { kind: "provinceDevelopment" }>["provinceIds"]>().toEqualTypeOf<
+    ProvinceId[]
+  >();
 
   expectTypeOf<TypesOf<Eu5AnalysisStore>>().toEqualTypeOf<{
     descriptor: Eu5SnapshotDescriptor;

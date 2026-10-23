@@ -2,76 +2,13 @@ use crate::columns::{Columns, DecodeError};
 use crate::snapshot::encode;
 use crate::{Descriptor, Game, Observation, SnapshotDescriptor, snapshot_id};
 use serde::Serialize;
-use std::cell::OnceCell;
-use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
-
-/// Geographic IDs in row order. Snapshots with equal IDs share one layout.
-#[derive(Debug)]
-pub struct Layout {
-    key: String,
-    ids: Vec<u32>,
-    /// Sorted IDs need no index: a binary search finds their rows.
-    sorted: bool,
-    rows: OnceCell<HashMap<u32, usize>>,
-}
-
-// A map entry with small integer keys and values, with its overhead.
-const INDEX_ENTRY_BYTES: usize = 16;
-
-impl Layout {
-    pub fn key(&self) -> &str {
-        &self.key
-    }
-
-    pub fn ids(&self) -> &[u32] {
-        &self.ids
-    }
-
-    fn new(key: String, ids: Vec<u32>) -> Self {
-        Self {
-            key,
-            sorted: ids.is_sorted(),
-            ids,
-            rows: OnceCell::new(),
-        }
-    }
-
-    /// The row of a geographic ID.
-    pub fn row(&self, id: u32) -> Option<usize> {
-        if self.sorted {
-            return self.ids.binary_search(&id).ok();
-        }
-        let rows = self.rows.get_or_init(|| {
-            let mut rows = HashMap::with_capacity(self.ids.len());
-            for (row, id) in self.ids.iter().enumerate() {
-                rows.insert(*id, row);
-            }
-            rows
-        });
-        rows.get(&id).copied()
-    }
-
-    /// The rows of a set of IDs, or `None` if the layout does not have one
-    /// of them.
-    pub fn rows(&self, ids: &[u32]) -> Option<Vec<usize>> {
-        ids.iter().map(|id| self.row(*id)).collect()
-    }
-
-    fn index_bytes(&self) -> usize {
-        self.rows
-            .get()
-            .map_or(0, |rows| rows.capacity() * INDEX_ENTRY_BYTES)
-    }
-}
 
 /// A snapshot in the store. It does not change.
 #[derive(Debug)]
 pub struct Snapshot<G: Game> {
     descriptor: SnapshotDescriptor,
     detail: G::Detail,
-    layout: Rc<Layout>,
     payload: G::Payload,
 }
 
@@ -82,10 +19,6 @@ impl<G: Game> Snapshot<G> {
 
     pub fn detail(&self) -> &G::Detail {
         &self.detail
-    }
-
-    pub fn layout(&self) -> &Layout {
-        &self.layout
     }
 
     pub fn payload(&self) -> &G::Payload {
@@ -102,12 +35,7 @@ impl<G: Game> Snapshot<G> {
 
     /// The binary form, as the parser gave it.
     pub fn encode(&self) -> Vec<u8> {
-        encode::<G>(
-            &self.descriptor,
-            &self.detail,
-            &self.layout.ids,
-            &self.payload,
-        )
+        encode::<G>(&self.descriptor, &self.detail, &self.payload)
     }
 }
 
@@ -120,12 +48,13 @@ pub enum AnalysisError {
         version: u32,
     },
     Decode(DecodeError),
+    Table(crate::TableError),
     InvalidDescriptor,
     OtherCampaign,
     DateConflict {
         date: String,
     },
-    Payload(String),
+    Payload(crate::PayloadError),
     IncompatibleLayout,
     MemoryFull,
     Missing,
@@ -166,6 +95,12 @@ impl From<DecodeError> for AnalysisError {
     }
 }
 
+impl From<crate::TableError> for AnalysisError {
+    fn from(error: crate::TableError) -> Self {
+        Self::Table(error)
+    }
+}
+
 impl fmt::Display for AnalysisError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -175,13 +110,14 @@ impl fmt::Display for AnalysisError {
                 "This store accepts {game} snapshots from extractor {version}"
             ),
             AnalysisError::Decode(error) => error.fmt(f),
+            AnalysisError::Table(error) => error.fmt(f),
             AnalysisError::InvalidDescriptor => write!(f, "Invalid snapshot descriptor"),
             AnalysisError::OtherCampaign => write!(f, "This analysis keeps another campaign"),
             AnalysisError::DateConflict { date } => write!(
                 f,
                 "A different save already occupies {date}. Separate alternate campaign branches before importing."
             ),
-            AnalysisError::Payload(message) => write!(f, "{message}"),
+            AnalysisError::Payload(message) => write!(f, "Invalid payload: {message}"),
             AnalysisError::IncompatibleLayout => write!(f, "Incompatible analytical map layout"),
             AnalysisError::MemoryFull => write!(
                 f,
@@ -207,9 +143,15 @@ pub struct Appended<D> {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct StoreMemory {
-    /// Strict: the bytes of the payloads and the layout IDs, each layout once.
+    /// Logical retained columns, key elements, and canonical text. Registry
+    /// overhead and spare capacity are outside the limit.
     pub buffer_bytes: usize,
+    /// Allocated column and key storage. Registry overhead is excluded.
+    pub allocated_bytes: usize,
+    pub allocated_column_bytes: usize,
+    pub allocated_key_bytes: usize,
     pub snapshots: usize,
+    /// The number of shared key indexes, including analytical tables.
     pub layouts: usize,
     /// An estimate of the row indexes of the layouts. It is not part of the limit.
     pub index_bytes: usize,
@@ -223,7 +165,7 @@ pub struct StoreMemory {
 #[derive(Debug)]
 pub struct Store<G: Game> {
     snapshots: Vec<Snapshot<G>>,
-    layouts: HashMap<String, Rc<Layout>>,
+    shared: G::Shared,
     bytes: usize,
 }
 
@@ -231,7 +173,7 @@ impl<G: Game> Default for Store<G> {
     fn default() -> Self {
         Self {
             snapshots: Vec::new(),
-            layouts: HashMap::new(),
+            shared: G::Shared::default(),
             bytes: 0,
         }
     }
@@ -259,8 +201,7 @@ impl<G: Game> Store<G> {
         let Observation {
             descriptor,
             detail,
-            ids,
-            payload,
+            mut payload,
         } = observation;
         if descriptor.game != G::GAME || descriptor.extractor_version != G::EXTRACTOR_VERSION {
             return Err(AnalysisError::WrongGame {
@@ -291,50 +232,35 @@ impl<G: Game> Store<G> {
                 duplicate: true,
             });
         }
+        let at = self
+            .snapshots
+            .partition_point(|snapshot| snapshot.descriptor.date_sort < descriptor.date_sort);
         if self
             .snapshots
-            .iter()
-            .any(|snapshot| snapshot.descriptor.date_sort == descriptor.date_sort)
+            .get(at)
+            .is_some_and(|snapshot| snapshot.descriptor.date_sort == descriptor.date_sort)
         {
             return Err(AnalysisError::DateConflict {
                 date: descriptor.date,
             });
         }
+        let prepared = G::prepare(&mut payload, &descriptor.layout_key, &self.shared)?;
+        let added = payload
+            .heap_bytes()
+            .checked_add(G::added_bytes(&prepared))
+            .ok_or(AnalysisError::MemoryFull)?;
+        let total = self
+            .bytes
+            .checked_add(added)
+            .filter(|total| *total <= limit_bytes)
+            .ok_or(AnalysisError::MemoryFull)?;
 
-        G::validate(ids.len(), &payload).map_err(AnalysisError::Payload)?;
-        let shared = self.layouts.get(&descriptor.layout_key);
-        if shared.is_some_and(|layout| layout.ids != ids) {
-            return Err(AnalysisError::IncompatibleLayout);
-        }
-        let layout_bytes = if shared.is_some() {
-            0
-        } else {
-            ids.len() * size_of::<u32>()
-        };
-        let added = payload.heap_bytes() + layout_bytes;
-        if self.bytes + added > limit_bytes {
-            return Err(AnalysisError::MemoryFull);
-        }
-
-        // Commit. Nothing below can fail.
-        let layout = match shared {
-            Some(layout) => Rc::clone(layout),
-            None => {
-                let layout = Rc::new(Layout::new(descriptor.layout_key.clone(), ids));
-                self.layouts
-                    .insert(descriptor.layout_key.clone(), Rc::clone(&layout));
-                layout
-            }
-        };
-        self.bytes += added;
-        let at = self.snapshots.partition_point(|snapshot| {
-            (snapshot.descriptor.date_sort, &snapshot.descriptor.id)
-                < (descriptor.date_sort, &descriptor.id)
-        });
+        // Commit has no recoverable errors.
+        G::commit(&mut self.shared, prepared);
+        self.bytes = total;
         let snapshot = Snapshot {
             descriptor,
             detail,
-            layout,
             payload,
         };
         let described = snapshot.described();
@@ -361,15 +287,20 @@ impl<G: Game> Store<G> {
     }
 
     pub fn memory(&self) -> StoreMemory {
+        let shared = G::shared_memory(&self.shared);
+        let columns = self
+            .snapshots
+            .iter()
+            .map(|snapshot| snapshot.payload.allocated_bytes())
+            .sum::<usize>();
         StoreMemory {
             buffer_bytes: self.bytes,
             snapshots: self.snapshots.len(),
-            layouts: self.layouts.len(),
-            index_bytes: self
-                .layouts
-                .values()
-                .map(|layout| layout.index_bytes())
-                .sum(),
+            allocated_bytes: columns + shared.allocated_bytes,
+            allocated_column_bytes: columns,
+            allocated_key_bytes: shared.allocated_bytes,
+            layouts: shared.indexes,
+            index_bytes: shared.lookup_bytes,
             wasm_bytes: 0,
         }
     }

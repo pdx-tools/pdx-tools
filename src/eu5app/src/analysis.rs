@@ -3,9 +3,15 @@
 
 use crate::insights::WorldSummary;
 use crate::map_projection::{
-    EXTRACTOR_VERSION, Fraction, MapProjection, MapProjectionData, Metric,
+    EXTRACTOR_VERSION, MapProjection, MapProjectionData, MapProjectionError,
+    ValidatedMapProjectionData,
 };
-use campaign_analysis::{Game, History, Observation, SnapshotDescriptor, SnapshotSource, View};
+use campaign_analysis::{
+    AnalysisError, ColumnError, Columns, DecodeError, Decoder, Encoder, Game, History,
+    IndexRegistry, Observation, PayloadError, PreparedIndex, ReferenceError, RegistryMemory,
+    RowColumns, RowSelect, SelectionRows, SnapshotDescriptor, SnapshotSource, Table, View,
+};
+use eu5save::models::LocationId;
 use serde::{Deserialize, Serialize};
 
 /// The EU5 fields of a snapshot descriptor.
@@ -16,57 +22,134 @@ pub struct Eu5Detail {
     pub world: WorldSummary,
 }
 
-/// The map projection without its location IDs, which the layout keeps.
+/// Aligned location columns. The location table keeps the keys.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectionColumns {
-    pub fractions: Vec<u16>,
-    pub metrics: Vec<f32>,
+    pub control: Vec<u16>,
+    pub market_access: Vec<u16>,
+    pub development: Vec<f32>,
+    pub population: Vec<f32>,
+    pub building_levels: Vec<f32>,
+    pub rgo_level: Vec<f32>,
+    pub wealth: Vec<f32>,
+    pub unrealized_tax_base: Vec<f32>,
+    pub population_growth: Vec<f32>,
     pub owners: Vec<u16>,
     pub controllers: Vec<u16>,
     pub religions: Vec<u16>,
     pub markets: Vec<u16>,
-    pub countries: Vec<u32>,
-    pub religion_colors: Vec<u32>,
-    pub market_colors: Vec<u32>,
 }
 campaign_analysis::columns!(ProjectionColumns {
-    fractions,
-    metrics,
+    control,
+    market_access,
+    development,
+    population,
+    building_levels,
+    rgo_level,
+    wealth,
+    unrealized_tax_base,
+    population_growth,
     owners,
     controllers,
     religions,
     markets,
-    countries,
-    religion_colors,
-    market_colors,
 });
 
-impl ProjectionColumns {
-    /// The projection that a game worker paints.
-    pub fn data<'a>(
-        &'a self,
-        layout_key: &'a str,
-        location_ids: &'a [u32],
-    ) -> MapProjectionData<'a> {
+impl RowColumns for ProjectionColumns {
+    fn check_rows(&self, expected: usize) -> Result<(), ColumnError> {
+        self.control.check_rows(expected)?;
+        self.market_access.check_rows(expected)?;
+        self.development.check_rows(expected)?;
+        self.population.check_rows(expected)?;
+        self.building_levels.check_rows(expected)?;
+        self.rgo_level.check_rows(expected)?;
+        self.wealth.check_rows(expected)?;
+        self.unrealized_tax_base.check_rows(expected)?;
+        self.population_growth.check_rows(expected)?;
+        self.owners.check_rows(expected)?;
+        self.controllers.check_rows(expected)?;
+        self.religions.check_rows(expected)?;
+        self.markets.check_rows(expected)?;
+        Ok(())
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct Eu5Payload {
+    pub locations: Table<LocationId, ProjectionColumns>,
+    pub countries: Vec<u32>,
+    pub religion_colors: Vec<u32>,
+    pub market_colors: Vec<u32>,
+}
+impl Columns for Eu5Payload {
+    fn encode(&self, out: &mut Encoder) {
+        self.locations.encode_with(out, |keys, out| {
+            out.column(&keys.iter().map(|id| id.value()).collect::<Vec<_>>())
+        });
+        self.countries.encode(out);
+        self.religion_colors.encode(out);
+        self.market_colors.encode(out);
+    }
+    fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
+        Ok(Self {
+            locations: Table::decode_map_order_with(input, |input| {
+                Ok(input
+                    .column::<u32>()?
+                    .into_iter()
+                    .map(LocationId::new)
+                    .collect())
+            })?,
+            countries: Columns::decode(input)?,
+            religion_colors: Columns::decode(input)?,
+            market_colors: Columns::decode(input)?,
+        })
+    }
+    fn heap_bytes(&self) -> usize {
+        self.locations.columns().heap_bytes()
+            + self.countries.heap_bytes()
+            + self.religion_colors.heap_bytes()
+            + self.market_colors.heap_bytes()
+    }
+    fn allocated_bytes(&self) -> usize {
+        self.locations.columns().allocated_bytes()
+            + self.countries.allocated_bytes()
+            + self.religion_colors.allocated_bytes()
+            + self.market_colors.allocated_bytes()
+    }
+}
+impl Eu5Payload {
+    pub fn data<'a>(&'a self, layout_key: &'a str) -> MapProjectionData<'a> {
+        let columns = self.locations.columns();
         MapProjectionData {
             layout_key,
-            location_ids,
-            fractions: &self.fractions,
-            metrics: &self.metrics,
-            owners: &self.owners,
-            controllers: &self.controllers,
-            religions: &self.religions,
-            markets: &self.markets,
+            location_ids: self.locations.keys(),
+            control: &columns.control,
+            market_access: &columns.market_access,
+            development: &columns.development,
+            population: &columns.population,
+            building_levels: &columns.building_levels,
+            rgo_level: &columns.rgo_level,
+            wealth: &columns.wealth,
+            unrealized_tax_base: &columns.unrealized_tax_base,
+            population_growth: &columns.population_growth,
+            owners: &columns.owners,
+            controllers: &columns.controllers,
+            religions: &columns.religions,
+            markets: &columns.markets,
             countries: &self.countries,
             religion_colors: &self.religion_colors,
             market_colors: &self.market_colors,
         }
     }
+}
 
-    fn metric(&self, row: usize, metric: Metric) -> f32 {
-        let column = Metric::ALL.iter().position(|m| *m == metric).unwrap_or(0);
-        self.metrics[row * Metric::ALL.len() + column]
-    }
+/// Borrow paint data from an observation that passed local payload validation.
+/// The map worker must decode transferred bytes before it calls this function.
+pub fn frame(observation: &Observation<Eu5Analysis>) -> ValidatedMapProjectionData<'_> {
+    ValidatedMapProjectionData::new(
+        observation
+            .payload()
+            .data(&observation.descriptor.layout_key),
+    )
 }
 
 /// The snapshot of a save from its map projection and its world summary.
@@ -74,12 +157,19 @@ pub fn observation(
     projection: MapProjection,
     world: WorldSummary,
     source: SnapshotSource,
-) -> Observation<Eu5Analysis> {
+) -> Result<Observation<Eu5Analysis>, AnalysisError> {
     let MapProjection {
         layout_key,
         location_ids,
-        fractions,
-        metrics,
+        control,
+        market_access,
+        development,
+        population,
+        building_levels,
+        rgo_level,
+        wealth,
+        unrealized_tax_base,
+        population_growth,
         owners,
         controllers,
         religions,
@@ -88,22 +178,31 @@ pub fn observation(
         religion_colors,
         market_colors,
     } = projection;
-    Observation {
-        descriptor: SnapshotDescriptor::new::<Eu5Analysis>(source, layout_key),
-        detail: Eu5Detail { world },
-        ids: location_ids,
-        payload: ProjectionColumns {
-            fractions,
-            metrics,
-            owners,
-            controllers,
-            religions,
-            markets,
+    let columns = ProjectionColumns {
+        control,
+        market_access,
+        development,
+        population,
+        building_levels,
+        rgo_level,
+        wealth,
+        unrealized_tax_base,
+        population_growth,
+        owners,
+        controllers,
+        religions,
+        markets,
+    };
+    Observation::new(
+        SnapshotDescriptor::new::<Eu5Analysis>(source, layout_key),
+        Eu5Detail { world },
+        Eu5Payload {
+            locations: Table::map_order(location_ids, columns)?,
             countries,
             religion_colors,
             market_colors,
         },
-    }
+    )
 }
 
 #[derive(Debug)]
@@ -114,25 +213,57 @@ impl Game for Eu5Analysis {
     const EXTRACTOR_VERSION: u32 = EXTRACTOR_VERSION;
     const ARTIFACTS: &'static [&'static str] = &["observations", "map"];
     type Detail = Eu5Detail;
-    type Payload = ProjectionColumns;
+    type Payload = Eu5Payload;
+    type Shared = IndexRegistry<LocationId>;
+    type Prepared = PreparedIndex<LocationId>;
     type Query = Eu5Query;
 
-    fn validate(rows: usize, payload: &ProjectionColumns) -> Result<(), String> {
-        let complete = payload.fractions.len() == rows * Fraction::ALL.len()
-            && payload.metrics.len() == rows * Metric::ALL.len()
-            && [
-                &payload.owners,
-                &payload.controllers,
-                &payload.religions,
-                &payload.markets,
-            ]
-            .iter()
-            .all(|column| column.len() == rows);
-        if complete {
-            Ok(())
-        } else {
-            Err(String::from("Incomplete analytical map columns"))
-        }
+    fn validate(payload: &Eu5Payload) -> Result<(), PayloadError> {
+        payload
+            .data("")
+            .validate_intrinsic()
+            .map_err(|error| match error {
+                MapProjectionError::TableRow { column, row, rows } => {
+                    PayloadError::Reference(ReferenceError::Row {
+                        column,
+                        row: u32::from(row),
+                        rows,
+                    })
+                }
+                MapProjectionError::TableWidth {
+                    table,
+                    width,
+                    actual,
+                } => PayloadError::DictionaryWidth {
+                    table,
+                    width,
+                    actual,
+                },
+                MapProjectionError::TableSize { table } => PayloadError::DictionarySize { table },
+                MapProjectionError::ColumnLength {
+                    expected, actual, ..
+                } => PayloadError::Column(ColumnError::Length { expected, actual }),
+                MapProjectionError::NonFinite { location } => {
+                    PayloadError::NonFiniteAt { key: location }
+                }
+                error => PayloadError::Invalid(error.to_string()),
+            })
+    }
+    fn prepare(
+        payload: &mut Eu5Payload,
+        layout: &str,
+        shared: &Self::Shared,
+    ) -> Result<Self::Prepared, AnalysisError> {
+        shared.prepare(&mut payload.locations, Some(layout))
+    }
+    fn added_bytes(prepared: &Self::Prepared) -> usize {
+        prepared.added_bytes()
+    }
+    fn commit(shared: &mut Self::Shared, prepared: Self::Prepared) {
+        shared.commit(prepared);
+    }
+    fn shared_memory(shared: &Self::Shared) -> RegistryMemory {
+        shared.memory()
     }
 }
 
@@ -153,8 +284,20 @@ pub fn world_population(view: &View<'_, Eu5Analysis>) -> History {
 }
 
 pub fn location_population(view: &View<'_, Eu5Analysis>, location_ids: Vec<u32>) -> History {
-    view.sum_over(&location_ids, |snapshot, row| {
-        f64::from(snapshot.payload().metric(row, Metric::Population))
+    let keys: Vec<_> = location_ids.into_iter().map(LocationId::new).collect();
+    let mut select = RowSelect::new(&keys);
+    view.series(|snapshot| {
+        let table = &snapshot.payload().locations;
+        match select.resolve(table) {
+            SelectionRows::Rows(rows) => Some(
+                rows.bind(table)
+                    .expect("resolved table identity")
+                    .values(|c| &c.population)
+                    .map(|x| f64::from(*x))
+                    .sum(),
+            ),
+            SelectionRows::MissingKey | SelectionRows::EmptySelection => None,
+        }
     })
 }
 
@@ -173,12 +316,16 @@ mod tests {
         let n = population.len();
         let projection = MapProjection {
             layout_key: format!("layout-{n}"),
-            location_ids: [42, 43][..n].to_vec(),
-            fractions: vec![0; n * Fraction::ALL.len()],
-            metrics: population
-                .iter()
-                .flat_map(|p| [0.0, *p, 0.0, 0.0, 0.0, 0.0, 0.0])
-                .collect(),
+            location_ids: [42, 43][..n].iter().copied().map(LocationId::new).collect(),
+            control: vec![0; n],
+            market_access: vec![0; n],
+            development: vec![0.0; n],
+            population: population.to_vec(),
+            building_levels: vec![0.0; n],
+            rgo_level: vec![0.0; n],
+            wealth: vec![0.0; n],
+            unrealized_tax_base: vec![0.0; n],
+            population_growth: vec![0.0; n],
             owners: vec![NO_ROW; n],
             controllers: vec![NO_ROW; n],
             religions: vec![NO_ROW; n],
@@ -202,7 +349,7 @@ mod tests {
             },
             game_version: String::from("1.0.0"),
         };
-        observation(projection, world, source)
+        observation(projection, world, source).unwrap()
     }
 
     fn store() -> Store<Eu5Analysis> {
@@ -257,17 +404,65 @@ mod tests {
         let original = save("a", 14000101, &[1.0, 2.0], 3);
         let decoded = Observation::<Eu5Analysis>::decode(&original.encode()).unwrap();
         assert_eq!(decoded.detail, original.detail);
-        assert_eq!(decoded.payload, original.payload);
-        assert_eq!(decoded.ids, original.ids);
+        assert_eq!(decoded.payload(), original.payload());
+        assert_eq!(
+            decoded.payload().locations.keys(),
+            original.payload().locations.keys()
+        );
     }
 
     #[test]
-    fn refuses_incomplete_columns() {
-        let mut store = Store::<Eu5Analysis>::new();
-        let mut incomplete = save("a", 14000101, &[1.0], 1);
-        incomplete.payload.metrics.pop();
-        let error = store.append(incomplete, usize::MAX).unwrap_err();
-        assert!(error.to_string().contains("Incomplete"));
-        assert_eq!(store.memory().snapshots, 0);
+    fn refuses_nonfinite_values_and_invalid_references() {
+        let original = save("a", 14000101, &[1.0], 1);
+        let mut baseline = Encoder::new();
+        original.payload().encode(&mut baseline);
+        let baseline = baseline.finish();
+        let malformed = |columns: ProjectionColumns, countries: Vec<u32>| Eu5Payload {
+            locations: Table::map_order(vec![LocationId::new(42)], columns).unwrap(),
+            countries,
+            religion_colors: vec![],
+            market_colors: vec![],
+        };
+        let mut nonfinite = original.payload().locations.columns().clone();
+        nonfinite.population[0] = f32::NAN;
+        let mut reference = original.payload().locations.columns().clone();
+        reference.owners[0] = 0;
+        let mut sentinel = original.payload().locations.columns().clone();
+        sentinel.religions[0] = crate::map_projection::UNKNOWN_ROW;
+        let cases = [
+            malformed(nonfinite, vec![]),
+            malformed(reference, vec![]),
+            malformed(sentinel, vec![]),
+            malformed(original.payload().locations.columns().clone(), vec![1]),
+        ];
+        let mut store = campaign_analysis::Session::<Eu5Analysis>::new();
+        for payload in cases {
+            let error = Observation::<Eu5Analysis>::new(
+                original.descriptor.clone(),
+                original.detail.clone(),
+                payload.clone(),
+            )
+            .unwrap_err();
+            let mut out = Encoder::new();
+            payload.encode(&mut out);
+            let mut bytes = original.encode();
+            bytes.truncate(bytes.len() - baseline.len());
+            bytes.extend(out.finish());
+            assert_eq!(
+                Observation::<Eu5Analysis>::decode(&bytes).unwrap_err(),
+                error
+            );
+            let before = store.memory();
+            store.append(0, &bytes, usize::MAX).unwrap_err();
+            assert_eq!(store.memory(), before);
+        }
+        let mut columns = original.payload().locations.columns().clone();
+        columns.markets[0] = crate::map_projection::UNKNOWN_ROW;
+        Observation::<Eu5Analysis>::new(
+            original.descriptor,
+            original.detail,
+            malformed(columns, vec![]),
+        )
+        .unwrap();
     }
 }

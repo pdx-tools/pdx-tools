@@ -31,6 +31,9 @@ type Store = AnalysisStore & {
 };
 const memory = (bufferBytes: number): ResidentMemory => ({
   bufferBytes,
+  allocatedBytes: bufferBytes,
+  allocatedColumnBytes: bufferBytes,
+  allocatedKeyBytes: 0,
   snapshots: 1,
   layouts: 0,
   indexBytes: 0,

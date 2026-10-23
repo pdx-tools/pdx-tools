@@ -20,7 +20,8 @@ pub fn parse_analysis(data: Vec<u8>) -> Result<Ts<AnalysisSnapshot>, JsValue> {
     let content_hash = out
         .hash
         .ok_or_else(|| JsError::new("The save parser gave no content hash"))?;
-    let observation = eu4game::analysis::extract(&Query::from_save(out.save), content_hash);
+    let observation = eu4game::analysis::extract(&Query::from_save(out.save), content_hash)
+        .map_err(campaign_analysis::wasm::error)?;
     AnalysisSnapshot::observation(&observation)
 }
 

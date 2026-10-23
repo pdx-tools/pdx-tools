@@ -73,6 +73,9 @@ function fakeStore(): AnalysisStore {
   const rows: SnapshotDescriptor[] = [];
   const memory = () => ({
     bufferBytes: rows.length,
+    allocatedBytes: rows.length,
+    allocatedColumnBytes: rows.length,
+    allocatedKeyBytes: 0,
     snapshots: rows.length,
     layouts: 0,
     indexBytes: 0,

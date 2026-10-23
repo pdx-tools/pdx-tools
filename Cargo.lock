@@ -1076,6 +1076,7 @@ dependencies = [
  "pdx-zstd",
  "schemas",
  "serde",
+ "serde_json",
  "serde_path_to_error",
  "sha1_smol",
  "tempfile",

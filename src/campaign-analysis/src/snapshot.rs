@@ -6,22 +6,35 @@ use crate::columns::{Columns, DecodeError, Decoder, Encoder};
 use crate::{AnalysisError, Game, SnapshotDescriptor};
 
 const MAGIC: [u8; 4] = *b"PDXA";
-/// Changes when the binary form changes.
-const FORMAT: u32 = 1;
 
 /// The parser output for one save.
 #[derive(Debug, Clone)]
 pub struct Observation<G: Game> {
     pub descriptor: SnapshotDescriptor,
     pub detail: G::Detail,
-    /// The geographic IDs in row order.
-    pub ids: Vec<u32>,
-    pub payload: G::Payload,
+    pub(crate) payload: G::Payload,
 }
 
 impl<G: Game> Observation<G> {
+    pub fn new(
+        descriptor: SnapshotDescriptor,
+        detail: G::Detail,
+        payload: G::Payload,
+    ) -> Result<Self, AnalysisError> {
+        G::validate(&payload).map_err(AnalysisError::Payload)?;
+        Ok(Self {
+            descriptor,
+            detail,
+            payload,
+        })
+    }
+
+    pub fn payload(&self) -> &G::Payload {
+        &self.payload
+    }
+
     pub fn encode(&self) -> Vec<u8> {
-        encode::<G>(&self.descriptor, &self.detail, &self.ids, &self.payload)
+        encode::<G>(&self.descriptor, &self.detail, &self.payload)
     }
 
     /// Read a snapshot of game `G`. A snapshot of another game or another
@@ -31,10 +44,6 @@ impl<G: Game> Observation<G> {
         if input.raw(MAGIC.len())? != MAGIC {
             return Err(DecodeError::NotASnapshot.into());
         }
-        let format = u32::from_le_bytes(input.raw(4)?.try_into().unwrap_or_default());
-        if format != FORMAT {
-            return Err(DecodeError::UnknownFormat(format).into());
-        }
         let descriptor: SnapshotDescriptor = header(&input.column::<u8>()?)?;
         if descriptor.game != G::GAME || descriptor.extractor_version != G::EXTRACTOR_VERSION {
             return Err(AnalysisError::WrongGame {
@@ -43,30 +52,21 @@ impl<G: Game> Observation<G> {
             });
         }
         let detail = header(&input.column::<u8>()?)?;
-        let ids = input.column()?;
         let payload = G::Payload::decode(&mut input)?;
         input.finish()?;
-        Ok(Self {
-            descriptor,
-            detail,
-            ids,
-            payload,
-        })
+        Self::new(descriptor, detail, payload)
     }
 }
 
 pub(crate) fn encode<G: Game>(
     descriptor: &SnapshotDescriptor,
     detail: &G::Detail,
-    ids: &[u32],
     payload: &G::Payload,
 ) -> Vec<u8> {
     let mut out = Encoder::new();
     out.raw(&MAGIC);
-    out.raw(&FORMAT.to_le_bytes());
     out.column(&header_bytes(descriptor));
     out.column(&header_bytes(detail));
-    out.column(ids);
     payload.encode(&mut out);
     out.finish()
 }

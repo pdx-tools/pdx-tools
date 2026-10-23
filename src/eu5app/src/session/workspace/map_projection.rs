@@ -3,6 +3,7 @@ use super::terrain_fill::FillComponents;
 use super::*;
 use crate::map_projection::{
     Fraction, MapProjectionData, MapProjectionError, Metric, NO_ROW, UNKNOWN_ROW,
+    ValidatedMapProjectionData,
 };
 use std::cell::OnceCell;
 use std::sync::OnceLock;
@@ -68,7 +69,7 @@ impl<'a> FrameValues<'a> {
                     .location_ids
                     .iter()
                     .enumerate()
-                    .map(|(idx, &id)| (LocationId::new(id), LocationIdx::new(idx as u32)))
+                    .map(|(idx, &id)| (id, LocationIdx::new(idx as u32)))
                     .collect()
             });
             self.frame
@@ -112,13 +113,12 @@ impl LocationValues for FrameValues<'_> {
     }
 
     fn fraction(&self, idx: LocationIdx, fraction: Fraction) -> f64 {
-        let column = idx.value() as usize * Fraction::ALL.len() + fraction as usize;
-        f64::from(self.frame.fractions[column]) / crate::map_projection::FRACTION_SCALE
+        f64::from(self.frame.fraction(fraction)[idx.value() as usize])
+            / crate::map_projection::FRACTION_SCALE
     }
 
     fn metric(&self, idx: LocationIdx, metric: Metric) -> f64 {
-        let column = idx.value() as usize * Metric::ALL.len() + metric as usize;
-        f64::from(self.frame.metrics[column])
+        f64::from(self.frame.metric(metric)[idx.value() as usize])
     }
 
     fn owner_color(&self, idx: LocationIdx) -> GpuColor {
@@ -192,7 +192,20 @@ impl Eu5Workspace<'_> {
         frame: MapProjectionData<'_>,
         mode: MapMode,
     ) -> Result<ProjectionPaint, MapProjectionError> {
-        frame.validate(&self.map_layout_key, &self.gamestate.locations)?;
+        frame.validate_intrinsic()?;
+        self.paint_validated_map_projection(ValidatedMapProjectionData::new(frame), mode)
+    }
+
+    /// Paint a locally validated observation. Map compatibility is checked
+    /// before any renderer buffer changes.
+    pub fn paint_validated_map_projection(
+        &self,
+        frame: ValidatedMapProjectionData<'_>,
+        mode: MapMode,
+    ) -> Result<ProjectionPaint, MapProjectionError> {
+        let frame = frame.into_data();
+        frame.validate_compatibility(&self.map_layout_key, &self.gamestate.locations)?;
+
         let values = FrameValues::new(
             &frame,
             &self.fill_components,

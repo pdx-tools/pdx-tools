@@ -1,10 +1,13 @@
 //! Compact province observations of one save for campaign analysis.
 
-use crate::shared::{SaveCheckSummer, playthrough_id};
+use crate::shared::playthrough_id;
 use campaign_analysis::{
-    Game, History, Observation, SaveDate, SnapshotDescriptor, SnapshotSource, View,
+    AnalysisError, ColumnError, Columns, DecodeError, Decoder, Encoder, Game, History,
+    IndexRegistry, Observation, PayloadError, PreparedIndex, RegistryMemory, RowColumns, RowSelect,
+    SaveDate, SelectionRows, SnapshotDescriptor, SnapshotSource, Table, View,
 };
-use eu4save::{PdsDate, models::Province, query::Query};
+use eu4save::{PdsDate, ProvinceId, models::Province, query::Query};
+use std::hash::{Hash, Hasher};
 
 /// Changes when the observations or their calculations change.
 pub const EXTRACTOR_VERSION: u32 = 1;
@@ -15,7 +18,7 @@ pub fn province_development(province: &Province) -> f32 {
 }
 
 /// The province columns of a snapshot. Each column has one row for each
-/// province, in province ID order. The layout keeps the province IDs.
+/// province, in province ID order. The table keeps the province IDs.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProvinceColumns {
     pub development: Vec<f32>,
@@ -23,6 +26,57 @@ pub struct ProvinceColumns {
     pub owned: Vec<u8>,
 }
 campaign_analysis::columns!(ProvinceColumns { development, owned });
+
+impl RowColumns for ProvinceColumns {
+    fn check_rows(&self, expected: usize) -> Result<(), ColumnError> {
+        self.development.check_rows(expected)?;
+        self.owned.check_rows(expected)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Eu4Payload {
+    pub provinces: Table<ProvinceId, ProvinceColumns>,
+}
+impl Columns for Eu4Payload {
+    fn encode(&self, out: &mut Encoder) {
+        self.provinces
+            .encode_with(out, |keys, out| out.serde(&keys));
+    }
+    fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
+        let provinces = Table::decode_sorted_with(input, |input| {
+            let raw: Vec<i32> = input.serde()?;
+            raw.into_iter()
+                .map(|id| checked_province(id).map_err(DecodeError::Header))
+                .collect()
+        })?;
+        Ok(Self { provinces })
+    }
+    fn heap_bytes(&self) -> usize {
+        self.provinces.columns().heap_bytes()
+    }
+    fn allocated_bytes(&self) -> usize {
+        self.provinces.columns().allocated_bytes()
+    }
+}
+fn checked_province(id: i32) -> Result<ProvinceId, String> {
+    if id < 0 {
+        Err(String::from(
+            "Province IDs must be nonnegative i32 integers",
+        ))
+    } else {
+        Ok(ProvinceId::new(id))
+    }
+}
+fn deserialize_provinces<'de, D: serde::Deserializer<'de>>(
+    input: D,
+) -> Result<Vec<ProvinceId>, D::Error> {
+    use serde::Deserialize;
+    Vec::<i32>::deserialize(input)?
+        .into_iter()
+        .map(|id| checked_province(id).map_err(serde::de::Error::custom))
+        .collect()
+}
 
 impl ProvinceColumns {
     /// The development of all owned provinces, as the province list of the
@@ -48,19 +102,21 @@ pub struct Eu4Detail {}
 
 /// Extract the observations from a full parse. The campaign identity comes
 /// from the parsed game state, not from the metadata.
-pub fn extract(query: &Query, content_hash: String) -> Observation<Eu4Analysis> {
+pub fn extract(
+    query: &Query,
+    content_hash: String,
+) -> Result<Observation<Eu4Analysis>, AnalysisError> {
     let save = query.save();
     let mut provinces: Vec<_> = save.game.provinces.iter().collect();
-    provinces.sort_unstable_by_key(|(id, _)| id.as_u16());
+    provinces.sort_unstable_by_key(|(id, _)| **id);
 
-    let mut layout = SaveCheckSummer::new(true);
+    let mut fingerprint = std::hash::DefaultHasher::new();
     let mut ids = Vec::with_capacity(provinces.len());
     let mut development = Vec::with_capacity(provinces.len());
     let mut owned = Vec::with_capacity(provinces.len());
     for (id, province) in provinces {
-        let id = u32::from(id.as_u16());
-        layout.append(&id.to_le_bytes());
-        ids.push(id);
+        id.hash(&mut fingerprint);
+        ids.push(*id);
         development.push(province_development(province));
         owned.push(u8::from(province.owner.is_some()));
     }
@@ -81,14 +137,15 @@ pub fn extract(query: &Query, content_hash: String) -> Observation<Eu4Analysis> 
                 version.first, version.second, version.third, version.fourth
             ),
         },
-        layout.finish().unwrap_or_default(),
+        format!("{:016x}", fingerprint.finish()),
     );
-    Observation {
+    Observation::new(
         descriptor,
-        detail: Eu4Detail {},
-        ids,
-        payload: ProvinceColumns { development, owned },
-    }
+        Eu4Detail {},
+        Eu4Payload {
+            provinces: Table::sorted(ids, ProvinceColumns { development, owned })?,
+        },
+    )
 }
 
 #[derive(Debug)]
@@ -99,15 +156,38 @@ impl Game for Eu4Analysis {
     const EXTRACTOR_VERSION: u32 = EXTRACTOR_VERSION;
     const ARTIFACTS: &'static [&'static str] = &["observations"];
     type Detail = Eu4Detail;
-    type Payload = ProvinceColumns;
+    type Payload = Eu4Payload;
+    type Shared = IndexRegistry<ProvinceId>;
+    type Prepared = PreparedIndex<ProvinceId>;
     type Query = Eu4Query;
 
-    fn validate(rows: usize, payload: &ProvinceColumns) -> Result<(), String> {
-        if payload.development.len() == rows && payload.owned.len() == rows {
-            Ok(())
-        } else {
-            Err(String::from("Incomplete province observations"))
+    fn validate(payload: &Eu4Payload) -> Result<(), PayloadError> {
+        if payload
+            .provinces
+            .columns()
+            .development
+            .iter()
+            .any(|x| !x.is_finite())
+        {
+            return Err(PayloadError::NonFinite);
         }
+        Ok(())
+    }
+    fn prepare(
+        payload: &mut Eu4Payload,
+        layout: &str,
+        shared: &Self::Shared,
+    ) -> Result<Self::Prepared, AnalysisError> {
+        shared.prepare(&mut payload.provinces, Some(layout))
+    }
+    fn added_bytes(prepared: &Self::Prepared) -> usize {
+        prepared.added_bytes()
+    }
+    fn commit(shared: &mut Self::Shared, prepared: Self::Prepared) {
+        shared.commit(prepared);
+    }
+    fn shared_memory(shared: &Self::Shared) -> RegistryMemory {
+        shared.memory()
     }
 }
 
@@ -118,24 +198,38 @@ campaign_analysis::queries! {
         WorldDevelopment => History = world_development,
         /// The development of a fixed set of provinces on each date. If a
         /// snapshot does not have one of the provinces, its total is a gap.
-        ProvinceDevelopment { province_ids: Vec<u32> } => History = fixed_province_development,
+        ProvinceDevelopment { #[serde(deserialize_with = "deserialize_provinces")] province_ids: Vec<ProvinceId> } => History = fixed_province_development,
     }
 }
 
 pub fn world_development(view: &View<'_, Eu4Analysis>) -> History {
-    view.series(|snapshot| Some(snapshot.payload().owned_development()))
+    view.series(|snapshot| Some(snapshot.payload().provinces.columns().owned_development()))
 }
 
-pub fn fixed_province_development(view: &View<'_, Eu4Analysis>, province_ids: Vec<u32>) -> History {
-    view.sum_over(&province_ids, |snapshot, row| {
-        f64::from(snapshot.payload().development[row])
+pub fn fixed_province_development(
+    view: &View<'_, Eu4Analysis>,
+    province_ids: Vec<ProvinceId>,
+) -> History {
+    let mut selection = RowSelect::new(&province_ids);
+    view.series(|snapshot| {
+        let table = &snapshot.payload().provinces;
+        match selection.resolve(table) {
+            SelectionRows::Rows(rows) => Some(
+                rows.bind(table)
+                    .expect("resolved table identity")
+                    .values(|c| &c.development)
+                    .map(|x| f64::from(*x))
+                    .sum(),
+            ),
+            SelectionRows::EmptySelection | SelectionRows::MissingKey => None,
+        }
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use campaign_analysis::{AnalysisError, Query, Selection, Store};
+    use campaign_analysis::{Query, Selection, Store};
 
     fn observation(
         hash: &str,
@@ -157,15 +251,21 @@ mod tests {
             },
             format!("{ids:?}"),
         );
-        Observation {
+        Observation::new(
             descriptor,
-            detail: Eu4Detail {},
-            ids: ids.to_vec(),
-            payload: ProvinceColumns {
-                development: development.to_vec(),
-                owned: owned.to_vec(),
+            Eu4Detail {},
+            Eu4Payload {
+                provinces: Table::sorted(
+                    ids.iter().map(|id| ProvinceId::new(*id as i32)).collect(),
+                    ProvinceColumns {
+                        development: development.to_vec(),
+                        owned: owned.to_vec(),
+                    },
+                )
+                .unwrap(),
             },
-        }
+        )
+        .unwrap()
     }
 
     fn store() -> Store<Eu4Analysis> {
@@ -210,11 +310,11 @@ mod tests {
     #[test]
     fn sums_a_fixed_set_of_provinces_and_a_missing_province_is_a_gap() {
         let store = store();
-        let fixed = |province_ids: &[u32]| {
+        let fixed = |province_ids: &[i32]| {
             values(
                 &store,
                 Eu4Query::ProvinceDevelopment {
-                    province_ids: province_ids.to_vec(),
+                    province_ids: province_ids.iter().copied().map(ProvinceId::from).collect(),
                 },
             )
         };
@@ -226,11 +326,71 @@ mod tests {
     #[test]
     fn shares_equal_layouts_and_refuses_incomplete_columns() {
         assert_eq!(store().memory().layouts, 2);
+        Table::sorted(
+            vec![ProvinceId::new(1), ProvinceId::new(2)],
+            ProvinceColumns {
+                development: vec![1.0, 2.0],
+                owned: vec![1],
+            },
+        )
+        .unwrap_err();
+    }
+    #[test]
+    fn full_province_identity_survives_queries_and_encoding() {
         let mut store = Store::<Eu4Analysis>::new();
-        let incomplete = observation("x", (1444, 11, 11), &[1, 2], &[1.0, 2.0], &[1]);
+        let large = 65536 + 42;
+        let observation = observation("wide", (1500, 1, 1), &[42, large], &[1.0, 7.0], &[1, 1]);
+        let bytes = observation.encode();
+        let decoded = Observation::<Eu4Analysis>::decode(&bytes).unwrap();
         assert_eq!(
-            store.append(incomplete, usize::MAX).unwrap_err(),
-            AnalysisError::Payload(String::from("Incomplete province observations"))
+            decoded.payload().provinces.keys(),
+            [ProvinceId::new(42), ProvinceId::new(large as i32)]
         );
+        store.append(decoded, usize::MAX).unwrap();
+        for (id, expected) in [(42, 1.0), (large as i32, 7.0)] {
+            let query: Eu4Query = serde_json::from_value(
+                serde_json::json!({"kind":"provinceDevelopment","provinceIds":[id]}),
+            )
+            .unwrap();
+            assert_eq!(values(&store, query), [Some(expected)]);
+        }
+        for invalid in [
+            serde_json::json!(-42),
+            serde_json::json!(i32::MIN),
+            serde_json::json!(2147483648u64),
+            serde_json::json!(1.5),
+        ] {
+            serde_json::from_value::<Eu4Query>(
+                serde_json::json!({"kind":"provinceDevelopment","provinceIds":[invalid]}),
+            )
+            .unwrap_err();
+        }
+        for raw in [-42, i32::MIN] {
+            let mut out = Encoder::new();
+            out.serde(&vec![raw]);
+            ProvinceColumns {
+                development: vec![1.0],
+                owned: vec![1],
+            }
+            .encode(&mut out);
+            Eu4Payload::decode(&mut Decoder::new(&out.finish())).unwrap_err();
+        }
+        let table = &store.snapshots()[0].payload().provinces;
+        let mut registry = IndexRegistry::default();
+        let mut full = Table::sorted(
+            vec![ProvinceId::new(42), ProvinceId::new(large as i32)],
+            table.columns().clone(),
+        )
+        .unwrap();
+        let plan = registry.prepare(&mut full, None).unwrap();
+        registry.commit(plan);
+        let mut narrow = Table::sorted(
+            vec![ProvinceId::new(42), ProvinceId::new(43)],
+            table.columns().clone(),
+        )
+        .unwrap();
+        let plan = registry.prepare(&mut narrow, None).unwrap();
+        registry.commit(plan);
+        assert_ne!(full.index_id(), narrow.index_id());
     }
 }
