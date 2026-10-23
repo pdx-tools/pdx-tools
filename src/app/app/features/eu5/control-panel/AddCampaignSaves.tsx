@@ -85,6 +85,7 @@ export function AddCampaignSaves() {
       setBusy(false);
     }
   };
+  if (!featureEnabled) return null;
   return (
     <div className="border-b border-game-line px-3.5 py-2">
       <div className="flex items-center gap-2">
@@ -113,7 +114,7 @@ export function AddCampaignSaves() {
         {...{ webkitdirectory: "" }}
         onChange={onChange}
       />
-      {featureEnabled && (!enabled || paused || issues.length > 0) && (
+      {(!enabled || paused || issues.length > 0) && (
         <GameButton
           className="mt-2 w-full"
           variant="ghost"

@@ -59,7 +59,7 @@ import { AddCampaignSaves } from "./AddCampaignSaves";
 import { useHistory } from "../history/store";
 
 beforeEach(() => {
-  mocks.developer = false;
+  mocks.developer = true;
   mocks.actions = [];
   mocks.analyze.mockClear();
   mocks.publish.mockClear();
@@ -73,18 +73,21 @@ beforeEach(() => {
   });
 });
 
+it("hides save selection without campaign analysis access", () => {
+  mocks.developer = false;
+  expect(renderToStaticMarkup(<AddCampaignSaves />)).toBe("");
+});
+
 it("offers multiple-file and folder selection without activating analysis", () => {
   const html = renderToStaticMarkup(<AddCampaignSaves />);
   expect(html).toContain("Add saves");
   expect(html).toContain('accept=".eu5" multiple=""');
   expect(html).toContain('webkitdirectory=""');
-  expect(html).not.toContain("Analyze campaign");
   expect(useHistory.getState().analysisEnabledCampaigns).toEqual([]);
   expect(mocks.analyze).not.toHaveBeenCalled();
 });
 
 it("activates analysis only after the developer clicks Analyze campaign", () => {
-  mocks.developer = true;
   expect(renderToStaticMarkup(<AddCampaignSaves />)).toContain("Analyze campaign");
   expect(useHistory.getState().analysisEnabledCampaigns).toEqual([]);
   mocks.actions[2]();
@@ -94,7 +97,6 @@ it("activates analysis only after the developer clicks Analyze campaign", () => 
 });
 
 it("resumes a paused campaign through the existing importer", () => {
-  mocks.developer = true;
   useHistory.setState({
     analysisEnabledCampaigns: ["campaign"],
     analysisPausedCampaigns: ["campaign"],
@@ -106,7 +108,6 @@ it("resumes a paused campaign through the existing importer", () => {
 });
 
 it("retries only the saves that have no analysis", () => {
-  mocks.developer = true;
   useHistory.setState({
     analysisEnabledCampaigns: ["campaign"],
     issues: ["new.eu5: invalid save"],
