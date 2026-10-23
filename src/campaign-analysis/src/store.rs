@@ -131,7 +131,16 @@ impl fmt::Display for AnalysisError {
     }
 }
 
-impl std::error::Error for AnalysisError {}
+impl std::error::Error for AnalysisError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Decode(error) => Some(error),
+            Self::Table(error) => Some(error),
+            Self::Payload(error) => Some(error),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Appended<D> {

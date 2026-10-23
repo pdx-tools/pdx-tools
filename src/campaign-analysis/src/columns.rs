@@ -38,8 +38,21 @@ impl<T: Pod> Columns for Vec<T> {
 }
 
 /// Implement [`Columns`] for a struct, field by field in the order given.
+/// Use `columns!(rows Name, "table_name" { fields })` to also check aligned
+/// rows. The plain form permits dictionaries and tables of other lengths.
 #[macro_export]
 macro_rules! columns {
+    (rows $name:ty, $table:literal { $($field:ident),+ $(,)? }) => {
+        $crate::columns!($name { $($field),+ });
+        impl $crate::RowColumns for $name {
+            fn table_name() -> &'static str { $table }
+            fn check_rows(&self, expected: usize) -> Result<(), $crate::ColumnError> {
+                $($crate::RowColumns::check_rows(&self.$field, expected)
+                    .map_err(|error| error.in_column(stringify!($field)))?;)+
+                Ok(())
+            }
+        }
+    };
     ($name:ty { $($field:ident),+ $(,)? }) => {
         impl $crate::Columns for $name {
             fn encode(&self, out: &mut $crate::Encoder) {
@@ -47,7 +60,8 @@ macro_rules! columns {
             }
 
             fn decode(input: &mut $crate::Decoder<'_>) -> Result<Self, $crate::DecodeError> {
-                Ok(Self { $($field: $crate::Columns::decode(input)?),+ })
+                Ok(Self { $($field: $crate::Columns::decode(input)
+                    .map_err(|error| error.in_column(stringify!($field)))?),+ })
             }
 
             fn heap_bytes(&self) -> usize {
@@ -158,11 +172,21 @@ pub enum DecodeError {
     Truncated,
     TrailingBytes,
     Header(String),
+    InColumn {
+        column: &'static str,
+        source: Box<Self>,
+    },
+    InTable {
+        table: &'static str,
+        source: Box<Self>,
+    },
 }
 
 impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            DecodeError::InColumn { column, source } => write!(f, "Column {column}: {source}"),
+            DecodeError::InTable { table, source } => write!(f, "Table {table}: {source}"),
             DecodeError::NotASnapshot => write!(f, "The data is not a campaign snapshot"),
             DecodeError::Table(error) => write!(f, "Invalid table: {error}"),
             DecodeError::Column(error) => write!(f, "Invalid column: {error}"),
@@ -178,14 +202,52 @@ impl fmt::Display for DecodeError {
     }
 }
 
-impl std::error::Error for DecodeError {}
+impl DecodeError {
+    pub fn in_column(self, column: &'static str) -> Self {
+        Self::InColumn {
+            column,
+            source: Box::new(self),
+        }
+    }
+    pub fn in_table(self, table: &'static str) -> Self {
+        Self::InTable {
+            table,
+            source: Box::new(self),
+        }
+    }
+}
+impl std::error::Error for DecodeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Table(error) => Some(error),
+            Self::Column(error) => Some(error),
+            Self::Reference(error) => Some(error),
+            Self::InColumn { source, .. } | Self::InTable { source, .. } => Some(source.as_ref()),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColumnError {
     SizeOverflow,
-    Length { expected: usize, actual: usize },
-    BitmapLength { expected: usize, actual: usize },
+    Length {
+        expected: usize,
+        actual: usize,
+    },
+    BitmapLength {
+        expected: usize,
+        actual: usize,
+    },
     UnusedValidityBits,
+    InColumn {
+        column: &'static str,
+        source: Box<Self>,
+    },
+    InTable {
+        table: &'static str,
+        source: Box<Self>,
+    },
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReferenceError {
@@ -216,6 +278,10 @@ pub enum PayloadError {
     NonFiniteAt {
         key: u32,
     },
+    InTable {
+        table: &'static str,
+        source: Box<Self>,
+    },
 }
 
 /// Columns that have one value slot for each table row.
@@ -223,6 +289,9 @@ pub enum PayloadError {
 /// Keep dictionaries and tables of other lengths in the payload.
 /// See `examples/market_goods.rs` for nullable and numeric fields.
 pub trait RowColumns: Columns {
+    fn table_name() -> &'static str {
+        std::any::type_name::<Self>()
+    }
     fn check_rows(&self, expected: usize) -> Result<(), ColumnError>;
 }
 impl<T: Pod> RowColumns for Vec<T> {
@@ -240,8 +309,8 @@ pub fn check_length(actual: usize, expected: usize) -> Result<(), ColumnError> {
 
 /// A numeric column with one low-order validity bit for each value.
 /// The bitmap must contain exactly `len.div_ceil(8)` bytes. Unused high bits
-/// must be zero. A zero bit marks an absent measurement. The codec writes a
-/// zero placeholder in that slot. See the nullable price in
+/// must be zero. A zero bit marks an absent measurement. Construction writes
+/// a zero placeholder in that slot. See the nullable price in
 /// `examples/market_goods.rs` for table, range, and validation use.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NullableColumn<T> {
@@ -249,7 +318,7 @@ pub struct NullableColumn<T> {
     validity: Vec<u8>,
 }
 impl<T: Pod> NullableColumn<T> {
-    pub fn new(values: Vec<T>, validity: Vec<u8>) -> Result<Self, ColumnError> {
+    pub fn new(mut values: Vec<T>, validity: Vec<u8>) -> Result<Self, ColumnError> {
         let expected = (values.len() / 8)
             .checked_add(usize::from(!values.len().is_multiple_of(8)))
             .ok_or(ColumnError::SizeOverflow)?;
@@ -262,6 +331,11 @@ impl<T: Pod> NullableColumn<T> {
         let used = values.len() % 8;
         if used != 0 && validity.last().is_some_and(|last| last >> used != 0) {
             return Err(ColumnError::UnusedValidityBits);
+        }
+        for (offset, value) in values.iter_mut().enumerate() {
+            if validity[offset / 8] & (1 << (offset % 8)) == 0 {
+                *value = T::zeroed();
+            }
         }
         Ok(Self { values, validity })
     }
@@ -285,11 +359,7 @@ impl<T: Pod> NullableColumn<T> {
 }
 impl<T: Pod> Columns for NullableColumn<T> {
     fn encode(&self, out: &mut Encoder) {
-        let canonical: Vec<T> = self
-            .iter()
-            .map(|value| value.unwrap_or_else(T::zeroed))
-            .collect();
-        out.column(&canonical);
+        out.column(&self.values);
         out.column(&self.validity);
     }
     fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
@@ -320,6 +390,8 @@ impl<T: Pod> crate::Column for NullableColumn<T> {
 impl fmt::Display for ColumnError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InColumn { column, source } => write!(f, "Column {column}: {source}"),
+            Self::InTable { table, source } => write!(f, "Table {table}: {source}"),
             Self::SizeOverflow => f.write_str("Column size exceeds the supported range"),
             Self::Length { expected, actual } => {
                 write!(f, "Column has {actual} rows, expected {expected}")
@@ -331,7 +403,28 @@ impl fmt::Display for ColumnError {
         }
     }
 }
-impl std::error::Error for ColumnError {}
+impl ColumnError {
+    pub fn in_column(self, column: &'static str) -> Self {
+        Self::InColumn {
+            column,
+            source: Box::new(self),
+        }
+    }
+    pub fn in_table(self, table: &'static str) -> Self {
+        Self::InTable {
+            table,
+            source: Box::new(self),
+        }
+    }
+}
+impl std::error::Error for ColumnError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::InColumn { source, .. } | Self::InTable { source, .. } => Some(source.as_ref()),
+            _ => None,
+        }
+    }
+}
 impl fmt::Display for ReferenceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -349,6 +442,7 @@ impl std::error::Error for ReferenceError {}
 impl fmt::Display for PayloadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InTable { table, source } => write!(f, "Table {table}: {source}"),
             Self::Invalid(message) => f.write_str(message),
             Self::Column(error) => error.fmt(f),
             Self::Reference(error) => error.fmt(f),
@@ -366,7 +460,24 @@ impl fmt::Display for PayloadError {
         }
     }
 }
-impl std::error::Error for PayloadError {}
+impl PayloadError {
+    pub fn in_table(self, table: &'static str) -> Self {
+        Self::InTable {
+            table,
+            source: Box::new(self),
+        }
+    }
+}
+impl std::error::Error for PayloadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Column(error) => Some(error),
+            Self::Reference(error) => Some(error),
+            Self::InTable { source, .. } => Some(source.as_ref()),
+            _ => None,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -378,6 +489,66 @@ mod tests {
         b: Vec<f64>,
     }
     columns!(Pair { a, b });
+
+    #[derive(Debug)]
+    struct Measurements {
+        price: NullableColumn<f64>,
+    }
+    columns!(rows Measurements, "measurements" { price });
+
+    #[derive(Debug)]
+    struct Rows {
+        measurements: Measurements,
+    }
+    columns!(rows Rows, "market_goods" { measurements });
+
+    #[test]
+    fn generated_checks_keep_nested_field_context_and_error_sources() {
+        use std::error::Error;
+        let columns = Rows {
+            measurements: Measurements {
+                price: NullableColumn::new(vec![], vec![]).unwrap(),
+            },
+        };
+        let error =
+            crate::AnalysisError::Table(crate::Table::sorted(vec![1u32], columns).unwrap_err());
+        let message = error.to_string();
+        for name in ["market_goods", "measurements", "price"] {
+            assert!(message.contains(name), "{message}");
+        }
+        let mut source: &dyn Error = &error;
+        while let Some(next) = source.source() {
+            source = next;
+        }
+        assert_eq!(
+            source.downcast_ref::<ColumnError>(),
+            Some(&ColumnError::Length {
+                expected: 1,
+                actual: 0
+            })
+        );
+
+        let mut out = Encoder::new();
+        out.column(&[1u32]);
+        let bytes = out.finish();
+        let error =
+            crate::Table::<u32, Rows>::decode_sorted_with(&mut Decoder::new(&bytes), |input| {
+                input.column()
+            })
+            .unwrap_err();
+        let message = error.to_string();
+        for name in ["market_goods", "measurements", "price"] {
+            assert!(message.contains(name), "{message}");
+        }
+        let mut source: &dyn Error = &error;
+        while let Some(next) = source.source() {
+            source = next;
+        }
+        assert_eq!(
+            source.downcast_ref::<DecodeError>(),
+            Some(&DecodeError::Truncated)
+        );
+    }
 
     #[test]
     fn writes_and_reads_columns_of_mixed_widths() {
@@ -418,6 +589,25 @@ mod tests {
 #[cfg(test)]
 mod nullable_tests {
     use super::*;
+    #[test]
+    fn construction_reuses_values_and_normalizes_only_absent_slots() {
+        let mut values = Vec::with_capacity(16);
+        values.extend([-0.0f64, f64::NAN, f64::NAN]);
+        let pointer = values.as_ptr();
+        let column = NullableColumn::new(values, vec![0b101]).unwrap();
+        assert_eq!(column.values.as_ptr(), pointer);
+        assert_eq!(column.values.capacity(), 16);
+        assert_eq!(column.values[0].to_bits(), (-0.0f64).to_bits());
+        assert_eq!(column.values[1].to_bits(), 0.0f64.to_bits());
+        assert!(column.values[2].is_nan());
+
+        let mut out = Encoder::new();
+        out.column(&[f64::NAN, -0.0]);
+        out.column(&[0b10u8]);
+        let decoded = NullableColumn::<f64>::decode(&mut Decoder::new(&out.finish())).unwrap();
+        assert_eq!(decoded.values[0].to_bits(), 0.0f64.to_bits());
+        assert_eq!(decoded.values[1].to_bits(), (-0.0f64).to_bits());
+    }
     #[test]
     fn nullable_bitmap_and_value_bounds_are_checked() {
         let empty = NullableColumn::<f64>::new(vec![], vec![]).unwrap();

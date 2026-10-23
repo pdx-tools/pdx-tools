@@ -11,6 +11,7 @@
 
 mod columns;
 mod descriptor;
+mod key_memory;
 mod query;
 mod session;
 mod snapshot;
@@ -25,6 +26,7 @@ pub use columns::{
     ReferenceError, RowColumns, check_length,
 };
 pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
+pub use key_memory::{InlineKeys, KeyMemory, KeyStorage, StringKeys};
 pub use query::{
     History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, View,
 };
@@ -32,8 +34,9 @@ pub use session::Session;
 pub use snapshot::Observation;
 pub use store::{AnalysisError, AnalysisErrorName, Appended, Snapshot, Store, StoreMemory};
 pub use table::{
-    BoundRows, Column, IndexId, IndexRegistry, KeyError, PrefixKey, PreparedIndex, RegistryMemory,
-    ResolvedBatch, Row, RowError, RowRange, RowSelect, SelectionRows, Table, TableError,
+    BoundRows, BoundSelectionRows, Column, IndexId, IndexRegistry, KeyError, PrefixKey,
+    PreparedIndex, RegistryMemory, ResolvedBatch, Row, RowError, RowRange, RowSelect,
+    SelectionRows, Table, TableError,
 };
 pub use text::{PreparedText, TextRegistry, decode_text_dictionary, encode_text_dictionary};
 

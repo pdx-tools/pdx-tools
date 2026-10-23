@@ -54,6 +54,9 @@ it("gives each store and parser the types of its own game", () => {
   expectTypeOf<Eu5AnalysisStore>().toExtend<AnalysisStore<TypesOf<Eu5AnalysisStore>>>();
   expectTypeOf<Eu5SnapshotDescriptor>().toEqualTypeOf<SnapshotDescriptor & Eu5Detail>();
   expectTypeOf<SnapshotOf<Eu5AnalysisStore>>().toEqualTypeOf<Eu5Snapshot>();
+  expectTypeOf<Extract<Eu5Query, { kind: "locationPopulation" }>["locationIds"]>().toEqualTypeOf<
+    number[]
+  >();
   expectTypeOf<ReturnType<ImportLoader["parse_import"]>>().toEqualTypeOf<Eu5Snapshot>();
   expectTypeOf<Parameters<Eu5App["paint_map_projection"]>[1]>().toEqualTypeOf<Eu5SnapshotData>();
 

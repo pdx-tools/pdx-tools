@@ -7,9 +7,9 @@ use crate::map_projection::{
     ValidatedMapProjectionData,
 };
 use campaign_analysis::{
-    AnalysisError, ColumnError, Columns, DecodeError, Decoder, Encoder, Game, History,
+    AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
     IndexRegistry, Observation, PayloadError, PreparedIndex, ReferenceError, RegistryMemory,
-    RowColumns, RowSelect, SelectionRows, SnapshotDescriptor, SnapshotSource, Table, View,
+    RowSelect, SnapshotDescriptor, SnapshotSource, Table, View,
 };
 use eu5save::models::LocationId;
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ pub struct ProjectionColumns {
     pub religions: Vec<u16>,
     pub markets: Vec<u16>,
 }
-campaign_analysis::columns!(ProjectionColumns {
+campaign_analysis::columns!(rows ProjectionColumns, "locations" {
     control,
     market_access,
     development,
@@ -55,24 +55,6 @@ campaign_analysis::columns!(ProjectionColumns {
     markets,
 });
 
-impl RowColumns for ProjectionColumns {
-    fn check_rows(&self, expected: usize) -> Result<(), ColumnError> {
-        self.control.check_rows(expected)?;
-        self.market_access.check_rows(expected)?;
-        self.development.check_rows(expected)?;
-        self.population.check_rows(expected)?;
-        self.building_levels.check_rows(expected)?;
-        self.rgo_level.check_rows(expected)?;
-        self.wealth.check_rows(expected)?;
-        self.unrealized_tax_base.check_rows(expected)?;
-        self.population_growth.check_rows(expected)?;
-        self.owners.check_rows(expected)?;
-        self.controllers.check_rows(expected)?;
-        self.religions.check_rows(expected)?;
-        self.markets.check_rows(expected)?;
-        Ok(())
-    }
-}
 #[derive(Debug, Clone, PartialEq)]
 pub struct Eu5Payload {
     pub locations: Table<LocationId, ProjectionColumns>,
@@ -229,6 +211,7 @@ impl Game for Eu5Analysis {
                         row: u32::from(row),
                         rows,
                     })
+                    .in_table("locations")
                 }
                 MapProjectionError::TableWidth {
                     table,
@@ -241,8 +224,13 @@ impl Game for Eu5Analysis {
                 },
                 MapProjectionError::TableSize { table } => PayloadError::DictionarySize { table },
                 MapProjectionError::ColumnLength {
-                    expected, actual, ..
-                } => PayloadError::Column(ColumnError::Length { expected, actual }),
+                    column,
+                    expected,
+                    actual,
+                } => PayloadError::Column(
+                    campaign_analysis::ColumnError::Length { expected, actual }.in_column(column),
+                )
+                .in_table("locations"),
                 MapProjectionError::NonFinite { location } => {
                     PayloadError::NonFiniteAt { key: location }
                 }
@@ -275,7 +263,10 @@ campaign_analysis::queries! {
         WorldPopulation => History = world_population,
         /// The population of a fixed set of locations on each date. If a
         /// snapshot does not have one of the locations, its total is a gap.
-        LocationPopulation { location_ids: Vec<u32> } => History = location_population,
+        LocationPopulation {
+            #[cfg_attr(feature = "tsify", tsify(type = "number[]"))]
+            location_ids: Vec<LocationId>
+        } => History = location_population,
     }
 }
 
@@ -283,20 +274,15 @@ pub fn world_population(view: &View<'_, Eu5Analysis>) -> History {
     view.series(|snapshot| Some(f64::from(snapshot.detail().world.total_population)))
 }
 
-pub fn location_population(view: &View<'_, Eu5Analysis>, location_ids: Vec<u32>) -> History {
-    let keys: Vec<_> = location_ids.into_iter().map(LocationId::new).collect();
-    let mut select = RowSelect::new(&keys);
+pub fn location_population(view: &View<'_, Eu5Analysis>, location_ids: Vec<LocationId>) -> History {
+    let mut select = RowSelect::new(&location_ids);
     view.series(|snapshot| {
         let table = &snapshot.payload().locations;
-        match select.resolve(table) {
-            SelectionRows::Rows(rows) => Some(
-                rows.bind(table)
-                    .expect("resolved table identity")
-                    .values(|c| &c.population)
-                    .map(|x| f64::from(*x))
-                    .sum(),
-            ),
-            SelectionRows::MissingKey | SelectionRows::EmptySelection => None,
+        match select.resolve_bound(table) {
+            BoundSelectionRows::Rows(rows) => {
+                Some(rows.values(|c| &c.population).map(|x| f64::from(*x)).sum())
+            }
+            BoundSelectionRows::MissingKey | BoundSelectionRows::EmptySelection => None,
         }
     })
 }
@@ -381,12 +367,34 @@ mod tests {
                 &store,
                 "campaign",
                 Eu5Query::LocationPopulation {
-                    location_ids: ids.to_vec(),
+                    location_ids: ids.iter().copied().map(LocationId::new).collect(),
                 },
             )
         };
         assert_eq!(fixed(&[42, 43]), [Some(150.0), Some(181.25), None]);
         assert_eq!(fixed(&[42]), [Some(100.0), Some(120.75), Some(130.0)]);
+    }
+
+    #[test]
+    fn query_input_preserves_location_ids_and_rejects_invalid_numbers() {
+        for id in [0u32, 42, 65_578, u32::MAX] {
+            let query: Eu5Query = serde_json::from_value(serde_json::json!({
+                "kind": "locationPopulation", "locationIds": [id],
+            }))
+            .unwrap();
+            let Eu5Query::LocationPopulation { location_ids } = query else {
+                panic!("location query");
+            };
+            assert_eq!(location_ids, [LocationId::new(id)]);
+        }
+        for id in ["-42", "-2147483648", "4294967296", "1.5"] {
+            assert!(
+                serde_json::from_str::<Eu5Query>(&format!(
+                    r#"{{"kind":"locationPopulation","locationIds":[{id}]}}"#
+                ))
+                .is_err()
+            );
+        }
     }
 
     #[test]

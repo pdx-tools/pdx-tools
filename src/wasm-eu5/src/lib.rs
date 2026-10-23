@@ -425,12 +425,12 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
 
 fn analysis_result(
     mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>,
-) -> Result<Ts<analysis::AnalysisSnapshot>, JsValue> {
+) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
     let (projection, world, campaign_id, date, game_version) = {
         let game = loaded.take_gamestate();
         let meta = game.metadata();
         if meta.playthrough_id.to_str().is_empty() {
-            return Err(JsError::new("Save has no campaign ID").into());
+            return Err(JsError::new("Save has no campaign ID"));
         }
         let date = Eu5DateComponents::from(meta.date);
         let projection =
@@ -488,7 +488,7 @@ impl ImportLoader {
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
-    pub fn parse_import(self) -> Result<Ts<analysis::AnalysisSnapshot>, JsValue> {
+    pub fn parse_import(self) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
         let loaded = self
             .parser
             .parse()

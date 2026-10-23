@@ -2,9 +2,9 @@
 
 use crate::shared::playthrough_id;
 use campaign_analysis::{
-    AnalysisError, ColumnError, Columns, DecodeError, Decoder, Encoder, Game, History,
-    IndexRegistry, Observation, PayloadError, PreparedIndex, RegistryMemory, RowColumns, RowSelect,
-    SaveDate, SelectionRows, SnapshotDescriptor, SnapshotSource, Table, View,
+    AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
+    IndexRegistry, Observation, PayloadError, PreparedIndex, RegistryMemory, RowSelect, SaveDate,
+    SnapshotDescriptor, SnapshotSource, Table, View,
 };
 use eu4save::{PdsDate, ProvinceId, models::Province, query::Query};
 use std::hash::{Hash, Hasher};
@@ -25,14 +25,7 @@ pub struct ProvinceColumns {
     /// 1 when a country owns the province, else 0.
     pub owned: Vec<u8>,
 }
-campaign_analysis::columns!(ProvinceColumns { development, owned });
-
-impl RowColumns for ProvinceColumns {
-    fn check_rows(&self, expected: usize) -> Result<(), ColumnError> {
-        self.development.check_rows(expected)?;
-        self.owned.check_rows(expected)
-    }
-}
+campaign_analysis::columns!(rows ProvinceColumns, "provinces" { development, owned });
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Eu4Payload {
@@ -213,15 +206,11 @@ pub fn fixed_province_development(
     let mut selection = RowSelect::new(&province_ids);
     view.series(|snapshot| {
         let table = &snapshot.payload().provinces;
-        match selection.resolve(table) {
-            SelectionRows::Rows(rows) => Some(
-                rows.bind(table)
-                    .expect("resolved table identity")
-                    .values(|c| &c.development)
-                    .map(|x| f64::from(*x))
-                    .sum(),
-            ),
-            SelectionRows::EmptySelection | SelectionRows::MissingKey => None,
+        match selection.resolve_bound(table) {
+            BoundSelectionRows::Rows(rows) => {
+                Some(rows.values(|c| &c.development).map(|x| f64::from(*x)).sum())
+            }
+            BoundSelectionRows::EmptySelection | BoundSelectionRows::MissingKey => None,
         }
     })
 }
@@ -376,7 +365,7 @@ mod tests {
             Eu4Payload::decode(&mut Decoder::new(&out.finish())).unwrap_err();
         }
         let table = &store.snapshots()[0].payload().provinces;
-        let mut registry = IndexRegistry::default();
+        let mut registry = IndexRegistry::<ProvinceId>::default();
         let mut full = Table::sorted(
             vec![ProvinceId::new(42), ProvinceId::new(large as i32)],
             table.columns().clone(),

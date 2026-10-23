@@ -48,17 +48,18 @@ fn bytes<S: Serializer>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
 }
 
 /// Give a value to JavaScript as its TypeScript type.
-pub fn ts<T: Tsify + Serialize>(value: T) -> Result<Ts<T>, JsValue> {
-    value
-        .into_ts()
-        .map_err(|error| JsError::new(&error.to_string()).into())
+pub fn ts<T: Tsify + Serialize>(value: T) -> Result<Ts<T>, JsError> {
+    value.into_ts().map_err(JsError::from)
 }
 
 /// A JavaScript error with the name of the analysis error.
-pub fn error(error: AnalysisError) -> JsValue {
-    let js = js_sys::Error::new(&error.to_string());
-    js.set_name(error.name().as_str());
-    js.into()
+pub fn error(error: AnalysisError) -> JsError {
+    let js = JsError::from(&error);
+    let value = JsValue::from(js.clone());
+    value
+        .unchecked_ref::<js_sys::Error>()
+        .set_name(error.name().as_str());
+    js
 }
 
 /// True when two strings are equal, in a constant.
@@ -97,7 +98,7 @@ pub fn append<G: Game>(
     generation: u32,
     data: &[u8],
     limit_bytes: f64,
-) -> Result<AppendReply<G::Detail>, JsValue> {
+) -> Result<AppendReply<G::Detail>, JsError> {
     // A limit above the largest size, such as Infinity, saturates.
     let appended = session
         .append(generation, data, limit_bytes as usize)
@@ -203,7 +204,7 @@ macro_rules! wasm_store {
                 observation: &$crate::Observation<$game>,
             ) -> Result<
                 $crate::wasm::__private::tsify::Ts<Self>,
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::wasm_bindgen::JsError,
             > {
                 $crate::wasm::ts(Self($crate::wasm::observation(observation)))
             }
@@ -256,7 +257,7 @@ macro_rules! wasm_store {
                 limit_bytes: f64,
             ) -> Result<
                 $crate::wasm::__private::tsify::Ts<AnalysisAppendReply>,
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::wasm_bindgen::JsError,
             > {
                 let reply = $crate::wasm::append(&mut self.session, generation, data, limit_bytes)?;
                 $crate::wasm::ts(AnalysisAppendReply(reply))
@@ -268,7 +269,7 @@ macro_rules! wasm_store {
                 generation: u32,
             ) -> Result<
                 $crate::wasm::__private::tsify::Ts<$crate::StoreMemory>,
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::wasm_bindgen::JsError,
             > {
                 self.session.clear(generation);
                 $crate::wasm::ts($crate::wasm::memory(&self.session))
@@ -279,13 +280,10 @@ macro_rules! wasm_store {
                 request: $crate::wasm::__private::tsify::Ts<AnalysisQueryRequest>,
             ) -> Result<
                 $crate::wasm::__private::tsify::Ts<AnalysisQueryReply>,
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::wasm_bindgen::JsError,
             > {
-                let AnalysisQueryRequest(request) = request.to_rust().map_err(|error| {
-                    $crate::wasm::__private::wasm_bindgen::JsValue::from(
-                        $crate::wasm::__private::wasm_bindgen::JsError::new(&error.to_string()),
-                    )
-                })?;
+                let AnalysisQueryRequest(request) = request.to_rust()
+                    .map_err($crate::wasm::__private::wasm_bindgen::JsError::from)?;
                 $crate::wasm::ts(AnalysisQueryReply($crate::wasm::query(&self.session, request)))
             }
 
@@ -295,7 +293,7 @@ macro_rules! wasm_store {
                 id: &str,
             ) -> Result<
                 $crate::wasm::__private::tsify::Ts<AnalysisSnapshot>,
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::wasm_bindgen::JsError,
             > {
                 let snapshot = self.session.snapshot(id).map_err($crate::wasm::error)?;
                 $crate::wasm::ts(AnalysisSnapshot($crate::wasm::snapshot(snapshot)))
@@ -305,7 +303,7 @@ macro_rules! wasm_store {
                 &self,
             ) -> Result<
                 $crate::wasm::__private::tsify::Ts<$crate::StoreMemory>,
-                $crate::wasm::__private::wasm_bindgen::JsValue,
+                $crate::wasm::__private::wasm_bindgen::JsError,
             > {
                 $crate::wasm::ts($crate::wasm::memory(&self.session))
             }

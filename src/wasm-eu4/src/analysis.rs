@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 /// Parse a complete save and return its campaign analysis snapshot. The
 /// parsed save is released before the function returns.
 #[wasm_bindgen]
-pub fn parse_analysis(data: Vec<u8>) -> Result<Ts<AnalysisSnapshot>, JsValue> {
+pub fn parse_analysis(data: Vec<u8>) -> Result<Ts<AnalysisSnapshot>, JsError> {
     let tokens = crate::tokens::get_tokens();
     let mut parser = Eu4Parser::new();
     parser.with_hash(true);
