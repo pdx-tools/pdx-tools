@@ -1,4 +1,4 @@
-import type { Eu5SnapshotDescriptor, MapFrame } from "../../history/analysisTypes";
+import type { Eu5Snapshot, Eu5SnapshotDescriptor } from "../../history/analysisTypes";
 import { LatestRequest } from "../../history/latestRequest";
 import { FrameReader } from "@/features/campaign/analysis/framePort";
 import { campaignIdentities, clickChange, restoreCampaignView } from "./restoreCampaignView";
@@ -392,7 +392,7 @@ const loadSaveInner = async (
     },
   };
 
-  let frameSource: { id: string; reader: FrameReader<MapFrame> } | undefined;
+  let frameSource: { id: string; reader: FrameReader<Eu5Snapshot> } | undefined;
   const opened: OpenSave = {
     events: held ? null : events,
     close: () => {
@@ -409,22 +409,9 @@ const loadSaveInner = async (
     OverlayReply
   >(async ({ snapshotId, mode, token }, current) => {
     if (!frameSource) throw Error("Campaign frame connection is not ready");
-    const { descriptor, projection: frame } = await frameSource.reader.read(snapshotId);
+    const { descriptor, data } = await frameSource.reader.read(snapshotId);
     if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
-    const paint = app.paint_map_projection(
-      mode,
-      frame.layoutKey,
-      frame.locationIds,
-      frame.fractions,
-      frame.metrics,
-      frame.owners,
-      frame.controllers,
-      frame.religions,
-      frame.markets,
-      frame.countries,
-      frame.religionColors,
-      frame.marketColors,
-    );
+    const paint = app.paint_map_projection(mode, data);
     const { colors, flags, groups, change } = paint;
     paint.free();
     const accepted = await map.presentOverlay(
@@ -446,7 +433,7 @@ const loadSaveInner = async (
     connectMapFrames: (id: string, port: MessagePort | null) => {
       if (!port && frameSource?.id !== id) return;
       frameSource?.reader.close();
-      frameSource = port ? { id, reader: new FrameReader<MapFrame>(port) } : undefined;
+      frameSource = port ? { id, reader: new FrameReader<Eu5Snapshot>(port) } : undefined;
     },
     stopOverlay: () => overlays.stop(),
     presentOverlay: (snapshotId: string, mode: MapMode, token: number) =>

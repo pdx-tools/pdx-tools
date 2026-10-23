@@ -139,7 +139,7 @@ impl From<Eu5MapMode> for MapMode {
     }
 }
 
-mod map_projection;
+mod analysis;
 mod tokens;
 pub use tokens::set_tokens;
 use wasm_pdx_core::blob::{BlobReader, read_blob_start};
@@ -423,21 +423,10 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
     }
 }
 
-#[derive(Debug, Serialize, Tsify)]
-#[serde(rename_all = "camelCase")]
-pub struct MapImportMetadata {
-    pub content_hash: String,
-    pub extractor_version: u32,
-    pub campaign_id: String,
-    pub date: String,
-    pub date_sort: i32,
-    pub game_version: String,
-    pub layout_key: String,
-    pub world: eu5app::insights::WorldSummary,
-}
-
-fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result<JsValue, JsError> {
-    let (mut observation, projection) = {
+fn analysis_result(
+    mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>,
+) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
+    let (projection, world, campaign_id, date, game_version) = {
         let game = loaded.take_gamestate();
         let meta = game.metadata();
         if meta.playthrough_id.to_str().is_empty() {
@@ -446,34 +435,32 @@ fn analysis_result(mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>) -> Result
         let date = Eu5DateComponents::from(meta.date);
         let projection =
             eu5app::map_projection::extract(&game).map_err(|e| JsError::new(&e.to_string()))?;
-        let observation = MapImportMetadata {
-            content_hash: String::new(),
-            extractor_version: eu5app::map_projection::EXTRACTOR_VERSION,
-            campaign_id: meta.playthrough_id.to_str().to_owned(),
-            date: format!("{:04}-{:02}-{:02}", date.year, date.month, date.day),
-            date_sort: i32::from(date.year) * 10000
-                + i32::from(date.month) * 100
-                + i32::from(date.day),
-            game_version: format!(
-                "{}.{}.{}",
-                meta.version.major, meta.version.minor, meta.version.patch
-            ),
-            layout_key: projection.layout_key.clone(),
-            world: eu5app::map_projection::world_summary(&game),
-        };
-        (observation, map_projection::into_js(&projection)?)
+        let version = format!(
+            "{}.{}.{}",
+            meta.version.major, meta.version.minor, meta.version.patch
+        );
+        (
+            projection,
+            eu5app::map_projection::world_summary(&game),
+            meta.playthrough_id.to_str().to_owned(),
+            campaign_analysis::SaveDate {
+                year: i32::from(date.year),
+                month: date.month,
+                day: date.day,
+            },
+            version,
+        )
     };
-    observation.content_hash = loaded.into_observer().finish();
-    let result = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &result,
-        &JsValue::from_str("observation"),
-        &into_ts(observation)?.into(),
-    )
-    .map_err(|_| JsError::new("Could not create map observation"))?;
-    js_sys::Reflect::set(&result, &JsValue::from_str("projection"), &projection)
-        .map_err(|_| JsError::new("Could not create map columns"))?;
-    Ok(result.into())
+    // The checksum is complete after the game state is released.
+    let source = campaign_analysis::SnapshotSource {
+        campaign_id,
+        content_hash: loaded.into_observer().finish(),
+        date,
+        game_version,
+    };
+    let observation = eu5app::analysis::observation(projection, world, source)
+        .map_err(campaign_analysis::wasm::error)?;
+    analysis::AnalysisSnapshot::observation(&observation)
 }
 
 #[wasm_bindgen]
@@ -501,7 +488,7 @@ impl ImportLoader {
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
-    pub fn parse_import(self) -> Result<JsValue, JsError> {
+    pub fn parse_import(self) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
         let loaded = self
             .parser
             .parse()
@@ -1020,44 +1007,21 @@ impl Eu5App {
         self.app().map_projection_layout_key().to_owned()
     }
 
-    /// Paint a snapshot frame for the map overlay. The buffers of the loaded
-    /// save do not change.
+    /// Paint a stored snapshot for the map overlay. The buffers of the
+    /// loaded save do not change.
     #[wasm_bindgen]
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "Typed WASM columns avoid deserializing and allocating per-location JS objects"
-    )]
     pub fn paint_map_projection(
         &self,
         mode: Ts<MapMode>,
-        key: &str,
-        ids: &[u32],
-        fractions: &[u16],
-        metrics: &[f32],
-        owners: &[u32],
-        controllers: &[u32],
-        religions: &[u32],
-        markets: &[u32],
-        countries: &[u32],
-        religion_colors: &[u32],
-        market_colors: &[u32],
+        #[wasm_bindgen(unchecked_param_type = "AnalysisSnapshotData")] data: &[u8],
     ) -> Result<ProjectionPaintData, JsError> {
-        let frame = eu5app::map_projection::MapProjectionData {
-            layout_key: key,
-            location_ids: ids,
-            fractions,
-            metrics,
-            owners,
-            controllers,
-            religions,
-            markets,
-            countries,
-            religion_colors,
-            market_colors,
-        };
+        let snapshot =
+            campaign_analysis::Observation::<eu5app::analysis::Eu5Analysis>::decode(data)
+                .map_err(|e| JsError::new(&e.to_string()))?;
+        let frame = eu5app::analysis::frame(&snapshot);
         let paint = self
             .app()
-            .paint_map_projection(frame, mode.to_rust()?.into())
+            .paint_validated_map_projection(frame, mode.to_rust()?.into())
             .map_err(|e| JsError::new(&e.to_string()))?;
         let flags: &[u32] = bytemuck::cast_slice(paint.arrays.buffers().state_flags());
         Ok(ProjectionPaintData {

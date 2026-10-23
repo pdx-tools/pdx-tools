@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnalysisAdmission } from "./admission";
 import type { SnapshotDescriptor } from "./descriptor";
 import { importBatch } from "./importScheduler";
-import type { AnalysisSink, ImportOptions, ParserAdapter } from "./importScheduler";
-import type { AppendResult } from "./residentStore";
+import type { AnalysisSink, AppendResult, ImportOptions, ParserAdapter } from "./importScheduler";
 import { staleGenerationError } from "./session";
 
 const mocks = vi.hoisted(() => ({
@@ -25,7 +24,7 @@ const parser: ParserAdapter<Api, Output> = {
 };
 
 const descriptor = (name: string) =>
-  ({ id: `test:1:${name}`, campaignId: "campaign", dateSort: 1 }) as SnapshotDescriptor;
+  ({ id: `test:${name}`, campaignId: "campaign", dateSort: 1 }) as SnapshotDescriptor;
 
 /** A session that stores each output, or follows `append` when it is given. */
 function sink(append?: (output: Output) => Promise<AppendResult<SnapshotDescriptor>>) {
@@ -69,10 +68,18 @@ function options(
       residentBytes: 1000 * MiB,
       parserBytes: 10_000 * MiB,
     }).acquireImport(),
-    onCommitted: vi.fn(),
+    onFileComplete: vi.fn(),
     ...extra,
   };
 }
+
+/** The descriptors that a batch gave to its caller to publish. */
+const published = (opts: ImportOptions<SnapshotDescriptor, Output>) =>
+  vi
+    .mocked(opts.onFileComplete)
+    .mock.calls.flatMap(([completion]) =>
+      "descriptor" in completion ? [completion.descriptor] : [],
+    );
 
 const memoryFull = () =>
   Object.assign(Error("Campaign analysis is full."), { name: "AnalysisMemoryLimit" });
@@ -130,18 +137,18 @@ describe("outcomes", () => {
     const opts = options({ concurrency: 1 });
     const result = await importBatch(files(3), parser, session, opts);
     expect(result.files).toEqual(["accepted", "duplicate", "duplicate"]);
-    expect(opts.onCommitted).toHaveBeenCalledTimes(3);
+    expect(published(opts)).toHaveLength(3);
   });
 
   it("report each failed file by identity when names match", async () => {
     const bad = new File(["bad"], "same.sav");
     const good = new File(["good"], "same.sav");
     mocks.parse.mockRejectedValueOnce(Error("invalid save"));
-    const onFileOutcome = vi.fn();
-    await importBatch([bad, good], parser, sink(), options({ concurrency: 1, onFileOutcome }));
-    expect(onFileOutcome.mock.calls).toEqual([
-      [bad, "failed", "Error: invalid save"],
-      [good, "accepted", undefined],
+    const onFileComplete = vi.fn();
+    await importBatch([bad, good], parser, sink(), options({ concurrency: 1, onFileComplete }));
+    expect(onFileComplete.mock.calls).toEqual([
+      [{ status: "failed", file: bad, error: "Error: invalid save" }],
+      [{ status: "accepted", file: good, descriptor: expect.anything() }],
     ]);
   });
 });
@@ -189,7 +196,7 @@ describe("cancellation", () => {
     resolve({ descriptor: descriptor("save-0.sav"), duplicate: false });
     const result = await run;
     expect(result.files).toEqual(["accepted", "cancelled"]);
-    expect(opts.onCommitted).toHaveBeenCalledWith(descriptor("save-0.sav"), expect.any(File));
+    expect(published(opts)).toEqual([descriptor("save-0.sav")]);
     expect(mocks.parse).toHaveBeenCalledOnce();
   });
 });
@@ -235,7 +242,7 @@ describe("session clear", () => {
     session.clear();
     resolve({ descriptor: descriptor("save-0.sav"), duplicate: false });
     expect((await run).files).toEqual(["cancelled", "cancelled"]);
-    expect(opts.onCommitted).not.toHaveBeenCalled();
+    expect(published(opts)).toEqual([]);
     expect(session.appended).toEqual([]);
   });
 });
@@ -262,7 +269,7 @@ describe("memory", () => {
     const result = await run;
     expect(result.files).toEqual(["refused", "accepted", "unprocessed", "unprocessed"]);
     expect(parses.size).toBe(2);
-    expect(opts.onCommitted).toHaveBeenCalledOnce();
+    expect(published(opts)).toHaveLength(1);
   });
 
   it("bounds output that waits for an append to the active parsers", async () => {
@@ -280,9 +287,9 @@ describe("memory", () => {
     expect((await run).outcomes.accepted).toBe(12);
   });
 
-  it("runs fewer parsers when other sessions keep resident data", async () => {
+  it("runs fewer parsers when the session keeps resident data", async () => {
     const admission = new AnalysisAdmission({ residentBytes: 1000 * MiB, parserBytes: 300 * MiB });
-    admission.setResident("other-game", 150 * MiB);
+    admission.setResident("test", 150 * MiB);
     let active = 0;
     let peak = 0;
     mocks.parse.mockImplementation(async (file: File) => {
@@ -394,21 +401,10 @@ it("reports active files and clears them after a failure or cancellation", async
   expect(active.at(-1)).toEqual([]);
 });
 
-it("stops new parses and throws when an outcome callback fails", async () => {
-  const opts = options({
-    concurrency: 1,
-    onFileOutcome: () => {
-      throw Error("status failed");
-    },
-  });
-  await expect(importBatch(files(2), parser, sink(), opts)).rejects.toThrow("status failed");
-  expect(mocks.parse).toHaveBeenCalledOnce();
-});
-
 it("stops new parses and throws when publication fails", async () => {
   const opts = options({
     concurrency: 1,
-    onCommitted: () => {
+    onFileComplete: () => {
       throw Error("sink failed");
     },
   });

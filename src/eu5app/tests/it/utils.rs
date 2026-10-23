@@ -166,14 +166,29 @@ pub fn hash_u32s(values: &[u32]) -> String {
 pub fn hash_projection(projection: &eu5app::map_projection::MapProjection) -> String {
     let mut hasher = highway::HighwayHasher::new(highway::Key::default());
     hasher.append(projection.layout_key.as_bytes());
-    hasher.append(bytemuck::cast_slice(&projection.location_ids));
-    hasher.append(bytemuck::cast_slice(&projection.fractions));
-    hasher.append(bytemuck::cast_slice(&projection.metrics));
+    for id in &projection.location_ids {
+        hasher.append(&id.value().to_le_bytes());
+    }
+    let data = projection.as_data();
+    for row in 0..projection.location_ids.len() {
+        for fraction in eu5app::map_projection::Fraction::ALL {
+            hasher.append(&data.fraction(fraction)[row].to_le_bytes());
+        }
+    }
+    for row in 0..projection.location_ids.len() {
+        for metric in eu5app::map_projection::Metric::ALL {
+            hasher.append(&data.metric(metric)[row].to_le_bytes());
+        }
+    }
     for values in [
         &projection.owners,
         &projection.controllers,
         &projection.religions,
         &projection.markets,
+    ] {
+        hasher.append(bytemuck::cast_slice(values));
+    }
+    for values in [
         &projection.countries,
         &projection.religion_colors,
         &projection.market_colors,

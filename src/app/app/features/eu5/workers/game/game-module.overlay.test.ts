@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { MapFrame } from "../../history/analysisTypes";
+import type { Eu5Snapshot } from "../../history/analysisTypes";
 import { serveFrames } from "@/features/campaign/analysis/framePort";
 import type { GradientConfig } from "@/wasm/wasm_eu5";
 import type { LocationClickChangeEvent, LocationHoverChangeEvent } from "../map/map-module";
@@ -52,7 +52,7 @@ const gradient: GradientConfig = {
 };
 const cleanup: (() => void)[] = [];
 
-const frame = (id: string): MapFrame => ({
+const frame = (id: string): Eu5Snapshot => ({
   descriptor: {
     id,
     game: "eu5",
@@ -61,24 +61,11 @@ const frame = (id: string): MapFrame => ({
     date: "1360-01-01",
     dateSort: 13600101,
     gameVersion: "1.0",
-    extractorVersion: 1,
     artifacts: ["observations", "map"],
     layoutKey: "same",
     world: { locationCount: 0, countryCount: 0, totalPopulation: 0 },
   },
-  projection: {
-    layoutKey: "same",
-    locationIds: new Uint32Array(),
-    fractions: new Uint16Array(),
-    metrics: new Float32Array(),
-    owners: new Uint32Array(),
-    controllers: new Uint32Array(),
-    religions: new Uint32Array(),
-    markets: new Uint32Array(),
-    countries: new Uint32Array(),
-    religionColors: new Uint32Array(),
-    marketColors: new Uint32Array(),
-  },
+  data: new Uint8Array([1, 2, 3]) as Eu5Snapshot["data"],
 });
 
 beforeEach(() => {
@@ -161,11 +148,7 @@ it("paints a snapshot into the overlay and leaves the buffers of the save alone"
   const reply = await save.presentOverlay("second", "control", 7);
 
   expect(reply).toMatchObject({ accepted: true, gradient, observation: { id: "second" } });
-  expect(mocks.app.paint_map_projection).toHaveBeenCalledWith(
-    "control",
-    "same",
-    ...Array.from({ length: 10 }, () => expect.anything()),
-  );
+  expect(mocks.app.paint_map_projection).toHaveBeenCalledWith("control", new Uint8Array([1, 2, 3]));
   expect(mocks.map.presentOverlay).toHaveBeenCalledExactlyOnceWith({
     token: 7,
     colors: new Uint32Array([1]),

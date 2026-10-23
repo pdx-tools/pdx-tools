@@ -179,19 +179,11 @@ function useMapHistoryState() {
     setPlaying(false);
     cancelPreview();
     try {
-      await eu5Analysis.clear(campaignId);
-      useHistory.setState((history) => {
-        const snapshots = history.snapshots.filter((row) => row.campaignId !== campaignId);
-        const ids = new Set(snapshots.map((row) => row.id));
-        return {
-          snapshots,
-          sources: Object.fromEntries(
-            Object.entries(history.sources).filter(([, source]) => ids.has(source.snapshotId)),
-          ),
-          issues: [],
-          analysisPausedCampaigns: [...new Set([...history.analysisPausedCampaigns, campaignId])],
-        };
-      });
+      await eu5Analysis.clear();
+      const history = useHistory.getState();
+      history.removeSnapshots();
+      history.pauseAnalysis(campaignId);
+      useHistory.setState({ issues: [] });
     } catch (failure) {
       setError(String(failure));
     }

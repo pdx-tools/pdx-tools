@@ -1,0 +1,552 @@
+//! Keeps the compact observations of the saves of one campaign and answers
+//! typed queries across their dates.
+//!
+//! Each game declares its snapshot with [`Game`] and its queries with
+//! [`queries!`]. A parser gives the binary form of a snapshot
+//! ([`Observation::encode`]). JavaScript moves those bytes to the analysis
+//! worker and does not read them. The worker keeps them in a [`Session`].
+//!
+//! Tables keep typed keys and immutable row columns. Keys must implement
+//! `Copy`. Use domain IDs or composite IDs for table keys.
+//! If a table needs text keys, add a store dictionary and use its IDs as keys.
+//!
+//! The store counts column data and shared key data once for admission.
+//! This count excludes spare capacity, lookup maps, and temporary data.
+//! Set the admission limit below the available memory to leave room for
+//! these allocations. The limit does not guarantee that an import fits
+//! in memory. Allocation counts are diagnostic values only.
+
+mod columns;
+mod descriptor;
+mod query;
+mod session;
+mod snapshot;
+mod store;
+mod table;
+mod text;
+#[cfg(feature = "wasm")]
+pub mod wasm;
+
+pub use columns::{
+    ColumnError, Columns, DecodeError, Decoder, Encoder, NullableColumn, PayloadError,
+    ReferenceError, RowColumns, check_length,
+};
+pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
+pub use query::{
+    History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, View,
+};
+pub use session::Session;
+pub use snapshot::Observation;
+pub use store::{AnalysisError, AnalysisErrorName, Appended, Snapshot, Store, StoreMemory};
+pub use table::{
+    BoundRows, BoundSelectionRows, Column, IndexId, IndexRegistry, KeyError, PrefixKey,
+    PreparedIndex, RegistryMemory, ResolvedBatch, Row, RowError, RowRange, RowSelect,
+    SelectionRows, Table, TableError,
+};
+pub use text::{decode_text_dictionary, encode_text_dictionary};
+
+use serde::{Serialize, de::DeserializeOwned};
+use std::fmt;
+
+/// The snapshot rules of one game.
+pub trait Game: Sized + 'static {
+    const GAME: &'static str;
+    /// The kinds of data in the payload, such as "observations" or "map".
+    const ARTIFACTS: &'static [&'static str];
+    /// The descriptor fields of this game: a struct with named fields, as
+    /// JavaScript reads them next to the common fields. A game without
+    /// fields uses an empty struct.
+    type Detail: Serialize + DeserializeOwned + Clone + fmt::Debug;
+    /// The concrete tables and dictionaries of a snapshot.
+    type Payload: Columns + fmt::Debug;
+    type Query: Query<Self>;
+
+    type Shared: Default + fmt::Debug;
+    type Prepared;
+
+    /// Check rules that require the complete payload. Construction and decode
+    /// call this hook. Append accepts only a constructed observation.
+    fn validate(payload: &Self::Payload) -> Result<(), PayloadError>;
+    /// Prepare references against typed registries without changing the store.
+    fn prepare(
+        payload: &mut Self::Payload,
+        layout: &str,
+        shared: &Self::Shared,
+    ) -> Result<Self::Prepared, AnalysisError>;
+    fn added_bytes(prepared: &Self::Prepared) -> usize;
+    /// Commit a prepared append after admission. This operation cannot fail.
+    fn commit(shared: &mut Self::Shared, prepared: Self::Prepared);
+    fn shared_memory(shared: &Self::Shared) -> RegistryMemory;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A game-neutral payload: one value for each geographic ID.
+    #[derive(Debug)]
+    struct TestGame;
+
+    #[derive(Debug, Clone, PartialEq)]
+    struct Values {
+        table: Table<u32, Vec<f64>>,
+    }
+    impl Columns for Values {
+        fn encode(&self, out: &mut Encoder) {
+            self.table.encode_with(out, |keys, out| out.column(keys));
+        }
+        fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
+            Ok(Self {
+                table: Table::decode_map_order_with(input, |input| input.column())?,
+            })
+        }
+        fn heap_bytes(&self) -> usize {
+            self.table.columns().heap_bytes()
+        }
+        fn allocated_bytes(&self) -> usize {
+            self.table.columns().allocated_bytes()
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    struct Tag {
+        tag: u32,
+    }
+
+    fn sum(view: &View<'_, TestGame>, ids: Vec<u32>) -> History {
+        let mut selection = RowSelect::new(&ids);
+        view.series(|snapshot| {
+            let table = &snapshot.payload().table;
+            match selection.resolve(table) {
+                SelectionRows::Rows(rows) => Some(
+                    rows.bind(table)
+                        .unwrap()
+                        .values(|values| values)
+                        .copied()
+                        .sum(),
+                ),
+                _ => None,
+            }
+        })
+    }
+
+    fn count(view: &View<'_, TestGame>) -> usize {
+        view.snapshots().len()
+    }
+
+    queries! {
+        enum TestQuery for TestGame => TestAnswer {
+            Sum { ids: Vec<u32> } => History = sum,
+            Count => usize = count,
+        }
+    }
+
+    thread_local! {static VALIDATIONS: std::cell::Cell<usize> = const {std::cell::Cell::new(0)};}
+
+    impl Game for TestGame {
+        const GAME: &'static str = "test";
+        const ARTIFACTS: &'static [&'static str] = &["observations"];
+        type Detail = Tag;
+        type Payload = Values;
+        type Query = TestQuery;
+        type Shared = IndexRegistry<u32>;
+        type Prepared = PreparedIndex<u32>;
+
+        fn validate(_: &Values) -> Result<(), PayloadError> {
+            VALIDATIONS.with(|count| count.set(count.get() + 1));
+            Ok(())
+        }
+        fn prepare(
+            payload: &mut Values,
+            layout: &str,
+            shared: &Self::Shared,
+        ) -> Result<Self::Prepared, AnalysisError> {
+            shared.prepare(&mut payload.table, Some(layout))
+        }
+        fn added_bytes(prepared: &Self::Prepared) -> usize {
+            prepared.added_bytes()
+        }
+        fn commit(shared: &mut Self::Shared, prepared: Self::Prepared) {
+            shared.commit(prepared);
+        }
+        fn shared_memory(shared: &Self::Shared) -> RegistryMemory {
+            shared.memory()
+        }
+    }
+
+    // One snapshot keeps 8 bytes of IDs and 16 bytes of values.
+    const IDS: usize = 8;
+    const VALUES: usize = 16;
+
+    fn descriptor(hash: &str, date_sort: i32, layout: &str) -> SnapshotDescriptor {
+        SnapshotDescriptor::new::<TestGame>(
+            SnapshotSource {
+                campaign_id: String::from("campaign"),
+                content_hash: String::from(hash),
+                date: SaveDate {
+                    year: date_sort / 10000,
+                    month: (date_sort / 100 % 100) as u8,
+                    day: (date_sort % 100) as u8,
+                },
+                game_version: String::from("1.0"),
+            },
+            String::from(layout),
+        )
+    }
+
+    fn observation(descriptor: SnapshotDescriptor, ids: &[u32]) -> Observation<TestGame> {
+        Observation::new(
+            descriptor,
+            Tag { tag: 7 },
+            Values {
+                table: Table::map_order(
+                    ids.to_vec(),
+                    ids.iter().map(|id| f64::from(*id) * 10.0).collect(),
+                )
+                .unwrap(),
+            },
+        )
+        .unwrap()
+    }
+
+    fn append(
+        store: &mut Store<TestGame>,
+        descriptor: SnapshotDescriptor,
+        ids: &[u32],
+        limit: usize,
+    ) -> Result<Appended<Tag>, AnalysisError> {
+        store.append(observation(descriptor, ids), limit)
+    }
+
+    fn hashes(store: &Store<TestGame>) -> Vec<&str> {
+        store
+            .snapshots()
+            .iter()
+            .map(|snapshot| snapshot.descriptor().content_hash.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn makes_the_descriptor_from_the_game_and_the_save() {
+        let descriptor = descriptor("hash", 14441111, "layout");
+        assert_eq!(descriptor.id, "test:hash");
+        assert_eq!(descriptor.date, "1444-11-11");
+        assert_eq!(descriptor.date_sort, 14441111);
+        assert_eq!(descriptor.artifacts, ["observations"]);
+    }
+
+    #[test]
+    fn the_binary_form_gives_the_same_snapshot() {
+        let original = observation(descriptor("a", 14441111, "layout"), &[42, 43]);
+        let bytes = original.encode();
+        let decoded = Observation::<TestGame>::decode(&bytes).unwrap();
+        assert_eq!(decoded.descriptor, original.descriptor);
+        assert_eq!(decoded.detail, Tag { tag: 7 });
+        assert_eq!(decoded.payload().table.keys(), [42, 43]);
+        assert_eq!(decoded.payload(), original.payload());
+
+        let mut store = Store::new();
+        store.append(decoded, usize::MAX).unwrap();
+        assert_eq!(store.snapshots()[0].encode(), bytes);
+    }
+
+    #[test]
+    fn refuses_other_games_and_damaged_bytes() {
+        let bytes = observation(descriptor("a", 14441111, "layout"), &[42]).encode();
+        let mut other = descriptor("a", 14441111, "layout");
+        other.game = String::from("other");
+        let other = observation(other, &[42]).encode();
+        assert_eq!(
+            Observation::<TestGame>::decode(&other).unwrap_err(),
+            AnalysisError::WrongGame { game: "test" }
+        );
+        assert_eq!(
+            Observation::<TestGame>::decode(b"nope").unwrap_err(),
+            AnalysisError::Decode(DecodeError::NotASnapshot)
+        );
+        for len in 0..bytes.len() {
+            Observation::<TestGame>::decode(&bytes[..len]).unwrap_err();
+        }
+    }
+
+    #[test]
+    fn appends_in_either_order_and_keeps_one_copy_of_equal_layouts() {
+        let mut store = Store::<TestGame>::new();
+        append(
+            &mut store,
+            descriptor("later", 13600401, "layout"),
+            &[42, 43],
+            usize::MAX,
+        )
+        .unwrap();
+        assert_eq!(store.memory().buffer_bytes, IDS + VALUES);
+        append(
+            &mut store,
+            descriptor("first", 13600101, "layout"),
+            &[42, 43],
+            usize::MAX,
+        )
+        .unwrap();
+        assert_eq!(hashes(&store), ["first", "later"]);
+        assert_eq!(
+            store.memory(),
+            StoreMemory {
+                buffer_bytes: IDS + VALUES * 2,
+                allocated_bytes: IDS + VALUES * 2,
+                allocated_column_bytes: VALUES * 2,
+                allocated_key_bytes: IDS,
+                snapshots: 2,
+                layouts: 1,
+                index_bytes: 0,
+                wasm_bytes: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn does_not_count_a_duplicate() {
+        let mut store = Store::<TestGame>::new();
+        let first = || descriptor("first", 13600101, "layout");
+        append(&mut store, first(), &[42, 43], usize::MAX).unwrap();
+        let before = store.memory();
+        let result = append(&mut store, first(), &[42, 43], 0).unwrap();
+        assert!(result.duplicate);
+        assert_eq!(result.descriptor.detail, Tag { tag: 7 });
+        assert_eq!(store.memory(), before);
+    }
+
+    #[test]
+    fn refuses_each_invalid_append_and_leaves_the_store_unchanged() {
+        let mut store = Store::<TestGame>::new();
+        append(
+            &mut store,
+            descriptor("first", 13600101, "layout"),
+            &[42, 43],
+            usize::MAX,
+        )
+        .unwrap();
+        let before = store.memory();
+        // The limit has room for one more snapshot with a shared layout.
+        let limit = before.buffer_bytes + VALUES;
+        let next = || descriptor("x", 13600401, "layout");
+        let refusals = [
+            (
+                descriptor("alternate", 13600101, "layout"),
+                vec![42, 43],
+                "already occupies",
+            ),
+            (
+                SnapshotDescriptor {
+                    game: String::from("other"),
+                    ..next()
+                },
+                vec![42, 43],
+                "accepts test snapshots",
+            ),
+            (
+                SnapshotDescriptor {
+                    id: String::from("x"),
+                    ..next()
+                },
+                vec![42, 43],
+                "Invalid snapshot descriptor",
+            ),
+            (
+                SnapshotDescriptor {
+                    campaign_id: String::new(),
+                    ..next()
+                },
+                vec![42, 43],
+                "Invalid snapshot descriptor",
+            ),
+            (
+                SnapshotDescriptor {
+                    campaign_id: String::from("second"),
+                    ..next()
+                },
+                vec![42, 43],
+                "another campaign",
+            ),
+            (next(), vec![42, 44], "Incompatible"),
+            // A new layout adds its IDs, so it does not fit.
+            (
+                descriptor("x", 13600401, "other"),
+                vec![42, 44],
+                "Campaign analysis is full",
+            ),
+        ];
+        for (row, ids, message) in refusals {
+            let error = append(&mut store, row, &ids, limit).unwrap_err();
+            assert!(error.to_string().contains(message), "{error}");
+            assert_eq!(store.memory(), before);
+        }
+        Table::map_order(vec![42u32, 43], vec![1.0f64]).unwrap_err();
+        // A shared layout adds only the values, so this fits.
+        append(&mut store, next(), &[42, 43], limit).unwrap();
+        assert_eq!(store.memory().buffer_bytes, IDS + VALUES * 2);
+    }
+
+    fn session() -> Session<TestGame> {
+        let mut session = Session::new();
+        for (hash, date, ids) in [
+            ("b", 14100101, &[42][..]),
+            ("c", 14200101, &[42, 43][..]),
+            ("a", 14000101, &[42, 43][..]),
+        ] {
+            let layout = format!("{ids:?}");
+            let bytes = observation(descriptor(hash, date, &layout), ids).encode();
+            session.append(0, &bytes, usize::MAX).unwrap();
+        }
+        session
+    }
+
+    fn request(query: TestQuery, selection: Selection) -> QueryRequest<TestQuery> {
+        QueryRequest {
+            generation: 0,
+            campaign_id: String::from("campaign"),
+            selection,
+            query,
+        }
+    }
+
+    fn answer(session: &Session<TestGame>, request: QueryRequest<TestQuery>) -> TestAnswer {
+        match session.query(request).outcome {
+            QueryOutcome::Ok { answer } => answer,
+            QueryOutcome::Stale => panic!("stale"),
+        }
+    }
+
+    #[test]
+    fn answers_each_query_with_its_own_answer_kind_and_gaps() {
+        let session = session();
+        let sum =
+            |ids: Vec<u32>| match answer(&session, request(TestQuery::Sum { ids }, Selection::All))
+            {
+                TestAnswer::Sum(history) => history
+                    .rows
+                    .into_iter()
+                    .map(|row| (row.date_sort, row.value))
+                    .collect::<Vec<_>>(),
+                other => panic!("{other:?}"),
+            };
+        assert_eq!(
+            sum(vec![42, 43]),
+            [
+                (14000101, Some(850.0)),
+                (14100101, None),
+                (14200101, Some(850.0))
+            ]
+        );
+        assert_eq!(
+            sum(vec![]),
+            [(14000101, None), (14100101, None), (14200101, None)]
+        );
+        // Sorted IDs need no index.
+        assert_eq!(session.memory().index_bytes, 0);
+    }
+
+    #[test]
+    fn finds_the_rows_of_unsorted_ids() {
+        let mut store = Store::<TestGame>::new();
+        append(
+            &mut store,
+            descriptor("a", 14000101, "unsorted"),
+            &[43, 7, 42],
+            usize::MAX,
+        )
+        .unwrap();
+        let table = &store.snapshots()[0].payload().table;
+        assert_eq!(*table.value(table.row(&42).unwrap(), |x| x).unwrap(), 420.0);
+        assert!(table.row(&1).is_none());
+        assert!(store.memory().index_bytes > 0);
+    }
+
+    #[test]
+    fn selects_one_campaign_in_date_order() {
+        let session = session();
+        let some = Selection::Ids {
+            ids: vec![
+                snapshot_id("test", "c"),
+                snapshot_id("test", "a"),
+                snapshot_id("test", "missing"),
+            ],
+        };
+        let reply = session.query(request(TestQuery::Count, some));
+        assert_eq!(reply.snapshot_ids, ["test:a", "test:c"]);
+        assert!(matches!(
+            reply.outcome,
+            QueryOutcome::Ok {
+                answer: TestAnswer::Count(2)
+            }
+        ));
+        let other = QueryRequest {
+            campaign_id: String::from("other"),
+            ..request(TestQuery::Count, Selection::All)
+        };
+        assert!(session.query(other).snapshot_ids.is_empty());
+    }
+
+    #[test]
+    fn a_new_generation_refuses_old_appends_and_old_queries() {
+        let mut session = session();
+        let late = observation(descriptor("late", 15000101, "late"), &[1]).encode();
+        session.clear(1);
+        assert_eq!(
+            session.append(0, &late, usize::MAX).unwrap_err(),
+            AnalysisError::Stale
+        );
+        assert!(matches!(
+            session
+                .query(request(TestQuery::Count, Selection::All))
+                .outcome,
+            QueryOutcome::Stale
+        ));
+        session.open(4);
+        assert_eq!(
+            AnalysisError::Stale.name().as_str(),
+            "AnalysisStaleGeneration"
+        );
+        assert!(!session.append(4, &late, usize::MAX).unwrap().duplicate);
+    }
+
+    #[test]
+    fn clear_releases_everything() {
+        let mut session = session();
+        session.clear(1);
+        assert_eq!(
+            session.memory(),
+            StoreMemory {
+                buffer_bytes: 0,
+                allocated_bytes: 0,
+                allocated_column_bytes: 0,
+                allocated_key_bytes: 0,
+                snapshots: 0,
+                layouts: 0,
+                index_bytes: 0,
+                wasm_bytes: 0,
+            }
+        );
+        assert_eq!(session.store().campaign(), None);
+        // Another save at the same date is accepted after a clear.
+        let bytes = observation(descriptor("z", 14000101, "layout"), &[7]).encode();
+        session.append(1, &bytes, usize::MAX).unwrap();
+    }
+    #[test]
+    fn append_does_not_repeat_construction_validation_or_build_lookups() {
+        let original = observation(descriptor("a", 15000101, "map"), &[43, 42]);
+        let bytes = original.encode();
+        let decoded = Observation::<TestGame>::decode(&bytes).unwrap();
+        let count = VALIDATIONS.with(std::cell::Cell::get);
+        let mut store = Store::new();
+        store.append(decoded, usize::MAX).unwrap();
+        assert_eq!(VALIDATIONS.with(std::cell::Cell::get), count);
+        assert_eq!(store.memory().index_bytes, 0);
+        let mut next = Observation::<TestGame>::decode(&bytes).unwrap();
+        next.descriptor = descriptor("b", 15000102, "map");
+        let count = VALIDATIONS.with(std::cell::Cell::get);
+        let before = store.memory();
+        store.append(next, 0).unwrap_err();
+        assert_eq!(store.memory(), before);
+        assert_eq!(VALIDATIONS.with(std::cell::Cell::get), count);
+    }
+}

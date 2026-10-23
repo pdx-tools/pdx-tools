@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { AnalysisAdmission } from "./admission";
+import type { QueryReply, QueryRequest, SnapshotData } from "@/wasm/wasm_eu5";
 import type { SnapshotDescriptor } from "./descriptor";
-import type { ResidentMemory } from "./residentStore";
+import type { AnalysisStore, ResidentMemory } from "./session";
 
 const mocks = vi.hoisted(() => ({
   api: {
     open: vi.fn(),
     append: vi.fn(),
     clear: vi.fn(),
+    query: vi.fn(),
     memory: vi.fn(),
     connectFrames: vi.fn(),
     disconnectFrames: vi.fn(),
@@ -18,15 +20,28 @@ const mocks = vi.hoisted(() => ({
 vi.mock("comlink", () => ({ wrap: () => mocks.api, transfer: (value: unknown) => value }));
 vi.mock("@/lib/sentryWorker", () => ({ trackWorker: () => mocks.untrack }));
 
-type Payload = { values: Float64Array };
+/** A store class as `campaign_analysis::wasm_store!` declares it. */
+type Store = AnalysisStore & {
+  append(
+    generation: number,
+    data: SnapshotData<"test">,
+    limitBytes: number,
+  ): { descriptor: SnapshotDescriptor; duplicate: boolean; memory: ResidentMemory };
+  query(request: QueryRequest<{ kind: "total" }>): QueryReply<{ kind: "total"; value: number }>;
+};
 const memory = (bufferBytes: number): ResidentMemory => ({
   bufferBytes,
+  allocatedBytes: bufferBytes,
+  allocatedColumnBytes: bufferBytes,
+  allocatedKeyBytes: 0,
   snapshots: 1,
   layouts: 0,
+  indexBytes: 0,
+  wasmBytes: 65536,
 });
 const output = (bytes = 80) => ({
-  descriptor: { id: "test:1:a", campaignId: "campaign" } as SnapshotDescriptor,
-  payload: { values: new Float64Array(bytes / 8) },
+  descriptor: { id: "test:a", campaignId: "campaign" } as SnapshotDescriptor,
+  data: new Uint8Array(bytes) as SnapshotData<"test">,
 });
 
 beforeEach(() => {
@@ -45,17 +60,19 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-async function client() {
-  const { createAnalysisWorker } = await import("./workerClient");
+async function client(session = "test") {
+  const { createFrameAnalysisWorker } = await import("./workerClient");
   const onFailure = vi.fn();
+  const onRelease = vi.fn();
   const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 1000 });
-  const worker = createAnalysisWorker<SnapshotDescriptor, Payload>({
-    session: "test",
+  const worker = createFrameAnalysisWorker<Store>({
+    session,
     admission,
     start: () => new Worker("worker.js"),
     onFailure,
+    onRelease,
   });
-  return { worker, onFailure, admission, lease: admission.acquireImport() };
+  return { worker, onFailure, onRelease, admission, lease: admission.acquireImport() };
 }
 
 it("rejects pending calls on worker failure and starts a new worker on the next call", async () => {
@@ -106,13 +123,24 @@ it("fails a worker that throws before it opens, as it cannot answer", async () =
   expect(onFailure).toHaveBeenCalledOnce();
 });
 
+it("starts a new worker when the worker cannot open, such as after a failed WASM download", async () => {
+  const { worker, onFailure, lease } = await client();
+  mocks.api.open.mockRejectedValueOnce(new Error("download failed"));
+  await expect(worker.append(1, output(), lease)).rejects.toThrow("download failed");
+  expect(onFailure).toHaveBeenCalledOnce();
+  expect(mocks.workers[0].terminate).toHaveBeenCalledOnce();
+  mocks.api.append.mockResolvedValue({ descriptor: output().descriptor, memory: memory(80) });
+  await worker.append(worker.generation(), output(), lease);
+  expect(mocks.workers).toHaveLength(2);
+});
+
 it("fails the worker when an append does not answer", async () => {
   vi.useFakeTimers();
   try {
     const { createAnalysisWorker } = await import("./workerClient");
     const onFailure = vi.fn();
     const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 1000 });
-    const worker = createAnalysisWorker<SnapshotDescriptor, Payload>({
+    const worker = createAnalysisWorker<Store>({
       session: "test",
       admission,
       start: () => new Worker("worker.js"),
@@ -154,15 +182,46 @@ it("opens each new worker with the current generation", async () => {
 
 it("passes the limit of the lease and keeps the bytes that the worker reports", async () => {
   const { worker, admission, lease } = await client();
-  admission.setResident("other", 50);
   mocks.api.append.mockResolvedValue({
     descriptor: output().descriptor,
     duplicate: false,
     memory: memory(30),
   });
   await worker.append(1, output(), lease);
-  expect(mocks.api.append).toHaveBeenCalledWith(1, expect.anything(), 50);
-  expect(admission.residentBytes()).toBe(80);
+  expect(mocks.api.append).toHaveBeenCalledWith(1, expect.anything(), 100);
+  expect(admission.residentBytes()).toBe(30);
+});
+
+it("stops the worker on a release, and a claim of another campaign releases it", async () => {
+  const { worker, admission, onFailure, onRelease, lease } = await client();
+  mocks.api.append.mockResolvedValue({
+    descriptor: output().descriptor,
+    duplicate: false,
+    memory: memory(30),
+  });
+  await worker.append(1, output(), lease);
+  const signal = worker.signal();
+  worker.claim("campaign");
+  expect(mocks.workers[0].terminate).not.toHaveBeenCalled();
+  worker.claim("next");
+  expect(mocks.workers[0].terminate).toHaveBeenCalledOnce();
+  expect(signal.aborted).toBe(true);
+  expect(admission.residentBytes()).toBe(0);
+  expect(onRelease).toHaveBeenCalledOnce();
+  expect(onFailure).not.toHaveBeenCalled();
+  // The next call starts a new worker.
+  await worker.append(worker.generation(), output(), lease);
+  expect(mocks.workers).toHaveLength(2);
+});
+
+it("releases the session of another game on a claim", async () => {
+  const eu4 = await client("eu4");
+  const eu5 = await client("eu5");
+  eu4.worker.remote();
+  eu5.worker.claim("campaign");
+  expect(mocks.workers[0].terminate).toHaveBeenCalledOnce();
+  expect(eu4.onRelease).toHaveBeenCalledOnce();
+  expect(eu5.onRelease).not.toHaveBeenCalled();
 });
 
 it("refuses an append without an active import lease", async () => {
@@ -199,10 +258,10 @@ it("ends the generation on a clear, so an import stops and its appends are stale
   mocks.api.clear.mockResolvedValue(memory(0));
   const pending = worker.append(1, output(), lease);
   await vi.waitFor(() => expect(mocks.api.append).toHaveBeenCalledOnce());
-  await worker.clear("campaign");
+  await worker.clear();
   expect(signal.aborted).toBe(true);
   expect(worker.signal().aborted).toBe(false);
-  expect(mocks.api.clear).toHaveBeenCalledWith(2, "campaign");
+  expect(mocks.api.clear).toHaveBeenCalledWith(2);
   // The worker stored the snapshot before it read the clear.
   resolve({ descriptor: output().descriptor, duplicate: false, memory: memory(80) });
   await expect(pending).rejects.toMatchObject({ name: "AnalysisStaleGeneration" });
@@ -213,16 +272,15 @@ it("ends the generation on a clear, so an import stops and its appends are stale
   expect(mocks.api.append).toHaveBeenCalledOnce();
 });
 
-it("keeps an append that a clear of another campaign follows", async () => {
-  const { worker, lease } = await client();
-  const { promise: stored, resolve } = Promise.withResolvers<unknown>();
-  mocks.api.append.mockReturnValue(stored);
-  mocks.api.clear.mockResolvedValue(memory(80));
-  const pending = worker.append(1, output(), lease);
-  await vi.waitFor(() => expect(mocks.api.append).toHaveBeenCalledOnce());
-  await worker.clear("other");
-  resolve({ descriptor: output().descriptor, duplicate: false, memory: memory(80) });
-  await expect(pending).resolves.toMatchObject({ duplicate: false });
+it("stops a worker without snapshots when another campaign is claimed", async () => {
+  const { worker, onFailure } = await client();
+  worker.claim("campaign");
+  worker.remote();
+  worker.claim("next");
+  expect(mocks.workers[0].terminate).toHaveBeenCalledOnce();
+  worker.remote();
+  mocks.workers[1].dispatchEvent(new Event("messageerror"));
+  expect(onFailure).toHaveBeenCalledWith(expect.any(Error), "next");
 });
 
 it("sends each append without waiting for the reply before it", async () => {
@@ -234,4 +292,33 @@ it("sends each append without waiting for the reply before it", async () => {
   await vi.waitFor(() => expect(mocks.api.append).toHaveBeenCalledTimes(2));
   resolve({ descriptor: output().descriptor, duplicate: false, memory: memory(80) });
   await Promise.all(pending);
+});
+
+it("sends queries with the current generation and the requested snapshot selection", async () => {
+  const { worker } = await client();
+  mocks.api.clear.mockResolvedValue(memory(0));
+  mocks.api.query.mockImplementation(async (request) => ({
+    generation: request.generation,
+    snapshotIds: ["a"],
+    outcome: { status: "ok", answer: { kind: "total", value: 7 } },
+  }));
+  const call = { campaignId: "c", identity: "i", sequence: 3, query: { kind: "total" as const } };
+  expect(await worker.query(call)).toEqual({
+    generation: 1,
+    identity: "i",
+    sequence: 3,
+    snapshotIds: ["a"],
+    outcome: { status: "ok", value: 7 },
+  });
+  expect(mocks.api.query).toHaveBeenLastCalledWith({
+    generation: 1,
+    campaignId: "c",
+    selection: { kind: "all" },
+    query: { kind: "total" },
+  });
+  await worker.clear();
+  await worker.query({ ...call, selection: { kind: "ids", ids: ["a"] } });
+  expect(mocks.api.query).toHaveBeenLastCalledWith(
+    expect.objectContaining({ generation: 2, selection: { kind: "ids", ids: ["a"] } }),
+  );
 });

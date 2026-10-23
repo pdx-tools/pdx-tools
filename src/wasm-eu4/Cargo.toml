@@ -19,7 +19,8 @@ zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto", "eu4save/zstd_c", "eu4game/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust", "eu4save/zstd_rust", "eu4game/zstd_rust"]
 
 [dependencies]
-eu4game = { default-features = false , workspace = true }
+campaign-analysis = { workspace = true, features = ["wasm"] }
+eu4game = { default-features = false, features = ["tsify"], workspace = true }
 eu4save = { default-features = false, features = ["tsify"] , workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }

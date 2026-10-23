@@ -134,7 +134,6 @@ const reply = (snapshotId: string, accepted = true): OverlayReply => ({
     date: "1360-01-01",
     dateSort: 13600000 + 101 + snapshotIds.indexOf(snapshotId) * 10000,
     gameVersion: "1.0",
-    extractorVersion: 1,
     artifacts: ["observations", "map"],
     layoutKey: "layout",
     world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },

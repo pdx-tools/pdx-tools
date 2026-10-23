@@ -1,5 +1,5 @@
 export type AdmissionLimits = {
-  /** The limit for resident buffers of all sessions. */
+  /** The limit for the resident data of the session. */
   residentBytes: number;
   /** The limit for active parsers and resident data together. */
   parserBytes: number;
@@ -15,12 +15,8 @@ export const IMPORT_BUSY_ERROR = "AnalysisImportBusy";
 export type ImportLease = {
   /** False after the release. */
   active: () => boolean;
-  /**
-   * The resident limit of a session: the tab limit less the bytes of the
-   * other sessions. Only this import adds data, so the other sessions cannot
-   * grow while the lease is active.
-   */
-  residentLimit: (session: string) => number;
+  /** The resident limit of the session that this import adds to. */
+  residentLimit: () => number;
   /** True when `parsers` parsers of `peakBytes` each fit next to the resident data. */
   parsersFit: (parsers: number, peakBytes: number) => boolean;
   release: () => void;
@@ -30,28 +26,28 @@ export type ImportLease = {
  * The memory admission for all campaign analysis in the tab, for all games.
  *
  * Only one import runs at a time. That import gets a lease, and its session
- * checks the resident limit of the lease when it appends. Each session reports
- * the bytes that it keeps after an append, a clear or a worker loss.
+ * checks the resident limit of the lease when it appends. The tab keeps one
+ * session: a session that starts releases the others. The session reports
+ * the bytes that it keeps after an append, a clear, a release or a worker loss.
  */
 export class AnalysisAdmission {
-  /** The bytes of the backing buffers that each session keeps. */
-  private resident = new Map<string, number>();
+  /** The session that keeps resident data, and its bytes. */
+  private resident: { session: string; bytes: number } | null = null;
   private lease: ImportLease | undefined;
 
   constructor(readonly limits: AdmissionLimits) {}
 
-  /** Set the memory that a session keeps, after an append, a clear or a worker loss. */
+  /**
+   * Set the memory that a session keeps, after an append, a clear or a
+   * worker loss. Zero from a session that keeps nothing changes nothing.
+   */
   setResident(session: string, bufferBytes: number) {
-    if (bufferBytes > 0) this.resident.set(session, bufferBytes);
-    else this.resident.delete(session);
+    if (bufferBytes > 0) this.resident = { session, bytes: bufferBytes };
+    else if (this.resident?.session === session) this.resident = null;
   }
 
-  /** The resident bytes of all sessions, or of all sessions except one. */
-  residentBytes(except?: string) {
-    let bytes = 0;
-    for (const [session, bufferBytes] of this.resident)
-      if (session !== except) bytes += bufferBytes;
-    return bytes;
+  residentBytes() {
+    return this.resident?.bytes ?? 0;
   }
 
   /** Start an import. Throws if another import runs. */
@@ -64,8 +60,7 @@ export class AnalysisAdmission {
     let active = true;
     const lease: ImportLease = {
       active: () => active,
-      residentLimit: (session) =>
-        Math.max(0, this.limits.residentBytes - this.residentBytes(session)),
+      residentLimit: () => this.limits.residentBytes,
       parsersFit: (parsers, peakBytes) =>
         parsers * peakBytes + this.residentBytes() <= this.limits.parserBytes,
       release: () => {

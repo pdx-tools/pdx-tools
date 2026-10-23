@@ -505,6 +505,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "campaign-analysis"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "js-sys",
+ "postcard",
+ "serde",
+ "tsify",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1054,6 +1066,7 @@ version = "0.1.0"
 dependencies = [
  "attohttpc",
  "base64",
+ "campaign-analysis",
  "erased-serde",
  "eu4-achievements",
  "eu4game-data",
@@ -1063,11 +1076,14 @@ dependencies = [
  "pdx-zstd",
  "schemas",
  "serde",
+ "serde_json",
  "serde_path_to_error",
  "sha1_smol",
  "tempfile",
  "thiserror 2.0.18",
+ "tsify",
  "walkdir",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1100,6 +1116,7 @@ dependencies = [
  "base64",
  "bumpalo",
  "bytemuck",
+ "campaign-analysis",
  "eu5app",
  "eu5save",
  "highway",
@@ -4929,6 +4946,7 @@ dependencies = [
 name = "wasm-eu4"
 version = "0.1.0"
 dependencies = [
+ "campaign-analysis",
  "eu4game",
  "eu4save",
  "js-sys",
@@ -4946,6 +4964,7 @@ name = "wasm-eu5"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "campaign-analysis",
  "eu5app",
  "eu5save",
  "js-sys",

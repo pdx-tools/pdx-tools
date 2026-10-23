@@ -19,6 +19,8 @@ export default defineConfig({
     {
       command: "mise run serve:api:test",
       url: "http://localhost:8081/healthz",
+      // Let mise stop its child processes before a forced shutdown.
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5000 },
       reuseExistingServer: !process.env.CI,
 
       timeout: 300_000,

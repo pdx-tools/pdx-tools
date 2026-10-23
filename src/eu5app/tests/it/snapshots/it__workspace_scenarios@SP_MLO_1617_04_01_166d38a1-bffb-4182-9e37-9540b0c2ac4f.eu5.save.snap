@@ -160,7 +160,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "#ff646464 x1645"
     ]
   },
-  "projection": "0x906c32743667d711",
+  "projection": "0x90b1ec84d2cf2d2b",
   "save_version": "1.4.0",
   "selected": {
     "locations": "0xb502ca016215c463",

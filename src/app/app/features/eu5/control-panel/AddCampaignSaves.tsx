@@ -11,6 +11,7 @@ import { useEu5Input, useEu5PlaythroughId } from "../store";
 import { isAnalysisPaused, useHistory } from "../history/store";
 import { ImportProgress } from "../history/ImportProgress";
 import { analyzeCampaign } from "../history/analyzeCampaign";
+import { pendingCampaignAnalysis } from "../history/CampaignAnalysis";
 
 export function AddCampaignSaves() {
   const publishFile = useFilePublisher({ openSave: false });
@@ -120,8 +121,11 @@ export function AddCampaignSaves() {
           onClick={() => {
             if (!playthroughId) return;
             useHistory.getState().enableAnalysis(playthroughId);
-            if (enabled)
-              void analyzeCampaign(entries, playthroughId).catch((error) =>
+            if (!enabled) return;
+            // A retry ignores earlier attempts, but analyzed saves stay.
+            const pending = pendingCampaignAnalysis(entries, playthroughId, new Set());
+            if (pending.length)
+              void analyzeCampaign(pending, playthroughId).catch((error) =>
                 useHistory.setState({ issues: [String(error)] }),
               );
           }}

@@ -8,15 +8,13 @@ vi.mock("@/wasm/wasm_eu5", () => ({
   ImportLoader: { open: mocks.open },
 }));
 import { parseImport } from "./snapshot-worker";
+const snapshot = { descriptor: { id: "eu5:checksum" }, data: new Uint8Array([1]) };
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(new Uint8Array([1]))));
   mocks.open.mockResolvedValue({ meta: mocks.meta, parse_import: mocks.parse, free: mocks.free });
   mocks.meta.mockReturnValue({ playthroughId: "campaign" });
-  mocks.parse.mockReturnValue({
-    observation: { contentHash: "checksum", extractorVersion: 1, campaignId: "campaign" },
-    projection: {},
-  });
+  mocks.parse.mockReturnValue(snapshot);
 });
 afterEach(() => vi.unstubAllGlobals());
 it("uses one full parser with no game or localization asset reads", async () => {
@@ -24,30 +22,8 @@ it("uses one full parser with no game or localization asset reads", async () => 
   const result = await parseImport(file);
   expect(mocks.open).toHaveBeenCalledExactlyOnceWith(file);
   expect(mocks.parse).toHaveBeenCalledExactlyOnceWith();
-  expect(result.descriptor).toMatchObject({
-    id: "eu5:1:checksum",
-    game: "eu5",
-    contentHash: "checksum",
-    artifacts: ["observations", "map"],
-  });
-  expect(result.descriptor).not.toHaveProperty("fileName");
+  expect(result).toBe(snapshot);
   expect(vi.mocked(fetch).mock.calls.every(([url]) => String(url).includes("eu5.bin"))).toBe(true);
-});
-it("refuses parser output from another extractor version", async () => {
-  mocks.parse.mockReturnValue({
-    observation: { contentHash: "checksum", extractorVersion: 2, campaignId: "campaign" },
-    projection: {},
-  });
-  await expect(parseImport(new File(["save"], "test.eu5"))).rejects.toThrow("accepts 1");
-});
-it("accepts the extractor version of the Rust extractor", async () => {
-  const { readFile } = await import("node:fs/promises");
-  const { EU5_EXTRACTOR_VERSION } = await import("./analysisTypes");
-  const rust = await readFile(
-    new URL("../../../../../eu5app/src/map_projection.rs", import.meta.url),
-    "utf8",
-  );
-  expect(rust).toContain(`pub const EXTRACTOR_VERSION: u32 = ${EU5_EXTRACTOR_VERSION};`);
 });
 it("reuses initialization and parses a later file after an ordinary parse failure", async () => {
   mocks.parse.mockImplementationOnce(() => {

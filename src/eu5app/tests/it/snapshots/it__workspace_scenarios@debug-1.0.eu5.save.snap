@@ -150,7 +150,7 @@ input_file: src/eu5app/tests/it/saves.d/debug-1.0.eu5.save
     }
   },
   "past_political": null,
-  "projection": "0x112c12d9b5d4e8f4",
+  "projection": "0xc4a0acf24b693fe7",
   "save_version": "1.0.0",
   "selected": {
     "locations": "0x130597316c7a4ea4",
