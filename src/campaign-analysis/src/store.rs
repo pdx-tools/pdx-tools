@@ -152,10 +152,11 @@ pub struct Appended<D> {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct StoreMemory {
-    /// Logical retained columns, key elements, and canonical text. Registry
-    /// overhead and spare capacity are outside the limit.
+    /// Retained column data and shared key data. The admission limit uses
+    /// this count. Registry overhead and spare capacity are excluded.
     pub buffer_bytes: usize,
-    /// Allocated column and key storage. Registry overhead is excluded.
+    /// Diagnostic column and key capacity. The limit does not use this count.
+    /// Registry overhead is excluded.
     pub allocated_bytes: usize,
     pub allocated_column_bytes: usize,
     pub allocated_key_bytes: usize,
@@ -200,8 +201,9 @@ impl<G: Game> Store<G> {
             .map(|snapshot| snapshot.descriptor.campaign_id.as_str())
     }
 
-    /// Add a snapshot. All bytes of the store, with the bytes that it adds,
-    /// must fit in `limit_bytes`.
+    /// Add a snapshot if retained data fits in `limit_bytes`. Count column
+    /// data and shared key data once. The snapshot is already in memory.
+    /// Temporary data, spare capacity, and registry overhead are excluded.
     pub fn append(
         &mut self,
         observation: Observation<G>,

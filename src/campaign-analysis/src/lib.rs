@@ -6,12 +6,18 @@
 //! ([`Observation::encode`]). JavaScript moves those bytes to the analysis
 //! worker and does not read them. The worker keeps them in a [`Session`].
 //!
-//! Tables keep typed keys and immutable row columns. See the crate README
-//! and `examples/market_goods.rs` for payload, registry, and query examples.
+//! Tables keep typed keys and immutable row columns. Keys must implement
+//! `Copy`. Use domain IDs or composite IDs for table keys.
+//! If a table needs text keys, add a store dictionary and use its IDs as keys.
+//!
+//! The store counts column data and shared key data once for admission.
+//! This count excludes spare capacity, lookup maps, and temporary data.
+//! Set the admission limit below the available memory to leave room for
+//! these allocations. The limit does not guarantee that an import fits
+//! in memory. Allocation counts are diagnostic values only.
 
 mod columns;
 mod descriptor;
-mod key_memory;
 mod query;
 mod session;
 mod snapshot;
@@ -26,7 +32,6 @@ pub use columns::{
     ReferenceError, RowColumns, check_length,
 };
 pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
-pub use key_memory::{InlineKeys, KeyMemory, KeyStorage, StringKeys};
 pub use query::{
     History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, View,
 };
@@ -38,7 +43,7 @@ pub use table::{
     PreparedIndex, RegistryMemory, ResolvedBatch, Row, RowError, RowRange, RowSelect,
     SelectionRows, Table, TableError,
 };
-pub use text::{PreparedText, TextRegistry, decode_text_dictionary, encode_text_dictionary};
+pub use text::{decode_text_dictionary, encode_text_dictionary};
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;

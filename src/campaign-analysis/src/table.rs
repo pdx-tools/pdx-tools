@@ -1,8 +1,5 @@
 //! Typed keys and immutable, aligned table columns.
-use crate::{
-    ColumnError, Columns, DecodeError, Decoder, Encoder, InlineKeys, KeyMemory, KeyStorage,
-    RowColumns,
-};
+use crate::{ColumnError, Columns, DecodeError, Decoder, Encoder, RowColumns};
 use std::cell::{Cell, OnceCell};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -87,6 +84,7 @@ pub trait PrefixKey: Ord {
     fn prefix(&self) -> &Self::Prefix;
 }
 
+/// A table with fixed-size keys. Use domain IDs or composite IDs for keys.
 #[derive(Debug, Clone)]
 pub struct Table<K, C> {
     index: Rc<KeyIndex<K>>,
@@ -97,7 +95,7 @@ impl<K: PartialEq, C: PartialEq> PartialEq for Table<K, C> {
         self.index.keys == other.index.keys && self.columns == other.columns
     }
 }
-impl<K: Ord, C: RowColumns> Table<K, C> {
+impl<K: Copy + Ord, C: RowColumns> Table<K, C> {
     /// Construct an analytical table. Keys must be strictly increasing.
     pub fn sorted(keys: Vec<K>, columns: C) -> Result<Self, TableError> {
         Self::new(keys, columns, true)
@@ -139,7 +137,7 @@ impl<K: Ord, C: RowColumns> Table<K, C> {
         })
     }
     /// Construct a sorted composite table and check the declared prefix order.
-    /// Use this constructor with `prefix_range`. See `examples/market_goods.rs`.
+    /// Use this constructor with `prefix_range`.
     pub fn sorted_prefix(keys: Vec<K>, columns: C) -> Result<Self, TableError>
     where
         K: PrefixKey,
@@ -191,7 +189,7 @@ impl<K: Ord, C: RowColumns> Table<K, C> {
         .map_err(DecodeError::Table)
     }
 }
-impl<K: Ord + Clone + Hash, C> Table<K, C> {
+impl<K: Copy + Ord + Hash, C> Table<K, C> {
     pub fn row(&self, key: &K) -> Option<Row> {
         let offset = if self.index.sorted {
             self.index.keys.binary_search(key).ok().map(|x| x as u32)
@@ -201,7 +199,7 @@ impl<K: Ord + Clone + Hash, C> Table<K, C> {
                 .get_or_init(|| {
                     self.keys()
                         .iter()
-                        .cloned()
+                        .copied()
                         .enumerate()
                         .map(|(i, k)| (k, i as u32))
                         .collect()
@@ -213,28 +211,6 @@ impl<K: Ord + Clone + Hash, C> Table<K, C> {
             index: self.index.id,
             offset,
         })
-    }
-}
-impl<K: PartialEq, C> Table<K, C> {
-    /// Replace allocations while preserving key content and order. Use this
-    /// operation to resolve text through a prepared text registry.
-    pub fn canonicalize_keys(&mut self, mut resolve: impl FnMut(&K) -> K) {
-        let keys: Vec<_> = self
-            .keys()
-            .iter()
-            .map(|key| {
-                let canonical = resolve(key);
-                assert!(canonical == *key, "canonical keys must preserve identity");
-                canonical
-            })
-            .collect();
-        self.index = Rc::new(KeyIndex {
-            id: next_index(),
-            keys,
-            sorted: self.index.sorted,
-            prefix_sorted: self.index.prefix_sorted,
-            rows: OnceCell::new(),
-        });
     }
 }
 impl<K, C: Columns> Table<K, C> {
@@ -435,7 +411,7 @@ impl<'q, K> RowSelect<'q, K> {
         }
     }
 }
-impl<K: Ord + Clone + Hash> RowSelect<'_, K> {
+impl<K: Copy + Ord + Hash> RowSelect<'_, K> {
     /// Resolve and bind in one operation. The resolved offsets come from this
     /// table, so no rebinding identity check is required.
     pub fn resolve_bound<'r, 't, C>(
@@ -508,25 +484,17 @@ impl<K, C> BoundRows<'_, '_, K, C> {
 }
 
 /// A typed registry. Fingerprint collisions use exact ordered-key comparison.
-/// Declare one registry for each table schema. See `examples/market_goods.rs`
-/// for a prepared append with both index and text registry plans.
+/// Declare one registry for each table schema. Keys must implement `Copy`.
 #[derive(Debug)]
-pub struct IndexRegistry<K, M = InlineKeys> {
-    buckets: HashMap<u64, Vec<RegisteredIndex<K>>>,
+pub struct IndexRegistry<K> {
+    buckets: HashMap<u64, Vec<Rc<KeyIndex<K>>>>,
     layouts: HashMap<String, Rc<KeyIndex<K>>>,
-    memory: std::marker::PhantomData<M>,
 }
-#[derive(Debug)]
-struct RegisteredIndex<K> {
-    index: Rc<KeyIndex<K>>,
-    memory: KeyMemory,
-}
-impl<K, M> Default for IndexRegistry<K, M> {
+impl<K> Default for IndexRegistry<K> {
     fn default() -> Self {
         Self {
             buckets: HashMap::new(),
             layouts: HashMap::new(),
-            memory: std::marker::PhantomData,
         }
     }
 }
@@ -536,17 +504,19 @@ pub struct PreparedIndex<K> {
     index: Rc<KeyIndex<K>>,
     new: bool,
     layout: Option<String>,
-    memory: KeyMemory,
+    bytes: usize,
 }
 impl<K> PreparedIndex<K> {
     pub fn added_bytes(&self) -> usize {
-        if self.new { self.memory.data_bytes } else { 0 }
+        self.bytes
     }
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RegistryMemory {
     pub data_bytes: usize,
+    /// Diagnostic key capacity. The admission limit excludes this count.
     pub allocated_bytes: usize,
+    /// An estimate of lookup storage. The admission limit excludes this count.
     pub lookup_bytes: usize,
     pub indexes: usize,
 }
@@ -561,7 +531,7 @@ impl std::ops::Add for RegistryMemory {
         }
     }
 }
-impl<K: Eq + Hash, M: KeyStorage<K>> IndexRegistry<K, M> {
+impl<K: Copy + Eq + Hash> IndexRegistry<K> {
     /// Prepare sharing without changing the registry or an existing lookup.
     pub fn prepare<C>(
         &self,
@@ -578,7 +548,7 @@ impl<K: Eq + Hash, M: KeyStorage<K>> IndexRegistry<K, M> {
                 index: Rc::clone(&table.index),
                 new: false,
                 layout: None,
-                memory: KeyMemory::default(),
+                bytes: 0,
             });
         }
         let mut hash = std::hash::DefaultHasher::new();
@@ -598,52 +568,35 @@ impl<K: Eq + Hash, M: KeyStorage<K>> IndexRegistry<K, M> {
             return Err(crate::AnalysisError::IncompatibleLayout);
         }
         let existing = self.buckets.get(&hash).and_then(|bucket| {
-            bucket.iter().map(|entry| &entry.index).find(|index| {
+            bucket.iter().find(|index| {
                 index.keys == table.index.keys && index.prefix_sorted == table.index.prefix_sorted
             })
         });
         if let Some(index) = existing {
             table.index = Rc::clone(index);
         }
-        let memory = if existing.is_none() {
-            let extra = M::extra_memory(table.keys());
-            KeyMemory {
-                data_bytes: table
-                    .len()
-                    .checked_mul(size_of::<K>())
-                    .and_then(|bytes| bytes.checked_add(extra.data_bytes))
-                    .ok_or(crate::AnalysisError::MemoryFull)?,
-                allocated_bytes: table
-                    .index
-                    .keys
-                    .capacity()
-                    .checked_mul(size_of::<K>())
-                    .and_then(|bytes| bytes.checked_add(extra.allocated_bytes))
-                    .ok_or(crate::AnalysisError::MemoryFull)?,
-            }
+        let bytes = if existing.is_none() {
+            std::mem::size_of_val(table.keys())
         } else {
-            KeyMemory::default()
+            0
         };
         Ok(PreparedIndex {
             hash,
             index: Rc::clone(&table.index),
             new: existing.is_none(),
             layout: layout.map(str::to_owned),
-            memory,
+            bytes,
         })
     }
 }
-impl<K, M> IndexRegistry<K, M> {
+impl<K> IndexRegistry<K> {
     /// Commit a plan from the same exclusive append operation.
     pub fn commit(&mut self, plan: PreparedIndex<K>) {
         if plan.new {
             self.buckets
                 .entry(plan.hash)
                 .or_default()
-                .push(RegisteredIndex {
-                    index: Rc::clone(&plan.index),
-                    memory: plan.memory,
-                });
+                .push(Rc::clone(&plan.index));
         }
         if let Some(layout) = plan.layout {
             self.layouts.insert(layout, plan.index);
@@ -651,15 +604,14 @@ impl<K, M> IndexRegistry<K, M> {
     }
     pub fn memory(&self) -> RegistryMemory {
         let mut result = RegistryMemory::default();
-        for entry in self.buckets.values().flatten() {
-            let index = &entry.index;
+        for index in self.buckets.values().flatten() {
             result.indexes += 1;
-            result.data_bytes += entry.memory.data_bytes;
-            result.allocated_bytes += entry.memory.allocated_bytes;
-            result.lookup_bytes += index.rows.get().map_or(0, |rows| {
-                rows.capacity() * (size_of::<(K, u32)>() + 1) + entry.memory.allocated_bytes
-                    - index.keys.capacity() * size_of::<K>()
-            });
+            result.data_bytes += std::mem::size_of_val(index.keys.as_slice());
+            result.allocated_bytes += index.keys.capacity() * size_of::<K>();
+            result.lookup_bytes += index
+                .rows
+                .get()
+                .map_or(0, |rows| rows.capacity() * (size_of::<(K, u32)>() + 1));
         }
         result
     }
@@ -752,11 +704,10 @@ mod tests {
     }
 
     #[test]
-    fn construction_and_encoding_do_not_require_clone_or_hash() {
-        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+    fn construction_and_encoding_do_not_require_hash() {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         struct Ordered(u32);
-        let mut table = Table::sorted(vec![Ordered(1)], vec![7u8]).unwrap();
-        table.canonicalize_keys(|key| Ordered(key.0));
+        let table = Table::sorted(vec![Ordered(1)], vec![7u8]).unwrap();
         let mut out = Encoder::new();
         table.encode_with(&mut out, |keys, out| out.column(&[keys[0].0]));
         let bytes = out.finish();
@@ -767,15 +718,9 @@ mod tests {
             .unwrap();
         assert_eq!(table, decoded);
 
-        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         struct Key(u32);
-        struct Storage;
-        impl KeyStorage<Key> for Storage {
-            fn extra_memory(_: &[Key]) -> KeyMemory {
-                KeyMemory::default()
-            }
-        }
-        let mut registry = IndexRegistry::<Key, Storage>::default();
+        let mut registry = IndexRegistry::<Key>::default();
         let mut table = Table::sorted(vec![Key(1)], vec![7u8]).unwrap();
         let plan = registry.prepare(&mut table, None).unwrap();
         registry.commit(plan);
@@ -788,56 +733,34 @@ mod tests {
     }
 
     #[test]
-    fn owned_key_memory_is_counted_once_and_capacity_is_separate() {
-        let mut text = String::with_capacity(128);
-        text.push_str("iron");
-        let capacity = text.capacity();
+    fn composite_key_data_is_counted_once_and_capacity_is_separate() {
+        type Key = (u32, u32);
         let mut keys = Vec::with_capacity(4);
-        keys.push(text);
+        keys.push((1u32, 2u32));
         let key_capacity = keys.capacity();
         let mut first = Table::sorted(keys, vec![1u8]).unwrap();
-        let mut registry = IndexRegistry::<String, crate::StringKeys>::default();
+        let mut registry = IndexRegistry::<Key>::default();
         let plan = registry.prepare(&mut first, None).unwrap();
-        assert_eq!(plan.added_bytes(), size_of::<String>() + 4);
+        assert_eq!(plan.added_bytes(), size_of::<Key>());
         assert_eq!(registry.memory().data_bytes, 0);
         drop(plan);
         assert_eq!(registry.memory().indexes, 0);
         let plan = registry.prepare(&mut first, None).unwrap();
         registry.commit(plan);
-        assert_eq!(registry.memory().data_bytes, size_of::<String>() + 4);
+        assert_eq!(registry.memory().data_bytes, size_of::<Key>());
         assert_eq!(
             registry.memory().allocated_bytes,
-            key_capacity * size_of::<String>() + capacity
+            key_capacity * size_of::<Key>()
         );
-        let mut equal = Table::sorted(vec![String::from("iron")], vec![2u8]).unwrap();
+        let mut equal = Table::sorted(vec![(1u32, 2u32)], vec![2u8]).unwrap();
         let plan = registry.prepare(&mut equal, None).unwrap();
         assert_eq!(plan.added_bytes(), 0);
         registry.commit(plan);
         assert_eq!(first.index_id(), equal.index_id());
         assert_eq!(
             registry.memory().allocated_bytes,
-            key_capacity * size_of::<String>() + capacity
+            key_capacity * size_of::<Key>()
         );
-    }
-
-    #[test]
-    fn key_memory_overflow_does_not_change_the_registry() {
-        struct Overflow;
-        impl KeyStorage<u32> for Overflow {
-            fn extra_memory(_: &[u32]) -> KeyMemory {
-                KeyMemory {
-                    data_bytes: usize::MAX,
-                    allocated_bytes: 0,
-                }
-            }
-        }
-        let registry = IndexRegistry::<u32, Overflow>::default();
-        let mut table = Table::sorted(vec![1u32], vec![1u8]).unwrap();
-        assert_eq!(
-            registry.prepare(&mut table, None).unwrap_err(),
-            crate::AnalysisError::MemoryFull
-        );
-        assert_eq!(registry.memory().indexes, 0);
     }
 
     #[test]
@@ -864,7 +787,7 @@ mod tests {
 
     #[test]
     fn prefix_order_is_checked_separately_from_key_order() {
-        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         struct Key {
             order: u8,
             prefix: u8,
