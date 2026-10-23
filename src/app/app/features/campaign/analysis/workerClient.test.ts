@@ -40,7 +40,7 @@ const memory = (bufferBytes: number): ResidentMemory => ({
   wasmBytes: 65536,
 });
 const output = (bytes = 80) => ({
-  descriptor: { id: "test:1:a", campaignId: "campaign" } as SnapshotDescriptor,
+  descriptor: { id: "test:a", campaignId: "campaign" } as SnapshotDescriptor,
   data: new Uint8Array(bytes) as SnapshotData<"test">,
 });
 

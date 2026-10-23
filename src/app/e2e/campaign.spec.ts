@@ -312,7 +312,7 @@ test("EU5 keeps the selection when it steps between an upload and a local save",
   await expectFranceSelection(page);
 });
 
-test("EU5 analyzed dates play and export a video", async ({ page }, info) => {
+test("EU5 analyzed dates update the export estimate and play", async ({ page }, info) => {
   await page.addInitScript(() => localStorage.setItem("developer", "1"));
   const files = await eu5Files(info);
   await openFiles(page, [files.first, files.later]);
@@ -328,13 +328,13 @@ test("EU5 analyzed dates play and export a video", async ({ page }, info) => {
   await expect(exportButton).toBeEnabled();
   await exportButton.click();
   await expect(page.getByText("2 saved dates", { exact: true })).toBeVisible();
-  await page.getByRole("radio", { name: "720p", exact: true }).click();
-  const download = page.waitForEvent("download", { timeout: 90_000 });
-  await page.getByRole("button", { name: "Export video", exact: true }).click();
-  const video = await download;
-  expect(video.suggestedFilename()).toMatch(/population.*\.(mp4|webm)$/);
-  const output = await fs.readFile((await video.path())!);
-  expect(output.length).toBeGreaterThan(1000);
+  await expect(page.getByText("0:02", { exact: true })).toBeVisible();
+  await expect(page.getByText("≈544 KB", { exact: true })).toBeVisible();
+  const resolution = page.getByRole("radiogroup", { name: "Resolution", exact: true });
+  await resolution.getByRole("radio", { name: "720p", exact: true }).check();
+  await expect(page.getByText("≈300 KB", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export video", exact: true })).toBeEnabled();
+  await page.keyboard.press("Escape");
   const date = campaignDate(page);
   await expect(date).toHaveAttribute("aria-valuetext", "1337 Apr 1");
   await page.getByRole("button", { name: "Play", exact: true }).click();

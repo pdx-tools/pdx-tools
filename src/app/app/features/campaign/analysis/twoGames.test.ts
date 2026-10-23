@@ -38,14 +38,13 @@ const gameOf = (url: string | URL) =>
   String(url).includes("/eu4/") ? "eu4" : String(url).includes("/eu5/") ? "eu5" : String(url);
 
 const descriptor = (game: string, hash: string, campaignId: string): SnapshotDescriptor => ({
-  id: `${game}:1:${hash}`,
+  id: `${game}:${hash}`,
   game,
   campaignId,
   contentHash: hash,
   date: "1444-11-11",
   dateSort: 14441111,
   gameVersion: "1.0.0",
-  extractorVersion: 1,
   layoutKey: game,
   artifacts: ["observations"],
 });

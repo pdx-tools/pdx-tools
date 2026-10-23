@@ -37,19 +37,16 @@ impl<G: Game> Observation<G> {
         encode::<G>(&self.descriptor, &self.detail, &self.payload)
     }
 
-    /// Read a snapshot of game `G`. A snapshot of another game or another
-    /// extractor version gives an error before its payload is read.
+    /// Read a snapshot of game `G`. A snapshot of another game gives an
+    /// error before its payload is read.
     pub fn decode(bytes: &[u8]) -> Result<Self, AnalysisError> {
         let mut input = Decoder::new(bytes);
         if input.raw(MAGIC.len())? != MAGIC {
             return Err(DecodeError::NotASnapshot.into());
         }
         let descriptor: SnapshotDescriptor = header(&input.column::<u8>()?)?;
-        if descriptor.game != G::GAME || descriptor.extractor_version != G::EXTRACTOR_VERSION {
-            return Err(AnalysisError::WrongGame {
-                game: G::GAME,
-                version: G::EXTRACTOR_VERSION,
-            });
+        if descriptor.game != G::GAME {
+            return Err(AnalysisError::WrongGame { game: G::GAME });
         }
         let detail = header(&input.column::<u8>()?)?;
         let payload = G::Payload::decode(&mut input)?;

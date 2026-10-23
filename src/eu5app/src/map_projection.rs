@@ -5,11 +5,6 @@ use eu5save::models::{CountryId, Gamestate, Location, LocationId, Locations, Met
 use pdx_map::GpuColor;
 use std::{collections::BTreeMap, io::Write};
 
-/// The version of the campaign analysis payload. Increase it when the schema,
-/// calculations, or precision of the projection change, so that the store does
-/// not mix old and new snapshots.
-pub const EXTRACTOR_VERSION: u32 = 2;
-
 pub const FRACTION_SCALE: f64 = u16::MAX as f64;
 
 /// A location with no owner, controller, religion or market.

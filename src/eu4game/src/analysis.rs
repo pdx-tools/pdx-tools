@@ -9,9 +9,6 @@ use campaign_analysis::{
 use eu4save::{PdsDate, ProvinceId, models::Province, query::Query};
 use std::hash::{Hash, Hasher};
 
-/// Changes when the observations or their calculations change.
-pub const EXTRACTOR_VERSION: u32 = 1;
-
 /// The development of a province, as the province list of the viewer shows it.
 pub fn province_development(province: &Province) -> f32 {
     province.base_tax + province.base_production + province.base_manpower
@@ -146,7 +143,6 @@ pub struct Eu4Analysis;
 
 impl Game for Eu4Analysis {
     const GAME: &'static str = "eu4";
-    const EXTRACTOR_VERSION: u32 = EXTRACTOR_VERSION;
     const ARTIFACTS: &'static [&'static str] = &["observations"];
     type Detail = Eu4Detail;
     type Payload = Eu4Payload;

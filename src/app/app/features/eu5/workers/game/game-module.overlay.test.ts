@@ -61,7 +61,6 @@ const frame = (id: string): Eu5Snapshot => ({
     date: "1360-01-01",
     dateSort: 13600101,
     gameVersion: "1.0",
-    extractorVersion: 1,
     artifacts: ["observations", "map"],
     layoutKey: "same",
     world: { locationCount: 0, countryCount: 0, totalPopulation: 0 },

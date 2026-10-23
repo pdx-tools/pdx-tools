@@ -48,11 +48,9 @@ pub use text::{decode_text_dictionary, encode_text_dictionary};
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
 
-/// The snapshot rules of one game and one extractor version.
+/// The snapshot rules of one game.
 pub trait Game: Sized + 'static {
     const GAME: &'static str;
-    /// Changes when the payload or its calculations change.
-    const EXTRACTOR_VERSION: u32;
     /// The kinds of data in the payload, such as "observations" or "map".
     const ARTIFACTS: &'static [&'static str];
     /// The descriptor fields of this game: a struct with named fields, as
@@ -147,7 +145,6 @@ mod tests {
 
     impl Game for TestGame {
         const GAME: &'static str = "test";
-        const EXTRACTOR_VERSION: u32 = 3;
         const ARTIFACTS: &'static [&'static str] = &["observations"];
         type Detail = Tag;
         type Payload = Values;
@@ -232,7 +229,7 @@ mod tests {
     #[test]
     fn makes_the_descriptor_from_the_game_and_the_save() {
         let descriptor = descriptor("hash", 14441111, "layout");
-        assert_eq!(descriptor.id, "test:3:hash");
+        assert_eq!(descriptor.id, "test:hash");
         assert_eq!(descriptor.date, "1444-11-11");
         assert_eq!(descriptor.date_sort, 14441111);
         assert_eq!(descriptor.artifacts, ["observations"]);
@@ -257,14 +254,11 @@ mod tests {
     fn refuses_other_games_and_damaged_bytes() {
         let bytes = observation(descriptor("a", 14441111, "layout"), &[42]).encode();
         let mut other = descriptor("a", 14441111, "layout");
-        other.extractor_version = 2;
+        other.game = String::from("other");
         let other = observation(other, &[42]).encode();
         assert_eq!(
             Observation::<TestGame>::decode(&other).unwrap_err(),
-            AnalysisError::WrongGame {
-                game: "test",
-                version: 3
-            }
+            AnalysisError::WrongGame { game: "test" }
         );
         assert_eq!(
             Observation::<TestGame>::decode(b"nope").unwrap_err(),
@@ -347,7 +341,7 @@ mod tests {
                     ..next()
                 },
                 vec![42, 43],
-                "accepts test snapshots from extractor 3",
+                "accepts test snapshots",
             ),
             (
                 SnapshotDescriptor {
@@ -472,13 +466,13 @@ mod tests {
         let session = session();
         let some = Selection::Ids {
             ids: vec![
-                snapshot_id("test", 3, "c"),
-                snapshot_id("test", 3, "a"),
-                snapshot_id("test", 3, "missing"),
+                snapshot_id("test", "c"),
+                snapshot_id("test", "a"),
+                snapshot_id("test", "missing"),
             ],
         };
         let reply = session.query(request(TestQuery::Count, some));
-        assert_eq!(reply.snapshot_ids, ["test:3:a", "test:3:c"]);
+        assert_eq!(reply.snapshot_ids, ["test:a", "test:c"]);
         assert!(matches!(
             reply.outcome,
             QueryOutcome::Ok {

@@ -8,7 +8,7 @@ vi.mock("@/wasm/wasm_eu5", () => ({
   ImportLoader: { open: mocks.open },
 }));
 import { parseImport } from "./snapshot-worker";
-const snapshot = { descriptor: { id: "eu5:1:checksum" }, data: new Uint8Array([1]) };
+const snapshot = { descriptor: { id: "eu5:checksum" }, data: new Uint8Array([1]) };
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(new Uint8Array([1]))));

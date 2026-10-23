@@ -45,7 +45,6 @@ pub enum AnalysisError {
     Stale,
     WrongGame {
         game: &'static str,
-        version: u32,
     },
     Decode(DecodeError),
     Table(crate::TableError),
@@ -105,10 +104,7 @@ impl fmt::Display for AnalysisError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AnalysisError::Stale => write!(f, "Campaign analysis was cleared during the import"),
-            AnalysisError::WrongGame { game, version } => write!(
-                f,
-                "This store accepts {game} snapshots from extractor {version}"
-            ),
+            AnalysisError::WrongGame { game } => write!(f, "This store accepts {game} snapshots"),
             AnalysisError::Decode(error) => error.fmt(f),
             AnalysisError::Table(error) => error.fmt(f),
             AnalysisError::InvalidDescriptor => write!(f, "Invalid snapshot descriptor"),
@@ -214,20 +210,12 @@ impl<G: Game> Store<G> {
             detail,
             mut payload,
         } = observation;
-        if descriptor.game != G::GAME || descriptor.extractor_version != G::EXTRACTOR_VERSION {
-            return Err(AnalysisError::WrongGame {
-                game: G::GAME,
-                version: G::EXTRACTOR_VERSION,
-            });
+        if descriptor.game != G::GAME {
+            return Err(AnalysisError::WrongGame { game: G::GAME });
         }
         if descriptor.content_hash.is_empty()
             || descriptor.campaign_id.is_empty()
-            || descriptor.id
-                != snapshot_id(
-                    &descriptor.game,
-                    descriptor.extractor_version,
-                    &descriptor.content_hash,
-                )
+            || descriptor.id != snapshot_id(&descriptor.game, &descriptor.content_hash)
         {
             return Err(AnalysisError::InvalidDescriptor);
         }

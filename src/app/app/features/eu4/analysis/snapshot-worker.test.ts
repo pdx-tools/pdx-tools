@@ -22,7 +22,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 it("gives the snapshot of the parser to the session and transfers its bytes", async () => {
-  const snapshot = { descriptor: { id: "eu4:1:checksum" }, data: new Uint8Array([1, 2]) };
+  const snapshot = { descriptor: { id: "eu4:checksum" }, data: new Uint8Array([1, 2]) };
   mocks.parse.mockReturnValue(snapshot);
   const result = await parseImport(new File(["save"], "test.eu4"));
   expect(mocks.parse).toHaveBeenCalledExactlyOnceWith(

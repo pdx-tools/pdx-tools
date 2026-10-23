@@ -24,7 +24,7 @@ const parser: ParserAdapter<Api, Output> = {
 };
 
 const descriptor = (name: string) =>
-  ({ id: `test:1:${name}`, campaignId: "campaign", dateSort: 1 }) as SnapshotDescriptor;
+  ({ id: `test:${name}`, campaignId: "campaign", dateSort: 1 }) as SnapshotDescriptor;
 
 /** A session that stores each output, or follows `append` when it is given. */
 function sink(append?: (output: Output) => Promise<AppendResult<SnapshotDescriptor>>) {

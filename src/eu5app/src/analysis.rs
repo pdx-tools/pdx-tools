@@ -3,8 +3,7 @@
 
 use crate::insights::WorldSummary;
 use crate::map_projection::{
-    EXTRACTOR_VERSION, MapProjection, MapProjectionData, MapProjectionError,
-    ValidatedMapProjectionData,
+    MapProjection, MapProjectionData, MapProjectionError, ValidatedMapProjectionData,
 };
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
@@ -192,7 +191,6 @@ pub struct Eu5Analysis;
 
 impl Game for Eu5Analysis {
     const GAME: &'static str = "eu5";
-    const EXTRACTOR_VERSION: u32 = EXTRACTOR_VERSION;
     const ARTIFACTS: &'static [&'static str] = &["observations", "map"];
     type Detail = Eu5Detail;
     type Payload = Eu5Payload;
