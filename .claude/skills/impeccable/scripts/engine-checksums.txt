@@ -1,0 +1,9 @@
+# Engine binary digests for the pinned ENGINE_VERSION: <engine-version> <asset> <sha256>.
+# The launchers, the npm shim, `impeccable install` and scripts/fetch-engine.mjs verify
+# every engine download against this file. Written by
+# `node scripts/check-engine-release.mjs --record` after each engine release.
+0.1.17 impeccable-darwin-arm64 71a53f37750ef94322855454a869e941ea3774d86d2634867ebf95e0684f7ea1
+0.1.17 impeccable-darwin-x64 6bd3afca7b3a3b950bcc40c970dc31144cb3317aef8d8e8224b55af603c716eb
+0.1.17 impeccable-linux-x64 44c0d601e985980a9c39718fee15b48a8f7cbe67779f6ae05efe9124817ab629
+0.1.17 impeccable-linux-arm64 bc2670ba2eb329b0b45ffe8853f3e20eec078153be357075a597aefa22b1e2e6
+0.1.17 impeccable-windows-x64.exe edb62bff4ee48dc59b6b34f5788b9052ff0efc73019a4e4fc3b1067a4ebf94ee
