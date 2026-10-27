@@ -1429,7 +1429,11 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let all_missions = [
+        let has_dlc = |name: &str| self.save.meta.dlc_enabled.iter().any(|x| x == name);
+        let done = |mission: &str| self.country.completed_missions.iter().any(|x| x == mission);
+        let all_done = |missions: &[&str]| missions.iter().all(|x| done(x));
+
+        let emperor_missions = [
             "emp_hab_union_with_poland",
             "emp_hab_no_one_to_threaten_us",
             "emp_hab_imperial_border",
@@ -1475,12 +1479,83 @@ impl<'a> AchievementHunter<'a> {
             "conquer_transylvania",
             "austrian_italian_ambition",
             "emp_hab_imperial_capitals",
-        ]
-        .iter()
-        .all(|x| self.country.completed_missions.iter().any(|y| y == x));
+        ];
+
+        if self.patch < (1, 37) {
+            let desc = "completed the Austrian mission tree";
+            result.and(AchievementCondition::new(all_done(&emperor_missions), desc));
+            return result;
+        }
+
+        // Winds of Change replaces the Austrian mission tree. Where the tree
+        // gives a choice of two branches, one branch is sufficient.
+        let completed = if has_dlc("Winds of Change") {
+            let choices = [
+                (
+                    ["hab_imperial_borders", "hab_imperial_capitals"],
+                    ["hab_switzerland", "hab_develop_southern_germany"],
+                ),
+                (
+                    ["hab_a_holy_empire", "hab_true_holy_roman_emperor"],
+                    ["hab_bavaria", "hab_unify_germany"],
+                ),
+                (
+                    ["hab_imperial_ascendancy", "hab_a_roman_empire"],
+                    ["hab_brandenburg", "hab_prussian_officers"],
+                ),
+            ];
+
+            let winds_missions = [
+                "hab_milan",
+                "hab_croatia",
+                "hab_beat_up_ottomans",
+                "hab_tirol_silver_mine",
+                "hab_austria_prospers",
+                "hab_vienna_waltz",
+                "hab_secure_electors",
+                "hab_italian_ambition",
+                "hab_venetian_ports",
+                "hab_kingdom_of_italy",
+                "hab_decline_of_hungary",
+                "hab_crusade_ottomans",
+                "hab_liberate_balkans",
+                "hab_eastern_roman_empire",
+                "hab_balance_estates",
+                "hab_vienna_university",
+                "hab_von_raab",
+                "hab_naples",
+                "hab_hungary",
+                "hab_multicultural_empire",
+                "hab_the_last_knights",
+                "hab_aeiou",
+                "hab_weaken_france",
+                "hab_defeat_west_franks",
+                "hab_western_europe",
+                "hab_crown_of_bohemia",
+                "hab_surpass_poland",
+                "hab_king_of_poland",
+                "hab_ostend_company",
+                "hab_indian_trading",
+                "hab_austrian_australia",
+                "hab_balance_of_power",
+                "hab_spread_dynasty",
+                "hab_burgundy",
+                "hab_austrian_netherlands",
+                "hab_spain_pu",
+                "hab_iberian_hegemony",
+                "hab_silesia",
+                "hab_galicia",
+                "hab_china",
+                "hab_shift_in_balance",
+            ];
+
+            all_done(&winds_missions) && choices.iter().all(|(a, b)| all_done(a) || all_done(b))
+        } else {
+            has_dlc("Emperor") && all_done(&emperor_missions)
+        };
 
         let desc = "completed the Austrian mission tree";
-        result.and(AchievementCondition::new(all_missions, desc));
+        result.and(AchievementCondition::new(completed, desc));
 
         result
     }
