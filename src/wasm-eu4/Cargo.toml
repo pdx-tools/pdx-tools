@@ -15,7 +15,6 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["zstd_rust"]
 zstd_c = ["pdx-zstd/zstd_c", "eu4save/zstd_c", "eu4game/zstd_c"]
-zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto", "eu4save/zstd_c", "eu4game/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust", "eu4save/zstd_rust", "eu4game/zstd_rust"]
 
 [dependencies]
