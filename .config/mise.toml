@@ -6,8 +6,8 @@ min_version = "2026.9.17"
 "rust" = { version = "1.98.1" } # update in rust-toolchain.toml too!
 "github:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "github:F1bonacc1/process-compose" = { version = "1.122.0" }
-# Compiles zstd C code to wasm. Apply clang cannot compile to wasm32-unknown-unknown
-"github:WebAssembly/wasi-sdk" = { version = "wasi-sdk-29", strip_components = 1, bin_path = "bin", os = ["macos"] }
+# Compiles zstd C code to wasm. Apple clang and MSVC cannot compile to wasm32-unknown-unknown
+"github:WebAssembly/wasi-sdk" = { version = "wasi-sdk-29", strip_components = 1, bin_path = "bin", os = ["macos", "windows"] }
 "github:pnpm/pnpm" = { version = "12.4.1" }
 "github:rclone/rclone" = { version = "1.70.3" }
 "github:rustwasm/wasm-bindgen" = { version = "0.2.129", extract_all = "true" }
@@ -54,7 +54,6 @@ run = [
 [tasks."build:wasm:cargo"]
 usage = 'flag "--release"'
 run = "cargo build --profile {% if usage.release %}release{% else %}wasm-dev{% endif %} --target wasm32-unknown-unknown --no-default-features --features zstd_c -p wasm-*"
-run_windows = "cargo build --profile {% if usage.release %}release{% else %}wasm-dev{% endif %} --target wasm32-unknown-unknown --no-default-features --features zstd_rust -p wasm-*"
 hide = true
 
 [tasks."build:wasm:module"]
