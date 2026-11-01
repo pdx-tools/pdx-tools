@@ -6,7 +6,8 @@ min_version = "2026.9.17"
 "rust" = { version = "1.98.1" } # update in rust-toolchain.toml too!
 "github:cargo-bins/cargo-binstall" = { version = "1.12.5" }
 "github:F1bonacc1/process-compose" = { version = "1.122.0" }
-"github:llvm/llvm-project" = { version = "llvmorg-19.1.7", matching = "LLVM-", strip_components = 1, bin_path = "bin", os = ["macos"] }
+# Compiles zstd C code to wasm. Apply clang cannot compile to wasm32-unknown-unknown
+"github:WebAssembly/wasi-sdk" = { version = "wasi-sdk-29", strip_components = 1, bin_path = "bin", os = ["macos"] }
 "github:pnpm/pnpm" = { version = "12.4.1" }
 "github:rclone/rclone" = { version = "1.70.3" }
 "github:rustwasm/wasm-bindgen" = { version = "0.2.129", extract_all = "true" }

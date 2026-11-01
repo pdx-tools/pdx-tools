@@ -525,6 +525,36 @@ checksum = "sha256:17a2cbeac6b5693c5fbafab3838d3c65fd9c1eb38b05f5baec6c657e8c849
 url = "https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-windows.tar.gz"
 url_api = "https://api.github.com/repos/WebAssembly/binaryen/releases/assets/580050907"
 
+[[tools."github:WebAssembly/wasi-sdk"]]
+version = "wasi-sdk-29"
+backend = "github:WebAssembly/wasi-sdk"
+specifiers = ["wasi-sdk-29"]
+
+[tools."github:WebAssembly/wasi-sdk"."platforms.linux-arm64"]
+checksum = "sha256:052ad773397dc9e5aa99fb4cfef694175e6b1e81bb2ad1d3c8e7b3fc81441b7c"
+url = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-arm64-linux.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/wasi-sdk/releases/assets/316597199"
+
+[tools."github:WebAssembly/wasi-sdk"."platforms.linux-x64"]
+checksum = "sha256:87d1d1a2879d139cdc624b968efad3d4a97b8078cdff95e63ac88ecafd1a0171"
+url = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-linux.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/wasi-sdk/releases/assets/316597213"
+
+[tools."github:WebAssembly/wasi-sdk"."platforms.macos-arm64"]
+checksum = "sha256:e11552913e3f99e834d7fe7da1bd081abaf764759ed76b6097a34c63fc83665e"
+url = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-arm64-macos.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/wasi-sdk/releases/assets/316597200"
+
+[tools."github:WebAssembly/wasi-sdk"."platforms.macos-x64"]
+checksum = "sha256:d0de2fd3ea5c57060efa87e4356c164bec3689972f2386f0c9a89c58e10cec8d"
+url = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-macos.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/wasi-sdk/releases/assets/316597225"
+
+[tools."github:WebAssembly/wasi-sdk"."platforms.windows-x64"]
+checksum = "sha256:6c19b820577486f00332ad8d04ac506da67b0892316b8d485371a58cbf216dee"
+url = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-windows.tar.gz"
+url_api = "https://api.github.com/repos/WebAssembly/wasi-sdk/releases/assets/316597228"
+
 [[tools."github:cargo-bins/cargo-binstall"]]
 version = "1.12.5"
 backend = "github:cargo-bins/cargo-binstall"
@@ -601,30 +631,6 @@ matching = "clang"
 [tools."github:google/flatbuffers"."platforms.macos-x64"]
 url = "https://github.com/google/flatbuffers/releases/download/v25.2.10/MacIntel.flatc.binary.zip"
 url_api = "https://api.github.com/repos/google/flatbuffers/releases/assets/228082633"
-
-[[tools."github:llvm/llvm-project"]]
-version = "llvmorg-19.1.7"
-backend = "github:llvm/llvm-project"
-specifiers = ["llvmorg-19.1.7"]
-
-[tools."github:llvm/llvm-project".options]
-matching = "LLVM-"
-
-[tools."github:llvm/llvm-project"."platforms.linux-x64"]
-url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-Linux-X64.tar.xz"
-url_api = "https://api.github.com/repos/llvm/llvm-project/releases/assets/220539018"
-
-[tools."github:llvm/llvm-project"."platforms.macos-arm64"]
-url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-macOS-ARM64.tar.xz"
-url_api = "https://api.github.com/repos/llvm/llvm-project/releases/assets/220545660"
-
-[tools."github:llvm/llvm-project"."platforms.macos-x64"]
-url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-macOS-X64.tar.xz"
-url_api = "https://api.github.com/repos/llvm/llvm-project/releases/assets/220618754"
-
-[tools."github:llvm/llvm-project"."platforms.windows-x64"]
-url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-win32.exe"
-url_api = "https://api.github.com/repos/llvm/llvm-project/releases/assets/220580445"
 
 [[tools."github:pnpm/pnpm"]]
 version = "12.4.1"
