@@ -17,6 +17,7 @@ import {
   SharedCanvasEventType,
   SharedCanvasEventAction,
   SharedCanvasModifierBits,
+  SharedCanvasWheelDeltaMode,
   WebKeyCode,
 } from "@/lib/canvas_courier";
 import type { SharedCanvasInputConfig, SharedCanvasDecodedEvent } from "@/lib/canvas_courier";
@@ -42,6 +43,31 @@ import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
 const webKeyCodeToString = Object.fromEntries(
   Object.entries(WebKeyCode).map(([name, value]) => [value as number, name]),
 ) as Record<number, string>;
+
+// One mouse-wheel notch is approximately 120 pixels. The map renderer makes
+// a 10% zoom step for each scroll line.
+const WHEEL_PIXELS_PER_LINE = 120;
+
+// A trackpad pinch on macOS gives a wheel event with ctrlKey and small
+// deltas. Multiply them to make the pinch zoom at a usable speed.
+const PINCH_MULTIPLIER = 10;
+
+// Convert a wheel event to scroll lines (positive = zoom in). Use the
+// magnitude of the delta, because a trackpad sends many small events.
+function wheelScrollLines(
+  event: Extract<SharedCanvasDecodedEvent, { type: typeof SharedCanvasEventType.Wheel }>,
+) {
+  let pixels = event.deltaY;
+  if (event.deltaMode === SharedCanvasWheelDeltaMode.Line) {
+    pixels *= 40;
+  } else if (event.deltaMode === SharedCanvasWheelDeltaMode.Page) {
+    pixels *= 800;
+  }
+  if (event.modifiers & SharedCanvasModifierBits.Ctrl) {
+    pixels *= PINCH_MULTIPLIER;
+  }
+  return -pixels / WHEEL_PIXELS_PER_LINE;
+}
 
 const initialized = (async () => {
   await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
@@ -551,8 +577,7 @@ export const createMapEngine = async (
         break;
       }
       case SharedCanvasEventType.Wheel: {
-        const scrollLines = event.deltaY < 0 ? 1 : -1;
-        app.on_scroll(scrollLines);
+        app.on_scroll(wheelScrollLines(event));
         zoomChangeCallback?.(app.get_zoom());
         renderOrQueue();
         break;
