@@ -139,7 +139,7 @@ jobs:
           mise exec -- cargo check --workspace --exclude 'wasm-*'
           mise run setup:wasm
           mise exec -- cargo check --release --target wasm32-unknown-unknown -p 'wasm-*' \
-            --no-default-features --features zstd_c_fat_lto --features zstd_c
+            --no-default-features --features zstd_c
           if [ "${{ matrix.arch }}" = "arm64" ]; then
             steamcmd 2>&1 | grep -F "steamcmd is only installed in the amd64 devcontainer image."
           else

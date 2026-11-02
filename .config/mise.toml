@@ -53,7 +53,7 @@ run = [
 
 [tasks."build:wasm:cargo"]
 usage = 'flag "--release"'
-run = "cargo build --profile {% if usage.release %}release{% else %}wasm-dev{% endif %} --target wasm32-unknown-unknown --no-default-features --features zstd_c --features zstd_c_fat_lto -p wasm-*"
+run = "cargo build --profile {% if usage.release %}release{% else %}wasm-dev{% endif %} --target wasm32-unknown-unknown --no-default-features --features zstd_c -p wasm-*"
 run_windows = "cargo build --profile {% if usage.release %}release{% else %}wasm-dev{% endif %} --target wasm32-unknown-unknown --no-default-features --features zstd_rust -p wasm-*"
 hide = true
 
