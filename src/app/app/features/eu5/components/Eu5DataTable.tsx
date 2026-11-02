@@ -192,6 +192,8 @@ export function Eu5DataTable<TData extends RowData>({
     state,
     onSortingChange: setSorting,
     enableMultiSort: tableOptions?.enableMultiSort ?? true,
+    // Without this, a table without pages still shows only the default page of 10 rows.
+    manualPagination: !paginationConfig.enabled,
     ...(paginationConfig.enabled
       ? {
           onPaginationChange: setPaginationState,
