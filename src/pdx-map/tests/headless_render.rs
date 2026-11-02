@@ -187,6 +187,19 @@ fn soft_edge(fill: [u8; 3]) -> [u8; 3] {
     shift_lightness(fill, -0.10)
 }
 
+/// Returns the GPU device that all tests share, or `None` when no adapter is
+/// available.
+///
+/// The tests crashed with SIGSEGV on the Mesa software drivers in Linux CI. The
+/// probable cause is that many devices were alive at the same time. Thus, the
+/// tests make one device and share it.
+async fn shared_gpu() -> Option<GpuContext> {
+    static GPU: tokio::sync::OnceCell<Option<GpuContext>> = tokio::sync::OnceCell::const_new();
+    GPU.get_or_init(|| async { GpuContext::new().await.ok() })
+        .await
+        .clone()
+}
+
 async fn render(
     surface: PhysicalSize<u32>,
     rect: WorldRect<u32>,
@@ -223,7 +236,7 @@ async fn render_flagged(
     scale_factor: f32,
     flags: [LocationFlags; LOCATIONS],
 ) -> Option<Frame> {
-    let gpu = GpuContext::new().await.ok()?;
+    let gpu = shared_gpu().await?;
     let size = PhysicalSize::new(HEMI_W, HEMI_H);
     let west = gpu.create_texture(&hemisphere(0), size, "West");
     let east = gpu.create_texture(&hemisphere(HEMI_W), size, "East");

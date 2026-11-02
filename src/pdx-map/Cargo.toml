@@ -19,7 +19,7 @@ wgpu = { workspace = true, optional = true }
 
 [dev-dependencies]
 postcard = { workspace = true, features = ["alloc"] }
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["rt", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { workspace = true, default-features = false }
