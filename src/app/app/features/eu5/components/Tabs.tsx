@@ -37,7 +37,7 @@ const GameTabsTrigger = React.forwardRef<
     <TabsPrimitive.Trigger
       ref={ref}
       className={cx(
-        "relative flex h-8 items-center gap-1 px-3",
+        "relative flex h-8 items-center gap-1 px-3 max-md:h-11",
         "font-game-ui text-[12.5px] whitespace-nowrap text-game-ink-500",
         "transition-colors hover:text-game-ink-300",
         "data-[state=active]:text-game-ink-100",
@@ -51,7 +51,7 @@ const GameTabsTrigger = React.forwardRef<
     >
       {children}
       {count !== undefined && (
-        <span className="rounded-plate bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500">
+        <span className="rounded-plate bg-game-panel-2 px-1 font-game-num text-[12px] text-game-ink-500">
           {count}
         </span>
       )}

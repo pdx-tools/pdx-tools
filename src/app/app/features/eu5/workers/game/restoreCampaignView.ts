@@ -16,6 +16,7 @@ type ViewApp = ClickApp &
     | "set_map_mode"
     | "select_players"
     | "select_country"
+    | "add_country"
     | "select_market"
     | "set_focused_location"
     | "market_id_at_center"
@@ -53,6 +54,12 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
       if (selection.focusedLocation != null)
         merge(app.set_focused_location(selection.focusedLocation));
     }
+  } else if (selection?.kind === "countries") {
+    // A country that is gone from this save goes from the set.
+    const found = selection.countries
+      .map((identity) => findCarriedCountry(countries, identity))
+      .filter((key) => key !== null);
+    found.forEach((key, i) => merge(i === 0 ? app.select_country(key) : app.add_country(key)));
   } else if (selection?.kind === "market") {
     const id = app.market_id_at_center(selection.center);
     if (id != null) merge(app.select_market(id));

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { usePanelNav } from "./profiles/PanelNavContext";
 import { Skeleton, StatItem } from "../components";
 
 interface Stat {
@@ -22,14 +21,9 @@ export function InsightScopeHeaderSkeleton() {
 }
 
 export function InsightScopeHeader({ children, stats }: InsightScopeHeaderProps) {
-  const nav = usePanelNav();
-  if (nav.stack.length > 0) return null;
-
   return (
-    <div className="rounded-panel border border-game-line-strong bg-game-panel-hover px-4 py-3">
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
-        {children ?? stats?.map((s) => <StatItem key={s.label} label={s.label} value={s.value} />)}
-      </div>
+    <div className="flex flex-wrap gap-x-5 gap-y-2">
+      {children ?? stats?.map((s) => <StatItem key={s.label} label={s.label} value={s.value} />)}
     </div>
   );
 }

@@ -1,15 +1,25 @@
-import { chartInk } from "@/components/viz/echartsTheme";
-import { useMemo, useState } from "react";
-import {
-  GoodsPressureChart,
-  GoodsPriceVsBaseChart,
-  MarketGoodDetail,
-} from "../../insights/Markets";
+import { Fragment, useMemo, useState } from "react";
+import { cx } from "class-variance-authority";
+import { focusRingInset } from "@/components/game/focusRing";
+import { GoodsPriceVsBaseChart, MarketGoodCharts, MarketGoodStats } from "../../insights/Markets";
 import type { GoodsPressureMetric } from "../../insights/Markets";
 import { useEu5Trigger } from "../useEu5Trigger";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatMetric } from "@/lib/format";
 import type { ScopedGoodSummary } from "@/wasm/wasm_eu5";
 import { GameSegmented, SectionTitle, Skeleton } from "../../../components";
+import { Eu5Icon } from "../../../components/icons/Eu5Icon";
+import { RankRow } from "../../../stack/ModeRanking";
+import { sectionLabel } from "@/components/game/SectionTitle";
+import {
+  Band,
+  DivergingBar,
+  DivergingHead,
+  Finding,
+  Note,
+  RowCaret,
+  ShowMoreRow,
+} from "../../../stack/parts";
+import { levelBody } from "../../../stack/levelBody";
 
 const TRADE_CATEGORIES = new Set(["Trade", "BurgherTrades"]);
 
@@ -77,67 +87,44 @@ function computeExportRows(goods: ScopedGoodSummary[]): ExportRow[] {
   return rows;
 }
 
-function GoodDot({ color }: { color: string }) {
-  return (
-    <span
-      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-      style={{ backgroundColor: color || chartInk.muted }}
-    />
-  );
-}
-
-function SummaryTable({
+/** The goods as rows of the column: the metric's figure and the other figure, and no bar */
+function SummaryRows({
+  label,
   rows,
   metric,
+  flush,
 }: {
+  label: string;
+  flush?: boolean;
   rows: { name: string; colorHex: string; primaryUnits: number; primaryValue: number }[];
   metric: GoodsPressureMetric;
 }) {
-  const sorted = useMemo(
-    () =>
-      [...rows].sort((a, b) =>
-        metric === "units" ? b.primaryUnits - a.primaryUnits : b.primaryValue - a.primaryValue,
-      ),
-    [rows, metric],
-  );
-
-  if (sorted.length === 0) {
-    return <p className="py-3 text-center text-sm text-game-ink-500">None</p>;
-  }
-
-  const topValue =
-    metric === "units"
-      ? Math.max(1, sorted[0]?.primaryUnits ?? 1)
-      : Math.max(1, sorted[0]?.primaryValue ?? 1);
+  const primary = (row: (typeof rows)[number]) =>
+    metric === "units" ? row.primaryUnits : row.primaryValue;
+  const secondary = (row: (typeof rows)[number]) =>
+    metric === "units" ? row.primaryValue : row.primaryUnits;
+  const sorted = [...rows].sort((a, b) => primary(b) - primary(a));
 
   return (
-    <div className="flex flex-col gap-0.5">
-      {sorted.map((row) => {
-        const primary = metric === "units" ? row.primaryUnits : row.primaryValue;
-        const secondary = metric === "units" ? row.primaryValue : row.primaryUnits;
-        const barPct = (primary / topValue) * 100;
-        return (
-          <div key={row.name} className="flex items-center gap-2 rounded px-2 py-1">
-            <GoodDot color={row.colorHex} />
-            <span className="w-20 shrink-0 truncate text-xs font-semibold text-game-ink-100">
-              {row.name}
-            </span>
-            <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-game-panel-hover">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-current opacity-70"
-                style={{ width: `${barPct}%`, color: row.colorHex || chartInk.muted }}
-              />
-            </div>
-            <span className="w-8 shrink-0 text-right text-xs font-semibold text-game-ink-100">
-              {metric === "units" ? formatFloat(primary, 1) : `$${formatInt(primary)}`}
-            </span>
-            <span className="w-8 shrink-0 text-right text-xs text-game-ink-500">
-              {metric === "units" ? `$${formatInt(secondary)}` : formatFloat(secondary, 1)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <Band
+        label={label}
+        columns={metric === "units" ? "Units / value" : "Value / units"}
+        flush={flush}
+      />
+      {sorted.length === 0 ? (
+        <Note>None</Note>
+      ) : (
+        sorted.map((row) => (
+          <RankRow
+            key={row.name}
+            row={{ key: row.name, name: row.name, color: row.colorHex, value: primary(row) }}
+            display={formatMetric(primary(row))}
+            dim={formatMetric(secondary(row))}
+          />
+        ))
+      )}
+    </>
   );
 }
 
@@ -177,114 +164,263 @@ function ImportExportSummary({
   );
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
-        <div>
-          <SectionTitle className="mb-0">Required imports</SectionTitle>
-          <p className="mt-0.5 text-[10px] text-game-ink-500">
-            Imports required to meet pop and building needs
-          </p>
-        </div>
-        <SummaryTable rows={importTableRows} metric={metric} />
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
-        <div>
-          <SectionTitle className="mb-0">Exports shipped out</SectionTitle>
-          <p className="mt-0.5 text-[10px] text-game-ink-500">
-            Top exports shipped to other markets
-          </p>
-        </div>
-        <SummaryTable rows={exportTableRows} metric={metric} />
-      </section>
-    </div>
+    <>
+      <SummaryRows label="Required imports" rows={importTableRows} metric={metric} flush />
+      <SummaryRows label="Exports shipped out" rows={exportTableRows} metric={metric} />
+    </>
   );
 }
 
-export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
-  const [selectedGoodKey, setSelectedGoodKey] = useState<string | null>(null);
-  const [metric, setMetric] = useState<GoodsPressureMetric>("units");
+function MetricSwitch({
+  metric,
+  onChange,
+  full = false,
+}: {
+  metric: GoodsPressureMetric;
+  onChange: (metric: GoodsPressureMetric) => void;
+  /** The switch is alone on its row, so its segments share the row's width */
+  full?: boolean;
+}) {
+  const item = full ? "flex-1 justify-center" : undefined;
+  return (
+    <GameSegmented
+      value={metric}
+      onValueChange={(value) => onChange(value as GoodsPressureMetric)}
+      aria-label="Goods metric"
+      className={full ? "w-full" : undefined}
+    >
+      <GameSegmented.Item value="value" className={item}>
+        Value
+      </GameSegmented.Item>
+      <GameSegmented.Item value="units" className={item}>
+        Units
+      </GameSegmented.Item>
+    </GameSegmented>
+  );
+}
+
+/** What the market must import and what it ships out, for the overview */
+export function MarketTradeSummary({ marketId }: { marketId: number }) {
+  const [metric, setMetric] = useState<GoodsPressureMetric>("value");
   const { data: goods, loading } = useEu5Trigger(
     (engine) => engine.queries.getMarketGoodsProfile(marketId),
     [marketId],
   );
 
-  const sortedGoods = useMemo(
-    () => [...(goods ?? [])].sort((a, b) => a.good.name.localeCompare(b.good.name)),
-    [goods],
+  if (loading && !goods) {
+    return (
+      <div className={levelBody}>
+        <Skeleton className="h-40" />
+      </div>
+    );
+  }
+  if (!goods || goods.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="border-b border-game-line px-3.5 py-2">
+        <MetricSwitch metric={metric} onChange={setMetric} full />
+      </div>
+      <ImportExportSummary goods={goods} metric={metric} />
+    </>
   );
-  const defaultGood = useMemo(() => {
-    let best = null as (typeof sortedGoods)[number] | null;
-    let bestPct = -Infinity;
-    for (const g of sortedGoods) {
-      if (!g.defaultMarketPrice || g.defaultMarketPrice <= 0) continue;
-      const pct = (g.weightedPrice - g.defaultMarketPrice) / g.defaultMarketPrice;
-      if (pct > bestPct) {
-        bestPct = pct;
-        best = g;
-      }
-    }
-    return best;
-  }, [sortedGoods]);
+}
+
+/** The goods that a list shows before the reader asks for all of them, in each view */
+export const GOODS_SHOWN = 12;
+
+export type GoodBalance = {
+  good: ScopedGoodSummary;
+  shortage: number;
+  surplus: number;
+};
+
+function balanceOf(good: ScopedGoodSummary, metric: GoodsPressureMetric): GoodBalance {
+  return metric === "value"
+    ? { good, shortage: good.shortageValue, surplus: good.surplusValue }
+    : { good, shortage: good.shortage, surplus: good.surplus };
+}
+
+const imbalance = (row: GoodBalance) => Math.max(row.shortage, row.surplus);
+
+/**
+ * The goods of a market by imbalance, the largest first, then by name.
+ * The Goods level and the market's caption use this one order.
+ */
+export function goodsByImbalance(
+  goods: readonly ScopedGoodSummary[],
+  metric: GoodsPressureMetric,
+): GoodBalance[] {
+  return goods
+    .map((good) => balanceOf(good, metric))
+    .sort(
+      (a, b) => imbalance(b) - imbalance(a) || a.good.good.name.localeCompare(b.good.good.name),
+    );
+}
+
+/** An imbalance with its sign: "+" is a surplus and "−" is a shortage. Each level uses this form. */
+export function signedImbalance(row: GoodBalance): string {
+  const value = imbalance(row);
+  if (value <= 0) return "–";
+  return `${row.surplus >= row.shortage ? "+" : "\u2212"}${formatMetric(value)}`;
+}
+
+/** One line that names the largest shortages and the largest surplus */
+function goodsLead(rows: GoodBalance[]): string {
+  const names = (list: GoodBalance[]) => list.map((row) => row.good.good.name).join(", ");
+  const short = [...rows]
+    .filter((row) => row.shortage > 0)
+    .sort((a, b) => b.shortage - a.shortage)
+    .slice(0, 2);
+  const surplus = [...rows]
+    .filter((row) => row.surplus > 0)
+    .sort((a, b) => b.surplus - a.surplus)
+    .slice(0, 2);
+
+  if (short.length === 0 && surplus.length === 0) return "Balanced";
+  if (surplus.length === 0) return `Short on ${names(short)}`;
+  if (short.length === 0) return `Surplus of ${names(surplus)}`;
+  return `Short on ${names(short)}. Surplus of ${names(surplus)}.`;
+}
+
+/** On a phone the bar gives way, because a bar that grows first leaves no room for the name. */
+const goodRowGrid =
+  "grid grid-cols-[16px_minmax(0,1fr)_minmax(120px,200px)_56px] items-center gap-2.5 max-md:grid-cols-[16px_minmax(0,1fr)_116px_56px]";
+
+/**
+ * A good as a row: its icon, its name, a bar that diverges from a centre mark
+ * (shortage to the left, surplus to the right), and its imbalance. The bar
+ * lengths compare the rows, relative to the largest imbalance. The row expands in
+ * place, so it has a caret and a hover.
+ */
+function GoodRow({
+  row,
+  largest,
+  selected,
+  open,
+  onSelect,
+}: {
+  row: GoodBalance;
+  largest: number;
+  selected: boolean;
+  open: boolean;
+  onSelect: () => void;
+}) {
+  const shortage = largest > 0 ? row.shortage / largest : 0;
+  const surplus = largest > 0 ? row.surplus / largest : 0;
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={onSelect}
+      className={cx(
+        goodRowGrid,
+        "group relative h-[30px] w-full cursor-pointer border-b border-game-line-faint pr-6 pl-3.5 text-left max-md:h-11",
+        focusRingInset,
+        selected ? "bg-game-accent-soft" : "hover:bg-game-panel-hover",
+      )}
+    >
+      <Eu5Icon family="goods" id={row.good.good.key} size="sm" alt="" />
+      <span
+        className={cx(
+          "min-w-0 truncate text-[12.5px]",
+          selected ? "text-game-accent-100" : "text-game-ink-100",
+        )}
+      >
+        {row.good.good.name}
+      </span>
+      <DivergingBar surplus={surplus} shortage={shortage} />
+      <span className="text-right font-game-num text-[12px] font-medium text-game-ink-100 tabular-nums">
+        {signedImbalance(row)}
+      </span>
+      <RowCaret open={open} />
+    </button>
+  );
+}
+
+/**
+ * Each good of the market. The level leads with the largest shortages and
+ * surplus and lists the goods with an imbalance, the largest first. The selected
+ * good's figures are directly under its row. The charts come after the list.
+ */
+export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
+  const [selectedGoodKey, setSelectedGoodKey] = useState<string | null>(null);
+  const [metric, setMetric] = useState<GoodsPressureMetric>("value");
+  const [showAll, setShowAll] = useState(false);
+  // The selected good's row can close, and its charts stay under the list.
+  const [closed, setClosed] = useState(false);
+  const { data: goods, loading } = useEu5Trigger(
+    (engine) => engine.queries.getMarketGoodsProfile(marketId),
+    [marketId],
+  );
+
+  const rows = useMemo(() => goodsByImbalance(goods ?? [], metric), [goods, metric]);
 
   if (loading && !goods) {
-    return <Skeleton className="h-64" />;
+    return (
+      <div className={levelBody}>
+        <Skeleton className="h-64" />
+      </div>
+    );
   }
 
   if (!goods || goods.length === 0) {
     return <p className="py-6 text-center text-sm text-game-ink-500">No market goods data.</p>;
   }
 
-  const selectedGood =
-    sortedGoods.find((good) => good.good.key === selectedGoodKey) ?? defaultGood ?? sortedGoods[0];
+  const selected = rows.find((row) => row.good.good.key === selectedGoodKey) ?? rows[0];
+  const selectedGood = selected?.good;
+  // A good with no imbalance has nothing to compare. The chart can still select it.
+  const listed = rows.filter((row) => imbalance(row) > 0);
+  const shown = showAll ? listed : listed.slice(0, GOODS_SHOWN);
+  // The selected good stays in the list when the list is short.
+  const shownRows = selected && !shown.includes(selected) ? [...shown, selected] : shown;
+  // One scale for both sides: a bar's length is its value, in every row.
+  const largest = Math.max(0, ...rows.map(imbalance));
+  const hidden = listed.filter((row) => !shownRows.includes(row)).length;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <GameSegmented
-          value={metric}
-          onValueChange={(value) => setMetric(value as GoodsPressureMetric)}
-          aria-label="Goods metric"
-        >
-          <GameSegmented.Item value="units">Units</GameSegmented.Item>
-          <GameSegmented.Item value="value">Value</GameSegmented.Item>
-        </GameSegmented>
+    <div className="@container">
+      <Finding aside={<MetricSwitch metric={metric} onChange={setMetric} />}>
+        {goodsLead(rows)}
+      </Finding>
+      <div className={cx(goodRowGrid, "h-7 bg-game-panel-2 pr-6 pl-3.5")}>
+        <span />
+        <span className={sectionLabel}>Goods</span>
+        <DivergingHead />
+        <span />
       </div>
-
-      <ImportExportSummary goods={goods} metric={metric} />
-
-      <GoodsPressureChart
-        goods={goods}
-        selectedGoodKey={selectedGood?.good.key}
-        onGoodSelect={(good) => setSelectedGoodKey(good.good.key)}
-        metric={metric}
-        onMetricChange={setMetric}
-      />
-      <GoodsPriceVsBaseChart
-        goods={goods}
-        selectedGoodKey={selectedGood?.good.key}
-        onGoodSelect={(good) => setSelectedGoodKey(good.good.key)}
-      />
-      {selectedGood && (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <SectionTitle className="mb-0">Selected good diagnostic</SectionTitle>
-            <select
-              value={selectedGood.good.key}
-              onChange={(event) => setSelectedGoodKey(event.target.value)}
-              className="rounded-control border border-game-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100"
-              aria-label="Selected market good"
-            >
-              {sortedGoods.map((good) => (
-                <option key={good.good.key} value={good.good.key}>
-                  {good.good.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <MarketGoodDetail good={selectedGood} />
-        </section>
-      )}
+      {shownRows.map((row) => (
+        <Fragment key={row.good.good.key}>
+          <GoodRow
+            row={row}
+            largest={largest}
+            selected={row === selected}
+            open={row === selected && !closed}
+            onSelect={() => {
+              setClosed(row === selected && !closed);
+              setSelectedGoodKey(row.good.good.key);
+            }}
+          />
+          {row === selected && !closed ? <MarketGoodStats good={row.good} flush /> : null}
+        </Fragment>
+      ))}
+      <ShowMoreRow hidden={hidden} expanded={showAll} onToggle={() => setShowAll((x) => !x)} />
+      <div className={cx(levelBody, "flex flex-col gap-4")}>
+        <div className="grid grid-cols-1 gap-4 @[1100px]:grid-cols-2">
+          <section>
+            <SectionTitle>Price vs base</SectionTitle>
+            <GoodsPriceVsBaseChart
+              goods={goods}
+              selectedGoodKey={selectedGood?.good.key}
+              onGoodSelect={(good) => setSelectedGoodKey(good.good.key)}
+            />
+          </section>
+          {selectedGood ? <MarketGoodCharts good={selectedGood} /> : null}
+        </div>
+      </div>
     </div>
   );
 }

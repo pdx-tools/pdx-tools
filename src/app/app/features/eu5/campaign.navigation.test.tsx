@@ -27,7 +27,6 @@ const mocks = vi.hoisted(() => ({
     mapMode: "control" as const,
     selection: { kind: "country" as const, tag: "FRA", focusedLocation: null },
     viewport: null,
-    insightPanel: { open: false, width: 640 },
   })),
   fileInput: vi.fn(),
 }));
@@ -117,9 +116,6 @@ let state: {
   playthroughId: string;
   appState: { currentMapMode: "control"; mapViewport: null };
   engine: typeof engine;
-  insightPanelOpen: boolean;
-  insightPanelWidth: number;
-  setInsightPanelOpen: (open: boolean) => void;
 };
 const store = { getState: () => state };
 
@@ -173,9 +169,6 @@ beforeEach(async () => {
     playthroughId: "campaign",
     appState: { currentMapMode: "control", mapViewport: null },
     engine,
-    insightPanelOpen: false,
-    insightPanelWidth: 640,
-    setInsightPanelOpen: vi.fn(),
   };
   mocks.present.mockImplementation(async (snapshotId) => reply(snapshotId));
   mocks.step.mockImplementation(async (input) => {
@@ -268,9 +261,7 @@ it("opens the previewed save at once on a click and carries the click", async ()
   expect(opened()).toEqual(["b.eu5"]);
   expect(campaignTransitions.takeView("eu5", toPlaythroughId("campaign"))).toMatchObject({
     inspection: { click },
-    insightPanel: { open: true },
   });
-  expect(state.setInsightPanelOpen).toHaveBeenCalledExactlyOnceWith(true);
 });
 
 it("ignores a late reply after the preview ends, and a reply older than the shown frame", async () => {
@@ -328,7 +319,6 @@ it("does not open a save when the preview ends while the view is captured", asyn
     mapMode: "control",
     selection: null,
     viewport: null,
-    insightPanel: { open: false, width: 640 },
   } as never);
   await opening;
   expect(mocks.step).not.toHaveBeenCalled();

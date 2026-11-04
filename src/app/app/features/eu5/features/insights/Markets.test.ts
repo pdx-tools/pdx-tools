@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildGoodsPriceArrowData, selectGoodsPriceTrajectoryKeys, weightedSlope } from "./Markets";
+import {
+  buildGoodsPriceArrowData,
+  imbalanceSentence,
+  selectGoodsPriceTrajectoryKeys,
+  weightedSlope,
+} from "./Markets";
 import type { GoodsPriceTrajectoryInput } from "./Markets";
+import type { ScopedGoodSummary } from "@/wasm/wasm_eu5";
 
 function good(
   key: string,
@@ -88,5 +94,33 @@ describe("goods price trajectory arrows", () => {
     const falling = arrows.find((arrow) => arrow.key === "falling");
     expect(rising?.endX).toBeGreaterThan(rising?.startX ?? Infinity);
     expect(falling?.endX).toBeLessThan(falling?.startX ?? -Infinity);
+  });
+});
+
+describe("imbalanceSentence", () => {
+  const summary = (fields: Partial<ScopedGoodSummary>) =>
+    ({
+      weightedPrice: 24.3,
+      shortage: 0,
+      surplus: 0,
+      shortageValue: 0,
+      surplusValue: 0,
+      ...fields,
+    }) as ScopedGoodSummary;
+
+  it("links the units and the value of a shortage", () => {
+    expect(imbalanceSentence(summary({ shortage: 135.6, shortageValue: 3295 }))).toBe(
+      "135.6 units short, worth 3.3K at 24.3",
+    );
+  });
+
+  it("links the units and the value of a surplus", () => {
+    expect(imbalanceSentence(summary({ surplus: 40, surplusValue: 972 }))).toBe(
+      "40.0 units in surplus, worth 972.0 at 24.3",
+    );
+  });
+
+  it("has no sentence for a good in balance", () => {
+    expect(imbalanceSentence(summary({}))).toBeNull();
   });
 });

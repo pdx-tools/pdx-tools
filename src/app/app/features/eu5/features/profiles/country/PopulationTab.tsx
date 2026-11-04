@@ -1,35 +1,24 @@
 import { useMemo } from "react";
-import type { ConcentrationPoint, LocationRow } from "@/wasm/wasm_eu5";
-import { formatInt } from "@/lib/format";
-import {
-  PopulationSankey,
-  PopulationTypeProfile,
-  UrbanizationMix,
-} from "../../insights/Population";
+import type { ConcentrationPoint, LocationRow, PopulationTypeProfileRow } from "@/wasm/wasm_eu5";
+import { formatCount, formatExact, formatInt, formatPercent, formatRate } from "@/lib/format";
+import { PopulationSankey, PopulationTypeProfile, popTypeLabel } from "../../insights/Population";
+import { InsightReadout, ReadoutFigure } from "../../InsightReadout";
 import { useEu5Trigger } from "../useEu5Trigger";
-import { ConcentrationCurve } from "../../insights/ConcentrationCurve";
+import { ConcentrationCurve, concentrationReading } from "../../insights/ConcentrationCurve";
+import { Finding } from "../../../stack/parts";
+import { levelBody } from "../../../stack/levelBody";
+import { roundYearOffsets } from "../../insights/histogramAxis";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import {
+  chartGutter,
   chartTooltip,
   getEChartsTheme,
-  seriesColor,
-  seriesFill,
+  neutralFill,
+  neutralMark,
 } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, Skeleton } from "../../../components";
-
-function formatCompact(value: number): string {
-  if (value >= 1_000_000) {
-    const v = value / 1_000_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    const v = value / 1_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}K`;
-  }
-  return formatInt(Math.round(value));
-}
 
 function concentrationFromLocations(locations: LocationRow[]): ConcentrationPoint[] {
   const sorted = [...locations].sort(
@@ -59,35 +48,29 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
+    const firstOffset = data.length > 0 ? (data[0] as number[])[0] : 0;
+    const yearTicks = roundYearOffsets(firstOffset, baseYear);
 
     return {
-      grid: { left: 60, right: 20, top: 16, bottom: 50 },
+      grid: { ...chartGutter, top: 12, bottom: 28 },
       xAxis: {
         type: "value",
-        min: data.length > 0 ? (data[0] as number[])[0] : 0,
+        min: firstOffset,
         max: 0,
-        nameLocation: "middle",
-        nameGap: 34,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
           color: tickColor,
+          customValues: yearTicks,
           formatter: (value: number) => String(baseYear + value),
         },
+        axisTick: { customValues: yearTicks },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
       },
       yAxis: {
         type: "value",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: formatCompact,
-        },
+        axisLabel: { color: tickColor },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
       },
@@ -100,7 +83,7 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           if (!Array.isArray(value)) return "";
           const year = baseYear + Number(value[0]);
           const v = Number(value[1]);
-          return `<strong>${year}</strong><br/>Population: ${formatCompact(v)}`;
+          return `<strong>${year}</strong><br/>Population: ${formatExact(Math.round(v))}`;
         },
       },
       series: [
@@ -109,8 +92,8 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           data,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: seriesColor(0), width: 2 },
-          areaStyle: { color: seriesFill(0) },
+          lineStyle: { color: neutralMark, width: 2 },
+          areaStyle: { color: neutralFill },
         },
       ],
     };
@@ -120,10 +103,40 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
 
   return (
     <section>
-      <SectionTitle>How has population changed over time?</SectionTitle>
-      <EChart option={option} style={{ height: "200px", width: "100%" }} />
+      <SectionTitle>History</SectionTitle>
+      <EChart option={option} style={{ height: "180px", width: "100%" }} />
     </section>
   );
+}
+
+/** Years that the growth figure looks back over */
+const GROWTH_YEARS = 10;
+
+/**
+ * The yearly growth rate over the last years of the history. The history
+ * has one sample for each year.
+ */
+function yearlyGrowth(series: number[]): number | null {
+  const years = Math.min(GROWTH_YEARS, series.length - 1);
+  if (years < 1) return null;
+  const now = series[series.length - 1]!;
+  const then = series[series.length - 1 - years]!;
+  if (then <= 0 || now <= 0) return null;
+  return Math.pow(now / then, 1 / years) - 1;
+}
+
+/** One line that names the largest pop type, and how much the top tenth of the locations holds */
+function populationFinding(
+  types: readonly PopulationTypeProfileRow[],
+  topShare: number | undefined,
+): string | null {
+  const total = types.reduce((sum, row) => sum + row.population, 0);
+  const largest = [...types].sort((a, b) => b.population - a.population)[0];
+  if (!largest || total <= 0) return null;
+  const lead = `${popTypeLabel(largest.populationType)} are ${formatPercent(largest.population / total)} of the people`;
+  return topShare === undefined
+    ? lead
+    : `${lead}, and the top 10% of locations hold ${formatPercent(topShare)}`;
 }
 
 export function CountryPopulationTabContent({
@@ -148,11 +161,11 @@ export function CountryPopulationTabContent({
   const typeProfile = data?.typeProfile ?? [];
   const rankTotals = data?.rankTotals ?? [];
   const hasTypeProfile = typeProfile.some((row) => row.population > 0);
-  const hasRanks = rankTotals.some((rank) => rank.population > 0);
   const showConcentration = locations.length >= 5 && concentration.length > 1;
   const showHistory = historicalPopulation.length >= 2;
+  const total = locations.reduce((sum, location) => sum + location.population, 0);
 
-  if (!data || (!hasTypeProfile && !hasRanks && !showConcentration && !showHistory)) {
+  if (!data || total <= 0) {
     return (
       <p className="py-6 text-center text-sm text-game-ink-500">
         No population data across {formatInt(locations.length)} locations
@@ -160,37 +173,57 @@ export function CountryPopulationTabContent({
     );
   }
 
+  const rankTotal = rankTotals.reduce((sum, rank) => sum + rank.population, 0);
+  const urban = rankTotals
+    .filter((rank) => rank.rank > 0)
+    .reduce((sum, rank) => sum + rank.population, 0);
+  const growth = yearlyGrowth(historicalPopulation);
+  const finding = populationFinding(
+    typeProfile,
+    showConcentration ? concentrationReading(concentration)?.share : undefined,
+  );
+
   return (
-    <div className="flex flex-col gap-4">
-      {showHistory && <PopulationHistoryChart series={historicalPopulation} />}
+    <>
+      {finding ? <Finding>{finding}</Finding> : null}
+      <div className={`@container flex flex-col gap-4 ${levelBody}`}>
+        <InsightReadout figure={formatCount(total)} unit="people">
+          {growth != null ? <ReadoutFigure value={formatRate(growth)} label="a year" /> : null}
+          {rankTotal > 0 ? (
+            <ReadoutFigure value={formatPercent(urban / rankTotal)} label="urban" />
+          ) : null}
+          <ReadoutFigure value={formatInt(locations.length)} label="locations" />
+        </InsightReadout>
 
-      {hasTypeProfile && (
-        <section>
-          <SectionTitle>What is the population made of?</SectionTitle>
-          <PopulationTypeProfile rows={typeProfile} isEmpty />
-        </section>
-      )}
+        {showHistory && <PopulationHistoryChart series={historicalPopulation} />}
 
-      {hasRanks && (
-        <section>
-          <SectionTitle>What kind of settlements hold the population?</SectionTitle>
-          <UrbanizationMix ranks={rankTotals} />
-        </section>
-      )}
+        <div className="grid grid-cols-1 gap-4 @[640px]:grid-cols-2">
+          {hasTypeProfile && (
+            <section>
+              <SectionTitle>Pop types</SectionTitle>
+              <PopulationTypeProfile rows={typeProfile} isEmpty />
+            </section>
+          )}
 
-      {showConcentration && (
-        <section>
-          <SectionTitle>How concentrated is the population?</SectionTitle>
-          <ConcentrationCurve points={concentration} metric="population" />
-        </section>
-      )}
+          {showConcentration && (
+            <section>
+              <SectionTitle>Concentration</SectionTitle>
+              <ConcentrationCurve
+                points={concentration}
+                metric="population"
+                showReading={!finding}
+              />
+            </section>
+          )}
+        </div>
 
-      {(data?.sankeyRows ?? []).length > 0 && (
-        <section>
-          <SectionTitle>How does religion and culture shape the population?</SectionTitle>
-          <PopulationSankey rows={data!.sankeyRows} />
-        </section>
-      )}
-    </div>
+        {(data.sankeyRows ?? []).length > 0 && (
+          <section>
+            <SectionTitle>Religion, pop type and culture</SectionTitle>
+            <PopulationSankey rows={data.sankeyRows} />
+          </section>
+        )}
+      </div>
+    </>
   );
 }

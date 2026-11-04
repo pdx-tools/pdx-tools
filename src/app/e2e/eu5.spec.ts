@@ -17,10 +17,11 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await expect(saveDate).toHaveAttribute("aria-valuetext", "1617 Apr 1");
 
   // The browser compresses the save before the upload.
-  await page.getByRole("button", { name: "Share save" }).click();
-  const permalink = page.getByRole("link", { name: "Open permalink" });
-  await expect(permalink).toBeVisible({ timeout: 90_000 });
-  const path = await permalink.getAttribute("href");
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole("button", { name: "More actions" }).click();
+  const path = await page.getByRole("menuitem", { name: "Open permalink" }).getAttribute("href");
+  await page.keyboard.press("Escape");
   expect(path).toMatch(/^\/eu5\/saves\/\w+$/);
 
   // Close each map before the next one opens. Pages in one browser share the
@@ -34,6 +35,8 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
     timeout: 60_000,
   });
   await expect(visitor.getByRole("button", { name: "Copy link" })).toBeVisible();
+  await visitor.getByRole("button", { name: "More actions" }).click();
+  await expect(visitor.getByRole("menuitem", { name: "Download save" })).toBeVisible();
   await visitor.close();
 
   await page.getByRole("button", { name: "Delete save" }).click();

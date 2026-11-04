@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* No hover to show a control, or the width of a phone: the control always shows and takes a tap. */
+@custom-variant tap (@media (hover: none), (width < 48rem));
+
 @theme inline {
   --animate-analysis-pulse: analysis-pulse 2s ease-in-out infinite;
 
@@ -61,7 +64,11 @@
   --color-game-overlay: var(--game-overlay);
 
   --color-game-line: var(--game-line);
+  --color-game-line-faint: var(--game-line-faint);
   --color-game-line-strong: var(--game-line-strong);
+  --color-game-control-line: var(--game-control-line);
+  --color-game-track: var(--game-track);
+  --color-game-rim: var(--game-rim);
 
   --color-game-ink-100: var(--game-ink-100);
   --color-game-ink-300: var(--game-ink-300);
@@ -124,12 +131,25 @@
   --game-overlay: rgba(8, 11, 16, 0.72);
 
   --game-line: rgba(255, 255, 255, 0.06);
+  /* A row of a list: one step under the rule of a group. */
+  --game-line-faint: rgba(255, 255, 255, 0.035);
   --game-line-strong: rgba(255, 255, 255, 0.1);
+  /* The edge of a control. 3.7:1 or more on page, panel, and panel-2. */
+  --game-control-line: oklch(56% 0.012 80);
+  /* The empty part of a bar. About 2.1:1 on each ground, so the end of the scale shows. */
+  --game-track: rgba(255, 255, 255, 0.13);
+  /* The hairline around a game colour. The colour does not change, and a dark colour stays visible. */
+  --game-rim: rgba(255, 255, 255, 0.42);
+  /* The Label step: uppercase section labels only. All other small text is 12px. */
+  --game-label-size: 11px;
+  --game-label-font: var(--font-game-ui);
+  --game-label-tracking: 0.04em;
+  --game-kbd-size: 12px;
 
   --game-ink-100: oklch(94% 0.018 80);
   --game-ink-300: oklch(81% 0.012 80);
-  /* Normal text; clears 4.5:1 on every game surface. */
-  --game-ink-500: oklch(68% 0.012 80);
+  /* Muted text: 7:1 or more on page, panel, and panel-2, and 6.3:1 on the brass strip. */
+  --game-ink-500: oklch(73% 0.012 80);
   /* Inert marks only: separators, key glyphs, and grips. */
   --game-ink-700: oklch(40% 0.01 80);
   /* Underline token; clears the 3:1 non-text floor on every game surface. */
@@ -172,6 +192,9 @@
 
   --font-game-ui: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
   --font-game-num: "IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace;
+  /* The text of a chart: names, then numbers. EChart reads them, because a canvas does not inherit a font. */
+  --game-chart-font: var(--font-game-ui);
+  --game-chart-num-font: var(--font-game-num);
   font-family: var(--font-game-ui);
   letter-spacing: 0;
 }
@@ -184,7 +207,15 @@
   --game-panel-active: oklch(35% 0.045 255);
   --game-overlay: rgba(15, 23, 42, 0.82);
   --game-line: rgba(226, 232, 240, 0.08);
+  --game-line-faint: var(--game-line);
   --game-line-strong: rgba(226, 232, 240, 0.16);
+  /* EU4 keeps its own values: the type floor and the control edge are EU5 decisions. */
+  --game-control-line: var(--game-line);
+  --game-track: var(--game-line);
+  --game-rim: rgba(0, 0, 0, 0.3);
+  --game-label-size: 10px;
+  --game-label-font: var(--font-game-num);
+  --game-label-tracking: 0.14em;
   --game-ink-100: oklch(96% 0.012 85);
   --game-ink-300: oklch(84% 0.018 85);
   --game-ink-500: oklch(69% 0.02 85);

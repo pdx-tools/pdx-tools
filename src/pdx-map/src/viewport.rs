@@ -154,6 +154,30 @@ impl MapViewport {
         self.set_world_point_under_cursor(world, canvas);
     }
 
+    /// Show a world region as large as the zoom limits allow, in the middle of
+    /// the part of the canvas that the insets leave free. The center can be past
+    /// the edge of the map, because the map wraps horizontally.
+    pub fn frame_region(
+        &mut self,
+        center: WorldPoint<f32>,
+        size: WorldSize<f32>,
+        insets: ViewportInsets,
+    ) {
+        let free_width =
+            (self.canvas_size.width as f32 - insets.left.value - insets.right.value).max(1.0);
+        let free_height =
+            (self.canvas_size.height as f32 - insets.top.value - insets.bottom.value).max(1.0);
+        let zoom_x = free_width / size.width.max(1.0);
+        let zoom_y = free_height / size.height.max(1.0);
+        self.zoom_level = zoom_x.min(zoom_y).clamp(self.min_zoom(), Self::MAX_ZOOM);
+
+        let canvas = LogicalPoint::new(
+            insets.left.value + free_width / 2.0,
+            insets.top.value + free_height / 2.0,
+        );
+        self.set_world_point_under_cursor(center, canvas);
+    }
+
     /// Show the whole map, as large as the zoom limits allow.
     pub fn fit_map(&mut self) {
         self.fit(WorldRect::new(WorldPoint::new(0, 0), self.map_size));
@@ -486,6 +510,29 @@ mod tests {
         // A tiny region clamps at the maximum zoom.
         controller.fit(WorldRect::new(WorldPoint::new(0, 0), WorldSize::new(4, 4)));
         assert_eq!(controller.zoom_level(), MapViewport::MAX_ZOOM);
+    }
+
+    #[test]
+    fn frame_region_centers_in_the_free_part_of_the_canvas() {
+        let mut controller =
+            MapViewport::new(LogicalSize::new(1000, 500), WorldSize::new(8192, 8192));
+        let insets = ViewportInsets {
+            left: Length::new(500.0),
+            right: Length::new(0.0),
+            top: Length::new(0.0),
+            bottom: Length::new(0.0),
+        };
+
+        // The free part is 500 wide, so a region 1000 wide has zoom 0.5.
+        controller.frame_region(
+            WorldPoint::new(4000.0, 4000.0),
+            WorldSize::new(1000.0, 100.0),
+            insets,
+        );
+        assert_eq!(controller.zoom_level(), 0.5);
+        let center = controller.canvas_to_world(LogicalPoint::new(750.0, 250.0));
+        assert_eq!(center.x, 4000.0);
+        assert_eq!(center.y, 4000.0);
     }
 
     #[test]

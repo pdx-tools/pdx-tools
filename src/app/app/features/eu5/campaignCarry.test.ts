@@ -19,7 +19,6 @@ const engine = () => ({
 const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   mapMode: "population",
   viewport: null,
-  insightPanel: { open: true, width: 640 },
   selection: null,
   ...extra,
 });
@@ -33,8 +32,6 @@ describe("campaign profile carry", () => {
           currentMapMode: "markets",
           selectionState: { activeProfile: { kind: "market", market: { key: 3, name: "Paris" } } },
         },
-        insightPanelOpen: true,
-        insightPanelWidth: 640,
       }),
     } as unknown as Eu5Store;
     const result = await captureEu5Carry(store);
@@ -59,8 +56,6 @@ describe("campaign profile carry", () => {
           currentMapMode: "development",
           selectionState: { activeProfile: profile, focusedLocation: 100 },
         },
-        insightPanelOpen: true,
-        insightPanelWidth: 640,
       }),
     } as unknown as Eu5Store;
     expect((await captureEu5Carry(store)).selection).toEqual({
@@ -76,11 +71,41 @@ describe("campaign profile carry", () => {
       getState: () => ({
         engine: previous,
         appState: { currentMapMode: "development", selectionState: null },
-        insightPanelOpen: true,
-        insightPanelWidth: 640,
       }),
     } as unknown as Eu5Store;
     expect((await captureEu5Carry(store)).selection).toBeNull();
     expect(previous.trigger.getCampaignIdentities).not.toHaveBeenCalled();
+  });
+  it("carries a set of countries by identity", async () => {
+    const previous = {
+      ...engine(),
+      queries: {
+        getDevelopmentInsight: vi.fn().mockResolvedValue({
+          countries: [{ country: { country: { key: 4 } } }, { country: { country: { key: 5 } } }],
+        }),
+        getCountryIdentity: vi.fn((idx: number) =>
+          Promise.resolve(idx === 4 ? { id: 9, tag: "FRA" } : null),
+        ),
+      },
+    };
+    const store = {
+      getState: () => ({
+        engine: previous,
+        appState: {
+          currentMapMode: "development",
+          selectionState: {
+            isEmpty: false,
+            activeProfile: undefined,
+            entityCount: 2,
+            locationCount: 40,
+          },
+        },
+      }),
+    } as unknown as Eu5Store;
+    // A country without an identity goes from the set.
+    expect((await captureEu5Carry(store)).selection).toEqual({
+      kind: "countries",
+      countries: [{ id: 9, tag: "FRA" }],
+    });
   });
 });

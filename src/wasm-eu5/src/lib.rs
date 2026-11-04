@@ -1126,6 +1126,17 @@ impl Eu5App {
         })
     }
 
+    /// The GPU color IDs of the selected locations that are on the map.
+    #[wasm_bindgen]
+    pub fn selected_color_ids(&self) -> Vec<u16> {
+        self.app()
+            .selection_state()
+            .selected_locations()
+            .iter()
+            .filter_map(|&idx| self.app().center_at(idx).map(|c| c.value() as u16))
+            .collect()
+    }
+
     /// Return the GPU color ID needed to center the map at a given location.
     /// Returns None if the location has no map presence (e.g. impassable terrain).
     #[wasm_bindgen]

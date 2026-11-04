@@ -1,29 +1,34 @@
 import type { LocationProfile } from "@/wasm/wasm_eu5";
-import { formatFloat } from "@/lib/format";
-import { SectionTitle } from "../../../components";
+import { formatCount } from "@/lib/format";
+import { RankRow } from "../../../stack/ModeRanking";
+import { Note } from "../../../stack/parts";
 
 interface Props {
   profile: LocationProfile;
 }
 
+/** The buildings of a location, the highest level first. The crumb names the level. */
 export function LocationEconomyTab({ profile }: Props) {
   if (profile.buildings.length === 0) {
-    return <p className="text-sm text-game-ink-500">No buildings.</p>;
+    return <Note>No buildings.</Note>;
   }
 
+  const buildings = [...profile.buildings].sort(
+    (a, b) => b.level - a.level || a.building.name.localeCompare(b.building.name),
+  );
+  const largest = Math.max(0, ...buildings.map((b) => b.level));
+
   return (
-    <div className="flex flex-col gap-2">
-      <SectionTitle className="mb-0">Buildings</SectionTitle>
-      <div className="flex flex-col gap-1">
-        {profile.buildings.map((b, i) => (
-          <div key={i} className="flex items-center justify-between text-sm">
-            <span className="text-game-ink-300">{b.building.name}</span>
-            <span className="font-game-num text-xs text-game-ink-300">
-              {formatFloat(b.level, 0)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <>
+      {buildings.map((b) => (
+        <RankRow
+          key={b.building.key}
+          flush
+          row={{ key: b.building.key, name: b.building.name, color: "", value: b.level }}
+          display={formatCount(b.level)}
+          fraction={largest > 0 ? b.level / largest : 0}
+        />
+      ))}
+    </>
   );
 }

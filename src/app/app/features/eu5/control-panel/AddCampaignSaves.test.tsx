@@ -55,8 +55,27 @@ vi.mock("../history/store", async (original) => {
   };
 });
 
-import { AddCampaignSaves } from "./AddCampaignSaves";
+import { CampaignNotices, useCampaignSaves } from "./AddCampaignSaves";
+import { GameButton } from "@/components/game/Button";
 import { useHistory } from "../history/store";
+
+/**
+ * The ⋯ menu holds the add actions. This stand-in puts them on buttons,
+ * so action 0 adds files, action 1 adds a folder, and action 2 is the
+ * first notice.
+ */
+function AddCampaignSaves() {
+  const saves = useCampaignSaves();
+  if (saves === null) return null;
+  return (
+    <>
+      <GameButton onClick={() => saves.chooseFiles()}>Add campaign saves</GameButton>
+      <GameButton onClick={() => saves.chooseFolder()}>Add save folder</GameButton>
+      {saves.inputs}
+      <CampaignNotices busy={saves.busy} />
+    </>
+  );
+}
 
 beforeEach(() => {
   mocks.developer = true;
@@ -80,7 +99,7 @@ it("hides save selection without campaign analysis access", () => {
 
 it("offers multiple-file and folder selection without activating analysis", () => {
   const html = renderToStaticMarkup(<AddCampaignSaves />);
-  expect(html).toContain("Add saves");
+  expect(html).toContain('aria-label="Add campaign saves"');
   expect(html).toContain('accept=".eu5" multiple=""');
   expect(html).toContain('webkitdirectory=""');
   expect(useHistory.getState().analysisEnabledCampaigns).toEqual([]);

@@ -103,7 +103,11 @@ export function TimelineBar() {
       data-state={presence.state}
       onAnimationEnd={presence.onAnimationEnd}
       className={cx(styles.bar, "@container pointer-events-auto absolute z-20 font-game-ui")}
-      style={{ left: insets.left + GUTTER_PX, right: insets.right + GUTTER_PX, bottom: GUTTER_PX }}
+      style={{
+        left: insets.left + GUTTER_PX,
+        right: insets.right + GUTTER_PX,
+        bottom: insets.bottom + GUTTER_PX,
+      }}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-game-line-strong bg-game-overlay py-2 pr-2 pl-2.5 shadow-xl backdrop-blur-md">
         <TimelineTransport controller={controller} />
@@ -134,7 +138,7 @@ export function TimelineBar() {
         )}
         {history?.enabled && hasLocalSaves && (
           <span
-            className="flex flex-col gap-0.5 text-[10px] leading-tight text-game-ink-500"
+            className="flex flex-col gap-0.5 text-[12px] leading-tight text-game-ink-500"
             aria-label="Save analysis status"
           >
             {Object.entries(saveAnalysisPresentation).map(([status, { label }]) => (

@@ -299,6 +299,7 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
                     country,
                     id: entry.id().into(),
                     tag,
+                    color_hex: data.color.into(),
                     capital,
                     landed: landed[entry.idx()],
                 })
@@ -314,6 +315,12 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
             .iter()
             .map(|entry| LocationSearchEntry {
                 location: entry.idx().present(&self.ctx),
+                owner_tag: entry
+                    .location()
+                    .owner
+                    .real_id()
+                    .and_then(|id| gamestate.countries.get(id.country_id()))
+                    .map(|idx| gamestate.countries.index(idx).tag().to_str().to_string()),
             })
             .collect();
         LocationsData { locations }
@@ -604,9 +611,52 @@ impl<'a> CountryNameParts<'a> {
     }
 
     fn present(&self, ctx: &LocalizationContext<'_, '_>) -> String {
-        let template = ctx.localization.get(self.key).unwrap_or(self.key);
+        let Some(template) = ctx.localization.get(self.key) else {
+            if let Some(name) = readable_name_key(self.key) {
+                return name;
+            }
+            return interpolate_country_name(
+                self.key,
+                self.base,
+                &self.variables,
+                ctx.localization,
+            );
+        };
         interpolate_country_name(template, self.base, &self.variables, ctx.localization)
     }
+}
+
+/// A readable name from a key of the families that the localization bundle
+/// does not hold: a scripted country, an area, or a dynasty. The bundle has only
+/// eight of the game's localization files, so a country that the game names with
+/// such a key has no text. The stem of the key is the English name, so
+/// `new_spain_scripted_country_name` becomes "New Spain".
+fn readable_name_key(key: &str) -> Option<String> {
+    let stem = ["_scripted_country_name", "_area", "_dynasty"]
+        .iter()
+        .find_map(|suffix| key.strip_suffix(suffix))
+        .or_else(|| tag_prefixed_stem(key))?;
+    let words: Vec<String> = stem
+        .split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().chain(chars).collect(),
+                None => String::new(),
+            }
+        })
+        .collect();
+    Some(words.join(" "))
+}
+
+/// The stem of a key that starts with a country tag, such as `SAR_piedmont`.
+fn tag_prefixed_stem(key: &str) -> Option<&str> {
+    let (tag, stem) = key.split_once('_')?;
+    let is_tag = tag.len() == 3
+        && tag
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit());
+    (is_tag && !stem.is_empty()).then_some(stem)
 }
 
 /// The localized display name of a country from its save name record, or
@@ -666,7 +716,8 @@ impl Present for OwnedCountryName {
 
 /// Substitute `$TOKEN$` in a country-name template: `$NAME$`/`$ADJ$` from the
 /// base tag (`<base>` / `<base>_ADJ`), other tokens from `variables` (value
-/// treated as a loc key). Unknown tokens are left intact; output is not rescanned.
+/// treated as a loc key), and then the token as a loc key itself: a province's
+/// name is `$sevilla$`. Unknown tokens are left intact; output is not rescanned.
 fn interpolate_country_name(
     template: &str,
     base: Option<&str>,
@@ -724,6 +775,7 @@ fn resolve_token<'a>(
         .iter()
         .find(|(key, _)| *key == token)
         .map(|(_, val)| localization.get(val).unwrap_or(val))
+        .or_else(|| localization.get(token))
 }
 
 /// Workspace-side source for a good's rich presentation form.
@@ -924,6 +976,35 @@ mod tests {
         let l = loc(&[("TIM", "Timurid")]);
         let out = interpolate_country_name("$NAME$ Successor", Some("TIM"), &[], &l);
         assert_eq!(out, "Timurid Successor");
+    }
+
+    #[test]
+    fn interpolate_token_resolves_as_its_own_key() {
+        let l = loc(&[("sevilla", "Sevilla")]);
+        let out = interpolate_country_name("$sevilla$", None, &[], &l);
+        assert_eq!(out, "Sevilla");
+    }
+
+    #[test]
+    fn readable_name_key_uses_the_stem_of_known_families() {
+        assert_eq!(
+            readable_name_key("new_spain_scripted_country_name").as_deref(),
+            Some("New Spain")
+        );
+        assert_eq!(
+            readable_name_key("transoxiana_area").as_deref(),
+            Some("Transoxiana")
+        );
+        assert_eq!(
+            readable_name_key("toshima_dynasty").as_deref(),
+            Some("Toshima")
+        );
+        assert_eq!(readable_name_key("AAA22"), None);
+        assert_eq!(
+            readable_name_key("SAR_piedmont").as_deref(),
+            Some("Piedmont")
+        );
+        assert_eq!(readable_name_key("sar_piedmont"), None);
     }
 
     #[test]

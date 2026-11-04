@@ -1,8 +1,15 @@
+import ChevronRightIcon from "@heroicons/react/20/solid/ChevronRightIcon";
 import { GameButton } from "@/components/game/Button";
 import type { MapMode } from "@/wasm/wasm_eu5";
-import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
+import {
+  InsightReadout,
+  InsightReadoutSkeleton,
+  ReadoutFigure,
+  readoutAction,
+} from "../InsightReadout";
 import { useEu5Engine } from "../../store";
-import { formatDoubling, formatPeople, formatRate } from "./populationFormatting";
+import { formatPercent, formatRate } from "@/lib/format";
+import { formatDoubling, formatPeople } from "./populationFormatting";
 
 export type PopulationStockFigures = {
   totalPopulation: number;
@@ -35,11 +42,11 @@ export function PopulationReadout(props: PopulationReadoutProps) {
   const action = (
     <GameButton
       variant="ghost"
-      className="-mr-3 shrink-0"
+      className={readoutAction}
       onClick={() => engine.trigger.selectMapMode(other)}
     >
       {stock ? "Growth" : "Population"}
-      <span aria-hidden="true">→</span>
+      <ChevronRightIcon aria-hidden className="h-3.5 w-3.5" />
     </GameButton>
   );
 
@@ -50,7 +57,7 @@ export function PopulationReadout(props: PopulationReadoutProps) {
         unit="people"
         action={action}
       >
-        <ReadoutFigure value={formatRate(props.figures.urbanization, 1)} label="urban" />
+        <ReadoutFigure value={formatPercent(props.figures.urbanization)} label="urban" />
         <ReadoutFigure value={formatPeople(props.figures.peasantPopulation)} label="peasants" />
       </InsightReadout>
     );

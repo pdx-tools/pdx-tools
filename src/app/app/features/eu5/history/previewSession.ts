@@ -214,10 +214,6 @@ async function openSnapshotSave(
         game: "eu5",
         payload: {
           ...carry,
-          insightPanel: {
-            open: click ? true : state.insightPanelOpen,
-            width: state.insightPanelWidth,
-          },
           inspection: click ? { click } : undefined,
         },
       },
@@ -230,9 +226,6 @@ async function openSnapshotSave(
     const carry = await captureEu5Carry(loaded);
     await state.engine.trigger.restoreCampaignView({ ...carry, inspection: { click } });
   }
-  // A save that loads in place keeps the panel state of the previous save,
-  // so the carry alone does not open the panel.
-  if (click) activeEu5Store()?.getState().setInsightPanelOpen(true);
 
   // Show the loaded save only when the playhead is still on it and no other save waits.
   const after = get();

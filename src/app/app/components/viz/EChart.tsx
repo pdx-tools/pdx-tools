@@ -23,6 +23,7 @@ import {
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { LabelLayout } from "echarts/features";
+import { formatTick } from "@/lib/format";
 import type { ComposeOption } from "echarts/core";
 import type {
   PieSeriesOption,
@@ -98,6 +99,31 @@ export interface EChartProps {
 export const escapeEChartsHtml = (value: unknown) =>
   echarts.format.encodeHTML(value == null ? "" : String(value));
 
+/**
+ * The theme of a chart from the surface that holds it. A canvas does not
+ * inherit a font, so a surface sets `--game-chart-font` for names and
+ * `--game-chart-num-font` for numbers, and the text of the chart uses them. A
+ * value axis gets the numbers' font and the compact tick form. An option can
+ * replace each part. Other surfaces, such as EU4, do not set the tokens and
+ * keep the default of ECharts.
+ */
+function chartTheme(el: HTMLElement): object | undefined {
+  const styles = getComputedStyle(el);
+  const fontFamily = styles.getPropertyValue("--game-chart-font").trim();
+  if (!fontFamily) return undefined;
+  const numbers = {
+    axisLabel: {
+      fontFamily: styles.getPropertyValue("--game-chart-num-font").trim(),
+      formatter: (value: number) => formatTick(value),
+    },
+  };
+  return {
+    textStyle: { fontFamily, fontSize: 12, fontWeight: 400 },
+    valueAxis: numbers,
+    logAxis: numbers,
+  };
+}
+
 export const EChart = memo(function EChart({ option, style, onInit, className }: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
@@ -108,7 +134,7 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const chart = echarts.init(containerRef.current);
+    const chart = echarts.init(containerRef.current, chartTheme(containerRef.current));
     chartRef.current = chart;
     onInitEvent(chart);
 

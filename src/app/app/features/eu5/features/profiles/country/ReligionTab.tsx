@@ -1,104 +1,58 @@
-import { useMemo } from "react";
-import { formatFloat, formatInt } from "@/lib/format";
-import type { CountryReligionSection, ReligionShare } from "@/wasm/wasm_eu5";
-import { EChart } from "@/components/viz";
-import type { EChartsOption } from "@/components/viz";
-import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { chartInk, chartTooltip } from "@/components/viz/echartsTheme";
-import { SectionTitle } from "../../../components";
+import { formatCount, formatInt, formatFixedPercent } from "@/lib/format";
+import type { CountryReligionSection } from "@/wasm/wasm_eu5";
+import { RankRow } from "../../../stack/ModeRanking";
+import { Band, Note } from "../../../stack/parts";
 
+/** The religions that have a row. The others share one row. */
+const SHOWN = 8;
+
+/**
+ * A country's religions in order of followers. Each row has the religion's
+ * colour, the followers, and the share of the population, and no bar: the long
+ * tail makes it a sliver.
+ */
 export function ReligionTabContent({ data }: { data: CountryReligionSection }) {
   const { religionBreakdown } = data;
   if (religionBreakdown.length === 0) {
-    return <p className="text-sm text-game-ink-500">No religion data.</p>;
+    return <Note>No religion data.</Note>;
   }
 
+  const sorted = [...religionBreakdown].sort((a, b) => b.population - a.population);
+  const total = sorted.reduce((sum, row) => sum + row.population, 0);
+  // One "others" row must stand for two religions or more.
+  const shown = sorted.length > SHOWN + 1 ? sorted.slice(0, SHOWN) : sorted;
+  const others = sorted.slice(shown.length);
+  const othersPopulation = others.reduce((sum, row) => sum + row.population, 0);
+
   return (
-    <div className="flex flex-col gap-4">
-      <section>
-        <SectionTitle>Locations · Population</SectionTitle>
-        <ReligionStackedBars breakdown={religionBreakdown} />
-        <ReligionLegend breakdown={religionBreakdown} />
-      </section>
-    </div>
-  );
-}
-
-function ReligionStackedBars({ breakdown }: { breakdown: ReligionShare[] }) {
-  const totalLocations = breakdown.reduce((s, r) => s + r.locationCount, 0);
-  const totalPopulation = breakdown.reduce((s, r) => s + r.population, 0);
-
-  const option = useMemo<EChartsOption>(() => {
-    const locRow: Record<string, string | number> = { metric: "Locations" };
-    const popRow: Record<string, string | number> = { metric: "Population" };
-    for (const r of breakdown) {
-      locRow[r.religion.name] = totalLocations > 0 ? (r.locationCount / totalLocations) * 100 : 0;
-      popRow[r.religion.name] = totalPopulation > 0 ? (r.population / totalPopulation) * 100 : 0;
-    }
-
-    return {
-      dataset: {
-        source: [locRow, popRow],
-        dimensions: ["metric", ...breakdown.map((r) => r.religion.name)],
-      },
-      grid: { left: 70, right: 0, top: 4, bottom: 4 },
-      xAxis: {
-        type: "value",
-        max: 100,
-        show: false,
-      },
-      yAxis: {
-        type: "category",
-        axisLabel: { color: chartInk.secondary, fontSize: 11 },
-        axisLine: { show: false },
-        axisTick: { show: false },
-      },
-      tooltip: {
-        ...chartTooltip,
-        trigger: "axis",
-        appendToBody: true,
-        axisPointer: { type: "shadow" },
-        formatter: (params) => {
-          const arr = Array.isArray(params) ? params : [params];
-          const metric = String((arr[0] as { axisValue?: string })?.axisValue ?? "");
-          const isLocations = metric === "Locations";
-          return arr
-            .map((p) => {
-              const row = breakdown.find(
-                (r) => r.religion.name === (p as { seriesName?: string }).seriesName,
-              );
-              if (!row) return "";
-              const [abs, pct] = isLocations
-                ? [row.locationCount, totalLocations > 0 ? row.locationCount / totalLocations : 0]
-                : [row.population, totalPopulation > 0 ? row.population / totalPopulation : 0];
-              return `${escapeEChartsHtml(row.religion.name)}: ${formatInt(abs)} (${formatFloat(pct * 100, 1)}%)`;
-            })
-            .filter(Boolean)
-            .join("<br/>");
-        },
-      },
-      series: breakdown.map((r) => ({
-        name: r.religion.name,
-        type: "bar",
-        stack: "total",
-        encode: { x: r.religion.name, y: "metric" },
-        itemStyle: { color: r.colorHex },
-      })),
-    };
-  }, [breakdown, totalLocations, totalPopulation]);
-
-  return <EChart option={option} style={{ height: "86px", width: "100%" }} />;
-}
-
-function ReligionLegend({ breakdown }: { breakdown: ReligionShare[] }) {
-  return (
-    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-      {breakdown.map((row) => (
-        <div key={row.religion.key} className="flex items-center gap-1.5 text-xs text-game-ink-300">
-          <span className="h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: row.colorHex }} />
-          {row.religion.name}
-        </div>
+    <>
+      <Band label="Religions" columns="Followers · Share" />
+      {shown.map((row) => (
+        <RankRow
+          key={row.religion.key}
+          row={{
+            key: row.religion.key,
+            name: row.religion.name,
+            color: row.colorHex,
+            value: row.population,
+            title: `${formatInt(row.locationCount)} locations`,
+          }}
+          display={formatCount(row.population)}
+          dim={formatFixedPercent(total > 0 ? row.population / total : 0)}
+        />
       ))}
-    </div>
+      {others.length > 0 ? (
+        <RankRow
+          row={{
+            key: "others",
+            name: `${formatInt(others.length)} others`,
+            color: "",
+            value: othersPopulation,
+          }}
+          display={formatCount(othersPopulation)}
+          dim={formatFixedPercent(total > 0 ? othersPopulation / total : 0)}
+        />
+      ) : null}
+    </>
   );
 }

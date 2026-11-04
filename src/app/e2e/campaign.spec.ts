@@ -27,10 +27,20 @@ async function openFiles(page: Page, files: string[]) {
   });
   await page.locator("#analyze-box-file-input").setInputFiles(files);
   if (files[0].endsWith(".eu5")) {
-    await expect(page.getByRole("navigation", { name: "Map modes" })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Map mode" })).toBeVisible();
   } else {
     await expect(campaignDate(page)).toBeVisible();
   }
+}
+
+/** Choose an EU5 map mode from the mode menu in the column head */
+async function chooseEu5Mode(page: Page, label: string) {
+  await page.getByRole("combobox", { name: "Map mode" }).click();
+  await page.getByRole("option", { name: label }).click();
+}
+
+function eu5Mode(page: Page) {
+  return page.getByRole("combobox", { name: "Map mode" });
 }
 
 async function expectEu5Date(page: Page, year: number) {
@@ -43,7 +53,7 @@ async function expectEu5Date(page: Page, year: number) {
 async function expectFranceSelection(page: Page) {
   const clear = page.getByRole("button", { name: "Clear selection" });
   await expect(clear).toBeVisible();
-  await expect(clear.locator("..")).toContainText("France");
+  await expect(page.locator("div").filter({ has: clear, hasText: "France" }).last()).toBeVisible();
 }
 
 async function openListedSave(page: Page, name: string) {
@@ -149,14 +159,11 @@ test("EU5 campaign steps keep the view and recover from an invalid save", async 
   await openListedSave(page, "debug-1.0.eu5");
   await expectEu5Date(page, 1337);
   await page.getByRole("button", { name: "Search countries or locations", exact: true }).click();
-  await page.getByPlaceholder("Search countries or locations...").fill("FRA");
-  await page.getByRole("option", { name: /FRA France/ }).click();
+  await page.getByPlaceholder("Search countries or locations").fill("FRA");
+  await page.getByRole("option", { name: /France FRA/ }).click();
   await expectFranceSelection(page);
-  const religion = page
-    .getByRole("navigation", { name: "Map modes" })
-    .getByRole("button", { name: "Religion", exact: true });
-  await religion.click();
-  await expect(religion).toHaveAttribute("aria-pressed", "true");
+  await chooseEu5Mode(page, "Religion");
+  await expect(eu5Mode(page)).toContainText("Religion");
   const canvas = page.locator("canvas").first();
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
@@ -178,7 +185,7 @@ test("EU5 campaign steps keep the view and recover from an invalid save", async 
 
   await openListedSave(page, "later.eu5");
   await expectEu5Date(page, 1338);
-  await expect(religion).toHaveAttribute("aria-pressed", "true");
+  await expect(eu5Mode(page)).toContainText("Religion");
   await expectFranceSelection(page);
   await page.mouse.move(0, 0);
   await expect.poll(async () => (await mapImage()).equals(view)).toBe(true);
@@ -186,7 +193,7 @@ test("EU5 campaign steps keep the view and recover from an invalid save", async 
   await openListedSave(page, "broken.eu5");
   await expect(page.getByText("Could not open the save", { exact: true }).first()).toBeVisible();
   await expectEu5Date(page, 1338);
-  await expect(religion).toHaveAttribute("aria-pressed", "true");
+  await expect(eu5Mode(page)).toContainText("Religion");
   await openListedSave(page, "debug-1.0.eu5");
   await expectEu5Date(page, 1337);
 });
@@ -200,8 +207,7 @@ test("EU5 warns about another campaign, resets its view, and steps back across p
     await saveFixture("eu5", observer),
   ]);
   await openListedSave(page, "debug-1.0.eu5");
-  const modes = page.getByRole("navigation", { name: "Map modes" });
-  await modes.getByRole("button", { name: "Religion", exact: true }).click();
+  await chooseEu5Mode(page, "Religion");
   await page
     .getByRole("button", { name: /^Save \d+ of 2, show all saves$/ })
     .first()
@@ -210,10 +216,7 @@ test("EU5 warns about another campaign, resets its view, and steps back across p
   await expect(row).toContainText("This save is from another campaign");
   await row.getByRole("button", { name: "Open save" }).click();
   await expectEu5Date(page, 1617);
-  await expect(modes.getByRole("button", { name: "Political", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(eu5Mode(page)).toContainText("Political");
   await expectSaveIndex(page, 2, 2);
   await stepTimeline(page);
 
@@ -279,36 +282,34 @@ test("EU5 keeps the selection when it steps between an upload and a local save",
   const files = await eu5Files(info);
   await logIn(page);
   await openFiles(page, [files.first]);
-  await page.getByRole("button", { name: "Share save", exact: true }).click();
-  const permalink = page.getByRole("link", { name: "Open permalink" });
-  await expect(permalink).toBeVisible({ timeout: 90_000 });
-  const path = await permalink.getAttribute("href");
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole("button", { name: "More actions" }).click();
+  const path = await page.getByRole("menuitem", { name: "Open permalink" }).getAttribute("href");
+  await page.keyboard.press("Escape");
   expect(path).toMatch(/^\/eu5\/saves\/\w+$/);
 
   await openFiles(page, [files.later]);
   await expectEu5Date(page, 1338);
   await expectSaveIndex(page, 2, 2);
   await page.getByRole("button", { name: "Search countries or locations", exact: true }).click();
-  await page.getByPlaceholder("Search countries or locations...").fill("FRA");
-  await page.getByRole("option", { name: /FRA France/ }).click();
-  const religion = page
-    .getByRole("navigation", { name: "Map modes" })
-    .getByRole("button", { name: "Religion", exact: true });
-  await religion.click();
-  await expect(religion).toHaveAttribute("aria-pressed", "true");
+  await page.getByPlaceholder("Search countries or locations").fill("FRA");
+  await page.getByRole("option", { name: /France FRA/ }).click();
+  await chooseEu5Mode(page, "Religion");
+  await expect(eu5Mode(page)).toContainText("Religion");
   await expectFranceSelection(page);
 
   await page.keyboard.press("[");
   await expect(page).toHaveURL(path!);
   await expectEu5Date(page, 1337);
   await expectSaveIndex(page, 1, 2);
-  await expect(religion).toHaveAttribute("aria-pressed", "true");
+  await expect(eu5Mode(page)).toContainText("Religion");
   await expectFranceSelection(page);
   await page.keyboard.press("]");
   await expect(page).toHaveURL("/");
   await expectEu5Date(page, 1338);
   await expectSaveIndex(page, 2, 2);
-  await expect(religion).toHaveAttribute("aria-pressed", "true");
+  await expect(eu5Mode(page)).toContainText("Religion");
   await expectFranceSelection(page);
 });
 
@@ -318,10 +319,7 @@ test("EU5 analyzed dates update the export estimate and play", async ({ page }, 
   await openFiles(page, [files.first, files.later]);
   await openListedSave(page, "debug-1.0.eu5");
   await page.getByRole("button", { name: "Analyze campaign", exact: true }).click();
-  await page
-    .getByRole("navigation", { name: "Map modes" })
-    .getByRole("button", { name: "Population", exact: true })
-    .click();
+  await chooseEu5Mode(page, "Population");
   const speed = page.getByRole("combobox", { name: "Saved-date playback speed" });
   await expect(speed).toBeVisible();
   const exportButton = page.getByRole("button", { name: "Export timelapse video", exact: true });

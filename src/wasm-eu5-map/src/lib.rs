@@ -504,6 +504,52 @@ impl Eu5WasmMapRenderer {
             .pan_to_visible_region(PanTarget::Point(center), viewport_insets))
     }
 
+    /// Frame most of the locations with these color IDs in the part of the canvas
+    /// that the insets leave free. A far colony does not widen the frame, because
+    /// a frame of a whole world shows nothing of the countries. Returns false
+    /// without a location.
+    #[wasm_bindgen]
+    pub fn frame_color_ids(
+        &mut self,
+        color_ids: Vec<u16>,
+        insets: Ts<WasmViewportInsets>,
+    ) -> Result<bool, JsError> {
+        let points: Vec<_> = color_ids
+            .iter()
+            .map(|&id| self.spatial_index.point_of(R16::new(id)))
+            .map(|p| (p.x as f32, p.y as f32))
+            .collect();
+        let world_width = self.controller.hemisphere_size().world().width as f32;
+        let Some(region) = frame_region(&points, world_width) else {
+            return Ok(false);
+        };
+
+        let insets: ViewportInsets = insets.to_rust()?.into();
+        self.input.frame_region(
+            WorldPoint::new(region.center_x, region.center_y),
+            WorldSize::new(
+                (region.width * FRAME_PADDING).max(FRAME_MIN_SIZE),
+                (region.height * FRAME_PADDING).max(FRAME_MIN_SIZE),
+            ),
+            insets,
+        );
+        self.apply_zoomed_viewport();
+        Ok(true)
+    }
+
+    /// The world points of locations by color ID, as flat `[x, y, ...]` pairs. Each
+    /// point is a pixel of the location, so a wrapping location has a real point.
+    #[wasm_bindgen]
+    pub fn world_points_of(&self, color_ids: Vec<u16>) -> Vec<u32> {
+        color_ids
+            .iter()
+            .flat_map(|&id| {
+                let point = self.spatial_index.point_of(R16::new(id));
+                [point.x as u32, point.y as u32]
+            })
+            .collect()
+    }
+
     /// Enable or disable owner border rendering
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
@@ -513,6 +559,150 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
         WasmQueuedWorkFuture::from_queued_work_future(self.controller.queued_work())
+    }
+}
+
+/// Room around a framed region, as a factor of its size
+const FRAME_PADDING: f32 = 1.2;
+/// The smallest framed region in world units, so one small location does not fill the map
+const FRAME_MIN_SIZE: f32 = 1200.0;
+
+/// A gap of this share of the world's width splits the land into separate groups.
+const FRAME_GROUP_GAP: f32 = 0.05;
+/// A group of land stays in the frame if it holds this share of the largest group.
+const FRAME_GROUP_SHARE: usize = 2;
+
+#[derive(Debug, PartialEq)]
+struct FrameRegion {
+    center_x: f32,
+    center_y: f32,
+    width: f32,
+    height: f32,
+}
+
+/// The region of the land that matters. Land splits into groups at wide gaps, such
+/// as an ocean, and a group far smaller than the largest group is a colony, which
+/// does not widen the frame: a frame of an ocean shows nothing of the country. The
+/// map wraps, so the region goes the short way around the world, and its center
+/// can be past the end of the world.
+fn frame_region(points: &[(f32, f32)], world_width: f32) -> Option<FrameRegion> {
+    if points.is_empty() {
+        return None;
+    }
+    let mut sorted: Vec<(f32, f32)> = points.to_vec();
+    sorted.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let n = sorted.len();
+    let gap_to_next = |i: usize| {
+        let next = sorted[(i + 1) % n].0 + if i + 1 == n { world_width } else { 0.0 };
+        next - sorted[i].0
+    };
+
+    // Start after the widest gap, so that no group crosses the start of the walk.
+    let start = (0..n)
+        .max_by(|&a, &b| gap_to_next(a).total_cmp(&gap_to_next(b)))
+        .map_or(0, |widest| (widest + 1) % n);
+
+    // Each group as a range of positions in the walk from the start.
+    let mut groups: Vec<(usize, usize)> = Vec::new();
+    let mut first = 0;
+    for at in 0..n {
+        let split = at + 1 == n || gap_to_next((start + at) % n) > world_width * FRAME_GROUP_GAP;
+        if split {
+            groups.push((first, at));
+            first = at + 1;
+        }
+    }
+    let largest = groups.iter().map(|&(a, b)| b - a + 1).max().unwrap_or(0);
+    let kept: Vec<usize> = groups
+        .iter()
+        .filter(|&&(a, b)| (b - a + 1) * FRAME_GROUP_SHARE >= largest)
+        .flat_map(|&(a, b)| a..=b)
+        .collect();
+
+    // A position after the end of the sorted list is one world later.
+    let x_of = |at: usize| {
+        let i = start + at;
+        if i < n {
+            sorted[i].0
+        } else {
+            sorted[i - n].0 + world_width
+        }
+    };
+    // A colony can have the same longitude as its country, so the land also splits
+    // into groups north and south. Only the kept groups count for the width too.
+    let mut by_y: Vec<(f32, f32)> = kept
+        .iter()
+        .map(|&at| (x_of(at), sorted[(start + at) % n].1))
+        .collect();
+    by_y.sort_by(|a, b| a.1.total_cmp(&b.1));
+    let gap = world_width * FRAME_GROUP_GAP;
+    let mut y_groups: Vec<&[(f32, f32)]> = by_y.chunk_by(|a, b| b.1 - a.1 <= gap).collect();
+    let tallest = y_groups.iter().map(|g| g.len()).max().unwrap_or(0);
+    y_groups.retain(|g| g.len() * FRAME_GROUP_SHARE >= tallest);
+    let land = y_groups.iter().flat_map(|g| g.iter());
+
+    let (mut left, mut right, mut top, mut bottom) = (
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+    );
+    for &(x, y) in land {
+        left = left.min(x);
+        right = right.max(x);
+        top = top.min(y);
+        bottom = bottom.max(y);
+    }
+
+    Some(FrameRegion {
+        center_x: (left + right) / 2.0,
+        center_y: (top + bottom) / 2.0,
+        width: right - left,
+        height: bottom - top,
+    })
+}
+
+#[cfg(test)]
+mod frame_tests {
+    use super::frame_region;
+
+    #[test]
+    fn nothing_has_no_region() {
+        assert_eq!(frame_region(&[], 100.0), None);
+    }
+
+    #[test]
+    fn a_region_goes_the_short_way_around_the_world() {
+        let region = frame_region(&[(95.0, 0.0), (5.0, 0.0)], 100.0).unwrap();
+        assert_eq!(region.center_x, 100.0);
+        assert_eq!(region.width, 10.0);
+    }
+
+    #[test]
+    fn two_large_groups_both_stay_in_the_region() {
+        let mut points: Vec<(f32, f32)> = (0..20).map(|i| (1000.0 + i as f32, 0.0)).collect();
+        points.extend((0..15).map(|i| (3000.0 + i as f32, 0.0)));
+        let region = frame_region(&points, 8192.0).unwrap();
+        assert_eq!(region.width, 2014.0);
+    }
+
+    #[test]
+    fn a_colony_on_the_same_longitude_does_not_stretch_the_region() {
+        let mut points: Vec<(f32, f32)> = (0..20).map(|i| (500.0 + i as f32, 300.0)).collect();
+        points.push((505.0, 4000.0));
+        let region = frame_region(&points, 8192.0).unwrap();
+        assert_eq!(region.height, 0.0);
+        assert_eq!(region.center_y, 300.0);
+    }
+
+    #[test]
+    fn a_far_colony_does_not_widen_the_region() {
+        // Twenty points of home land, near x = 500, and one colony across the world.
+        let mut points: Vec<(f32, f32)> = (0..20).map(|i| (500.0 + i as f32, 300.0)).collect();
+        points.push((5000.0, 900.0));
+        let region = frame_region(&points, 8192.0).unwrap();
+        assert!(region.width < 20.0, "{region:?}");
+        assert_eq!(region.center_y, 300.0);
     }
 }
 

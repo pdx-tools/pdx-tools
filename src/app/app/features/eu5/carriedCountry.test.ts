@@ -7,6 +7,7 @@ const country = (key: number, value: number, tag: string, landed = true): Countr
   country: { key, name: tag },
   id: id(value),
   tag,
+  colorHex: "#000000",
   capital: 1,
   landed,
 });

@@ -169,12 +169,17 @@ export type SearchResult =
       id: number;
       name: string;
       tag: string;
+      colorHex: string;
       locationIdx: number;
     }
   | {
       kind: "location";
       id: number;
       name: string;
+      /** The tag of the owner, because two places can have one name */
+      ownerTag: string | undefined;
+      /** The colour of the owner, for its swatch */
+      ownerColorHex?: string;
       locationIdx: number;
     };
 
@@ -225,6 +230,16 @@ export interface AppTriggers {
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
   ): Promise<void>;
+
+  /** Show the whole selection in the part of the map that the column leaves free. */
+  frameSelection(insets: {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  }): Promise<void>;
+  /** Where locations are in the world, in the order asked. A location off the map is null. */
+  worldPointsOf(locationIdxs: readonly number[]): Promise<({ x: number; y: number } | null)[]>;
 
   fitWorldRect(rect: MapViewport["viewport"]): Promise<void>;
 }
@@ -364,6 +379,8 @@ export class Eu5UIEngine implements AppEngine {
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
+    frameSelection: (insets) => this.gameInstance.frameSelection(insets),
+    worldPointsOf: (locationIdxs) => this.gameInstance.worldPointsOf(locationIdxs),
     fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };
 

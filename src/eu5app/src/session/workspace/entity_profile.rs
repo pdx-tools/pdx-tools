@@ -451,14 +451,16 @@ impl<'bump> Eu5Workspace<'bump> {
         let active_state_capacity = territory.active_state_capacity;
         let building_levels = territory.building_levels;
 
-        // Rank this country's value against every real country (the same
-        // `great_power_rank > 0` universe the political scoreboard uses) and
+        // Rank this country's value against every country that owns land, and
         // capture each bounded metric's cohort maximum so the UI can scale its
         // bar. A metric's rank is one plus the number of countries with a
         // strictly greater value, so ties share the better rank. `cohort` is
         // that universe's size and is identical across metrics. Maxima are
         // seeded with this country's own value so its own bar never exceeds 1
-        // even when it sits outside the cohort.
+        // even when it sits outside the cohort. A country that no longer exists
+        // keeps its last great power rank, gold and income in the save, so a
+        // rank is not a test of existence: in a 1582 save, 2,337 countries
+        // have a rank but only 646 own land.
         let mut cohort = 0u32;
         let mut net_gold_rank = 1u32;
         let mut manpower_rank = 1u32;
@@ -483,7 +485,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut building_levels_max = building_levels;
         for entry in self.gamestate.countries.iter() {
             let Some(other) = entry.data() else { continue };
-            if other.great_power_rank <= 0 {
+            if !territory_by_country.contains_key(&entry.idx()) {
                 continue;
             }
             cohort += 1;
@@ -727,11 +729,9 @@ impl<'bump> Eu5Workspace<'bump> {
                     supply: good.supply,
                     demand: good.demand,
                     total_taken: good.total_taken,
-                    weighted_price: if good.total_taken > 0.0 {
-                        good.price
-                    } else {
-                        0.0
-                    },
+                    // One market has one price. A good with no supply still has
+                    // its price, which is the price of its shortage value.
+                    weighted_price: good.price,
                     shortage,
                     surplus,
                     shortage_value: shortage * good.price,
@@ -951,16 +951,14 @@ impl<'bump> Eu5Workspace<'bump> {
     ) -> CountryMetrics {
         let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
         let data = self.gamestate.countries.index(idx).data();
-        let tax_trade_income = data
-            .map(|d| d.estimated_monthly_income_trade_and_tax)
-            .unwrap_or(0.0);
+        let income = data.map(|d| d.economy.income).unwrap_or(0.0);
         let great_power_rank = data.map(|d| d.great_power_rank).unwrap_or(0);
         CountryMetrics {
             great_power_rank,
             total_state_efficacy: agg.total_state_efficacy,
             active_state_capacity: agg.active_state_capacity,
             total_population: agg.total_population,
-            tax_trade_income,
+            income,
         }
     }
 

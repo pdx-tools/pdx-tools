@@ -2,12 +2,18 @@ import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { chartTooltip, getEChartsTheme } from "@/components/viz/echartsTheme";
+import {
+  chartTooltip,
+  getEChartsTheme,
+  chartGutter,
+  yAxisName,
+} from "@/components/viz/echartsTheme";
 import type { CountryRef } from "@/wasm/wasm_eu5";
 import { SectionTitle } from "../../components";
 import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { formatPeople } from "./populationFormatting";
+import { roundYearOffsets } from "./histogramAxis";
 
 export type PopulationHistorySeries = {
   country: CountryRef;
@@ -27,11 +33,9 @@ const HISTORY_TOP_COUNT = 10;
 export function PopulationHistoryChart({
   countries,
   scopeIsEmpty,
-  backLabel,
 }: {
   countries: PopulationHistorySeries[];
   scopeIsEmpty: boolean;
-  backLabel: string;
 }) {
   const saveDate = useEu5SaveDate();
 
@@ -52,7 +56,7 @@ export function PopulationHistoryChart({
   }, [countries, scopeIsEmpty]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
 
     const series = filtered.map((c) => {
@@ -71,32 +75,33 @@ export function PopulationHistoryChart({
 
     const minX = filtered.reduce((min, c) => Math.min(min, 1 - c.historicalPopulation.length), 0);
 
+    const yearTicks = roundYearOffsets(minX, baseYear);
+
     return {
       legend: {
         type: "scroll",
         bottom: 0,
-        textStyle: { color: labelColor, fontSize: 11 },
-        pageTextStyle: { color: labelColor },
+        textStyle: { color: tickColor, fontSize: 12 },
+        pageTextStyle: { color: tickColor },
       },
-      grid: { left: 60, right: 20, top: 16, bottom: 56 },
+      grid: { ...chartGutter, top: 28, bottom: 56 },
       xAxis: {
         type: "value",
         min: minX,
         max: 0,
         axisLabel: {
           color: tickColor,
+          customValues: yearTicks,
           formatter: (value: number) => String(baseYear + value),
         },
+        axisTick: { customValues: yearTicks },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
       },
       yAxis: {
         type: "value",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatPeople(v) },
+        ...yAxisName("Population"),
+        axisLabel: { color: tickColor },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
       },
@@ -123,7 +128,6 @@ export function PopulationHistoryChart({
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel,
     getTarget: (params) => {
       const c = params.seriesIndex != null ? filtered[params.seriesIndex] : null;
       return c

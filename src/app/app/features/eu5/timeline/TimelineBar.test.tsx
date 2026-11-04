@@ -53,7 +53,9 @@ vi.mock("@/features/timeline/TimelineTransport", () => ({
 vi.mock("@/features/timeline/TimelineReadout", () => ({ TimelineReadout: () => null }));
 vi.mock("@/features/timeline/TimelineScrubber", () => ({ TimelineScrubber: () => null }));
 vi.mock("./TimelapseExport", () => ({ TimelapseExport: () => <span>Timelapse export</span> }));
-vi.mock("../useViewportInsets", () => ({ useViewportInsets: () => ({ left: 0, right: 0 }) }));
+vi.mock("../useViewportInsets", () => ({
+  useViewportInsets: () => ({ left: 0, right: 0, top: 0, bottom: 0 }),
+}));
 
 import { TimelineBar } from "./TimelineBar";
 import { useHistory } from "../history/store";

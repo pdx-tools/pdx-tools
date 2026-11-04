@@ -1,0 +1,8 @@
+@import "tailwindcss" reference;
+
+.searchGroup [cmdk-group-heading] {
+  @apply text-[11px] font-medium tracking-[0.05em] uppercase;
+  font-family: var(--font-game-num);
+  color: var(--game-ink-500);
+  padding: theme(spacing.1) theme(spacing[2.5]);
+}

@@ -8,12 +8,26 @@ const id = (value: number) => value as UiCountryId;
 const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   mapMode: "population",
   viewport: null,
-  insightPanel: { open: true, width: 640 },
   selection: null,
   ...extra,
 });
 const countries = [
-  { id: id(611), landed: true, tag: "FRA", country: { key: 77, name: "France" }, capital: 100 },
+  {
+    id: id(611),
+    landed: true,
+    colorHex: "#000000",
+    tag: "FRA",
+    country: { key: 77, name: "France" },
+    capital: 100,
+  },
+  {
+    id: id(612),
+    landed: true,
+    colorHex: "#000000",
+    tag: "CAS",
+    country: { key: 78, name: "Castile" },
+    capital: 200,
+  },
 ] as ReturnType<Eu5App["get_countries"]>["countries"];
 function app() {
   const change = () => ({ colorsChanged: false, flagsChanged: true, gradient: undefined });
@@ -25,6 +39,7 @@ function app() {
     })),
     select_players: vi.fn(change),
     select_country: vi.fn(change),
+    add_country: vi.fn(change),
     select_market: vi.fn(change),
     set_focused_location: vi.fn(change),
     market_id_at_center: vi.fn((): number | undefined => 91),
@@ -100,6 +115,24 @@ describe("worker campaign view restoration", () => {
     expect(a.select_players).toHaveBeenCalledTimes(1);
     expect(a.set_focused_location).toHaveBeenCalledWith(100);
   });
+  it("restores a set of countries and leaves out a country that is gone", () => {
+    const a = app();
+    restore(
+      a,
+      carry({
+        selection: {
+          kind: "countries",
+          countries: [
+            { id: id(612), tag: "CAS" },
+            { id: id(999), tag: "XXX" },
+            { id: id(611), tag: "FRA" },
+          ],
+        },
+      }),
+    );
+    expect(a.select_country).toHaveBeenCalledExactlyOnceWith(78);
+    expect(a.add_country).toHaveBeenCalledExactlyOnceWith(77);
+  });
 });
 
 it("captures mixed profile identities using the country index", () => {
@@ -125,11 +158,19 @@ it("keeps selections and breadcrumb profiles on the same country across a tag ch
     {
       id: id(611),
       landed: true,
+      colorHex: "#000000",
       tag: "YMT",
       country: { key: 5, name: "Yamato" },
       capital: undefined,
     },
-    { id: id(700), landed: true, tag: "NTC", country: { key: 6, name: "New NTC" }, capital: 100 },
+    {
+      id: id(700),
+      landed: true,
+      colorHex: "#000000",
+      tag: "NTC",
+      country: { key: 6, name: "New NTC" },
+      capital: 100,
+    },
   ];
   restoreCampaignView(
     a as unknown as Eu5App,

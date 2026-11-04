@@ -33,7 +33,7 @@ STORY: The owner presses Share save once, watches the hairline fill, and gets Co
 
 FIRST VIEWPORT: `/users/:id` — heading is the player name, one meta line (joined, N campaigns, N saves). For admins, a Features card directly under the heading, one row per feature (name, description, switch). Then the campaign list: campaign header row (name, game chip, save count, latest game date), then cards. EU5 card: OG preview, playthrough name, game date + version line, uploaded ago + filename, actions right. Empty state teaches how to share.
 
-FORM: Extension of established surfaces; no concept roll (no seed key). The foot rows share `control-panel/footRow.ts`.
+FORM: Extension of established surfaces; no concept roll (no seed key). Revised on 2026-11-03: the EU5 foot is gone; Share is a button on the save line that shows the upload and then Copy link (in the ⋯ menu when the player cannot share yet).
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 

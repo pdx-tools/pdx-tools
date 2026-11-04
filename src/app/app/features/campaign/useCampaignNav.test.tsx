@@ -62,7 +62,6 @@ const carry: CampaignCarry = {
     mapMode: "political",
     viewport: null,
     selection: null,
-    insightPanel: { open: false, width: 640 },
   },
 };
 const captureCarry: CampaignAdapter["captureCarry"] = () => carry;
@@ -232,7 +231,6 @@ describe("campaign navigation", () => {
         mapMode: "markets",
         viewport: null,
         selection: null,
-        insightPanel: { open: true, width: 640 },
         inspection: { click: { kind: "update", locationIdx: 42, modifiers: 1 } },
       },
     };

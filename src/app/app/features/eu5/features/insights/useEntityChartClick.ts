@@ -14,7 +14,6 @@ type EntityChartTarget = {
 
 export function useEu5EntityChartClick(opts: {
   kind: EntityKind;
-  backLabel: string;
   getTarget: (params: echarts.ECElementEvent) => EntityChartTarget | null | undefined;
 }) {
   const nav = usePanelNav();
@@ -34,7 +33,7 @@ export function useEu5EntityChartClick(opts: {
       return;
     }
 
-    nav.pushMany([entityProfileEntry(opts.kind, target.id, target.label)], opts.backLabel);
+    nav.open(entityProfileEntry(opts.kind, target.id, target.label));
     panToEntity(target.anchorLocationIdx);
   });
 

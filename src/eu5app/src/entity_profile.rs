@@ -101,6 +101,7 @@ pub struct CountrySearchEntry {
     pub country: Localized<UiCountryIdx>,
     pub id: UiCountryId,
     pub tag: String,
+    pub color_hex: Srgb,
     pub capital: Option<UiLocationIdx>,
     /// The country owns one or more locations. A dead country can keep its
     /// capital, so use this value and not the capital to find living countries.
@@ -119,6 +120,8 @@ pub struct CountriesData {
 #[serde(rename_all = "camelCase")]
 pub struct LocationSearchEntry {
     pub location: Localized<UiLocationIdx>,
+    /// The tag of the owner, so a search result can tell apart two places with one name.
+    pub owner_tag: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,9 +193,10 @@ pub struct CountryOverviewSection {
     pub ranks: CountryOverviewRanks,
 }
 
-/// This country's 1-based ordinal rank for each overview metric among all real
-/// countries. `cohort` is the size of that universe and is shared by every
-/// metric (so the UI shows the cohort once rather than repeating it per row).
+/// This country's 1-based ordinal rank for each overview metric among the
+/// countries that own land. `cohort` is the size of that universe and is shared
+/// by every metric (so the UI shows the cohort once rather than repeating it per
+/// row).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
@@ -245,7 +249,7 @@ pub struct CountryMetrics {
     pub total_state_efficacy: f64,
     pub active_state_capacity: f64,
     pub total_population: u32,
-    pub tax_trade_income: f64,
+    pub income: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

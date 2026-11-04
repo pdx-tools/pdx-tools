@@ -2,10 +2,11 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt, formatFixed } from "@/lib/format";
+import { glossaryTerm } from "../../components/EntityName";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanelNav } from "../profiles/PanelNavContext";
-import { useEu5Engine } from "../../store";
+import { useEu5Engine, useEu5SelectionState } from "../../store";
 import { CountryLink } from "../profiles/EntityLink";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import {
@@ -14,8 +15,22 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 
-const BACK_LABEL = "Great Powers";
 const columnHelper = createColumnHelper<PoliticalWorldRow>();
+
+const removeColumn = (engine: ReturnType<typeof useEu5Engine>) =>
+  columnHelper.display({
+    id: "remove",
+    header: "",
+    enableSorting: false,
+    meta: Eu5DataTable.meta({ variant: "end", width: 28 }),
+    cell: ({ row }) => (
+      <Eu5DataTable.Affordance
+        kind="remove"
+        label={`Remove ${row.original.country.country.name} from selection`}
+        onClick={() => void engine.commands.removeCountry(row.original.country.country.key)}
+      />
+    ),
+  });
 
 export function PoliticalInsight() {
   const query = useEu5SelectionTrigger((engine) => engine.queries.getPoliticalWorldScoreboard());
@@ -40,9 +55,7 @@ function TippedHeader({ children, tooltip }: { children: React.ReactNode; toolti
   return (
     <Tooltip>
       <Tooltip.Trigger asChild>
-        <span className="cursor-help decoration-dotted underline-offset-2 hover:underline">
-          {children}
-        </span>
+        <span className={glossaryTerm}>{children}</span>
       </Tooltip.Trigger>
       <Tooltip.Content side="top" className="max-w-72 text-xs normal-case">
         {tooltip}
@@ -54,6 +67,9 @@ function TippedHeader({ children, tooltip }: { children: React.ReactNode; toolti
 function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
   const nav = usePanelNav();
   const engine = useEu5Engine();
+  // Only a selection has countries to remove.
+  const selection = useEu5SelectionState();
+  const removable = selection != null && !selection.isEmpty;
 
   const topProfile =
     nav.top?.kind === "profile" || nav.top?.kind === "focus" ? nav.top.profile : null;
@@ -67,7 +83,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         enableSorting: false,
         meta: Eu5DataTable.meta({ variant: "num", width: 36 }),
         cell: ({ getValue }) => (
-          <span className="font-game-num text-[10.5px] text-game-ink-500">
+          <span className="font-game-num text-[12px] text-game-ink-500">
             #{formatInt(getValue())}
           </span>
         ),
@@ -76,8 +92,22 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         id: "country",
         header: "Country",
         enableSorting: false,
-        cell: ({ row }) => (
-          <CountryLink country={row.original.country} size="md" aligned backLabel={BACK_LABEL} />
+        cell: ({ row }) => <CountryLink country={row.original.country} size="md" aligned />,
+      }),
+      columnHelper.accessor("greatPowerPoints", {
+        id: "gpScore",
+        header: () => (
+          <TippedHeader tooltip="Great power score: the points that set the game's great power rank.">
+            GP Score
+          </TippedHeader>
+        ),
+        meta: Eu5DataTable.meta({
+          variant: "num",
+          width: 96,
+          headerLabel: "GP Score",
+        }),
+        cell: ({ getValue }) => (
+          <Eu5DataTable.NumericCell>{formatFixed(getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("totalStateEfficacy", {
@@ -90,10 +120,10 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         meta: Eu5DataTable.meta({
           variant: "num",
           width: 96,
-          headerLabel: "Effective Development",
+          headerLabel: "Eff. Dev",
         }),
         cell: ({ getValue }) => (
-          <Eu5DataTable.NumericCell>{formatFloat(getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("activeStateCapacity", {
@@ -109,9 +139,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
           headerLabel: "Active State Capacity",
         }),
         cell: ({ getValue }) => (
-          <Eu5DataTable.NumericCell>
-            {formatFloat(getValue() / 1_000_000, 1)}
-          </Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("totalPopulation", {
@@ -124,16 +152,16 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         meta: Eu5DataTable.meta({
           variant: "num",
           width: 92,
-          headerLabel: "Population",
+          headerLabel: "Pop",
         }),
         cell: ({ getValue }) => (
-          <Eu5DataTable.NumericCell>{formatInt(getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
-      columnHelper.accessor("taxTradeIncome", {
+      columnHelper.accessor("income", {
         id: "income",
         header: () => (
-          <TippedHeader tooltip="Estimated monthly tax plus trade income from the country.">
+          <TippedHeader tooltip="Monthly income, as the country overview shows it.">
             Income
           </TippedHeader>
         ),
@@ -143,24 +171,12 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
           headerLabel: "Income",
         }),
         cell: ({ getValue }) => (
-          <Eu5DataTable.NumericCell>{formatFloat(getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
-      columnHelper.display({
-        id: "remove",
-        header: "",
-        enableSorting: false,
-        meta: Eu5DataTable.meta({ variant: "end", width: 28 }),
-        cell: ({ row }) => (
-          <Eu5DataTable.Affordance
-            kind="remove"
-            label={`Remove ${row.original.country.country.name} from selection`}
-            onClick={() => void engine.commands.removeCountry(row.original.country.country.key)}
-          />
-        ),
-      }),
+      ...(removable ? [removeColumn(engine)] : []),
     ],
-    [engine],
+    [engine, removable],
   );
 
   const rowSeparator = useMemo(
@@ -170,7 +186,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
       const prevRow = rows[idx - 1];
       if (prevRow && prevRow.ordinalRank <= 10 && row.ordinalRank > 10) {
         return (
-          <div className="flex items-center gap-3 px-3 py-0.5 font-game-num text-[10px] tracking-[.14em] text-game-ink-500 uppercase">
+          <div className="flex items-center gap-3 px-3 py-0.5 font-game-num text-[length:var(--game-label-size)] tracking-[0.04em] text-game-ink-500 uppercase">
             <span className="h-px flex-1 bg-game-line" />
             <span>Players outside top 10</span>
             <span className="h-px flex-1 bg-game-line" />
@@ -183,7 +199,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
   );
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-3.5">
       <Eu5MapDataTable
         columns={columns}
         data={rows}

@@ -1,9 +1,10 @@
 import React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
-import { focusRingAlways } from "@/components/game/focusRing";
+import { focusRing, focusRingAlways } from "@/components/game/focusRing";
 import CheckIcon from "@heroicons/react/24/outline/CheckIcon";
 import ChevronDownIcon from "@heroicons/react/24/outline/ChevronDownIcon";
+import { sectionLabel } from "@/components/game/SectionTitle";
 import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const GameSelect = SelectPrimitive.Root as typeof SelectPrimitive.Root & {
@@ -20,16 +21,23 @@ GameSelect.Value = SelectPrimitive.Value;
 
 const GameSelectTrigger = React.forwardRef<
   React.ComponentRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(function GameSelectTrigger({ className, children, ...props }, ref) {
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+    /**
+     * When the ring shows. A field shows it on any focus. A trigger that
+     * acts as a menu button shows it only on keyboard focus, because the
+     * menu gives focus back to it after a pointer choice.
+     */
+    ring?: "always" | "keyboard";
+  }
+>(function GameSelectTrigger({ className, children, ring = "always", ...props }, ref) {
   return (
     <SelectPrimitive.Trigger
       ref={ref}
       className={cx(
-        "flex h-7 w-full items-center justify-between gap-1.5 rounded-[var(--radius-control)]",
-        "border border-solid border-game-line bg-game-page px-2.5",
+        "flex h-7 w-full items-center justify-between gap-1.5 rounded-[var(--radius-control)] max-md:h-9",
+        "border border-solid border-game-control-line bg-game-page px-2.5",
         "font-game-ui text-[12.5px] text-game-ink-100",
-        focusRingAlways,
+        ring === "always" ? focusRingAlways : focusRing,
         "disabled:cursor-not-allowed disabled:opacity-40",
         "data-[placeholder]:text-game-ink-500",
         className,
@@ -58,7 +66,8 @@ const GameSelectContent = React.forwardRef<
         position={position}
         className={cx(
           "relative z-1001 min-w-24 overflow-hidden",
-          "rounded-[var(--radius-panel)] border border-solid border-game-line-strong bg-game-panel py-1 shadow-lg",
+          // One surface step lighter than the panel and a soft shadow, as `GameMenu` has.
+          "rounded-[var(--radius-panel)] border border-solid border-game-line-strong bg-game-panel-2 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]",
           "data-[state=open]:animate-enter data-[state=open]:[--tw-enter-opacity:0] data-[state=open]:[--tw-enter-scale:0.95]",
           "data-[state=closed]:animate-exit data-[state=closed]:[--tw-exit-opacity:0] data-[state=closed]:[--tw-exit-scale:0.95]",
           "data-[side=bottom]:[--tw-enter-translate-y:-0.25rem] data-[side=top]:[--tw-enter-translate-y:0.25rem] motion-reduce:!animate-none",
@@ -90,10 +99,7 @@ const GameSelectLabel = React.forwardRef<
   return (
     <SelectPrimitive.Label
       ref={ref}
-      className={cx(
-        "px-2.5 py-1 font-game-ui text-[10px] tracking-wider text-game-ink-500 uppercase",
-        className,
-      )}
+      className={cx("px-2.5 py-1", sectionLabel, className)}
       {...props}
     />
   );
@@ -108,7 +114,7 @@ const GameSelectItem = React.forwardRef<
     <SelectPrimitive.Item
       ref={ref}
       className={cx(
-        "relative flex h-7 cursor-default items-center gap-1.5 rounded-plate px-2.5 pr-7",
+        "relative flex h-7 cursor-default items-center gap-1.5 rounded-plate px-2.5 pr-7 max-md:h-11",
         "font-game-ui text-[12.5px] text-game-ink-300 outline-none select-none",
         "data-highlighted:bg-game-panel-hover data-highlighted:text-game-ink-100",
         "data-disabled:pointer-events-none data-disabled:opacity-40",

@@ -85,7 +85,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
         data: marketLabels,
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
+          fontSize: 12,
           rotate: 55,
           interval: 0,
           width: 90,
@@ -98,7 +98,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
         type: "category",
         data: topGoods.map((g) => g.good.name),
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 110 },
+        axisLabel: { color: tickColor, fontSize: 12, width: 110 },
         axisLine: { lineStyle: { color: axisColor } },
         splitArea: { show: true },
       },
@@ -113,7 +113,7 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
         itemHeight: 80,
         precision: 0,
         text: ["Surplus", "Shortage"],
-        textStyle: { color: tickColor, fontSize: 10 },
+        textStyle: { color: tickColor, fontSize: 12 },
         inRange: { color: [...divergingRamp] },
       },
       tooltip: {
@@ -151,7 +151,6 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
 
   const handleInit = useEu5EntityChartClick({
     kind: "market",
-    backLabel: "Markets",
     getTarget: (params) => {
       const idx = params.dataIndex;
       const cell = idx == null ? null : filteredCells[idx];

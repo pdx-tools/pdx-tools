@@ -37,15 +37,15 @@
 
 @keyframes arrive {
   0% {
-    stroke: var(--color-game-accent-100);
+    stroke: var(--game-accent-100);
     stroke-width: 3;
   }
   35% {
-    stroke: var(--color-game-accent-300);
+    stroke: var(--game-accent-300);
     stroke-width: 2;
   }
   100% {
-    stroke: var(--color-game-ink-500);
+    stroke: var(--game-ink-500);
     stroke-width: 1.5;
   }
 }
@@ -77,10 +77,10 @@
   }
   @keyframes arrive-still {
     0% {
-      stroke: var(--color-game-accent-300);
+      stroke: var(--game-accent-300);
     }
     100% {
-      stroke: var(--color-game-ink-500);
+      stroke: var(--game-ink-500);
     }
   }
 }

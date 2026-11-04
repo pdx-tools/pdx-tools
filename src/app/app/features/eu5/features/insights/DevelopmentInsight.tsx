@@ -1,27 +1,34 @@
+import ChevronRightIcon from "@heroicons/react/20/solid/ChevronRightIcon";
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { GameButton } from "@/components/game/Button";
 import type { CountryDevSummary, DevelopmentInsightData } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFloat, formatInt, formatMetric } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
-  chartDataZoomSlider,
-  chartInk,
   chartTooltip,
   getEChartsTheme,
-  seriesColor,
+  chartGutter,
+  yAxisName,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
-import { useEu5Engine } from "../../store";
+import { useEu5Engine, useEu5Players } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
-import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
+import {
+  InsightReadout,
+  InsightReadoutSkeleton,
+  ReadoutFigure,
+  readoutAction,
+} from "../InsightReadout";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
+import { useSelectedCountries } from "../../stack/selected";
+import { countryDotSeries, logAxis, logDomain, LogFloorNote, scatterDots } from "./countryScatter";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { SectionTitle } from "../../components";
 
@@ -31,21 +38,21 @@ function DevelopmentScopeHeader({ data }: { data?: DevelopmentInsightData }) {
 
   return (
     <InsightReadout
-      figure={formatInt(Math.round(data.scope.totalDevelopment))}
+      figure={formatMetric(data.scope.totalDevelopment)}
       unit="total development"
       action={
         <GameButton
           variant="ghost"
-          className="-mr-3 shrink-0"
+          className={readoutAction}
           onClick={() => engine.trigger.selectMapMode("stateEfficacy")}
         >
           Effective Development
-          <span aria-hidden="true">→</span>
+          <ChevronRightIcon aria-hidden className="h-3.5 w-3.5" />
         </GameButton>
       }
     >
-      <ReadoutFigure value={formatFloat(data.scope.avgDevelopment, 1)} label="avg / location" />
-      <ReadoutFigure value={formatFloat(data.distribution.median, 1)} label="median / location" />
+      <ReadoutFigure value={formatMetric(data.scope.avgDevelopment)} label="avg / location" />
+      <ReadoutFigure value={formatMetric(data.distribution.median)} label="median / location" />
     </InsightReadout>
   );
 }
@@ -56,7 +63,7 @@ export function DevelopmentInsight() {
   const countries = insightQuery.data?.countries ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-3.5">
       <DevelopmentScopeHeader data={insightQuery.data} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
@@ -94,62 +101,50 @@ export function DevelopmentInsight() {
 }
 
 function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[] }) {
-  const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
-    [countries],
-  );
+  const selected = useSelectedCountries();
+  const multiplayer = useEu5Players().length > 1;
+  const domain = useMemo(() => logDomain(countries.map((c) => c.totalDevelopment)), [countries]);
 
   const scatterData = useMemo(
     () =>
-      countries.map((c) => ({
-        value: [c.totalDevelopment, c.avgDevelopment] as [number, number],
-        tag: c.country.tag,
-        name: c.country.country.name,
-        locationCount: c.locationCount,
-        totalDevelopment: c.totalDevelopment,
-        avgDevelopment: c.avgDevelopment,
-        totalPopulation: c.totalPopulation,
-        color: c.country.colorHex,
-        id: c.country.country.key,
-        anchorLocationIdx: c.country.anchorLocationIdx,
-      })),
-    [countries],
+      scatterDots(
+        countries.map((c) => ({
+          x: c.totalDevelopment,
+          y: c.avgDevelopment,
+          tag: c.country.tag,
+          name: c.country.country.name,
+          locationCount: c.locationCount,
+          totalDevelopment: c.totalDevelopment,
+          avgDevelopment: c.avgDevelopment,
+          totalPopulation: c.totalPopulation,
+          color: c.country.colorHex,
+          player: c.country.isPlayer,
+          id: c.country.country.key,
+          anchorLocationIdx: c.country.anchorLocationIdx,
+        })),
+        domain,
+        selected,
+        multiplayer,
+      ),
+    [countries, domain, selected, multiplayer],
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
 
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Total Development",
-        nameLocation: "middle",
-        nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
-        min: 0,
-      },
+      grid: { ...chartGutter, top: 28, bottom: 52 },
+      xAxis: logAxis(domain, "Total Development"),
       yAxis: {
         type: "value",
-        name: "Avg Dev per Location",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
+        ...yAxisName("Avg Dev per Location"),
         axisLabel: { color: tickColor },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: {
           lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
         },
       },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
-      ],
+      dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0 }],
       tooltip: {
         ...chartTooltip,
         trigger: "item",
@@ -165,40 +160,12 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
           ].join("<br/>");
         },
       },
-      series: [
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: 8,
-          itemStyle: {
-            color: (params) => {
-              if (Array.isArray(params)) return seriesColor(0);
-              const d = params.data as (typeof scatterData)[number];
-              return d.color ?? seriesColor(0);
-            },
-            opacity: 0.8,
-          },
-          label: {
-            show: true,
-            formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
-            },
-            position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
-            distance: 4,
-          },
-        },
-      ],
+      series: [{ ...countryDotSeries(), data: scatterData }],
     };
-  }, [scatterData, topCountries, countries.length]);
+  }, [scatterData, domain]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: "Development",
     getTarget: (params) => {
       if (Array.isArray(params.data)) return null;
       const country = params.data as (typeof scatterData)[number] | undefined;
@@ -208,5 +175,10 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <>
+      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
+      <LogFloorNote domain={domain} what="development" />
+    </>
+  );
 }

@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { useEu5InsightPanelOpen, useEu5InsightPanelWidth } from "./store";
+import { useEu5ColumnInset } from "./store";
 
 // Panel geometry changes do NOT trigger auto-pan — see PRD §Viewport Behavior.
 // The visible-region check exists only for explicit selection actions.
-const CONTROL_SIDEBAR_WIDTH = 332;
 
 export interface ViewportInsets {
   left: number;
@@ -12,17 +11,9 @@ export interface ViewportInsets {
   bottom: number;
 }
 
+/** The part of the map that the column covers, as the column measures it */
 export function useViewportInsets(): ViewportInsets {
-  const insightPanelOpen = useEu5InsightPanelOpen();
-  const insightPanelWidth = useEu5InsightPanelWidth();
+  const column = useEu5ColumnInset();
 
-  return useMemo(
-    () => ({
-      left: CONTROL_SIDEBAR_WIDTH,
-      right: insightPanelOpen ? insightPanelWidth : 0,
-      top: 0,
-      bottom: 0,
-    }),
-    [insightPanelOpen, insightPanelWidth],
-  );
+  return useMemo(() => ({ left: column.left, right: 0, top: 0, bottom: column.bottom }), [column]);
 }

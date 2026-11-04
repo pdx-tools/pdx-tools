@@ -1,11 +1,20 @@
 import type { ReactNode } from "react";
-import { usePanelNav } from "./profiles/PanelNavContext";
 import { Skeleton } from "../components";
+import { Stat } from "../stack/parts";
+
+/**
+ * The action of a readout. In a narrow panel it wraps under the figure and
+ * its text starts on the figure's edge. In a wide panel its text ends on the
+ * edge of the level.
+ */
+export const readoutAction = "shrink-0 @max-md:px-0 @md:-mr-3";
 
 /*
  * An insight panel's headline as a readout: one figure a reader takes in
  * from across the map, then a ledger line of the figures that qualify it.
- * Panels that share this card read as one family.
+ * Panels that share this readout read as one family: this is the one hero stat
+ * style of the column, and `Stat` is the one secondary style. It has no fill and
+ * no border, because space and size set it apart from the charts.
  */
 
 export function InsightReadoutSkeleton() {
@@ -25,12 +34,9 @@ export function InsightReadout({
   /** The ledger figures. */
   children: ReactNode;
 }) {
-  const nav = usePanelNav();
-  if (nav.stack.length > 0) return null;
-
   return (
-    <div className="rounded-panel border border-game-line-strong bg-game-panel-hover px-4 py-3">
-      <div className="flex items-baseline justify-between gap-4">
+    <div className="@container">
+      <div className="flex flex-col items-start gap-1 @md:flex-row @md:items-baseline @md:justify-between @md:gap-4">
         <div className="flex items-baseline gap-1.5 leading-none">
           <span className="font-game-num text-[20px] font-medium text-game-ink-100 tabular-nums">
             {figure}
@@ -41,18 +47,11 @@ export function InsightReadout({
         </div>
         {action}
       </div>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-game-num text-[12px] leading-none text-game-ink-500 tabular-nums">
-        {children}
-      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 leading-none">{children}</div>
     </div>
   );
 }
 
 export function ReadoutFigure({ value, label }: { value: string; label?: string }) {
-  return (
-    <span className="whitespace-nowrap">
-      <span className="text-game-ink-100">{value}</span>
-      {label ? ` ${label}` : null}
-    </span>
-  );
+  return <Stat value={value} label={label} />;
 }

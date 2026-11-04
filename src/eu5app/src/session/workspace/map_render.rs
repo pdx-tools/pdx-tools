@@ -411,11 +411,10 @@ impl<'bump> Eu5Workspace<'bump> {
         has_selection && !selected && Self::terrain_allows_dimming(terrain, primary_color)
     }
 
-    /// Special terrain dims only when a map mode painted it: the water of a
-    /// market, or surrounded terrain filled with the color around it.
+    /// Water dims only when a map mode painted it, such as the water of a market.
+    /// Wasteland always dims, or it is the brightest land on a map with a selection.
     fn terrain_allows_dimming(terrain: Terrain, primary_color: GpuColor) -> bool {
-        terrain.is_passable()
-            || (primary_color != GpuColor::WATER && primary_color != GpuColor::IMPASSABLE)
+        terrain.is_passable() || primary_color != GpuColor::WATER
     }
 
     pub fn no_map_change(&self) -> MapChange {
@@ -467,13 +466,17 @@ mod tests {
     }
 
     #[test]
-    fn selection_dimming_excludes_unpainted_and_selected_locations() {
-        assert!(!Eu5Workspace::should_dim_location(
+    fn wasteland_dims_with_the_land() {
+        assert!(Eu5Workspace::should_dim_location(
             Terrain::Impassable,
             true,
             false,
             GpuColor::IMPASSABLE,
         ));
+    }
+
+    #[test]
+    fn selection_dimming_excludes_unpainted_water_and_selected_locations() {
         assert!(!Eu5Workspace::should_dim_location(
             Terrain::Sea,
             true,

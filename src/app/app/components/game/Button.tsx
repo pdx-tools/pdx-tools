@@ -18,9 +18,11 @@ const buttonVariants = cva(
         commit:
           "h-7 px-3 bg-game-commit border-game-commit-line text-game-commit-ink font-medium enabled:hover:bg-game-commit-hover",
         default:
-          "h-7 px-3 bg-game-panel border-game-line text-game-ink-100 enabled:hover:bg-game-panel-hover enabled:hover:border-game-line-strong",
+          "h-7 px-3 bg-game-panel border-game-control-line text-game-ink-100 enabled:hover:bg-game-panel-hover enabled:hover:border-game-ink-500",
         ghost:
           "h-7 px-3 bg-transparent border-transparent text-game-ink-300 enabled:hover:text-game-ink-100 enabled:hover:bg-game-panel-hover",
+        quiet:
+          "h-7 px-3 bg-transparent border-game-line-strong text-game-ink-100 enabled:hover:bg-game-panel-hover",
         icon: "h-7 w-7 bg-transparent border-transparent text-game-ink-500 enabled:hover:text-game-ink-100 enabled:hover:bg-game-panel-hover",
       },
     },

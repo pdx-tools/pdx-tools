@@ -5,12 +5,14 @@ import { useGameThemeContainer } from "@/components/GameThemeProvider";
 
 export const Popover = PopoverPrimitive.Root as typeof PopoverPrimitive.Root & {
   Trigger: typeof PopoverPrimitive.Trigger;
+  Anchor: typeof PopoverPrimitive.Anchor;
   Content: typeof PopoverContent;
   Arrow: typeof PopoverPrimitive.Arrow;
 };
 
 Popover.Arrow = PopoverPrimitive.Arrow;
 Popover.Trigger = PopoverPrimitive.Trigger;
+Popover.Anchor = PopoverPrimitive.Anchor;
 const PopoverContent = React.forwardRef<
   React.ComponentRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>

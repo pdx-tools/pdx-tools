@@ -71,6 +71,12 @@ export const divergingPoles = { warm: "#bb5e1f", cool: "#6a8dce" } as const;
 /** Brass retains its application-wide meaning of selected/active. */
 export const selectionColor = "#ce9a43";
 
+/**
+ * The hairline around a dot in a game colour, the same as `--game-rim`. A dark
+ * colour stays visible on the plot, and the colour does not change.
+ */
+export const dotRim = { borderColor: "rgba(255, 255, 255, 0.28)", borderWidth: 1 } as const;
+
 /** Translucent fill under a line or area series, keyed to its slot. */
 export function seriesFill(index: number, alpha = 0.12): string {
   const hex = seriesColor(index);
@@ -89,8 +95,10 @@ export const statusColors = {
 export const chartInk = {
   /** Values and axis names. */
   primary: "#f2eade",
-  /** Small text; unlike `muted`, this clears 4.5:1 against the chart surface. */
+  /** The neutral mark of one series, the same as `--game-ink-300`. Also bright small text. */
   secondary: "#c5c0b8",
+  /** All chart text, the same as `--game-ink-500`: 7.9:1 against the chart surface. */
+  tick: "#aca79f",
   /** Non-text annotations and in-plot metadata. */
   muted: "#7d7a74",
   surface: "#0e1217",
@@ -98,13 +106,57 @@ export const chartInk = {
   track: "#161b21",
 } as const;
 
+/**
+ * One series that shows a magnitude: the neutral colour of a list's bar. It
+ * identifies nothing on the map, so it has no data colour (Single-Series Rule).
+ */
+export const neutralMark = chartInk.secondary;
+
+/** The bars of a histogram: dimmer than a line, so that the brass median and p90 show on them. */
+export const histogramBar = chartInk.muted;
+
+/**
+ * The plot's edges in a stack of charts, so that the charts of a level share
+ * their left and right edges. The left gutter takes the longest category label.
+ */
+export const chartGutter = { left: 72, right: 24 } as const;
+
+/**
+ * The name of a chart's y axis: flat, over the axis, and from the axis line
+ * to the right. An x axis has its name centred under it. Each chart has this rule.
+ */
+export function yAxisName(name: string, gap = 8) {
+  return {
+    name,
+    nameLocation: "end" as const,
+    nameGap: gap,
+    nameTextStyle: { color: chartInk.tick, fontSize: 12, align: "left" as const },
+  };
+}
+
+/** The fill under a neutral line. */
+export const neutralFill = "rgba(197,192,184,0.12)";
+
 export interface EChartsTheme {
   axisColor: string;
-  labelColor: string;
   gridLineColor: string;
   tickColor: string;
   numFamily: string;
 }
+
+const NUM_FAMILY = '"IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace';
+
+/**
+ * Text in a plot that is a number or a tag, such as a value at the end of a
+ * bar. The EU5 surface gives the same set to the ticks of a value axis
+ * (`--game-chart-num-font` in `EChart`).
+ */
+export const chartNumberText = {
+  color: chartInk.tick,
+  fontFamily: NUM_FAMILY,
+  fontSize: 12,
+  fontWeight: 400,
+} as const;
 
 /**
  * Axis, grid and label styling. No mode argument: the surface is always dark.
@@ -112,10 +164,9 @@ export interface EChartsTheme {
 export function getEChartsTheme(): EChartsTheme {
   return {
     axisColor: "rgba(255,255,255,0.1)",
-    labelColor: chartInk.primary,
     gridLineColor: "rgba(255,255,255,0.06)",
-    tickColor: chartInk.secondary,
-    numFamily: '"IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace',
+    tickColor: chartInk.tick,
+    numFamily: NUM_FAMILY,
   };
 }
 
@@ -125,7 +176,7 @@ export const chartTooltip = {
   borderColor: "rgba(255,255,255,0.1)",
   borderWidth: 1,
   padding: [6, 10] as [number, number],
-  textStyle: { color: chartInk.primary, fontSize: 11 },
+  textStyle: { color: chartInk.primary, fontSize: 12 },
   extraCssText:
     "backdrop-filter: blur(8px); border-radius: 3px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);",
 } as const;
@@ -156,5 +207,5 @@ export const chartDataZoomSlider = {
     lineStyle: { color: chartInk.secondary, width: 1, opacity: 0.8 },
     areaStyle: { color: chartInk.secondary, opacity: 0.2 },
   },
-  textStyle: { color: chartInk.secondary, fontSize: 10 },
+  textStyle: { color: chartInk.tick, fontSize: 12 },
 } as const;

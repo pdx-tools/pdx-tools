@@ -7,43 +7,56 @@ import { useEngineActions } from "../../engine";
 import { useEu5SaveDate, useEu5PlaythroughName } from "../store";
 import { MONTH_ABBR } from "@/features/timeline/date";
 import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
+import { IconTip } from "../stack/parts";
 
-function SaveDateReadout({ date }: { date: Eu5DateComponents }) {
+export function SaveDateReadout({ date }: { date: Eu5DateComponents }) {
   const monthDay = `${MONTH_ABBR[date.month]} ${date.day}`;
   return (
-    <p className="flex items-baseline gap-1">
-      <span className="font-game-num text-[13px] text-game-ink-500">{date.year}</span>
-      <span className="font-mono text-[10px] text-game-ink-500">{monthDay}</span>
-    </p>
+    <span className="flex items-baseline gap-1">
+      <span className="font-game-num text-[13px] text-game-ink-300">{date.year}</span>
+      <span className="font-game-num text-[12px] text-game-ink-500 tabular-nums">{monthDay}</span>
+    </span>
   );
 }
 
-export function PanelHeader() {
+export function HomeLink({ className }: { className?: string }) {
   const { resetSaveAnalysis } = useEngineActions();
-  const loadedDate = useEu5SaveDate();
-  const saveDate = useMapHistory()?.preview?.shown?.date ?? loadedDate;
-  const playthroughName = useEu5PlaythroughName();
-
   return (
-    <header className="flex shrink-0 items-center gap-2.5 border-b border-game-line px-3.5 pt-6 pb-2">
+    <IconTip label="Return to home">
       <Link
         to="/"
         onClick={resetSaveAnalysis}
         className={cx(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded text-game-ink-500 transition-colors duration-100 hover:bg-game-panel-hover hover:text-game-ink-100",
+          "flex shrink-0 items-center justify-center rounded text-game-ink-500 transition-colors duration-100 hover:bg-game-panel-hover hover:text-game-ink-100",
           focusRing,
+          className,
         )}
         aria-label="Return to home"
       >
         <HomeIcon className="h-4 w-4" />
       </Link>
+    </IconTip>
+  );
+}
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-game-ui text-[17px] leading-tight font-medium text-game-ink-100">
-          {playthroughName}
-        </p>
-        <SaveDateReadout date={saveDate} />
-      </div>
-    </header>
+export function useShownSaveDate() {
+  const loadedDate = useEu5SaveDate();
+  return useMapHistory()?.preview?.shown?.date ?? loadedDate;
+}
+
+/** The campaign name over the save date, as plain text, for the ⋯ menu. The name wraps in full. */
+export function SaveIdentity({ className }: { className?: string }) {
+  const saveDate = useShownSaveDate();
+  const playthroughName = useEu5PlaythroughName();
+  return (
+    <span className={cx("min-w-0", className)}>
+      <span
+        title={playthroughName}
+        className="block font-game-ui text-[14px] leading-tight font-medium wrap-anywhere text-game-ink-100"
+      >
+        {playthroughName}
+      </span>
+      <SaveDateReadout date={saveDate} />
+    </span>
   );
 }

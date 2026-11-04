@@ -340,6 +340,16 @@ impl InteractionController {
         self.viewport.fit(rect);
     }
 
+    /// Show a world region in the part of the canvas that the insets leave free.
+    pub fn frame_region(
+        &mut self,
+        center: WorldPoint<f32>,
+        size: WorldSize<f32>,
+        insets: ViewportInsets,
+    ) {
+        self.viewport.frame_region(center, size, insets);
+    }
+
     /// Center on world point.
     pub fn center_on(&mut self, world: WorldPoint<f32>) {
         let canvas_size = self.viewport_bounds().rect.size;

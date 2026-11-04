@@ -10,7 +10,13 @@ import type {
   BuildingLevelsTopLocation,
   ForeignBuildingLocationRow,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import {
+  formatCount,
+  formatFloat,
+  formatInt,
+  formatPercent as formatShare,
+  formatFixed,
+} from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { buildingOwnershipColors } from "../../gameColors";
 import { chartTooltip, getEChartsTheme, markGap } from "@/components/viz/echartsTheme";
@@ -24,19 +30,17 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 
-const BACK_LABEL = "Building Levels";
-
 function formatLevels(value: number) {
-  return formatInt(value);
+  return formatCount(value);
 }
 
 function BuildingLevelsScopeHeader({ data }: { data?: BuildingLevelsScopeSummary }) {
   if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightReadout figure={formatLevels(data.totalLevels)} unit="building levels">
-      <ReadoutFigure value={formatLevels(data.medianLevels)} label="median / location" />
-      <ReadoutFigure value={`${formatFloat(data.foreignShare * 100, 1)}%`} label="foreign-owned" />
+    <InsightReadout figure={formatCount(data.totalLevels)} unit="building levels">
+      <ReadoutFigure value={formatCount(data.medianLevels)} label="median / location" />
+      <ReadoutFigure value={formatShare(data.foreignShare)} label="foreign-owned" />
     </InsightReadout>
   );
 }
@@ -66,11 +70,10 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
         name: "Building Levels",
         nameLocation: "middle",
         nameGap: 28,
-        nameTextStyle: { color: tickColor, fontSize: 10 },
+        nameTextStyle: { color: tickColor, fontSize: 12 },
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
-          formatter: (v: number) => formatInt(v),
+          fontSize: 12,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -78,7 +81,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 130 },
+        axisLabel: { color: tickColor, fontSize: 12, width: 130 },
         axisLine: { lineStyle: { color: axisColor } },
         axisTick: { show: false },
       },
@@ -121,7 +124,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
       },
       legend: {
         data: ["Domestic", "Foreign"],
-        textStyle: { color: tickColor, fontSize: 10 },
+        textStyle: { color: tickColor, fontSize: 12 },
         top: "bottom",
       },
     };
@@ -143,7 +146,7 @@ function ForeignShareCallout({ scope }: { scope: BuildingLevelsScopeSummary }) {
           {formatLevels(scope.totalLevels)} levels
         </span>
         <span className="font-semibold" style={{ color: buildingOwnershipColors.foreign }}>
-          {formatFloat(pct, 1)}%
+          {formatShare(pct / 100)}
         </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-game-panel-hover">
@@ -186,7 +189,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
-          return <LocationLink location={loc.location} backLabel={BACK_LABEL} />;
+          return <LocationLink location={loc.location} />;
         },
       }),
       topLocColHelper.accessor("owner", {
@@ -194,15 +197,13 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
         sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
-        cell: ({ row }) => (
-          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
-        ),
+        cell: ({ row }) => <CountryLink country={row.original.owner} aligned />,
       }),
       topLocColHelper.accessor("levels", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Levels", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
@@ -232,7 +233,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const r = row.original;
-          return <LocationLink location={r.location} backLabel={BACK_LABEL} />;
+          return <LocationLink location={r.location} />;
         },
       }),
       foreignLocColHelper.accessor("locationOwner", {
@@ -242,18 +243,14 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
             b.original.locationOwner.country.name,
           ),
         meta: Eu5DataTable.meta({ headerLabel: "Loc Owner" }),
-        cell: ({ row }) => (
-          <CountryLink country={row.original.locationOwner} aligned backLabel={BACK_LABEL} />
-        ),
+        cell: ({ row }) => <CountryLink country={row.original.locationOwner} aligned />,
       }),
       foreignLocColHelper.accessor("foreignOwner", {
         id: "foreignOwner",
         sortFn: (a, b) =>
           a.original.foreignOwner.country.name.localeCompare(b.original.foreignOwner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Building Owner" }),
-        cell: ({ row }) => (
-          <CountryLink country={row.original.foreignOwner} aligned backLabel={BACK_LABEL} />
-        ),
+        cell: ({ row }) => <CountryLink country={row.original.foreignOwner} aligned />,
       }),
       foreignLocColHelper.accessor((row) => row.building.name, {
         id: "building",
@@ -265,7 +262,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Foreign Lvls", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
@@ -294,9 +291,7 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
         sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner", variant: "pin" }),
-        cell: ({ row }) => (
-          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
-        ),
+        cell: ({ row }) => <CountryLink country={row.original.owner} aligned />,
       }),
       foreignOwnerCellColHelper.accessor((row) => row.building.name, {
         id: "building",
@@ -308,14 +303,14 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Levels", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       foreignOwnerCellColHelper.accessor("buildingCount", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Buildings", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
@@ -351,7 +346,7 @@ export function BuildingLevelsInsight() {
   const foreignLevels = scope?.foreignLevels ?? 0;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-3.5">
       <BuildingLevelsScopeHeader data={scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />

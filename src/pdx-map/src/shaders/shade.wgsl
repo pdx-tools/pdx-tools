@@ -60,6 +60,8 @@ struct ShadeUniforms {
 @group(0) @binding(5) var<storage, read> location_secondary_colors: array<u32>;
 
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
+const DIMMED_BORDER_SCALE = 0.4;
+const DIMMED_DESATURATE = 0.7;
 const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
 const STATE_FOCUSED = 4u; // Bit 2: location is the focused single tile
 const STATE_DIMMED = 8u; // Bit 3: location is outside the active selection
@@ -397,7 +399,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     if (is_dimmed) {
-        fill_color = vec4<f32>(fill_color.rgb * 0.3, 1.0);
+        // Land out of the selection goes toward neutral, so that a low value on a
+        // colour ramp inside the selection still stands apart from it.
+        let luma = dot(fill_color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+        fill_color = vec4<f32>(mix(fill_color.rgb, vec3<f32>(luma), DIMMED_DESATURATE) * 0.3, 1.0);
     }
     if (is_highlighted) {
         fill_color = vec4<f32>(
@@ -448,6 +453,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         }
     } else if (edges.owner <= owner_r) {
         rgb = shift_lightness(unpack_color(center_border_color), -OWNER_BORDER_DARKEN * uniforms.edge_strength);
+        // A border of land out of the selection dims with the land, or the
+        // quiet land has the strongest marks on the map.
+        if (is_dimmed) {
+            rgb *= DIMMED_BORDER_SCALE;
+        }
     } else {
         if (min(edges.owner, edges.coast) <= owner_r + glow_r) {
             rgb = lighten(rgb, OWNER_GLOW_LIGHTEN);

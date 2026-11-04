@@ -11,7 +11,6 @@ const view: CampaignCarry = {
     mapMode: "political",
     viewport: null,
     selection: null,
-    insightPanel: { open: false, width: 640 },
   },
 };
 afterEach(() => vi.useRealTimers());

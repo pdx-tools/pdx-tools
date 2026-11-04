@@ -26,10 +26,9 @@ type Eu5State = {
   players: Eu5PlayerData[];
   /** The whole map: the scope of every insight when nothing is selected. */
   world: WorldSummary;
-  insightPanelOpen: boolean;
-  insightPanelWidth: number;
-  setInsightPanelOpen: (open: boolean) => void;
-  setInsightPanelWidth: (width: number) => void;
+  /** How much of the map the column covers, measured, so the camera and overlays stand clear */
+  columnInset: ColumnInset;
+  setColumnInset: (inset: ColumnInset) => void;
   /** Height of the timeline bar over the map, so overlays can sit above it. */
   timelineBarHeight: number;
   setTimelineBarHeight: (height: number) => void;
@@ -48,7 +47,12 @@ export type Eu5Store = StoreApi<Eu5State>;
 export const Eu5Context = createContext<Eu5Store | null>(null);
 
 /** View state preserved across save changes. */
-type Eu5ViewState = Pick<Eu5State, "insightPanelOpen" | "insightPanelWidth" | "timelineBarHeight">;
+type Eu5ViewState = Pick<Eu5State, "columnInset" | "timelineBarHeight">;
+
+export type ColumnInset = { left: number; bottom: number };
+
+/** The column's width at rest, until it is measured */
+const RESTING_INSET: ColumnInset = { left: 340, bottom: 0 };
 
 export const createEu5Store = ({
   opened,
@@ -76,11 +80,14 @@ export const createEu5Store = ({
     multiplayer: opened.multiplayer,
     players: opened.players,
     world: opened.world,
-    insightPanelOpen: view?.insightPanelOpen ?? false,
-    insightPanelWidth: view?.insightPanelWidth ?? 640,
+    columnInset: view?.columnInset ?? RESTING_INSET,
     timelineBarHeight: view?.timelineBarHeight ?? 0,
-    setInsightPanelOpen: (open) => set({ insightPanelOpen: open }),
-    setInsightPanelWidth: (width) => set({ insightPanelWidth: width }),
+    setColumnInset: (inset) =>
+      set((state) =>
+        state.columnInset.left === inset.left && state.columnInset.bottom === inset.bottom
+          ? state
+          : { columnInset: inset },
+      ),
     setTimelineBarHeight: (height) => set({ timelineBarHeight: height }),
     uploadedSaveId: null,
     setUploadedSaveId: (id) => set({ uploadedSaveId: id }),
@@ -93,9 +100,9 @@ export const createEu5Store = ({
   return store;
 };
 
-export function eu5ViewState(store: Eu5Store): Eu5ViewState {
-  const { insightPanelOpen, insightPanelWidth, timelineBarHeight } = store.getState();
-  return { insightPanelOpen, insightPanelWidth, timelineBarHeight };
+export function eu5ViewState(store: Eu5Store): Partial<Eu5ViewState> {
+  const { columnInset, timelineBarHeight } = store.getState();
+  return { columnInset, timelineBarHeight };
 }
 
 export function useEu5Context() {
@@ -132,10 +139,8 @@ export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectio
 export const useEu5SelectionRevision = () => useEu5Store((x) => x.appState.selectionRevision);
 export const useEu5UserSelectionRevision = () =>
   useEu5Store((x) => x.appState.userSelectionRevision);
-export const useEu5InsightPanelOpen = () => useEu5Store((x) => x.insightPanelOpen);
-export const useEu5InsightPanelWidth = () => useEu5Store((x) => x.insightPanelWidth);
-export const useSetEu5InsightPanelOpen = () => useEu5Store((x) => x.setInsightPanelOpen);
-export const useSetEu5InsightPanelWidth = () => useEu5Store((x) => x.setInsightPanelWidth);
+export const useEu5ColumnInset = () => useEu5Store((x) => x.columnInset);
+export const useSetEu5ColumnInset = () => useEu5Store((x) => x.setColumnInset);
 export const useEu5Timeline = () => useEu5Store((x) => x.appState.timeline);
 export const useEu5TimelineDate = () => useEu5Store((x) => x.appState.timelineDate);
 export const useEu5TimelineMapDate = () => useEu5Store((x) => x.appState.timelineMapDate);

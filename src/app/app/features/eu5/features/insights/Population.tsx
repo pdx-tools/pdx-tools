@@ -1,3 +1,4 @@
+import { cx } from "class-variance-authority";
 import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
@@ -11,16 +12,17 @@ import type {
   PopulationTypeProfileRow,
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFloat, formatInt, formatPercent as formatShare, formatFixed } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { popRankColors } from "../../gameColors";
 import {
   chartInk,
+  chartNumberText,
   chartTooltip,
   divergingPoles,
   getEChartsTheme,
   markGap,
-  seriesColor,
+  neutralMark,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
@@ -36,7 +38,6 @@ import { PopulationReadout, PopulationReadoutSkeleton } from "./PopulationReadou
 import { MOST_POPULOUS_CAP } from "./populationConstants";
 import { countryGrowthLines, formatPeople } from "./populationFormatting";
 
-const BACK_LABEL = "Population";
 // Settlement ranks keep the game's own colours: this is an ordered set, but
 // player recognition outranks the ordinal ramp. See gameColors.ts.
 const RANK_COLORS = popRankColors;
@@ -62,7 +63,7 @@ export function PopulationInsight() {
   const scopeIsEmpty = insightQuery.data?.scope.isEmpty ?? true;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-3.5">
       <PopulationScopeHeader data={insightQuery.data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
@@ -165,6 +166,34 @@ function countryTooltip(country: ScopedCountryPopulation): string {
     .join("<br/>");
 }
 
+/** The key of the settlement colours, with each rank's share when there is one bar */
+function SettlementKey({
+  shares,
+  className,
+}: {
+  shares?: Record<keyof typeof RANK_COLORS, number>;
+  className?: string;
+}) {
+  return (
+    <div className={cx("flex flex-wrap gap-x-3 gap-y-1", className)}>
+      {(["rural", "town", "city", "megalopolis"] as const).map((key, rank) => (
+        <div key={key} className="flex items-center gap-1.5 text-xs text-game-ink-300">
+          <span
+            className="h-2 w-2 shrink-0 rounded-sm"
+            style={{ backgroundColor: RANK_COLORS[key] }}
+          />
+          {rankLabel(rank)}
+          {shares ? (
+            <span className="font-game-num text-game-ink-100 tabular-nums">
+              {formatShare(shares[key])}
+            </span>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulation[] }) {
   const rows = useMemo<CountrySpineDatum[]>(
     () =>
@@ -194,8 +223,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
         type: "value",
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatPeople(value),
+          fontSize: 12,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -203,7 +231,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
+        axisLabel: { color: tickColor, fontSize: 12, width: 100 },
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
@@ -253,7 +281,6 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: "Population",
     getTarget: (params) => {
       const idx = params.dataIndex;
       const country = idx == null ? null : rows[idx];
@@ -265,7 +292,15 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 
   const height = rows.length * 24 + 54;
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <>
+      {/* The chart is long, so its key comes first. */}
+      <SettlementKey className="mb-2" />
+      <EChart
+        option={option}
+        style={{ height: `${height}px`, width: "100%" }}
+        onInit={handleInit}
+      />
+    </>
   );
 }
 
@@ -304,8 +339,7 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
         max: total || 1,
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatInt(value),
+          fontSize: 12,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { show: false },
@@ -364,7 +398,21 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
     };
   }, [row, total]);
 
-  return <EChart option={option} style={{ height: "86px", width: "100%" }} />;
+  const share = (value: number) => (total > 0 ? value / total : 0);
+  return (
+    <>
+      <EChart option={option} style={{ height: "86px", width: "100%" }} />
+      <SettlementKey
+        className="mt-2"
+        shares={{
+          rural: share(row.rural),
+          town: share(row.town),
+          city: share(row.city),
+          megalopolis: share(row.megalopolis),
+        }}
+      />
+    </>
+  );
 }
 
 const columnHelper = createColumnHelper<PopulationTopLocation>();
@@ -378,7 +426,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
-          return <LocationLink location={loc.location} backLabel={BACK_LABEL} />;
+          return <LocationLink location={loc.location} />;
         },
       }),
       columnHelper.accessor("owner", {
@@ -386,15 +434,13 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
         sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
-        cell: ({ row }) => (
-          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
-        ),
+        cell: ({ row }) => <CountryLink country={row.original.owner} aligned />,
       }),
       columnHelper.accessor("population", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("rank", {
@@ -440,7 +486,7 @@ const POP_TYPE_LABELS = [
   "Tribesmen",
 ] as const;
 
-function popTypeLabel(id: number): string {
+export function popTypeLabel(id: number): string {
   return POP_TYPE_LABELS[id] ?? `Type ${id}`;
 }
 
@@ -453,12 +499,15 @@ export function PopulationTypeProfile({
 }) {
   const data = useMemo(
     () =>
-      rows.map((r) => ({
-        ...r,
-        label: popTypeLabel(r.populationType),
-        posBar: Math.max(0, r.shareDelta),
-        negBar: Math.min(0, r.shareDelta),
-      })),
+      rows
+        .map((r) => ({
+          ...r,
+          label: popTypeLabel(r.populationType),
+          posBar: Math.max(0, r.shareDelta),
+          negBar: Math.min(0, r.shareDelta),
+        }))
+        // The game's order of pop types has no meaning, so the largest comes first.
+        .sort((a, b) => b.share - a.share),
     [rows],
   );
 
@@ -468,26 +517,15 @@ export function PopulationTypeProfile({
     if (isEmpty) {
       return {
         dataset: { source: data, dimensions: ["label", "share"] },
-        grid: { left: 72, right: 16, top: 8, bottom: 28 },
-        xAxis: {
-          type: "value",
-          min: 0,
-          max: 1,
-          axisLabel: {
-            color: tickColor,
-            fontSize: 10,
-            formatter: (v: number) => formatPercent(v, 0),
-          },
-          axisLine: { lineStyle: { color: axisColor } },
-          splitLine: {
-            lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-          },
-        },
+        // Each bar has its value, so the chart has no value axis.
+        grid: { left: 72, right: 48, top: 4, bottom: 4 },
+        xAxis: { type: "value", show: false, min: 0 },
         yAxis: {
           type: "category",
           inverse: true,
-          axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
+          axisLabel: { color: tickColor, fontSize: 12, width: 66 },
           axisLine: { lineStyle: { color: axisColor } },
+          axisTick: { show: false },
         },
         tooltip: {
           ...chartTooltip,
@@ -512,7 +550,15 @@ export function PopulationTypeProfile({
           {
             type: "bar",
             encode: { x: "share", y: "label" },
-            itemStyle: { color: seriesColor(0) },
+            itemStyle: { color: neutralMark },
+            barMaxWidth: 10,
+            barMinHeight: 2,
+            label: {
+              ...chartNumberText,
+              show: true,
+              position: "right",
+              formatter: (params) => formatShare((params.data as { share: number }).share),
+            },
           },
         ],
       };
@@ -526,13 +572,13 @@ export function PopulationTypeProfile({
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
+        textStyle: { color: tickColor, fontSize: 12 },
       },
       xAxis: {
         type: "value",
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
+          fontSize: 12,
           formatter: (v: number) => formatPercent(v, 1),
         },
         axisLine: { lineStyle: { color: axisColor } },
@@ -543,7 +589,7 @@ export function PopulationTypeProfile({
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
+        axisLabel: { color: tickColor, fontSize: 12, width: 66 },
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
@@ -585,7 +631,7 @@ export function PopulationTypeProfile({
     };
   }, [data, isEmpty]);
 
-  const height = data.length * 22 + 52;
+  const height = data.length * 22 + (isEmpty ? 8 : 52);
   return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
 }
 
@@ -694,7 +740,7 @@ function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
         label: {
           formatter: (params: unknown) => (params as { name: string }).name.replace(/^[rc]:/, ""),
           color: chartInk.primary,
-          fontSize: 11,
+          fontSize: 12,
           backgroundColor: chartTooltip.backgroundColor,
           padding: [2, 5],
           borderRadius: 3,

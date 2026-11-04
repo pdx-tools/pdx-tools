@@ -1,15 +1,18 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import {
-  chartInk,
+  chartGutter,
+  chartNumberText,
   chartTooltip,
   getEChartsTheme,
-  seriesColor,
+  histogramBar,
+  selectionColor,
 } from "@/components/viz/echartsTheme";
 import type { DistributionBucket, LocationDistribution } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFloat, formatInt, formatMetric, formatTick } from "@/lib/format";
 import { SectionTitle } from "../../components";
+import { histogramLabels, histogramXAxes } from "./histogramAxis";
 
 function formatBound(v: number): string {
   return Number.isInteger(v) ? String(v) : formatFloat(v, 1);
@@ -38,25 +41,48 @@ function bucketCoord(buckets: DistributionBucket[], value: number): number | nul
 
 interface Props {
   distribution: LocationDistribution;
-  /** Replaces the default "<metric> distribution" section title. */
+  /** Replaces the default section title, the metric's name. */
   title?: string;
 }
 
 export function LocationDistributionChart({ distribution, title }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    const measure = () => setChartWidth(el.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const { buckets, median, p90 } = distribution;
+  const medianName = `median ${formatMetric(median)}`;
+  const p90Name = `p90 ${formatMetric(p90)}`;
+  const medianCoord = bucketCoord(buckets, median);
+  const p90Coord = bucketCoord(buckets, p90);
+  const at = (coord: number | null) => ((coord ?? 0) + 0.5) / Math.max(1, buckets.length);
+  // A new width changes the chart only when it moves a label.
+  const labels = histogramLabels({
+    median: { at: at(medianCoord), chars: medianName.length },
+    p90: { at: at(p90Coord), chars: p90Name.length },
+    plotWidth: Math.max(0, chartWidth - chartGutter.left - chartGutter.right),
+    gutter: chartGutter,
+  });
+  const { median: medianAlign, p90: p90Align, stacked } = labels;
+
   const option = useMemo<EChartsOption>(() => {
-    const { buckets, median, p90 } = distribution;
     const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-    // Median and p90 land on the shape the bars draw, so the reader sees
-    // where the middle and the tail begin without holding a number.
-    const marks = [
-      { name: "median", value: median },
-      { name: "p90", value: p90 },
-    ].flatMap(({ name, value }) => {
-      const xAxis = bucketCoord(buckets, value);
-      // ECharts replaces a mark's `value` with its axis coordinate, so the
-      // label text is set here, not in the formatter.
-      return xAxis == null ? [] : [{ name: `${name} ${formatBound(value)}`, xAxis }];
-    });
+    // Median and p90 land on the shape the bars draw, and each label has the value, so the
+    // reader sees where the middle and the tail begin.
+    const data = [
+      { name: medianName, xAxis: medianCoord, align: medianAlign, offset: stacked ? -13 : 0 },
+      { name: p90Name, xAxis: p90Coord, align: p90Align, offset: 0 },
+    ].flatMap(({ name, xAxis, align, offset }) =>
+      xAxis == null ? [] : [{ name, xAxis, label: { align, offset: [0, offset] } }],
+    );
     return {
       tooltip: {
         ...chartTooltip,
@@ -69,17 +95,12 @@ export function LocationDistributionChart({ distribution, title }: Props) {
           return `${formatBucket(b)}: ${formatInt(p.value)} locations`;
         },
       },
-      xAxis: {
-        type: "category",
-        data: buckets.map(formatBucket),
-        axisLabel: { rotate: 35, color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
-      },
+      xAxis: histogramXAxes(buckets, formatTick),
       yAxis: {
         type: "value",
-        name: "Locations",
-        nameTextStyle: { color: chartInk.secondary, fontSize: 10 },
-        axisLabel: { color: tickColor, fontSize: 10 },
+        // The top tick would stand under the labels of the median and p90.
+        axisLabel: { color: tickColor, showMaxLabel: false },
+        axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { color: gridLineColor } },
         minInterval: 1,
       },
@@ -87,35 +108,39 @@ export function LocationDistributionChart({ distribution, title }: Props) {
         {
           type: "bar",
           data: buckets.map((b) => b.count),
-          itemStyle: { color: seriesColor(0) },
+          itemStyle: { color: histogramBar },
           barCategoryGap: "10%",
           markLine: {
             symbol: "none",
             silent: true,
             animation: false,
-            data: marks,
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
+            data,
+            // At 2px the brass stays brass in an image with subsampled colour, such as a shared
+            // screenshot. There a line of 1px on an odd pixel column loses its colour and looks white.
+            lineStyle: { type: "dashed", color: selectionColor, width: 2 },
             label: {
-              color: tickColor,
-              fontSize: 10,
+              ...chartNumberText,
               position: "end",
               formatter: "{b}",
             },
           },
         },
       ],
-      grid: { left: 50, right: 20, top: 30, bottom: 70 },
+      // The band over the plot holds two rows of labels, so a change of rows does not move the plot.
+      grid: { ...chartGutter, top: 46, bottom: 24 },
     };
-  }, [distribution]);
+  }, [buckets, medianName, p90Name, medianCoord, p90Coord, medianAlign, p90Align, stacked]);
 
-  if (distribution.buckets.length === 0) return null;
+  if (buckets.length === 0) return null;
 
   return (
     <div>
       <SectionTitle className="mb-1">
-        {title ?? `${distribution.metricLabel} distribution`}
+        {title ?? distribution.metricLabel} · locations per band
       </SectionTitle>
-      <EChart option={option} style={{ height: 180 }} />
+      <div ref={chartRef}>
+        <EChart option={option} style={{ height: 188 }} />
+      </div>
     </div>
   );
 }

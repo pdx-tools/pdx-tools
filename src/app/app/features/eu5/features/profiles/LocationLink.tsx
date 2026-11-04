@@ -9,24 +9,17 @@ export type LocationTarget = { key: number; name: string };
 
 type LocationLinkProps = {
   location: LocationTarget;
-  backLabel?: string;
   onActivate?: (location: LocationTarget) => void;
   className?: string;
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "className">;
 
-export function LocationLink({
-  location,
-  backLabel,
-  onActivate,
-  className,
-  ...props
-}: LocationLinkProps) {
+export function LocationLink({ location, onActivate, className, ...props }: LocationLinkProps) {
   const nav = usePanelNav();
   const panToEntity = usePanToEntity();
   const activate =
     onActivate ??
     ((target: LocationTarget) => {
-      nav.pushMany([locationProfileEntry(target.key, target.name)], backLabel);
+      nav.open(locationProfileEntry(target.key, target.name));
       panToEntity(target.key);
     });
 

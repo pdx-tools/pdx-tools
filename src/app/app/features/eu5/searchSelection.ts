@@ -19,3 +19,28 @@ export function resolveSearchSelection(result: SearchResult): SearchSelection {
   }
   return { kind: "location", locationIdx: result.locationIdx, panTo: result.locationIdx };
 }
+
+/** How well a result fits the query: an exact tag, then a name that starts with it, then the rest */
+function searchTier(query: string, result: { name: string; tag?: string }): number {
+  if (result.tag?.toLowerCase() === query) return 0;
+  return result.name.toLowerCase().startsWith(query) ? 1 : 2;
+}
+
+/**
+ * The results in order of fit for a query in lower case. In one tier a shorter
+ * name comes first, because it is the nearer match, and then the alphabet.
+ */
+export function rankSearchResults<T extends { name: string; tag?: string }>(
+  query: string,
+  results: readonly T[],
+): T[] {
+  return results
+    .map((result) => ({ result, tier: searchTier(query, result) }))
+    .sort(
+      (a, b) =>
+        a.tier - b.tier ||
+        a.result.name.length - b.result.name.length ||
+        a.result.name.localeCompare(b.result.name),
+    )
+    .map((x) => x.result);
+}

@@ -1,3 +1,4 @@
+import { rankSearchResults } from "../../searchSelection";
 import type { Eu5Snapshot, Eu5SnapshotDescriptor } from "../../history/analysisTypes";
 import { LatestRequest } from "../../history/latestRequest";
 import { FrameReader } from "@/features/campaign/analysis/framePort";
@@ -618,6 +619,7 @@ const loadSaveInner = async (
           id: c.country.key,
           name: c.country.name,
           tag: c.tag,
+          colorHex: c.colorHex,
           locationIdx: c.capital!,
         }));
 
@@ -627,10 +629,13 @@ const loadSaveInner = async (
           kind: "location" as const,
           id: entry.location.key,
           name: entry.location.name,
+          ownerTag: entry.ownerTag,
+          ownerColorHex: countryIndex.find((c) => c.tag === entry.ownerTag)?.colorHex,
           locationIdx: entry.location.key,
         }));
 
-      return [...countries, ...locations].slice(0, 20);
+      const ranked = rankSearchResults(lower, [...countries, ...locations]);
+      return { results: ranked.slice(0, 20), total: ranked.length };
     },
 
     getCountryIdentity: (countryIdx: number): CountryIdentity | null => {
@@ -645,6 +650,8 @@ const loadSaveInner = async (
     getLocationColorId: (locationIdx: number): number | null => {
       return app.center_at(locationIdx) ?? null;
     },
+
+    getSelectedColorIds: (): number[] => Array.from(app.selected_color_ids()),
 
     getPoliticalDefaultCountryAnchor: (): number | null => {
       return app.political_default_country_anchor() ?? null;

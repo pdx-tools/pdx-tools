@@ -310,10 +310,13 @@ export const createMapEngine = async (
       return (
         (modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
         (modifiers & SharedCanvasModifierBits.Alt) !== 0 ||
-        (modifiers & SharedCanvasModifierBits.Ctrl) !== 0
+        (modifiers & SharedCanvasModifierBits.Ctrl) !== 0 ||
+        (modifiers & SharedCanvasModifierBits.Meta) !== 0
       );
     }
     return (
+      pressedKeys.has("MetaLeft") ||
+      pressedKeys.has("MetaRight") ||
       pressedKeys.has("ShiftLeft") ||
       pressedKeys.has("ShiftRight") ||
       pressedKeys.has("AltLeft") ||
@@ -447,15 +450,14 @@ export const createMapEngine = async (
         } else if (action === SharedCanvasEventAction.Down) {
           app.on_cursor_move(x, y);
           lastCursorPosition = { x, y };
-          const useBoxSelect =
-            button === 0 &&
-            ((modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
-              (modifiers & SharedCanvasModifierBits.Alt) !== 0 ||
-              (modifiers & SharedCanvasModifierBits.Ctrl) !== 0);
+          const useBoxSelect = button === 0 && hasBoxSelectModifier(modifiers);
           if (useBoxSelect) {
             const isCtrl = (modifiers & SharedCanvasModifierBits.Ctrl) !== 0;
             const isAlt = (modifiers & SharedCanvasModifierBits.Alt) !== 0;
-            const isShift = (modifiers & SharedCanvasModifierBits.Shift) !== 0;
+            // Cmd adds, as Shift does, so a click with either key adds an entity.
+            const isShift =
+              (modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
+              (modifiers & SharedCanvasModifierBits.Meta) !== 0;
             const operation: BoxSelectOperation = isAlt
               ? "remove"
               : isCtrl && !isShift
@@ -862,6 +864,14 @@ export const createMapEngine = async (
     ) => {
       return app.pan_to_color_id(colorId, insets);
     },
+
+    frame_color_ids: (
+      colorIds: number[],
+      insets: { left: number; right: number; top: number; bottom: number },
+    ) => app.frame_color_ids(Uint16Array.from(colorIds), insets),
+
+    world_points_of: (colorIds: number[]): number[] =>
+      Array.from(app.world_points_of(Uint16Array.from(colorIds))),
 
     onBoxSelectRectUpdate: (callback: (rect: BoxSelectOverlayRect | null) => void) => {
       boxSelectRectCallback = callback;

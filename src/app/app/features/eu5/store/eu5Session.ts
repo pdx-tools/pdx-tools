@@ -244,11 +244,8 @@ class Eu5Session {
       }
     }
 
-    const view = carry
-      ? { insightPanelOpen: carry.insightPanel.open, insightPanelWidth: carry.insightPanel.width }
-      : undefined;
     const { save: saveInput } = await source;
-    this.show(createEu5Store({ opened, input: save, saveInput, view }), {
+    this.show(createEu5Store({ opened, input: save, saveInput }), {
       reload,
     });
   }

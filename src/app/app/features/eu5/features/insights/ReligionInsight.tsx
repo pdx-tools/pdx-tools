@@ -4,7 +4,13 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, SectionTitle } from "../../components";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import {
+  formatCount,
+  formatExact,
+  formatFloat,
+  formatInt,
+  formatPercent as formatShare,
+} from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,
@@ -34,7 +40,7 @@ export function ReligionInsight() {
   const religions = insightQuery.data?.religions ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-3.5">
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
       ) : insightQuery.loading && !insightQuery.data ? (
@@ -43,7 +49,7 @@ export function ReligionInsight() {
         <>
           {stateReligions.length > 0 && (
             <section>
-              <SectionTitle>Which state religions rule the most population?</SectionTitle>
+              <SectionTitle>Population ruled by state religion</SectionTitle>
               <StateReligionChart stateReligions={stateReligions} />
             </section>
           )}
@@ -130,21 +136,22 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
         source: flatSource,
         dimensions: ["religion", "stateReligionPopulation", "otherFaithPopulation"],
       },
-      grid: { left: 110, right: 24, top: 10, bottom: 48 },
+      grid: { left: 110, right: 24, top: 32, bottom: 26 },
+      // The legend is on top, so that it shows before a long list of religions.
       legend: {
-        bottom: 0,
+        top: 0,
+        left: 110,
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
+        textStyle: { color: tickColor, fontSize: 12 },
       },
 
       xAxis: {
         type: "value",
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatInt(value),
+          fontSize: 12,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -152,7 +159,7 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
+        axisLabel: { color: tickColor, fontSize: 12, width: 100 },
         axisLine: { lineStyle: { color: axisColor } },
       },
       tooltip: {
@@ -186,7 +193,8 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
           type: "bar",
           stack: "population",
           encode: { x: "otherFaithPopulation", y: "religion" },
-          itemStyle: { color: chartInk.track, ...markGap },
+          // The track colour does not show on the chart surface. This neutral has 4.3:1.
+          itemStyle: { color: chartInk.muted, ...markGap },
         },
       ],
     };
@@ -222,7 +230,7 @@ function CoverageBar({
         <div style={{ width: `${srPct * 100}%`, backgroundColor: colorHex }} />
         <div className="flex-1 bg-game-panel-hover" />
       </div>
-      <span className="text-[11px] text-game-ink-300">{formatPercent(srPct)} state religion</span>
+      <span className="text-[12px] text-game-ink-300">{formatShare(srPct)} state religion</span>
     </div>
   );
 }
@@ -260,8 +268,8 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
                 {formatInt(r.stateCountryCount)}{" "}
                 {r.stateCountryCount === 1 ? "country" : "countries"}
               </span>
-              <span className="text-[11px] text-game-ink-300">
-                {formatInt(r.totalRuledPopulation)} ruled population
+              <span className="text-[12px] text-game-ink-300">
+                {formatCount(r.totalRuledPopulation)} ruled population
               </span>
             </div>
           );
@@ -270,7 +278,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       religionColumnHelper.accessor("stateReligionCoverage", {
         id: "ruledPopulation",
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Ruled Population" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Ruled Pop" }),
         cell: ({ row }) => {
           const r = row.original;
           return (
@@ -289,15 +297,15 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
       religionColumnHelper.accessor("followerPopulation", {
         id: "asPopulationReligion",
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Followers" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Followers", exact: formatExact }),
         cell: ({ row }) => {
           const r = row.original;
           if (r.followerPopulation === 0) return <span className="text-game-ink-500">—</span>;
           return (
             <div className="flex flex-col">
-              <span>{formatInt(r.followerPopulation)}</span>
-              <span className="text-[11px] text-game-ink-300">
-                {formatInt(r.followersOutsideSameFaithStates)} outside same-faith states
+              <span>{formatCount(r.followerPopulation)}</span>
+              <span className="text-[12px] text-game-ink-300">
+                {formatCount(r.followersOutsideSameFaithStates)} outside same-faith states
               </span>
             </div>
           );

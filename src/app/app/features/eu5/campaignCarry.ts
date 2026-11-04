@@ -3,6 +3,8 @@ import type { MapViewport } from "@pdx.tools/timelapse";
 import type { AppEngine } from "./ui-engine";
 import type { Eu5Store } from "./store/eu5Store";
 import type { LocationClickChangeEvent } from "./workers/map/map-module";
+import type { CountryIdentity } from "./carriedCountry";
+import { isCountrySet } from "./stack/selection";
 
 export { findCarriedCountry } from "./carriedCountry";
 export type { CountryIdentity } from "./carriedCountry";
@@ -18,14 +20,15 @@ export type Eu5Carry = {
   inspection?: { click: LocationClickChangeEvent };
   mapMode: MapMode;
   viewport: MapViewport["viewport"] | null;
-  insightPanel: { open: boolean; width: number };
   /**
    * The selection, by values that stay the same across saves. A country
    * carries by its stable ID first, and falls back to the tag for legacy carry. A location carries by
    * its index, because the map does not change. A market carries by its center.
+   * A set of countries carries each country by its identity.
    */
   selection:
     | { kind: "players" }
+    | { kind: "countries"; countries: CountryIdentity[] }
     | { kind: "country"; id?: UiCountryId; tag: string; focusedLocation: number | null }
     | { kind: "market"; center: number }
     | { kind: "location"; locationIdx: number }
@@ -45,13 +48,24 @@ export async function captureEu5Carry(store: Eu5Store): Promise<Eu5Carry> {
     if (stable?.kind === "country")
       carried = { ...stable, focusedLocation: selection?.focusedLocation ?? null };
     else if (stable) carried = stable;
+  } else if (selection?.preset !== "players" && isCountrySet(selection)) {
+    carried = await countriesCarry(engine);
   }
   return {
     mapMode: appState.currentMapMode,
     viewport: appState.mapViewport?.viewport ?? null,
-    insightPanel: { open: state.insightPanelOpen, width: state.insightPanelWidth },
     selection: carried,
   };
+}
+
+/** The countries of the selection, by identity, so the next save can find them */
+async function countriesCarry(engine: AppEngine): Promise<Eu5Carry["selection"]> {
+  const { countries } = await engine.queries.getDevelopmentInsight();
+  const identities = await Promise.all(
+    countries.map((x) => engine.queries.getCountryIdentity(x.country.country.key)),
+  );
+  const found = identities.filter((x): x is CountryIdentity => x !== null);
+  return found.length > 0 ? { kind: "countries", countries: found } : null;
 }
 
 /**

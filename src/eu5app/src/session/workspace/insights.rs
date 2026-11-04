@@ -284,11 +284,12 @@ impl<'bump> Eu5Workspace<'bump> {
                     is_player,
                     row: PoliticalWorldRow {
                         ordinal_rank: 0,
+                        great_power_points: data.great_power_points,
                         country: self.country_ref_from_country_idx(country_idx),
                         total_state_efficacy: aggregate.total_state_efficacy,
                         active_state_capacity: aggregate.active_state_capacity,
                         total_population: aggregate.total_population,
-                        tax_trade_income: data.estimated_monthly_income_trade_and_tax,
+                        income: data.economy.income,
                     },
                 })
             })
@@ -1939,9 +1940,16 @@ impl<'bump> Eu5Workspace<'bump> {
         });
         foreign_owner_vec.truncate(20);
 
-        // Build foreign owner cells for top 20 types x top 20 foreign owners
-        let top_type_kinds: FxHashSet<&str> =
-            types_with_keys.iter().take(20).map(|t| t.0).collect();
+        // Build foreign owner cells for the top 20 types x top 20 foreign owners.
+        // Rank the types by foreign levels. Most foreign levels are in types
+        // that are not in the top 20 by all levels, for example trade offices.
+        let mut foreign_types: Vec<(&str, f64)> = types_with_keys
+            .iter()
+            .filter(|t| t.1.foreign_levels > 0.0)
+            .map(|t| (t.0, t.1.foreign_levels))
+            .collect();
+        foreign_types.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let top_type_kinds: FxHashSet<&str> = foreign_types.iter().take(20).map(|t| t.0).collect();
         let top_owner_ids: FxHashSet<CountryId> = foreign_owner_vec
             .iter()
             .take(20)
@@ -2643,12 +2651,13 @@ mod tests {
         total_state_efficacy: f64,
         active_state_capacity: f64,
         total_population: u32,
-        tax_trade_income: f64,
+        income: f64,
     ) -> PoliticalWorldCandidate {
         PoliticalWorldCandidate {
             great_power_rank,
             is_player,
             row: PoliticalWorldRow {
+                great_power_points: 0.0,
                 ordinal_rank: 0,
                 country: CountryRefSource {
                     country_idx: CountryIdx::from_value(country_idx_value).unwrap(),
@@ -2656,7 +2665,7 @@ mod tests {
                 total_state_efficacy,
                 active_state_capacity,
                 total_population,
-                tax_trade_income,
+                income,
             },
         }
     }
@@ -2682,7 +2691,7 @@ mod tests {
         assert_eq!(rows[1].total_state_efficacy, 3.5);
         assert_eq!(rows[1].active_state_capacity, 350.0);
         assert_eq!(rows[1].total_population, 300);
-        assert_eq!(rows[1].tax_trade_income, 30.0);
+        assert_eq!(rows[1].income, 30.0);
     }
 
     #[test]

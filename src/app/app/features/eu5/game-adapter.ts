@@ -260,6 +260,9 @@ export type SaveQueries = Pick<
   | "melt"
 >;
 
+/** A view of the map wider than this, in world units, shows a whole continent or more */
+const FAR_VIEW_WIDTH = 5000;
+
 /** Changes to the selection, focus and highlight of the open save. */
 export type SaveCommands = Pick<
   SaveEngine,
@@ -448,9 +451,40 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
       // Like a command, a pan on a released save does nothing.
       if (isReleased) return;
       const colorId = await save.getLocationColorId(locationIdx);
-      if (colorId != null) {
-        await mapEngine.pan_to_color_id(colorId, insets);
-      }
+      if (colorId == null) return;
+      // From far out, a pan alone leaves the location too small to see. A closer
+      // view is the reader's own, so it keeps its zoom.
+      const far = (lastViewport?.viewport.width ?? 0) > FAR_VIEW_WIDTH;
+      await (far
+        ? mapEngine.frame_color_ids([colorId], insets)
+        : mapEngine.pan_to_color_id(colorId, insets));
+    },
+
+    /** Show the whole selection in the part of the map that the column leaves free. */
+    frameSelection: async (insets: {
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+    }) => {
+      if (isReleased) return;
+      const colorIds = await save.getSelectedColorIds();
+      if (colorIds.length > 0) await mapEngine.frame_color_ids(colorIds, insets);
+    },
+
+    /** Where locations are in the world, in the order asked. A location off the map is null. */
+    worldPointsOf: async (locationIdxs: readonly number[]) => {
+      if (isReleased) return locationIdxs.map(() => null);
+      const colorIds = await Promise.all(locationIdxs.map((idx) => save.getLocationColorId(idx)));
+      const known = colorIds.filter((id): id is number => id != null);
+      const flat = await mapEngine.world_points_of(known);
+      let at = 0;
+      return colorIds.map((id) => {
+        if (id == null) return null;
+        const point = { x: flat[at * 2], y: flat[at * 2 + 1] };
+        at += 1;
+        return point;
+      });
     },
   };
 }

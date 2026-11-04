@@ -10,7 +10,13 @@ import type {
   RgoScopeSummary,
   RgoTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import {
+  formatCount,
+  formatFloat,
+  formatInt,
+  formatLevel as formatLevelFigure,
+  formatFixed,
+} from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartTooltip,
@@ -18,6 +24,7 @@ import {
   getEChartsTheme,
   markGap,
   seriesColor,
+  yAxisName,
 } from "@/components/viz/echartsTheme";
 import { Eu5Icon } from "../../components/icons/Eu5Icon";
 import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
@@ -37,8 +44,6 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 
-const BACK_LABEL = "RGO";
-
 function formatLevel(value: number) {
   return formatFloat(value, 1);
 }
@@ -51,8 +56,8 @@ function RgoScopeHeader({ data }: { data?: RgoScopeSummary }) {
   if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightReadout figure={formatInt(Math.round(data.totalRgoLevel))} unit="RGO levels">
-      <ReadoutFigure value={formatLevel(data.medianRgoLevel)} label="median / location" />
+    <InsightReadout figure={formatCount(data.totalRgoLevel)} unit="RGO levels">
+      <ReadoutFigure value={formatLevelFigure(data.medianRgoLevel)} label="median / location" />
     </InsightReadout>
   );
 }
@@ -73,7 +78,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor, labelColor } = getEChartsTheme();
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     const fallbackColor = seriesColor(0);
 
     return {
@@ -83,25 +88,20 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         name: "Total RGO Level",
         nameLocation: "middle",
         nameGap: 28,
-        nameTextStyle: { color: labelColor, fontSize: 10, fontWeight: 600 },
+        nameTextStyle: { color: tickColor, fontSize: 12 },
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
-          formatter: (v: number) => formatLevel(v),
+          fontSize: 12,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "value",
-        name: "Avg RGO Level",
-        nameLocation: "middle",
-        nameGap: 44,
-        nameTextStyle: { color: labelColor, fontSize: 10, fontWeight: 600 },
+        ...yAxisName("Avg RGO Level"),
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
-          formatter: (v: number) => formatLevel(v),
+          fontSize: 12,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -222,14 +222,14 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
+        textStyle: { color: tickColor, fontSize: 12 },
       },
 
       xAxis: {
         type: "value",
         axisLabel: {
           color: tickColor,
-          fontSize: 10,
+          fontSize: 12,
           formatter: (v: number) => formatPercent(v),
         },
         axisLine: { lineStyle: { color: axisColor } },
@@ -238,7 +238,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 10, fontWeight: 600, width: 92 },
+        axisLabel: { color: tickColor, fontSize: 12, width: 92 },
         axisLine: { lineStyle: { color: axisColor } },
         axisTick: { show: false },
       },
@@ -296,7 +296,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
         meta: Eu5DataTable.meta({ headerLabel: "Location", variant: "pin" }),
         cell: ({ row }) => {
           const loc = row.original;
-          return <LocationLink location={loc.location} backLabel={BACK_LABEL} />;
+          return <LocationLink location={loc.location} />;
         },
       }),
       topLocColHelper.accessor("owner", {
@@ -304,9 +304,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
         sortFn: (a, b) =>
           a.original.owner.country.name.localeCompare(b.original.owner.country.name),
         meta: Eu5DataTable.meta({ headerLabel: "Owner" }),
-        cell: ({ row }) => (
-          <CountryLink country={row.original.owner} aligned backLabel={BACK_LABEL} />
-        ),
+        cell: ({ row }) => <CountryLink country={row.original.owner} aligned />,
       }),
       topLocColHelper.accessor((row) => row.rawMaterial.name, {
         id: "rawMaterial",
@@ -326,7 +324,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "RGO Level", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevel(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
@@ -355,7 +353,7 @@ export function RgoInsight() {
   const scopeIsEmpty = data?.scope.isEmpty ?? true;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-3.5">
       <RgoScopeHeader data={data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />

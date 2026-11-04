@@ -64,7 +64,7 @@ function Eu5LoadingContent({ loading, filename, done, preview }: Eu5LoadingProps
           role="status"
           aria-live="polite"
           className={cx(
-            "mt-3 h-3.5 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase",
+            "mt-3 h-3.5 font-game-num text-[length:var(--game-label-size)] tracking-[0.04em] text-game-ink-500 uppercase",
             "transition-opacity duration-300 ease-out motion-reduce:transition-none",
             slow ? "opacity-100" : "opacity-0",
           )}
@@ -86,7 +86,7 @@ function Eu5LoadingContent({ loading, filename, done, preview }: Eu5LoadingProps
           />
         </div>
 
-        <p className="mt-3 text-[11px] leading-[1.4] text-game-ink-500">
+        <p className="mt-3 text-[12px] leading-[1.4] text-game-ink-500">
           {preview
             ? "Downloading, then parsing in your browser."
             : "Parsing locally in your browser."}

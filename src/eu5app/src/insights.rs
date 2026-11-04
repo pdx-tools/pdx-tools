@@ -674,10 +674,11 @@ pub mod control {
         pub PoliticalWorldRow {
             ordinal_rank: u32,
             country: crate::presentation::CountryRefSource => CountryRef,
+            great_power_points: f64,
             total_state_efficacy: f64,
             active_state_capacity: f64,
             total_population: u32,
-            tax_trade_income: f64,
+            income: f64,
         }
 
         pub PoliticalWorldScoreboard {

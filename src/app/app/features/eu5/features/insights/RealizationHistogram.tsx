@@ -2,13 +2,15 @@ import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import {
-  chartInk,
   chartTooltip,
   getEChartsTheme,
-  seriesColor,
+  histogramBar,
+  chartGutter,
+  yAxisName,
 } from "@/components/viz/echartsTheme";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
+import { histogramXAxes } from "./histogramAxis";
 
 const BUCKET_WIDTH = 5;
 const MAX_BUCKET = 100;
@@ -32,29 +34,20 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
     }
 
     return {
-      buckets: nextBuckets.filter((b) => b.count > 0 || b.hi === MAX_BUCKET),
+      // Each bin stays, also an empty one, because a gap in the bars is a fact.
+      buckets: nextBuckets,
       zeroWealthCount: countries.length - ratios.length,
     };
   }, [countries]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
+    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     return {
-      grid: { left: 45, right: 20, top: 20, bottom: 45 },
-      xAxis: {
-        type: "category",
-        name: "Realization",
-        nameLocation: "middle",
-        nameGap: 32,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        data: buckets.map((b) => `${formatInt(b.lo)}-${formatInt(b.hi)}%`),
-        axisLabel: { color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
-      },
+      grid: { ...chartGutter, top: 28, bottom: 45 },
+      xAxis: histogramXAxes(buckets, (edge) => `${formatInt(edge)}%`, "Realization"),
       yAxis: {
         type: "value",
-        name: "Countries",
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
+        ...yAxisName("Countries"),
         axisLabel: { color: tickColor },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -76,15 +69,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
         {
           type: "bar",
           data: buckets.map((b) => ({ ...b, value: b.count })),
-          itemStyle: { color: seriesColor(0) },
-          markLine: {
-            symbol: "none",
-            silent: true,
-            animation: false,
-            data: [{ xAxis: "95-100%" }],
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-            label: { color: tickColor, formatter: "100%" },
-          },
+          itemStyle: { color: histogramBar },
         },
       ],
     };

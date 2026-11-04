@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { useFilePublisher } from "@/features/engine";
 import type { FileKind } from "@/hooks/useFileDrop";
 import { isAbortError } from "@/lib/abortController";
-import PlusIcon from "@heroicons/react/16/solid/PlusIcon";
 import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
 import { saveProblemText } from "@/features/campaign/saveText";
 import { GameButton } from "@/components/game/Button";
@@ -13,32 +12,25 @@ import { ImportProgress } from "../history/ImportProgress";
 import { analyzeCampaign } from "../history/analyzeCampaign";
 import { pendingCampaignAnalysis } from "../history/CampaignAnalysis";
 
-export function AddCampaignSaves() {
+/**
+ * The actions that add earlier saves of the campaign. The save menu holds
+ * them. The hidden inputs are the fallback for a browser without the File
+ * System Access API, so they must stay mounted after the menu closes.
+ */
+export type CampaignSaves = {
+  busy: boolean;
+  chooseFiles: () => Promise<void>;
+  chooseFolder: () => Promise<void>;
+  inputs: React.ReactNode;
+};
+
+/** The campaign save actions, or null without campaign analysis access */
+export function useCampaignSaves(): CampaignSaves | null {
   const publishFile = useFilePublisher({ openSave: false });
   const featureEnabled = useIsCampaignAnalysisEnabled();
   const input = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const playthroughId = useEu5PlaythroughId();
-  const currentInput = useEu5Input();
-  const localSaves = localSaveRegistry.useEntries();
-  const progress = useHistory((state) => state.progress);
-  const cancel = useHistory((state) => state.cancel);
-  const paused = useHistory((state) => isAnalysisPaused(state, playthroughId));
-  const issues = useHistory((state) => state.issues);
-  const enabled = useHistory(
-    (state) => !!playthroughId && state.analysisEnabledCampaigns.includes(playthroughId),
-  );
-  const entries = localSaves.filter(
-    (entry) =>
-      entry.game === "eu5" &&
-      (entry.identity === null ||
-        entry.identity.playthroughId === playthroughId ||
-        (currentInput.kind !== "server" && holdsRef(entry, currentInput))),
-  );
-  const undatedFailures = localSaves.filter(
-    (entry) => entry.game === "eu5" && entry.identity === null && entry.problem !== null,
-  );
   const addFiles = async (files: FileKind[]) => {
     const saves = files.filter((input) => /\.eu5$/i.test(input.file.name));
     if (!saves.length) return;
@@ -86,21 +78,14 @@ export function AddCampaignSaves() {
     }
   };
   if (!featureEnabled) return null;
-  return (
-    <div className="border-b border-game-line px-3.5 py-2">
-      <div className="flex items-center gap-2">
-        <GameButton className="flex-1" disabled={busy} onClick={chooseFiles}>
-          <PlusIcon aria-hidden className="size-4" /> Add saves
-        </GameButton>
-        <GameButton variant="ghost" disabled={busy} onClick={chooseFolder}>
-          Add folder
-        </GameButton>
-      </div>
+  const inputs = (
+    <>
       <input
         ref={input}
         type="file"
         aria-label="Add campaign saves"
         className="sr-only"
+        tabIndex={-1}
         accept=".eu5"
         multiple
         onChange={onChange}
@@ -110,15 +95,57 @@ export function AddCampaignSaves() {
         type="file"
         aria-label="Add campaign save folder"
         className="sr-only"
+        tabIndex={-1}
         multiple
         {...{ webkitdirectory: "" }}
         onChange={onChange}
       />
-      {(!enabled || paused || issues.length > 0) && (
+    </>
+  );
+  return { busy, chooseFiles, chooseFolder, inputs };
+}
+
+/**
+ * The campaign notices under the head: Analyze, the import progress, and
+ * the failures. Each shows only when it applies, so the line is usually
+ * not there.
+ */
+export function CampaignNotices({ busy }: { busy: boolean }) {
+  const playthroughId = useEu5PlaythroughId();
+  const currentInput = useEu5Input();
+  const localSaves = localSaveRegistry.useEntries();
+  const progress = useHistory((state) => state.progress);
+  const cancel = useHistory((state) => state.cancel);
+  const paused = useHistory((state) => isAnalysisPaused(state, playthroughId));
+  const issues = useHistory((state) => state.issues);
+  const enabled = useHistory(
+    (state) => !!playthroughId && state.analysisEnabledCampaigns.includes(playthroughId),
+  );
+  const entries = localSaves.filter(
+    (entry) =>
+      entry.game === "eu5" &&
+      (entry.identity === null ||
+        entry.identity.playthroughId === playthroughId ||
+        (currentInput.kind !== "server" && holdsRef(entry, currentInput))),
+  );
+  // The open save counts once, whether or not it is in the registry.
+  const holdsOpenSave =
+    currentInput.kind !== "server" && entries.some((entry) => holdsRef(entry, currentInput));
+  const saveCount = entries.length + (holdsOpenSave ? 0 : 1);
+  const undatedFailures = localSaves.filter(
+    (entry) => entry.game === "eu5" && entry.identity === null && entry.problem !== null,
+  );
+  // Analysis compares saves, so it stays out of sight until there are two.
+  const analyze = saveCount > 1 && (!enabled || paused || issues.length > 0);
+  if (!analyze && !progress && undatedFailures.length === 0 && issues.length === 0) return null;
+
+  return (
+    <div className="space-y-2 border-b border-game-line px-3.5 py-2">
+      {analyze && (
         <GameButton
-          className="mt-2 w-full"
-          variant="ghost"
-          disabled={busy || !!progress || !entries.length || !playthroughId}
+          className="w-full"
+          variant="default"
+          disabled={busy || !!progress || !playthroughId}
           onClick={() => {
             if (!playthroughId) return;
             useHistory.getState().enableAnalysis(playthroughId);
@@ -140,13 +167,9 @@ export function AddCampaignSaves() {
                 : "Retry import"}
         </GameButton>
       )}
-      {progress && (
-        <div className="mt-3">
-          <ImportProgress progress={progress} onCancel={() => cancel?.()} />
-        </div>
-      )}
+      {progress && <ImportProgress progress={progress} onCancel={() => cancel?.()} />}
       {undatedFailures.length > 0 && (
-        <details className="mt-2 text-xs text-game-err">
+        <details className="text-xs text-game-err">
           <summary className="cursor-pointer">
             {undatedFailures.length} failed {undatedFailures.length === 1 ? "save" : "saves"}{" "}
             without readable dates
@@ -161,7 +184,7 @@ export function AddCampaignSaves() {
         </details>
       )}
       {issues.length > 0 && (
-        <details className="mt-2 text-xs text-game-ink-300">
+        <details className="text-xs text-game-ink-300">
           <summary className="cursor-pointer">{issues.length} import notices</summary>
           <ul className="mt-2 max-h-32 space-y-2 overflow-y-auto break-words">
             {issues.map((issue, i) => (

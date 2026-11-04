@@ -8,6 +8,12 @@ export type Eu5DataTableColumnMeta = {
   minWidth?: number | string;
   align?: "left" | "right" | "center";
   headerLabel?: string;
+  /**
+   * The full value that a compact cell shows on hover and on focus. A numeric
+   * column has it by default, as `formatExact` of the cell's number. A column
+   * that holds a ratio or that has its own form gives this function.
+   */
+  exact?: (value: number) => string | undefined;
 };
 
 declare module "@tanstack/react-table" {

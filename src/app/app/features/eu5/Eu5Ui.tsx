@@ -15,35 +15,21 @@ import "@fontsource/public-sans/vietnamese-700.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useState } from "react";
 import { cx } from "class-variance-authority";
-import { focusRing } from "@/components/game/focusRing";
-import { Eu5ControlPanel } from "./control-panel/Eu5ControlPanel";
-import { Eu5InsightPanel, MAP_MODE_TITLES } from "./Eu5InsightPanel";
+import { Eu5Column } from "./stack/Eu5Column";
 import { Eu5Loading, Eu5StepProgress } from "./Eu5Loading";
 import { developerLog } from "@/lib/log";
 import { ogImageUrl } from "@/lib/media";
-import {
-  useLoadEu5,
-  Eu5StoreProvider,
-  useEu5SelectionState,
-  useEu5CursorHint,
-  useEu5Engine,
-  useEu5InsightPanelOpen,
-  useEu5MapMode,
-  useSetEu5InsightPanelOpen,
-} from "./store";
+import { useLoadEu5, Eu5StoreProvider, useEu5CursorHint, useEu5Engine } from "./store";
 import type { Eu5SaveInput } from "./store/types";
 import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
 import { useCursorPosition } from "@/hooks/useCursorPosition";
 import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
-import { Eu5Toolbar } from "./Eu5Toolbar";
-import { Eu5SelectionPill } from "./Eu5SelectionPill";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import type { CanvasCourierHost } from "@/lib/canvas_courier";
-import ChevronLeftIcon from "@heroicons/react/24/solid/ChevronLeftIcon";
 import type { CursorPosition } from "@/components/CursorTooltip";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { Eu5CampaignProvider } from "./campaign";
@@ -59,6 +45,8 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
   const cursorRef = useCursorPosition(surfaceRef);
   const error = load.status === "error" ? load.error : null;
   const stepping = load.status === "success" && load.stepping;
+  // An expanded level takes the frame, and the map becomes an inset over it.
+  const [mapInset, setMapInset] = useState(false);
 
   useEffect(() => {
     focus();
@@ -74,14 +62,30 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
     <GameThemeProvider theme="eu5">
       <div className="absolute inset-0 bg-game-page" />
 
-      <div className="absolute inset-0 overflow-hidden" ref={surfaceRef} />
+      <div
+        ref={surfaceRef}
+        data-map-surface
+        className={cx(
+          "absolute overflow-hidden",
+          mapInset
+            ? // The column measures this inset and keeps the end of the level clear of it.
+              "right-3 bottom-3 z-40 h-[200px] w-[340px] rounded-panel border border-game-line-strong shadow-2xl"
+            : "inset-0",
+        )}
+      />
 
       {/* UI layer — only when data loaded */}
       {load.status === "success" && host !== null ? (
         <Eu5StoreProvider store={load.data}>
           <Eu5CampaignProvider>
             <CampaignAnalysisProvider>
-              <Eu5UiContent cursorRef={cursorRef} host={host} busy={stepping} />
+              <Eu5UiContent
+                cursorRef={cursorRef}
+                host={host}
+                busy={stepping}
+                expanded={mapInset}
+                onExpand={setMapInset}
+              />
             </CampaignAnalysisProvider>
           </Eu5CampaignProvider>
         </Eu5StoreProvider>
@@ -101,63 +105,34 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
   );
 };
 
-const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
-  const mapMode = useEu5MapMode();
-  const selectionState = useEu5SelectionState();
-  const preview = useMapHistory()?.preview;
-  const label =
-    (!preview && selectionState?.isEmpty === false ? selectionState.scopeDisplayName : null) ??
-    MAP_MODE_TITLES[mapMode] ??
-    "Insights";
-
-  return (
-    <div className="pointer-events-auto absolute top-4 right-4 z-20 rounded-panel border border-game-line-strong bg-game-overlay p-1.5 font-game-ui shadow-xl backdrop-blur-md">
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Open ${label} panel`}
-        className={cx(
-          "flex h-7 max-w-56 items-center gap-2 rounded-control px-2 text-game-ink-500 transition-colors duration-150 hover:bg-game-panel-hover hover:text-game-ink-100",
-          focusRing,
-        )}
-      >
-        <ChevronLeftIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate font-game-num text-[11px] tracking-[0.14em] uppercase">
-          {label}
-        </span>
-      </button>
-    </div>
-  );
-};
-
 function saveFilename(save: Eu5SaveInput): string {
   return save.kind === "file" ? save.file.name : save.name;
 }
 
-/**
- * Inner component rendered inside Eu5StoreProvider so it can access the store.
- * Manages insight panel open state and auto-opens when selection becomes non-empty.
- */
+/** Inner component rendered inside Eu5StoreProvider so it can access the store. */
 const Eu5UiContent = ({
   cursorRef,
   host,
   busy,
+  expanded,
+  onExpand,
 }: {
   cursorRef: React.RefObject<CursorPosition>;
   host: CanvasCourierHost;
   /** The next save of the campaign loads, and this save no longer takes input. */
   busy: boolean;
+  /** A level has the frame, and the map is an inset over it. */
+  expanded: boolean;
+  onExpand: (expanded: boolean) => void;
 }) => {
-  const insightOpen = useEu5InsightPanelOpen();
-  const setInsightOpen = useSetEu5InsightPanelOpen();
-  const selectionState = useEu5SelectionState();
   const cursorHint = useEu5CursorHint();
   const engine = useEu5Engine();
-  const wasEmptyRef = useRef(true);
   const preview = useMapHistory()?.preview;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // A menu, a dialog or the column that used the key prevents its default.
+      if (event.defaultPrevented) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -174,36 +149,21 @@ const Eu5UiContent = ({
     host.setCursor(cursorHint);
   }, [cursorHint, host]);
 
-  useEffect(() => {
-    const isEmpty = selectionState?.isEmpty ?? true;
-    if (!preview && !isEmpty && wasEmptyRef.current) {
-      setInsightOpen(true);
-    }
-    wasEmptyRef.current = isEmpty;
-  }, [selectionState, setInsightOpen, preview]);
-
   return (
     <div
-      className="pointer-events-none absolute inset-0"
+      // The column sizes its levels against this frame.
+      className="[container-type:size] pointer-events-none absolute inset-0"
       // A save that loads for a preview keeps the timeline usable, also
       // when the playhead moves during the load.
       inert={busy && !preview}
       aria-busy={busy || undefined}
     >
-      {/* Left sidebar — always visible */}
-      <Eu5ControlPanel />
-
-      {/* Right panel — slides off right edge when closed */}
-      <Eu5InsightPanel open={insightOpen} onClose={() => setInsightOpen(false)} />
-
-      {!insightOpen ? <InsightPanelTab onOpen={() => setInsightOpen(true)} /> : null}
+      <Eu5Column onExpand={onExpand} expanded={expanded} />
 
       {/* Canvas overlays */}
       <BoxSelectOverlay />
       {!preview ? <Eu5CursorTooltip cursorRef={cursorRef} /> : null}
-      {!preview ? <Eu5SelectionPill /> : null}
-      <TimelineBar />
-      {!preview ? <Eu5Toolbar /> : null}
+      {!expanded ? <TimelineBar /> : null}
     </div>
   );
 };

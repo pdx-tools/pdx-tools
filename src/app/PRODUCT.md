@@ -55,7 +55,7 @@ A neighboring analyzer that uploads the save to a server, or that only supports 
 ### Confirmed functionality
 
 - EU4: interactive WebGL2 map with map modes, timelapse recording, charts (mana, budget, casualties, wars, development, ideas, health grid), country details (institutions, inheritance, estates, rulers, leaders, diplomacy, budget), province tables, mod list, AAR text, melting, save upload, achievements pages, user profiles, leaderboard.
-- EU5: map with map modes and legend, box select, insight panels, profiles, timeline/timelapse, control panel.
+- EU5: map with map modes and legend, box select, insights, profiles, timeline/timelapse, all in one column beside the map (One Stack).
 - Account: Steam login, personal save list, API key.
 - Static content: docs, blog, changelog, and what's-new, built by the separate `src/docs` Astro site and served under `public/`.
 
