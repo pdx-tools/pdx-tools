@@ -228,6 +228,52 @@ fn percentile_desc(sorted_desc: &[(LocationIdx, f64)], q: f64) -> f64 {
 
 impl<'bump> Eu5Workspace<'bump> {
     pub(crate) fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
+        let is_empty = self.selection_state.is_empty();
+        let players_only =
+            self.selection_state.preset() == Some(crate::selection::SelectionPreset::Players);
+        let candidates = self.political_candidates(
+            |idx| is_empty || self.selection_state.contains(idx),
+            players_only,
+        );
+        PoliticalWorldScoreboard {
+            rows: political_world_display_rows(candidates),
+        }
+    }
+
+    /// A country's great power rank among the countries that own land, with
+    /// the countries next to it. The selection does not narrow it.
+    pub(crate) fn calculate_political_standing(
+        &self,
+        country_idx: CountryIdx,
+    ) -> Option<PoliticalStanding> {
+        const ROWS: usize = 5;
+        let mut candidates = self.political_candidates(|_| true, false);
+        candidates.sort_by_key(|c| (c.great_power_rank, c.row.country.country_idx.value()));
+        let at = candidates
+            .iter()
+            .position(|c| c.row.country.country_idx == country_idx)?;
+        let start = at
+            .saturating_sub(ROWS / 2)
+            .min(candidates.len().saturating_sub(ROWS));
+        let rank = candidates[at].great_power_rank as u32;
+        let cohort = candidates.len() as u32;
+        let rows = candidates
+            .into_iter()
+            .skip(start)
+            .take(ROWS)
+            .map(|mut candidate| {
+                candidate.row.ordinal_rank = candidate.great_power_rank as u32;
+                candidate.row
+            })
+            .collect();
+        Some(PoliticalStanding { rank, cohort, rows })
+    }
+
+    fn political_candidates(
+        &self,
+        in_scope: impl Fn(LocationIdx) -> bool,
+        players_only: bool,
+    ) -> Vec<PoliticalWorldCandidate> {
         #[derive(Default)]
         struct PoliticalCountryAgg {
             total_state_efficacy: f64,
@@ -235,9 +281,6 @@ impl<'bump> Eu5Workspace<'bump> {
             total_population: u32,
         }
 
-        let is_empty = self.selection_state.is_empty();
-        let players_only =
-            self.selection_state.preset() == Some(crate::selection::SelectionPreset::Players);
         let mut aggregates: FxHashMap<CountryId, PoliticalCountryAgg> = FxHashMap::default();
         let played_countries: FnvHashSet<CountryId> = self
             .gamestate
@@ -248,7 +291,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
         for entry in self.gamestate.locations.iter() {
             let idx = entry.idx();
-            if !is_empty && !self.selection_state.contains(idx) {
+            if !in_scope(idx) {
                 continue;
             }
 
@@ -268,22 +311,21 @@ impl<'bump> Eu5Workspace<'bump> {
             agg.total_population += population;
         }
 
-        let candidates = aggregates
+        aggregates
             .into_iter()
             .filter_map(|(country_id, aggregate)| {
                 let country_idx = self.gamestate.countries.get(country_id)?;
                 let entry = self.gamestate.countries.index(country_idx);
                 let data = entry.data()?;
-                if data.great_power_rank <= 0 {
-                    return None;
-                }
+                let (place, tied) = self.score_place(country_id)?;
 
                 let is_player = played_countries.contains(&country_id);
                 Some(PoliticalWorldCandidate {
-                    great_power_rank: data.great_power_rank,
+                    great_power_rank: place as i32,
                     is_player,
                     row: PoliticalWorldRow {
                         ordinal_rank: 0,
+                        ordinal_tied: tied,
                         great_power_points: data.great_power_points,
                         country: self.country_ref_from_country_idx(country_idx),
                         total_state_efficacy: aggregate.total_state_efficacy,
@@ -293,11 +335,7 @@ impl<'bump> Eu5Workspace<'bump> {
                     },
                 })
             })
-            .collect();
-
-        PoliticalWorldScoreboard {
-            rows: political_world_display_rows(candidates),
-        }
+            .collect()
     }
 
     /// Calculate effective development scores for all nations
@@ -1256,7 +1294,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 let data = self.gamestate.countries.index(cidx).data()?;
                 let historical_population =
                     if is_empty || Some(&agg.location_count) == total_country_locations.get(&cid) {
-                        data.historical_population.to_vec()
+                        crate::population::population_series(data.historical_population)
                     } else {
                         Vec::new()
                     };
@@ -1516,7 +1554,7 @@ impl<'bump> Eu5Workspace<'bump> {
                 let historical_population = if is_empty
                     || Some(&agg.location_count) == total_country_locations.get(&country_id)
                 {
-                    data.historical_population.to_vec()
+                    crate::population::population_series(data.historical_population)
                 } else {
                     Vec::new()
                 };
@@ -2315,10 +2353,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub(crate) fn calculate_control_insight(&self) -> ControlInsightData {
         const COUNTRY_BAR_CAP: usize = 20;
-        const COUNTRY_SCATTER_CAP: usize = 250;
         const TOP_LOCATION_CAP: usize = 50;
-        const MIN_SCATTER_DEVELOPMENT: f64 = 10.0;
-        const MIN_SCATTER_LOCATIONS: u32 = 5;
         const CONTROL_BANDS: [(&str, f64, f64); 5] = [
             ("superficial", 0.0, 0.25),
             ("functional", 0.25, 0.50),
@@ -2481,24 +2516,8 @@ impl<'bump> Eu5Workspace<'bump> {
                 })
             };
 
-        let scatter_countries: Vec<CountryControlPoint> = if !is_empty {
-            all_countries
-                .iter()
-                .take(COUNTRY_SCATTER_CAP)
-                .filter_map(to_scatter_point)
-                .collect()
-        } else {
-            all_countries
-                .iter()
-                .filter(|(_, agg)| {
-                    agg.lost_development > 0.0
-                        || agg.total_development >= MIN_SCATTER_DEVELOPMENT
-                        || agg.location_count >= MIN_SCATTER_LOCATIONS
-                })
-                .take(COUNTRY_SCATTER_CAP)
-                .filter_map(to_scatter_point)
-                .collect()
-        };
+        let scatter_countries: Vec<CountryControlPoint> =
+            all_countries.iter().filter_map(to_scatter_point).collect();
 
         // Top locations: first 50 by lost_development.
         location_candidates.sort_by(|a, b| {
@@ -2659,6 +2678,7 @@ mod tests {
             row: PoliticalWorldRow {
                 great_power_points: 0.0,
                 ordinal_rank: 0,
+                ordinal_tied: 1,
                 country: CountryRefSource {
                     country_idx: CountryIdx::from_value(country_idx_value).unwrap(),
                 },

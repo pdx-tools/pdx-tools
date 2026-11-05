@@ -191,7 +191,9 @@
   --game-chart-track: oklch(22% 0.014 250);
 
   --font-game-ui: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
-  --font-game-num: "IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace;
+  /* One face for names and figures. Tabular figures keep the columns in line. */
+  --font-game-num: "Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
   /* The text of a chart: names, then numbers. EChart reads them, because a canvas does not inherit a font. */
   --game-chart-font: var(--font-game-ui);
   --game-chart-num-font: var(--font-game-num);

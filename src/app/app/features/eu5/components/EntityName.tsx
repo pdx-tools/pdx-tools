@@ -23,6 +23,7 @@ const DEFINED_TERMS: Record<string, string> = {
     "Tax Base Gap: wealth less tax base. It is the tax base that low control does not realize.",
   "Eff. Dev": "Effective Development: control × development.",
   Score: "Great power score: the points that set the game's great power rank.",
+  Value: "Market value: the price of each good times the amount traded, summed over its goods.",
 };
 
 /** A label with its dotted underline and its tooltip, if the label names a defined term */
@@ -32,7 +33,9 @@ export function DefinedTerm({ label }: { label: string }) {
   return (
     <Tooltip>
       <Tooltip.Trigger asChild>
-        <span className={glossaryTerm}>{label}</span>
+        <span tabIndex={0} className={cx(glossaryTerm, "rounded-[1px]", focusRing)}>
+          {label}
+        </span>
       </Tooltip.Trigger>
       <Tooltip.Content side="right" className="max-w-72 text-xs normal-case">
         {DEFINED_TERMS[term]}

@@ -17,21 +17,21 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
   ],
   "map_modes": {
     "building_levels": {
-      "colors": 275,
-      "fingerprint": "0xd2b6476b32528559",
+      "colors": 175,
+      "fingerprint": "0xa90dca23897e97fc",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 236.5, max_value: 473.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 17.493669871632278, max_value: 171.0, softening: 2.25, clamped: true, true_max: 473.0 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
-        "#ff060101 x2041"
+        "#ff646464 x1971"
       ]
     },
     "control": {
       "colors": 940,
       "fingerprint": "0xf751e62120b6d97a",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, softening: 1.0, clamped: false, true_max: 1.0 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -39,10 +39,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "development": {
-      "colors": 615,
-      "fingerprint": "0x7675e68a5626b453",
+      "colors": 918,
+      "fingerprint": "0x6cf6bd5a556f903e",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 50.0, max_value: 100.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 27.47051, max_value: 54.94102, softening: 1.0, clamped: true, true_max: 100.0 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -50,14 +50,14 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "markets": {
-      "colors": 12541,
-      "fingerprint": "0x8e097b341d411793",
+      "colors": 486,
+      "fingerprint": "0x8e9a22b55f7f0f96",
       "groups": "0x04971734ea416760",
       "legend": "Qualitative",
       "top": [
-        "#ff140505 x5255",
-        "#ff455e77 x2575",
-        "#ff646464 x1818"
+        "#ff455e77 x5709",
+        "#ff646464 x1818",
+        "#ff3b220e x750"
       ]
     },
     "political": {
@@ -72,10 +72,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "population": {
-      "colors": 741,
-      "fingerprint": "0x563808e76a3a9a95",
+      "colors": 939,
+      "fingerprint": "0xbc2dc8a7655371b7",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 22901.924608700447, max_value: 570302.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 21736.52338286713, max_value: 124491.0, softening: 5831.75, clamped: true, true_max: 570302.0 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -83,10 +83,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "population_growth": {
-      "colors": 854,
-      "fingerprint": "0x5ec30c1ce562a826",
+      "colors": 416,
+      "fingerprint": "0x754a7c10a0c3df85",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.0037162006008782072, max_value: 0.0074324012017564145 })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.013065447545717037, max_value: 0.026130895091434073, softening: 1.0, clamped: true, true_max: 0.04459078080903105 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -105,21 +105,21 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "rgo_level": {
-      "colors": 44,
-      "fingerprint": "0xd7b2be0225547d44",
+      "colors": 28,
+      "fingerprint": "0xb6370211b444c579",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 20.5, max_value: 41.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.211102550927978, max_value: 24.0, softening: 2.0, clamped: true, true_max: 41.0 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
-        "#ff0e0202 x2081"
+        "#ff450a0a x2081"
       ]
     },
     "state_efficacy": {
-      "colors": 578,
-      "fingerprint": "0xfbcb5592ff086093",
+      "colors": 939,
+      "fingerprint": "0x7c2206c35fe2800f",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 50.0, max_value: 100.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 9.598178891689612, max_value: 49.680171155000004, softening: 3.0220969047999997, clamped: true, true_max: 100.0 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -127,25 +127,25 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "unrealized_tax_base": {
-      "colors": 251,
-      "fingerprint": "0xada7502e4b696b39",
+      "colors": 940,
+      "fingerprint": "0xce2afef396fb4048",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 100.18048, max_value: 200.36096 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.081958631151675, max_value: 37.70933000000001, softening: 0.9375899999999999, clamped: true, true_max: 200.36096 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
-        "#ff040101 x2526"
+        "#ff646464 x1971"
       ]
     },
     "wealth": {
-      "colors": 302,
-      "fingerprint": "0xecae01c0dd7dd569",
+      "colors": 932,
+      "fingerprint": "0x85118afc99337f44",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 220.74239, max_value: 441.48478 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 14.640329547818359, max_value: 112.09644, softening: 2.588145, clamped: true, true_max: 441.48478 })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
-        "#ff040101 x2128"
+        "#ff646464 x1971"
       ]
     }
   },
@@ -166,21 +166,21 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
     "locations": "0xb502ca016215c463",
     "map_modes": {
       "building_levels": {
-        "colors": 283,
-        "fingerprint": "0x5f9f264824f8a22c",
+        "colors": 199,
+        "fingerprint": "0x2b88ccd4d8b6f9d4",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 92.0, max_value: 184.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 8.383085159068369, max_value: 48.0, softening: 2.25, clamped: true, true_max: 184.0 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
-          "#ff060101 x2036"
+          "#ff646464 x1971"
         ]
       },
       "control": {
         "colors": 940,
-        "fingerprint": "0x3dc3accbb49f14a7",
+        "fingerprint": "0xd2f3c1545d053012",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, softening: 1.0, clamped: false, true_max: 1.0 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -188,10 +188,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "development": {
-        "colors": 629,
-        "fingerprint": "0xe9f17be9322b31eb",
+        "colors": 918,
+        "fingerprint": "0x145a0a3c1e013230",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 21.08892, max_value: 42.17784 })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 15.2556, max_value: 30.5112, softening: 1.0, clamped: true, true_max: 42.17784 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -199,19 +199,19 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "markets": {
-        "colors": 12541,
-        "fingerprint": "0xe3cdcba156375bdd",
+        "colors": 486,
+        "fingerprint": "0x2e45d21e0919e8aa",
         "groups": "0x04971734ea416760",
         "legend": "Qualitative",
         "top": [
-          "#ff140505 x5255",
-          "#ff455e77 x2575",
-          "#ff646464 x1818"
+          "#ff455e77 x5709",
+          "#ff646464 x1818",
+          "#ff3b220e x750"
         ]
       },
       "political": {
         "colors": 579,
-        "fingerprint": "0x547cc0833da3bdad",
+        "fingerprint": "0xdfea4f96115dbb5d",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Qualitative",
         "top": [
@@ -221,10 +221,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "population": {
-        "colors": 747,
-        "fingerprint": "0x3bd0451004007c4c",
+        "colors": 937,
+        "fingerprint": "0x9c2f62dedd1333a9",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 6822.595477205759, max_value: 60193.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 9010.32083133954, max_value: 31942.0, softening: 5831.75, clamped: true, true_max: 60193.0 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -232,10 +232,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "population_growth": {
-        "colors": 859,
-        "fingerprint": "0x9e1ac0d632e465aa",
+        "colors": 554,
+        "fingerprint": "0x284d06cf2863aecd",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.003241486872887965, max_value: 0.00648297374577593 })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.0033109303148213653, max_value: 0.0066218606296427306, softening: 1.0, clamped: true, true_max: 0.006737277189356755 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -244,7 +244,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "religion": {
         "colors": 221,
-        "fingerprint": "0xb46d9f2cc3114b46",
+        "fingerprint": "0xce1387f5441db4a1",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Qualitative",
         "top": [
@@ -254,10 +254,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "rgo_level": {
-        "colors": 59,
-        "fingerprint": "0x4e3470393215bbc4",
+        "colors": 40,
+        "fingerprint": "0xf898f69c270bf7eb",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 8.5, max_value: 17.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 3.477225575051661, max_value: 13.0, softening: 2.0, clamped: true, true_max: 17.0 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -265,10 +265,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "state_efficacy": {
-        "colors": 583,
-        "fingerprint": "0xac20f324a9d8743d",
+        "colors": 939,
+        "fingerprint": "0x6e2afd79417597f7",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 18.91038, max_value: 37.82076 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.515702644534543, max_value: 21.0982484848, softening: 3.0220969047999997, clamped: true, true_max: 37.82076 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -276,25 +276,25 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "unrealized_tax_base": {
-        "colors": 256,
-        "fingerprint": "0xc3b469fa6fa3c958",
+        "colors": 939,
+        "fingerprint": "0xf3cc3d30bc44bf25",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 22.53762, max_value: 45.07524 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 2.6040402250940877, max_value: 12.440479999999999, softening: 0.9375899999999999, clamped: true, true_max: 45.07524 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
-          "#ff040101 x2457"
+          "#ff646464 x1971"
         ]
       },
       "wealth": {
-        "colors": 305,
-        "fingerprint": "0x4ed5cd4899b03af1",
+        "colors": 933,
+        "fingerprint": "0x296dea4c1d5541f6",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 56.781955, max_value: 113.56391 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 6.9215433863655065, max_value: 32.35355, softening: 2.588145, clamped: true, true_max: 113.56391 })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
-          "#ff040101 x2053"
+          "#ff646464 x1971"
         ]
       }
     }

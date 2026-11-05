@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { insightFlow } from "../../stack/levelBody";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryWealth } from "@/wasm/wasm_eu5";
@@ -10,7 +11,6 @@ import {
   chartGutter,
   yAxisName,
 } from "@/components/viz/echartsTheme";
-import { useEu5Players } from "../../store";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { WealthTopLocations } from "./WealthTopLocations";
@@ -21,8 +21,14 @@ import {
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useSelectedCountries } from "../../stack/selected";
-import { countryDotSeries, logAxis, logDomain, LogFloorNote, scatterDots } from "./countryScatter";
+import {
+  countryDotSeries,
+  useScatterMarks,
+  logAxis,
+  logDomain,
+  LogFloorNote,
+  scatterDots,
+} from "./countryScatter";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { SectionTitle } from "../../components";
 
@@ -53,7 +59,7 @@ export function WealthInsight() {
   const countries = insightQuery.data?.countries ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <WealthScopeHeader />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
@@ -102,15 +108,15 @@ export function WealthInsight() {
 }
 
 function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
-  const selected = useSelectedCountries();
-  const multiplayer = useEu5Players().length > 1;
-  const domain = useMemo(() => logDomain(countries.map((c) => c.totalWealth)), [countries]);
+  const { selected, home, namePlayers, plot, track } = useScatterMarks();
+  const domain = useMemo(() => logDomain(countries.map((c) => c.locationCount)), [countries]);
 
   const scatterData = useMemo(
     () =>
       scatterDots(
         countries.map((c) => ({
-          x: c.totalWealth,
+          x: c.locationCount,
+          size: c.totalWealth,
           y: c.avgWealth,
           tag: c.country.tag,
           name: c.country.country.name,
@@ -125,9 +131,10 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
         })),
         domain,
         selected,
-        multiplayer,
+        home,
+        namePlayers,
       ),
-    [countries, domain, selected, multiplayer],
+    [countries, domain, selected, home, namePlayers],
   );
 
   const option = useMemo((): EChartsOption => {
@@ -135,7 +142,7 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
 
     return {
       grid: { ...chartGutter, top: 28, bottom: 52 },
-      xAxis: logAxis(domain, "Total Wealth"),
+      xAxis: logAxis(domain, "Locations"),
       yAxis: {
         type: "value",
         ...yAxisName("Avg Wealth per Location"),
@@ -162,9 +169,9 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
           ].join("<br/>");
         },
       },
-      series: [{ ...countryDotSeries(), data: scatterData }],
+      series: [countryDotSeries(scatterData, plot)],
     };
-  }, [scatterData, domain]);
+  }, [scatterData, domain, plot]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -179,8 +186,19 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
 
   return (
     <>
-      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
-      <LogFloorNote domain={domain} what="wealth" />
+      <EChart
+        option={option}
+        style={{ height: "420px", width: "100%" }}
+        onInit={(chart) => {
+          handleInit(chart);
+          track(chart);
+        }}
+      />
+      <LogFloorNote
+        domain={domain}
+        what="wealth"
+        axis="Further right: more land. Higher: richer land per location."
+      />
     </>
   );
 }

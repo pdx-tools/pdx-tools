@@ -2,7 +2,7 @@ import { createContext, useContext, useRef } from "react";
 import { cx } from "class-variance-authority";
 import ArrowDownTrayIcon from "@heroicons/react/24/outline/ArrowDownTrayIcon";
 import ArrowTopRightOnSquareIcon from "@heroicons/react/24/outline/ArrowTopRightOnSquareIcon";
-import ArrowUpTrayIcon from "@heroicons/react/24/outline/ArrowUpTrayIcon";
+import LinkIcon from "@heroicons/react/24/outline/LinkIcon";
 import DocumentPlusIcon from "@heroicons/react/24/outline/DocumentPlusIcon";
 import FolderPlusIcon from "@heroicons/react/24/outline/FolderPlusIcon";
 import FireIcon from "@heroicons/react/24/outline/FireIcon";
@@ -13,6 +13,7 @@ import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCirc
 import { focusRing } from "@/components/game/focusRing";
 import { LoadingIcon } from "@/components/icons/LoadingIcon";
 import { useFilePublisher } from "@/features/engine";
+import { useCopyLink } from "@/features/saves/useCopyLink";
 import type { FileKind } from "@/hooks/useFileDrop";
 import { useTriggeredAction } from "@/hooks/useTriggeredAction";
 import { isAbortError } from "@/lib/abortController";
@@ -20,20 +21,12 @@ import { downloadData } from "@/lib/downloadData";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { DISCORD_INVITE_URL } from "@/lib/links";
 import { toast } from "@/lib/toast";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { GameMenu, GameMenuHint } from "../components";
 import { useMapHistory } from "../history/context";
 import { useEu5Engine, useEu5OwnerBorders, useSaveFilename } from "../store";
 import { CampaignNotices, useCampaignSaves } from "./AddCampaignSaves";
 import type { CampaignSaves } from "./AddCampaignSaves";
-import {
-  ShareButton,
-  closedBetaHint,
-  isShareAction,
-  signInHref,
-  useDownloadSave,
-  useShareState,
-} from "./ShareSave";
+import { closedBetaHint, signInHref, useDownloadSave, useShareState } from "./ShareSave";
 import type { DownloadState, ShareState } from "./ShareSave";
 
 /** The files that open in PDX Tools, as the home page accepts them */
@@ -145,12 +138,6 @@ function useOpenSave() {
   return [() => void choose(), element] as const;
 }
 
-/** The share button, when this player can share. Its label carries the state of the share. */
-export function SaveShareButton() {
-  const { share, unavailable } = useSaveActions();
-  return isShareAction(share) ? <ShareButton share={share} unavailable={unavailable} /> : null;
-}
-
 /** The notices of the campaign import under the campaign, when they apply */
 export function CampaignStatus() {
   const { campaign } = useSaveActions();
@@ -159,7 +146,7 @@ export function CampaignStatus() {
 
 /**
  * The ⋯ menu of the save. The actions on the save file come first, then
- * the navigation. Share is here when the player cannot share yet. On a
+ * the navigation. On a
  * phone, the menu also holds help and owner borders, and it gives the save's
  * name when the top row of the sheet cuts it. While a download or an import of saves runs,
  * the ⋯ is a spinner.
@@ -182,13 +169,8 @@ export function SaveOverflowMenu({
   const engine = useEu5Engine();
   const bordersOn = useEu5OwnerBorders();
   const helpChosen = useRef(false);
-  const wide = useBreakpoint("md");
   // The divider comes after the actions on the save file, when there are some.
-  const fileItems =
-    share.kind === "guest" ||
-    share.kind === "closed-beta" ||
-    (share.kind === "shared" && share.origin === "permalink") ||
-    campaign !== null;
+  const fileItems = (share.kind === "shared" && share.origin === "permalink") || campaign !== null;
   const busy = download.pending || melt.isLoading || !!campaign?.busy;
 
   return (
@@ -210,10 +192,8 @@ export function SaveOverflowMenu({
         )}
       </GameMenu.Trigger>
       <GameMenu.Content
-        // Beside its trigger, over the map, so that it does not cut through the labels of
-        // the column. A phone has no room there, so the menu is under its trigger at the edge.
-        side={wide ? "right" : "bottom"}
-        align={wide ? "start" : "end"}
+        side="bottom"
+        align="end"
         collisionPadding={8}
         className="w-64"
         onCloseAutoFocus={(event) => {
@@ -236,7 +216,6 @@ export function SaveOverflowMenu({
           Melt save
           <GameMenuHint>plaintext</GameMenuHint>
         </GameMenu.Item>
-        <ShareItem share={share} />
         {share.kind === "shared" && share.origin === "permalink" ? (
           // The visitor is on the link but does not have the file.
           <GameMenu.Item disabled={download.pending} onSelect={download.start}>
@@ -294,32 +273,59 @@ export function SaveOverflowMenu({
 }
 
 /**
- * Share in the ⋯ menu, for a player who cannot share yet. Each state leads
- * somewhere: a guest signs in, and a player outside the closed beta asks on
- * Discord.
+ * The link to a save, in the Share menu. Each state leads somewhere: a guest signs
+ * in, a player outside the closed beta asks on Discord, and a player who can share
+ * gets a link.
  */
-function ShareItem({ share }: { share: ShareState }) {
+/** The way to a link, as a row of the Share dialog */
+export function ShareLinkItem({ rowClass }: { rowClass: string }) {
+  const { share, unavailable } = useSaveActions();
+  const { copied, copy } = useCopyLink(share.kind === "shared" ? `/eu5/saves/${share.saveId}` : "");
+  const hint = "ml-auto pl-3 text-[12px] text-game-ink-500";
   switch (share.kind) {
     case "guest":
       return (
-        <GameMenu.Item asChild>
-          <a href={signInHref()} title="Sign in with Steam to share">
-            <ArrowUpTrayIcon aria-hidden />
-            Sign in to share
-          </a>
-        </GameMenu.Item>
+        <a href={signInHref()} title="Sign in with Steam to get a link" className={rowClass}>
+          <LinkIcon aria-hidden className="h-4 w-4" />
+          Get a link
+          <span className={hint}>sign in</span>
+        </a>
       );
     case "closed-beta":
       return (
-        <GameMenu.Item asChild>
-          <a href={DISCORD_INVITE_URL} target="_blank" rel="noreferrer" title={closedBetaHint}>
-            <ArrowUpTrayIcon aria-hidden />
-            Share
-            <GameMenuHint>closed beta</GameMenuHint>
-          </a>
-        </GameMenu.Item>
+        <a
+          href={DISCORD_INVITE_URL}
+          target="_blank"
+          rel="noreferrer"
+          title={closedBetaHint}
+          className={rowClass}
+        >
+          <LinkIcon aria-hidden className="h-4 w-4" />
+          Get a link
+          <span className={hint}>closed beta</span>
+        </a>
       );
-    default:
-      return null;
+    case "ready":
+      return (
+        <button type="button" disabled={unavailable} onClick={share.share} className={rowClass}>
+          <LinkIcon aria-hidden className="h-4 w-4" />
+          Upload and get a link
+        </button>
+      );
+    case "uploading":
+      return (
+        <button type="button" disabled className={rowClass}>
+          <LinkIcon aria-hidden className="h-4 w-4" />
+          Uploading
+          <span className={hint}>{Math.round(share.progress)}%</span>
+        </button>
+      );
+    case "shared":
+      return (
+        <button type="button" onClick={() => void copy()} className={rowClass}>
+          <LinkIcon aria-hidden className="h-4 w-4" />
+          {copied ? "Copied" : "Copy link"}
+        </button>
+      );
   }
 }

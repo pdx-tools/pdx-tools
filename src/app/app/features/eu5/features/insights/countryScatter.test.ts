@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   dotLabel,
-  labelOffset,
+  labelPlace,
   logDomain,
   logPosition,
   logTick,
   scatterDots,
 } from "./countryScatter";
+import type { LabelRect } from "./countryScatter";
 import type { CountryRef } from "@/wasm/wasm_eu5";
 
 describe("logDomain", () => {
@@ -56,18 +57,45 @@ describe("scatterDots", () => {
     expect(dots[0].tag).toBe("F");
   });
 
-  it("colours only the labelled dots and the player, and the highest come first", () => {
+  it("gives a label to the save's country, and the selection chooses its place first", () => {
     const rows = ["A", "B", "C", "D", "E", "F", "G"].map((tag, i) => ({
       ...row(tag, 7 - i),
-      y: i,
+      id: i,
+    }));
+    const dots = scatterDots(rows, logDomain(rows.map((r) => r.x)), [], 6);
+    expect(dots.find((d) => d.tag === "G")?.label.show).toBe(true);
+    expect(dots[dots.length - 1].tag).toBe("G");
+  });
+
+  it("colours a player and gives it no label on its own", () => {
+    const rows = ["A", "B", "C", "D", "E", "F", "G"].map((tag, i) => ({
+      ...row(tag, 7 - i),
       player: tag === "G",
     }));
     const dots = scatterDots(rows, logDomain(rows.map((r) => r.x)), []);
-    expect(dots[0].tag).toBe("F");
-    expect(dots[0].itemStyle).toBeUndefined();
-    expect(dots.find((d) => d.tag === "A")?.itemStyle?.color).toBe("#000");
-    expect(dots[1].tag).toBe("G");
-    expect(dots[1].label.show).toBe(true);
+    const player = dots.find((d) => d.tag === "G");
+    expect(player?.itemStyle?.color).toBe("#000");
+    expect(player?.label.show).toBe(false);
+    expect(dots.find((d) => d.tag === "F")?.itemStyle).toBeUndefined();
+  });
+
+  it("uses the total to find the largest when the x axis is not the total", () => {
+    const rows = ["A", "B", "C", "D", "E", "F", "G"].map((tag, i) => ({
+      ...row(tag, 1 + i),
+      size: 7 - i,
+    }));
+    const dots = scatterDots(rows, logDomain(rows.map((r) => r.x)), []);
+    expect(
+      dots
+        .filter((d) => d.label.show)
+        .map((d) => d.tag)
+        .sort(),
+    ).toEqual(["A", "B", "C", "D", "E"]);
+  });
+
+  it("names a dot by the country's name, with no word for a player", () => {
+    const dots = scatterDots([{ ...row("HUN", 5), player: true }], logDomain([5]), []);
+    expect(dots[0].dotLabel).toBe("HUN name");
   });
 
   it("keeps a country at zero in the data", () => {
@@ -79,19 +107,30 @@ describe("scatterDots", () => {
   });
 });
 
-describe("labelOffset", () => {
-  const dot = { x: 50, y: 50, width: 8, height: 8 };
-  const label = { x: 40, y: 34, width: 28, height: 12 };
+describe("labelPlace", () => {
+  const dot = { x: 50, y: 50, width: 10, height: 10 };
+  const overlap = (a: LabelRect, b: LabelRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-  it("keeps the place over the dot when it is free", () => {
-    expect(labelOffset(label, dot, [])).toEqual({ dx: 0, dy: 0 });
+  it("goes to the right of a dot when that is free", () => {
+    const place = labelPlace(dot, 30, 13, []);
+    expect(place?.x).toBeGreaterThan(dot.x + dot.width);
   });
 
-  it("moves a label that would overlap another, and the result overlaps nothing", () => {
-    const placed = [{ x: 42, y: 36, width: 28, height: 12 }];
-    const { dx, dy } = labelOffset(label, dot, placed);
-    const moved = { ...label, x: label.x + dx, y: label.y + dy };
-    expect(moved.x < 70 && 42 < moved.x + 28 && moved.y < 48 && 36 < moved.y + 12).toBe(false);
+  it("reads back into the plot near the end of the axis", () => {
+    const place = labelPlace(dot, 30, 13, [], 0.9);
+    expect(place && place.x + place.width).toBeLessThanOrEqual(dot.x);
+  });
+
+  it("finds a place that overlaps nothing", () => {
+    const placed = [labelPlace(dot, 30, 13, []) as LabelRect];
+    const place = labelPlace(dot, 30, 13, placed) as LabelRect;
+    expect(overlap(place, placed[0])).toBe(false);
+  });
+
+  it("gives way when no place is free", () => {
+    const placed = [{ x: 0, y: 0, width: 200, height: 200 }];
+    expect(labelPlace(dot, 30, 13, placed)).toBeNull();
   });
 });
 

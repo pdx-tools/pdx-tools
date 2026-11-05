@@ -27,6 +27,12 @@ pub struct GradientConfig {
     pub min_value: f64,
     pub mid_value: f64,
     pub max_value: f64,
+    /// On a log scale, the number that the coloring path divides a value by.
+    pub softening: f64,
+    /// The top of the scale is a percentile, so land above it has the top colour.
+    pub clamped: bool,
+    /// The highest value of the land, which a clamped scale does not reach.
+    pub true_max: f64,
 }
 
 /// Interpolates the EU5 6-stop HSV gradient.
@@ -79,20 +85,27 @@ pub fn interpolate_eu5_gradient(value: f64, max_value: f64, scale: GradientScale
 
 /// Mirrors the population color path's `ln_1p((value/1000)) / ln_1p(max/1000)`
 /// normalization: returns the value in original units that lands at the
-/// half-way point of the gradient. Only valid for the population log scale.
-fn population_log_midpoint(max: f64) -> f64 {
-    ((max / 1000.0).ln_1p() * 0.5).exp_m1() * 1000.0
+/// half-way point of the gradient. `softening` is the number that the coloring
+/// path divides the value by.
+fn log_midpoint(max: f64, softening: f64) -> f64 {
+    ((max / softening).ln_1p() * 0.5).exp_m1() * softening
 }
 
 /// Build a sequential EU5-palette config. The midpoint is derived from the
 /// scale so callers cannot pass an inconsistent value:
 /// - Linear → arithmetic mean of `min` and `max`
-/// - Log    → population log midpoint (assumes the /1000 softening that the
-///   population coloring path applies)
-pub fn sequential(scale: GradientScale, min_value: f64, max_value: f64) -> GradientConfig {
+/// - Log    → log midpoint, with the softening of the coloring path
+pub fn sequential(
+    scale: GradientScale,
+    min_value: f64,
+    max_value: f64,
+    softening: f64,
+    clamped: bool,
+    true_max: f64,
+) -> GradientConfig {
     let mid_value = match scale {
         GradientScale::Linear => (min_value + max_value) / 2.0,
-        GradientScale::Log => population_log_midpoint(max_value),
+        GradientScale::Log => log_midpoint(max_value, softening),
     };
     GradientConfig {
         scale,
@@ -100,6 +113,9 @@ pub fn sequential(scale: GradientScale, min_value: f64, max_value: f64) -> Gradi
         min_value,
         mid_value,
         max_value,
+        softening,
+        clamped,
+        true_max,
     }
 }
 
@@ -190,7 +206,7 @@ mod tests {
 
     #[test]
     fn sequential_linear_uses_arithmetic_midpoint() {
-        let config = sequential(GradientScale::Linear, 0.0, 10.0);
+        let config = sequential(GradientScale::Linear, 0.0, 10.0, 1.0, false, 10.0);
         assert_eq!(config.palette, GradientPalette::Eu5);
         assert_eq!(config.min_value, 0.0);
         assert_eq!(config.mid_value, 5.0);
@@ -200,7 +216,7 @@ mod tests {
     #[test]
     fn sequential_log_midpoint_matches_half_normalization() {
         let max = 99_000.0;
-        let config = sequential(GradientScale::Log, 0.0, max);
+        let config = sequential(GradientScale::Log, 0.0, max, 1000.0, false, 10.0);
         let normalized = (config.mid_value / 1000.0).ln_1p() / (max / 1000.0).ln_1p();
         assert!((normalized - 0.5).abs() < f64::EPSILON);
     }

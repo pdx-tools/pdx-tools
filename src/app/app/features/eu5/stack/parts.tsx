@@ -11,7 +11,7 @@ import { sectionLabel } from "@/components/game/SectionTitle";
 import { Tooltip } from "@/components/Tooltip";
 import { divergingPoles } from "@/components/viz/echartsTheme";
 import type { MapMode } from "@/wasm/wasm_eu5";
-import { useEu5Engine, useEu5MapMode, useEu5Players } from "../store";
+import { useEu5Engine, useEu5HomeCountry, useEu5MapMode, useEu5Players } from "../store";
 import MapIcon from "@heroicons/react/16/solid/MapIcon";
 import UserIcon from "@heroicons/react/16/solid/UserIcon";
 import { DefinedTerm } from "../components/EntityName";
@@ -67,12 +67,15 @@ export function IconTip({
 export function ExactValue({
   exact,
   shown,
+  name,
   className,
   children,
 }: {
   exact: string;
   /** The text that the figure shows, to compare with the full value */
   shown?: string;
+  /** What the figure measures, for a reader who reaches it by keyboard */
+  name?: string;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -80,7 +83,13 @@ export function ExactValue({
   return (
     <Tooltip>
       <Tooltip.Trigger asChild>
-        <span tabIndex={0} className={cx("rounded-[1px]", focusRing, className)}>
+        <span
+          // A named figure is one of a rail, which has one stop. Arrow keys go through it.
+          tabIndex={name ? -1 : 0}
+          data-rail-value={name ? "" : undefined}
+          aria-label={name ? `${name}: ${exact}` : undefined}
+          className={cx("rounded-[1px]", focusRing, className)}
+        >
           {children}
         </span>
       </Tooltip.Trigger>
@@ -173,6 +182,7 @@ export function MapModeLabel({ mode, label }: { mode: MapMode; label: string }) 
 export function PlayerTag({ className, countryKey }: { className?: string; countryKey?: number }) {
   const multiplayer = useEu5Players().length > 1;
   const name = usePlayerName(countryKey);
+  const home = useEu5HomeCountry();
   if (multiplayer) {
     const label = name ? `Played by ${name}` : "Played by a human";
     return (
@@ -189,8 +199,13 @@ export function PlayerTag({ className, countryKey }: { className?: string; count
         "shrink-0 rounded-plate bg-game-panel-active px-1 font-game-num text-[12px] leading-[16px] text-game-ink-100",
         className,
       )}
+      title={
+        home?.kind === "viewpoint"
+          ? "The save was written while viewing this country. It lists no human player."
+          : undefined
+      }
     >
-      You
+      {home?.kind === "viewpoint" ? "Observing" : "You"}
     </span>
   );
 }
@@ -354,12 +369,15 @@ export function Band({
   label,
   columns,
   sorted = false,
+  order,
   flush = false,
 }: {
   label: string;
   columns?: string;
   /** The rows are in the order of this column, from the largest */
   sorted?: boolean;
+  /** The order of the rows, when the reader can turn it round */
+  order?: { direction: "asc" | "desc"; onToggle: () => void };
   /** The band is the first in its level, so no group is above it to stand apart from */
   flush?: boolean;
 }) {
@@ -370,7 +388,21 @@ export function Band({
       >
         {/* The label stays in view when a table under the band scrolls sideways. */}
         <span className={cx(sectionLabel, "sticky left-3.5")}>{label}</span>
-        {columns ? (
+        {columns && order ? (
+          <button
+            type="button"
+            onClick={order.onToggle}
+            aria-label={`Sort by ${columns}, ${order.direction === "desc" ? "lowest first" : "highest first"}`}
+            className={cx(
+              sectionLabel,
+              "relative inline-flex cursor-pointer items-center gap-1 rounded-[2px] before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] hover:text-game-ink-100 max-md:min-h-11",
+              focusRing,
+            )}
+          >
+            {columns}
+            <SortMark sorted={order.direction} />
+          </button>
+        ) : columns ? (
           <span className={cx(sectionLabel, "inline-flex items-center gap-1")}>
             <DefinedTerm label={columns} />
             {sorted ? <SortMark sorted="desc" /> : null}
@@ -626,6 +658,7 @@ export function Row({ name, tag, value, dim, onOpen, hot, onHover }: RowProps) {
   return (
     <button
       type="button"
+      data-row-key={name}
       className={cx(className, "cursor-pointer hover:bg-game-panel-hover", focusRingInset)}
       style={grid}
       onClick={onOpen}

@@ -16,7 +16,6 @@ export function LocationEconomyTab({ profile }: Props) {
   const buildings = [...profile.buildings].sort(
     (a, b) => b.level - a.level || a.building.name.localeCompare(b.building.name),
   );
-  const largest = Math.max(0, ...buildings.map((b) => b.level));
 
   return (
     <>
@@ -26,7 +25,6 @@ export function LocationEconomyTab({ profile }: Props) {
           flush
           row={{ key: b.building.key, name: b.building.name, color: "", value: b.level }}
           display={formatCount(b.level)}
-          fraction={largest > 0 ? b.level / largest : 0}
         />
       ))}
     </>

@@ -38,6 +38,18 @@ impl<'bump> Eu5Workspace<'bump> {
         } else if mode == MapMode::Markets {
             self.market_hover(location_idx, location)
                 .unwrap_or(HoverDisplayDataSource::Clear)
+        } else if mode != MapMode::Political {
+            // The map colors each location, so the hover gives what the color means.
+            self.gamestate()
+                .countries
+                .get(location.owner)
+                .map(|country_idx| HoverDisplayDataSource::LocationOfCountry {
+                    location_id: location_idx.value(),
+                    location: location_idx,
+                    country: CountryRefSource { country_idx },
+                    stat: self.location_stat(mode, location_idx, location),
+                })
+                .unwrap_or(HoverDisplayDataSource::Clear)
         } else {
             self.country_hover(location_idx, location, mode)
                 .unwrap_or(HoverDisplayDataSource::Clear)
@@ -121,8 +133,8 @@ impl<'bump> Eu5Workspace<'bump> {
 
         HoverDisplayDataSource::HistoricalCountry {
             location_id: location_idx.value(),
-            name: OwnedCountryName::new(identity.name, identity.tag),
-            dead: identity.dead,
+            name: OwnedCountryName::new(identity.name, identity.tag, identity.flag),
+            dead: self.live_country_of(owner).is_none(),
         }
     }
 
@@ -141,12 +153,25 @@ impl<'bump> Eu5Workspace<'bump> {
                 .market_manager
                 .get(market_id)?
                 .market_value(),
+            access: location.market_access,
         })
     }
 
     fn country_stat(&self, mode: MapMode, owner_id: CountryId) -> HoverStatSource {
         match mode {
-            MapMode::Political => HoverStatSource::None,
+            MapMode::Political => self
+                .gamestate()
+                .countries
+                .get(owner_id)
+                .and_then(|idx| self.gamestate().countries.index(idx).data())
+                .and_then(|data| {
+                    let (place, _) = self.score_place(owner_id)?;
+                    Some(HoverStatSource::GreatPower {
+                        rank: place,
+                        points: data.great_power_points,
+                    })
+                })
+                .unwrap_or(HoverStatSource::None),
             MapMode::Control => {
                 let mut control_sum = 0.0;
                 let mut count = 0_u32;

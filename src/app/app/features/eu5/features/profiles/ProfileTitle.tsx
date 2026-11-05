@@ -12,10 +12,21 @@ import { useEu5SelectionState } from "../../store";
  * is the name at heading size, the tag, and the headline figures on one line. The
  * selection strip names the selected entity, so its name is only for a screen reader.
  */
-export function EntityProfileTitle({ header }: { header: EntityHeader }) {
+export function EntityProfileTitle({
+  header,
+  inStrip = false,
+  statsLabel,
+}: {
+  header: EntityHeader;
+  /** The selection strip has this name, also when the name is that of a past date */
+  inStrip?: boolean;
+  /** Says that the figures are of another date than the map's */
+  statsLabel?: string;
+}) {
   const tag = displayTag(header.tag);
   const selected = useEu5SelectionState()?.activeProfile;
   const named =
+    inStrip ||
     (selected?.kind === "country" && selected.country.name === header.name) ||
     (selected?.kind === "market" && selected.market.name === header.name);
   return (
@@ -38,6 +49,11 @@ export function EntityProfileTitle({ header }: { header: EntityHeader }) {
             <span className="shrink-0 font-game-ui text-[12px] text-game-ink-500">{tag}</span>
           ) : null}
         </div>
+        {statsLabel ? (
+          <span className="font-game-ui text-[12px] leading-tight font-medium text-game-ink-300">
+            {statsLabel}
+          </span>
+        ) : null}
         <HeadlineStats header={header} />
       </div>
     </div>
@@ -47,7 +63,7 @@ export function EntityProfileTitle({ header }: { header: EntityHeader }) {
 /** The full values of the headline figures, for a tooltip */
 export function headlineExact(header: EntityHeader): string {
   const { locationCount, totalDevelopment, totalPopulation } = header.headline;
-  return `${formatExact(locationCount)} locations · ${formatExact(totalDevelopment)} Dev · ${formatExact(totalPopulation)} Pop`;
+  return `${formatExact(locationCount)} ${locationCount === 1 ? "location" : "locations"} · ${formatExact(totalDevelopment)} Dev · ${formatExact(totalPopulation)} Pop`;
 }
 
 /**
@@ -61,7 +77,10 @@ export function HeadlineStats({ header, exact = true }: { header: EntityHeader; 
   const line = "flex w-fit flex-wrap items-baseline gap-x-2.5";
   const figures = (
     <>
-      <Stat label="locations" value={formatCount(locationCount)} />
+      <Stat
+        label={locationCount === 1 ? "location" : "locations"}
+        value={formatCount(locationCount)}
+      />
       <Stat label="Dev" value={formatMetric(totalDevelopment)} />
       <Stat label="Pop" value={formatCount(totalPopulation)} />
     </>

@@ -2,6 +2,112 @@ use crate::entity_profile::{CountryRef, MarketRef};
 use crate::presentation::{Localized, UiLocationIdx, present_dto};
 use serde::{Deserialize, Serialize};
 
+/// One name to set on the map: a realm and the land it holds on the date shown.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct RealmLabel {
+    pub name: String,
+    /// The live country, if it still exists.
+    pub country_idx: Option<u32>,
+    pub is_player: bool,
+    /// The game's great power rank at the save, or zero. A name of a higher rank wins a place.
+    pub great_power_rank: u32,
+    pub location_count: u32,
+    /// The map's ids of the locations that place the name.
+    pub points: Vec<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct RealmLabels {
+    pub labels: Vec<RealmLabel>,
+}
+
+/// What a lens looks at: a thing of a list that is not a country.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase", tag = "kind", content = "key")]
+pub enum LensItem {
+    RawMaterial(String),
+    Building(String),
+    Religion(String),
+    Market(u32),
+    /// Each country's sum of all raw materials
+    AllRawMaterials,
+    /// Each country's sum of all buildings
+    AllBuildings,
+}
+
+/// One country's part of a lens.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct LensRow {
+    pub country: crate::entity_profile::CountryRef,
+    pub value: f64,
+    pub locations: u32,
+}
+
+/// Which countries of the scope hold one thing of a list, and where it is.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct ItemLens {
+    /// What `value` measures, from the save
+    pub unit: String,
+    pub rows: Vec<LensRow>,
+    pub total: f64,
+    /// The location ids that hold it in the scope, for the map
+    pub location_ids: Vec<u32>,
+}
+
+/// One country on the date the map shows: its land, its place by land, and the
+/// name, colour and arms that it had on that date.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct DatedLand {
+    pub locations: u32,
+    pub rank: u32,
+    pub country_count: u32,
+    pub name: String,
+    pub tag: String,
+    pub color_hex: crate::color::Srgb,
+    pub flag: String,
+}
+
+/// A country's land on one date of its history.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct LandPoint {
+    pub year: i32,
+    pub locations: u32,
+}
+
+/// The change of land in one year, relative to the year before.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct LandChange {
+    pub year: i32,
+    pub change: i32,
+}
+
+/// A country's land across the campaign, from the ownership history of the save.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct LandHistory {
+    /// One point at the end of each year.
+    pub points: Vec<LandPoint>,
+    pub peak: LandPoint,
+    pub biggest_gain: Option<LandChange>,
+    pub biggest_loss: Option<LandChange>,
+}
+
 /// The whole map, as the scope every insight falls back to when nothing is
 /// selected. Computed once per save.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -673,6 +779,7 @@ pub mod control {
 
         pub PoliticalWorldRow {
             ordinal_rank: u32,
+            ordinal_tied: u32,
             country: crate::presentation::CountryRefSource => CountryRef,
             great_power_points: f64,
             total_state_efficacy: f64,
@@ -683,6 +790,27 @@ pub mod control {
 
         pub PoliticalWorldScoreboard {
             rows: Vec<workspace::PoliticalWorldRow> => Vec<presentation::PoliticalWorldRow>,
+        }
+
+        pub PoliticalStanding {
+            rank: u32,
+            cohort: u32,
+            rows: Vec<workspace::PoliticalWorldRow> => Vec<presentation::PoliticalWorldRow>,
+        }
+
+        pub DatedRealm {
+            name: crate::presentation::OwnedCountryName => String,
+            tag: String,
+            color_hex: crate::color::Srgb,
+            country: Option<crate::presentation::CountryRefSource> => Option<CountryRef>,
+            locations: u32,
+            rank: u32,
+            locations_at_save: u32,
+        }
+
+        pub DatedRealms {
+            rows: Vec<workspace::DatedRealm> => Vec<presentation::DatedRealm>,
+            country_count: u32,
         }
     }
 }

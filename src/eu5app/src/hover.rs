@@ -14,6 +14,7 @@ present_dto! {
     #[serde(tag = "mode", content = "value", rename_all = "camelCase")]
     pub enum HoverStat {
         None,
+        GreatPower { rank: u32, points: f64 },
         Control { value: f64 },
         Development { value: f64 },
         Population { value: u32 },
@@ -44,6 +45,12 @@ present_dto! {
             country: CountryRefSource => CountryRef,
             stat: HoverStat => HoverStat,
         },
+        LocationOfCountry {
+            location_id: u32,
+            location: LocationIdx => Localized<UiLocationIdx>,
+            country: CountryRefSource => CountryRef,
+            stat: HoverStat => HoverStat,
+        },
         HistoricalCountry {
             location_id: u32,
             name: OwnedCountryName => String,
@@ -53,6 +60,7 @@ present_dto! {
             location_id: u32,
             market: MarketId => Localized<UiMarketId>,
             market_value: f64,
+            access: f64,
         },
     }
 }

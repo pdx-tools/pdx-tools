@@ -1,4 +1,5 @@
 import { cx } from "class-variance-authority";
+import { insightFlow } from "../../stack/levelBody";
 import { useMemo, useState, useEffectEvent } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -184,7 +185,7 @@ export function MarketsInsight() {
   const topProduction = insightQuery.data?.topProductionLocations ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <MarketsScopeHeader data={insightQuery.data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />

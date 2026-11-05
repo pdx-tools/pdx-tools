@@ -37,7 +37,7 @@ A neighboring analyzer that uploads the save to a server, or that only supports 
 
 - Save files come from the game's save directory. EU4 and EU5 saves can be plaintext or binary/ironman; binary parsing needs token files that are not in the public repo.
 - The user often has the game running. The site should be faster to consult than the in-game ledger.
-- Typical outputs leave the site: PNG screenshots, WebM/MP4 timelapses, melted (binary to plaintext) saves, chart exports, and shareable links to uploaded saves.
+- Typical outputs leave the site: Story images, PNG map images, WebM/MP4 timelapses, melted (binary to plaintext) saves, chart exports, and shareable links to uploaded saves.
 - Sharing and the leaderboard require a Steam login. Local analysis requires no account.
 - File watching (re-analyze when the game autosaves) is available on browsers with the File System Access API.
 - Community lives on Discord (`https://discord.gg/rCpNWQW`) and GitHub issues. Feedback and feature requests arrive from there.
@@ -55,7 +55,7 @@ A neighboring analyzer that uploads the save to a server, or that only supports 
 ### Confirmed functionality
 
 - EU4: interactive WebGL2 map with map modes, timelapse recording, charts (mana, budget, casualties, wars, development, ideas, health grid), country details (institutions, inheritance, estates, rulers, leaders, diplomacy, budget), province tables, mod list, AAR text, melting, save upload, achievements pages, user profiles, leaderboard.
-- EU5: map with map modes and legend, box select, insights, profiles, timeline/timelapse, all in one column beside the map (One Stack).
+- EU5: map with map modes and key, scopes (All, Players, Top 10), box select, insights, country and location profiles, Compare, timeline and timelapse, all in one column beside the map (One Stack). Players means each player's own land, without subjects, and a multiplayer save opens on it. In a data mode the country level leads with that mode. The Share dialog leads with a preview of the Story image: the map, the sentence, the top rows, and a chart.
 - Account: Steam login, personal save list, API key.
 - Static content: docs, blog, changelog, and what's-new, built by the separate `src/docs` Astro site and served under `public/`.
 
@@ -64,9 +64,10 @@ A neighboring analyzer that uploads the save to a server, or that only supports 
 - **Local-first, no login for analysis.** Parsing never leaves the browser. Login is only for upload and share. Core analysis must work with the backend down, so no server-side rendering of the analysis surfaces.
 - **Desktop-first, mobile must still work.** Dedicated-GPU desktop is the target. Mobile and integrated GPUs must remain usable: textures split at 2816px, `mediump` precision where measured safe.
 - **Game-derived colors are truth.** Country, religion, culture, trade-good, and map-mode colors come from game data and must never be restyled. Recognition beats palette coherence.
+- **Each figure on screen is true for its scope.** A test crosses each EU5 map mode with each scope. A new surface goes into this test. A figure that cannot be made true goes away.
 - **Solo-maintainer budget.** Bus factor is about 1. Prefer fewer, simpler surfaces over ambitious ones that need upkeep. Backend is spartan (Postgres only, no Redis, stateless JWT sessions).
 - **Broad browser compatibility.** WebAssembly is required. Secondary features may be limited to browsers that support them (File System Access API). Safari share is low single digits, which justified WebGL2 before Safari supported it.
-- **First-run cost.** A parse takes about 1-2 s and the landing for a loaded save is map-first. New stat blocks must be orthogonal to the country panel.
+- **First-run cost.** A parse takes about 1-2 s and the landing for a loaded save has the map beside the column. New stat blocks must be orthogonal to the country panel.
 
 ### Terminology
 

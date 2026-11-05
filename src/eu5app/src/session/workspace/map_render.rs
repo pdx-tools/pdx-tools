@@ -273,6 +273,11 @@ impl<'bump> Eu5Workspace<'bump> {
         self.paint_live(MapMode::Political);
     }
 
+    /// Where a location's colour is in the map's buffers.
+    pub fn gpu_index_of(&self, idx: eu5save::models::LocationIdx) -> Option<usize> {
+        self.gpu_indices[idx].map(|id| id.value() as usize)
+    }
+
     pub fn location_arrays(&self) -> &pdx_map::LocationArrays {
         &self.location_arrays
     }
@@ -375,6 +380,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     pub(super) fn apply_interaction_flags(&mut self) {
         let has_selection = !self.selection_state.is_empty();
+        let has_focus = self.selection_state.focused_location().is_some();
         for location in self.gamestate.locations.iter() {
             let terrain = self.location_terrain(location.idx());
             let selected = self.is_selected_or_filled_by_selected(location.idx());
@@ -386,10 +392,14 @@ impl<'bump> Eu5Workspace<'bump> {
             let should_dim =
                 Self::should_dim_location(terrain, has_selection, selected, s.primary_color());
             s.flags_mut().clear(LocationFlags::from_bits(
-                LocationFlags::DIMMED.bits() | LocationFlags::FOCUSED.bits(),
+                LocationFlags::DIMMED.bits()
+                    | LocationFlags::FOCUSED.bits()
+                    | LocationFlags::SOFTENED.bits(),
             ));
             if should_dim {
                 s.flags_mut().set(LocationFlags::DIMMED);
+            } else if has_focus && selected {
+                s.flags_mut().set(LocationFlags::SOFTENED);
             }
         }
 
@@ -398,6 +408,7 @@ impl<'bump> Eu5Workspace<'bump> {
             && let Some(gpu_idx) = self.gpu_indices[fl]
         {
             let mut state = self.location_arrays.get_mut(gpu_idx);
+            state.flags_mut().clear(LocationFlags::SOFTENED);
             state.flags_mut().set(LocationFlags::FOCUSED);
         }
     }
@@ -411,10 +422,10 @@ impl<'bump> Eu5Workspace<'bump> {
         has_selection && !selected && Self::terrain_allows_dimming(terrain, primary_color)
     }
 
-    /// Water dims only when a map mode painted it, such as the water of a market.
-    /// Wasteland always dims, or it is the brightest land on a map with a selection.
-    fn terrain_allows_dimming(terrain: Terrain, primary_color: GpuColor) -> bool {
-        terrain.is_passable() || primary_color != GpuColor::WATER
+    /// All terrain dims. Wasteland is otherwise the brightest land on a map with a
+    /// selection, and sea is otherwise brighter than each country.
+    fn terrain_allows_dimming(_terrain: Terrain, _primary_color: GpuColor) -> bool {
+        true
     }
 
     pub fn no_map_change(&self) -> MapChange {
@@ -476,8 +487,8 @@ mod tests {
     }
 
     #[test]
-    fn selection_dimming_excludes_unpainted_water_and_selected_locations() {
-        assert!(!Eu5Workspace::should_dim_location(
+    fn selection_dimming_takes_water_and_not_selected_locations() {
+        assert!(Eu5Workspace::should_dim_location(
             Terrain::Sea,
             true,
             false,

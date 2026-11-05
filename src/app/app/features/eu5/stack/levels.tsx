@@ -1,6 +1,6 @@
 import type React from "react";
 import type { MapMode } from "@/wasm/wasm_eu5";
-import { useEu5MapMode } from "../store";
+import { useEu5MapMode, useEu5SelectionState } from "../store";
 import { StateEfficacyInsight } from "../features/insights/StateEfficacy";
 import { ControlInsight } from "../features/insights/Control";
 import { DevelopmentInsight } from "../features/insights/DevelopmentInsight";
@@ -12,24 +12,29 @@ import { PopulationGrowthInsight } from "../features/insights/PopulationGrowth";
 import { BuildingLevelsInsight } from "../features/insights/BuildingLevels";
 import { ReligionInsight } from "../features/insights/ReligionInsight";
 import { RgoInsight } from "../features/insights/Rgo";
-import { PoliticalInsight } from "../features/insights/Political";
+import { WorldStandings } from "./Standings";
 import { EntityProfileRoot } from "../features/profiles";
 import type { PanelNavEntry } from "../features/profiles/PanelNavContext";
 import { Caption } from "./Caption";
-import { useRanking } from "./ModeRanking";
+import { ModeRanking, useRanking } from "./ModeRanking";
+import { ShareCurve } from "./ShareCurve";
+import { useFullView } from "./fullView";
 import { Finding } from "./parts";
-import { topShareFinding } from "./selection";
+import { namedShareFinding, scopeLand, topShareFinding } from "./selection";
 import { CompareLevel } from "./CompareLevel";
+import { ItemLensLevel } from "./ItemLens";
 
-/** The caption and the levels that are one list of key and value rows */
-export const NARROW_WIDTH = 340;
-/** A level with rows, tables and charts. Expand gives the level the frame. */
+/**
+ * The column at rest and the stable view of a selection have one width, so a
+ * selection does not move the map.
+ */
+export const NARROW_WIDTH = 420;
+/** A level with rows, tables and charts. The full view gives the level the frame. */
 const WIDE_WIDTH = 640;
 
 /**
  * A level has one of two widths: the width of a list, or the width of an analysis.
- * More widths move the map and its tools at each step and teach nothing. Compare
- * with five countries or more scrolls sideways.
+ * More widths move the map and its tools at each step and teach nothing.
  */
 export function levelWidth(entry: PanelNavEntry | undefined): number {
   if (entry === undefined) return NARROW_WIDTH;
@@ -37,20 +42,19 @@ export function levelWidth(entry: PanelNavEntry | undefined): number {
     case "insight":
     case "compare":
       return WIDE_WIDTH;
-    case "focus":
+    case "lens":
       return NARROW_WIDTH;
+    case "focus":
     case "profile":
-      return entry.profile.kind === "location" ? NARROW_WIDTH : WIDE_WIDTH;
+      return entry.profile.kind === "market" ? WIDE_WIDTH : NARROW_WIDTH;
     case "section":
       switch (entry.section) {
         case "religion":
         case "buildings":
           return NARROW_WIDTH;
         case "population":
-          return entry.profile.kind === "location" ? WIDE_WIDTH : WIDE_WIDTH;
         case "goods":
         case "members":
-          return WIDE_WIDTH;
         case "locations":
         case "diplomacy":
           return WIDE_WIDTH;
@@ -59,7 +63,7 @@ export function levelWidth(entry: PanelNavEntry | undefined): number {
 }
 
 const INSIGHTS: Record<MapMode, () => React.ReactNode> = {
-  political: () => <PoliticalInsight />,
+  political: () => <WorldStandings />,
   control: () => <ControlInsight />,
   development: () => <DevelopmentInsight />,
   stateEfficacy: () => <StateEfficacyInsight />,
@@ -93,29 +97,55 @@ export function LevelView({ entry }: { entry: PanelNavEntry | undefined }) {
   if (entry === undefined) return <Caption />;
   if (entry.kind === "insight") return <InsightLevel />;
   if (entry.kind === "compare") return <CompareLevel />;
+  if (entry.kind === "lens") return <ItemLensLevel item={entry.item} name={entry.label} />;
   if (entry.kind === "section") {
     return <EntityProfileRoot identity={entry.profile} section={entry.section} />;
   }
   return <EntityProfileRoot identity={entry.profile} />;
 }
 
-/** The mode's insight, made for a wide frame */
+/** The mode's insight. In the full view its list stands beside the charts, linked to them. */
 function InsightLevel() {
   const mode = useEu5MapMode();
   const ranking = useRanking(mode);
+  const full = useFullView().on;
+  const selection = useEu5SelectionState();
   const metric = DETAILS_METRIC[mode];
+  const scoped = selection != null && !selection.isEmpty;
   const finding =
     ranking && metric
-      ? topShareFinding(
-          ranking.noun.toLowerCase(),
-          metric,
-          ranking.rows.map((row) => row.value),
-        )
+      ? scoped
+        ? namedShareFinding(ranking.rows, metric, scopeLand(selection))
+        : topShareFinding(
+            ranking.noun.toLowerCase(),
+            metric,
+            ranking.rows.map((row) => row.value),
+          )
       : null;
+  const list = full && mode !== "political" && ranking;
   return (
     <div className="flex flex-col">
-      {finding ? <Finding>{finding}</Finding> : null}
-      {INSIGHTS[mode]()}
+      {finding ? (
+        <div className="flex items-center gap-3 pr-3.5">
+          <Finding>{finding}</Finding>
+          {ranking && metric && !scoped ? (
+            <ShareCurve
+              values={ranking.rows.map((row) => row.value)}
+              noun={ranking.noun}
+              metric={metric}
+            />
+          ) : null}
+        </div>
+      ) : null}
+      {/* Who comes first, and the charts explain them. */}
+      <div className={list ? "grid grid-cols-[400px_minmax(0,1fr)]" : undefined}>
+        {list ? (
+          <div className="border-r border-game-line pt-2">
+            <ModeRanking key={mode} mode={mode} />
+          </div>
+        ) : null}
+        <div className="@container/level min-w-0">{INSIGHTS[mode]()}</div>
+      </div>
     </div>
   );
 }

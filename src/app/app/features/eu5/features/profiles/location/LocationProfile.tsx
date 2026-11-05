@@ -1,5 +1,7 @@
+import { formatCount } from "@/lib/format";
 import type { LocationProfile as LocationProfileData, MapMode } from "@/wasm/wasm_eu5";
 import { LocationOverviewTab } from "./OverviewTab";
+import { LocationRanksBlock } from "./LocationRanks";
 import { LocationEconomyTab } from "./EconomyTab";
 import { LocationPopulationTab } from "./PopulationTab";
 import { usePanelNav, sectionEntry } from "../PanelNavContext";
@@ -41,7 +43,7 @@ export function LocationProfile({ locationIdx, section }: Props) {
   return (
     <>
       <LevelTitle title={profile.header.location.name} />
-      <LocationParts profile={profile} headline />
+      <LocationParts profile={profile} />
     </>
   );
 }
@@ -54,11 +56,9 @@ export function LocationProfile({ locationIdx, section }: Props) {
  */
 export function LocationParts({
   profile,
-  headline,
   mode,
 }: {
   profile: LocationProfileData;
-  headline?: boolean;
   /** The caption's mode: the caption already gives this mode's answer. */
   mode?: MapMode;
 }) {
@@ -69,14 +69,20 @@ export function LocationParts({
 
   return (
     <>
-      <Row
-        name="Buildings"
-        value={profile.buildings.length}
-        onOpen={() => open("buildings", "Buildings")}
-      />
-      <Row name="Population" onOpen={() => open("population", "Population")} />
+      <LocationRanksBlock profile={profile} mode={mode} />
       <Band label="Overview" />
-      <LocationOverviewTab profile={profile} headline={headline} mode={mode} />
+      <LocationOverviewTab profile={profile} mode={mode} />
+      <Row
+        name="Population"
+        value={formatCount(profile.stats.population)}
+        onOpen={() => open("population", "Population")}
+      />
+      <Band
+        label={
+          profile.buildings.length === 1 ? "1 building" : `${profile.buildings.length} buildings`
+        }
+      />
+      <LocationEconomyTab profile={profile} />
     </>
   );
 }

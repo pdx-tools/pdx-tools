@@ -146,7 +146,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 const WINDOW_KEYS = new Set([" ", "ArrowLeft", "ArrowRight", "Home", "End"]);
 /** Controls that read arrow, Home and End keys themselves. */
 const ARROW_CONSUMERS =
-  "[role='slider'], select, [role='menu'], [role='listbox'], [role='combobox']";
+  "[role='slider'], select, [role='menu'], [role='listbox'], [role='combobox'], [data-row-main], [role=\"table\"], [role=\"row\"]";
 /** Controls that Space or Enter activates; the timeline must not double up. */
 const ACTIVATABLE = "button, select, a, [role='button'], [role='menuitem'], [role='option']";
 

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { insightFlow } from "../../stack/levelBody";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -28,7 +29,6 @@ import {
   yAxisName,
 } from "@/components/viz/echartsTheme";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
-import { useEu5Players } from "../../store";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -37,8 +37,14 @@ import {
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useSelectedCountries } from "../../stack/selected";
-import { countryDotSeries, logAxis, logDomain, LogFloorNote, scatterDots } from "./countryScatter";
+import {
+  countryDotSeries,
+  useScatterMarks,
+  logAxis,
+  logDomain,
+  LogFloorNote,
+  scatterDots,
+} from "./countryScatter";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 // The chart omits the engine's `perfect` band, so use four steps for four bars.
@@ -79,7 +85,7 @@ export function ControlInsight() {
   const topLocations = data?.topLocations ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <ControlScopeHeader data={data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
@@ -263,8 +269,7 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 }
 
 function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }) {
-  const selected = useSelectedCountries();
-  const multiplayer = useEu5Players().length > 1;
+  const { selected, home, namePlayers, plot, track } = useScatterMarks();
   const domain = useMemo(() => logDomain(countries.map((c) => c.totalDevelopment)), [countries]);
 
   const scatterData = useMemo(
@@ -286,9 +291,10 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         })),
         domain,
         selected,
-        multiplayer,
+        home,
+        namePlayers,
       ),
-    [countries, domain, selected, multiplayer],
+    [countries, domain, selected, home, namePlayers],
   );
 
   const maxLost = useMemo(
@@ -332,8 +338,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
       },
       series: [
         {
-          ...countryDotSeries(),
-          data: scatterData,
+          ...countryDotSeries(scatterData, plot),
           symbolSize: (_value: unknown, params: unknown) => {
             const d = (params as { data: (typeof scatterData)[number] }).data;
             const pct = d.lostDevelopment / maxLost;
@@ -342,7 +347,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         },
       ],
     };
-  }, [scatterData, domain, maxLost]);
+  }, [scatterData, domain, maxLost, plot]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -357,7 +362,14 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
 
   return (
     <>
-      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
+      <EChart
+        option={option}
+        style={{ height: "max(420px, 56vh)", width: "100%" }}
+        onInit={(chart) => {
+          handleInit(chart);
+          track(chart);
+        }}
+      />
       <LogFloorNote domain={domain} what="development" />
     </>
   );

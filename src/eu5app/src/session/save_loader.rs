@@ -544,6 +544,8 @@ pub struct Eu5SaveMetadata {
     pub playthrough_id: String,
     pub playthrough_name: String,
     pub player_country_name: Option<String>,
+    /// The label of the save, such as `1617.4.1 - Milan`.
+    pub save_label: Option<String>,
 }
 
 impl From<&Metadata<'_>> for Eu5SaveMetadata {
@@ -557,6 +559,7 @@ impl From<&Metadata<'_>> for Eu5SaveMetadata {
                 .player_country_name
                 .as_ref()
                 .map(|x| x.to_str().to_owned()),
+            save_label: meta.save_label.as_ref().map(|x| x.to_str().to_owned()),
         }
     }
 }

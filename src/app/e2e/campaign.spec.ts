@@ -283,7 +283,13 @@ test("EU5 keeps the selection when it steps between an upload and a local save",
   await logIn(page);
   await openFiles(page, [files.first]);
   await page.getByRole("button", { name: "Share", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole("button", { name: "Upload and get a link" }).click();
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Share", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 90_000 });
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "More actions" }).click();
   const path = await page.getByRole("menuitem", { name: "Open permalink" }).getAttribute("href");
   await page.keyboard.press("Escape");

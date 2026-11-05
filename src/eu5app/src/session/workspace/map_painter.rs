@@ -7,11 +7,18 @@ use crate::{MapMode, SelectionState, Terrain};
 use eu5save::models::{LocationIdx, LocationIndexedVec};
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays};
 
-/// The reproduction gradient stops at this percentile. A pop of a few
-/// hundred people that records a single birth has an annual rate many times
-/// the median, and a handful of such locations must not flatten the rest of
-/// the map.
-const REPRODUCTION_PERCENTILE: f64 = 0.95;
+/// How much of a market's color each band of market access shows. The map key
+/// names the bands, so keep the two in step.
+const MARKET_ACCESS_BANDS: [(f64, f32); 4] = [(0.25, 0.22), (0.5, 0.48), (0.75, 0.74), (1.0, 1.0)];
+
+/// The share of a market's color that a location with this access shows. Four
+/// flat bands can be read on a key, and a smooth fade reads as a blur.
+fn market_access_strength(access: f64) -> f32 {
+    MARKET_ACCESS_BANDS
+        .iter()
+        .find(|(upper, _)| access < *upper)
+        .map_or(1.0, |(_, strength)| *strength)
+}
 
 /// The market of a location.
 pub(crate) enum LocationMarket {
@@ -152,7 +159,6 @@ pub(crate) fn group_id(mode: MapMode, owner: u32, market: u32) -> u32 {
 
 enum Domain {
     Fixed(f64),
-    Max,
     Percentile(f64),
 }
 
@@ -160,31 +166,60 @@ struct Gradient {
     scale: GradientScale,
     domain: Domain,
     /// The colors use the value and the domain divided by this number.
-    divisor: f64,
+    softening: Softening,
 }
 
+enum Softening {
+    Fixed(f64),
+    /// A quarter of the middle value of the land that has any, so that the middle of the land
+    /// is in the middle of the ramp, and little of it is near black.
+    QuarterMedian,
+}
+
+/// One rule for each sequential map: the top of the scale stops at this share of the land,
+/// the key marks it, and the key states the true highest value.
+const CLIP_PERCENTILE: f64 = 0.98;
+
 fn gradient(mode: MapMode) -> Option<Gradient> {
-    let linear = |domain| Gradient {
-        scale: GradientScale::Linear,
-        domain,
-        divisor: 1.0,
+    let clipped = |scale, softening| Gradient {
+        scale,
+        domain: Domain::Percentile(CLIP_PERCENTILE),
+        softening,
     };
     match mode {
         MapMode::Political | MapMode::Religion | MapMode::Markets => None,
-        MapMode::Control => Some(linear(Domain::Fixed(1.0))),
-        MapMode::Population => Some(Gradient {
-            scale: GradientScale::Log,
-            domain: Domain::Max,
-            divisor: 1000.0,
+        // A share has a true top.
+        MapMode::Control => Some(Gradient {
+            scale: GradientScale::Linear,
+            domain: Domain::Fixed(1.0),
+            softening: Softening::Fixed(1.0),
         }),
-        MapMode::PopulationGrowth => Some(linear(Domain::Percentile(REPRODUCTION_PERCENTILE))),
-        MapMode::Development
-        | MapMode::RgoLevel
-        | MapMode::BuildingLevels
+        // Most land holds little of these and a few places hold very much.
+        MapMode::Population
         | MapMode::Wealth
         | MapMode::UnrealizedTaxBase
-        | MapMode::StateEfficacy => Some(linear(Domain::Max)),
+        | MapMode::BuildingLevels
+        | MapMode::StateEfficacy
+        | MapMode::RgoLevel => Some(clipped(GradientScale::Log, Softening::QuarterMedian)),
+        MapMode::Development | MapMode::PopulationGrowth => {
+            Some(clipped(GradientScale::Linear, Softening::Fixed(1.0)))
+        }
     }
+}
+
+/// The middle of the values above zero
+fn median_positive(values: &[Option<f64>]) -> f64 {
+    let mut positive: Vec<f64> = values
+        .iter()
+        .flatten()
+        .copied()
+        .filter(|v| *v > 0.0)
+        .collect();
+    if positive.is_empty() {
+        return 1.0;
+    }
+    positive.sort_by(f64::total_cmp);
+    positive[positive.len() / 2]
 }
 
 fn mode_value(values: &(impl LocationValues + ?Sized), idx: LocationIdx, mode: MapMode) -> f64 {
@@ -210,22 +245,12 @@ fn mode_value(values: &(impl LocationValues + ?Sized), idx: LocationIdx, mode: M
 fn gradient_domains(
     mode_values: &[Option<f64>],
     selected: impl Fn(LocationIdx) -> bool,
-    percentile: Option<f64>,
+    percentile: f64,
 ) -> (f64, f64) {
     let owned = mode_values
         .iter()
         .enumerate()
         .filter_map(|(idx, v)| Some((LocationIdx::new(idx as u32), (*v)?)));
-    let Some(percentile) = percentile else {
-        return owned.fold((0.0_f64, 0.0_f64), |(global, filtered), (idx, v)| {
-            let filtered = if selected(idx) {
-                filtered.max(v)
-            } else {
-                filtered
-            };
-            (global.max(v), filtered)
-        });
-    };
     let (mut global, mut filtered) = (Vec::new(), Vec::new());
     for (idx, v) in owned {
         global.push(v);
@@ -309,6 +334,9 @@ pub(crate) fn paint(
         MapMode::Markets => {
             let primary = locations
                 .map(|idx| match values.market(idx) {
+                    // The save gives sea locations a market. A map that paints them
+                    // swells each coast past its shore.
+                    _ if layout.terrain[idx].is_water() => GpuColor::WATER,
                     LocationMarket::None => terrain_color(layout, idx).unwrap_or(GpuColor::UNOWNED),
                     LocationMarket::Unknown => GpuColor::DEBUG,
                     LocationMarket::Member { color, center } => {
@@ -318,7 +346,7 @@ pub(crate) fn paint(
                         let (r, g, b) = crate::subject_color::blend_color(color.rgb(), owner.rgb());
                         let access = values.fraction(idx, Fraction::MarketAccess);
                         GpuColor::from_rgb(20, 5, 5)
-                            .blend(GpuColor::from_rgb(r, g, b), access.clamp(0.0, 1.0) as f32)
+                            .blend(GpuColor::from_rgb(r, g, b), market_access_strength(access))
                     }
                 })
                 .collect();
@@ -343,11 +371,20 @@ pub(crate) fn paint(
             let selected = |idx| selection.is_none_or(|s| s.is_empty() || s.contains(idx));
             let (global_max, filtered_max) = match gradient.domain {
                 Domain::Fixed(domain) => (domain, domain),
-                Domain::Max => gradient_domains(&mode_values, selected, None),
                 Domain::Percentile(percentile) => {
-                    gradient_domains(&mode_values, selected, Some(percentile))
+                    gradient_domains(&mode_values, selected, percentile)
                 }
             };
+            let divisor = match gradient.softening {
+                Softening::Fixed(divisor) => divisor,
+                Softening::QuarterMedian => median_positive(&mode_values) / 4.0,
+            };
+            let true_max = mode_values
+                .iter()
+                .enumerate()
+                .filter(|(at, _)| selected(LocationIdx::new(*at as u32)))
+                .filter_map(|(_, v)| *v)
+                .fold(0.0_f64, f64::max);
             let primary = locations
                 .zip(&mode_values)
                 .map(|(idx, value)| {
@@ -361,8 +398,8 @@ pub(crate) fn paint(
                             global_max
                         };
                         gradient::interpolate_eu5_gradient(
-                            value / gradient.divisor,
-                            domain / gradient.divisor,
+                            value / divisor,
+                            domain / divisor,
                             gradient.scale,
                         )
                     })
@@ -375,8 +412,25 @@ pub(crate) fn paint(
                     gradient.scale,
                     0.0,
                     filtered_max,
+                    divisor,
+                    matches!(gradient.domain, Domain::Percentile(_)),
+                    true_max,
                 )),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn market_access_has_four_bands() {
+        assert_eq!(market_access_strength(0.0), 0.22);
+        assert_eq!(market_access_strength(0.24), 0.22);
+        assert_eq!(market_access_strength(0.25), 0.48);
+        assert_eq!(market_access_strength(0.74), 0.74);
+        assert_eq!(market_access_strength(1.0), 1.0);
     }
 }

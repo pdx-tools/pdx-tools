@@ -18,7 +18,13 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
 
   // The browser compresses the save before the upload.
   await page.getByRole("button", { name: "Share", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole("button", { name: "Upload and get a link" }).click();
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Share", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 90_000 });
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "More actions" }).click();
   const path = await page.getByRole("menuitem", { name: "Open permalink" }).getAttribute("href");
   await page.keyboard.press("Escape");
@@ -34,7 +40,9 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await expect(campaignDate(visitor)).toHaveAttribute("aria-valuetext", "1617 Apr 1", {
     timeout: 60_000,
   });
+  await visitor.getByRole("button", { name: "Share", exact: true }).click();
   await expect(visitor.getByRole("button", { name: "Copy link" })).toBeVisible();
+  await visitor.keyboard.press("Escape");
   await visitor.getByRole("button", { name: "More actions" }).click();
   await expect(visitor.getByRole("menuitem", { name: "Download save" })).toBeVisible();
   await visitor.close();

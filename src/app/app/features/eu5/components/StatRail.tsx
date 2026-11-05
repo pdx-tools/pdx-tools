@@ -1,10 +1,13 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { Tooltip } from "@/components/Tooltip";
 import { sectionLabel } from "@/components/game/SectionTitle";
+import { focusRing } from "@/components/game/focusRing";
 import { glossaryTerm } from "./EntityName";
 import { formatInt } from "@/lib/format";
 import { ExactValue } from "../stack/parts";
+import { MASS_TIE, rankLabel } from "../stack/selection";
 
 /**
  * StatRail — the EU5 "dense rail" stat display (Design Spec §10).
@@ -34,6 +37,8 @@ export interface StatRailRowProps {
   ticks?: readonly number[];
   /** 1-based rank within the rail's cohort, as "#293". */
   rank?: number;
+  /** How many countries share this rank, with this one */
+  tied?: number;
   /** Reserved for future use; not rendered today. */
   delta?: { value: string; dir: "up" | "down" | "flat" };
   tooltip?: ReactNode;
@@ -45,10 +50,13 @@ export interface StatRailRowProps {
   compact?: boolean;
 }
 
-function Rank({ rank }: { rank: number | undefined }) {
+function Rank({ rank, tied }: { rank: number | undefined; tied: number }) {
   return (
-    <span className="text-right font-game-num text-[12px] whitespace-nowrap text-game-ink-300 tabular-nums">
-      {rank !== undefined && `#${formatInt(rank)}`}
+    <span
+      title={tied > 1 ? `${formatInt(tied)} countries share this rank` : undefined}
+      className="text-right font-game-num text-[12px] whitespace-nowrap text-game-ink-300 tabular-nums"
+    >
+      {rank !== undefined && rankLabel(rank, tied)}
     </span>
   );
 }
@@ -61,6 +69,7 @@ function Row({
   percentile,
   ticks = [0.5],
   rank,
+  tied = 1,
   tooltip,
   exact,
   unranked,
@@ -68,10 +77,12 @@ function Row({
 }: StatRailRowProps) {
   const labelNode = (
     <span
+      tabIndex={tooltip ? 0 : undefined}
       className={cx(
-        "min-w-0 font-game-ui text-[12px]",
+        "min-w-0 rounded-[1px] font-game-ui text-[12px]",
         "text-game-ink-100",
         tooltip && glossaryTerm,
+        tooltip && focusRing,
       )}
     >
       {label}
@@ -88,7 +99,7 @@ function Row({
           ? "grid-cols-[1fr_40px_64px] gap-x-1.5"
           : unranked
             ? "grid-cols-[150px_minmax(0,1fr)_64px] @max-[400px]/sg:grid-cols-[1fr_40px_64px]"
-            : "grid-cols-[150px_minmax(0,1fr)_64px_48px] @max-[400px]/sg:grid-cols-[1fr_40px_64px_40px]",
+            : "grid-cols-[116px_minmax(0,1fr)_60px_44px] @max-[400px]/sg:grid-cols-[1fr_40px_64px_40px] @[560px]/sg:grid-cols-[150px_minmax(0,1fr)_64px_48px]",
         "@max-[400px]/sg:gap-x-1.5",
       )}
     >
@@ -115,7 +126,13 @@ function Row({
             ) : null}
           </span>
         )}
-        {percentile !== undefined && (
+        {percentile !== undefined && tied > MASS_TIE ? (
+          // A rank that hundreds share has no place on the track.
+          <span className="font-game-ui text-[12px] leading-none whitespace-nowrap text-game-ink-500">
+            {formatInt(tied)} tied
+          </span>
+        ) : null}
+        {percentile !== undefined && tied <= MASS_TIE && (
           <span className="relative h-px w-full bg-game-ink-rule">
             {ticks.map((tick) => (
               <span
@@ -134,7 +151,11 @@ function Row({
 
       <span className="text-right font-game-num text-[12px] font-medium text-game-ink-100 tabular-nums">
         {exact !== undefined ? (
-          <ExactValue exact={exact} shown={typeof value === "string" ? value : undefined}>
+          <ExactValue
+            exact={exact}
+            shown={typeof value === "string" ? value : undefined}
+            name={typeof label === "string" ? label : undefined}
+          >
             {value}
           </ExactValue>
         ) : (
@@ -144,7 +165,7 @@ function Row({
       </span>
 
       {/* Rank — this country's standing for the metric among all countries. */}
-      {unranked ? null : <Rank rank={rank} />}
+      {unranked ? null : <Rank rank={rank} tied={tied} />}
     </div>
   );
 }
@@ -166,9 +187,9 @@ function Section({
   return (
     <div className="col-span-full bg-game-panel pt-2.5">
       {axis ? (
-        <div className="grid h-7 grid-cols-[150px_minmax(0,1fr)_64px_48px] items-center gap-x-2.5 bg-game-panel-2 pr-8 pl-3.5 @max-[400px]/sg:grid-cols-[1fr_auto]">
+        <div className="grid h-7 grid-cols-[116px_minmax(0,1fr)_60px_44px] items-center gap-x-2.5 bg-game-panel-2 pr-8 pl-3.5 @max-[400px]/sg:grid-cols-[1fr_auto] @[560px]/sg:grid-cols-[150px_minmax(0,1fr)_64px_48px]">
           <span className={sectionLabel}>{label}</span>
-          <span className="relative h-4 @max-[400px]/sg:hidden">
+          <span className="relative h-4 @max-[400px]/sg:hidden @[720px]/sg:hidden">
             {axis.map((tick) => (
               <span
                 key={tick.label}
@@ -179,8 +200,16 @@ function Section({
               </span>
             ))}
           </span>
-          <span className={cx(sectionLabel, "text-right @max-[400px]/sg:hidden")}>Value</span>
-          <span className={cx(sectionLabel, "text-right @max-[400px]/sg:hidden")}>Rank</span>
+          <span
+            className={cx(sectionLabel, "text-right @max-[400px]/sg:hidden @[720px]/sg:hidden")}
+          >
+            Value
+          </span>
+          <span
+            className={cx(sectionLabel, "text-right @max-[400px]/sg:hidden @[720px]/sg:hidden")}
+          >
+            Rank
+          </span>
         </div>
       ) : (
         <div className="flex h-7 items-center justify-between gap-2 bg-game-panel-2 pr-8 pl-3.5">
@@ -197,14 +226,27 @@ export interface StatRailProps {
 }
 
 export function StatRail({ children }: StatRailProps) {
+  // The figures are one stop for Tab, and the arrow keys go from figure to figure.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const first = ref.current?.querySelector<HTMLElement>("[data-rail-value]");
+    if (first) first.tabIndex = 0;
+  });
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const values = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-rail-value]")];
+    const at = values.indexOf(document.activeElement as HTMLElement);
+    const next = values[at + (event.key === "ArrowDown" ? 1 : -1)];
+    if (at < 0 || !next) return;
+    event.preventDefault();
+    values[at].tabIndex = -1;
+    next.tabIndex = 0;
+    next.focus();
+  };
   return (
-    <div className="@container/sg @container bg-game-panel">
-      {/* Single column by default; wraps to 2 then 3 columns only in genuinely
-          wide containers (above the profile panel's max width, so the rail
-          stays a single readable column there). The line-colored grid
-          background + 1px column gap draws the vertical rules, so ragged
-          (orphan) cells simply read as empty. */}
-      <div className="flex flex-col @[720px]/sg:grid @[720px]/sg:grid-cols-2 @[720px]/sg:gap-x-px @[720px]/sg:bg-game-line @[1040px]/sg:grid-cols-3">
+    <div ref={ref} onKeyDown={onKeyDown} className="@container/sg @container bg-game-panel">
+      {/* One column by default, and 2 then 3 columns only in wide containers. */}
+      <div className="flex flex-col @[720px]/sg:grid @[720px]/sg:grid-cols-2 @[720px]/sg:gap-x-6 @[1040px]/sg:grid-cols-3">
         {children}
       </div>
     </div>

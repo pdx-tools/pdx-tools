@@ -13,6 +13,11 @@ pub(super) struct TimelineState<'bump> {
     save_date: Eu5Date,
     date: Eu5Date,
     owners: LocationIndexedVec<CountryId>,
+    /// The dead ids of a live country, and the live country of a dead id. A
+    /// country that dies and returns under its tag gets a new id. For a reader
+    /// the two are one country: Hungary at 1337 is Hungary at the save.
+    earlier_ids: FxHashMap<CountryIdx, Vec<CountryId>>,
+    returned_as: FxHashMap<CountryId, CountryIdx>,
 }
 
 impl<'bump> TimelineState<'bump> {
@@ -24,12 +29,29 @@ impl<'bump> TimelineState<'bump> {
             save_date,
         );
         let owners = index.owners_at(gamestate.locations.len(), save_date);
+        let identities = CountryIdentities::new(gamestate);
+        let live_by_tag: FxHashMap<&str, CountryIdx> = gamestate
+            .countries
+            .iter()
+            .filter(|entry| entry.data().is_some())
+            .map(|entry| (entry.tag().as_str(), entry.idx()))
+            .collect();
+        let mut earlier_ids: FxHashMap<CountryIdx, Vec<CountryId>> = FxHashMap::default();
+        let mut returned_as = FxHashMap::default();
+        for (id, dead) in identities.dead_countries() {
+            if let Some(&live) = live_by_tag.get(dead.tag.as_str()) {
+                earlier_ids.entry(live).or_default().push(id);
+                returned_as.insert(id, live);
+            }
+        }
         Self {
             index,
-            identities: CountryIdentities::new(gamestate),
+            identities,
             save_date,
             date: save_date,
             owners,
+            earlier_ids,
+            returned_as,
         }
     }
 }
@@ -107,6 +129,169 @@ impl<'bump> Eu5Workspace<'bump> {
             change_counts,
             notes,
         }
+    }
+
+    /// The live country that an owner on any date is now: itself, or the country
+    /// that came back under its tag. None for a country that did not return.
+    pub(crate) fn live_country_of(&self, country: CountryId) -> Option<CountryIdx> {
+        self.gamestate
+            .countries
+            .get(country)
+            .or_else(|| self.timeline.returned_as.get(&country).copied())
+    }
+
+    /// Each id that a live country has had, itself first.
+    pub(crate) fn lineage_ids(&self, country_idx: CountryIdx) -> Vec<CountryId> {
+        let mut ids = vec![self.gamestate.countries.index(country_idx).id()];
+        if let Some(earlier) = self.timeline.earlier_ids.get(&country_idx) {
+            ids.extend_from_slice(earlier);
+        }
+        ids
+    }
+
+    /// A country's land on each year of the campaign, with its peak and its
+    /// largest change in one year. None when the save has no history. The
+    /// first year is left out of the changes, because it holds the setup.
+    pub fn land_history(&self, country_idx: CountryIdx) -> Option<LandHistory> {
+        let index = &self.timeline.index;
+        if !index
+            .first_date()
+            .is_some_and(|first| first < self.timeline.save_date)
+        {
+            return None;
+        }
+        let ids = self.lineage_ids(country_idx);
+        let points: Vec<LandPoint> = index
+            .land_by_year(&ids, self.timeline.save_date)
+            .into_iter()
+            .map(|(year, locations)| LandPoint { year, locations })
+            .collect();
+        let peak = *points
+            .iter()
+            .rev()
+            .max_by_key(|point| point.locations)
+            .filter(|point| point.locations > 0)?;
+        let changes = || {
+            points.windows(2).map(|pair| LandChange {
+                year: pair[1].year,
+                change: pair[1].locations as i32 - pair[0].locations as i32,
+            })
+        };
+        Some(LandHistory {
+            biggest_gain: changes().filter(|c| c.change > 0).max_by_key(|c| c.change),
+            biggest_loss: changes().filter(|c| c.change < 0).min_by_key(|c| c.change),
+            peak,
+            points,
+        })
+    }
+
+    /// The countries with the most land on the date the map shows: the first
+    /// ten, each player, and `include`.
+    pub(crate) fn calculate_dated_realms(&self, include: Option<CountryIdx>) -> DatedRealms {
+        const TOP: usize = 10;
+        let mut land: FxHashMap<CountryId, u32> = FxHashMap::default();
+        for owner in self.timeline.owners.iter() {
+            if !owner.is_dummy() {
+                *land.entry(*owner).or_default() += 1;
+            }
+        }
+        let mut at_save: FxHashMap<CountryId, u32> = FxHashMap::default();
+        for entry in self.gamestate.locations.iter() {
+            if let Some(owner) = entry.location().owner.real_id() {
+                *at_save.entry(owner.country_id()).or_default() += 1;
+            }
+        }
+        let played: FxHashSet<CountryId> = self
+            .gamestate
+            .played_countries
+            .iter()
+            .map(|played| played.country)
+            .collect();
+        let include = include.map(|idx| self.gamestate.countries.index(idx).id());
+        // Two ids of one tag can hold land at once, and they are one row. The row
+        // has the name and the colour of the id with the most land.
+        let mut merged: FxHashMap<Result<CountryIdx, CountryId>, (CountryId, u32, u32)> =
+            FxHashMap::default();
+        for (country, locations) in land {
+            let key = self.live_country_of(country).ok_or(country);
+            let row = merged.entry(key).or_insert((country, 0, 0));
+            row.1 += locations;
+            if locations > row.2 {
+                row.0 = country;
+                row.2 = locations;
+            }
+        }
+        let country_count = merged.len() as u32;
+        let mut ranked: Vec<(CountryId, u32)> = merged
+            .into_values()
+            .map(|(country, locations, _)| (country, locations))
+            .collect();
+        ranked.sort_by_key(|(country, locations)| (std::cmp::Reverse(*locations), country.value()));
+        let rows = ranked
+            .into_iter()
+            .enumerate()
+            .filter_map(|(at, (country, locations))| {
+                let live = self.live_country_of(country);
+                let live_id = live.map(|idx| self.gamestate.countries.index(idx).id());
+                let wanted = at < TOP
+                    || played.contains(&country)
+                    || live_id.is_some_and(|id| played.contains(&id) || include == Some(id));
+                if !wanted {
+                    return None;
+                }
+                let identity = self.country_identity_at_timeline_date(country)?;
+                Some(DatedRealm {
+                    name: crate::presentation::OwnedCountryName::new(
+                        identity.name,
+                        identity.tag,
+                        identity.flag,
+                    ),
+                    tag: identity.tag.to_string(),
+                    color_hex: crate::color::Srgb(
+                        self.country_color_at_timeline_date(country).rgb().into(),
+                    ),
+                    country: live
+                        .map(|country_idx| crate::presentation::CountryRefSource { country_idx }),
+                    locations,
+                    rank: at as u32 + 1,
+                    locations_at_save: live_id
+                        .and_then(|id| at_save.get(&id).copied())
+                        .unwrap_or(0),
+                })
+            })
+            .collect();
+        DatedRealms {
+            rows,
+            country_count,
+        }
+    }
+
+    /// The land of one country on the date the map shows, its place by land, and the
+    /// id that speaks for it on that date: the id of the country's lineage with the
+    /// most land.
+    pub fn dated_land_numbers(&self, country_idx: CountryIdx) -> (u32, u32, u32, CountryId) {
+        let mut land: FxHashMap<CountryId, u32> = FxHashMap::default();
+        for owner in self.timeline.owners.iter() {
+            if !owner.is_dummy() {
+                *land.entry(*owner).or_default() += 1;
+            }
+        }
+        let own_id = self.gamestate.countries.index(country_idx).id();
+        let speaker = self
+            .lineage_ids(country_idx)
+            .into_iter()
+            .max_by_key(|id| land.get(id).copied().unwrap_or(0))
+            .filter(|id| land.contains_key(id))
+            .unwrap_or(own_id);
+        let mut merged: FxHashMap<Result<CountryIdx, CountryId>, u32> = FxHashMap::default();
+        for (country, locations) in land {
+            *merged
+                .entry(self.live_country_of(country).ok_or(country))
+                .or_default() += locations;
+        }
+        let locations = merged.get(&Ok(country_idx)).copied().unwrap_or(0);
+        let above = merged.values().filter(|count| **count > locations).count() as u32;
+        (locations, above + 1, merged.len() as u32, speaker)
     }
 
     /// Show the map on `date`.
@@ -300,6 +485,10 @@ impl<'bump> Eu5Workspace<'bump> {
         self.timeline
             .identities
             .identity_at(&self.gamestate, country, self.timeline.date)
+    }
+
+    pub(crate) fn dated_country_color(&self, country: CountryId) -> GpuColor {
+        self.country_color_at_timeline_date(country)
     }
 
     /// The political color of a country on the timeline date: its color on

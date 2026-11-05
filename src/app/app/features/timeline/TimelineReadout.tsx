@@ -24,7 +24,7 @@ export function TimelineReadout({
           breathe as it ticks from the 9th to the 10th. The reserve sits
           after the figure, where nothing follows, so a single digit sits
           tight against the month. */}
-      <span className="font-game-num text-[11px] text-game-ink-300">
+      <span className="inline-block min-w-[6.5ch] font-game-num text-[11px] text-game-ink-300">
         {MONTH_ABBR[date.month]} <span className="inline-block min-w-[2ch]">{date.day}</span>
       </span>
     </p>

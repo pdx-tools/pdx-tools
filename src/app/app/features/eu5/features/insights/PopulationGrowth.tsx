@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { insightFlow } from "../../stack/levelBody";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type {
@@ -69,7 +70,7 @@ export function PopulationGrowthInsight() {
   const scopeLabel = data?.scope.isEmpty === false ? "Selection avg" : "World avg";
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <PopulationGrowthScopeHeader data={data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />

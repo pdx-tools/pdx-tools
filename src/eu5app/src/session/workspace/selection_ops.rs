@@ -175,19 +175,29 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     /// Replace the selection with all locations owned by `country_idx`.
+    /// The land on the timeline date of a country and of the ids it had before.
+    fn land_of_lineage(
+        &self,
+        country_idx: eu5save::models::CountryIdx,
+    ) -> FnvHashSet<eu5save::models::LocationIdx> {
+        let adapter = SelectionAdapter::new(self);
+        self.lineage_ids(country_idx)
+            .into_iter()
+            .filter_map(|id| id.real_id())
+            .flat_map(|owner| adapter.resolve_by_country_id(owner))
+            .collect()
+    }
+
     pub fn select_country_by_idx(
         &mut self,
         country_idx: eu5save::models::CountryIdx,
     ) -> (Option<crate::ColorIdx>, MapChange) {
         let entry = self.gamestate.countries.index(country_idx);
-        let Some(owner) = entry.id().real_id() else {
-            return (None, self.no_map_change());
-        };
         let capital_location_idx = entry
             .data()
             .and_then(|d| d.capital)
             .and_then(|id| self.gamestate.locations.get(id));
-        let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
+        let locs = self.land_of_lineage(country_idx);
         if locs.is_empty() {
             return (None, self.no_map_change());
         }
@@ -266,6 +276,10 @@ impl<'bump> Eu5Workspace<'bump> {
         add: bool,
     ) -> MapChange {
         let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
+        // An area drawn over a preset is the reader's own set. It does not keep the preset.
+        if add && self.selection_state.preset().is_some() {
+            self.selection_state.clear();
+        }
         let operation = if add {
             SelectionSetOperation::Add
         } else {
@@ -364,6 +378,20 @@ impl<'bump> Eu5Workspace<'bump> {
         (self.center_at(location), change)
     }
 
+    /// Select the land of these countries, as one replace.
+    pub fn select_countries(&mut self, countries: &[CountryIdx]) -> MapChange {
+        let locations: FnvHashSet<eu5save::models::LocationIdx> = countries
+            .iter()
+            .flat_map(|&idx| self.land_of_lineage(idx))
+            .collect();
+        if locations.is_empty() {
+            return self.no_map_change();
+        }
+        self.selection_state.replace(locations);
+        self.recompute_derived_scope();
+        self.rebuild_colors()
+    }
+
     /// Select all locations owned by human-controlled countries and their subjects.
     pub fn select_players(&mut self) -> MapChange {
         let player_idxs: FnvHashSet<CountryIdx> = self.players().map(|p| p.country).collect();
@@ -372,52 +400,28 @@ impl<'bump> Eu5Workspace<'bump> {
             return self.no_map_change();
         }
 
-        let player_and_subjects: FnvHashSet<CountryIdx> = self
-            .gamestate
-            .countries
-            .iter()
-            .filter_map(|entry| {
-                self.is_player_or_subject(entry.idx(), &player_idxs)
-                    .then_some(entry.idx())
-            })
-            .collect();
-
+        // A player's own land only, so that each figure of the scope adds up from the
+        // players' rows.
         let locations: FnvHashSet<eu5save::models::LocationIdx> = self
             .iter_locations()
             .filter_map(|(idx, info)| {
                 let owner_idx = self.gamestate.countries.get(info.owner?.country_id())?;
-                player_and_subjects.contains(&owner_idx).then_some(idx)
+                player_idxs.contains(&owner_idx).then_some(idx)
             })
             .collect();
 
         self.selection_state
             .replace_with_preset(locations, crate::selection::SelectionPreset::Players);
         self.recompute_derived_scope();
-        // Also follow players and subjects with no land on this date.
+        // Also follow players with no land on this date.
         let mut followed = self.selection_state.followed().clone();
         followed.extend(
-            player_and_subjects
+            player_idxs
                 .iter()
                 .filter_map(|&idx| self.gamestate.countries.index(idx).id().real_id()),
         );
         self.selection_state.set_followed(followed);
         self.rebuild_colors()
-    }
-
-    fn is_player_or_subject(
-        &self,
-        mut current: CountryIdx,
-        player_idxs: &FnvHashSet<CountryIdx>,
-    ) -> bool {
-        loop {
-            if player_idxs.contains(&current) {
-                return true;
-            }
-            match self.overlord_of[current] {
-                Some(overlord) => current = overlord,
-                None => return false,
-            }
-        }
     }
 
     /// Return the GPU color ID needed to center the map at this location.
@@ -499,6 +503,33 @@ impl<'bump> Eu5Workspace<'bump> {
         while let Some(mut location) = iter.next_location() {
             location.flags_mut().clear(LocationFlags::HIGHLIGHTED);
         }
+    }
+
+    /// Light only these locations on the map: land outside them dims. The selection
+    /// stays as it is, and `clear_item_paint` brings its flags back.
+    pub fn paint_items(
+        &mut self,
+        locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
+    ) {
+        let keep: FnvHashSet<_> = locations.into_iter().collect();
+        for location in self.gamestate.locations.iter() {
+            let Some(gpu_index) = self.gpu_indices[location.idx()] else {
+                continue;
+            };
+            if self.location_terrain(location.idx()).is_water() {
+                continue;
+            }
+            let mut state = self.location_arrays.get_mut(gpu_index);
+            if keep.contains(&location.idx()) {
+                state.flags_mut().clear(LocationFlags::DIMMED);
+            } else {
+                state.flags_mut().set(LocationFlags::DIMMED);
+            }
+        }
+    }
+
+    pub fn clear_item_paint(&mut self) {
+        self.apply_interaction_flags();
     }
 
     pub fn highlight_location(&mut self, location_idx: eu5save::models::LocationIdx) {

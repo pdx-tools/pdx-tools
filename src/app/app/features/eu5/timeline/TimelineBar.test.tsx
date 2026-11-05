@@ -39,14 +39,26 @@ vi.mock("@/features/campaign/SaveMarks", () => ({
   },
 }));
 vi.mock("../store", () => ({
+  useEu5Engine: () => ({ trigger: { selectMapMode: vi.fn() } }),
   useEu5Input: () => ({ kind: mocks.inputKind }),
   useEu5MapMode: () => mocks.mode,
+  useEu5SelectionState: () => null,
   useSetEu5TimelineBarHeight: () => vi.fn(),
 }));
 vi.mock("./useTimelineController", () => ({
-  useTimelineController: () => ({ timeline: { start: { year: 1337, month: 1, day: 1 } } }),
+  useTimelineController: () => ({
+    timeline: {
+      start: { year: 1337, month: 1, day: 1 },
+      end: { year: 1600, month: 1, day: 1 },
+      notes: [],
+    },
+  }),
 }));
 vi.mock("@/features/timeline/controller", () => ({ useTimelineKeyboard: vi.fn() }));
+vi.mock("../features/profiles/useEu5Trigger", () => ({
+  useEu5Trigger: () => ({ data: undefined }),
+}));
+vi.mock("@/hooks/useBreakpoint", () => ({ useBreakpoint: () => true }));
 vi.mock("@/features/timeline/TimelineTransport", () => ({
   TimelineTransport: () => <span>Transport</span>,
 }));
@@ -79,9 +91,12 @@ it("preserves political playback and exports without analysis", () => {
   expect(mocks.status).toBeUndefined();
 });
 
-it("does not expose a saved-date controller before activation", () => {
+it("holds the bar in a mode with no history, says why, and offers the way back", () => {
   mocks.mode = "control";
-  expect(renderToStaticMarkup(<TimelineBar />)).toBe("");
+  const html = renderToStaticMarkup(<TimelineBar />);
+  expect(html).toContain("Only borders replay on the map.");
+  expect(html).toContain("Back to Political");
+  expect(html).not.toContain("Timelapse export");
 });
 
 it("shows the timeline while analysis has no completed frames", () => {
@@ -89,7 +104,14 @@ it("shows the timeline while analysis has no completed frames", () => {
   mocks.history = {
     enabled: true,
     readyIds: new Set(),
-    controller: { timeline: { start: { year: 1337, month: 1, day: 1 } }, locked: true },
+    controller: {
+      timeline: {
+        start: { year: 1337, month: 1, day: 1 },
+        end: { year: 1600, month: 1, day: 1 },
+        notes: [],
+      },
+      locked: true,
+    },
   } as unknown as MapHistoryValue;
   const html = renderToStaticMarkup(<TimelineBar />);
   expect(html).toContain("Saved-date playback speed");

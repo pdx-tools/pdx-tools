@@ -6,6 +6,8 @@
 //! [`LocalizationContext`] into owned [`Localized`] leaves that pair a stable
 //! identity key with a display name.
 
+use crate::insights::{DatedLand, RealmLabel, RealmLabels};
+use eu5save::hash::{FxHashMap, FxHashSet};
 use eu5save::models::{
     CountryId, CountryIdx, CountryName, CultureId, GoodName, LocationIdx, MarketId, PopulationType,
     ReligionId,
@@ -26,7 +28,9 @@ use crate::entity_profile::{
 use crate::game_data::{GameData, Localization};
 use crate::hover::presentation::DisplayData as HoverDisplayData;
 use crate::insights::buildings::presentation::BuildingLevelsInsightData;
-use crate::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
+use crate::insights::control::presentation::{
+    ControlInsightData, DatedRealms, PoliticalStanding, PoliticalWorldScoreboard,
+};
 use crate::insights::development::presentation::DevelopmentInsightData;
 use crate::insights::markets::presentation::{
     MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
@@ -37,7 +41,6 @@ use crate::insights::religion::presentation::ReligionInsightData;
 use crate::insights::rgo::presentation::RgoInsightData;
 use crate::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use crate::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
-use crate::overlay::OverlayBodyConfig;
 use crate::session::Eu5Workspace;
 
 mod present_dto;
@@ -53,11 +56,15 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
     pub(crate) fn new(workspace: &'a Eu5Workspace<'bump>, localization: &'a Localization) -> Self {
         Self {
             workspace,
-            ctx: LocalizationContext::new(
-                localization,
-                workspace.game_data(),
-                workspace.gamestate(),
-            ),
+            ctx: LocalizationContext {
+                map_colors: Some(workspace.country_map_colors()),
+                market_colors: Some(workspace.market_map_colors()),
+                ..LocalizationContext::new(
+                    localization,
+                    workspace.game_data(),
+                    workspace.gamestate(),
+                )
+            },
         }
     }
 
@@ -125,6 +132,388 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
         self.workspace
             .calculate_political_world_scoreboard()
             .present(&self.ctx)
+    }
+
+    pub fn political_standing(
+        &self,
+        country_idx: eu5save::models::CountryIdx,
+    ) -> Option<PoliticalStanding> {
+        self.workspace
+            .calculate_political_standing(country_idx)
+            .map(|x| x.present(&self.ctx))
+    }
+
+    /// The name of a country on the date the map shows. A key with no text keeps the
+    /// live path's readable form, when the country lives.
+    fn dated_name(
+        &self,
+        country: CountryId,
+        identity: &crate::timeline::CountryIdentity<'_>,
+    ) -> String {
+        let name =
+            OwnedCountryName::new(identity.name, identity.tag, identity.flag).present(&self.ctx);
+        match self.workspace.live_country_of(country) {
+            Some(idx) if is_unresolved_name(&name, self.ctx.localization) => {
+                idx.present(&self.ctx).name
+            }
+            _ => name,
+        }
+    }
+
+    /// One country on the date the map shows.
+    pub fn dated_land(&self, country_idx: eu5save::models::CountryIdx) -> Option<DatedLand> {
+        let (locations, rank, country_count, speaker) =
+            self.workspace.dated_land_numbers(country_idx);
+        let identity = self.workspace.country_identity_at_timeline_date(speaker)?;
+        Some(DatedLand {
+            locations,
+            rank,
+            country_count,
+            name: self.dated_name(speaker, &identity),
+            tag: identity.tag.to_string(),
+            color_hex: Srgb(self.workspace.dated_country_color(speaker).rgb().into()),
+            flag: identity.flag.unwrap_or(identity.tag).to_string(),
+        })
+    }
+
+    /// Which countries of the scope hold one thing of a list. It reads the land in scope
+    /// only, so each row adds up to the total.
+    pub fn item_lens(&self, item: &crate::insights::LensItem) -> crate::insights::ItemLens {
+        use crate::insights::{ItemLens, LensItem, LensRow};
+        let gamestate = self.workspace.gamestate();
+        let state = self.workspace.selection_state();
+        let in_scope = |idx| state.is_empty() || state.contains(idx);
+        let mut rows: FxHashMap<CountryIdx, (f64, FxHashSet<u32>)> = FxHashMap::default();
+        let owner_of = |entry: &eu5save::models::Location<'_>| {
+            let id = entry.owner.real_id()?;
+            gamestate.countries.get(id.country_id())
+        };
+        match item {
+            LensItem::RawMaterial(_) | LensItem::AllRawMaterials => {
+                let wanted = match item {
+                    LensItem::RawMaterial(key) => Some(key.as_str()),
+                    _ => None,
+                };
+                for entry in gamestate.locations.iter() {
+                    let loc = entry.location();
+                    if !in_scope(entry.idx())
+                        || loc.rgo_level <= 0.0
+                        || wanted.is_some_and(|key| {
+                            loc.raw_material.is_none_or(|good| good.to_str() != key)
+                        })
+                    {
+                        continue;
+                    }
+                    if let Some(owner) = owner_of(loc) {
+                        let row = rows.entry(owner).or_default();
+                        row.0 += loc.rgo_level;
+                        row.1.insert(entry.idx().value());
+                    }
+                }
+            }
+            // The map's measure, the same as a country's figure in each other view.
+            LensItem::AllBuildings => {
+                let levels = self.workspace.get_location_building_levels();
+                for entry in gamestate.locations.iter() {
+                    if !in_scope(entry.idx()) || levels[entry.idx()] <= 0.0 {
+                        continue;
+                    }
+                    if let Some(owner) = owner_of(entry.location()) {
+                        let row = rows.entry(owner).or_default();
+                        row.0 += levels[entry.idx()];
+                        row.1.insert(entry.idx().value());
+                    }
+                }
+            }
+            LensItem::Building(key) => {
+                for building in gamestate.building_manager.database.iter() {
+                    if building.kind.to_str() != key {
+                        continue;
+                    }
+                    let Some(idx) = gamestate.locations.get(building.location) else {
+                        continue;
+                    };
+                    if !in_scope(idx) {
+                        continue;
+                    }
+                    if let Some(owner) = owner_of(gamestate.locations.index(idx).location()) {
+                        let row = rows.entry(owner).or_default();
+                        row.0 += building.level;
+                        row.1.insert(idx.value());
+                    }
+                }
+            }
+            LensItem::Religion(key) => {
+                for entry in gamestate.locations.iter() {
+                    let loc = entry.location();
+                    if !in_scope(entry.idx()) {
+                        continue;
+                    }
+                    let Some(owner) = owner_of(loc) else { continue };
+                    for &pop_id in loc.population.pops {
+                        let Some(pop) = gamestate.population.database.lookup(pop_id) else {
+                            continue;
+                        };
+                        if gamestate
+                            .religion_manager
+                            .lookup(pop.religion)
+                            .is_some_and(|r| r.key.to_str() == key)
+                        {
+                            let row = rows.entry(owner).or_default();
+                            row.0 += (pop.size * crate::population::POP_SIZE_SCALE).floor();
+                            row.1.insert(entry.idx().value());
+                        }
+                    }
+                }
+            }
+            LensItem::Market(id) => {
+                for entry in gamestate.locations.iter() {
+                    let loc = entry.location();
+                    if !in_scope(entry.idx()) || loc.market.is_none_or(|m| m.value() != *id) {
+                        continue;
+                    }
+                    if let Some(owner) = owner_of(loc) {
+                        let row = rows.entry(owner).or_default();
+                        row.0 += loc.tax;
+                        row.1.insert(entry.idx().value());
+                    }
+                }
+            }
+        }
+        let unit = match item {
+            LensItem::RawMaterial(_) | LensItem::AllRawMaterials => "RGO levels",
+            LensItem::Building(_) | LensItem::AllBuildings => "Levels",
+            LensItem::Religion(_) => "Followers",
+            LensItem::Market(_) => "Tax base",
+        }
+        .to_string();
+        let mut location_ids: Vec<u32> = rows
+            .values()
+            .flat_map(|(_, at)| at.iter().copied())
+            .collect();
+        location_ids.sort_unstable();
+        let total = rows.values().map(|(value, _)| value).sum();
+        let mut rows: Vec<LensRow> = rows
+            .into_iter()
+            .map(|(country_idx, (value, at))| LensRow {
+                country: CountryRefSource { country_idx }.present(&self.ctx),
+                value,
+                locations: at.len() as u32,
+            })
+            .collect();
+        rows.sort_by(|a, b| b.value.total_cmp(&a.value));
+        ItemLens {
+            unit,
+            rows,
+            total,
+            location_ids,
+        }
+    }
+
+    /// The names to set on the map. A map of religions or markets names those, and
+    /// another map names the realms with the most land on the date shown, and
+    /// each player. The names are those of that date, as in the list of that date.
+    pub fn realm_labels(&self) -> RealmLabels {
+        const MOST: usize = 90;
+        // The centres come from the map, so a label needs the map's id of a location.
+        // A large realm has enough with a sample of them.
+        const MOST_POINTS: usize = 400;
+        let workspace = self.workspace;
+        let sample = |points: Vec<u32>| {
+            let stride = (points.len() / MOST_POINTS).max(1);
+            points.into_iter().step_by(stride).collect::<Vec<_>>()
+        };
+        // A map of categories names those of the land in scope.
+        let scope = workspace.selection_state();
+        let in_scope = |idx| scope.is_empty() || scope.contains(idx);
+        match workspace.get_map_mode() {
+            crate::MapMode::Religion => {
+                let mut groups: FxHashMap<ReligionId, Vec<u32>> = FxHashMap::default();
+                for entry in workspace.gamestate().locations.iter() {
+                    if !in_scope(entry.idx()) {
+                        continue;
+                    }
+                    if let (Some(religion), Some(center)) =
+                        (entry.location().religion, workspace.center_at(entry.idx()))
+                    {
+                        groups
+                            .entry(religion)
+                            .or_default()
+                            .push(u32::from(center.value()));
+                    }
+                }
+                let labels = groups
+                    .into_iter()
+                    .map(|(religion, points)| {
+                        let count = points.len() as u32;
+                        category_label(religion.present(&self.ctx).name, count, sample(points))
+                    })
+                    .collect();
+                return RealmLabels { labels };
+            }
+            crate::MapMode::Markets => {
+                let mut groups: FxHashMap<MarketId, Vec<u32>> = FxHashMap::default();
+                for entry in workspace.gamestate().locations.iter() {
+                    if workspace.location_terrain(entry.idx()).is_water() || !in_scope(entry.idx())
+                    {
+                        continue;
+                    }
+                    if let (Some(market), Some(center)) =
+                        (entry.location().market, workspace.center_at(entry.idx()))
+                        // A market belongs to a scope by its centre, as in the list of markets.
+                        && workspace
+                            .gamestate()
+                            .market_manager
+                            .get(market)
+                            .and_then(|m| workspace.gamestate().locations.get(m.center))
+                            .is_some_and(&in_scope)
+                    {
+                        groups
+                            .entry(market)
+                            .or_default()
+                            .push(u32::from(center.value()));
+                    }
+                }
+                let labels = groups
+                    .into_iter()
+                    .map(|(market, points)| {
+                        let name = market.present(&self.ctx).name;
+                        let short = name.strip_suffix(" Market").map(str::to_string);
+                        let count = points.len() as u32;
+                        category_label(short.unwrap_or(name), count, sample(points))
+                    })
+                    .collect();
+                return RealmLabels { labels };
+            }
+            _ => {}
+        }
+        let mut land: FxHashMap<CountryId, Vec<u32>> = FxHashMap::default();
+        for entry in workspace.gamestate().locations.iter() {
+            let owner = workspace.owner_at_timeline_date(entry.idx());
+            if owner.is_dummy() {
+                continue;
+            }
+            if let Some(center) = workspace.center_at(entry.idx()) {
+                land.entry(owner)
+                    .or_default()
+                    .push(u32::from(center.value()));
+            }
+        }
+        let played: FxHashSet<CountryId> = workspace
+            .gamestate()
+            .played_countries
+            .iter()
+            .map(|played| played.country)
+            .collect();
+        // Two ids of one country are one label, as they are one row of the list. The
+        // label has the name of the id with the most land.
+        struct Group {
+            speaker: CountryId,
+            most: usize,
+            points: Vec<u32>,
+        }
+        let mut groups: FxHashMap<Result<eu5save::models::CountryIdx, CountryId>, Group> =
+            FxHashMap::default();
+        for (country, points) in land {
+            let key = workspace.live_country_of(country).ok_or(country);
+            let group = groups.entry(key).or_insert(Group {
+                speaker: country,
+                most: 0,
+                points: Vec::new(),
+            });
+            if points.len() > group.most {
+                group.most = points.len();
+                group.speaker = country;
+            }
+            group.points.extend(points);
+        }
+        let selected_owners: FxHashSet<eu5save::models::CountryIdx> = scope
+            .selected_locations()
+            .iter()
+            .filter_map(|&idx| {
+                let owner = workspace.gamestate().locations.index(idx).location().owner;
+                workspace
+                    .gamestate()
+                    .countries
+                    .get(owner.real_id()?.country_id())
+            })
+            .collect();
+        let mut rows: Vec<Group> = groups.into_values().collect();
+        rows.sort_by_key(|group| (std::cmp::Reverse(group.points.len()), group.speaker.value()));
+        let labels = rows
+            .into_iter()
+            .enumerate()
+            .filter_map(|(at, group)| {
+                let live = workspace.live_country_of(group.speaker);
+                let live_id = live.map(|idx| workspace.gamestate().countries.index(idx).id());
+                let is_player = played.contains(&group.speaker)
+                    || live_id.is_some_and(|id| played.contains(&id));
+                // A small country of the selection has its name too.
+                let selected = live.is_some_and(|idx| selected_owners.contains(&idx));
+                if at >= MOST && !is_player && !selected {
+                    return None;
+                }
+                let identity = workspace.country_identity_at_timeline_date(group.speaker)?;
+                // A past date has no rank in the save, and the rank of the save date
+                // does not speak for the country of that date.
+                let data = live
+                    .filter(|_| workspace.is_timeline_live())
+                    .and_then(|idx| workspace.gamestate().countries.index(idx).data());
+                Some(RealmLabel {
+                    name: self.dated_name(group.speaker, &identity),
+                    country_idx: live.map(|idx| idx.value()),
+                    is_player,
+                    great_power_rank: data.map_or(0, |d| d.great_power_rank.max(0) as u32),
+                    location_count: group.points.len() as u32,
+                    points: sample(group.points),
+                })
+            })
+            .collect();
+        RealmLabels { labels }
+    }
+
+    pub fn dated_realms(&self, include: Option<eu5save::models::CountryIdx>) -> DatedRealms {
+        let mut realms = self
+            .workspace
+            .calculate_dated_realms(include)
+            .present(&self.ctx);
+        // A key with no text reads as the map names it: by the live country.
+        for row in &mut realms.rows {
+            if is_unresolved_name(&row.name, self.ctx.localization)
+                && let Some(country) = &row.country
+            {
+                row.name = country.country.name.clone();
+            }
+        }
+        realms
+    }
+
+    /// The country that a save with no human player was written from. The
+    /// label of such a save ends with the name of the country, as in
+    /// `1617.4.1 - Milan`. A name that more than one country has names none.
+    pub fn viewpoint_country(&self, save_label: &str) -> Option<eu5save::models::CountryIdx> {
+        if self.workspace.players().next().is_some() {
+            return None;
+        }
+        let (_, name) = save_label.rsplit_once(" - ")?;
+        let owners: FxHashSet<_> = self
+            .workspace
+            .gamestate()
+            .locations
+            .iter()
+            .filter_map(|entry| entry.location().owner.real_id())
+            .map(|id| id.country_id())
+            .collect();
+        let mut found = self
+            .workspace
+            .gamestate()
+            .countries
+            .iter()
+            .filter(|entry| owners.contains(&entry.id()))
+            .map(|entry| entry.idx())
+            .filter(|idx| idx.present(&self.ctx).name == name);
+        let first = found.next()?;
+        found.next().is_none().then_some(first)
     }
 
     pub fn active_profile_identity(&self) -> Option<ActiveProfileIdentity> {
@@ -271,10 +660,6 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
         }
     }
 
-    pub fn get_overlay_data(&self) -> OverlayBodyConfig {
-        self.workspace.get_overlay_data().present(&self.ctx)
-    }
-
     pub fn country_search_entries(&self) -> CountriesData {
         let gamestate = self.workspace.gamestate();
         let mut landed = gamestate.countries.create_index(false);
@@ -299,7 +684,7 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
                     country,
                     id: entry.id().into(),
                     tag,
-                    color_hex: data.color.into(),
+                    color_hex: self.ctx.country_color(entry.idx()),
                     capital,
                     landed: landed[entry.idx()],
                 })
@@ -345,7 +730,7 @@ impl Present for CountryRefSource {
         let entry = ctx.gamestate.countries.index(idx);
         let data = entry.data();
         let owner = entry.id().real_id();
-        let color_hex = data.map(|data| data.color.into()).unwrap_or_default();
+        let color_hex = ctx.country_color(idx);
         let anchor_location_idx = data
             .and_then(|data| {
                 let owner = owner?;
@@ -406,7 +791,11 @@ impl Present for MarketRefSource {
         MarketRef {
             market: id.present(ctx),
             anchor_location_idx: UiLocationIdx::from(center_idx),
-            color_hex: market.color.into(),
+            // The key decodes the map, so it has the colour that the map paints.
+            color_hex: ctx
+                .market_colors
+                .and_then(|colors| colors.get(&id).copied())
+                .unwrap_or_else(|| market.color.into()),
         }
     }
 }
@@ -509,9 +898,28 @@ pub struct LocalizationContext<'a, 'bump> {
     pub localization: &'a Localization,
     pub game_data: &'a GameData,
     pub gamestate: &'a eu5save::models::Gamestate<'bump>,
+    /// The colour of each country on the map. A subject has a colour near its overlord's.
+    pub map_colors: Option<&'a eu5save::models::CountryIndexedVecOwned<Srgb>>,
+    /// The colour of each market on the map at full access.
+    pub market_colors: Option<&'a FxHashMap<MarketId, Srgb>>,
 }
 
 impl<'a, 'bump> LocalizationContext<'a, 'bump> {
+    /// The colour of a country as the map paints it, so a swatch matches the land.
+    pub(crate) fn country_color(&self, idx: CountryIdx) -> Srgb {
+        self.map_colors.map_or_else(
+            || {
+                self.gamestate
+                    .countries
+                    .index(idx)
+                    .data()
+                    .map(|data| data.color.into())
+                    .unwrap_or_default()
+            },
+            |colors| colors[idx],
+        )
+    }
+
     pub fn new(
         localization: &'a Localization,
         game_data: &'a GameData,
@@ -521,6 +929,8 @@ impl<'a, 'bump> LocalizationContext<'a, 'bump> {
             localization,
             game_data,
             gamestate,
+            map_colors: None,
+            market_colors: None,
         }
     }
 
@@ -559,13 +969,45 @@ impl Present for CountryIdx {
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         let entry = ctx.gamestate.countries.index(self);
         let tag = entry.tag();
-        let name = present_country_name(
-            entry.data().map(|data| &data.country_name),
-            tag.to_str(),
-            ctx,
-        );
+        let flag = entry.data().and_then(|data| data.flag.as_ref());
+        let name = CountryNameParts::new(entry.data().map(|data| &data.country_name), tag.to_str())
+            .with_flag(flag.map(|flag| flag.to_str()))
+            .present(ctx);
+        let name = if is_unresolved_name(&name, ctx.localization) {
+            entry
+                .data()
+                .and_then(|data| data.capital)
+                .and_then(|capital| ctx.gamestate.locations.get(capital))
+                .map(|capital| format!("Realm of {}", capital.present(ctx).name))
+                .unwrap_or(name)
+        } else {
+            name
+        };
         Localized::new(UiCountryIdx::from(self), name)
     }
+}
+
+/// The name of a religion or a market, as a label of its land.
+fn category_label(name: String, location_count: u32, points: Vec<u32>) -> RealmLabel {
+    RealmLabel {
+        name,
+        country_idx: None,
+        is_player: false,
+        great_power_rank: 0,
+        location_count,
+        points,
+    }
+}
+
+/// True if the name of a country is a key that the localization does not hold,
+/// such as `ABCHU`. The game's text for it is not known here, and the key is
+/// no name for a reader. The capital is a true thing to say in its place.
+fn is_unresolved_name(name: &str, localization: &Localization) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+        && localization.get(name).is_none()
 }
 
 /// The pieces of a country name, borrowed from the save arena: the template
@@ -608,6 +1050,17 @@ impl<'a> CountryNameParts<'a> {
                 variables: Vec::new(),
             },
         }
+    }
+
+    /// A revolt's save record gives its source in a form that the model does not read, but
+    /// the flag of the revolt starts with the source's tag: `TWS_REVOLT_218103988`.
+    fn with_flag(mut self, flag: Option<&'a str>) -> Self {
+        if self.base.is_none() {
+            self.base = flag
+                .and_then(|flag| flag.split_once("_REVOLT_"))
+                .map(|(tag, _)| tag);
+        }
+        self
     }
 
     fn present(&self, ctx: &LocalizationContext<'_, '_>) -> String {
@@ -659,16 +1112,6 @@ fn tag_prefixed_stem(key: &str) -> Option<&str> {
     (is_tag && !stem.is_empty()).then_some(stem)
 }
 
-/// The localized display name of a country from its save name record, or
-/// from its tag when the record is missing.
-fn present_country_name(
-    name: Option<&CountryName<'_>>,
-    tag: &str,
-    ctx: &LocalizationContext<'_, '_>,
-) -> String {
-    CountryNameParts::new(name, tag).present(ctx)
-}
-
 /// A country name detached from the save arena.
 ///
 /// A DTO without a lifetime can carry this where it cannot carry a
@@ -683,8 +1126,8 @@ pub(crate) struct OwnedCountryName {
 }
 
 impl OwnedCountryName {
-    pub(crate) fn new(name: Option<&CountryName<'_>>, tag: &str) -> Self {
-        let parts = CountryNameParts::new(name, tag);
+    pub(crate) fn new(name: Option<&CountryName<'_>>, tag: &str, flag: Option<&str>) -> Self {
+        let parts = CountryNameParts::new(name, tag).with_flag(flag);
         Self {
             key: parts.key.to_string(),
             base: parts.base.map(str::to_string),
@@ -717,7 +1160,8 @@ impl Present for OwnedCountryName {
 /// Substitute `$TOKEN$` in a country-name template: `$NAME$`/`$ADJ$` from the
 /// base tag (`<base>` / `<base>_ADJ`), other tokens from `variables` (value
 /// treated as a loc key), and then the token as a loc key itself: a province's
-/// name is `$sevilla$`. Unknown tokens are left intact; output is not rescanned.
+/// name is `$sevilla$`. An area token reads from its key. A token with no text goes
+/// away, because no name shows a raw token. Output is not rescanned.
 fn interpolate_country_name(
     template: &str,
     base: Option<&str>,
@@ -740,15 +1184,26 @@ fn interpolate_country_name(
         };
         if let Some(sub) = resolve_token(token, base, variables, localization, &mut lookup_key) {
             out.push_str(sub);
-        } else {
-            out.push('$');
-            out.push_str(token);
-            out.push('$');
+        } else if let Some(readable) = readable_name_key(token) {
+            out.push_str(&readable);
         }
         rest = tail;
     }
     out.push_str(rest);
-    out
+    let name = out.split_whitespace().collect::<Vec<_>>().join(" ");
+    if name.is_empty() {
+        template.replace('$', "")
+    } else {
+        name
+    }
+}
+
+/// A tag such as `AAA26`, which the game makes for a new country
+fn is_generated_tag(tag: &str) -> bool {
+    tag.len() > 3
+        && tag
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
 }
 
 fn resolve_token<'a>(
@@ -761,12 +1216,15 @@ fn resolve_token<'a>(
     // Base-tag tokens take precedence so a variable can't shadow $NAME$/$ADJ$.
     if let Some(b) = base {
         match token {
-            "NAME" => return Some(localization.get(b).unwrap_or(b)),
+            // A tag that the game generated has no text, and it means nothing to a reader.
+            "NAME" => return localization.get(b).or((!is_generated_tag(b)).then_some(b)),
             "ADJ" => {
                 lookup_key.clear();
                 lookup_key.push_str(b);
                 lookup_key.push_str("_ADJ");
-                return Some(localization.get(lookup_key).unwrap_or(b));
+                return localization
+                    .get(lookup_key)
+                    .or((!is_generated_tag(b)).then_some(b));
             }
             _ => {}
         }
@@ -1008,10 +1466,34 @@ mod tests {
     }
 
     #[test]
-    fn interpolate_unknown_token_is_preserved() {
+    fn interpolate_unknown_token_goes_away() {
         let l = loc(&[]);
         let out = interpolate_country_name("$FOO$ Whatever", Some("TIM"), &[], &l);
-        assert_eq!(out, "$FOO$ Whatever");
+        assert_eq!(out, "Whatever");
+    }
+
+    #[test]
+    fn interpolate_area_token_reads_from_its_key() {
+        let l = loc(&[]);
+        assert_eq!(
+            interpolate_country_name("$quhestan_area$", None, &[], &l),
+            "Quhestan"
+        );
+    }
+
+    #[test]
+    fn interpolate_generated_base_says_nothing() {
+        let l = loc(&[]);
+        assert_eq!(
+            interpolate_country_name("$ADJ$ Revolt", Some("AAA26"), &[], &l),
+            "Revolt"
+        );
+    }
+
+    #[test]
+    fn revolt_takes_its_source_from_the_flag() {
+        let parts = CountryNameParts::new(None, "AAA83").with_flag(Some("TWS_REVOLT_218103988"));
+        assert_eq!(parts.base, Some("TWS"));
     }
 
     #[test]
@@ -1022,10 +1504,10 @@ mod tests {
     }
 
     #[test]
-    fn interpolate_without_base_leaves_base_tokens_intact() {
+    fn interpolate_without_base_drops_base_tokens() {
         let l = loc(&[("TIM_ADJ", "Timurid")]);
         let out = interpolate_country_name("$ADJ$ Rival", None, &[], &l);
-        assert_eq!(out, "$ADJ$ Rival");
+        assert_eq!(out, "Rival");
     }
 
     #[test]

@@ -48,7 +48,8 @@ struct ShadeUniforms {
     // Strength of the location border darkening, 0 to 1. Eases off faster
     // than `edge_strength`: zoomed out, the location grid is texture.
     location_edge_strength: f32,
-    _pad0: u32,
+    // Non-zero: an owner border darkens the fill and has no owner color.
+    neutral_owner_borders: u32,
     _pad1: u32,
 }
 
@@ -61,12 +62,17 @@ struct ShadeUniforms {
 
 const STATE_NO_LOCATION_BORDERS = 1u; // Bit 0: opt out of location border drawing
 const DIMMED_BORDER_SCALE = 0.4;
-const DIMMED_DESATURATE = 0.7;
+const NEUTRAL_BORDER_SCALE = 0.42;
+const DIMMED_WATER_SCALE = 0.42;
+const DIMMED_LAND_FLOOR = 0.17;
+const DIMMED_LAND_RANGE = 0.14;
+const DIMMED_HUE_KEPT = 0.32;
 const STATE_HIGHLIGHTED = 2u; // Bit 1: location is highlighted (hover effect)
 const STATE_FOCUSED = 4u; // Bit 2: location is the focused single tile
 const STATE_DIMMED = 8u; // Bit 3: location is outside the active selection
 const STATE_PREVIEW = 16u; // Bit 4: location is inside a box-select drag
 const STATE_WATER = 32u; // Bit 5: location is water, so its edge with land is a coast
+const STATE_SOFTENED = 512u; // Bit 9: location is around the focused single tile
 const STATE_IMPASSABLE = 64u; // Bit 6: location is impassable terrain, which no one owns
 const STATE_UNOWNED = 128u; // Bit 7: location is land that no country owns
 const STATE_LAKE = 256u; // Bit 8: location is a lake, which has no coast
@@ -399,10 +405,17 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     if (is_dimmed) {
-        // Land out of the selection goes toward neutral, so that a low value on a
-        // colour ramp inside the selection still stands apart from it.
+        // Out of the selection, each colour moves to a narrow band of lightness, with
+        // a trace of its hue, so a dark country does not outweigh the selection. The
+        // sea goes darker than that band, so land stays above water.
         let luma = dot(fill_color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
-        fill_color = vec4<f32>(mix(fill_color.rgb, vec3<f32>(luma), DIMMED_DESATURATE) * 0.3, 1.0);
+        if (center_terrain == TERRAIN_WATER) {
+            fill_color = vec4<f32>(fill_color.rgb * DIMMED_WATER_SCALE, 1.0);
+        } else {
+            let target_luma = DIMMED_LAND_FLOOR + luma * DIMMED_LAND_RANGE;
+            let hued = fill_color.rgb * (target_luma / max(luma, 0.02));
+            fill_color = vec4<f32>(mix(vec3<f32>(target_luma), hued, DIMMED_HUE_KEPT), 1.0);
+        }
     }
     if (is_highlighted) {
         fill_color = vec4<f32>(
@@ -412,13 +425,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             1.0
         );
     }
-    if (is_focused) {
-        fill_color = vec4<f32>(
-            min(1.0, fill_color.r + 0.35),
-            min(1.0, fill_color.g + 0.35),
-            min(1.0, fill_color.b + 0.35),
-            1.0
-        );
+    // A focused location keeps its colour, and its white outline marks it. The land around
+    // it has less strength, so the eye goes to the one location.
+    if (is_interaction_enabled(state_flags, STATE_SOFTENED)) {
+        let luma = dot(fill_color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+        fill_color = vec4<f32>(mix(fill_color.rgb, vec3<f32>(luma), 0.55) * 0.62, 1.0);
     }
 
     // Edge treatment, outermost first. An owner border is a dark line on
@@ -451,6 +462,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         if (is_location_border) {
             rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
         }
+    } else if (edges.owner <= owner_r && uniforms.neutral_owner_borders != 0u) {
+        // The fill is the data, so the line is the fill, darker.
+        rgb = rgb * mix(1.0, NEUTRAL_BORDER_SCALE, uniforms.edge_strength);
     } else if (edges.owner <= owner_r) {
         rgb = shift_lightness(unpack_color(center_border_color), -OWNER_BORDER_DARKEN * uniforms.edge_strength);
         // A border of land out of the selection dims with the land, or the

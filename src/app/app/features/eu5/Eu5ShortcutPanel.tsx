@@ -1,4 +1,5 @@
 import { IconTip } from "./stack/parts";
+import { useEu5Timeline } from "./store";
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCircleIcon";
@@ -30,25 +31,19 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: "Selection",
     shortcuts: [
-      { action: "Select entity", keys: ["Click"] },
-      { action: "Add to selection", keys: ["Shift", "+", "Click"] },
-      { action: "Add to selection", keys: ["Cmd", "+", "Click"] },
-      { action: "Remove from selection", keys: ["Alt", "+", "Click"] },
-      { action: "Focus location in selected entity", keys: ["Click"] },
-      { action: "Clear focused location", keys: ["Click"] },
-      { action: "Replace selection", keys: ["Click"] },
-      { action: "Clear focus or selection", keys: ["Empty", "+", "Click"] },
-      { action: "Clear focus or selection", keys: ["Esc"] },
+      { action: "Select a country", keys: ["Click"] },
+      { action: "Add a country", keys: ["Shift", "+", "Click"] },
+      { action: "Remove a country", keys: ["Alt", "+", "Click"] },
+      { action: "Select a location in the selected country", keys: ["Click"] },
+      { action: "Clear the selection", keys: ["Esc"] },
     ],
   },
   {
-    label: "Box select",
+    label: "Select by area",
     shortcuts: [
-      { action: "Select area", keys: ["Shift", "+", "Drag"] },
-      { action: "Remove area", keys: ["Alt", "+", "Drag"] },
-      { action: "Location box-select (replace)", keys: ["Ctrl", "+", "Drag"] },
-      { action: "Location box-select (add)", keys: ["Ctrl", "+", "Shift", "+", "Drag"] },
-      { action: "Location box-select (remove)", keys: ["Ctrl", "+", "Alt", "+", "Drag"] },
+      { action: "Countries in an area", keys: ["Shift", "+", "Drag"] },
+      { action: "Remove countries in an area", keys: ["Alt", "+", "Drag"] },
+      { action: "Locations in an area", keys: ["Ctrl", "+", "Drag"] },
     ],
   },
   {
@@ -65,7 +60,13 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: "Tools",
     shortcuts: [
+      { action: "Map modes, in the order of the menu", keys: ["1", "–", "9"] },
       { action: "Search", keys: ["/"] },
+      { action: "Full view or map", keys: ["M"] },
+      { action: "Frame the selection", keys: ["F"] },
+      { action: "Whole world", keys: ["0"] },
+      { action: "Zoom in or out", keys: ["+", "\u2013"] },
+      { action: "Remove the focused row from the selection", keys: ["Delete"] },
       { action: "Owner borders", keys: ["B"] },
       { action: "Back one level", keys: ["Esc"] },
       { action: "Toggle shortcuts", keys: ["?"] },
@@ -81,6 +82,9 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
  */
 export function Eu5ShortcutPanel({ anchor }: { anchor?: (openPanel: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false);
+  // A save with no timeline has no use for its keys.
+  const hasTimeline = useEu5Timeline().available;
+  const groups = SHORTCUT_GROUPS.filter((group) => hasTimeline || group.label !== "Timeline");
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -120,24 +124,25 @@ export function Eu5ShortcutPanel({ anchor }: { anchor?: (openPanel: () => void) 
         </IconTip>
       )}
       <Popover.Content
+        aria-label="Keyboard shortcuts"
         side="bottom"
         align="center"
         sideOffset={16}
         collisionPadding={8}
-        className="max-h-(--radix-popover-content-available-height) w-104 max-w-[calc(100vw-16px)] overflow-y-auto rounded-panel border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
+        className="max-h-(--radix-popover-content-available-height) w-[44rem] max-w-[calc(100vw-16px)] overflow-y-auto rounded-panel border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
       >
-        <div className="px-5 pt-4 pb-5">
-          {SHORTCUT_GROUPS.map((group, groupIdx) => (
-            <div key={group.label}>
-              {groupIdx > 0 && <div className="my-3 h-px bg-game-line" />}
+        {/* Two columns, so the whole list is in view at 900px of height. */}
+        <div className="gap-x-6 px-5 pt-3 pb-3 sm:columns-2">
+          {groups.map((group) => (
+            <div key={group.label} className="mb-3 break-inside-avoid">
               <div className={cx("mb-2 pl-0.5", sectionLabel)}>{group.label}</div>
               {group.shortcuts.map((shortcut, i) => (
-                <div key={i} className="flex items-center justify-between gap-3 py-[5px]">
+                <div key={i} className="flex items-center justify-between gap-3 py-[3px]">
                   <span className="text-[12.5px] text-game-ink-300">{shortcut.action}</span>
                   <span className="flex shrink-0 items-center gap-1">
                     {shortcut.keys.map((key, j) =>
                       key === "+" ? (
-                        <span key={j} className="text-[12px] text-game-ink-700">
+                        <span key={j} className="text-[12px] text-game-ink-500">
                           +
                         </span>
                       ) : (

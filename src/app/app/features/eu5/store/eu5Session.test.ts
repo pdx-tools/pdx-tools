@@ -109,6 +109,7 @@ beforeEach(() => {
     playthroughName: "Campaign",
     multiplayer: false,
     players: [],
+    viewpointCountryIdx: null,
     world: {},
   }));
 });

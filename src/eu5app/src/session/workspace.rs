@@ -11,8 +11,8 @@ use crate::entity_profile::market::workspace::{
     MarketGoodEntry, MarketGoodsSection, MarketMemberCountry, MarketProfile,
 };
 use crate::entity_profile::{
-    CountryMetrics, CountryOverviewRanks, CountryOverviewSection, DiplomacySubjectType,
-    EntityHeaderKindSource, EntityKind, HeadlineStats,
+    CountryMetrics, CountryOverviewRanks, CountryOverviewSection, CountryOverviewTies,
+    DiplomacySubjectType, EntityHeaderKindSource, EntityKind, HeadlineStats,
 };
 use crate::game_data::GameData;
 use crate::hover::workspace::{
@@ -36,12 +36,11 @@ use crate::insights::state_efficacy::workspace::*;
 use crate::insights::tax::workspace::*;
 use crate::insights::{
     BuildingLevelsScopeSummary, ConcentrationPoint, ControlBandSegment, ControlScopeSummary,
-    DevelopmentScopeSummary, DistributionBucket, GoodBreakdownEntry, MarketScopeSummary,
-    PopulationGrowthScopeSummary, PopulationRankSegment, PopulationScopeSummary,
-    PopulationTypeProfileRow, RgoScopeSummary, StateEfficacyScopeSummary, UnrealizedTaxBaseScope,
-    WealthScope, WorldSummary,
+    DevelopmentScopeSummary, DistributionBucket, GoodBreakdownEntry, LandChange, LandHistory,
+    LandPoint, MarketScopeSummary, PopulationGrowthScopeSummary, PopulationRankSegment,
+    PopulationScopeSummary, PopulationTypeProfileRow, RgoScopeSummary, StateEfficacyScopeSummary,
+    UnrealizedTaxBaseScope, WealthScope, WorldSummary,
 };
-use crate::overlay::{OverlayBodyConfigSource, OverlayTableSource, TableCellSource};
 use crate::presentation::{CountryRefSource, Eu5Presenter, MarketRefSource};
 use crate::selection::{
     GroupId, GroupingTable, LocationData, SelectionAdapter, SelectionState, single_entity_scope,
@@ -73,6 +72,12 @@ pub struct Eu5Workspace<'bump> {
 
     // Session data (relationships and indices)
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
+    /// The colour that the map paints each country at the save.
+    country_map_colors: OnceLock<CountryIndexedVecOwned<crate::Srgb>>,
+    /// The colour that the map paints each market at full access.
+    market_map_colors: OnceLock<FxHashMap<eu5save::models::MarketId, crate::Srgb>>,
+    /// Each land owner's place by the game's great power rank, and how many share it.
+    score_places: OnceLock<FxHashMap<CountryId, (u32, u32)>>,
     location_terrain: LocationIndexedVec<Terrain>,
     location_building_levels: OnceLock<LocationIndexedVec<f64>>,
     fill_components: terrain_fill::FillComponents,
@@ -195,7 +200,6 @@ mod map_painter;
 mod map_projection;
 mod map_render;
 mod opening_view;
-mod overlay;
 mod selection_ops;
 mod terrain_fill;
 mod timeline;
@@ -273,6 +277,9 @@ impl<'bump> Eu5Workspace<'bump> {
             gamestate,
             game_data,
             overlord_of,
+            country_map_colors: OnceLock::new(),
+            market_map_colors: OnceLock::new(),
+            score_places: OnceLock::new(),
             location_terrain,
             location_building_levels: OnceLock::new(),
             fill_components,
@@ -325,6 +332,105 @@ impl<'bump> Eu5Workspace<'bump> {
     /// Pair this unlocalized workspace with a [`Localization`] to produce a
     /// presentation-capable wrapper. Cheap; the wrapper just borrows both
     /// values and gates `presenter()` access through them.
+    pub(crate) fn country_map_colors(&self) -> &CountryIndexedVecOwned<crate::Srgb> {
+        self.country_map_colors.get_or_init(|| {
+            let color_of = |idx| self.gamestate.countries.index(idx).data().map(|d| d.color);
+            let mut colors = self
+                .gamestate
+                .countries
+                .create_index(crate::Srgb::default());
+            for entry in self.gamestate.countries.iter() {
+                if let Some(data) = entry.data() {
+                    let blended = self.subject_blended_color(entry.idx(), data.color, color_of);
+                    colors[entry.idx()] = crate::Srgb(blended.rgb().into());
+                }
+            }
+            colors
+        })
+    }
+
+    /// The colour of each market on the map at full access: the market's colour blended
+    /// toward the colour of the owner of its centre. Keep this in step with the painter.
+    pub(crate) fn market_map_colors(&self) -> &FxHashMap<eu5save::models::MarketId, crate::Srgb> {
+        self.market_map_colors.get_or_init(|| {
+            let countries = self.country_map_colors();
+            self.gamestate
+                .market_manager
+                .database
+                .iter_with_id()
+                .map(|(id, market)| {
+                    let owner = self
+                        .gamestate
+                        .locations
+                        .get(market.center)
+                        .and_then(|center| {
+                            self.gamestate
+                                .locations
+                                .index(center)
+                                .location()
+                                .owner
+                                .real_id()
+                        })
+                        .and_then(|owner| self.gamestate.countries.get(owner.country_id()))
+                        .map_or(GpuColor::UNOWNED.rgb(), |idx| {
+                            let c = countries[idx];
+                            (c.0[0], c.0[1], c.0[2])
+                        });
+                    let (r, g, b) = crate::subject_color::blend_color(
+                        GpuColor::from(market.color.0).rgb(),
+                        owner,
+                    );
+                    (id, crate::Srgb([r, g, b]))
+                })
+                .collect()
+        })
+    }
+
+    /// A country's place among the countries that own land, by the game's great power
+    /// rank. The game's own list also counts countries with no land, so its number can
+    /// be higher and can skip. A place that others share has its count.
+    pub fn score_place(&self, country: CountryId) -> Option<(u32, u32)> {
+        self.score_places
+            .get_or_init(|| {
+                let owners: FxHashSet<CountryId> = self
+                    .gamestate
+                    .locations
+                    .iter()
+                    .filter_map(|entry| entry.location().owner.real_id())
+                    .map(|id| id.country_id())
+                    .collect();
+                // Only the leading countries hold points. All others share the place
+                // after them, because no figure in the save tells them apart for a reader.
+                let mut ranked: Vec<(i32, CountryId)> = owners
+                    .into_iter()
+                    .filter_map(|id| {
+                        let idx = self.gamestate.countries.get(id)?;
+                        let data = self.gamestate.countries.index(idx).data()?;
+                        let rank = if data.great_power_points > 0.0 && data.great_power_rank > 0 {
+                            data.great_power_rank
+                        } else {
+                            i32::MAX
+                        };
+                        Some((rank, id))
+                    })
+                    .collect();
+                ranked.sort_by_key(|(rank, _)| *rank);
+                let mut places = FxHashMap::default();
+                let mut at = 0;
+                while at < ranked.len() {
+                    let rank = ranked[at].0;
+                    let tied = ranked[at..].iter().take_while(|(r, _)| *r == rank).count();
+                    for (_, id) in &ranked[at..at + tied] {
+                        places.insert(*id, (at as u32 + 1, tied as u32));
+                    }
+                    at += tied;
+                }
+                places
+            })
+            .get(&country)
+            .copied()
+    }
+
     pub fn localized<'a>(
         &'a self,
         localization: &'a crate::game_data::Localization,

@@ -1,34 +1,34 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import {
-  formatTick,
   formatCount,
   formatExact,
   formatFloat,
   formatInt,
   formatMetric,
   formatScale,
+  formatTick,
 } from "@/lib/format";
 import type { CountryOverviewSection, LocationRow, MapMode } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartGutter,
-  chartInk,
   chartTooltip,
   getEChartsTheme,
-  seriesColor,
   neutralFill,
   neutralMark,
-  dotRim,
-  yAxisName,
 } from "@/components/viz/echartsTheme";
+import { formatLongDate } from "@/features/timeline/date";
 import { useEu5SaveDate } from "../../../store/eu5Store";
-import { SectionTitle, StatRail } from "../../../components";
+import { GameSegmented, SectionTitle, StatRail } from "../../../components";
+import { formatScore } from "../../../stack/selection";
+import type { LeadChart } from "../../../stack/selection";
+import { pointLabel, pointsToSave } from "../../../stack/yearlySeries";
 import { roundYearOffsets } from "../../insights/histogramAxis";
 import { levelBody } from "../../../stack/levelBody";
+import { useChartExport } from "../../../stack/chartExport";
 import { MapModeLabel } from "../../../stack/parts";
 import { rankPosition } from "../../../stack/selection";
 
@@ -67,20 +67,65 @@ export type OverviewFigure = {
   /** The amount behind the figure, for its full value and for a bar */
   amount: (d: CountryOverviewSection) => number;
   rank?: (d: CountryOverviewSection) => number;
+  /** How many countries share the rank, with this one */
+  tied?: (d: CountryOverviewSection) => number;
 };
+
+/** A rating under 10 keeps two decimals, because many countries differ only there. */
+const formatRating = (x: number) => (Math.abs(x) < 10 ? formatFloat(x, 2) : formatScale(x));
 
 /** The overview figures, in sections. The Compare level shows the same rows. */
 export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
   {
+    section: "Standing",
+    figures: [
+      {
+        label: "Score",
+        tooltip:
+          "Great power points, which only the leading countries hold: a dash means none. The rank follows the game's order, among the countries that own land.",
+        value: (d) => formatScore(d.greatPowerPoints),
+        amount: (d) => d.greatPowerPoints,
+        rank: (d) => d.ranks.greatPower,
+        tied: (d) => d.ranks.ties.greatPower,
+      },
+      {
+        label: "Adm rating",
+        tooltip: "The game's score rating for administration.",
+        value: (d) => formatRating(d.admRating),
+        amount: (d) => d.admRating,
+        rank: (d) => d.ranks.admRating,
+        tied: (d) => d.ranks.ties.admRating,
+      },
+      {
+        label: "Dip rating",
+        tooltip: "The game's score rating for diplomacy.",
+        value: (d) => formatRating(d.dipRating),
+        amount: (d) => d.dipRating,
+        rank: (d) => d.ranks.dipRating,
+        tied: (d) => d.ranks.ties.dipRating,
+      },
+      {
+        label: "Mil rating",
+        tooltip: "The game's score rating for the military.",
+        value: (d) => formatRating(d.milRating),
+        amount: (d) => d.milRating,
+        rank: (d) => d.ranks.milRating,
+        tied: (d) => d.ranks.ties.milRating,
+      },
+    ],
+  },
+  {
     section: "Economy",
     figures: [
       {
-        label: "Net Gold",
+        label: "Gold after loans",
+        tooltip: "Gold held, plus loans given, less loans owed. A stock, not a monthly balance.",
         signed: true,
         shown: (d) => d.netGold,
         value: (d) => formatMetric(d.netGold),
         amount: (d) => d.netGold,
         rank: (d) => d.ranks.netGold,
+        tied: (d) => d.ranks.ties.netGold,
       },
       {
         label: "Income",
@@ -88,13 +133,14 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatMetric(d.income),
         amount: (d) => d.income,
         rank: (d) => d.ranks.income,
+        tied: (d) => d.ranks.ties.income,
       },
       {
         label: "Expense",
         // A large state spends more, so a low expense is not better in itself and
-        // the game ranks no country by it. Net Gold compares it with the income.
+        // the game ranks no country by it.
         tooltip:
-          "Has no rank and no best value: a large state spends more. Net Gold compares it with income.",
+          "Has no rank and no best value: a large state spends more. Compare it with income.",
         shown: (d) => d.expense,
         value: (d) => formatMetric(d.expense),
         amount: (d) => d.expense,
@@ -106,6 +152,7 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatMetric(d.wealth),
         amount: (d) => d.wealth,
         rank: (d) => d.ranks.wealth,
+        tied: (d) => d.ranks.ties.wealth,
       },
       {
         label: "Tax Base",
@@ -113,6 +160,7 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatMetric(d.taxBase),
         amount: (d) => d.taxBase,
         rank: (d) => d.ranks.taxBase,
+        tied: (d) => d.ranks.ties.taxBase,
       },
       {
         label: "Buildings",
@@ -121,6 +169,7 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatCount(d.buildingLevels),
         amount: (d) => d.buildingLevels,
         rank: (d) => d.ranks.buildingLevels,
+        tied: (d) => d.ranks.ties.buildingLevels,
       },
     ],
   },
@@ -134,13 +183,50 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatCount(d.totalPopulation),
         amount: (d) => d.totalPopulation,
         rank: (d) => d.ranks.totalPopulation,
+        tied: (d) => d.ranks.ties.totalPopulation,
       },
+    ],
+  },
+  {
+    section: "Military",
+    figures: [
       {
         label: "Manpower",
         shown: (d) => d.manpower * 1000,
         value: (d) => formatCount(d.manpower * 1000),
         amount: (d) => d.manpower * 1000,
         rank: (d) => d.ranks.manpower,
+        tied: (d) => d.ranks.ties.manpower,
+      },
+      {
+        label: "Max manpower",
+        shown: (d) => d.maxManpower * 1000,
+        value: (d) => formatCount(d.maxManpower * 1000),
+        amount: (d) => d.maxManpower * 1000,
+        rank: (d) => d.ranks.maxManpower,
+        tied: (d) => d.ranks.ties.maxManpower,
+      },
+      {
+        label: "Max sailors",
+        shown: (d) => d.maxSailors * 1000,
+        value: (d) => formatCount(d.maxSailors * 1000),
+        amount: (d) => d.maxSailors * 1000,
+        rank: (d) => d.ranks.maxSailors,
+        tied: (d) => d.ranks.ties.maxSailors,
+      },
+      {
+        label: "Army tradition",
+        value: (d) => formatScale(d.armyTradition),
+        amount: (d) => d.armyTradition,
+        rank: (d) => d.ranks.armyTradition,
+        tied: (d) => d.ranks.ties.armyTradition,
+      },
+      {
+        label: "Navy tradition",
+        value: (d) => formatScale(d.navyTradition),
+        amount: (d) => d.navyTradition,
+        rank: (d) => d.ranks.navyTradition,
+        tied: (d) => d.ranks.ties.navyTradition,
       },
     ],
   },
@@ -155,6 +241,7 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatMetric(d.effectiveDevelopment),
         amount: (d) => d.effectiveDevelopment,
         rank: (d) => d.ranks.effectiveDevelopment,
+        tied: (d) => d.ranks.ties.effectiveDevelopment,
       },
       {
         label: "Capacity",
@@ -164,6 +251,7 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatMetric(d.activeStateCapacity),
         amount: (d) => d.activeStateCapacity,
         rank: (d) => d.ranks.activeStateCapacity,
+        tied: (d) => d.ranks.ties.activeStateCapacity,
       },
       {
         label: "Stability",
@@ -171,45 +259,80 @@ export const OVERVIEW: { section: string; figures: OverviewFigure[] }[] = [
         value: (d) => formatScale(d.stability),
         amount: (d) => d.stability,
         rank: (d) => d.ranks.stability,
+        tied: (d) => d.ranks.ties.stability,
       },
       {
         label: "Prestige",
         value: (d) => formatScale(d.prestige),
         amount: (d) => d.prestige,
         rank: (d) => d.ranks.prestige,
+        tied: (d) => d.ranks.ties.prestige,
       },
       {
         label: "Gov. Power",
         value: (d) => formatScale(d.governmentPower),
         amount: (d) => d.governmentPower,
         rank: (d) => d.ranks.governmentPower,
+        tied: (d) => d.ranks.ties.governmentPower,
       },
     ],
   },
 ];
 
-export function CountryOverviewTabContent({
+export function CountryRankRail({
   data,
-  locations,
+  atSave,
+  peers,
 }: {
   data: CountryOverviewSection;
-  locations: LocationRow[];
+  /** The save date, when the map shows another date */
+  atSave?: string;
+  /** The players' figures, when this country is a player's */
+  peers?: readonly CountryOverviewSection[];
 }) {
+  const [scope, setScope] = useState<"world" | "players">("world");
+  const among = scope === "players" && peers ? peers : undefined;
+  const cohort = among ? among.length : data.ranks.cohort;
+  const placeIn = (f: OverviewFigure) => {
+    if (!among) return { rank: f.rank?.(data), tied: f.tied?.(data) };
+    if (!f.rank) return { rank: undefined, tied: undefined };
+    const own = f.amount(data);
+    const amounts = among.map(f.amount);
+    return {
+      rank: amounts.filter((x) => x > own).length + 1,
+      tied: amounts.filter((x) => x === own).length,
+    };
+  };
+  const axis = among
+    ? [{ label: "#1", at: 1 }]
+    : [
+        { label: "#100", at: rankPosition(100, cohort) },
+        { label: "#10", at: rankPosition(10, cohort) },
+        { label: "#1", at: 1 },
+      ];
   return (
     <>
+      <div className="flex items-center gap-2 px-3.5 pt-2.5">
+        <p className="min-w-0 flex-1 text-[12px] leading-tight text-game-ink-500">
+          {atSave ? `On the save date, ${atSave}. ` : ""}Rank among the {formatInt(cohort)}{" "}
+          {among ? "players" : "countries that own land"}. The track is a log scale.
+        </p>
+        {peers ? (
+          <GameSegmented
+            aria-label="Ranks among"
+            value={scope}
+            onValueChange={(value) => setScope(value as typeof scope)}
+          >
+            <GameSegmented.Item value="world">World</GameSegmented.Item>
+            <GameSegmented.Item value="players">Players</GameSegmented.Item>
+          </GameSegmented>
+        ) : null}
+      </div>
       <StatRail>
         {OVERVIEW.flatMap(({ section, figures }) => [
-          <StatRail.Section
-            key={section}
-            label={section}
-            axis={[
-              { label: "#100", at: rankPosition(100, data.ranks.cohort) },
-              { label: "#10", at: rankPosition(10, data.ranks.cohort) },
-              { label: "#1", at: 1 },
-            ]}
-          />,
+          <StatRail.Section key={section} label={section} axis={axis} />,
           ...figures.map((f) => {
-            const rank = f.rank?.(data);
+            const { rank, tied } = placeIn(f);
             return (
               <StatRail.Row
                 key={f.label}
@@ -217,46 +340,84 @@ export function CountryOverviewTabContent({
                 tooltip={f.tooltip}
                 value={f.value(data)}
                 exact={formatExact(f.amount(data))}
-                percentile={rank !== undefined ? rankPosition(rank, data.ranks.cohort) : undefined}
-                ticks={[rankPosition(100, data.ranks.cohort), rankPosition(10, data.ranks.cohort)]}
+                percentile={rank !== undefined ? rankPosition(rank, cohort) : undefined}
+                ticks={among ? [] : [rankPosition(100, cohort), rankPosition(10, cohort)]}
                 rank={rank}
+                tied={tied}
               />
             );
           }),
         ])}
       </StatRail>
-
-      <div className={cx(levelBody, "flex flex-col gap-4")}>
-        <RevenueMarginChart revenue={data.monthlyGold} balance={data.recentBalance} />
-        <HistoryChart
-          title="Tax Base History"
-          series={data.historicalTaxBase}
-          yLabel="Tax Base"
-          isYearly
-        />
-
-        <UnrealizedTaxBaseScatter locations={locations} />
-      </div>
     </>
   );
 }
 
-function HistoryChart({
+/** The country's charts. A wide frame sets them side by side. */
+export function CountryCharts({
+  name,
+  data,
+  locations,
+  lead,
+}: {
+  name: string;
+  data: CountryOverviewSection;
+  locations: LocationRow[];
+  /** The chart at the top of the view, which is not here again */
+  lead: LeadChart;
+}) {
+  return (
+    <div className={cx(levelBody, "grid grid-cols-1 gap-4 @[900px]:grid-cols-2")}>
+      {lead !== "taxBase" ? (
+        <HistoryChart
+          title={`${name}: tax base by year`}
+          series={data.historicalTaxBase}
+          yLabel="Tax Base"
+          isYearly
+          now={data.taxBase}
+        />
+      ) : null}
+      {lead !== "population" ? (
+        <HistoryChart
+          title={`${name}: population by year`}
+          series={data.historicalPopulation}
+          yLabel="Population"
+          isYearly
+          whole
+          now={data.totalPopulation}
+        />
+      ) : null}
+      <TaxGapList name={name} locations={locations} />
+    </div>
+  );
+}
+
+export function HistoryChart({
   title,
   series,
   yLabel,
   isYearly = false,
+  whole = false,
+  now,
 }: {
   title: string;
   series: number[];
   yLabel: string;
   isYearly?: boolean;
+  /** The figure on the save date, where a yearly record ends */
+  now?: number;
+  /** The values count people or things, so they read as whole numbers */
+  whole?: boolean;
 }) {
   const saveDate = useEu5SaveDate();
+  const chartImage = useChartExport(title);
 
   const data = useMemo(
-    () => series.map((value, index) => [index - series.length + 1, value]),
-    [series],
+    () =>
+      isYearly && now !== undefined && saveDate
+        ? pointsToSave(series, saveDate, now).map(([x, y]) => [x - saveDate.year, y])
+        : series.map((value, index) => [index - series.length + 1, value]),
+    [series, isYearly, now, saveDate],
   );
 
   const option = useMemo((): EChartsOption => {
@@ -269,7 +430,7 @@ function HistoryChart({
       : (value: number) => monthOffsetToDate(baseYear, baseMonth, value);
 
     const tooltipLabel = isYearly
-      ? (offset: number) => String(baseYear + offset)
+      ? (offset: number) => pointLabel(baseYear + offset, formatLongDate(saveDate))
       : (offset: number) => monthOffsetToDate(baseYear, baseMonth, offset);
 
     const firstOffset = data.length > 0 ? (data[0] as number[])[0] : 0;
@@ -291,12 +452,14 @@ function HistoryChart({
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
         min: "dataMin",
+        max: "dataMax",
       },
       yAxis: {
         type: "value",
         axisLabel: {
           color: tickColor,
           fontSize: 12,
+          formatter: (value: number) => formatTick(value),
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
@@ -310,7 +473,8 @@ function HistoryChart({
           if (!Array.isArray(value)) return "";
           const offset = Number(value[0]);
           const v = Number(value[1]);
-          return `<strong>${tooltipLabel(offset)}</strong><br/>${yLabel}: ${formatFloat(v, 2)}`;
+          const shown = whole ? formatInt(Math.round(v)) : formatFloat(v, 2);
+          return `<strong>${tooltipLabel(offset)}</strong><br/>${yLabel}: ${shown}`;
         },
       },
       series: [
@@ -324,250 +488,69 @@ function HistoryChart({
         },
       ],
     };
-  }, [data, isYearly, saveDate, yLabel]);
+  }, [data, isYearly, saveDate, yLabel, whole]);
 
   if (series.length < 2) return null;
 
   return (
     <section>
-      <SectionTitle>{title}</SectionTitle>
-      <EChart option={option} style={{ height: "200px", width: "100%" }} />
+      <div className="flex items-center justify-between gap-2">
+        <SectionTitle>{title}</SectionTitle>
+        {chartImage.button}
+      </div>
+      <EChart
+        option={option}
+        style={{ height: "200px", width: "100%" }}
+        onInit={chartImage.track}
+      />
     </section>
   );
 }
 
-function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: number[] }) {
-  const saveDate = useEu5SaveDate();
-  const n = Math.min(revenue.length, balance.length);
+/** How many of the largest gaps the list has */
+const GAPS_SHOWN = 10;
 
-  const { categories, barData, lineData, leftMin, leftMax, rightMin, rightMax } = useMemo(() => {
-    const revSlice = revenue.slice(revenue.length - n);
-    const balSlice = balance.slice(balance.length - n);
-    const baseYear = saveDate?.year ?? 0;
-    const baseMonth = saveDate?.month ?? 1;
-
-    const cats = revSlice.map((_, i) => monthOffsetToDate(baseYear, baseMonth, i - n + 1));
-    const pcts = revSlice.map((rev, i) => {
-      const bal = balSlice[i] ?? 0;
-      return rev !== 0 ? (bal / rev) * 100 : 0;
-    });
-
-    const revMax = Math.max(...revSlice, 1);
-    const mgnMax = Math.max(...pcts, 0);
-    const mgnMin = Math.min(...pcts, 0);
-
-    // Align zeros only when data actually goes negative
-    const totalRange = mgnMax - mgnMin;
-    const f = mgnMin < 0 && totalRange > 0 ? -mgnMin / totalRange : 0;
-    const leftMin = f > 0 && f < 1 ? -(f * revMax) / (1 - f) : 0;
-
-    return {
-      categories: cats,
-      barData: revSlice,
-      lineData: pcts,
-      leftMin,
-      leftMax: revMax,
-      rightMin: mgnMin,
-      rightMax: mgnMax,
-    };
-  }, [revenue, balance, n, saveDate]);
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
-    // The profile is narrow, so the legend names the two axes and the ticks
-    // are short. Axis titles and rotated dates would take half the width.
-    return {
-      grid: { left: chartGutter.left, right: 44, top: 28, bottom: 24 },
-      legend: {
-        top: 0,
-        left: 0,
-        itemWidth: 10,
-        itemHeight: 10,
-        itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 12 },
-      },
-      xAxis: {
-        type: "category",
-        data: categories,
-        axisLabel: {
-          color: tickColor,
-          fontSize: 12,
-          interval: "auto",
-          hideOverlap: true,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
-      },
-      yAxis: [
-        {
-          type: "value",
-          min: leftMin,
-          max: leftMax,
-          axisLabel: {
-            color: tickColor,
-            fontSize: 12,
-            // hide the artificial negative labels introduced for zero alignment
-            formatter: (value: number) => (value < 0 ? "" : formatTick(value)),
-          },
-          axisLine: { lineStyle: { color: axisColor } },
-          splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
-        },
-        {
-          type: "value",
-          min: rightMin,
-          max: rightMax,
-          axisLabel: {
-            color: tickColor,
-            fontSize: 12,
-            formatter: (value: number) => `${formatInt(value)}%`,
-          },
-          axisLine: { lineStyle: { color: axisColor } },
-          splitLine: { show: false },
-        },
-      ],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "axis",
-        formatter: (params) => {
-          const arr = Array.isArray(params) ? params : [params];
-          const dateLabel = arr[0]?.name ?? "";
-          const rev = Number(arr[0]?.value ?? 0);
-          const pct = Number(arr[1]?.value ?? 0);
-          return [
-            `<strong>${dateLabel}</strong>`,
-            `Revenue: ${formatFloat(rev, 2)}`,
-            `Net Margin: ${formatFloat(pct, 1)}%`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          name: "Revenue",
-          type: "bar",
-          data: barData,
-          yAxisIndex: 0,
-          itemStyle: { color: seriesColor(0), opacity: 0.7 },
-        },
-        {
-          name: "Net Margin %",
-          type: "line",
-          data: lineData,
-          yAxisIndex: 1,
-          symbol: "none",
-          smooth: true,
-          // ECharts derives the legend swatch from `color`, not `lineStyle`.
-          color: seriesColor(1),
-          lineStyle: { color: seriesColor(1), width: 2 },
-          markLine: {
-            silent: true,
-            symbol: "none",
-            animation: false,
-            data: [{ yAxis: 0 }],
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-            label: { show: false },
-          },
-        },
-      ],
-    };
-  }, [categories, barData, lineData, leftMin, leftMax, rightMin, rightMax]);
-
-  if (n < 2) return null;
-
+/**
+ * The locations with the largest tax base gap, in gold. A bar is the wealth, and its
+ * bright part is the tax base that the location realizes. A ranked list says the
+ * gap directly, and it has room for each name.
+ */
+function TaxGapList({ name, locations }: { name: string; locations: LocationRow[] }) {
+  const rows = useMemo(
+    () =>
+      locations
+        .filter((r) => r.wealth - r.taxBase > 0)
+        .sort((a, b) => b.wealth - b.taxBase - (a.wealth - a.taxBase))
+        .slice(0, GAPS_SHOWN),
+    [locations],
+  );
+  if (rows.length === 0) return null;
+  const largest = Math.max(...rows.map((r) => r.wealth - r.taxBase));
   return (
     <section>
-      <SectionTitle>Revenue &amp; Net Margin</SectionTitle>
-      <EChart option={option} style={{ height: "200px", width: "100%" }} />
-    </section>
-  );
-}
-
-function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
-  const eligible = useMemo(() => locations.filter((r) => r.wealth > 0), [locations]);
-
-  const scatterData = useMemo(
-    (): [number, number][] => eligible.map((r) => [r.wealth, r.taxBase]),
-    [eligible],
-  );
-
-  const diagonalMax = useMemo(() => {
-    const max = Math.max(...eligible.map((r) => r.wealth));
-    return max > 0 ? max : 1;
-  }, [eligible]);
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-    return {
-      grid: { ...chartGutter, top: 28, bottom: 50 },
-      xAxis: {
-        type: "value",
-        name: "Wealth",
-        nameLocation: "middle",
-        nameGap: 36,
-        nameTextStyle: { color: tickColor, fontSize: 12 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
-        min: 0,
-      },
-      yAxis: {
-        type: "value",
-        ...yAxisName("Tax Base"),
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
-        min: 0,
-      },
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const d = eligible[params.dataIndex ?? -1];
-          if (!d) return "";
-          const gap = d.wealth - d.taxBase;
-          const realization = d.wealth > 0 ? (d.taxBase / d.wealth) * 100 : 100;
-          return [
-            `<strong>${escapeEChartsHtml(d.location.name)}</strong>`,
-            `Wealth: ${formatFloat(d.wealth, 2)}`,
-            `Tax Base: ${formatFloat(d.taxBase, 2)}`,
-            `Tax Base Gap: ${formatFloat(gap, 2)}`,
-            `Realization: ${formatFloat(realization, 1)}%`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          type: "line",
-          data: [
-            [0, 0],
-            [diagonalMax, diagonalMax],
-          ],
-          lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-          symbol: "none",
-          silent: true,
-          tooltip: { show: false },
-        },
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: 6,
-          itemStyle: {
-            ...dotRim,
-            color: neutralMark,
-            opacity: 0.7,
-          },
-        },
-      ],
-    };
-  }, [scatterData, diagonalMax, eligible]);
-
-  if (eligible.length < 2) return null;
-
-  return (
-    <section>
-      <SectionTitle>Tax Base Gap · Wealth vs Tax Base</SectionTitle>
-      <EChart option={option} style={{ height: "300px", width: "100%" }} />
+      <SectionTitle>{`${name}: largest tax base gaps`}</SectionTitle>
+      <p className="mb-1 text-[12px] leading-snug text-game-ink-300">
+        Gap: wealth less tax base. All bars start at zero.
+      </p>
+      {rows.map((row) => (
+        <div
+          key={row.location.key}
+          className="grid h-[26px] grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_52px] items-center gap-2 border-b border-game-line-faint text-[12px]"
+        >
+          <span title={row.location.name} className="truncate text-game-ink-100">
+            {row.location.name}
+          </span>
+          <span aria-hidden className="block h-1.5 rounded-[1px] bg-game-track">
+            <span
+              className="block h-full rounded-[1px] bg-game-ink-300"
+              style={{ width: `${((row.wealth - row.taxBase) / largest) * 100}%` }}
+            />
+          </span>
+          <span className="text-right font-game-num text-game-ink-100">
+            {formatMetric(row.wealth - row.taxBase)}
+          </span>
+        </div>
+      ))}
     </section>
   );
 }

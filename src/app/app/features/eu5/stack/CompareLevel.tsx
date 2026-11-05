@@ -1,24 +1,27 @@
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cx } from "class-variance-authority";
-import { focusRing } from "@/components/game/focusRing";
-import { formatCompactIn, formatExact } from "@/lib/format";
-import type { CountryProfile } from "@/wasm/wasm_eu5";
+import { focusRing, focusRingInset } from "@/components/game/focusRing";
+import { formatExact, formatInt } from "@/lib/format";
+import { SortMark } from "../components/Eu5DataTable";
 import { useEu5MapMode, useEu5Players } from "../store";
 import { OVERVIEW } from "../features/profiles/country/EconomyTab";
 import type { OverviewFigure } from "../features/profiles/country/EconomyTab";
 import { ProfileSkeleton } from "../features/profiles/ProfileSkeleton";
-import { useEu5Trigger } from "../features/profiles/useEu5Trigger";
 import { useRanking } from "./ModeRanking";
 import { useOpenCountry, useSelectedCountries } from "./selected";
 import {
+  COMPARE_MAX,
+  STANDINGS_MAX,
   bestIsTied,
   bestRank,
   compareBars,
   compareColumns,
-  compareFinding,
   displayTag,
 } from "./selection";
+import { RaceChart, StandingsAndRace, columnText, standingsLine, useStandings } from "./Standings";
+import { StandingsImageButton } from "./standingsImage";
+import type { Standing } from "./Standings";
 import {
   Band,
   ExactValue,
@@ -33,7 +36,8 @@ import {
   formatRank,
   usePlayerName,
 } from "./parts";
-import { useFrameSelection } from "./MapTools";
+import { useFrameSelection } from "./frameSelection";
+import { useFullView } from "./fullView";
 import { divergingPoles } from "@/components/viz/echartsTheme";
 import { useViewportInsets } from "../useViewportInsets";
 import { glossaryTerm } from "../components/EntityName";
@@ -41,13 +45,12 @@ import { Tooltip } from "@/components/Tooltip";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 /** A country of the selection with its profile */
-type Column = { countryIdx: number; profile: CountryProfile };
+type Column = Standing;
 
 /** The narrowest and the widest column of figures. The space after the widest columns stays empty. */
 const LABEL_MIN = 118;
 const LABEL_MAX = 160;
 const COLUMN_MIN = 100;
-const COLUMN_MAX = 144;
 /**
  * On a phone the label has its own line over the figures, and the rank is under
  * the value. Four countries fit whole at 390px in equal columns. With five or more
@@ -58,10 +61,10 @@ const PHONE_COLUMN_MIN = 84;
 const PADDING = 14;
 
 /**
- * The countries of the selection side by side: one row for each overview
- * figure, and one column for each country, with the value, the world rank, and
- * a bar that compares the row. The columns are the first countries in the order
- * of the open mode. In each row the best rank has more weight and only the leader's
+ * The countries of the selection side by side. A few countries have a column each:
+ * one row for each overview figure, with the value, the world rank, and a bar
+ * that compares the row. A larger set has a row for each country (`StandingsTable`).
+ * The columns are in the order of the open mode, or of the row that sorts them. In each row the best rank has more weight and only the leader's
  * bar is bright. When two countries share the best rank, their cells have a tie mark.
  * The columns stay near the labels in a wide frame, and the rules go across the
  * full width. The table scrolls sideways only when the frame cannot give each
@@ -74,68 +77,107 @@ export function CompareLevel() {
   const wide = useBreakpoint("md");
   const ranking = useRanking(mode);
   const order = (ranking?.rows ?? []).flatMap((r) => (r.country ? [r.country.country.key] : []));
-  const shown = compareColumns(
-    selected.map((c) => c.country.key),
-    order,
-  );
-  const key = shown.join(",");
-  const { data } = useEu5Trigger(
-    (engine) =>
-      Promise.all(
-        shown.map(async (countryIdx) => {
-          const profile = await engine.queries.getCountryProfile(countryIdx);
-          return profile ? { countryIdx, profile } : null;
-        }),
-      ).then((rows) => rows.filter((x): x is Column => x !== null)),
-    [key],
-  );
+  const keys = selected.map((c) => c.country.key);
+  // Each country of the set is shown. Columns fit a few, and a table has a row for each.
+  const table = keys.length > COMPARE_MAX;
+  const shown = table ? keys : compareColumns(keys, order, COMPARE_MAX);
+  const standings = useStandings(shown);
+  const full = useFullView().on;
+  const [sortBy, setSortBy] = useState<string | null>(null);
+
   // While new profiles load, the table keeps the countries that are still shown.
-  const columns = (data ?? [])
-    .filter((x) => shown.includes(x.countryIdx))
-    .sort((a, b) => shown.indexOf(a.countryIdx) - shown.indexOf(b.countryIdx));
+  const loaded = (standings ?? []).filter((x) => shown.includes(x.countryIdx));
+  const sortFigure = OVERVIEW.flatMap((g) => g.figures).find((f) => f.label === sortBy);
+  const columns: Column[] = sortFigure
+    ? [...loaded].sort(
+        (a, b) => sortFigure.amount(b.profile.overview) - sortFigure.amount(a.profile.overview),
+      )
+    : [...loaded].sort((a, b) => shown.indexOf(a.countryIdx) - shown.indexOf(b.countryIdx));
 
   if (selected.length < 2) return <Note>Select two countries or more</Note>;
   if (columns.length === 0) return <ProfileSkeleton />;
 
+  const finding = standingsLine(columns);
+  if (selected.length > STANDINGS_MAX) {
+    return (
+      <Note>
+        {formatInt(selected.length)} countries is too many to set side by side. The Summary and the
+        data tab give this selection as totals and distributions.
+      </Note>
+    );
+  }
+  if (table) {
+    return (
+      <>
+        {finding ? <Finding>{finding}</Finding> : null}
+        <p className="px-3.5 py-1.5 text-[12px] text-game-ink-500">
+          Bold: top of the column. The sorted column also has the world rank. A click on a column
+          sorts the rows.
+        </p>
+        <StandingsAndRace rows={columns} />
+      </>
+    );
+  }
+
   const n = columns.length;
   const grid: React.CSSProperties = {
     gridTemplateColumns: wide
-      ? `minmax(${LABEL_MIN}px, ${LABEL_MAX}px) repeat(${n}, minmax(${COLUMN_MIN}px, ${COLUMN_MAX}px)) 1fr`
+      ? `minmax(${LABEL_MIN}px, ${LABEL_MAX}px) repeat(${n}, minmax(${COLUMN_MIN}px, 1fr))`
       : `repeat(${n}, minmax(${PHONE_COLUMN_MIN}px, 1fr))`,
   };
   const frame: React.CSSProperties = {
     minWidth: (wide ? LABEL_MIN + n * COLUMN_MIN : n * PHONE_COLUMN_MIN) + PADDING + 8,
   };
-  const finding = compareFinding(
-    columns.map((x) => x.profile.header.name),
-    OVERVIEW.flatMap(({ figures }) => figures)
-      .filter((figure) => figure.rank !== undefined)
-      .map((figure) => columns.map((x) => figure.rank?.(x.profile.overview))),
-  );
 
   return (
     <>
       {finding ? <Finding>{finding}</Finding> : null}
       <p className="px-3.5 py-1.5 text-[12px] text-game-ink-500">
-        Bar: size of the value, orange under zero. Bold: row leader. <MapGlyph />: show on map
+        Bar: size of the value, orange under zero. Bold: row leader. <MapGlyph />: show on map.
+        <SortMark sorted="desc" />: sort the countries by this row.
       </p>
-      <div className="overflow-x-auto">
-        <div role="table" aria-label="Selected countries" style={frame}>
-          <div role="row" className={headClass} style={grid}>
-            <span role="columnheader" className={cx(labelCellClass, "max-md:hidden")} />
-            {columns.map((x) => (
-              <CountryHead key={x.countryIdx} column={x} />
-            ))}
+      <div
+        className={cx(
+          "@container",
+          full ? "grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] items-start gap-2" : undefined,
+        )}
+      >
+        <div className="min-w-0">
+          <div className="flex justify-end px-3.5 pb-1">
+            <StandingsImageButton
+              rows={columns}
+              figures={OVERVIEW.flatMap((g) => g.figures).filter((f) => f.rank)}
+              tab="Each metric"
+              headline={finding}
+            />
           </div>
-          {OVERVIEW.map(({ section, figures }, i) => (
-            <div key={section} role="rowgroup">
-              <Band label={section} flush={i === 0} />
-              {figures.map((figure) => (
-                <FigureRow key={figure.label} figure={figure} columns={columns} grid={grid} />
+          <div tabIndex={0} className={cx("overflow-x-auto", focusRingInset)}>
+            <div role="table" aria-label="Selected countries" style={frame}>
+              <div role="row" className={headClass} style={grid}>
+                <span role="columnheader" className={cx(labelCellClass, "max-md:hidden")} />
+                {columns.map((x) => (
+                  <CountryHead key={x.countryIdx} column={x} />
+                ))}
+              </div>
+              {OVERVIEW.map(({ section, figures }, i) => (
+                <div key={section} role="rowgroup">
+                  <Band label={section} flush={i === 0} />
+                  {figures.map((figure) => (
+                    <FigureRow
+                      key={figure.label}
+                      figure={figure}
+                      columns={columns}
+                      grid={grid}
+                      sorted={sortBy === figure.label}
+                      onSort={() => setSortBy(sortBy === figure.label ? null : figure.label)}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
-          ))}
+          </div>
         </div>
+        <RaceChart rows={columns} />
       </div>
     </>
   );
@@ -204,7 +246,7 @@ function CountryHead({ column }: { column: Column }) {
 }
 
 /** The width must rest this long before the map frames in the free part */
-const SETTLE_MS = 120;
+const SETTLE_MS = 300;
 
 /**
  * Opening Compare asks to see these countries together, so the map frames them
@@ -217,11 +259,13 @@ function useFrameOnOpen() {
   const frameSelection = useFrameSelection();
   const { left } = useViewportInsets();
   const wide = useBreakpoint("md");
+  // Also when a country joins from the map, so that each selected country is in view.
+  const count = useSelectedCountries().length;
   useEffect(() => {
     if (!wide || left >= window.innerWidth - 1) return;
     const timer = setTimeout(frameSelection, SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [frameSelection, left, wide]);
+  }, [frameSelection, left, wide, count]);
 }
 
 /** One figure across the selected countries */
@@ -229,11 +273,16 @@ function FigureRow({
   figure,
   columns,
   grid,
+  sorted,
+  onSort,
 }: {
   figure: OverviewFigure;
   columns: readonly Column[];
   grid: React.CSSProperties;
+  sorted: boolean;
+  onSort: () => void;
 }) {
+  const texts = columnText(figure, columns);
   const ranks = columns.map((x) => figure.rank?.(x.profile.overview));
   // One column has nothing to be better than, and a tie has no best.
   const best = bestRank(ranks);
@@ -242,11 +291,6 @@ function FigureRow({
   const amounts = columns.map((x) => figure.amount(x.profile.overview));
   // One scale for each row, and a value under zero goes to the left of the zero line.
   const { zero, bars } = compareBars(amounts);
-  const shown = figure.shown;
-  // One unit in the row, from its largest value.
-  const rowLargest = shown
-    ? Math.max(0, ...columns.map((x) => Math.abs(shown(x.profile.overview))))
-    : 0;
 
   return (
     <div role="row" className={rowClass} style={grid}>
@@ -254,7 +298,14 @@ function FigureRow({
         {figure.tooltip ? (
           <Tooltip>
             <Tooltip.Trigger asChild>
-              <span className={cx("mr-2 font-game-ui text-[12px] text-game-ink-100", glossaryTerm)}>
+              <span
+                tabIndex={0}
+                className={cx(
+                  "mr-2 rounded-[1px] font-game-ui text-[12px] text-game-ink-100",
+                  glossaryTerm,
+                  focusRing,
+                )}
+              >
                 {figure.mode ? (
                   <MapModeLabel mode={figure.mode} label={figure.label} />
                 ) : (
@@ -275,17 +326,29 @@ function FigureRow({
             {figure.label}
           </span>
         )}
+        <button
+          type="button"
+          onClick={onSort}
+          aria-pressed={sorted}
+          aria-label={`Sort the countries by ${figure.label}`}
+          className={cx(
+            "mr-1 ml-auto grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded-[2px] text-game-ink-500 hover:text-game-ink-100 max-md:hidden",
+            sorted && "text-game-ink-100",
+            focusRing,
+          )}
+        >
+          <SortMark sorted={sorted ? "desc" : false} />
+        </button>
       </span>
       {columns.map((x, i) => {
         const rank = ranks[i];
         const top = best !== undefined && rank === best;
-        // Each country that shares the best rank has the tie mark in its cell.
-        const tie = tied && rank === lowest;
-        const leader = top || tie;
+        // A rank that other countries of the world share has the tie mark.
+        const worldTied = figure.tied?.(x.profile.overview) ?? 1;
+        const tie = (tied && rank === lowest) || worldTied > 1;
+        const leader = top || (tied && rank === lowest);
         const amount = amounts[i];
-        const value = shown
-          ? formatCompactIn(shown(x.profile.overview), rowLargest, figure.value(x.profile.overview))
-          : figure.value(x.profile.overview);
+        const value = texts[i];
         const bar = bars[i];
         // A value under zero has the colour of a shortage, so a longer bar does not read as more.
         const negative = amount < 0;
@@ -315,7 +378,9 @@ function FigureRow({
                 </IconTip>
               ) : (
                 <span
-                  title={tie ? "These countries share the best rank" : undefined}
+                  title={
+                    worldTied > 1 ? `${formatInt(worldTied)} countries share this rank` : undefined
+                  }
                   className={cx(
                     "min-w-[4ch] shrink-0 text-right font-game-num text-[12px] tabular-nums max-md:leading-tight",
                     tie ? "text-game-ink-100" : "text-game-ink-300",

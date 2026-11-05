@@ -131,6 +131,22 @@ describe("path after a change", () => {
     ).toEqual([]);
   });
 
+  it("opens Compare for a few chosen countries, and not for a preset, a scope, or a list in the making", () => {
+    const few = { ...set, entityCount: 3 };
+    expect(nextPath([], change({ selectionChanged: true, selection: few }))).toEqual([
+      compareEntry,
+    ]);
+    expect(
+      nextPath([], change({ selectionChanged: true, selection: { ...few, preset: "players" } })),
+    ).toEqual([]);
+    expect(
+      nextPath([], change({ selectionChanged: true, selection: { ...few, entityCount: 40 } })),
+    ).toEqual([]);
+    expect(
+      nextPath([], change({ selectionChanged: true, selection: few, keepList: true })),
+    ).toEqual([]);
+  });
+
   it("keeps Compare while the selection is still a set of countries", () => {
     expect(
       nextPath([compareEntry, france], change({ selectionChanged: true, selection: set })),

@@ -190,6 +190,20 @@ pub struct CountryOverviewSection {
     pub recent_balance: Vec<f64>,
     pub historical_tax_base: Vec<f64>,
     pub historical_population: Vec<f64>,
+    /// The points that set the game's great power rank.
+    pub great_power_points: f64,
+    pub total_development: f64,
+    pub weighted_control: f64,
+    pub rgo_levels: f64,
+    pub tax_gap: f64,
+    /// The game's score rating in each field.
+    pub adm_rating: f64,
+    pub dip_rating: f64,
+    pub mil_rating: f64,
+    pub max_manpower: f64,
+    pub max_sailors: f64,
+    pub army_tradition: f64,
+    pub navy_tradition: f64,
     pub ranks: CountryOverviewRanks,
 }
 
@@ -202,6 +216,56 @@ pub struct CountryOverviewSection {
 #[serde(rename_all = "camelCase")]
 pub struct CountryOverviewRanks {
     pub cohort: u32,
+    /// Ranks for the headline of a map mode. The rows of the overview do not show these.
+    pub development: u32,
+    pub control: u32,
+    /// The countries in the control rank: those with 10 locations or more. Zero is no rank.
+    pub control_cohort: u32,
+    pub tax_gap: u32,
+    pub rgo: u32,
+    /// How many countries have this country's exact value, with this country.
+    pub ties: CountryOverviewTies,
+    /// The place by the game's great power rank, among the countries that own land.
+    pub great_power: u32,
+    pub adm_rating: u32,
+    pub dip_rating: u32,
+    pub mil_rating: u32,
+    pub max_manpower: u32,
+    pub max_sailors: u32,
+    pub army_tradition: u32,
+    pub navy_tradition: u32,
+    pub net_gold: u32,
+    pub manpower: u32,
+    pub stability: u32,
+    pub prestige: u32,
+    pub government_power: u32,
+    pub income: u32,
+    pub wealth: u32,
+    pub tax_base: u32,
+    pub total_population: u32,
+    pub effective_development: u32,
+    pub active_state_capacity: u32,
+    pub building_levels: u32,
+}
+
+/// The size of the tie at this country's value, for each ranked metric. A value
+/// that one country has is a tie of one.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryOverviewTies {
+    pub great_power: u32,
+    pub development: u32,
+    pub control: u32,
+    pub tax_gap: u32,
+    pub rgo: u32,
+    pub adm_rating: u32,
+    pub dip_rating: u32,
+    pub mil_rating: u32,
+    pub max_manpower: u32,
+    pub max_sailors: u32,
+    pub army_tradition: u32,
+    pub navy_tradition: u32,
     pub net_gold: u32,
     pub manpower: u32,
     pub stability: u32,
@@ -496,10 +560,37 @@ present_dto! {
     }
 }
 
+/// Where one location stands on one metric. A rank is one plus the locations above, so
+/// a tie shares the better rank, and `*_tied` says how many share it.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct LocationRank {
+    pub world: u32,
+    pub world_tied: u32,
+    pub country: u32,
+    pub country_tied: u32,
+}
+
+/// The ranks of a location among all owned land and among its owner's land.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct LocationRanks {
+    pub world_count: u32,
+    pub country_count: u32,
+    pub development: LocationRank,
+    pub population: LocationRank,
+    pub tax_base: LocationRank,
+    pub wealth: LocationRank,
+    pub control: LocationRank,
+}
+
 present_dto! {
     pub(crate) workspace LocationProfileSource<'bump> => pub LocationProfile {
         header: LocationHeaderSource => LocationHeader,
         stats: LocationStatsSource<'bump> => LocationStats,
+        ranks: LocationRanks,
         buildings: Vec<BuildingEntrySource> => Vec<BuildingEntry>,
         population_profile: Vec<LocationPopRowSource> => Vec<LocationPopRow>,
     }

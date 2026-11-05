@@ -1,3 +1,5 @@
+import { formatLongDate } from "@/features/timeline/date";
+import { pointLabel, pointsToSave } from "../../../stack/yearlySeries";
 import { useMemo } from "react";
 import type { ConcentrationPoint, LocationRow, PopulationTypeProfileRow } from "@/wasm/wasm_eu5";
 import { formatCount, formatExact, formatInt, formatPercent, formatRate } from "@/lib/format";
@@ -39,12 +41,12 @@ function concentrationFromLocations(locations: LocationRow[]): ConcentrationPoin
   });
 }
 
-function PopulationHistoryChart({ series }: { series: number[] }) {
+function PopulationHistoryChart({ series, now }: { series: number[]; now: number }) {
   const saveDate = useEu5SaveDate();
 
   const data = useMemo(
-    () => series.map((value, index) => [index - series.length + 1, value * 1000]),
-    [series],
+    () => pointsToSave(series, saveDate, now).map(([x, y]) => [x - saveDate.year, y]),
+    [series, saveDate, now],
   );
 
   const option = useMemo((): EChartsOption => {
@@ -58,7 +60,7 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
       xAxis: {
         type: "value",
         min: firstOffset,
-        max: 0,
+        max: "dataMax",
         axisLabel: {
           color: tickColor,
           customValues: yearTicks,
@@ -81,9 +83,9 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           const arr = Array.isArray(params) ? params : [params];
           const value = arr[0]?.value;
           if (!Array.isArray(value)) return "";
-          const year = baseYear + Number(value[0]);
+          const label = pointLabel(baseYear + Number(value[0]), formatLongDate(saveDate));
           const v = Number(value[1]);
-          return `<strong>${year}</strong><br/>Population: ${formatExact(Math.round(v))}`;
+          return `<strong>${label}</strong><br/>Population: ${formatExact(Math.round(v))}`;
         },
       },
       series: [
@@ -195,7 +197,7 @@ export function CountryPopulationTabContent({
           <ReadoutFigure value={formatInt(locations.length)} label="locations" />
         </InsightReadout>
 
-        {showHistory && <PopulationHistoryChart series={historicalPopulation} />}
+        {showHistory && <PopulationHistoryChart series={historicalPopulation} now={total} />}
 
         <div className="grid grid-cols-1 gap-4 @[640px]:grid-cols-2">
           {hasTypeProfile && (

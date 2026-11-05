@@ -1,5 +1,7 @@
+import { useCallback, useRef } from "react";
 import { formatInt, formatTick } from "@/lib/format";
 import {
+  chartGutter,
   chartInk,
   chartNumberText,
   getEChartsTheme,
@@ -7,12 +9,14 @@ import {
 } from "@/components/viz/echartsTheme";
 import type { CountryRef } from "@/wasm/wasm_eu5";
 import { displayTag } from "../../stack/selection";
-import { useEu5Players } from "../../store";
+import { useEu5HomeCountry, useEu5Players, useEu5SelectionState } from "../../store";
+import { useFullView } from "../../stack/fullView";
+import { useSelectedCountries } from "../../stack/selected";
 
 /** The largest countries that have a label on a scatter, by the x value */
 const TOP_LABELS = 5;
 
-/** Space after the largest value on a log axis, so that its label and its You mark stay in the chart */
+/** Space after the largest value on a log axis, so that a label stays in the chart */
 const LOG_HEADROOM = 3;
 
 export interface LogDomain {
@@ -88,9 +92,6 @@ export function dotLabel(tag: string, name: string): string {
   return displayTag(tag) ?? name;
 }
 
-/** The mark of the player's own dot. A multiplayer save does not tell which player reads it. */
-const playerMark = (multiplayer: boolean) => (multiplayer ? "Player" : "You");
-
 interface DotSource {
   x: number;
   y: number;
@@ -98,109 +99,175 @@ interface DotSource {
   name: string;
   color: string | null | undefined;
   player?: boolean;
+  id?: number;
+  /** What "largest" means, when the x axis is not the total */
+  size?: number;
 }
 
 /** The light ring on a dot in its game colour, so that a dark colour shows on the panel */
 const DOT_RING = { borderColor: "rgba(255, 255, 255, 0.85)", borderWidth: 1.25 } as const;
 
+/** The size of a dot that has its colour, and of one with a label */
+const COLOURED_DOT = 8;
+const LABELLED_DOT = 10;
+
 /**
  * The dots of a scatter of countries. Most dots have one muted neutral colour,
- * because hue on hundreds of dots shows no pattern. The player, the selected
- * countries, and the five largest have their game colour, a ring, and a label.
- * They come last, so they are on top of the other dots. The highest come first
- * among them: a label stands over its dot, so only a dot higher up can be in its
- * way, and the label placement then knows that dot.
+ * because hue on hundreds of dots shows no pattern. The players have their game
+ * colour and a ring. The save's own country, the selected countries, and the five
+ * largest also have a label. Each label is the country's name, and a label that finds
+ * no free place gives way, so that labels never collide. A label does not name a
+ * player: the pointer gives that, and so does the list.
+ *
+ * The labelled dots come last, so they are on top, and the most important of them
+ * come first among themselves, because they choose their place first.
  */
 export function scatterDots<T extends DotSource>(
   rows: readonly T[],
   domain: LogDomain,
   selected: readonly CountryRef[],
-  multiplayer = false,
+  home?: number,
+  /** Name each player: the frame has the room, or the players are the subject */
+  namePlayers = false,
 ) {
-  const largest = [...rows].sort((a, b) => b.x - a.x).slice(0, TOP_LABELS);
-  const labelled = new Set([...largest.map((r) => r.tag), ...selected.map((c) => c.tag)]);
-  const isHighlighted = (row: T) => row.player === true || labelled.has(row.tag);
-  return rows
-    .map((row) => {
-      const highlighted = isHighlighted(row);
-      return {
-        ...row,
-        value: [logPosition(row.x, domain), row.y] as [number, number],
-        dotLabel: row.player
-          ? `${dotLabel(row.tag, row.name)} ${playerMark(multiplayer)}`
-          : dotLabel(row.tag, row.name),
-        label: { show: highlighted },
-        ...(highlighted
-          ? {
-              symbolSize: 10,
-              itemStyle: { ...DOT_RING, color: row.color || neutralMark, opacity: 1 },
-            }
-          : {}),
-      };
-    })
-    .sort((a, b) => Number(a.label.show) - Number(b.label.show) || (a.label.show ? b.y - a.y : 0));
+  // With players on the chart, the group wants to find itself first.
+  const players = rows.filter((r) => r.player);
+  const largest = [...(players.length > 1 ? players : rows)]
+    .sort((a, b) => (b.size ?? b.x) - (a.size ?? a.x))
+    .slice(0, TOP_LABELS)
+    .map((r) => r.tag);
+  const chosen = new Set(selected.map((c) => c.tag));
+  const important = (row: T) => (home !== undefined && row.id === home) || chosen.has(row.tag);
+  const span = Math.log(domain.ceiling) - Math.log(domain.floor);
+  const dots = rows.map((row) => {
+    const labelled =
+      important(row) || largest.includes(row.tag) || (namePlayers && row.player === true);
+    const coloured = labelled || row.player === true;
+    const at = logPosition(row.x, domain);
+    return {
+      ...row,
+      value: [at, row.y] as [number, number],
+      dotLabel: row.name,
+      // The share of the axis, so a label near the end can go the other way.
+      across: span > 0 ? (Math.log(at) - Math.log(domain.floor)) / span : 0,
+      label: { show: labelled },
+      ...(coloured
+        ? {
+            symbolSize: labelled ? LABELLED_DOT : COLOURED_DOT,
+            itemStyle: { ...DOT_RING, color: row.color || neutralMark, opacity: 1 },
+          }
+        : {}),
+    };
+  });
+  const weight = (dot: (typeof dots)[number]) =>
+    dot.label.show ? (important(dot as unknown as T) ? 3 : 2) : dot.itemStyle ? 1 : 0;
+  return dots.sort((a, b) => weight(a) - weight(b));
 }
 
-interface LabelRect {
+export interface LabelRect {
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-const overlaps = (a: LabelRect, b: LabelRect) =>
-  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+/** Labels keep this much space between them */
+const LABEL_SPACE = 3;
 
-/** The size of a labelled dot, and the place of its label over the dot */
-const LABELLED_DOT = 10;
+const overlaps = (a: LabelRect, b: LabelRect) =>
+  a.x < b.x + b.width + LABEL_SPACE &&
+  b.x < a.x + a.width + LABEL_SPACE &&
+  a.y < b.y + b.height &&
+  b.y < a.y + a.height;
+
 const LABEL_GAP = 4;
 const LABEL_HEIGHT = 13;
 const LABEL_CHAR_WIDTH = 6.6;
 
 /**
- * The offset of a label from its place over its dot, so that it overlaps no
- * label or labelled dot in `placed`. It tries each side of the dot, then goes
- * higher in steps, so a place is always found and no label is hidden.
+ * Where a label goes around its dot: the first of the near places that overlaps
+ * nothing in `placed`, or null when each one does. A label that has no place gives
+ * way, because a label far from its dot names nothing. `across` is where the dot is on
+ * the x axis: past the middle of the plot a label reads back into the plot.
  */
-export function labelOffset(rect: LabelRect, dot: LabelRect, placed: readonly LabelRect[]) {
-  const below = dot.height + rect.height + LABEL_GAP * 2;
-  const beside = rect.width / 2 + dot.width / 2 + 3;
-  const sideY = dot.height / 2 + rect.height / 2 + LABEL_GAP;
-  const candidates: [number, number][] = [
-    [0, 0],
-    [beside, sideY],
-    [-beside, sideY],
-    [0, below],
-  ];
-  for (let step = 1; step < 40; step += 1) candidates.push([0, -step * (rect.height + 1)]);
-  for (const [dx, dy] of candidates) {
-    const moved = { ...rect, x: rect.x + dx, y: rect.y + dy };
-    if (!placed.some((other) => overlaps(moved, other))) return { dx, dy };
-  }
-  return { dx: 0, dy: 0 };
+export function labelPlace(
+  dot: LabelRect,
+  width: number,
+  height: number,
+  placed: readonly LabelRect[],
+  across = 0,
+  /** The plot, so that a label stays in it */
+  bounds?: LabelRect,
+): LabelRect | null {
+  const centerY = dot.y + dot.height / 2 - height / 2;
+  const right = { x: dot.x + dot.width + LABEL_GAP, y: centerY, width, height };
+  const left = { x: dot.x - LABEL_GAP - width, y: centerY, width, height };
+  const above = {
+    x: dot.x + dot.width / 2 - width / 2,
+    y: dot.y - LABEL_GAP - height,
+    width,
+    height,
+  };
+  const below = {
+    x: dot.x + dot.width / 2 - width / 2,
+    y: dot.y + dot.height + LABEL_GAP,
+    width,
+    height,
+  };
+  const near = across > 0.7 ? [left, above, below] : [right, above, below, left];
+  // Farther places need a leader line, so they come last.
+  const far = [28, 52].flatMap((radius) =>
+    [-0.8, 0.8, -0.3, 0.3, Math.PI - 0.8, Math.PI + 0.8, Math.PI - 0.3, Math.PI + 0.3].map(
+      (angle) => ({
+        x: dot.x + dot.width / 2 + Math.cos(angle) * radius - (Math.cos(angle) < 0 ? width : 0),
+        y: dot.y + dot.height / 2 + Math.sin(angle) * radius - height / 2,
+        width,
+        height,
+      }),
+    ),
+  );
+  const inside = (rect: LabelRect) =>
+    !bounds ||
+    (rect.x >= bounds.x &&
+      rect.y >= bounds.y &&
+      rect.x + rect.width <= bounds.x + bounds.width &&
+      rect.y + rect.height <= bounds.y + bounds.height);
+  return (
+    [...near, ...far].find(
+      (rect) => inside(rect) && !placed.some((other) => overlaps(rect, other)),
+    ) ?? null
+  );
 }
 
 /**
  * The series of a scatter of countries. The neutral dots are muted, under the
- * highlighted dots. ECharts gives a label its layout during the dots' enter
- * animation, when the sizes that it reports are still zero, so only the dot's
- * centre comes from ECharts, and the sizes come from the text.
+ * coloured dots. ECharts gives a label its layout during the dots' enter animation,
+ * when the sizes that it reports are still zero, so only the dot's centre comes
+ * from ECharts, and the sizes come from the text.
  */
-export function countryDotSeries() {
+export function countryDotSeries<T extends { across?: number; label: { show: boolean } }>(
+  data: readonly T[],
+  plot?: () => LabelRect | undefined,
+) {
   let placed: LabelRect[] = [];
   const seen = new Set<number>();
   return {
     type: "scatter" as const,
+    data: data as T[],
     symbolSize: 7,
     itemStyle: { color: neutralMark, opacity: 0.4, borderWidth: 0 },
     label: {
       ...chartNumberText,
       color: chartInk.primary,
+      // A halo keeps a name readable over the dots of a crowded plot.
+      textBorderColor: chartInk.surface,
+      textBorderWidth: 3,
       position: "top" as const,
       distance: LABEL_GAP,
       formatter: (params: { data?: unknown }) =>
         (params.data as { dotLabel?: string } | undefined)?.dotLabel ?? "",
     },
+    labelLine: { show: true, lineStyle: { color: chartInk.muted, width: 1 } },
     labelLayout: (params: { dataIndex?: number; text: string; rect: LabelRect }) => {
       // ECharts lays out the labels in data order. A dot seen before starts a new pass.
       const index = params.dataIndex ?? 0;
@@ -214,26 +281,87 @@ export function countryDotSeries() {
       const half = LABELLED_DOT / 2;
       const dot = { x: x - half, y: y - half, width: LABELLED_DOT, height: LABELLED_DOT };
       const width = params.text.length * LABEL_CHAR_WIDTH + 2;
-      const label = {
-        x: x - width / 2,
-        y: dot.y - LABEL_GAP - LABEL_HEIGHT,
+      const place = labelPlace(
+        dot,
         width,
-        height: LABEL_HEIGHT,
+        LABEL_HEIGHT,
+        placed,
+        data[index]?.across ?? 0,
+        plot?.(),
+      );
+      placed.push(dot);
+      if (!place) return { fontSize: 0 };
+      placed.push(place);
+      // The offset is from the place over the dot, which is where ECharts puts a label.
+      const centerX = place.x + width / 2;
+      const centerY = place.y + LABEL_HEIGHT / 2;
+      const far = Math.hypot(centerX - x, centerY - y) > width / 2 + 16;
+      return {
+        dx: centerX - x,
+        dy: centerY - (dot.y - LABEL_GAP - LABEL_HEIGHT / 2),
+        // A label away from its dot has a leader line to it.
+        labelLinePoints: far
+          ? [
+              [x, y],
+              [centerX < x ? place.x + width : place.x, centerY],
+            ]
+          : [
+              [x, y],
+              [x, y],
+            ],
       };
-      const offset = labelOffset(label, dot, placed);
-      placed.push(dot, { ...label, x: label.x + offset.dx, y: label.y + offset.dy });
-      return offset;
     },
   };
 }
 
-/** Says why some dots have a label, and how many dots are on the left edge of a log axis */
-export function LogFloorNote({ domain, what }: { domain: LogDomain; what: string }) {
+/** The countries that a scatter of countries must mark */
+export function useScatterMarks() {
+  const chart = useRef<{ getWidth: () => number; getHeight: () => number } | null>(null);
+  const selection = useEu5SelectionState();
+  const full = useFullView().on;
+  const plot = useCallback((): LabelRect | undefined => {
+    if (!chart.current) return undefined;
+    const { left, right } = chartGutter;
+    return {
+      x: left,
+      y: 0,
+      width: chart.current.getWidth() - left - right,
+      height: chart.current.getHeight(),
+    };
+  }, []);
+  return {
+    selected: useSelectedCountries(),
+    home: useEu5HomeCountry()?.countryIdx,
+    namePlayers: full || selection?.preset === "players",
+    plot,
+    track: useCallback((instance: { getWidth: () => number; getHeight: () => number }) => {
+      chart.current = instance;
+    }, []),
+  };
+}
+
+/** Says which dots have a colour and a label, as the chart draws them */
+export function LogFloorNote({
+  domain,
+  what,
+  axis,
+}: {
+  domain: LogDomain;
+  what: string;
+  /** The sentence that reads the two axes */
+  axis?: string;
+}) {
   const multiplayer = useEu5Players().length > 1;
+  const home = useEu5HomeCountry();
   return (
-    <div className="mt-1 text-[12px] text-game-ink-500">
+    <div className="mt-1 text-[12px] leading-snug text-game-ink-500">
+      {axis ? <p>{axis}</p> : null}
       <p>
-        Labelled: {multiplayer ? "players" : "You"}, selection and top {TOP_LABELS} by total
+        {multiplayer ? "Coloured: the players. " : ""}Labelled:{" "}
+        {home ? (home.kind === "player" ? "your country, " : "the viewed country, ") : ""}the
+        selection and the top {TOP_LABELS} {multiplayer ? "players" : "countries"} by total.{" "}
+        {multiplayer ? "The Players scope and the full view name each player. " : ""}The pointer
+        names each dot.
       </p>
       {domain.onFloor > 0 ? (
         <p>

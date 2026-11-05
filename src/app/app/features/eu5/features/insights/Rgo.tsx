@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { insightFlow } from "../../stack/levelBody";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -353,7 +354,7 @@ export function RgoInsight() {
   const scopeIsEmpty = data?.scope.isEmpty ?? true;
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <RgoScopeHeader data={data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />

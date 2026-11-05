@@ -18,6 +18,7 @@ use eu5save::models::{
     Color, CountryId, CountryName, CountryRename, DeadCountry, Gamestate, LocationIdx,
     LocationIndexedVec, Locations,
 };
+use jomini::common::PdsDate;
 
 /// One location changing hands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -218,6 +219,38 @@ impl TimelineIndex {
         result
     }
 
+    /// The locations that `country` owns at the end of each year, from the
+    /// year of the first date to the year of `end`, in order.
+    pub fn land_by_year(&self, country: &[CountryId], end: Eu5Date) -> Vec<(i32, u32)> {
+        let Some(first) = self.first_date else {
+            return Vec::new();
+        };
+        let (first_year, last_year) = (i32::from(first.year()), i32::from(end.year()));
+        let mut result = Vec::with_capacity((last_year - first_year + 1).max(0) as usize);
+        let mut land = 0i64;
+        let mut year = first_year;
+        for (idx, date) in self.dates.iter().enumerate() {
+            let date_year = i32::from(date.year());
+            while year < date_year && year <= last_year {
+                result.push((year, land.max(0) as u32));
+                year += 1;
+            }
+            for change in self
+                .events_on(idx)
+                .iter()
+                .filter_map(TimelineEvent::owner_change)
+            {
+                land += i64::from(country.contains(&change.to))
+                    - i64::from(country.contains(&change.from));
+            }
+        }
+        while year <= last_year {
+            result.push((year, land.max(0) as u32));
+            year += 1;
+        }
+        result
+    }
+
     fn events_on(&self, date_idx: usize) -> &[TimelineEvent] {
         let start = self.offsets[date_idx] as usize;
         let end = self.offsets[date_idx + 1] as usize;
@@ -307,6 +340,8 @@ pub struct CountryIdentity<'a> {
     pub tag: &'a str,
     pub name: Option<&'a CountryName<'a>>,
     pub color: Color,
+    /// The coat of arms on that date, when the save keeps it.
+    pub flag: Option<&'a str>,
     /// True when the country has no live record: it exists only in the dead
     /// country archive of the timeline.
     pub dead: bool,
@@ -324,6 +359,13 @@ pub struct CountryIdentities<'bump> {
 }
 
 impl<'bump> CountryIdentities<'bump> {
+    /// The countries that have no live record, with their ids.
+    pub fn dead_countries(
+        &self,
+    ) -> impl Iterator<Item = (CountryId, &'bump DeadCountry<'bump>)> + '_ {
+        self.dead.iter().map(|(id, dead)| (*id, *dead))
+    }
+
     pub fn new(gamestate: &Gamestate<'bump>) -> Self {
         let timeline = &gamestate.timeline_manager;
         let mut renames: FxHashMap<CountryId, Vec<&'bump CountryRename<'bump>>> =
@@ -359,6 +401,7 @@ impl<'bump> CountryIdentities<'bump> {
                 tag: rename.tag.as_str(),
                 name: Some(&rename.name),
                 color: color_from_hex(rename.map_color_hex),
+                flag: rename.flag.as_ref().map(|f| f.to_str()),
                 dead: false,
             });
         }
@@ -370,6 +413,7 @@ impl<'bump> CountryIdentities<'bump> {
                 tag: entry.tag().as_str(),
                 name: Some(&data.country_name),
                 color: data.color,
+                flag: data.flag.as_ref().map(|f| f.to_str()),
                 dead: false,
             });
         }
@@ -379,6 +423,7 @@ impl<'bump> CountryIdentities<'bump> {
             tag: dead.tag.as_str(),
             name: Some(&dead.name),
             color: color_from_hex(dead.map_color_hex),
+            flag: dead.flag.as_ref().map(|f| f.to_str()),
             dead: true,
         })
     }
@@ -424,6 +469,31 @@ mod tests {
 
     fn owner(owners: &LocationIndexedVec<CountryId>, location: u32) -> u32 {
         owners[LocationIdx::new(location)].value()
+    }
+
+    #[test]
+    fn land_by_year_counts_owned_locations_at_each_year_end() {
+        let index = sample_index();
+        let end = date("1341.1.1");
+        assert_eq!(
+            index.land_by_year(&[CountryId::new(4)], end),
+            vec![(1337, 2), (1338, 1), (1339, 1), (1340, 0), (1341, 0)]
+        );
+        assert_eq!(
+            index.land_by_year(&[CountryId::new(5)], end),
+            vec![(1337, 0), (1338, 1), (1339, 1), (1340, 1), (1341, 1)]
+        );
+    }
+
+    /// A country that died and came back has two ids, and one history.
+    #[test]
+    fn land_by_year_sums_each_id_of_one_country() {
+        let index = sample_index();
+        let end = date("1341.1.1");
+        assert_eq!(
+            index.land_by_year(&[CountryId::new(4), CountryId::new(5)], end),
+            vec![(1337, 2), (1338, 2), (1339, 2), (1340, 1), (1341, 1)]
+        );
     }
 
     #[test]

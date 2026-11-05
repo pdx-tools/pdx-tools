@@ -10,7 +10,6 @@ pub mod hover;
 pub mod insights;
 mod map;
 mod models;
-pub(crate) mod overlay;
 pub mod population;
 pub mod presentation;
 pub mod save_hash;
@@ -39,6 +38,4 @@ pub use session::{
 pub use color::Srgb;
 pub use map::*;
 pub use models::*;
-pub(crate) use overlay::OverlayBodyConfigSource;
-pub use overlay::{OverlayBodyConfig, OverlayTable, TableCell};
 pub use save_hash::SaveCheckSummer;

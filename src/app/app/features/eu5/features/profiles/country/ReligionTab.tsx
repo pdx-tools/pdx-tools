@@ -35,7 +35,7 @@ export function ReligionTabContent({ data }: { data: CountryReligionSection }) {
             name: row.religion.name,
             color: row.colorHex,
             value: row.population,
-            title: `${formatInt(row.locationCount)} locations`,
+            title: `${formatInt(row.locationCount)} ${row.locationCount === 1 ? "location" : "locations"}`,
           }}
           display={formatCount(row.population)}
           dim={formatFixedPercent(total > 0 ? row.population / total : 0)}

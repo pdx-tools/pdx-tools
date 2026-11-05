@@ -16,12 +16,18 @@ import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
 import { memo, useEffect, useState } from "react";
-import { cx } from "class-variance-authority";
 import { Eu5Column } from "./stack/Eu5Column";
 import { Eu5Loading, Eu5StepProgress } from "./Eu5Loading";
 import { developerLog } from "@/lib/log";
 import { ogImageUrl } from "@/lib/media";
-import { useLoadEu5, Eu5StoreProvider, useEu5CursorHint, useEu5Engine } from "./store";
+import {
+  useLoadEu5,
+  Eu5StoreProvider,
+  useEu5CursorHint,
+  useEu5Engine,
+  useEu5Players,
+} from "./store";
+import type { AppEngine } from "./ui-engine";
 import type { Eu5SaveInput } from "./store/types";
 import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
 import { useCursorPosition } from "@/hooks/useCursorPosition";
@@ -45,8 +51,8 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
   const cursorRef = useCursorPosition(surfaceRef);
   const error = load.status === "error" ? load.error : null;
   const stepping = load.status === "success" && load.stepping;
-  // An expanded level takes the frame, and the map becomes an inset over it.
-  const [mapInset, setMapInset] = useState(false);
+  // The full view covers the map, and the map keeps its camera behind it.
+  const [fullView, setFullView] = useState(false);
 
   useEffect(() => {
     focus();
@@ -65,13 +71,8 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
       <div
         ref={surfaceRef}
         data-map-surface
-        className={cx(
-          "absolute overflow-hidden",
-          mapInset
-            ? // The column measures this inset and keeps the end of the level clear of it.
-              "right-3 bottom-3 z-40 h-[200px] w-[340px] rounded-panel border border-game-line-strong shadow-2xl"
-            : "inset-0",
-        )}
+        // The canvas in it is the map's one stop for Tab, with its name and its ring.
+        className="absolute inset-0 overflow-hidden [&_canvas:focus-visible]:outline-2 [&_canvas:focus-visible]:-outline-offset-2 [&_canvas:focus-visible]:outline-white [&_canvas:focus-visible]:outline-solid"
       />
 
       {/* UI layer — only when data loaded */}
@@ -83,8 +84,8 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
                 cursorRef={cursorRef}
                 host={host}
                 busy={stepping}
-                expanded={mapInset}
-                onExpand={setMapInset}
+                expanded={fullView}
+                onExpand={setFullView}
               />
             </CampaignAnalysisProvider>
           </Eu5CampaignProvider>
@@ -105,6 +106,22 @@ export const Eu5Ui = ({ save }: Eu5UiProps) => {
   );
 };
 
+/**
+ * Esc takes off a focus, and then a selection, back to the default scope of the save. A
+ * group's save has the players as that scope, so Esc there has nothing to take off.
+ */
+export async function escapeToDefaultScope(engine: AppEngine, multiplayer: boolean) {
+  const before = engine.getState().selectionState;
+  const wasEmpty = before == null || before.isEmpty;
+  const onlyPlayers = before?.preset === "players" && !before.activeProfile;
+  if (multiplayer && onlyPlayers) return;
+  await engine.commands.clearFocusOrSelection();
+  const after = engine.getState().selectionState;
+  if (multiplayer && !wasEmpty && (after == null || after.isEmpty)) {
+    await engine.commands.selectPlayers();
+  }
+}
+
 function saveFilename(save: Eu5SaveInput): string {
   return save.kind === "file" ? save.file.name : save.name;
 }
@@ -121,13 +138,14 @@ const Eu5UiContent = ({
   host: CanvasCourierHost;
   /** The next save of the campaign loads, and this save no longer takes input. */
   busy: boolean;
-  /** A level has the frame, and the map is an inset over it. */
+  /** The analysis has the frame, and the map waits behind it. */
   expanded: boolean;
   onExpand: (expanded: boolean) => void;
 }) => {
   const cursorHint = useEu5CursorHint();
   const engine = useEu5Engine();
   const preview = useMapHistory()?.preview;
+  const multiplayer = useEu5Players().length > 1;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -137,13 +155,40 @@ const Eu5UiContent = ({
         return;
       }
       if (event.key === "Escape" && !busy && !preview) {
-        void engine.commands.clearFocusOrSelection();
+        void escapeToDefaultScope(engine, multiplayer);
+      }
+      if (
+        (event.key === "+" || event.key === "=" || event.key === "-") &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        // Plus on a focused row adds that row, and the list has used the key.
+        const box = engine.getState().mapViewport;
+        if (!box) return;
+        const scale = event.key === "-" ? 1.5 : 1 / 1.5;
+        const { x, y, width, height } = box.viewport;
+        void engine.trigger.fitWorldRect({
+          x: x + (width - width * scale) / 2,
+          y: y + (height - height * scale) / 2,
+          width: width * scale,
+          height: height * scale,
+        });
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [engine, busy, preview]);
+  }, [engine, busy, preview, multiplayer]);
+
+  // The courier makes the canvas, so its name goes on here.
+  useEffect(() => {
+    const canvas = host.canvas;
+    canvas?.setAttribute("role", "application");
+    canvas?.setAttribute(
+      "aria-label",
+      "World map. W, A, S and D pan, plus and minus zoom, and F frames the selection.",
+    );
+  });
 
   useEffect(() => {
     host.setCursor(cursorHint);

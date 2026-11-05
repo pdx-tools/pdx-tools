@@ -90,6 +90,9 @@ pub struct RenderConfig {
 
     pub enable_location_borders: bool,
     pub enable_owner_borders: bool,
+    /// Draw owner borders from the fill, not from the owner color. A map whose
+    /// fill is a value needs this, or the borders are the loudest marks on it.
+    pub neutral_owner_borders: bool,
     pub interaction_mask: LocationFlags,
 }
 
@@ -100,6 +103,7 @@ impl RenderConfig {
             hemisphere,
             enable_location_borders: true,
             enable_owner_borders: true,
+            neutral_owner_borders: false,
             interaction_mask: LocationFlags::INTERACTION,
         }
     }
@@ -171,7 +175,8 @@ struct ShadeUniforms {
     edge_strength: f32,
     // Strength of the location border darkening
     location_edge_strength: f32,
-    _pad0: u32,
+    // Non-zero: an owner border darkens the fill and has no owner color
+    neutral_owner_borders: u32,
     _pad1: u32,
 }
 
@@ -246,7 +251,7 @@ impl ShadeUniforms {
             owner_glow_radius: border_radius(OWNER_GLOW_WIDTH, bounds.zoom_level, scale_factor),
             edge_strength: edge_strength(bounds.zoom_level),
             location_edge_strength: location_edge_strength(bounds.zoom_level),
-            _pad0: 0,
+            neutral_owner_borders: config.neutral_owner_borders as u32,
             _pad1: 0,
         }
     }
@@ -1443,6 +1448,10 @@ impl SurfaceMapRenderer {
         self.scene.renderer_mut().config.enable_owner_borders = enabled;
     }
 
+    pub fn set_neutral_owner_borders(&mut self, neutral: bool) {
+        self.scene.renderer_mut().config.neutral_owner_borders = neutral;
+    }
+
     pub fn set_interaction_mask(&mut self, mask: LocationFlags) {
         self.scene.renderer_mut().config.set_interaction_mask(mask);
     }
@@ -1856,6 +1865,10 @@ impl HeadlessMapRenderer {
 
     pub fn set_owner_borders(&mut self, enabled: bool) {
         self.scene.renderer_mut().config.enable_owner_borders = enabled;
+    }
+
+    pub fn set_neutral_owner_borders(&mut self, neutral: bool) {
+        self.scene.renderer_mut().config.neutral_owner_borders = neutral;
     }
 
     pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) -> LayerId {

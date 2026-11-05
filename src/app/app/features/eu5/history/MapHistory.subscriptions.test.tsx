@@ -85,6 +85,7 @@ function historyStore() {
       playthroughName: "Campaign",
       multiplayer: false,
       players: [],
+      viewpointCountryIdx: null,
       world: { locationCount: 1, countryCount: 1, totalPopulation: 10 },
     },
   });

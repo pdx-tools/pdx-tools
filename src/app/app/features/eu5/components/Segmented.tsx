@@ -68,7 +68,7 @@ const SegmentedItem = React.forwardRef<
         }
       }}
       className={cx(
-        "inline-flex h-full cursor-pointer items-center rounded-[var(--radius-plate)] border border-solid border-transparent px-2.5 font-game-ui text-[12.5px] leading-none whitespace-nowrap transition-colors duration-100",
+        "relative inline-flex h-full cursor-pointer items-center rounded-[var(--radius-plate)] border border-solid border-transparent px-2.5 font-game-ui text-[12.5px] leading-none whitespace-nowrap transition-colors duration-100 before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
         "text-game-ink-300 hover:bg-game-panel-hover hover:text-game-ink-100",
         "data-[state=on]:bg-game-accent-soft data-[state=on]:font-medium data-[state=on]:text-game-accent-100",
         "disabled:cursor-not-allowed disabled:opacity-40",

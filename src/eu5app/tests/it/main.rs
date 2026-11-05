@@ -2,7 +2,7 @@ mod analysis;
 mod fixtures;
 mod utils;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use eu5app::game_data::Localization;
 use eu5app::{EntityKind, Eu5SaveLoader, Eu5Workspace, MapMode};
@@ -144,6 +144,30 @@ fn workspace_scenarios() {
         });
         run_workspace_scenario(save_name, "selection follows the timeline", ws, |ws| {
             country_selection_follows_the_timeline(ws, &localization, save_name)
+        });
+        run_workspace_scenario(save_name, "past realms agree with the save", ws, |ws| {
+            past_realms_agree_with_the_save(ws, &localization)
+        });
+        run_workspace_scenario(save_name, "map names are those of the date", ws, |ws| {
+            map_names_are_those_of_the_date(ws, &localization)
+        });
+        run_workspace_scenario(save_name, "mode and scope matrix", ws, |ws| {
+            mode_scope_matrix(ws, &localization)
+        });
+        run_workspace_scenario(save_name, "sequential maps stay readable", ws, |ws| {
+            sequential_maps_keep_their_land_readable(ws)
+        });
+        run_workspace_scenario(save_name, "market key has the map colours", ws, |ws| {
+            market_key_has_the_map_colours(ws, &localization)
+        });
+        run_workspace_scenario(save_name, "country figures agree", ws, |ws| {
+            country_figures_agree(ws, &localization)
+        });
+        run_workspace_scenario(save_name, "no name shows a token", ws, |ws| {
+            no_name_shows_a_token(ws, &localization)
+        });
+        run_workspace_scenario(save_name, "population history is in people", ws, |ws| {
+            population_history_is_in_people(ws, &localization)
         });
         run_workspace_scenario(save_name, "market scope across the timeline", ws, |ws| {
             market_scope_survives_the_timeline(ws, save_name)
@@ -589,6 +613,548 @@ fn country_selection_follows_the_timeline(
 }
 
 /// Markets have no history, so a market scope stays on a past date.
+/// Each row of the list of a past date agrees with the save and with a selection of it:
+/// a country that lives at the save has its land there, and a click on the row
+/// selects the land that the row counts.
+fn past_realms_agree_with_the_save(ws: &mut Eu5Workspace, localization: &Localization) {
+    let summary = ws.timeline_summary();
+    if !summary.available {
+        return;
+    }
+    ws.set_timeline_date(summary.start);
+    let live_tags: BTreeMap<String, u32> = ws
+        .gamestate()
+        .countries
+        .iter()
+        .filter(|entry| entry.data().is_some())
+        .map(|entry| (entry.tag().as_str().to_string(), entry.idx().value()))
+        .collect();
+    let realms = ws.localized(localization).presenter().dated_realms(None);
+    assert!(!realms.rows.is_empty());
+    for row in realms.rows {
+        let Some(country) = row.country else {
+            assert!(
+                !live_tags.contains_key(&row.tag),
+                "{} lives at the save but reads as gone",
+                row.tag
+            );
+            assert_eq!(row.locations_at_save, 0);
+            continue;
+        };
+        let idx = eu5save::models::CountryIdx::from_value(country.country.key.value()).unwrap();
+        let at_save = ws
+            .gamestate()
+            .locations
+            .iter()
+            .filter(|entry| {
+                Some(entry.location().owner) == Some(ws.gamestate().countries.index(idx).id())
+            })
+            .count() as u32;
+        assert_eq!(row.locations_at_save, at_save, "{} at the save", row.tag);
+        assert_eq!(
+            ws.dated_land_numbers(idx).0,
+            row.locations,
+            "{} land",
+            row.tag
+        );
+
+        ws.select_country_by_idx(idx);
+        assert_eq!(
+            ws.selection_state().selected_locations().len() as u32,
+            row.locations,
+            "{} selection",
+            row.tag
+        );
+        ws.clear_selection();
+    }
+}
+
+/// A name on the map and a row of the list of that date say one thing.
+fn map_names_are_those_of_the_date(ws: &mut Eu5Workspace, localization: &Localization) {
+    let summary = ws.timeline_summary();
+    if !summary.available {
+        return;
+    }
+    for date in [summary.start, summary.end] {
+        ws.set_timeline_date(date);
+        let presenter = ws.localized(localization).presenter();
+        let labels = presenter.realm_labels();
+        let realms = presenter.dated_realms(None);
+        for row in &realms.rows {
+            let Some(country) = &row.country else {
+                continue;
+            };
+            let idx = u32::from(country.country.key);
+            let label = labels
+                .labels
+                .iter()
+                .find(|label| label.country_idx == Some(idx))
+                .unwrap_or_else(|| panic!("{} has no label on {date:?}", row.name));
+            assert_eq!(label.name, row.name, "{date:?}");
+            assert_eq!(label.location_count, row.locations, "{} {date:?}", row.name);
+            let dated = presenter
+                .dated_land(eu5save::models::CountryIdx::from_value(idx).unwrap())
+                .unwrap();
+            assert_eq!(dated.name, row.name, "{date:?}");
+            assert_eq!(dated.rank, row.rank, "{} {date:?}", row.name);
+        }
+    }
+    ws.set_timeline_date(summary.end);
+}
+
+/// No name shows a raw token of the game's text, on any date and in any list.
+fn no_name_shows_a_token(ws: &mut Eu5Workspace, localization: &Localization) {
+    let summary = ws.timeline_summary();
+    let dates: Vec<_> = if summary.available {
+        vec![summary.start, summary.end]
+    } else {
+        vec![]
+    };
+    let mut bad: Vec<String> = Vec::new();
+    for date in dates {
+        ws.set_timeline_date(date);
+        let presenter = ws.localized(localization).presenter();
+        bad.extend(
+            presenter
+                .realm_labels()
+                .labels
+                .into_iter()
+                .map(|label| label.name)
+                .filter(|name| name.contains('$')),
+        );
+        bad.extend(
+            presenter
+                .dated_realms(None)
+                .rows
+                .into_iter()
+                .map(|row| row.name)
+                .filter(|name| name.contains('$')),
+        );
+    }
+    if summary.available {
+        ws.set_timeline_date(summary.end);
+    }
+    bad.sort();
+    bad.dedup();
+    assert!(bad.is_empty(), "names with a token: {bad:?}");
+}
+
+/// Each map mode crossed with each scope. Rows are of the land in scope, each total adds up
+/// from its rows, names are of the land in scope, and the key has the colours of the map.
+fn mode_scope_matrix(ws: &mut Eu5Workspace, localization: &Localization) {
+    let by_rank: Vec<_> = {
+        let mut rows: Vec<_> = ws
+            .gamestate()
+            .countries
+            .iter()
+            .filter_map(|entry| {
+                let data = entry.data()?;
+                (data.great_power_rank > 0).then_some((data.great_power_rank, entry.idx()))
+            })
+            .collect();
+        rows.sort_by_key(|(rank, _)| *rank);
+        rows.into_iter().map(|(_, idx)| idx).collect()
+    };
+    let owners: BTreeSet<_> = ws
+        .gamestate()
+        .locations
+        .iter()
+        .filter_map(|entry| entry.location().owner.real_id())
+        .map(|id| id.country_id())
+        .collect();
+    let landed: Vec<_> = by_rank
+        .into_iter()
+        .filter(|idx| owners.contains(&ws.gamestate().countries.index(*idx).id()))
+        .collect();
+    let has_players = ws.players().next().is_some();
+    for scope in ["all", "players", "top ten", "pair"] {
+        ws.clear_selection();
+        match scope {
+            "players" if !has_players => continue,
+            "players" => {
+                ws.select_players();
+            }
+            "top ten" => {
+                ws.select_countries(&landed[..10]);
+            }
+            "pair" => {
+                ws.select_countries(&landed[20..22]);
+            }
+            _ => {}
+        }
+        let state = ws.selection_state();
+        let in_scope: BTreeSet<u32> = ws
+            .gamestate()
+            .locations
+            .iter()
+            .filter(|entry| state.is_empty() || state.contains(entry.idx()))
+            .filter_map(|entry| entry.location().owner.real_id())
+            .filter_map(|id| ws.gamestate().countries.get(id.country_id()))
+            .map(|idx| idx.value())
+            .collect();
+        if scope == "players" {
+            let played: BTreeSet<u32> = ws.players().map(|p| p.country.value()).collect();
+            assert!(
+                in_scope.is_subset(&played),
+                "the players scope holds a non-player"
+            );
+        }
+        let presenter = ws.localized(localization).presenter();
+        let check = |what: &str, rows: Vec<u32>| {
+            let outside: Vec<_> = rows.iter().filter(|key| !in_scope.contains(key)).collect();
+            assert!(
+                outside.is_empty(),
+                "{scope}/{what}: rows out of scope {outside:?}"
+            );
+        };
+        let dev = presenter.calculate_development_insight();
+        check(
+            "development",
+            dev.countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+        let sum: f64 = dev.countries.iter().map(|r| r.total_development).sum();
+        assert!(
+            (sum - dev.scope.total_development).abs() < 1.0,
+            "{scope}: development total {} against rows {sum}",
+            dev.scope.total_development
+        );
+        check(
+            "efficacy",
+            presenter
+                .calculate_state_efficacy_insight()
+                .countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+        check(
+            "wealth",
+            presenter
+                .calculate_wealth_insight()
+                .countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+        check(
+            "tax gap",
+            presenter
+                .calculate_unrealized_tax_base_insight()
+                .countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+        check(
+            "population",
+            presenter
+                .calculate_population_insight()
+                .countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+        check(
+            "control",
+            presenter
+                .calculate_control_insight()
+                .scatter_countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+
+        // The followers add up to the people of the land in scope.
+        let scope_population: f64 = dev
+            .countries
+            .iter()
+            .map(|r| f64::from(r.total_population))
+            .sum();
+        let followers: f64 = presenter
+            .calculate_religion_insight()
+            .religions
+            .iter()
+            .map(|r| f64::from(r.follower_population))
+            .sum();
+        assert!(
+            (followers - scope_population).abs() <= scope_population * 0.01 + 1000.0,
+            "{scope}: followers {followers} against people {scope_population}"
+        );
+
+        // A lens on a thing of a list adds up to that row, and stays in scope.
+        let presenter = ws.localized(localization).presenter();
+        let religions = presenter.calculate_religion_insight();
+        if let Some(top) = religions.religions.first() {
+            let lens = presenter.item_lens(&eu5app::insights::LensItem::Religion(
+                top.religion.key.clone(),
+            ));
+            check(
+                "religion lens",
+                lens.rows
+                    .iter()
+                    .map(|r| u32::from(r.country.country.key))
+                    .collect(),
+            );
+            assert!(
+                (lens.total - f64::from(top.follower_population)).abs() <= 2.0 + lens.total * 0.01,
+                "{scope}: lens {} against row {}",
+                lens.total,
+                top.follower_population
+            );
+        }
+
+        // A list by country has each country's own figure of the other views.
+        if scope == "pair" {
+            let presenter = ws.localized(localization).presenter();
+            for (item, figure) in [
+                (eu5app::insights::LensItem::AllBuildings, "buildings"),
+                (eu5app::insights::LensItem::AllRawMaterials, "rgo"),
+            ] {
+                for row in presenter.item_lens(&item).rows {
+                    let idx =
+                        eu5save::models::CountryIdx::from_value(u32::from(row.country.country.key))
+                            .unwrap();
+                    let overview = presenter.country_profile_for(idx).unwrap().overview;
+                    let own = if figure == "rgo" {
+                        overview.rgo_levels
+                    } else {
+                        overview.building_levels
+                    };
+                    assert!(
+                        (row.value - own).abs() < 0.01,
+                        "{figure}: list {} against the country's {own}",
+                        row.value
+                    );
+                }
+            }
+        }
+
+        for mode in ALL_MAP_MODES {
+            ws.set_map_mode(mode);
+            let labels = ws.localized(localization).presenter().realm_labels().labels;
+            if mode == MapMode::Political && scope == "pair" {
+                let chosen: Vec<_> = landed[20..22].iter().map(|idx| idx.value()).collect();
+                for idx in chosen {
+                    assert!(
+                        labels.iter().any(|label| label.country_idx == Some(idx)),
+                        "a selected country has no name on the map"
+                    );
+                }
+            }
+            if matches!(mode, MapMode::Religion | MapMode::Markets) {
+                let land = ws
+                    .gamestate()
+                    .locations
+                    .iter()
+                    .filter(|entry| {
+                        let state = ws.selection_state();
+                        state.is_empty() || state.contains(entry.idx())
+                    })
+                    .count() as u32;
+                let named: u32 = labels.iter().map(|label| label.location_count).sum();
+                assert!(
+                    named <= land,
+                    "{scope}/{mode:?}: names cover {named} of {land}"
+                );
+                assert!(!labels.is_empty(), "{scope}/{mode:?}: no names");
+            }
+        }
+    }
+    ws.clear_selection();
+    ws.set_map_mode(MapMode::Political);
+}
+
+/// One clip rule for the sequential maps: the key says where the scale stops and the true
+/// highest value, and most land with a value is not near black.
+fn sequential_maps_keep_their_land_readable(ws: &mut Eu5Workspace) {
+    use eu5app::gradient::MapLegend;
+    ws.clear_selection();
+    for mode in [
+        MapMode::Development,
+        MapMode::StateEfficacy,
+        MapMode::Wealth,
+        MapMode::UnrealizedTaxBase,
+        MapMode::BuildingLevels,
+        MapMode::RgoLevel,
+        MapMode::Population,
+    ] {
+        let change = ws.set_map_mode(mode);
+        let MapLegend::Quantitative(config) = change.legend else {
+            panic!("{mode:?} has no scale");
+        };
+        assert!(config.clamped, "{mode:?} has no clip");
+        assert!(
+            config.true_max >= config.max_value,
+            "{mode:?}: true top under the clip"
+        );
+        let painted: Vec<u32> =
+            bytemuck::cast_slice(ws.location_arrays().buffers().primary_colors()).to_vec();
+        let black = |color: u32| {
+            let [b, g, r, _] = color.to_le_bytes();
+            u32::from(r.max(g).max(b)) < 40
+        };
+        let mut land = 0;
+        let mut dark = 0;
+        for entry in ws.gamestate().locations.iter() {
+            if entry.location().owner.is_dummy() {
+                continue;
+            }
+            let Some(gpu) = ws.gpu_index_of(entry.idx()) else {
+                continue;
+            };
+            land += 1;
+            dark += u32::from(black(painted[gpu]));
+        }
+        let share = f64::from(dark) / f64::from(land.max(1));
+        // A new campaign has land with no buildings at all.
+        if mode != MapMode::BuildingLevels || config.true_max >= 100.0 {
+            assert!(
+                share < 0.3,
+                "{mode:?}: {share:.3} of the land is near black"
+            );
+        }
+    }
+    ws.set_map_mode(MapMode::Political);
+}
+
+/// The key of the markets map has the colour that the painter gives at full access.
+fn market_key_has_the_map_colours(ws: &mut Eu5Workspace, localization: &Localization) {
+    ws.clear_selection();
+    ws.set_map_mode(MapMode::Markets);
+    let key: BTreeMap<u32, [u8; 3]> = ws
+        .localized(localization)
+        .presenter()
+        .calculate_market_insight()
+        .markets
+        .iter()
+        .map(|row| (u32::from(row.market.market.key), row.market.color_hex.0))
+        .collect();
+    let painted: Vec<u32> =
+        bytemuck::cast_slice(ws.location_arrays().buffers().primary_colors()).to_vec();
+    let mut checked = 0;
+    let mut found: BTreeMap<u32, BTreeSet<[u8; 3]>> = BTreeMap::new();
+    for (entry, _) in ws.gamestate().locations.iter().zip(0..) {
+        let location = entry.location();
+        if location.market_access < 0.75 || ws.location_terrain(entry.idx()).is_water() {
+            continue;
+        }
+        let Some(market) = location.market else {
+            continue;
+        };
+        let Some(gpu) = ws.gpu_index_of(entry.idx()) else {
+            continue;
+        };
+        let [b, g, r, _] = painted[gpu].to_le_bytes();
+        found.entry(market.value()).or_default().insert([r, g, b]);
+        checked += 1;
+    }
+    assert!(checked > 0 || key.is_empty());
+    for (market, colors) in found {
+        let Some(swatch) = key.get(&market) else {
+            continue;
+        };
+        assert!(
+            colors.contains(swatch),
+            "market {market}: key {swatch:?}, map {colors:?}"
+        );
+    }
+    ws.set_map_mode(MapMode::Political);
+}
+
+/// The figures of one country agree: its yearly tax base record sums the same thing as
+/// the table, some months earlier, and its score places have no gap.
+fn country_figures_agree(ws: &mut Eu5Workspace, localization: &Localization) {
+    let owners: BTreeSet<_> = ws
+        .gamestate()
+        .locations
+        .iter()
+        .filter_map(|entry| entry.location().owner.real_id())
+        .map(|id| id.country_id())
+        .collect();
+    let mut places: Vec<(u32, u32)> = owners.iter().filter_map(|id| ws.score_place(*id)).collect();
+    places.sort();
+    places.dedup();
+    let mut next = 1;
+    for (place, tied) in places {
+        assert_eq!(place, next, "score places skip");
+        next = place + tied;
+    }
+
+    // A profile takes time, so a sample of the countries is enough.
+    let presenter = ws.localized(localization).presenter();
+
+    // The control list has each country of size, so its first row leads the whole world.
+    let control = presenter.calculate_control_insight();
+    let large: BTreeMap<_, u32> =
+        ws.gamestate()
+            .locations
+            .iter()
+            .fold(BTreeMap::new(), |mut land, entry| {
+                if let Some(id) = entry.location().owner.real_id() {
+                    *land.entry(id.country_id()).or_default() += 1;
+                }
+                land
+            });
+    let large = large.values().filter(|count| **count >= 10).count();
+    assert!(
+        control.scatter_countries.len() >= large,
+        "control list has {} of {large} countries",
+        control.scatter_countries.len()
+    );
+
+    let mut gaps: Vec<f64> = owners
+        .iter()
+        .step_by(20)
+        .filter_map(|id| {
+            let idx = ws.gamestate().countries.get(*id)?;
+            let overview = presenter.country_profile_for(idx)?.overview;
+            let last = overview.historical_tax_base.last().copied()?;
+            // A new campaign has no record to speak of.
+            (overview.tax_base > 20.0 && overview.historical_tax_base.len() > 10)
+                .then_some((last - overview.tax_base).abs() / overview.tax_base)
+        })
+        .collect();
+    if !gaps.is_empty() {
+        gaps.sort_by(f64::total_cmp);
+        let middle = gaps[gaps.len() / 2];
+        assert!(
+            middle < 0.1,
+            "tax base record is {middle} away from the locations, n={}",
+            gaps.len()
+        );
+    }
+}
+
+/// The last sample of a yearly population series is in people, as the current figure is.
+fn population_history_is_in_people(ws: &mut Eu5Workspace, localization: &Localization) {
+    let countries: Vec<_> = ws
+        .gamestate()
+        .countries
+        .iter()
+        .filter_map(|entry| entry.data().map(|_| entry.idx()))
+        .collect();
+    let presenter = ws.localized(localization).presenter();
+    let mut ratios: Vec<f64> = countries
+        .into_iter()
+        .step_by(20)
+        .filter_map(|idx| {
+            let overview = presenter.country_profile_for(idx)?.overview;
+            let last = overview.historical_population.last().copied()?;
+            let now = f64::from(overview.total_population);
+            (now >= 100_000.0 && last > 0.0).then_some(last / now)
+        })
+        .collect();
+    assert!(!ratios.is_empty(), "no country had a population history");
+    // The save writes the sample at the turn of a year, and a country can gain land after
+    // it, so one country can differ. The middle of them must not.
+    ratios.sort_by(f64::total_cmp);
+    let middle = ratios[ratios.len() / 2];
+    assert!((0.8..1.25).contains(&middle), "middle ratio {middle}");
+}
+
 fn market_scope_survives_the_timeline(ws: &mut Eu5Workspace, save_name: &str) {
     let summary = ws.timeline_summary();
     let Some((_, anchor)) = find_owned_market_anchor(ws) else {

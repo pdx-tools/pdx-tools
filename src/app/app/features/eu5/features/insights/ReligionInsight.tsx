@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { insightFlow } from "../../stack/levelBody";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -40,7 +41,7 @@ export function ReligionInsight() {
   const religions = insightQuery.data?.religions ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
       ) : insightQuery.loading && !insightQuery.data ? (

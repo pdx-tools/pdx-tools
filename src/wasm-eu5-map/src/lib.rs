@@ -514,16 +514,23 @@ impl Eu5WasmMapRenderer {
         color_ids: Vec<u16>,
         insets: Ts<WasmViewportInsets>,
     ) -> Result<bool, JsError> {
-        let points: Vec<_> = color_ids
-            .iter()
-            .map(|&id| self.spatial_index.point_of(R16::new(id)))
-            .map(|p| (p.x as f32, p.y as f32))
-            .collect();
+        // A set of countries comes in groups, each with its own far colonies. Each group
+        // is in the frame, so a small country does not read as a colony of a large one.
         let world_width = self.controller.hemisphere_size().world().width as f32;
-        let Some(region) = frame_region(&points, world_width) else {
+        let regions: Vec<FrameRegion> = color_ids
+            .split(|&id| id == FRAME_GROUP_END)
+            .filter_map(|group| {
+                let points: Vec<_> = group
+                    .iter()
+                    .map(|&id| self.spatial_index.point_of(R16::new(id)))
+                    .map(|p| (p.x as f32, p.y as f32))
+                    .collect();
+                frame_region(&points, world_width)
+            })
+            .collect();
+        let Some(region) = union_regions(&regions, world_width) else {
             return Ok(false);
         };
-
         let insets: ViewportInsets = insets.to_rust()?.into();
         self.input.frame_region(
             WorldPoint::new(region.center_x, region.center_y),
@@ -556,6 +563,14 @@ impl Eu5WasmMapRenderer {
         self.controller.renderer_mut().set_owner_borders(enabled);
     }
 
+    /// Draw owner borders from the fill, for a map whose fill is a value
+    #[wasm_bindgen]
+    pub fn set_neutral_owner_borders(&mut self, neutral: bool) {
+        self.controller
+            .renderer_mut()
+            .set_neutral_owner_borders(neutral);
+    }
+
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
         WasmQueuedWorkFuture::from_queued_work_future(self.controller.queued_work())
@@ -572,6 +587,9 @@ const FRAME_GROUP_GAP: f32 = 0.05;
 /// A group of land stays in the frame if it holds this share of the largest group.
 const FRAME_GROUP_SHARE: usize = 2;
 
+/// Between two groups of a list of color IDs. No location has this ID.
+const FRAME_GROUP_END: u16 = u16::MAX;
+
 #[derive(Debug, PartialEq)]
 struct FrameRegion {
     center_x: f32,
@@ -585,6 +603,32 @@ struct FrameRegion {
 /// does not widen the frame: a frame of an ocean shows nothing of the country. The
 /// map wraps, so the region goes the short way around the world, and its center
 /// can be past the end of the world.
+fn union_regions(regions: &[FrameRegion], world_width: f32) -> Option<FrameRegion> {
+    let first = regions.first()?;
+    let (mut x0, mut x1) = (f32::MAX, f32::MIN);
+    let (mut y0, mut y1) = (f32::MAX, f32::MIN);
+    for region in regions {
+        // The map wraps, so each region goes to its nearest place by the first.
+        let mut x = region.center_x;
+        while x - first.center_x > world_width / 2.0 {
+            x -= world_width;
+        }
+        while first.center_x - x > world_width / 2.0 {
+            x += world_width;
+        }
+        x0 = x0.min(x - region.width / 2.0);
+        x1 = x1.max(x + region.width / 2.0);
+        y0 = y0.min(region.center_y - region.height / 2.0);
+        y1 = y1.max(region.center_y + region.height / 2.0);
+    }
+    Some(FrameRegion {
+        center_x: (x0 + x1) / 2.0,
+        center_y: (y0 + y1) / 2.0,
+        width: x1 - x0,
+        height: y1 - y0,
+    })
+}
+
 fn frame_region(points: &[(f32, f32)], world_width: f32) -> Option<FrameRegion> {
     if points.is_empty() {
         return None;

@@ -1,5 +1,4 @@
 use eu5app::Eu5SaveMetadata;
-use eu5app::TableCell as Eu5TableCell;
 use eu5app::entity_profile::country::presentation::{
     ActiveProfileIdentity, CountryPopulationProfile, CountryProfile, DiplomacySection,
     EntityHeader, LocationsSection,
@@ -12,7 +11,9 @@ use eu5app::game_data::Localization;
 use eu5app::game_data::{OptimizedGameBundle, OptimizedLocalizationBundle};
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
 use eu5app::insights::buildings::presentation::BuildingLevelsInsightData;
-use eu5app::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
+use eu5app::insights::control::presentation::{
+    ControlInsightData, DatedRealms, PoliticalStanding, PoliticalWorldScoreboard,
+};
 use eu5app::insights::development::presentation::DevelopmentInsightData;
 use eu5app::insights::markets::presentation::{
     MarketInsightData, MarketProductionLocationSummary, ScopedGoodSummary,
@@ -23,7 +24,9 @@ use eu5app::insights::religion::presentation::ReligionInsightData;
 use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
-use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope, WorldSummary};
+use eu5app::insights::{
+    DatedLand, LandHistory, RealmLabels, UnrealizedTaxBaseScope, WealthScope, WorldSummary,
+};
 use eu5app::{
     CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, OpeningView,
     UiCountryIdx,
@@ -143,28 +146,6 @@ mod analysis;
 mod tokens;
 pub use tokens::set_tokens;
 use wasm_pdx_core::blob::{BlobReader, read_blob_start};
-
-#[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[serde(tag = "type", content = "value")]
-#[serde(rename_all = "camelCase")]
-pub enum TableCell {
-    #[serde(rename = "text")]
-    Text(String),
-    #[serde(rename = "integer")]
-    Integer(i64),
-    #[serde(rename = "float")]
-    Float { value: f64, decimals: u8 },
-}
-
-impl From<Eu5TableCell> for TableCell {
-    fn from(cell: Eu5TableCell) -> Self {
-        match cell {
-            Eu5TableCell::Text(s) => TableCell::Text(s),
-            Eu5TableCell::Integer(i) => TableCell::Integer(i),
-            Eu5TableCell::Float { value, decimals } => TableCell::Float { value, decimals },
-        }
-    }
-}
 
 pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
 
@@ -352,57 +333,11 @@ pub struct Eu5AppMetadata {
     pub multiplayer: bool,
     /// Human players in save order. Empty for observer games.
     pub players: Vec<Eu5PlayerData>,
+    /// The country that a save with no human player was written from. The
+    /// save label names it, and it is not a player.
+    pub viewpoint_country_idx: Option<u32>,
     /// The whole map, the scope of every insight when nothing is selected.
     pub world: WorldSummary,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[serde(rename_all = "camelCase")]
-pub struct ScreenshotOverlayData {
-    pub title: String,
-    pub save_date: String,
-    pub patch_version: String,
-    pub body: OverlayBodyConfig,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[serde(rename_all = "camelCase")]
-pub struct OverlayBodyConfig {
-    pub left_table: OverlayTable,
-    pub right_table: OverlayTable,
-    pub max_rows: Option<u32>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, tsify::Tsify)]
-#[serde(rename_all = "camelCase")]
-pub struct OverlayTable {
-    pub title: Option<String>,
-    pub headers: Vec<String>,
-    pub rows: Vec<Vec<TableCell>>,
-}
-
-impl From<eu5app::OverlayBodyConfig> for OverlayBodyConfig {
-    fn from(config: eu5app::OverlayBodyConfig) -> Self {
-        OverlayBodyConfig {
-            left_table: OverlayTable::from(config.left_table),
-            right_table: OverlayTable::from(config.right_table),
-            max_rows: config.max_rows,
-        }
-    }
-}
-
-impl From<eu5app::OverlayTable> for OverlayTable {
-    fn from(table: eu5app::OverlayTable) -> Self {
-        OverlayTable {
-            title: table.title,
-            headers: table.headers,
-            rows: table
-                .rows
-                .into_iter()
-                .map(|row| row.into_iter().map(TableCell::from).collect())
-                .collect(),
-        }
-    }
 }
 
 /// Stream an uncompressed save, so the large file is not in memory. Read a
@@ -715,6 +650,12 @@ impl Eu5App {
                     country_idx: p.country.into(),
                 })
                 .collect(),
+            viewpoint_country_idx: self.meta.save_label.as_deref().and_then(|label| {
+                self.localized()
+                    .presenter()
+                    .viewpoint_country(label)
+                    .map(|idx| idx.value())
+            }),
         })
     }
 
@@ -1048,6 +989,15 @@ impl Eu5App {
 
     /// Select all locations owned by human-controlled countries and their subjects.
     #[wasm_bindgen]
+    pub fn select_countries(&mut self, countries: Vec<u32>) -> Result<Ts<MapChangeData>, JsError> {
+        let countries: Vec<_> = countries
+            .into_iter()
+            .filter_map(eu5save::models::CountryIdx::from_value)
+            .collect();
+        map_change_ts(self.app.select_countries(&countries))
+    }
+
+    #[wasm_bindgen]
     pub fn select_players(&mut self) -> Result<Ts<MapChangeData>, JsError> {
         map_change_ts(self.app.select_players())
     }
@@ -1109,32 +1059,31 @@ impl Eu5App {
         )
     }
 
-    /// Get screenshot overlay data for the current map mode
+    /// The GPU color IDs of the selected locations that are on the map, country by country,
+    /// with `u16::MAX` between two countries.
     #[wasm_bindgen]
-    pub fn get_overlay_data(&self) -> Result<Ts<ScreenshotOverlayData>, JsError> {
-        let map_mode_title = self.app().get_map_mode().name().to_string();
-        let save_date = format!("{}", self.app().gamestate().metadata.date.date_fmt());
-        let version = &self.app().gamestate().metadata.version;
-        let patch_version = format!("{}.{}.{}", version.major, version.minor, version.patch);
-
-        let overlay_data = self.localized().presenter().get_overlay_data();
-        into_ts(ScreenshotOverlayData {
-            title: map_mode_title,
-            save_date,
-            patch_version,
-            body: OverlayBodyConfig::from(overlay_data),
-        })
-    }
-
-    /// The GPU color IDs of the selected locations that are on the map.
-    #[wasm_bindgen]
-    pub fn selected_color_ids(&self) -> Vec<u16> {
-        self.app()
-            .selection_state()
-            .selected_locations()
-            .iter()
-            .filter_map(|&idx| self.app().center_at(idx).map(|c| c.value() as u16))
-            .collect()
+    pub fn selected_color_id_groups(&self) -> Vec<u16> {
+        let app = self.app();
+        let mut groups: std::collections::BTreeMap<u32, Vec<u16>> = Default::default();
+        for &idx in app.selection_state().selected_locations() {
+            let owner = app
+                .gamestate()
+                .locations
+                .index(idx)
+                .location()
+                .owner
+                .real_id()
+                .map_or(0, |id| id.country_id().value());
+            if let Some(center) = app.center_at(idx) {
+                groups.entry(owner).or_default().push(center.value());
+            }
+        }
+        let mut out = Vec::new();
+        for group in groups.into_values() {
+            out.extend(group);
+            out.push(u16::MAX);
+        }
+        out
     }
 
     /// Return the GPU color ID needed to center the map at a given location.
@@ -1181,6 +1130,102 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn get_political_world_scoreboard(&self) -> Result<Ts<PoliticalWorldScoreboard>, JsError> {
         into_ts(self.localized().presenter().political_world_scoreboard())
+    }
+
+    /// The countries of the human players that own land now. The save keeps a
+    /// record for each person who joined, so this can be fewer than the records.
+    #[wasm_bindgen]
+    pub fn get_player_countries(&self) -> Vec<u32> {
+        let owners: std::collections::HashSet<_> = self
+            .app()
+            .gamestate()
+            .locations
+            .iter()
+            .filter_map(|entry| entry.location().owner.real_id())
+            .map(|id| id.country_id())
+            .collect();
+        let countries = &self.app().gamestate().countries;
+        let mut result: Vec<u32> = self
+            .app()
+            .players()
+            .map(|player| player.country)
+            .filter(|&idx| owners.contains(&countries.index(idx).id()))
+            .map(|idx| idx.value())
+            .collect();
+        result.sort_unstable();
+        result.dedup();
+        result
+    }
+
+    /// A country's great power rank, with the countries next to it.
+    #[wasm_bindgen]
+    pub fn get_political_standing(
+        &self,
+        country_idx: u32,
+    ) -> Result<Option<Ts<PoliticalStanding>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        option_into_ts(self.localized().presenter().political_standing(idx))
+    }
+
+    /// The countries with the most land on the date the map shows.
+    #[wasm_bindgen]
+    pub fn get_dated_realms(&self, include: Option<u32>) -> Result<Ts<DatedRealms>, JsError> {
+        into_ts(
+            self.localized()
+                .presenter()
+                .dated_realms(include.and_then(eu5save::models::CountryIdx::from_value)),
+        )
+    }
+
+    /// A country's land on the date the map shows, and its place by land.
+    #[wasm_bindgen]
+    pub fn get_dated_land(&self, country_idx: u32) -> Result<Option<Ts<DatedLand>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        option_into_ts(self.localized().presenter().dated_land(idx))
+    }
+
+    /// The names to set on the map for the date that it shows.
+    #[wasm_bindgen]
+    pub fn get_realm_labels(&self) -> Result<Ts<RealmLabels>, JsError> {
+        into_ts(self.localized().presenter().realm_labels())
+    }
+
+    /// Which countries of the scope hold one thing of a list.
+    #[wasm_bindgen]
+    pub fn get_item_lens(
+        &self,
+        item: Ts<eu5app::insights::LensItem>,
+    ) -> Result<Ts<eu5app::insights::ItemLens>, JsError> {
+        let item = item.to_rust()?;
+        into_ts(self.localized().presenter().item_lens(&item))
+    }
+
+    /// Light only these locations on the map, until the next clear.
+    #[wasm_bindgen]
+    pub fn paint_items(&mut self, location_idxs: Vec<u32>) {
+        self.app.paint_items(
+            location_idxs
+                .into_iter()
+                .map(eu5save::models::LocationIdx::new),
+        );
+    }
+
+    #[wasm_bindgen]
+    pub fn clear_item_paint(&mut self) {
+        self.app.clear_item_paint();
+    }
+
+    /// A country's land on each year of the campaign. None without a history.
+    #[wasm_bindgen]
+    pub fn get_land_history(&self, country_idx: u32) -> Result<Option<Ts<LandHistory>>, JsError> {
+        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        option_into_ts(self.app().land_history(idx))
     }
 
     // ── Entity Profile Endpoints ──────────────────────────────────────────

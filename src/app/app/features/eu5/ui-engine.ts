@@ -1,6 +1,6 @@
 import type { Eu5Carry, StableProfile } from "./campaignCarry";
 import type { OverlayReply } from "./workers/game/game-module";
-import type { LocationClickChangeEvent } from "./workers/map/map-module";
+import type { LocationClickChangeEvent, ScreenshotCaption } from "./workers/map/map-module";
 import type {
   BoxSelectOverlayRect,
   CursorHint,
@@ -171,6 +171,8 @@ export type SearchResult =
       tag: string;
       colorHex: string;
       locationIdx: number;
+      /** The person who plays the country, in a multiplayer save */
+      player?: string;
     }
   | {
       kind: "location";
@@ -224,7 +226,11 @@ export interface AppTriggers {
   ): Promise<TimelapseRecording | null>;
   /** Stop a recording in progress and discard what it had encoded. */
   stopTimelapse(): void;
-  generateScreenshot(fullResolution: boolean): Promise<Blob>;
+  generateScreenshot(
+    fullResolution: boolean,
+    caption?: ScreenshotCaption,
+    draft?: boolean,
+  ): Promise<Blob>;
   toggleOwnerBorders(): Promise<void>;
   panToLocation(
     locationIdx: number,
@@ -240,6 +246,7 @@ export interface AppTriggers {
   }): Promise<void>;
   /** Where locations are in the world, in the order asked. A location off the map is null. */
   worldPointsOf(locationIdxs: readonly number[]): Promise<({ x: number; y: number } | null)[]>;
+  worldPointsOfIds(colorIds: readonly number[]): Promise<number[]>;
 
   fitWorldRect(rect: MapViewport["viewport"]): Promise<void>;
 }
@@ -279,6 +286,8 @@ export class Eu5UIEngine implements AppEngine {
   /** Set by `stopTimelapse`, read between frames of a recording. */
   private timelapseStopped = false;
   private destroyed = false;
+  /** The past date that a move to a mode without a history left, for the way back */
+  private returnDate: Eu5DateComponents | null = null;
 
   readonly queries: SaveQueries;
   readonly commands: SaveCommands;
@@ -311,6 +320,9 @@ export class Eu5UIEngine implements AppEngine {
       mapViewport: null,
       ...initialState,
     };
+    if (!isHistoricalMapMode(this._state.currentMapMode)) {
+      gameInstance.setNeutralOwnerBorders(true);
+    }
 
     // Set up hover display data callback
     this.gameInstance.onHoverDisplayUpdate((data) => {
@@ -376,11 +388,15 @@ export class Eu5UIEngine implements AppEngine {
     recordTimelapse: (options) => this.handleRecordTimelapse(options),
     recordSavedDates: (options, recording) => this.handleRecordSavedDates(options, recording),
     stopTimelapse: () => this.handleStopTimelapse(),
-    generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
+    generateScreenshot: (fullResolution, caption, draft) =>
+      draft
+        ? this.gameInstance.generateWorldScreenshot(fullResolution, caption, true)
+        : this.handleGenerateScreenshot(fullResolution, caption),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
     frameSelection: (insets) => this.gameInstance.frameSelection(insets),
     worldPointsOf: (locationIdxs) => this.gameInstance.worldPointsOf(locationIdxs),
+    worldPointsOfIds: (colorIds) => this.gameInstance.worldPointsOfIds(colorIds),
     fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };
 
@@ -427,13 +443,20 @@ export class Eu5UIEngine implements AppEngine {
     // pull the date to the save and spoil what has been encoded.
     if (this.isTimelapseRunning()) return;
 
-    // A mode without a history pulls the map back to the save date.
+    // A mode without a history pulls the map back to the save date. The way
+    // back to the mode with a history returns to the date that the reader left.
     if (!isTimelineLive(this._state) && !isHistoricalMapMode(mode)) {
+      this.returnDate = this._state.timelineMapDate;
       this.handlePauseTimeline();
     }
     try {
       const change = await this.gameInstance.setMapMode(mode);
       this.applyTimelineChange(change);
+      if (isHistoricalMapMode(mode) && this.returnDate) {
+        const date = this.returnDate;
+        this.returnDate = null;
+        this.handleSetTimelineDate(date);
+      }
     } catch (error) {
       console.error("Failed to set map mode:", error);
       this.updateState(() => ({ currentMapMode: mode }));
@@ -442,6 +465,9 @@ export class Eu5UIEngine implements AppEngine {
 
   /** Adopt the worker's view of the timeline after any call that can move it. */
   private applyTimelineChange(change: TimelineChange): void {
+    if (change.mapMode !== this._state.currentMapMode) {
+      this.gameInstance.setNeutralOwnerBorders(!isHistoricalMapMode(change.mapMode));
+    }
     this.updateState(() => ({
       currentMapMode: change.mapMode,
       timelineMapDate: change.date,
@@ -789,7 +815,10 @@ export class Eu5UIEngine implements AppEngine {
     this.updateState(() => ({ ownerBordersEnabled: newEnabled }));
   }
 
-  private async handleGenerateScreenshot(fullResolution: boolean): Promise<Blob> {
+  private async handleGenerateScreenshot(
+    fullResolution: boolean,
+    caption?: ScreenshotCaption,
+  ): Promise<Blob> {
     if (this._state.isGeneratingScreenshot) {
       throw new Error("Screenshot generation already in progress");
     }
@@ -797,7 +826,7 @@ export class Eu5UIEngine implements AppEngine {
     this.updateState(() => ({ isGeneratingScreenshot: true }));
 
     try {
-      const blob = await this.gameInstance.generateWorldScreenshot(fullResolution);
+      const blob = await this.gameInstance.generateWorldScreenshot(fullResolution, caption);
       return blob;
     } finally {
       this.updateState(() => ({ isGeneratingScreenshot: false }));
@@ -814,6 +843,8 @@ export type OpenedSave = {
   multiplayer: boolean;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
+  /** The country that a save with no human player was written from */
+  viewpointCountryIdx: number | null;
   world: WorldSummary;
 };
 
@@ -849,6 +880,7 @@ export async function openEngine(
     playthroughName: metadata.playthroughName,
     multiplayer: metadata.multiplayer,
     players: metadata.players,
+    viewpointCountryIdx: metadata.viewpointCountryIdx ?? null,
     world: metadata.world,
   };
 }

@@ -1,8 +1,7 @@
-import ChevronRightIcon from "@heroicons/react/20/solid/ChevronRightIcon";
+import { insightFlow } from "../../stack/levelBody";
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { GameButton } from "@/components/game/Button";
 import type { CountryDevSummary, DevelopmentInsightData } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt, formatMetric } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -13,44 +12,31 @@ import {
   yAxisName,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
-import { useEu5Engine, useEu5Players } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
-import {
-  InsightReadout,
-  InsightReadoutSkeleton,
-  ReadoutFigure,
-  readoutAction,
-} from "../InsightReadout";
+import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useSelectedCountries } from "../../stack/selected";
-import { countryDotSeries, logAxis, logDomain, LogFloorNote, scatterDots } from "./countryScatter";
+import {
+  countryDotSeries,
+  useScatterMarks,
+  logAxis,
+  logDomain,
+  LogFloorNote,
+  scatterDots,
+} from "./countryScatter";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { SectionTitle } from "../../components";
+import { useChartExport } from "../../stack/chartExport";
 
 function DevelopmentScopeHeader({ data }: { data?: DevelopmentInsightData }) {
-  const engine = useEu5Engine();
   if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightReadout
-      figure={formatMetric(data.scope.totalDevelopment)}
-      unit="total development"
-      action={
-        <GameButton
-          variant="ghost"
-          className={readoutAction}
-          onClick={() => engine.trigger.selectMapMode("stateEfficacy")}
-        >
-          Effective Development
-          <ChevronRightIcon aria-hidden className="h-3.5 w-3.5" />
-        </GameButton>
-      }
-    >
+    <InsightReadout figure={formatMetric(data.scope.totalDevelopment)} unit="total development">
       <ReadoutFigure value={formatMetric(data.scope.avgDevelopment)} label="avg / location" />
       <ReadoutFigure value={formatMetric(data.distribution.median)} label="median / location" />
     </InsightReadout>
@@ -63,7 +49,7 @@ export function DevelopmentInsight() {
   const countries = insightQuery.data?.countries ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <DevelopmentScopeHeader data={insightQuery.data} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
@@ -73,7 +59,6 @@ export function DevelopmentInsight() {
         <>
           {countries.length >= 2 && (
             <section>
-              <SectionTitle>Development by country</SectionTitle>
               <DevelopmentScatterChart countries={countries} />
             </section>
           )}
@@ -101,15 +86,16 @@ export function DevelopmentInsight() {
 }
 
 function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[] }) {
-  const selected = useSelectedCountries();
-  const multiplayer = useEu5Players().length > 1;
-  const domain = useMemo(() => logDomain(countries.map((c) => c.totalDevelopment)), [countries]);
+  const chartImage = useChartExport("Development by country");
+  const { selected, home, namePlayers, plot, track } = useScatterMarks();
+  const domain = useMemo(() => logDomain(countries.map((c) => c.locationCount)), [countries]);
 
   const scatterData = useMemo(
     () =>
       scatterDots(
         countries.map((c) => ({
-          x: c.totalDevelopment,
+          x: c.locationCount,
+          size: c.totalDevelopment,
           y: c.avgDevelopment,
           tag: c.country.tag,
           name: c.country.country.name,
@@ -124,9 +110,10 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
         })),
         domain,
         selected,
-        multiplayer,
+        home,
+        namePlayers,
       ),
-    [countries, domain, selected, multiplayer],
+    [countries, domain, selected, home, namePlayers],
   );
 
   const option = useMemo((): EChartsOption => {
@@ -134,7 +121,7 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
 
     return {
       grid: { ...chartGutter, top: 28, bottom: 52 },
-      xAxis: logAxis(domain, "Total Development"),
+      xAxis: logAxis(domain, "Locations"),
       yAxis: {
         type: "value",
         ...yAxisName("Avg Dev per Location"),
@@ -160,9 +147,9 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
           ].join("<br/>");
         },
       },
-      series: [{ ...countryDotSeries(), data: scatterData }],
+      series: [countryDotSeries(scatterData, plot)],
     };
-  }, [scatterData, domain]);
+  }, [scatterData, domain, plot]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -177,8 +164,24 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
 
   return (
     <>
-      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
-      <LogFloorNote domain={domain} what="development" />
+      <div className="flex items-center justify-between gap-2">
+        <SectionTitle>Development by country</SectionTitle>
+        {chartImage.button}
+      </div>
+      <EChart
+        option={option}
+        style={{ height: "max(420px, 56vh)", width: "100%" }}
+        onInit={(chart) => {
+          handleInit(chart);
+          chartImage.track(chart);
+          track(chart);
+        }}
+      />
+      <LogFloorNote
+        domain={domain}
+        what="development"
+        axis="Further right: more land. Higher: richer land per location."
+      />
     </>
   );
 }

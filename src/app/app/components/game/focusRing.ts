@@ -4,11 +4,11 @@
 
 /** Keyboard focus only. The default — use this unless a field stays focused. */
 export const focusRing =
-  "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-game-accent-focus";
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-game-panel focus-visible:ring-game-accent-focus";
 
 /** Keyboard focus on a full-bleed row; the ring is drawn inside the box. */
 export const focusRingInset =
-  "focus-visible:outline-hidden focus-visible:inset-ring-1 focus-visible:inset-ring-game-accent-focus";
+  "focus-visible:outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-game-accent-focus";
 
 /** Any focus, pointer included. Text inputs and select triggers. */
 export const focusRingAlways = "focus:outline-hidden focus:ring-1 focus:ring-game-accent-focus";

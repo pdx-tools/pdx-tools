@@ -6,6 +6,12 @@ use eu5save::models::{Gamestate, Location};
 /// thousands; [`Gamestate::location_population`] applies the same scale.
 pub const POP_SIZE_SCALE: f64 = 1000.0;
 
+/// A yearly population series in people. The save stores thousands, so each
+/// series goes through here before any other code reads it.
+pub fn population_series(raw: &[f64]) -> Vec<f64> {
+    raw.iter().map(|value| value * POP_SIZE_SCALE).collect()
+}
+
 /// The top of a pop's `literacy` range. The save stores literacy as a
 /// percentage, not as a fraction of 1.
 pub const LITERACY_SCALE: f64 = 100.0;

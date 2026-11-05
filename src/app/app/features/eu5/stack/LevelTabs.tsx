@@ -3,15 +3,27 @@ import { focusRing } from "@/components/game/focusRing";
 import { parentOf } from "../control-panel/modeConfig";
 import {
   compareEntry,
-  countryProfileEntry,
-  locationProfileEntry,
   marketProfileEntry,
   usePanelNav,
 } from "../features/profiles/PanelNavContext";
 import type { PanelNavEntry } from "../features/profiles/PanelNavContext";
 import { useEu5MapMode, useEu5SelectionState } from "../store";
 import { useSelectedCountries } from "./selected";
-import { insightLabel, isCountrySet } from "./selection";
+import { STANDINGS_MAX, insightLabel, isCountrySet } from "./selection";
+
+/** The name of the first tab: what it shows for this selection */
+export function rootLabel(kind: "country" | "location" | "market" | undefined): string {
+  switch (kind) {
+    case "country":
+      return "Country";
+    case "location":
+      return "Location";
+    case "market":
+      return "Market";
+    default:
+      return "Summary";
+  }
+}
 
 /**
  * HOW DEEP, as the third row of one control model. The map row says WHAT, the
@@ -26,24 +38,21 @@ export function LevelTabs({ action }: { action?: React.ReactNode }) {
   const countries = useSelectedCountries();
   const data = insightLabel(parentOf(mode).label);
   const profile = selection?.preset === "players" ? undefined : selection?.activeProfile;
-  const set = isCountrySet(selection) && countries.length > 1;
+  const set = isCountrySet(selection) && countries.length > 1 && countries.length <= STANDINGS_MAX;
 
-  const entry: PanelNavEntry | null = profile
-    ? profile.kind === "country"
-      ? countryProfileEntry(profile.country.key, profile.country.name)
-      : profile.kind === "market"
-        ? marketProfileEntry(profile.market.key, profile.market.name)
-        : locationProfileEntry(profile.location.key, profile.location.name)
-    : null;
+  // A market has a second level with its goods and members. A country and a
+  // location have one stable view, so the first tab is that view.
+  const details: PanelNavEntry | null =
+    profile?.kind === "market" ? marketProfileEntry(profile.market.key, profile.market.name) : null;
 
   const first = nav.path[0];
   const tabs: { label: string; entry: PanelNavEntry | null; on: boolean }[] = [
-    { label: "List", entry: null, on: first === undefined },
-    ...(entry
+    { label: rootLabel(profile?.kind), entry: null, on: first === undefined },
+    ...(details
       ? [
           {
-            label: "Profile",
-            entry,
+            label: "Details",
+            entry: details,
             on: first?.kind === "profile" || first?.kind === "focus" || first?.kind === "section",
           },
         ]

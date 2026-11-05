@@ -43,4 +43,12 @@ describe("rankSearchResults", () => {
       "Afrasiyab",
     ]);
   });
+
+  it("finds a country by the person who plays it", () => {
+    const results = [
+      { name: "Aragon", tag: "ARA" },
+      { name: "France", tag: "FRA", player: "Jaremir" },
+    ];
+    expect(rankSearchResults("jaremir", results).map((x) => x.name)[0]).toBe("France");
+  });
 });

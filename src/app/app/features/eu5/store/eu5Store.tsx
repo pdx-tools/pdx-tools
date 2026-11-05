@@ -24,6 +24,14 @@ type Eu5State = {
   multiplayer: boolean;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
+  /** The country that a save with no human player was written from */
+  viewpointCountryIdx: number | null;
+  /** The name that the reader gives the campaign, for the header and the images */
+  customTitle: string | null;
+  setCustomTitle: (title: string) => void;
+  /** The country that the reader says is theirs, in a multiplayer save */
+  chosenHomeIdx: number | null;
+  setChosenHome: (countryIdx: number | null) => void;
   /** The whole map: the scope of every insight when nothing is selected. */
   world: WorldSummary;
   /** How much of the map the column covers, measured, so the camera and overlays stand clear */
@@ -79,6 +87,18 @@ export const createEu5Store = ({
     playthroughName: opened.playthroughName,
     multiplayer: opened.multiplayer,
     players: opened.players,
+    viewpointCountryIdx: opened.viewpointCountryIdx,
+    customTitle: readStored(`eu5-title-${opened.playthroughId}`),
+    setCustomTitle: (title) => {
+      const trimmed = title.trim();
+      writeStored(`eu5-title-${opened.playthroughId}`, trimmed || null);
+      set({ customTitle: trimmed || null });
+    },
+    chosenHomeIdx: readChosenHome(opened.playthroughId, opened.players),
+    setChosenHome: (countryIdx) => {
+      writeChosenHome(opened.playthroughId, countryIdx);
+      set({ chosenHomeIdx: countryIdx });
+    },
     world: opened.world,
     columnInset: view?.columnInset ?? RESTING_INSET,
     timelineBarHeight: view?.timelineBarHeight ?? 0,
@@ -113,6 +133,50 @@ export function useInEu5Analysis() {
   return useContext(Eu5Context) != undefined;
 }
 
+/** A value that the reader chose for a campaign. Without storage, it lasts until the save closes. */
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    // Only this session has the value.
+  }
+}
+
+const chosenHomeKey = (playthroughId: PlaythroughId | null) => `eu5-my-country-${playthroughId}`;
+
+/** A campaign remembers which player the reader is. Without storage, nothing is chosen. */
+function readChosenHome(
+  playthroughId: PlaythroughId | null,
+  players: readonly { countryIdx: number }[],
+): number | null {
+  if (playthroughId === null || players.length < 2) return null;
+  try {
+    const stored = Number(localStorage.getItem(chosenHomeKey(playthroughId)) ?? Number.NaN);
+    return players.some((player) => player.countryIdx === stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeChosenHome(playthroughId: PlaythroughId | null, countryIdx: number | null) {
+  if (playthroughId === null) return;
+  try {
+    if (countryIdx === null) localStorage.removeItem(chosenHomeKey(playthroughId));
+    else localStorage.setItem(chosenHomeKey(playthroughId), String(countryIdx));
+  } catch {
+    // The choice then lasts until the save closes.
+  }
+}
+
 const useEu5Store = <T,>(selector: (state: Eu5State) => T): T =>
   useStore(useEu5Context(), selector);
 
@@ -134,6 +198,26 @@ export const useEu5World = () => useEu5Store((x) => x.world);
 export const useEu5PlaythroughId = () => useEu5Store((x) => x.playthroughId);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5Players = () => useEu5Store((x) => x.players);
+/**
+ * The one country that the save is about, if there is one: the player's in a
+ * single player save, or the country that an observer save was written from.
+ * The second is not a player, so a mark must not call it "You".
+ */
+export function useEu5HomeCountry(): { countryIdx: number; kind: "player" | "viewpoint" } | null {
+  const players = useEu5Players();
+  const viewpoint = useEu5Store((x) => x.viewpointCountryIdx);
+  const chosen = useEu5Store((x) => x.chosenHomeIdx);
+  if (players.length === 1) return { countryIdx: players[0].countryIdx, kind: "player" };
+  if (players.length > 1 && chosen !== null) return { countryIdx: chosen, kind: "player" };
+  if (players.length === 0 && viewpoint !== null) {
+    return { countryIdx: viewpoint, kind: "viewpoint" };
+  }
+  return null;
+}
+export const useEu5CustomTitle = () => useEu5Store((x) => x.customTitle);
+export const useSetEu5CustomTitle = () => useEu5Store((x) => x.setCustomTitle);
+export const useEu5ChosenHome = () => useEu5Store((x) => x.chosenHomeIdx);
+export const useSetEu5ChosenHome = () => useEu5Store((x) => x.setChosenHome);
 export const useEu5Multiplayer = () => useEu5Store((x) => x.multiplayer);
 export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);
 export const useEu5SelectionRevision = () => useEu5Store((x) => x.appState.selectionRevision);

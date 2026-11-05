@@ -1,9 +1,10 @@
 import type React from "react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import type { ActiveProfileIdentity } from "@/wasm/wasm_eu5";
+import type { ActiveProfileIdentity, LensItem } from "@/wasm/wasm_eu5";
 import { useEu5MapMode, useEu5SelectionState, useEu5UserSelectionRevision } from "../../store";
 import { parentOf } from "../../control-panel/modeConfig";
-import { isCountrySet, selectionName } from "../../stack/selection";
+import { isBuildingList } from "../../stack/buildingList";
+import { COMPARE_MAX, isCountrySet, selectionName } from "../../stack/selection";
 import type { SelectionLike } from "../../stack/selection";
 
 /** The parts of a profile that open as a level of their own */
@@ -23,6 +24,7 @@ export type ProfileSection =
 export type PanelNavEntry =
   | { kind: "insight"; label: string }
   | { kind: "compare"; label: string }
+  | { kind: "lens"; item: LensItem; label: string }
   | { kind: "profile"; profile: ActiveProfileIdentity; label: string }
   | { kind: "focus"; profile: Extract<ActiveProfileIdentity, { kind: "location" }>; label: string }
   | { kind: "section"; profile: ActiveProfileIdentity; section: ProfileSection; label: string };
@@ -80,13 +82,22 @@ export function profileKey(profile: ActiveProfileIdentity): string {
 export function entryKey(entry: PanelNavEntry): string {
   if (entry.kind === "insight") return "insight";
   if (entry.kind === "compare") return "compare";
+  if (entry.kind === "lens")
+    return `lens:${entry.item.kind}:${"key" in entry.item ? entry.item.key : ""}`;
   if (entry.kind === "section") return `${profileKey(entry.profile)}/${entry.section}`;
   return profileKey(entry.profile);
 }
 
 /** The profile a level shows, if it shows one */
 export function entryProfile(entry: PanelNavEntry | undefined): ActiveProfileIdentity | null {
-  if (entry === undefined || entry.kind === "insight" || entry.kind === "compare") return null;
+  if (
+    entry === undefined ||
+    entry.kind === "insight" ||
+    entry.kind === "compare" ||
+    entry.kind === "lens"
+  ) {
+    return null;
+  }
   return entry.profile;
 }
 
@@ -178,6 +189,8 @@ export type PathChange = {
   selection: SelectionLike | null | undefined;
   /** A level that a select-and-open asked for, until its selection arrives */
   pending: PanelNavEntry | null;
+  /** The reader is adding countries from a list, so the list stays */
+  keepList?: boolean;
 };
 
 /**
@@ -190,6 +203,17 @@ export type PathChange = {
  *   and the levels above it). Profiles, their sections, and Compare do not
  *   change with the mode, so they stay.
  */
+/** A few countries that the reader chose. A preset or a large area stays a list. */
+function opensOnCompare(selection: PathChange["selection"]): boolean {
+  return (
+    selection != null &&
+    isCountrySet(selection) &&
+    selection.preset !== "players" &&
+    !selection.scopeDisplayName &&
+    selection.entityCount <= COMPARE_MAX
+  );
+}
+
 export function nextPath(path: PanelNavEntry[], change: PathChange): PanelNavEntry[] {
   let next = path;
   if (change.selectionChanged) {
@@ -199,12 +223,15 @@ export function nextPath(path: PanelNavEntry[], change: PathChange): PanelNavEnt
       next = [change.pending];
     } else if (next[0]?.kind === "compare" && isCountrySet(change.selection)) {
       next = [next[0]];
+    } else if (opensOnCompare(change.selection) && !change.keepList) {
+      // A few chosen countries are a question about those countries.
+      next = [compareEntry];
     } else {
       next = [];
     }
   }
   if (change.modeChanged) {
-    const insight = next.findIndex((x) => x.kind === "insight");
+    const insight = next.findIndex((x) => x.kind === "insight" || x.kind === "lens");
     if (insight >= 0) next = next.slice(0, insight);
   }
   return next;
@@ -289,7 +316,13 @@ export function PanelNavProvider({ children }: { children: React.ReactNode }) {
   const moved = previous.revision !== userSelectionRevision || modeChanged;
   const restarted = modeChanged || selectionChanged;
   const next = restarted
-    ? nextPath(steps, { modeChanged, selectionChanged, selection, pending })
+    ? nextPath(steps, {
+        modeChanged,
+        selectionChanged,
+        selection,
+        pending,
+        keepList: isBuildingList(),
+      })
     : steps;
   if (moved) {
     setPrevious({ revision: userSelectionRevision, identity, mode });

@@ -59,19 +59,19 @@ export function formatMetric(x: number): string {
 }
 
 /**
- * A value in the unit of the largest value that it stands beside, so that values of
- * a similar size read in one unit (0.9K beside 1.6K, and not 877.8 beside 1.6K). A long
- * tail keeps its own forms: 387.0K beside 21.7M is exact, and 0.4M is not.
+ * A value in the form of its column, from the largest value of the column. Under
+ * 10,000 a column has whole numbers with no unit (1,134 and 977), and under 100 it
+ * keeps its decimal. From there it has a unit, and a value under 1,000 is a
+ * whole number, so one column never mixes 0.9K with 916.8.
  */
 export function formatCompactIn(x: number, largest: number, own = formatMetric(x)): string {
-  const unit = COMPACT_UNITS.find(
-    (u) => Number(((Math.abs(largest) * 1000) / u.size).toFixed(1)) >= 1000,
-  );
+  const top = Math.abs(largest);
   const abs = Math.abs(x);
-  if (!unit || abs >= unit.size || abs / unit.size < 0.1 || Math.abs(largest) / unit.size >= 10) {
-    return own;
+  if (top < 100) return own;
+  if (top < 10_000 || abs < 1000) {
+    return `${x < 0 ? "\u2212" : ""}${formatInt(Math.round(abs))}`;
   }
-  return `${x < 0 ? "\u2212" : ""}${formatFloat(abs / unit.size, 1)}${unit.suffix}`;
+  return own;
 }
 
 const tickFormatter = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 3 });

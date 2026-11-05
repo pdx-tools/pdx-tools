@@ -195,14 +195,3 @@ debug = true
 # macros and build scripts, which then compile slowly on each cold build.
 [profile.test]
 opt-level = 3
-
-# LOCAL ONLY. eu5save with great_power_points, until the change is upstream.
-[patch."https://github.com/rakaly/jomini.git"]
-arena-serde = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/arena-serde" }
-ck3save = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/ck3save" }
-eu4save = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/eu4save" }
-eu5save = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/eu5save" }
-hoi4save = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/hoi4save" }
-imperator-save = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/imperator-save" }
-jomini = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/jomini" }
-vic3save = { path = "/tmp/claude-1000/-home-nick-projects-pdx-tools/7f8d199a-ab8c-4647-9a4e-019c1c8d5a38/scratchpad/jomini-gp/crates/vic3save" }

@@ -10,8 +10,6 @@ import init, {
 import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm_eu5_map";
 import wasmPath from "../../../../wasm/wasm_eu5_map_bg.wasm?url";
 import { proxy, expose } from "comlink";
-import { formatInt } from "@/lib/format";
-import type { ScreenshotOverlayData, TableCell } from "@/wasm/wasm_eu5";
 import {
   SharedCanvasInputReader,
   SharedCanvasEventType,
@@ -700,13 +698,17 @@ export const createMapEngine = async (
     },
     generateWorldScreenshot: async (
       fullResolution: boolean,
-      overlayData?: ScreenshotOverlayData,
+      caption?: ScreenshotCaption,
+      /** A smaller image for a preview, which is made in much less time */
+      draft = false,
     ): Promise<Blob> => {
       applyPendingSync();
 
-      const output = fullResolution
-        ? { width: 16384, height: 8192 }
-        : { width: 8192, height: 4096 };
+      const output = draft
+        ? { width: 4096, height: 2048 }
+        : fullResolution
+          ? { width: 16384, height: 8192 }
+          : { width: 8192, height: 4096 };
 
       const compositeCanvas = new OffscreenCanvas(output.width, output.height);
       const ctx = compositeCanvas.getContext("2d");
@@ -714,14 +716,9 @@ export const createMapEngine = async (
         throw new Error("Failed to get 2D context for composite canvas");
       }
 
-      // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
-      let overlayInfo: OverlayCanvasInfo | null = null;
-      if (overlayData) {
-        overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
-      }
-
       // Create dedicated screenshot canvas for independent screenshot renderer
-      const screenshotCanvas = new OffscreenCanvas(8192, 8192);
+      const tile = draft ? 2048 : 8192;
+      const screenshotCanvas = new OffscreenCanvas(tile, tile);
 
       // Create independent screenshot renderer
       const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
@@ -734,13 +731,12 @@ export const createMapEngine = async (
         screenshotRenderer.render_east_tile();
         ctx.drawImage(screenshotCanvas, output.width / 2, 0, output.width / 2, output.height);
 
-        // Composite the small overlay canvas on top if provided
-        if (overlayInfo) {
-          ctx.drawImage(overlayInfo.canvas, overlayInfo.x, overlayInfo.y);
-        }
+        // The figure has its names and its caption on it, so it stands alone off the site.
+        const figure = caption?.crop ? cropFigure(compositeCanvas, caption.crop) : compositeCanvas;
+        if (caption) drawFigureCaption(figure, caption);
 
         // Convert composite canvas to PNG blob and return
-        return await compositeCanvas.convertToBlob({ type: "image/png" });
+        return await figure.convertToBlob({ type: "image/png" });
       } finally {
         screenshotRenderer.free();
       }
@@ -846,6 +842,10 @@ export const createMapEngine = async (
             renderOrQueue();
             break;
           }
+          case "setNeutralOwnerBorders": {
+            app.set_neutral_owner_borders(command.neutral);
+            break;
+          }
           case "setOwnerBorders": {
             app.set_owner_borders(command.enabled);
             break;
@@ -901,7 +901,46 @@ export const createMapEngine = async (
   });
 };
 
-export type MapCommand = { kind: "setOwnerBorders"; enabled: boolean } | { kind: "render" };
+export type MapCommand =
+  | { kind: "setOwnerBorders"; enabled: boolean }
+  | { kind: "setNeutralOwnerBorders"; neutral: boolean }
+  | { kind: "render" };
+
+/** A name set on the image. The numbers are shares of the width of the image. */
+export type ScreenshotName = {
+  text: string;
+  x: number;
+  y: number;
+  size: number;
+  angle: number;
+  capitals: boolean;
+  /** The realm's place, as shares of the image width, when a line must join it */
+  anchor?: { x: number; y: number };
+};
+
+/** What the picture of the map says about itself, so it can stand alone off the site */
+export type ScreenshotCaption = {
+  /** The figure's title: what the map says */
+  title: string;
+  /** The campaign and the date that the map shows */
+  subtitle: string;
+  /** The date that the map shows */
+  date: string;
+  /** The map shows a date before the save date */
+  pastDate: boolean;
+  scale?: { label: string; ticks: string[]; stops: { offset: number; color: string }[] };
+  /** A line for a key with no scale */
+  keyLine?: string;
+  /** What the colours are on a map of categories, the largest first */
+  categories?: { name: string; color: string }[];
+  names?: ScreenshotName[];
+  /** The part of the world that the image shows, as shares of the world. All of it without this. */
+  crop?: { x: number; y: number; width: number; height: number };
+  /** The image goes into a larger one that has these words, so it has no plate of its own */
+  noPlate?: boolean;
+  /** Rows of the table for a group, in place of the tables by land */
+  group?: { title: string; headers: string[]; rows: string[][] };
+};
 
 /** A snapshot for the overlay, in the format of the live buffers. */
 export type OverlayFrame = {
@@ -944,186 +983,236 @@ export type LocationClickChangeEvent =
 
 export type CursorHint = "default" | "move" | "crosshair";
 
-interface OverlayCanvasInfo {
-  canvas: OffscreenCanvas;
-  x: number;
-  y: number;
+/** The smallest and the largest width of an image of a part of the world */
+const CROP_MIN_WIDTH = 1600;
+const CROP_MAX_WIDTH = 3840;
+
+/** The part of the world that the player framed. The world wraps, so a part can cross the edge. */
+function cropFigure(
+  world: OffscreenCanvas,
+  crop: NonNullable<ScreenshotCaption["crop"]>,
+): OffscreenCanvas {
+  const sourceWidth = crop.width * world.width;
+  const sourceHeight = crop.height * world.height;
+  const width = Math.round(Math.max(CROP_MIN_WIDTH, Math.min(CROP_MAX_WIDTH, sourceWidth)));
+  const height = Math.round((width * sourceHeight) / sourceWidth);
+  const out = new OffscreenCanvas(width, height);
+  const ctx = out.getContext("2d");
+  if (!ctx) throw new Error("Failed to get 2D context for the map image");
+  const scale = width / sourceWidth;
+  const sx = crop.x * world.width;
+  const sy = crop.y * world.height;
+  const firstWidth = Math.min(sourceWidth, world.width - sx);
+  ctx.drawImage(world, sx, sy, firstWidth, sourceHeight, 0, 0, firstWidth * scale, height);
+  if (firstWidth < sourceWidth) {
+    const rest = sourceWidth - firstWidth;
+    ctx.drawImage(world, 0, sy, rest, sourceHeight, firstWidth * scale, 0, rest * scale, height);
+  }
+  return out;
 }
 
-function createOverlayCanvas(
-  overlayData: ScreenshotOverlayData,
-  fullResolution: boolean,
-  compositeHeight: number,
-): OverlayCanvasInfo {
-  const multiplier = fullResolution ? 2 : 1;
-  const baseFontSize = Math.trunc(compositeHeight / 100);
-  const padding = 24 * multiplier;
-  const headerSpacing = 64 * multiplier;
+const FIGURE_FONT = "ui-sans-serif, system-ui, sans-serif";
 
-  // Create a temporary canvas just for measuring text
-  const tempCanvas = new OffscreenCanvas(1, 1);
-  const tempCtxRaw = tempCanvas.getContext("2d");
-  if (!tempCtxRaw) {
-    throw new Error("Failed to create temporary canvas context");
-  }
-  const tempCtx = tempCtxRaw;
+function drawFigureCaption(canvas: OffscreenCanvas, caption: ScreenshotCaption) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get 2D context for the map image");
+  const width = canvas.width;
 
-  // Fonts
-  const headerFont = `700 ${baseFontSize}px ui-sans-serif, system-ui, sans-serif`;
-  const bodyFont = `400 ${Math.trunc(baseFontSize * 0.8)}px ui-sans-serif, system-ui, sans-serif`;
-  const bodyLineHeight = Math.trunc(baseFontSize * 0.9);
-
-  // Helper function to convert TableCell to display string
-  function cellToString(cell: TableCell): string {
-    if (cell.type === "text") {
-      return cell.value;
-    } else if (cell.type === "integer") {
-      return formatInt(cell.value);
-    } else if (cell.type === "float") {
-      return cell.value.value.toFixed(cell.value.decimals);
+  // Names on the land
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  for (const name of caption.names ?? []) {
+    if (!name.anchor) continue;
+    for (const [color, weight] of [
+      ["rgba(10, 12, 16, 0.85)", 2.5],
+      ["rgba(255, 255, 255, 0.9)", 1],
+    ] as const) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = weight * (width / 1800);
+      ctx.beginPath();
+      ctx.moveTo(name.anchor.x * width, name.anchor.y * width);
+      ctx.lineTo(name.x * width, name.y * width);
+      ctx.stroke();
     }
-    return "";
   }
-
-  // Header measurements
-  tempCtx.font = headerFont;
-  const titleMetrics = tempCtx.measureText(overlayData.title);
-  const dateAndPatchText = `${overlayData.saveDate} (${overlayData.patchVersion})`;
-  const dateAndPatchMetrics = tempCtx.measureText(dateAndPatchText);
-  const headerHeight = titleMetrics.actualBoundingBoxAscent + titleMetrics.actualBoundingBoxDescent;
-  const maxHeaderWidth = titleMetrics.width + headerSpacing + dateAndPatchMetrics.width;
-
-  // Table data
-  tempCtx.font = bodyFont;
-  const { leftTable, rightTable } = overlayData.body;
-  const maxRows = overlayData.body.maxRows || 10;
-  const leftRows = leftTable.rows.slice(0, maxRows);
-  const rightRows = rightTable.rows.slice(0, maxRows);
-  const columnSpacing = 40 * multiplier;
-  const tableGap = 80 * multiplier;
-
-  // Helper function to calculate column widths
-  function calculateColumnWidths(table: any, rows: TableCell[][]): number[] {
-    return table.headers.map((header: string, colIndex: number) => {
-      let maxWidth = tempCtx.measureText(header).width;
-      rows.forEach((row) => {
-        const cell = row[colIndex];
-        const cellData = cell ? cellToString(cell) : "";
-        const cellWidth = tempCtx.measureText(cellData).width;
-        maxWidth = Math.max(maxWidth, cellWidth);
-      });
-      return maxWidth;
-    });
+  for (const name of caption.names ?? []) {
+    const size = name.size * width;
+    ctx.save();
+    ctx.translate(name.x * width, name.y * width);
+    ctx.rotate(name.angle);
+    ctx.font = `600 ${size}px ${FIGURE_FONT}`;
+    ctx.letterSpacing = name.capitals ? `${size * 0.14}px` : "0px";
+    const text = name.capitals ? name.text.toUpperCase() : name.text;
+    ctx.lineWidth = size * 0.24;
+    ctx.strokeStyle = "rgba(10, 12, 16, 0.78)";
+    ctx.strokeText(text, 0, 0);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
   }
+  ctx.letterSpacing = "0px";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
 
-  // Calculate table dimensions
-  const leftColumnWidths = calculateColumnWidths(leftTable, leftRows);
-  const rightColumnWidths = calculateColumnWidths(rightTable, rightRows);
+  if (caption.noPlate) return;
 
-  const leftTableWidth =
-    leftColumnWidths.reduce((sum, width) => sum + width, 0) +
-    (leftColumnWidths.length - 1) * columnSpacing;
-  const rightTableWidth =
-    rightColumnWidths.reduce((sum, width) => sum + width, 0) +
-    (rightColumnWidths.length - 1) * columnSpacing;
+  // The caption. Its sizes follow the image, so it still reads at the width of a forum post.
+  const titleSize = width * 0.0165;
+  const textSize = width * 0.0115;
+  const pad = width * 0.012;
+  const margin = width * 0.012;
+  const line = textSize * 1.45;
+  const maxWidth = width * 0.5;
 
-  // Adjust for table titles
-  const adjustedLeftTableWidth = leftTable.title
-    ? Math.max(leftTableWidth, tempCtx.measureText(leftTable.title).width)
-    : leftTableWidth;
-  const adjustedRightTableWidth = rightTable.title
-    ? Math.max(rightTableWidth, tempCtx.measureText(rightTable.title).width)
-    : rightTableWidth;
-
-  const totalTableWidth = adjustedLeftTableWidth + tableGap + adjustedRightTableWidth;
-
-  // Layout calculations
-  const titleRowHeight = leftTable.title || rightTable.title ? bodyLineHeight : 0;
-  const totalBodyHeight = titleRowHeight + bodyLineHeight + leftRows.length * bodyLineHeight;
-  const backdropWidth = Math.max(maxHeaderWidth, totalTableWidth) + padding * 2;
-  const backdropHeight = headerHeight + totalBodyHeight + padding * 4;
-
-  // Create overlay canvas sized exactly to fit the infographic
-  const overlayCanvas = new OffscreenCanvas(Math.ceil(backdropWidth), Math.ceil(backdropHeight));
-  const ctxRaw = overlayCanvas.getContext("2d");
-  if (!ctxRaw) {
-    throw new Error("Failed to create overlay canvas context");
-  }
-  const ctx = ctxRaw;
-
-  // Draw backdrop
-  ctx.fillStyle = "#20272c";
+  ctx.font = `600 ${titleSize}px ${FIGURE_FONT}`;
+  const titleLines = wrapText(ctx, caption.title, maxWidth);
+  const titleWidth = Math.max(...titleLines.map((text) => ctx.measureText(text).width));
+  ctx.font = `400 ${textSize}px ${FIGURE_FONT}`;
+  const subtitle = `${caption.subtitle} \u00b7 pdx.tools`;
+  const categories = caption.categories ?? [];
+  const plateWidth = Math.max(
+    titleWidth,
+    ctx.measureText(subtitle).width,
+    caption.keyLine ? ctx.measureText(caption.keyLine).width : 0,
+    caption.scale ? width * 0.26 : 0,
+    categories.length > 0 ? width * 0.3 : 0,
+  );
+  const scaleHeight = caption.scale ? line * 2.4 : 0;
+  const keyHeight = caption.keyLine ? line : 0;
+  const categoryRows = Math.ceil(categories.length / 2);
+  const categoryHeight = categoryRows * line + (categoryRows > 0 ? line * 0.3 : 0);
+  const plateHeight =
+    pad * 2 +
+    titleLines.length * titleSize * 1.25 +
+    line +
+    keyHeight +
+    scaleHeight +
+    categoryHeight;
+  const plateX = margin;
+  const plateY = canvas.height - margin - plateHeight;
+  ctx.fillStyle = "rgba(14, 18, 23, 0.92)";
   ctx.beginPath();
-  ctx.roundRect(0, 0, backdropWidth, backdropHeight, 20 * multiplier);
+  ctx.roundRect(plateX, plateY, plateWidth + pad * 2, plateHeight, width * 0.003);
   ctx.fill();
 
-  // Draw content
-  ctx.fillStyle = "#ffffff";
-  let currentY = padding;
-
-  // Header
-  ctx.font = headerFont;
-  currentY += headerHeight;
-  ctx.fillText(overlayData.title, padding, currentY);
-  const rightAlignX = backdropWidth - padding - dateAndPatchMetrics.width;
-  ctx.fillText(dateAndPatchText, rightAlignX, currentY);
-
-  // Tables
-  ctx.font = bodyFont;
-  currentY += padding;
-
-  const leftTableX = padding;
-  const rightTableX = leftTableX + adjustedLeftTableWidth + tableGap;
-
-  // Helper function to render a table
-  function renderTable(table: any, rows: TableCell[][], columnWidths: number[], startX: number) {
-    let y = currentY;
-
-    // Table title
-    if (table.title) {
-      y += bodyLineHeight;
-      ctx.fillText(table.title, startX, y);
-    }
-
-    // Headers
-    y += bodyLineHeight;
-    let x = startX;
-    table.headers.forEach((header: string, colIndex: number) => {
-      ctx.fillText(header, x, y);
-      x += columnWidths[colIndex] + columnSpacing;
+  let y = plateY + pad;
+  ctx.fillStyle = "#f2eade";
+  ctx.font = `600 ${titleSize}px ${FIGURE_FONT}`;
+  for (const text of titleLines) {
+    y += titleSize * 1.05;
+    ctx.fillText(text, plateX + pad, y);
+    y += titleSize * 0.2;
+  }
+  ctx.font = `400 ${textSize}px ${FIGURE_FONT}`;
+  ctx.fillStyle = "#c5c0b8";
+  y += line * 0.95;
+  ctx.fillText(subtitle, plateX + pad, y);
+  if (caption.keyLine) {
+    y += line;
+    ctx.fillText(caption.keyLine, plateX + pad, y);
+  }
+  if (categories.length > 0) {
+    y += line * 0.3;
+    categories.forEach((category, i) => {
+      const column = i % 2;
+      const row = Math.floor(i / 2);
+      const x = plateX + pad + (column * plateWidth) / 2;
+      const rowY = y + line * (row + 1);
+      const swatch = textSize * 0.8;
+      ctx.fillStyle = category.color;
+      ctx.fillRect(x, rowY - swatch, swatch, swatch);
+      ctx.fillStyle = "#c5c0b8";
+      ctx.fillText(category.name, x + swatch * 1.5, rowY, plateWidth / 2 - swatch * 2);
     });
-
-    // Data rows
-    rows.forEach((row: TableCell[]) => {
-      y += bodyLineHeight;
-      x = startX;
-      row.forEach((cell: TableCell, colIndex: number) => {
-        const cellData = cellToString(cell);
-        // Right-align numeric columns (except first column)
-        if (colIndex > 0 && (cell.type === "integer" || cell.type === "float")) {
-          const textWidth = ctx.measureText(cellData).width;
-          ctx.fillText(cellData, x + columnWidths[colIndex] - textWidth, y);
-        } else {
-          ctx.fillText(cellData, x, y);
-        }
-        x += columnWidths[colIndex] + columnSpacing;
-      });
+    y += line * categoryRows;
+  }
+  if (caption.scale) {
+    y += line;
+    ctx.fillText(caption.scale.label, plateX + pad, y);
+    const barY = y + line * 0.35;
+    const barHeight = line * 0.4;
+    const ramp = ctx.createLinearGradient(plateX + pad, 0, plateX + pad + plateWidth, 0);
+    for (const stop of caption.scale.stops) ramp.addColorStop(stop.offset, stop.color);
+    ctx.fillStyle = ramp;
+    ctx.fillRect(plateX + pad, barY, plateWidth, barHeight);
+    ctx.fillStyle = "#c5c0b8";
+    caption.scale.ticks.forEach((tick, i) => {
+      const tickWidth = ctx.measureText(tick).width;
+      const at = i / Math.max(1, caption.scale!.ticks.length - 1);
+      ctx.fillText(
+        tick,
+        plateX + pad + (plateWidth - tickWidth) * at,
+        barY + barHeight + line * 0.9,
+      );
     });
   }
 
-  // Render both tables
-  renderTable(leftTable, leftRows, leftColumnWidths, leftTableX);
-  renderTable(rightTable, rightRows, rightColumnWidths, rightTableX);
+  // The group's table, over the caption, when the image is of a multiplayer save.
+  if (caption.group)
+    drawGroupTable(ctx, canvas, caption.group, canvas.height - margin, margin, textSize);
+}
 
-  // Calculate position where overlay should be placed on composite canvas
-  const overlayX = 100 * multiplier;
-  const overlayY = compositeHeight - backdropHeight - 100 * multiplier;
+function wrapText(ctx: OffscreenCanvasRenderingContext2D, text: string, maxWidth: number) {
+  const lines: string[] = [];
+  let current = "";
+  for (const word of text.split(" ")) {
+    const next = current ? `${current} ${word}` : word;
+    if (ctx.measureText(next).width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
 
-  return {
-    canvas: overlayCanvas,
-    x: overlayX,
-    y: overlayY,
+function drawGroupTable(
+  ctx: OffscreenCanvasRenderingContext2D,
+  canvas: OffscreenCanvas,
+  group: NonNullable<ScreenshotCaption["group"]>,
+  bottom: number,
+  left: number,
+  textSize: number,
+) {
+  const line = textSize * 1.4;
+  const pad = textSize * 0.9;
+  const columns = group.headers.map((header, i) =>
+    Math.max(
+      ctx.measureText(header).width,
+      ...group.rows.map((row) => ctx.measureText(row[i] ?? "").width),
+    ),
+  );
+  const gap = textSize * 1.1;
+  const width = columns.reduce((sum, w) => sum + w, 0) + gap * (columns.length - 1) + pad * 2;
+  const shown = group.rows.slice(0, Math.max(0, Math.floor((bottom - pad * 2) / line) - 2));
+  const height = (shown.length + 2) * line + pad * 2;
+  const top = bottom - height;
+  // The far corner of the image, away from the caption.
+  const start = canvas.width - width - left;
+  if (top < 0 || start < 0) return;
+  ctx.fillStyle = "rgba(14, 18, 23, 0.92)";
+  ctx.fillRect(start, top, width, height);
+  let y = top + pad + line * 0.8;
+  ctx.fillStyle = "#f2eade";
+  ctx.fillText(group.title, start + pad, y);
+  ctx.fillStyle = "#c5c0b8";
+  const row = (cells: readonly string[]) => {
+    y += line;
+    let x = start + pad;
+    cells.forEach((cell, i) => {
+      // Text starts on the left, and a number ends on the right of its column.
+      const numeric = i > 1;
+      const offset = numeric ? columns[i] - ctx.measureText(cell).width : 0;
+      ctx.fillText(cell, x + offset, y);
+      x += columns[i] + gap;
+    });
   };
+  row(group.headers);
+  ctx.fillStyle = "#f2eade";
+  shown.forEach(row);
 }
 
 export async function initialize(port: MessagePort, level: LogLevel) {

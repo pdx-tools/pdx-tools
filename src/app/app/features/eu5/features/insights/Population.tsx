@@ -1,4 +1,5 @@
 import { cx } from "class-variance-authority";
+import { insightFlow } from "../../stack/levelBody";
 import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { EChart } from "@/components/viz";
@@ -63,7 +64,7 @@ export function PopulationInsight() {
   const scopeIsEmpty = insightQuery.data?.scope.isEmpty ?? true;
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <PopulationScopeHeader data={insightQuery.data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />

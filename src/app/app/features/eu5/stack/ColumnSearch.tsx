@@ -3,13 +3,14 @@ import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon
 import PlusIcon from "@heroicons/react/16/solid/PlusIcon";
 import XMarkIcon from "@heroicons/react/16/solid/XMarkIcon";
 import { Command as CommandPrimitive } from "cmdk";
+import { flushSync } from "react-dom";
 import { cx } from "class-variance-authority";
 import { focusRing, focusRingWithin } from "@/components/game/focusRing";
 import { Kbd } from "@/components/game/Kbd";
 import { formatInt } from "@/lib/format";
-import { useEu5Engine } from "../store";
+import { useEu5Engine, useEu5Players } from "../store";
 import { usePanToEntity } from "../usePanToEntity";
-import { useFrameSelection } from "./MapTools";
+import { useFrameSelection } from "./frameSelection";
 import { resolveSearchSelection } from "../searchSelection";
 import type { SearchResult } from "../ui-engine";
 import { IconTip, Swatch } from "./parts";
@@ -30,7 +31,7 @@ export function useSearchShortcut(active: boolean, open: () => void) {
         !(document.activeElement instanceof HTMLTextAreaElement)
       ) {
         e.preventDefault();
-        open();
+        flushSync(open);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -87,6 +88,7 @@ function Matched({ name, query }: { name: string; query: string }) {
  * countries and it stays open for the next one.
  */
 export function ColumnSearch({ intent, onClose }: { intent: SearchIntent; onClose: () => void }) {
+  const players = useEu5Players();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   // How many results the list shows before it scrolls.
@@ -100,8 +102,9 @@ export function ColumnSearch({ intent, onClose }: { intent: SearchIntent; onClos
   const frameSelection = useFrameSelection();
   const searchQuery = query.trim();
 
-  useEffect(() => {
-    requestAnimationFrame(() => inputRef.current?.focus());
+  // At once, so that the keys after "/" go to the field and not to the map's shortcuts.
+  useLayoutEffect(() => {
+    inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -110,7 +113,7 @@ export function ColumnSearch({ intent, onClose }: { intent: SearchIntent; onClos
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const found = await engine.queries.searchEntities(searchQuery);
+        const found = await engine.queries.searchEntities(searchQuery, players);
         setResults(found.results);
         setTotal(found.total);
       } finally {
@@ -119,7 +122,7 @@ export function ColumnSearch({ intent, onClose }: { intent: SearchIntent; onClos
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [engine, searchQuery]);
+  }, [engine, searchQuery, players]);
 
   // Shift, Ctrl, or Cmd with Enter or a click adds a country to the
   // selection. Search stays open, so the reader can add the next one.
@@ -228,6 +231,16 @@ export function ColumnSearch({ intent, onClose }: { intent: SearchIntent; onClos
               onClose();
             }
             if (e.key === "Enter") noteModifier(e);
+            // "+" adds the row in view, as the hint under the results says.
+            if (e.key === "+") {
+              const add = listRef.current?.querySelector<HTMLButtonElement>(
+                "[cmdk-item][aria-selected='true'] button",
+              );
+              if (add) {
+                e.preventDefault();
+                add.click();
+              }
+            }
           }}
           aria-label="Search countries or locations"
           placeholder={
@@ -280,6 +293,11 @@ export function ColumnSearch({ intent, onClose }: { intent: SearchIntent; onClos
                       </span>
                       <span className="min-w-0 flex-1 font-game-ui text-[12px] whitespace-nowrap text-game-ink-500">
                         {displayTag(result.tag)}
+                        {result.player ? (
+                          <span className="ml-2 text-game-ink-300">
+                            <Matched name={result.player} query={searchQuery} />
+                          </span>
+                        ) : null}
                       </span>
                       <button
                         type="button"

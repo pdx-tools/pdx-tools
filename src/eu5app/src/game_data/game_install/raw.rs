@@ -490,8 +490,13 @@ pub struct BlessedFile<'a> {
 
 /// Tag-shaped keys (uppercase + underscores). Keeps `TAG` and `TAG_ADJ`; the
 /// adjective form is needed to resolve `$ADJ$` in templated country names.
+/// Also keeps the names that start with a tag, as in `SAR_piedmont`, because a
+/// formed country has such a name.
 fn is_country_name_key(key: &str) -> bool {
     key.chars().all(|c| c.is_ascii_uppercase() || c == '_')
+        || key.split_once('_').is_some_and(|(tag, stem)| {
+            tag.len() == 3 && tag.chars().all(|c| c.is_ascii_uppercase()) && !stem.is_empty()
+        })
 }
 
 /// Build the ordered blessed-file list. Each file's filter is declared inline
@@ -626,6 +631,16 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn country_name_keys_include_names_that_start_with_a_tag() {
+        assert!(super::is_country_name_key("FRA"));
+        assert!(super::is_country_name_key("FRA_ADJ"));
+        assert!(super::is_country_name_key("SAR_piedmont"));
+        assert!(super::is_country_name_key("SAR_piedmont_ADJ"));
+        assert!(!super::is_country_name_key("sevilla"));
+        assert!(!super::is_country_name_key("some_text_key"));
+    }
+
     use super::*;
     use std::io::Cursor;
 

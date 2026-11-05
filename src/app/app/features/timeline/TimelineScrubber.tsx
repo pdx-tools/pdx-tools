@@ -388,7 +388,9 @@ const NoteMarkers = memo(function NoteMarkers({
           aria-label={`${note.label}, ${formatLongDate(note.date)}`}
           className={cx(
             "absolute z-10 grid h-4 w-4 -translate-x-1/2 place-items-center rounded-[var(--radius-plate)]",
-            "text-game-ink-300 transition-colors duration-100 enabled:hover:text-game-accent-100",
+            // A beat of the selected country is in brass, the colour of the selection.
+            note.key.startsWith("beat:") ? "text-game-accent-100" : "text-game-ink-300",
+            "transition-colors duration-100 enabled:hover:text-game-accent-100",
             "disabled:cursor-default",
             focusRing,
           )}

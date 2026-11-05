@@ -177,6 +177,7 @@ dependencies = [
 [[package]]
 name = "arena-serde"
 version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "arena-serde-derive",
  "bumpalo",
@@ -186,6 +187,7 @@ dependencies = [
 [[package]]
 name = "arena-serde-derive"
 version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -585,6 +587,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "jomini",
  "serde",
@@ -1090,6 +1093,7 @@ version = "0.1.0"
 [[package]]
 name = "eu4save"
 version = "0.8.2"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "flate2",
  "jomini",
@@ -1158,6 +1162,7 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "arena-serde",
  "bumpalo",
@@ -1604,6 +1609,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "jomini",
  "serde",
@@ -1865,6 +1871,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "jomini",
  "serde",
@@ -4742,6 +4749,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vic3save"
 version = "0.1.0"
+source = "git+https://github.com/rakaly/jomini.git#16d025dbf4ecc7a906b3513d61cfd300aa710b64"
 dependencies = [
  "getrandom 0.3.4",
  "jomini",
@@ -5999,7 +6007,3 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "jomini"
-version = "0.37.2"

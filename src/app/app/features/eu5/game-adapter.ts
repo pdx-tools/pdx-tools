@@ -21,7 +21,11 @@ import type * as Eu5WorkerModuleDefinition from "./workers/game/game-module";
 import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
 import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import type { BoxSelectOverlayRect } from "./types/box-select";
-import type { CursorHint, LocationClickChangeEvent } from "./workers/map/map-module";
+import type {
+  CursorHint,
+  LocationClickChangeEvent,
+  ScreenshotCaption,
+} from "./workers/map/map-module";
 import type {
   DatePlateColors,
   DatePlateFonts,
@@ -252,6 +256,13 @@ export type SaveQueries = Pick<
   | "getRgoInsight"
   | "getControlInsight"
   | "getPoliticalWorldScoreboard"
+  | "getPoliticalStanding"
+  | "getPlayerCountries"
+  | "getDatedLand"
+  | "getItemLens"
+  | "getRealmLabels"
+  | "getDatedRealms"
+  | "getLandHistory"
   | "getPoliticalDefaultCountryAnchor"
   | "searchEntities"
   | "getCountryIdentity"
@@ -276,6 +287,7 @@ export type SaveCommands = Pick<
   | "clearFocus"
   | "clearFocusOrSelection"
   | "selectPlayers"
+  | "selectCountries"
   | "clearSelection"
   | "highlightMapHoverTarget"
   | "clearMapHoverHighlight"
@@ -405,12 +417,18 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
     endTimelapseRecording: (): Promise<void> => {
       return mapEngine.endTimelapseRecording();
     },
-    generateWorldScreenshot: async (fullResolution: boolean): Promise<Blob> => {
-      const overlayData = await save.getOverlayData();
-      return await mapEngine.generateWorldScreenshot(fullResolution, overlayData);
+    generateWorldScreenshot: async (
+      fullResolution: boolean,
+      caption?: ScreenshotCaption,
+      draft = false,
+    ): Promise<Blob> => {
+      return await mapEngine.generateWorldScreenshot(fullResolution, caption, draft);
     },
     setOwnerBorders: (enabled: boolean) => {
       mapEngine.execCommands([{ kind: "setOwnerBorders", enabled }, { kind: "render" }]);
+    },
+    setNeutralOwnerBorders: (neutral: boolean) => {
+      mapEngine.execCommands([{ kind: "setNeutralOwnerBorders", neutral }, { kind: "render" }]);
     },
 
     startHoverTracking: () => mapEngine.startHoverTracking(),
@@ -468,8 +486,14 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
       bottom: number;
     }) => {
       if (isReleased) return;
-      const colorIds = await save.getSelectedColorIds();
+      const colorIds = await save.getSelectedColorIdGroups();
       if (colorIds.length > 0) await mapEngine.frame_color_ids(colorIds, insets);
+    },
+
+    /** Where the map's ids are in the world, as x and y pairs in the order asked. */
+    worldPointsOfIds: async (colorIds: readonly number[]) => {
+      if (isReleased) return [] as number[];
+      return Array.from(await mapEngine.world_points_of([...colorIds]));
     },
 
     /** Where locations are in the world, in the order asked. A location off the map is null. */

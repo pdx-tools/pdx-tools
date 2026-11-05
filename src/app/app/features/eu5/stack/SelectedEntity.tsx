@@ -12,10 +12,17 @@ import { Eu5Flag } from "../components/flags/Eu5Flag";
 import { formatLegendValue } from "../control-panel/Legend/GradientLegend";
 import { HeadlineStats } from "../features/profiles/ProfileTitle";
 import { useEu5Trigger } from "../features/profiles/useEu5Trigger";
-import { useEu5MapMode, useEu5Engine } from "../store";
+import {
+  useEu5ChosenHome,
+  useEu5Engine,
+  useEu5MapMode,
+  useEu5Players,
+  useSetEu5ChosenHome,
+} from "../store";
 import { usePanToEntity } from "../usePanToEntity";
 import { useEu5MapHoverTarget } from "../useEu5MapHoverTarget";
 import { AddCountryButton, ExactValue, IconTip, Stat, Swatch, usePlayerName } from "./parts";
+import { useDatedCountry } from "./datedCountry";
 import { displayTag } from "./selection";
 
 /**
@@ -26,11 +33,15 @@ import { displayTag } from "./selection";
  */
 export function ClearSelection({ className }: { className?: string }) {
   const engine = useEu5Engine();
+  const multiplayer = useEu5Players().length > 1;
   return (
     <IconTip label="Clear selection">
       <button
         type="button"
-        onClick={() => void engine.commands.clearSelection()}
+        // The default scope of a group's save is the players.
+        onClick={() =>
+          void (multiplayer ? engine.commands.selectPlayers() : engine.commands.clearSelection())
+        }
         aria-label="Clear selection"
         className={cx(
           "flex h-6 shrink-0 items-center justify-center rounded-control px-1.5 font-game-ui text-[12px] text-game-ink-300 transition-colors hover:bg-game-panel-hover hover:text-game-ink-100 max-md:h-11 max-md:px-2.5",
@@ -117,6 +128,28 @@ function ParentLink({ owner }: { owner: CountryRef }) {
   );
 }
 
+/** A group's save does not say which player reads it, so the reader says so. */
+function ThisIsMe({ countryIdx }: { countryIdx: number }) {
+  const chosen = useEu5ChosenHome();
+  const choose = useSetEu5ChosenHome();
+  const mine = chosen === countryIdx;
+  return (
+    <button
+      type="button"
+      aria-pressed={mine}
+      title={mine ? "Your country in this campaign. A click takes this off." : undefined}
+      onClick={() => choose(mine ? null : countryIdx)}
+      className={cx(
+        "h-6 shrink-0 cursor-pointer rounded-control border border-game-control-line px-1.5 font-game-ui text-[12px] hover:bg-game-panel-hover max-md:h-11",
+        mine ? "text-game-accent-100" : "text-game-ink-100",
+        focusRing,
+      )}
+    >
+      {mine ? "You" : "This is me"}
+    </button>
+  );
+}
+
 /**
  * One selected entity, on one line of one height at each level, so that the tabs under
  * it keep their place: the mark (a flag for a country, a swatch for another kind), the
@@ -134,7 +167,18 @@ export function SelectedEntity({
   onCompare?: () => void;
 }) {
   const data = useSelectedHeader(profile);
-  const header = data && !isLocationProfile(data) ? data : null;
+  const liveHeader = data && !isLocationProfile(data) ? data : null;
+  const dated = useDatedCountry(profile.kind === "country" ? profile.country.key : null);
+  const header =
+    liveHeader && dated
+      ? {
+          ...liveHeader,
+          name: dated.name,
+          tag: dated.tag,
+          flag: dated.flag,
+          colorHex: dated.colorHex,
+        }
+      : liveHeader;
   const location = data && isLocationProfile(data) ? data : null;
   const owner = location?.header.owner;
 
@@ -175,7 +219,11 @@ export function SelectedEntity({
   const ownerFirst = profile.kind === "location" && owner;
 
   return (
-    <div className="flex min-h-8 items-center gap-2 border-b border-game-line bg-game-accent-soft pr-1.5 pl-3.5 max-md:min-h-11 max-md:pr-0">
+    <div
+      data-column-focus
+      tabIndex={-1}
+      className="flex min-h-8 items-center gap-2 border-b border-game-line bg-game-accent-soft pr-1.5 pl-3.5 outline-hidden max-md:min-h-11 max-md:pr-0"
+    >
       {ownerFirst ? (
         <>
           <ParentLink owner={owner} />
@@ -193,6 +241,7 @@ export function SelectedEntity({
       {tagNode}
       {playerNode}
       {note ? <span className="shrink-0 text-[12px] text-game-ink-300">{note}</span> : null}
+      {player && profile.kind === "country" ? <ThisIsMe countryIdx={profile.country.key} /> : null}
       <span className="ml-auto flex shrink-0 items-center gap-1 max-md:gap-0">
         {profile.kind === "country" && onCompare ? (
           <AddCountryButton onClick={onCompare} title="Add a country to compare with this one" />

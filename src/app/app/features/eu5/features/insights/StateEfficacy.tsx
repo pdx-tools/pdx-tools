@@ -1,4 +1,5 @@
 import ChevronRightIcon from "@heroicons/react/20/solid/ChevronRightIcon";
+import { insightFlow } from "../../stack/levelBody";
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -27,7 +28,7 @@ import {
   yAxisName,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
-import { useEu5Engine, useEu5Players } from "../../store";
+import { useEu5Engine } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -42,8 +43,14 @@ import {
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useSelectedCountries } from "../../stack/selected";
-import { countryDotSeries, logAxis, logDomain, LogFloorNote, scatterDots } from "./countryScatter";
+import {
+  countryDotSeries,
+  useScatterMarks,
+  logAxis,
+  logDomain,
+  LogFloorNote,
+  scatterDots,
+} from "./countryScatter";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }) {
@@ -82,7 +89,7 @@ export function StateEfficacyInsight() {
   const countries = insightQuery.data?.countries ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <StateEfficacyScopeHeader data={insightQuery.data?.scope} />
       {insightQuery.error ? (
         <Eu5InsightErrorState error={insightQuery.error} />
@@ -123,15 +130,15 @@ export function StateEfficacyInsight() {
 }
 
 function StateEfficacyScatterChart({ countries }: { countries: CountryStateEfficacy[] }) {
-  const selected = useSelectedCountries();
-  const multiplayer = useEu5Players().length > 1;
-  const domain = useMemo(() => logDomain(countries.map((c) => c.totalEfficacy)), [countries]);
+  const { selected, home, namePlayers, plot, track } = useScatterMarks();
+  const domain = useMemo(() => logDomain(countries.map((c) => c.locationCount)), [countries]);
 
   const scatterData = useMemo(
     () =>
       scatterDots(
         countries.map((c) => ({
-          x: c.totalEfficacy,
+          x: c.locationCount,
+          size: c.totalEfficacy,
           y: c.avgEfficacy,
           tag: c.country.tag,
           name: c.country.country.name,
@@ -146,9 +153,10 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
         })),
         domain,
         selected,
-        multiplayer,
+        home,
+        namePlayers,
       ),
-    [countries, domain, selected, multiplayer],
+    [countries, domain, selected, home, namePlayers],
   );
 
   const option = useMemo((): EChartsOption => {
@@ -156,7 +164,7 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
 
     return {
       grid: { ...chartGutter, top: 28, bottom: 52 },
-      xAxis: logAxis(domain, "Total Effective Development"),
+      xAxis: logAxis(domain, "Locations"),
       yAxis: {
         type: "value",
         ...yAxisName("Avg Effective Development per Location"),
@@ -183,9 +191,9 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
           ].join("<br/>");
         },
       },
-      series: [{ ...countryDotSeries(), data: scatterData }],
+      series: [countryDotSeries(scatterData, plot)],
     };
-  }, [scatterData, domain]);
+  }, [scatterData, domain, plot]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -200,8 +208,19 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
 
   return (
     <>
-      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
-      <LogFloorNote domain={domain} what="effective development" />
+      <EChart
+        option={option}
+        style={{ height: "420px", width: "100%" }}
+        onInit={(chart) => {
+          handleInit(chart);
+          track(chart);
+        }}
+      />
+      <LogFloorNote
+        domain={domain}
+        what="effective development"
+        axis="Further right: more land. Higher: richer land per location."
+      />
     </>
   );
 }

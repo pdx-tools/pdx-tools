@@ -5,6 +5,7 @@ import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
 import { usePanToEntity } from "../../usePanToEntity";
 import { useEu5MapHoverSource } from "../../useEu5MapHoverTarget";
+import { useFrameSelection } from "../../stack/frameSelection";
 
 type EntityChartTarget = {
   id: number;
@@ -20,6 +21,7 @@ export function useEu5EntityChartClick(opts: {
   const engine = useEu5Engine();
   const panToEntity = usePanToEntity();
   const hoverSource = useEu5MapHoverSource();
+  const frame = useFrameSelection();
 
   const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
     const target = opts.getTarget(params);
@@ -33,6 +35,15 @@ export function useEu5EntityChartClick(opts: {
       return;
     }
 
+    if (opts.kind === "country" && (ev?.shiftKey || ev?.ctrlKey || ev?.metaKey)) {
+      void engine.commands.addCountry(target.id);
+      return;
+    }
+    // A dot selects what it names, as a row does, so the map and the column agree.
+    if (opts.kind === "country") {
+      void engine.commands.selectCountry(target.id).then(frame);
+      return;
+    }
     nav.open(entityProfileEntry(opts.kind, target.id, target.label));
     panToEntity(target.anchorLocationIdx);
   });

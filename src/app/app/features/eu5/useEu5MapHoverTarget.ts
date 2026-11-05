@@ -6,7 +6,9 @@ import type { AppEngine } from "./ui-engine";
 export type Eu5MapHoverTarget =
   | { kind: "location"; locationIdx: number }
   | { kind: "country"; countryIdx: number }
-  | { kind: "market"; marketId: number };
+  | { kind: "market"; marketId: number }
+  /** A set of land, such as all land that holds a good */
+  | { kind: "locations"; locationIdxs: number[]; key: string };
 
 let nextHoverSourceId = 1;
 const hoverStack: Array<{ id: number; target: Eu5MapHoverTarget }> = [];
@@ -18,6 +20,8 @@ function topHoverTarget() {
 
 function hoverTargetId(target: Eu5MapHoverTarget) {
   switch (target.kind) {
+    case "locations":
+      return target.key;
     case "location":
       return target.locationIdx;
     case "country":

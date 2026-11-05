@@ -12,7 +12,13 @@ import {
 import type { DistributionBucket, LocationDistribution } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt, formatMetric, formatTick } from "@/lib/format";
 import { SectionTitle } from "../../components";
+import { useChartExport } from "../../stack/chartExport";
+import { useFullView } from "../../stack/fullView";
 import { histogramLabels, histogramXAxes } from "./histogramAxis";
+
+const COLUMN_HEIGHT = 188;
+/** In a full view the histogram stands beside a scatter, so it has the scatter's height. */
+const FULL_HEIGHT = "max(420px, 56vh)";
 
 function formatBound(v: number): string {
   return Number.isInteger(v) ? String(v) : formatFloat(v, 1);
@@ -46,6 +52,9 @@ interface Props {
 }
 
 export function LocationDistributionChart({ distribution, title }: Props) {
+  const heading = `${title ?? distribution.metricLabel} · locations per band`;
+  const chartImage = useChartExport(heading);
+  const full = useFullView().on;
   const chartRef = useRef<HTMLDivElement>(null);
   const [chartWidth, setChartWidth] = useState(0);
   useLayoutEffect(() => {
@@ -81,7 +90,7 @@ export function LocationDistributionChart({ distribution, title }: Props) {
       { name: medianName, xAxis: medianCoord, align: medianAlign, offset: stacked ? -13 : 0 },
       { name: p90Name, xAxis: p90Coord, align: p90Align, offset: 0 },
     ].flatMap(({ name, xAxis, align, offset }) =>
-      xAxis == null ? [] : [{ name, xAxis, label: { align, offset: [0, offset] } }],
+      xAxis == null ? [] : [{ name, xAxis: xAxis + 0.5, label: { align, offset: [0, offset] } }],
     );
     return {
       tooltip: {
@@ -110,6 +119,14 @@ export function LocationDistributionChart({ distribution, title }: Props) {
           data: buckets.map((b) => b.count),
           itemStyle: { color: histogramBar },
           barCategoryGap: "10%",
+        },
+        // The lines stand on the axis of values, so each is at its true place in its band.
+        // On the axis of bands a line would go to the middle of a band.
+        {
+          type: "line",
+          xAxisIndex: 1,
+          data: [],
+          silent: true,
           markLine: {
             symbol: "none",
             silent: true,
@@ -135,11 +152,16 @@ export function LocationDistributionChart({ distribution, title }: Props) {
 
   return (
     <div>
-      <SectionTitle className="mb-1">
-        {title ?? distribution.metricLabel} · locations per band
-      </SectionTitle>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <SectionTitle>{heading}</SectionTitle>
+        {chartImage.button}
+      </div>
       <div ref={chartRef}>
-        <EChart option={option} style={{ height: 188 }} />
+        <EChart
+          option={option}
+          style={{ height: full ? FULL_HEIGHT : COLUMN_HEIGHT }}
+          onInit={chartImage.track}
+        />
       </div>
     </div>
   );

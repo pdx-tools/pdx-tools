@@ -48,6 +48,9 @@ const gradient: GradientConfig = {
   palette: "eu5",
   minValue: 0,
   midValue: 50,
+  clamped: false,
+  trueMax: 1,
+  softening: 1,
   maxValue: 100,
 };
 const cleanup: (() => void)[] = [];

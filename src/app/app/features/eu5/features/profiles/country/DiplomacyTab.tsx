@@ -183,7 +183,7 @@ export function DiplomacyTabContent({ data }: { data: DiplomacySection }) {
   }, [data, activeProfileIdx]);
 
   if (rows.length === 0) {
-    return <p className="px-3 py-2 text-sm text-game-ink-500">No diplomatic relations.</p>;
+    return <p className="px-3 py-2 text-sm text-game-ink-500">No overlord or subjects.</p>;
   }
 
   return (

@@ -14,6 +14,8 @@ import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { formatPeople } from "./populationFormatting";
 import { roundYearOffsets } from "./histogramAxis";
+import { pointLabel, pointsToSave } from "../../stack/yearlySeries";
+import { formatLongDate } from "@/features/timeline/date";
 
 export type PopulationHistorySeries = {
   country: CountryRef;
@@ -60,7 +62,6 @@ export function PopulationHistoryChart({
     const baseYear = saveDate?.year ?? 0;
 
     const series = filtered.map((c) => {
-      const len = c.historicalPopulation.length;
       return {
         name: c.country.country.name,
         type: "line" as const,
@@ -69,7 +70,9 @@ export function PopulationHistoryChart({
         color: c.country.colorHex,
         lineStyle: { color: c.country.colorHex, width: 2 },
         itemStyle: { color: c.country.colorHex },
-        data: c.historicalPopulation.flatMap((v, i) => (v === 0 ? [] : [[i - len + 1, v * 1000]])),
+        data: pointsToSave(c.historicalPopulation, saveDate, c.totalPopulation)
+          .filter(([, v]) => v !== 0)
+          .map(([x, v]) => [x - baseYear, v]),
       };
     });
 
@@ -88,7 +91,7 @@ export function PopulationHistoryChart({
       xAxis: {
         type: "value",
         min: minX,
-        max: 0,
+        max: "dataMax",
         axisLabel: {
           color: tickColor,
           customValues: yearTicks,
@@ -112,7 +115,10 @@ export function PopulationHistoryChart({
           const arr = Array.isArray(params) ? params : [params];
           if (arr.length === 0) return "";
           const firstVal = arr[0]?.value;
-          const year = baseYear + Number(Array.isArray(firstVal) ? firstVal[0] : 0);
+          const year = pointLabel(
+            baseYear + Number(Array.isArray(firstVal) ? firstVal[0] : 0),
+            formatLongDate(saveDate),
+          );
           const lines = arr
             .filter((p) => Array.isArray(p.value))
             .map(

@@ -46,6 +46,13 @@ import type {
   RgoInsightData,
   ControlInsightData,
   PoliticalWorldScoreboard,
+  PoliticalStanding,
+  DatedRealms,
+  LandHistory,
+  DatedLand,
+  ItemLens,
+  LensItem,
+  RealmLabels,
   Eu5DateComponents,
   TimelineChange,
   TimelineData,
@@ -473,9 +480,6 @@ const loadSaveInner = async (
     canHighlightLocation: (locationId: number) => {
       return app.can_highlight_location(locationId);
     },
-    getOverlayData: () => {
-      return app.get_overlay_data();
-    },
     getLocationArrays: (): Blob => {
       const buffer = app.location_arrays();
       const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
@@ -515,6 +519,8 @@ const loadSaveInner = async (
     clearFocus: () => afterMutation(app.clear_focus()),
     clearFocusOrSelection: () => afterMutation(app.clear_focus_or_selection()),
     selectPlayers: () => afterMutation(app.select_players()),
+    selectCountries: (countries: number[]) =>
+      afterMutation(app.select_countries(new Uint32Array(countries))),
     clearSelection: () => afterMutation(app.clear_selection()),
     highlightMapHoverTarget: (target: Eu5MapHoverTarget) => {
       app.clear_highlights();
@@ -525,6 +531,9 @@ const loadSaveInner = async (
         case "country":
           app.highlight_country(target.countryIdx);
           break;
+        case "locations":
+          app.paint_items(Uint32Array.from(target.locationIdxs));
+          break;
         case "market":
           app.highlight_market(target.marketId);
           break;
@@ -533,6 +542,7 @@ const loadSaveInner = async (
     },
     clearMapHoverHighlight: () => {
       app.clear_highlights();
+      app.clear_item_paint();
       return syncFlagData();
     },
     getStateEfficacy: (): StateEfficacyInsightData => {
@@ -604,15 +614,45 @@ const loadSaveInner = async (
     getPoliticalWorldScoreboard: (): PoliticalWorldScoreboard => {
       return app.get_political_world_scoreboard();
     },
+    /** The countries that players hold and that own land, as the Players preset counts them */
+    getPlayerCountries: (): number[] => {
+      return Array.from(app.get_player_countries());
+    },
+    getPoliticalStanding: (countryIdx: number): PoliticalStanding | undefined => {
+      return app.get_political_standing(countryIdx);
+    },
+    getDatedRealms: (include?: number): DatedRealms => {
+      return app.get_dated_realms(include);
+    },
+    getDatedLand: (countryIdx: number): DatedLand | undefined => {
+      return app.get_dated_land(countryIdx);
+    },
+    getItemLens: (item: LensItem): ItemLens => {
+      return app.get_item_lens(item);
+    },
+    getRealmLabels: (): RealmLabels => {
+      return app.get_realm_labels();
+    },
+    getLandHistory: (countryIdx: number): LandHistory | undefined => {
+      return app.get_land_history(countryIdx);
+    },
 
-    searchEntities: (query: string) => {
+    /** `players` gives the name of the person who plays a country, also for a search by that name */
+    searchEntities: (
+      query: string,
+      players: readonly { countryIdx: number; name: string }[] = [],
+    ) => {
       const lower = query.toLowerCase();
+      const playerOf = (countryIdx: number) =>
+        players.find((player) => player.countryIdx === countryIdx)?.name;
       const countries = countryIndex
         .filter(
           (c) =>
             c.capital !== null &&
             c.capital !== undefined &&
-            (c.country.name.toLowerCase().includes(lower) || c.tag.toLowerCase().includes(lower)),
+            (c.country.name.toLowerCase().includes(lower) ||
+              c.tag.toLowerCase().includes(lower) ||
+              playerOf(c.country.key)?.toLowerCase().includes(lower)),
         )
         .map((c) => ({
           kind: "country" as const,
@@ -621,6 +661,7 @@ const loadSaveInner = async (
           tag: c.tag,
           colorHex: c.colorHex,
           locationIdx: c.capital!,
+          player: playerOf(c.country.key),
         }));
 
       const locations = locationIndex
@@ -651,7 +692,7 @@ const loadSaveInner = async (
       return app.center_at(locationIdx) ?? null;
     },
 
-    getSelectedColorIds: (): number[] => Array.from(app.selected_color_ids()),
+    getSelectedColorIdGroups: (): number[] => Array.from(app.selected_color_id_groups()),
 
     getPoliticalDefaultCountryAnchor: (): number | null => {
       return app.political_default_country_anchor() ?? null;

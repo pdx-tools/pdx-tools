@@ -124,21 +124,20 @@ describe("formatFixedPercent", () => {
 });
 
 describe("formatCompactIn", () => {
-  it("uses the unit of the largest value", () => {
-    expect(formatCompactIn(877.8, 1600)).toBe("0.9K");
-    expect(formatCompactIn(1600, 1600)).toBe("1.6K");
-    expect(formatCompactIn(-500, 2000)).toBe("−0.5K");
+  it("has whole numbers with no unit in a column under 10,000", () => {
+    expect(formatCompactIn(877.8, 1600)).toBe("878");
+    expect(formatCompactIn(1600, 1600)).toBe("1,600");
+    expect(formatCompactIn(-500, 2000)).toBe("\u2212500");
   });
 
-  it("keeps a long tail in its own form", () => {
+  it("has a unit from 10,000, and whole numbers under 1,000", () => {
     expect(formatCompactIn(387_000, 21_700_000)).toBe("387.0K");
     expect(formatCompactIn(9700, 21_700_000)).toBe("9.7K");
-    expect(formatCompactIn(958, 21_700_000)).toBe("958.0");
-    expect(formatCompactIn(958, 25_500)).toBe("958.0");
-    expect(formatCompactIn(958, 21_700_000, "958")).toBe("958");
+    expect(formatCompactIn(958, 21_700_000)).toBe("958");
+    expect(formatCompactIn(958, 25_500)).toBe("958");
   });
 
-  it("has no unit below a thousand", () => {
-    expect(formatCompactIn(96.3, 100)).toBe("96.3");
+  it("keeps the decimal in a column under 100", () => {
+    expect(formatCompactIn(96.3, 99)).toBe("96.3");
   });
 });

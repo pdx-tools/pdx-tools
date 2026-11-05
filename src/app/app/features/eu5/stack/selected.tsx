@@ -5,7 +5,7 @@ import { useEu5Engine, useEu5Players, useEu5SelectionState } from "../store";
 import { useEu5SelectionTrigger } from "../features/profiles/useEu5Trigger";
 import { countryProfileEntry, usePanelNav } from "../features/profiles/PanelNavContext";
 import { usePanToEntity } from "../usePanToEntity";
-import { useFrameSelection } from "./MapTools";
+import { useFrameSelection } from "./frameSelection";
 import { isCountrySet } from "./selection";
 
 const SelectedContext = createContext<readonly CountryRef[]>([]);
@@ -62,11 +62,15 @@ export function useOpenCountry() {
       const active = selection?.isEmpty ? undefined : selection?.activeProfile;
       const inSet = isCountrySet(selection) && selected.some((c) => c.country.key === country.idx);
       const same = active?.kind === "country" && active.country.key === country.idx;
-      if (inSet || same) {
+      if (same) {
+        // The first tab is this country's view.
+        nav.popTo(0);
+        panToEntity(country.anchor);
+      } else if (inSet) {
         nav.open(entry);
         panToEntity(country.anchor);
       } else {
-        nav.openForSelection(entry);
+        // The first tab shows the country once it is selected.
         // The reader chose this country in the column, so the map shows all of it.
         void engine.commands.selectCountry(country.idx).then(frame);
       }

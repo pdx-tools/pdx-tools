@@ -4,7 +4,7 @@ import { cycleSnap, settleSnap, sheetHeight, stepSnap } from "./sheet";
 describe("sheetHeight", () => {
   it("gives three sizes in order on a phone", () => {
     expect(sheetHeight("map", 844)).toBe(253);
-    expect(sheetHeight("half", 844)).toBe(561);
+    expect(sheetHeight("half", 844)).toBe(506);
     expect(sheetHeight("sheet", 844)).toBe(641);
   });
 

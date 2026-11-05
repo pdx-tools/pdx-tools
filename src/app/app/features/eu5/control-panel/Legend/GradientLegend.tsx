@@ -1,3 +1,4 @@
+import type React from "react";
 import { cx } from "class-variance-authority";
 import {
   formatCount,
@@ -6,6 +7,7 @@ import {
   formatMetric,
   formatPercent,
   formatRate,
+  formatTick,
 } from "@/lib/format";
 import type { GradientConfig, MapMode } from "@/wasm/wasm_eu5";
 import { useEu5PaletteGradients } from "../../store";
@@ -39,6 +41,20 @@ const ENCODES: Partial<Record<MapMode, string>> = {
   buildingLevels: "building levels",
 };
 
+/** What the colour of each location encodes, as a name for a label */
+export function gradientLabel(mode: MapMode): string {
+  const what = ENCODES[mode] ?? "value";
+  return `${what[0].toUpperCase()}${what.slice(1)}`;
+}
+
+/** The stops of a palette's CSS gradient, for a canvas */
+export function paletteStops(css: string): { offset: number; color: string }[] {
+  return [...css.matchAll(/rgb\((\d+), (\d+), (\d+)\) ([\d.]+)%/g)].map((m) => ({
+    offset: Number(m[4]) / 100,
+    color: `rgb(${m[1]},${m[2]},${m[3]})`,
+  }));
+}
+
 const TICK_UNITS = [
   { size: 1_000_000_000, suffix: "B" },
   { size: 1_000_000, suffix: "M" },
@@ -66,6 +82,44 @@ export function legendTicks(mode: MapMode, values: readonly number[]): string[] 
   });
 }
 
+/**
+ * The ticks of a scale, each at its true place on the ramp. A log scale has a tick at
+ * each power of ten, so that its shape can be read. Zero is the low end of the ramp, and
+ * a value starts to climb from about the softening of the scale.
+ */
+/** The least space between two ticks, as a share of the ramp */
+const MIN_TICK_GAP = 0.14;
+
+export function legendScaleTicks(
+  mode: MapMode,
+  gradient: GradientConfig,
+): { label: string; at: number }[] {
+  const { minValue, midValue, maxValue } = gradient;
+  if (gradient.scale !== "log" || maxValue <= 0) {
+    const labels = legendTicks(mode, [minValue, midValue, maxValue]);
+    // The top of a clamped scale also holds the few values above it.
+    return labels.map((label, i) => ({
+      label: i === 2 && gradient.clamped ? `${label}+` : label,
+      at: i / 2,
+    }));
+  }
+  // Round ticks from the first power of ten above the softening.
+  const first = 10 ** Math.ceil(Math.log10(Math.max(1, gradient.softening)));
+  const decades: number[] = [];
+  for (let value = first; value < maxValue; value *= 10) decades.push(value);
+  // Too many ticks crowd the key, so a wide range keeps every other one.
+  const kept = decades.length > 4 ? decades.filter((_, i) => i % 2 === 0) : decades;
+  const top = {
+    label: `${formatTick(maxValue)}${gradient.clamped ? "+" : ""}`,
+    at: legendPosition(gradient, maxValue),
+  };
+  const round = kept
+    .map((value) => ({ label: formatTick(value), at: legendPosition(gradient, value) }))
+    // A round tick near the top would run into the top's own label.
+    .filter((tick) => top.at - tick.at >= MIN_TICK_GAP && tick.at >= MIN_TICK_GAP);
+  return [{ label: "0", at: 0 }, ...round, top];
+}
+
 type Props = {
   mode: MapMode;
   gradient: GradientConfig;
@@ -73,6 +127,8 @@ type Props = {
   marker?: number;
   /** The selection that the scale is fitted to, if it is not the world */
   scope?: string;
+  /** A short key that shares the line over the scale */
+  aside?: React.ReactNode;
 };
 
 /**
@@ -81,6 +137,11 @@ type Props = {
  */
 export function legendPosition(gradient: GradientConfig, value: number): number {
   const { minValue: min, midValue: mid, maxValue: max } = gradient;
+  if (gradient.scale === "log") {
+    const top = Math.log1p(max / gradient.softening);
+    const at = top > 0 ? Math.log1p(Math.max(0, value) / gradient.softening) / top : 0;
+    return Math.max(0, Math.min(1, Number.isFinite(at) ? at : 0));
+  }
   const half = (from: number, to: number, x: number) =>
     to === from ? 0 : (x - from) / (to - from);
   const pos = value <= mid ? half(min, mid, value) * 0.5 : 0.5 + half(mid, max, value) * 0.5;
@@ -101,12 +162,20 @@ export function rampColor(css: string, at: number): string | undefined {
   return `rgb(${a.rgb.map((v, i) => Math.round(v + (b.rgb[i] - v) * t)).join(",")})`;
 }
 
-export function GradientLegend({ mode, gradient, marker, scope }: Props) {
+/** The rule of each clipped scale, for the key and the image: where it stops, and the true top */
+export function clipNote(mode: MapMode, gradient: GradientConfig): string | null {
+  if (!gradient.clamped) return null;
+  return `top 2% of land above ${legendTicks(mode, [gradient.maxValue])[0]}, highest ${legendTicks(mode, [gradient.trueMax])[0]}`;
+}
+
+export function GradientLegend({ mode, gradient, marker, scope, aside }: Props) {
   const paletteGradients = useEu5PaletteGradients();
   const at = marker === undefined ? null : legendPosition(gradient, marker);
   const what = ENCODES[mode] ?? "value";
-  const encodes = `${what[0].toUpperCase()}${what.slice(1)} per location${scope ? ` · scaled to ${scope}` : ""}`;
-  const ticks = legendTicks(mode, [gradient.minValue, gradient.midValue, gradient.maxValue]);
+  const scale = gradient.scale === "log" ? "log scale" : "linear scale";
+  const encodes = `${gradientLabel(mode)} per location · ${scale}${scope ? ` · scaled to ${scope}` : ""}`;
+  const clip = clipNote(mode, gradient);
+  const ticks = legendScaleTicks(mode, gradient);
   // The label stays inside the bar at the two ends.
   const align =
     at === null
@@ -121,8 +190,12 @@ export function GradientLegend({ mode, gradient, marker, scope }: Props) {
     <div className="flex min-w-0 flex-1 flex-col gap-1 max-md:flex-row max-md:items-center max-md:gap-2">
       {/* The line names what the scale encodes, because a list beside it can have another unit.
           A long name wraps, so the selection's name stays whole. */}
-      <div className="font-game-ui text-[12px] leading-tight text-game-ink-300 max-md:hidden">
-        {encodes}
+      <div className="flex items-start justify-between gap-2 font-game-ui text-[12px] leading-tight text-game-ink-300 max-md:hidden">
+        <span className="min-w-0">
+          {encodes}
+          {clip ? ` · ${clip}` : ""}
+        </span>
+        {aside}
       </div>
       <div className="shrink-0 font-game-ui text-[12px] leading-tight text-game-ink-300 capitalize md:hidden">
         {what}
@@ -151,20 +224,27 @@ export function GradientLegend({ mode, gradient, marker, scope }: Props) {
           />
         ) : null}
       </div>
-      <div className="flex justify-between font-game-num text-[12px] text-game-ink-500 tabular-nums max-md:contents">
+      {/* Each tick stands at its true place on the ramp. */}
+      <div className="relative h-4 font-game-num text-[12px] text-game-ink-300 tabular-nums max-md:hidden">
         {ticks.map((tick, i) => (
           <span
-            key={i}
+            key={tick.label}
             className={cx(
-              "shrink-0",
-              i === 0 ? "max-md:order-1" : "max-md:order-3",
-              i === 1 && "max-md:hidden",
+              "absolute top-0.5 whitespace-nowrap",
+              i === 0 ? "" : i === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2",
             )}
+            style={{ left: `${tick.at * 100}%` }}
           >
-            {tick}
+            {tick.label}
           </span>
         ))}
       </div>
+      <span className="order-1 shrink-0 font-game-num text-[12px] text-game-ink-300 md:hidden">
+        {ticks[0]?.label}
+      </span>
+      <span className="order-3 shrink-0 font-game-num text-[12px] text-game-ink-300 md:hidden">
+        {ticks[ticks.length - 1]?.label}
+      </span>
     </div>
   );
 }

@@ -13,10 +13,10 @@ export const SHEET_LABELS: Record<SheetSnap, string> = {
 };
 
 /**
- * The first size, as a share of the frame. At 390x844 a selected country shows
- * 6 whole rows of 44px below its head, and the map keeps more than 280px.
+ * The first size, as a share of the frame. At 390x844 the map keeps more than 330px,
+ * and the timeline's one row leaves most of that free.
  */
-const HALF_SHARE = 0.665;
+const HALF_SHARE = 0.6;
 /** The height of map that stays in view at the largest size, in px */
 const MAP_KEPT = 200;
 /** The speed of a flick, in px for each ms. A slower release goes to the nearest size. */

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { insightFlow } from "../../stack/levelBody";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
@@ -14,7 +15,6 @@ import {
   chartGutter,
   yAxisName,
 } from "@/components/viz/echartsTheme";
-import { useEu5Players } from "../../store";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { UnrealizedTaxBaseTopLocations } from "./UnrealizedTaxBaseTopLocations";
@@ -25,9 +25,9 @@ import {
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useSelectedCountries } from "../../stack/selected";
 import {
   countryDotSeries,
+  useScatterMarks,
   logAxis,
   logDomain,
   LogFloorNote,
@@ -69,7 +69,7 @@ export function UnrealizedTaxBaseInsight() {
   const countries = insightQuery.data?.countries ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-3.5">
+    <div className={insightFlow}>
       <UnrealizedTaxBaseScopeHeader />
       <p className="text-xs text-game-ink-500">
         Wealth not converted into tax base due to limited control.
@@ -253,8 +253,7 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
 }
 
 function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnrealizedTaxBase[] }) {
-  const selected = useSelectedCountries();
-  const multiplayer = useEu5Players().length > 1;
+  const { selected, home, namePlayers, plot, track } = useScatterMarks();
   // One extent for both axes, so that the diagonal stays a diagonal.
   const domain = useMemo(
     () => logDomain(countries.flatMap((c) => [c.totalTaxBase, c.totalWealth])),
@@ -272,12 +271,14 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
           name: c.country.country.name,
           color: c.country.colorHex,
           player: c.country.isPlayer,
+          id: c.country.country.key,
         })),
         domain,
         selected,
-        multiplayer,
+        home,
+        namePlayers,
       ),
-    [countries, domain, selected, multiplayer],
+    [countries, domain, selected, home, namePlayers],
   );
 
   const option = useMemo((): EChartsOption => {
@@ -317,8 +318,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
           tooltip: { show: false },
         },
         {
-          ...countryDotSeries(),
-          data: scatterData,
+          ...countryDotSeries(scatterData, plot),
           symbolSize: (_val, params) => {
             const d = params.data as (typeof scatterData)[number];
             return Math.max(6, Math.min(28, Math.sqrt(d.locationCount)));
@@ -326,7 +326,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
         },
       ],
     };
-  }, [scatterData, domain]);
+  }, [scatterData, domain, plot]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -344,7 +344,14 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
 
   return (
     <>
-      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
+      <EChart
+        option={option}
+        style={{ height: "420px", width: "100%" }}
+        onInit={(chart) => {
+          handleInit(chart);
+          track(chart);
+        }}
+      />
       <LogFloorNote domain={domain} what="tax base or wealth" />
     </>
   );

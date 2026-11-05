@@ -144,7 +144,7 @@ export interface EChartsTheme {
   numFamily: string;
 }
 
-const NUM_FAMILY = '"IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace';
+const NUM_FAMILY = '"Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif';
 
 /**
  * Text in a plot that is a number or a tag, such as a value at the end of a

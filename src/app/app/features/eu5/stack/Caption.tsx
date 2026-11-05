@@ -1,22 +1,19 @@
 import type React from "react";
-import { formatExact, formatMetric, formatPercent } from "@/lib/format";
-import type {
-  CountryProfile,
-  DiplomacySubjectType,
-  LocationProfile,
-  MapMode,
-} from "@/wasm/wasm_eu5";
+import { useEffect, useRef } from "react";
+import { formatCount, formatExact, formatInt, formatMetric, formatPercent } from "@/lib/format";
+import type { LocationProfile, MapMode } from "@/wasm/wasm_eu5";
 import {
+  useEu5Engine,
+  useEu5HomeCountry,
   useEu5MapMode,
-  useEu5MapModeGradient,
-  useEu5PaletteGradients,
+  useEu5MapViewport,
   useEu5Players,
   useEu5SelectionState,
+  useEu5TimelineLive,
 } from "../store";
 import { EntityName } from "../components/EntityName";
 import { Eu5Icon } from "../components/icons/Eu5Icon";
-import { legendPosition, rampColor } from "../control-panel/Legend/GradientLegend";
-import { CountryLink, MarketLink } from "../features/profiles/EntityLink";
+import { MarketLink } from "../features/profiles/EntityLink";
 import { LocationParts } from "../features/profiles/location/LocationProfile";
 import { useEu5SelectionTrigger } from "../features/profiles/useEu5Trigger";
 import { useEu5Trigger } from "../features/profiles/useEu5Trigger";
@@ -26,13 +23,23 @@ import {
   goodsByImbalance,
   signedImbalance,
 } from "../features/profiles/market/GoodsTab";
-import { ModeRanking, RankList, RankRow, byDesc, countryRow } from "./ModeRanking";
-import type { Ranked } from "./ModeRanking";
-import { isCountryMode, locationRowValue, useCountryProfile } from "./compare";
-import { Band, DivergingBar, Swatch } from "./parts";
+import { CountryProfile } from "../features/profiles/country/CountryProfile";
+import { GameButton } from "../components";
+import { useViewportInsets } from "../useViewportInsets";
+import { compareEntry, usePanelNav } from "../features/profiles/PanelNavContext";
+import { setBuildingList, useBuildingList } from "./buildingList";
+import { ModeRanking, RankList, worldRankingOf } from "./ModeRanking";
+import type { Ranked, Ranking } from "./ModeRanking";
+import { DatedBoard, GreatPowerBoard } from "./Board";
+import { HomeStrip } from "./HomeStrip";
+import { RaceChart, WorldStandings, useStandings } from "./Standings";
+import { WorldLandChart } from "./WorldLandChart";
+import { useSelectedCountries } from "./selected";
+import { useFullView } from "./fullView";
+import { DivergingBar, Stat, Swatch } from "./parts";
 import { SetLeaders } from "./SetLeaders";
 import { SelectedFigures } from "./SelectedEntity";
-import { captionHeading, isCountrySet, possessive } from "./selection";
+import { captionHeading, isCountrySet } from "./selection";
 
 /**
  * The root of the column is always the map's caption. A selection narrows
@@ -41,16 +48,54 @@ import { captionHeading, isCountrySet, possessive } from "./selection";
  */
 export function Caption() {
   const selection = useEu5SelectionState();
+  const mode = useEu5MapMode();
+  const building = useBuildingList();
   const profile =
     selection && !selection.isEmpty && selection.preset !== "players"
       ? selection.activeProfile
       : undefined;
+  const empty = selection == null || selection.isEmpty;
+  useEffect(() => {
+    if (empty) setBuildingList(false);
+  }, [empty]);
+  const worldRows = building && !empty ? worldRankingOf(mode) : undefined;
 
+  if (worldRows) return <BuildingList ranking={worldRows} />;
   if (isCountrySet(selection)) return <SetCaption />;
   if (profile?.kind === "location") return <LocationCaption locationIdx={profile.location.key} />;
   if (profile?.kind === "country") return <CountryCaption countryIdx={profile.country.key} />;
   if (profile?.kind === "market") return <MarketCaption marketId={profile.market.key} />;
   return <WorldCaption narrowed={selection != null && !selection.isEmpty} />;
+}
+
+/**
+ * The world's list stays while the reader adds countries from it. The strip above has
+ * the chips, and the button here goes on to compare them.
+ */
+function BuildingList({ ranking }: { ranking: Ranking }) {
+  const mode = useEu5MapMode();
+  const nav = usePanelNav();
+  const selection = useEu5SelectionState();
+  const count = selection?.entityCount ?? 0;
+  return (
+    <>
+      <div className="flex items-center gap-2 px-3.5 py-2.5">
+        <p className="min-w-0 flex-1 text-[13px] leading-tight text-game-ink-100">
+          {`${formatInt(count)} ${count === 1 ? "country" : "countries"} chosen. + adds another.`}
+        </p>
+        <GameButton
+          disabled={count < 2}
+          onClick={() => {
+            setBuildingList(false);
+            nav.open(compareEntry);
+          }}
+        >
+          Compare
+        </GameButton>
+      </div>
+      <RankList ranking={{ ...ranking, quiet: true, floorNote: undefined }} mode={mode} />
+    </>
+  );
 }
 
 /**
@@ -93,15 +138,33 @@ function CaptionHead({
 /** No selection, or a selection of land: the world's ranking, narrowed to the selection */
 function WorldCaption({ narrowed }: { narrowed: boolean }) {
   const mode = useEu5MapMode();
-  const players = useEu5Players();
-  // In single player the player's own country stays on top of the world
-  // ranking. A multiplayer save has the Players preset for that.
-  const lift = !narrowed && players.length === 1 ? [players[0].countryIdx] : [];
+  const live = useEu5TimelineLive();
+  const full = useFullView().on;
+  if (mode === "political" && !live) {
+    return (
+      <div>
+        <DatedBoard />
+      </div>
+    );
+  }
   return (
     <>
+      {narrowed ? null : <HomeStrip />}
       <CaptionHead />
       <div>
-        <ModeRanking key={mode} mode={mode} lift={lift} />
+        {mode === "political" ? (
+          full ? (
+            <WorldStandings />
+          ) : (
+            <>
+              <GroupRace />
+              <GreatPowerBoard />
+              <WorldLand />
+            </>
+          )
+        ) : (
+          <ModeRanking key={mode} mode={mode} />
+        )}
       </div>
     </>
   );
@@ -113,167 +176,135 @@ function WorldCaption({ narrowed }: { narrowed: boolean }) {
  */
 function SetCaption() {
   const mode = useEu5MapMode();
+  const selected = useSelectedCountries();
+  const selection = useEu5SelectionState();
+  const players = selection?.preset === "players";
+  const full = useFullView().on;
+  const large = !players && selected.length > LARGE_SET;
+  // The whole frame has the room for each metric of each player.
+  if (players && full && mode === "political") {
+    return (
+      <>
+        <CaptionHead />
+        <WorldStandings />
+      </>
+    );
+  }
   return (
     <>
       <CaptionHead />
-      <div>
-        <ModeRanking key={mode} mode={mode} />
-        <SetLeaders />
-      </div>
-    </>
-  );
-}
-
-/**
- * One country. A country mode lists its locations by the mode's value, and
- * the political mode lists its overlord and subjects. The other modes list
- * the country's part of what they colour.
- */
-function CountryCaption({ countryIdx }: { countryIdx: number }) {
-  const mode = useEu5MapMode();
-  const profile = useCountryProfile(countryIdx);
-
-  if (!profile) return <ProfileSkeleton />;
-
-  return (
-    <>
-      <CaptionHead title={mode === "political" ? relationsTitle(profile) : undefined} />
+      {/* A large selection reads as one thing: its totals, then a short list. */}
+      {large ? <SetTotals /> : null}
       <div>
         {mode === "political" ? (
-          <DiplomacyRows profile={profile} />
-        ) : isCountryMode(mode) ? (
-          <CountryLocations key={mode} mode={mode} profile={profile} />
+          <>
+            <GreatPowerBoard />
+            {players ? <GroupRace /> : null}
+          </>
         ) : (
-          <ModeRanking key={mode} mode={mode} />
+          <ModeRanking key={mode} mode={mode} cap={large ? 12 : undefined} />
         )}
+        {players ? null : <SetLeaders />}
       </div>
     </>
   );
 }
 
-/** The heading of a country's rows in the political mode, which says whose rows they are */
-function relationsTitle({ header, diplomacy }: CountryProfile): string {
-  const owner = possessive(header.name);
-  return diplomacy.overlord && diplomacy.subjects.length === 0
-    ? `${owner} overlord`
-    : `${owner} subjects`;
-}
+/** Above this many countries a selection is an aggregate, not a list to read through */
+const LARGE_SET = 20;
 
-/** The country's locations, by the mode's value */
-function CountryLocations({ mode, profile }: { mode: MapMode; profile: CountryProfile }) {
-  const gradient = useEu5MapModeGradient();
-  const palettes = useEu5PaletteGradients();
-  // The profile has no growth, so growth comes from the insight of the selection.
-  const growth = useEu5SelectionTrigger(
-    (engine) =>
-      mode === "populationGrowth"
-        ? engine.queries.getPopulationGrowthInsight().then((x) => x.topLocations)
-        : Promise.resolve(null),
-    [mode],
-  ).data;
-
-  // Each row's mark is the colour that the map gives the location, so the list is
-  // also the map's key, and the reader finds a row's location by its colour.
-  const swatch = (value: number) =>
-    gradient ? rampColor(palettes[gradient.palette], legendPosition(gradient, value)) : undefined;
-  const rows: Ranked[] =
-    mode === "populationGrowth"
-      ? (growth ?? []).map((r) => ({
-          key: r.location.key,
-          name: r.location.name,
-          color: swatch(r.growthRate) ?? "",
-          value: r.growthRate,
-          location: { key: r.location.key, name: r.location.name },
-        }))
-      : profile.locations.locations
-          .map((r) => ({ row: r, value: locationRowValue(r, mode) }))
-          .filter((x): x is { row: typeof x.row; value: number } => x.value !== null)
-          .sort(byDesc((x) => x.value))
-          .map(({ row, value }) => ({
-            key: row.location.key,
-            name: row.location.name,
-            color: swatch(value) ?? "",
-            value,
-            location: { key: row.location.key, name: row.location.name },
-          }));
-
-  return <RankList mode={mode} ranking={{ noun: "Locations", unit: UNITS[mode] ?? "", rows }} />;
-}
-
-/** What the value of a location row is, for the band */
-const UNITS: Partial<Record<MapMode, string>> = {
-  control: "Control",
-  development: "Dev",
-  stateEfficacy: "Eff. Dev",
-  wealth: "Wealth",
-  unrealizedTaxBase: "Tax Gap",
-  population: "Pop",
-  populationGrowth: "Growth / yr",
-};
-
-const SUBJECTS: Partial<Record<DiplomacySubjectType, string>> = {
-  Tributary: "Tributaries",
-  March: "Marches",
-  "Hanseatic Member": "Hanseatic Members",
-  "Maha Samanta": "Maha Samantas",
-};
-
-/** The overlord and the subjects of the country, in their game colours */
-function DiplomacyRows({ profile }: { profile: CountryProfile }) {
-  const { diplomacy } = profile;
-  const groups: { label: string; rows: Ranked[] }[] = [];
-  if (diplomacy.overlord && diplomacy.overlordMetrics) {
-    groups.push({
-      label: diplomacy.overlordSubjectType ? `${diplomacy.overlordSubjectType} of` : "Overlord",
-      rows: [countryRow(diplomacy.overlord, diplomacy.overlordMetrics.totalStateEfficacy)],
-    });
-  }
-  const byType = new Map<DiplomacySubjectType, Ranked[]>();
-  for (const s of diplomacy.subjects) {
-    const rows = byType.get(s.subjectType) ?? [];
-    rows.push(countryRow(s.entity, s.metrics.totalStateEfficacy));
-    byType.set(s.subjectType, rows);
-  }
-  for (const [type, rows] of byType) {
-    const label = rows.length > 1 ? (SUBJECTS[type] ?? `${type}s`) : type;
-    groups.push({ label, rows: rows.sort(byDesc((r) => r.value)) });
-  }
-
-  const all = groups.flatMap((g) => g.rows);
-  const largest = Math.max(0, ...all.map((r) => r.value));
-  const row = (r: Ranked) => (
-    <RankRow
-      key={r.key}
-      row={r}
-      display={formatMetric(r.value)}
-      fraction={largest > 0 ? Math.max(0, r.value) / largest : 0}
-    />
-  );
-
-  const leader = [...all].sort(byDesc((r) => r.value))[0];
+/** What a selection of many countries holds, together */
+function SetTotals() {
+  const { data } = useEu5SelectionTrigger((engine) => engine.queries.getDevelopmentInsight());
+  const selection = useEu5SelectionState();
+  if (!data) return null;
+  const population = data.countries.reduce((sum, row) => sum + row.totalPopulation, 0);
   return (
-    <>
-      {leader && all.length > 1 ? (
-        <p className="px-3.5 pb-2 text-[12px] leading-tight text-game-ink-300">
-          {leader.name} leads with {formatMetric(leader.value)}
-        </p>
-      ) : null}
-      {groups.length === 0 ? (
-        <Band label="No overlord or subjects" flush />
-      ) : (
-        groups.map((g, i) => (
-          <div key={g.label}>
-            <Band
-              label={g.label}
-              columns={i === 0 ? "Total Eff. Dev" : undefined}
-              flush={i === 0}
-            />
-            {g.rows.map(row)}
-          </div>
-        ))
-      )}
-    </>
+    <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-game-line px-3.5 pb-2.5">
+      <Stat
+        value={formatInt(data.countries.length)}
+        // The land of the players' preset also holds their subjects.
+        label={
+          selection?.preset === "players"
+            ? "countries, with subjects"
+            : data.countries.length === 1
+              ? "country"
+              : "countries"
+        }
+      />
+      <Stat
+        value={formatInt(selection?.locationCount ?? 0)}
+        label={selection?.locationCount === 1 ? "location" : "locations"}
+      />
+      <Stat value={formatMetric(data.scope.totalDevelopment)} label="Dev" />
+      <Stat value={formatMetric(data.scope.avgDevelopment)} label="avg / location" />
+      <Stat value={formatCount(population)} label="Pop" />
+    </div>
   );
+}
+
+/** The race at the head of a multiplayer list: the leading players, by year */
+function GroupRace() {
+  const players = useEu5Players();
+  const query = useEu5SelectionTrigger((engine) => engine.queries.getPoliticalWorldScoreboard());
+  const home = useEu5HomeCountry();
+  const playing = (query.data?.rows ?? [])
+    .filter((row) => row.country.isPlayer)
+    .map((row) => row.country.country.key);
+  const all = useStandings(players.length > 1 ? playing : []);
+  if (players.length < 2 || !all || all.length < 2) return null;
+  // The chart's rule is the one that its title states: the most tax base at the save.
+  const byTaxBase = [...all].sort(
+    (a, b) => b.profile.overview.taxBase - a.profile.overview.taxBase,
+  );
+  const top = byTaxBase.slice(0, 6);
+  const own = byTaxBase.find((row) => row.countryIdx === home?.countryIdx);
+  const rows = own && !top.includes(own) ? [...top, own] : top;
+  return <RaceChart rows={rows} compact />;
+}
+
+/** The land of the great powers by year, with the map's date on it, when the save has it */
+function WorldLand() {
+  const home = useEu5HomeCountry();
+  const query = useEu5SelectionTrigger((engine) => engine.queries.getPoliticalWorldScoreboard());
+  const rows = (query.data?.rows ?? []).slice(0, 6);
+  const keys = [
+    ...rows.map((row) => row.country.country.key),
+    ...(home && !rows.some((r) => r.country.country.key === home.countryIdx)
+      ? [home.countryIdx]
+      : []),
+  ];
+  const { data } = useEu5Trigger(
+    (engine) =>
+      Promise.all(
+        keys.map(async (key) => {
+          const [history, profile] = await Promise.all([
+            engine.queries.getLandHistory(key),
+            engine.queries.getCountryProfile(key),
+          ]);
+          return history && profile ? { key, history, header: profile.header } : null;
+        }),
+      ),
+    [keys.join(",")],
+  );
+  const lines = (data ?? []).flatMap((line) => {
+    if (!line) return [];
+    return [
+      {
+        name: line.header.name,
+        color: line.header.colorHex,
+        key: line.key,
+        points: line.history.points,
+      },
+    ];
+  });
+  if (lines.length === 0) return null;
+  return <WorldLandChart lines={lines} homeKey={home?.countryIdx} />;
+}
+
+/** One country: a stable view, with one block that follows the map */
+function CountryCaption({ countryIdx }: { countryIdx: number }) {
+  return <CountryProfile countryIdx={countryIdx} />;
 }
 
 /** One market. The markets mode lists its goods by value; the other modes narrow to its land. */
@@ -328,7 +359,50 @@ function MarketGoods({ marketId }: { marketId: number }) {
 }
 
 /** One location: the mode's answer for it first, then its parts in place */
+/** How much of the world's width a framed location shows */
+const LOCATION_FRAME_SHARE = 1 / 14;
+
+/**
+ * A location is about one place, so the map comes close enough to see it. A map that
+ * is already close stays where it is.
+ */
+function useFrameLocation(locationIdx: number) {
+  const engine = useEu5Engine();
+  const viewport = useEu5MapViewport();
+  const { left } = useViewportInsets();
+  const latest = useRef({ viewport, left });
+  useEffect(() => {
+    latest.current = { viewport, left };
+  }, [viewport, left]);
+  useEffect(() => {
+    let live = true;
+    void engine.trigger
+      .worldPointsOf([locationIdx])
+      .then(([point]) => {
+        const now = latest.current;
+        const map = now.viewport;
+        if (!live || !point || !map) return;
+        const width = map.world.width * LOCATION_FRAME_SHARE;
+        if (map.viewport.width <= width) return;
+        const height = (width * map.viewport.height) / map.viewport.width;
+        // The middle of the part of the map that the column does not cover.
+        const covered = now.left / window.innerWidth;
+        void engine.trigger.fitWorldRect({
+          x: point.x - width * (0.5 + covered / 2),
+          y: point.y - height / 2,
+          width,
+          height,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [engine, locationIdx]);
+}
+
 function LocationCaption({ locationIdx }: { locationIdx: number }) {
+  useFrameLocation(locationIdx);
   const mode = useEu5MapMode();
   const { data: profile } = useEu5Trigger(
     (engine) => engine.queries.getLocationProfile(locationIdx),
@@ -353,17 +427,8 @@ function LocationCaption({ locationIdx }: { locationIdx: number }) {
  */
 function LocationAnswer({ profile, mode }: { profile: LocationProfile; mode: MapMode }) {
   const { header, stats } = profile;
-  if (mode === "political" && header.owner) {
-    return (
-      <p className="flex min-w-0 items-center px-3.5 pb-3">
-        <CountryLink country={header.owner} size="md">
-          <EntityName className="text-[14px] leading-tight font-medium">
-            {header.owner.country.name}
-          </EntityName>
-        </CountryLink>
-      </p>
-    );
-  }
+  // The strip above names the owner.
+  if (mode === "political") return null;
   if (mode === "markets" && header.market) {
     return (
       <p className="flex min-w-0 items-center gap-2 px-3.5 pb-3">
