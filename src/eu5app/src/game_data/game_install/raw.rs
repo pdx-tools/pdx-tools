@@ -199,6 +199,10 @@ pub trait Eu5GameFileSourceExt: GameFileSource {
         religions: &FxHashSet<String>,
         cultures: &FxHashSet<String>,
     ) -> Result<FxHashMap<String, String>, GameDataError>;
+    fn add_referenced_text(
+        &self,
+        entries: &mut FxHashMap<String, String>,
+    ) -> Result<(), GameDataError>;
 }
 
 impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
@@ -274,10 +278,6 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
         Ok(culture_keys)
     }
 
-    /// EU5 localization (across all english localization):
-    /// - 222,265 unique keys found
-    /// - 61 keys are duplicated across files
-    /// - 31 duplicated keys have different values
     fn load_blessed_localizations(
         &self,
         goods: &FxHashSet<String>,
@@ -317,6 +317,8 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
             }
         }
 
+        self.add_referenced_text(&mut entries)?;
+
         tracing::info!(
             name: "eu5.localization.loaded",
             unique_keys = entries.len(),
@@ -327,6 +329,72 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
 
         Ok(entries)
     }
+
+    /// A text can point at text in any localization file. A rebel name in
+    /// `rebel_l_english` is `$rebellious_prince_name$`, and the file of the
+    /// event that makes the rebels has its text. This reads each file, so the
+    /// source bundle has each file, but it keeps only the keys that it reaches.
+    fn add_referenced_text(
+        &self,
+        entries: &mut FxHashMap<String, String>,
+    ) -> Result<(), GameDataError> {
+        // The game's own text comes last, so that it replaces the text of a DLC.
+        let mut paths = self.walk_directory(DLC_DIR, &["_l_english.yml"])?;
+        paths.extend(self.walk_directory(LOCALIZATION_DIR, &["_l_english.yml"])?);
+        let mut texts = Vec::with_capacity(paths.len());
+        for path in paths {
+            let text = self.read_to_string(&path)?;
+            texts.push((path, text));
+        }
+
+        let mut pending: Vec<String> = entries
+            .values()
+            .flat_map(|text| referenced_keys(text))
+            .map(str::to_owned)
+            .collect();
+        let mut all: FxHashMap<&str, &str> = FxHashMap::default();
+        for (path, text) in &texts {
+            for (key, value) in super::parsing::parse_localization(text) {
+                all.insert(key, value);
+                if can_name_a_country(path, key) {
+                    pending.push(key.to_owned());
+                }
+            }
+        }
+
+        while let Some(key) = pending.pop() {
+            if entries.contains_key(&key) {
+                continue;
+            }
+            if let Some(text) = all.get(key.as_str()) {
+                pending.extend(referenced_keys(text).map(str::to_owned));
+                entries.insert(key, (*text).to_owned());
+            }
+        }
+        Ok(())
+    }
+}
+
+/// A key that no other text points at, but that the game can use as a name.
+/// Script sets a name such as `DAI_NGU` with its text in an event file, and a
+/// rebel name of a DLC ends in `_country`.
+fn can_name_a_country(path: &str, key: &str) -> bool {
+    if path.starts_with(DLC_DIR) {
+        key.ends_with("_country")
+    } else {
+        path.contains("/events/") && key.chars().all(|c| c.is_ascii_uppercase() || c == '_')
+    }
+}
+
+/// The keys that a text points at, with `$key$` or game script.
+fn referenced_keys(text: &str) -> impl Iterator<Item = &str> {
+    let tokens = text.split('$').skip(1).step_by(2);
+    let scripts = text
+        .split('[')
+        .skip(1)
+        .filter_map(|rest| rest.split_once(']'))
+        .filter_map(|(script, _)| crate::game_data::script_name_key(script));
+    tokens.chain(scripts)
 }
 
 pub struct GameInstallationDirectory {
@@ -479,6 +547,9 @@ impl From<rawzip::ZipFileHeaderRecord<'_>> for ZipEntryMetadata {
     }
 }
 
+const LOCALIZATION_DIR: &str = "game/main_menu/localization/english";
+const DLC_DIR: &str = "game/dlc";
+
 /// One localization file folded into the flat [`Localization`] map. `filter`
 /// runs against each parsed key; only keys where it returns `true` are kept.
 /// The runtime map stays an opaque key/value bag; filtering only trims keys
@@ -490,8 +561,11 @@ pub struct BlessedFile<'a> {
 
 /// Tag-shaped keys (uppercase + underscores). Keeps `TAG` and `TAG_ADJ`; the
 /// adjective form is needed to resolve `$ADJ$` in templated country names.
+/// Also keeps the names that start with a tag, as in `SAR_piedmont`, because a
+/// formed country has such a name.
 fn is_country_name_key(key: &str) -> bool {
     key.chars().all(|c| c.is_ascii_uppercase() || c == '_')
+        || crate::game_data::tag_prefixed_stem(key).is_some()
 }
 
 /// Build the ordered blessed-file list. Each file's filter is declared inline
@@ -534,6 +608,18 @@ fn blessed_files<'a>(
         },
         BlessedFile {
             path: "game/main_menu/localization/english/rebel_l_english.yml",
+            filter: Box::new(|_| true),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/area_l_english.yml",
+            filter: Box::new(|_| true),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/dynasty_names_l_english.yml",
+            filter: Box::new(|_| true),
+        },
+        BlessedFile {
+            path: "game/main_menu/localization/english/scripted_country_names_l_english.yml",
             filter: Box::new(|_| true),
         },
     ]
@@ -628,6 +714,17 @@ where
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn country_name_keys_include_names_that_start_with_a_tag() {
+        assert!(is_country_name_key("FRA"));
+        assert!(is_country_name_key("FRA_ADJ"));
+        assert!(is_country_name_key("SAR_piedmont"));
+        assert!(is_country_name_key("SAR_piedmont_ADJ"));
+        assert!(is_country_name_key("C12_piedmont"));
+        assert!(!is_country_name_key("sevilla"));
+        assert!(!is_country_name_key("some_text_key"));
+    }
 
     #[derive(Default)]
     struct FakeSource {
@@ -773,6 +870,44 @@ colors = {
                 "game/main_menu/localization/english/rebel_l_english.yml",
                 r#"l_english:
  peasant_rebels: "Peasant Rebels"
+ prince_rebels_country: "$prince_rebels$"
+ marinid_rebels_country: "[ShowDynastyName('marinid_dynasty')] Rebels"
+"#,
+            )
+            .with_file(
+                "game/main_menu/localization/english/area_l_english.yml",
+                r#"l_english:
+ quhestan_area: "Kuhistān"
+"#,
+            )
+            .with_file(
+                "game/main_menu/localization/english/dynasty_names_l_english.yml",
+                r#"l_english:
+ yuuki_dynasty: "Yūki"
+"#,
+            )
+            .with_file(
+                "game/main_menu/localization/english/scripted_country_names_l_english.yml",
+                r#"l_english:
+ new_spain_scripted_country_name: "New Spain"
+"#,
+            )
+            .with_file(
+                "game/main_menu/localization/english/events/flavor_l_english.yml",
+                r#"l_english:
+ prince_rebels: "$prince_title$ Rebels"
+ prince_title: "Prince"
+ marinid_dynasty: "Marinid"
+ unused_event_text: "Not a name"
+ DAI_NGU: "Đại Ngu"
+"#,
+            )
+            .with_file(
+                "game/dlc/D009/main_menu/localization/english/d009_l_english.yml",
+                r#"l_english:
+ gc_regional_rebels_country: "$ADJ$ Frontier Rebels"
+ dlc_tooltip: "Not a name"
+ prince_title: "From the DLC"
 "#,
             )
     }
@@ -800,6 +935,35 @@ colors = {
         assert_eq!(entries.get("stockholm").unwrap(), "Stockholm");
         assert_eq!(entries.get("svealand").unwrap(), "Svealand");
         assert_eq!(entries.get("peasant_rebels").unwrap(), "Peasant Rebels");
+    }
+
+    #[test]
+    fn load_blessed_localizations_keeps_only_the_other_text_that_it_reaches() {
+        let source = blessed_source();
+        let entries = source
+            .load_blessed_localizations(&allow(&[]), &allow(&[]), &allow(&[]), &allow(&[]))
+            .unwrap();
+
+        assert_eq!(entries.get("quhestan_area").unwrap(), "Kuhistān");
+        assert_eq!(entries.get("yuuki_dynasty").unwrap(), "Yūki");
+        assert_eq!(
+            entries.get("new_spain_scripted_country_name").unwrap(),
+            "New Spain"
+        );
+        assert_eq!(
+            entries.get("prince_rebels").unwrap(),
+            "$prince_title$ Rebels"
+        );
+        // The game's own text replaces the text of a DLC.
+        assert_eq!(entries.get("prince_title").unwrap(), "Prince");
+        assert_eq!(entries.get("marinid_dynasty").unwrap(), "Marinid");
+        assert!(!entries.contains_key("unused_event_text"));
+        assert_eq!(entries.get("DAI_NGU").unwrap(), "Đại Ngu");
+        assert_eq!(
+            entries.get("gc_regional_rebels_country").unwrap(),
+            "$ADJ$ Frontier Rebels"
+        );
+        assert!(!entries.contains_key("dlc_tooltip"));
     }
 
     #[test]

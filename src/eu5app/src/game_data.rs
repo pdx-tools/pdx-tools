@@ -49,6 +49,29 @@ impl Localization {
     }
 }
 
+/// The stem of a key that starts with a country tag, such as `SAR_piedmont`.
+/// One letter is not a name, as in `PON_f`. An uppercase stem is a part of a
+/// key, as in `DAI_NGU`.
+pub(crate) fn tag_prefixed_stem(key: &str) -> Option<&str> {
+    let (tag, stem) = key.split_once('_')?;
+    let is_tag = tag.len() == 3
+        && tag
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit());
+    (is_tag && stem.len() > 1 && stem.bytes().any(|b| b.is_ascii_lowercase())).then_some(stem)
+}
+
+/// The key of game script that shows a name, as in
+/// `ShowDynastyName('marinid_dynasty')`.
+pub(crate) fn script_name_key(script: &str) -> Option<&str> {
+    let (call, key) = script.strip_prefix("Show")?.split_once("('")?;
+    if call.contains("Name") {
+        key.strip_suffix("')")
+    } else {
+        None
+    }
+}
+
 /// EU5 game data: gameplay/lookup data only.
 pub struct GameData {
     pub locations: Vec<GameLocation>,
