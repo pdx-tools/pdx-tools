@@ -376,28 +376,40 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|owner| (owner, true))
             .collect();
         let mut landed = FnvHashSet::default();
+        let mut partly_selected = FxHashSet::default();
         for (idx, info) in self.iter_locations() {
             let Some(owner) = info.owner else {
                 continue;
             };
             landed.insert(owner);
-            if let Some(all_in) = covered.get_mut(&owner)
-                && !selection.contains(idx)
-            {
-                *all_in = false;
+            if !selection.contains(idx) {
+                if let Some(all_in) = covered.get_mut(&owner) {
+                    *all_in = false;
+                }
+                partly_selected.extend(self.live_country_of(owner.country_id()));
             }
         }
 
+        let all_in: FnvHashSet<_> = covered
+            .into_iter()
+            .filter_map(|(owner, all_in)| all_in.then_some(owner))
+            .collect();
+        // An id of a country with no land on this date follows only while all land of
+        // the country is selected. Then the land stays selected when it changes id.
         let landless = selection
             .followed()
             .iter()
-            .copied()
-            .filter(|country| !landed.contains(country));
-        let followed = covered
-            .into_iter()
-            .filter_map(|(owner, all_in)| all_in.then_some(owner))
-            .chain(landless)
-            .collect();
+            .chain(&all_in)
+            .filter_map(|owner| self.live_country_of(owner.country_id()))
+            .flat_map(|live| self.lineage_ids(live))
+            .filter_map(|id| id.real_id())
+            .chain(selection.followed().iter().copied())
+            .filter(|id| !landed.contains(id))
+            .filter(|id| {
+                let live = self.live_country_of(id.country_id());
+                !live.is_some_and(|live| partly_selected.contains(&live))
+            });
+        let followed = all_in.iter().copied().chain(landless).collect();
         self.selection_state.set_followed(followed);
     }
 

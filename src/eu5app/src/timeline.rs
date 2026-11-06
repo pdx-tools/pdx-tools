@@ -12,10 +12,11 @@
 //! - [`CountryIdentities`], which answers "what did this country look like on
 //!   this date" for live, renamed, and dead countries alike.
 
+use crate::presentation::is_generated_tag;
 use eu5save::Eu5Date;
 use eu5save::hash::{FxHashMap, FxHashSet};
 use eu5save::models::{
-    Color, CountryId, CountryName, CountryRename, DeadCountry, Gamestate, LocationIdx,
+    BStr, Color, CountryId, CountryName, CountryRename, DeadCountry, Gamestate, LocationIdx,
     LocationIndexedVec, Locations,
 };
 
@@ -309,9 +310,6 @@ pub struct CountryIdentity<'a> {
     pub color: Color,
     /// The coat of arms on that date, when the save keeps it.
     pub flag: Option<&'a str>,
-    /// True when the country has no live record: it exists only in the dead
-    /// country archive of the timeline.
-    pub dead: bool,
 }
 
 /// Country names, tags, and colors as they were on a date.
@@ -326,6 +324,13 @@ pub struct CountryIdentities<'bump> {
 }
 
 impl<'bump> CountryIdentities<'bump> {
+    /// The countries that have no live record, with their ids.
+    pub(crate) fn dead_countries(
+        &self,
+    ) -> impl Iterator<Item = (CountryId, &'bump DeadCountry<'bump>)> + '_ {
+        self.dead.iter().map(|(id, dead)| (*id, *dead))
+    }
+
     pub fn new(gamestate: &Gamestate<'bump>) -> Self {
         let timeline = &gamestate.timeline_manager;
         let mut renames: FxHashMap<CountryId, Vec<&'bump CountryRename<'bump>>> =
@@ -362,7 +367,6 @@ impl<'bump> CountryIdentities<'bump> {
                 name: Some(&rename.name),
                 color: color_from_hex(rename.map_color_hex),
                 flag: rename.flag.as_ref().map(|f| f.to_str()),
-                dead: false,
             });
         }
 
@@ -374,7 +378,6 @@ impl<'bump> CountryIdentities<'bump> {
                 name: Some(&data.country_name),
                 color: data.color,
                 flag: data.flag.as_ref().map(|f| f.to_str()),
-                dead: false,
             });
         }
 
@@ -384,9 +387,19 @@ impl<'bump> CountryIdentities<'bump> {
             name: Some(&dead.name),
             color: color_from_hex(dead.map_color_hex),
             flag: dead.flag.as_ref().map(|f| f.to_str()),
-            dead: true,
         })
     }
+}
+
+/// True when a dead country and a live country with the same tag are one country.
+/// The game can give a generated tag such as `AAA26` to unrelated countries, and
+/// revolts share a name, so a generated tag must also have the same name and flag.
+pub(crate) fn is_same_country(
+    tag: &str,
+    (dead_name, dead_flag): (&CountryName, Option<BStr>),
+    (live_name, live_flag): (&CountryName, Option<BStr>),
+) -> bool {
+    !is_generated_tag(tag) || (dead_name.name() == live_name.name() && dead_flag == live_flag)
 }
 
 /// The timeline stores a map color as `0xAARRGGBB`.
@@ -429,6 +442,27 @@ mod tests {
 
     fn owner(owners: &LocationIndexedVec<CountryId>, location: u32) -> u32 {
         owners[LocationIdx::new(location)].value()
+    }
+
+    #[test]
+    fn a_generated_tag_needs_the_same_name_and_flag_to_be_one_country() {
+        let key = |key: &'static str| BStr::new(key.as_bytes());
+        let name = |name: &'static str| CountryName::Tag(key(name));
+        let (mahu, kalmius) = (name("mahu"), name("kalmius"));
+        let (flag, other_flag) = (Some(key("A")), Some(key("B")));
+
+        assert!(is_same_country(
+            "HUN",
+            (&mahu, flag),
+            (&kalmius, other_flag)
+        ));
+        assert!(is_same_country("AAA63", (&mahu, flag), (&mahu, flag)));
+        assert!(!is_same_country("AAA49", (&mahu, flag), (&kalmius, flag)));
+        assert!(!is_same_country(
+            "AAA83",
+            (&mahu, flag),
+            (&mahu, other_flag)
+        ));
     }
 
     #[test]

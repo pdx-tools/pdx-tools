@@ -791,7 +791,7 @@ fn read_script(text: &str, localization: &Localization) -> String {
 }
 
 /// A tag such as `AAA26`, which the game makes for a new country.
-fn is_generated_tag(tag: &str) -> bool {
+pub(crate) fn is_generated_tag(tag: &str) -> bool {
     tag.len() > 3
         && tag
             .bytes()
