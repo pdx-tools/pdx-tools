@@ -307,6 +307,8 @@ pub struct CountryIdentity<'a> {
     pub tag: &'a str,
     pub name: Option<&'a CountryName<'a>>,
     pub color: Color,
+    /// The coat of arms on that date, when the save keeps it.
+    pub flag: Option<&'a str>,
     /// True when the country has no live record: it exists only in the dead
     /// country archive of the timeline.
     pub dead: bool,
@@ -359,6 +361,7 @@ impl<'bump> CountryIdentities<'bump> {
                 tag: rename.tag.as_str(),
                 name: Some(&rename.name),
                 color: color_from_hex(rename.map_color_hex),
+                flag: rename.flag.as_ref().map(|f| f.to_str()),
                 dead: false,
             });
         }
@@ -370,6 +373,7 @@ impl<'bump> CountryIdentities<'bump> {
                 tag: entry.tag().as_str(),
                 name: Some(&data.country_name),
                 color: data.color,
+                flag: data.flag.as_ref().map(|f| f.to_str()),
                 dead: false,
             });
         }
@@ -379,6 +383,7 @@ impl<'bump> CountryIdentities<'bump> {
             tag: dead.tag.as_str(),
             name: Some(&dead.name),
             color: color_from_hex(dead.map_color_hex),
+            flag: dead.flag.as_ref().map(|f| f.to_str()),
             dead: true,
         })
     }

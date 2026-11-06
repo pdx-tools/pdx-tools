@@ -5,6 +5,7 @@ mod utils;
 use std::collections::BTreeMap;
 
 use eu5app::game_data::Localization;
+use eu5app::hover::presentation::DisplayData as HoverDisplayData;
 use eu5app::{EntityKind, Eu5SaveLoader, Eu5Workspace, MapMode};
 use eu5save::hash::FnvHashSet;
 use eu5save::models::{CountryId, LocationIdx, MarketId};
@@ -147,6 +148,9 @@ fn workspace_scenarios() {
         });
         run_workspace_scenario(save_name, "market scope across the timeline", ws, |ws| {
             market_scope_survives_the_timeline(ws, save_name)
+        });
+        run_workspace_scenario(save_name, "no name shows a token", ws, |ws| {
+            no_name_shows_a_token(ws, &localization)
         });
     });
 }
@@ -606,6 +610,46 @@ fn market_scope_survives_the_timeline(ws: &mut Eu5Workspace, save_name: &str) {
             "{save_name}: {date:?} keeps the market scope"
         );
     }
+}
+
+/// The search list has the live countries. Only the hover of a past date has the dead
+/// countries, and the names that they had before a rename.
+fn no_name_shows_a_token(ws: &mut Eu5Workspace, localization: &Localization) {
+    let mut names: Vec<String> = ws
+        .localized(localization)
+        .presenter()
+        .country_search_entries()
+        .countries
+        .into_iter()
+        .map(|entry| entry.country.name)
+        .collect();
+
+    let live_names = names.len();
+    let summary = ws.timeline_summary();
+    let stride = (summary.change_dates.len() / 32).max(1);
+    for &date in summary.change_dates.iter().step_by(stride) {
+        ws.set_timeline_date(date);
+        if ws.is_timeline_live() {
+            continue;
+        }
+        let presenter = ws.localized(localization).presenter();
+        names.extend(ws.gamestate().locations.iter().filter_map(|entry| {
+            match presenter.hover_data(entry.idx()) {
+                HoverDisplayData::HistoricalCountry { name, .. } => Some(name),
+                _ => None,
+            }
+        }));
+    }
+    ws.set_timeline_date(summary.end);
+    assert!(
+        !summary.available || names.len() > live_names,
+        "the hover of a past date reads no names"
+    );
+
+    names.retain(|name| name.is_empty() || name.contains(['$', '[', '_']));
+    names.sort();
+    names.dedup();
+    assert!(names.is_empty(), "names with a raw key or token: {names:?}");
 }
 
 /// The browser uploads saves after `pdx-save-codec` remuxes the zip entries to

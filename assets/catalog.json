@@ -55,27 +55,27 @@
         {
           "branch": "1.0.11",
           "game_version": "1.0.11",
-          "sha256": "bf4b2b2786f0112fa0fd8578be82bb4756d36353d2e31715c76b0ae86c7bc185"
+          "sha256": "6c18d42277168e31566e9e79d4d24934a41bccba3f8408e8682ef95621ba10d1"
         },
         {
           "branch": "1.1.10",
           "game_version": "1.1.10",
-          "sha256": "74b50f7040f1ec46e359112769616dfb7634a8ef0b9aa282e0294f26a14bf1a5"
+          "sha256": "f7f04c7c0236de7f9e167c7c5d615666a2f2eac36e390ceeadc7ecb5b8d2ba26"
         },
         {
           "branch": "1.2.5",
           "game_version": "1.2.5",
-          "sha256": "f648b704e31649b30d66fc8dd467b62a19dd15522ee403d9e97a603874781c89"
+          "sha256": "0d958d1ab2bae777a300b27bead3fff0a07bd618db5b11e58da9372325afb231"
         },
         {
           "branch": "1.3.11",
           "game_version": "1.3.11",
-          "sha256": "d14df8d87cd4d95db002d164c8714e0a03036735f0d8d02dc5cfffac05031b52"
+          "sha256": "9469a4738d23748b44716c6471c80455b664c9cd9d70ecf66cb84d61280a8d1a"
         },
         {
           "branch": "public",
           "game_version": "1.4.7",
-          "sha256": "ea389203d02637b4d3f3aa391776cb7e79dcad3cbd54d9fd6c81a632985100a0"
+          "sha256": "3983dc8b3c4e1c5b6cc054a7614f89b8a87a78cfd78fac79ad805e5979dd17ca"
         }
       ]
     }

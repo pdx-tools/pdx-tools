@@ -23,7 +23,7 @@ use crate::entity_profile::{
     CountriesData, CountryRef, CountrySearchEntry, EntityKind, LocationSearchEntry, LocationsData,
     MarketRef,
 };
-use crate::game_data::{GameData, Localization};
+use crate::game_data::{GameData, Localization, script_name_key, tag_prefixed_stem};
 use crate::hover::presentation::DisplayData as HoverDisplayData;
 use crate::insights::buildings::presentation::BuildingLevelsInsightData;
 use crate::insights::control::presentation::{ControlInsightData, PoliticalWorldScoreboard};
@@ -552,11 +552,10 @@ impl Present for CountryIdx {
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         let entry = ctx.gamestate.countries.index(self);
         let tag = entry.tag();
-        let name = present_country_name(
-            entry.data().map(|data| &data.country_name),
-            tag.to_str(),
-            ctx,
-        );
+        let flag = entry.data().and_then(|data| data.flag.as_ref());
+        let name = CountryNameParts::new(entry.data().map(|data| &data.country_name), tag.to_str())
+            .with_flag(flag.map(|flag| flag.to_str()))
+            .present(ctx);
         Localized::new(UiCountryIdx::from(self), name)
     }
 }
@@ -603,20 +602,73 @@ impl<'a> CountryNameParts<'a> {
         }
     }
 
+    /// A revolt's save record gives its source in a form that the model does not read, but
+    /// the coat of arms of the revolt usually starts with the source's tag:
+    /// `TWS_REVOLT_218103988`, or `DLH_REVOLT` in a 1.0 save. A prefix with an underscore
+    /// is not a tag, as in `CHI_Ming_REVOLT_50333908`.
+    fn with_flag(mut self, flag: Option<&'a str>) -> Self {
+        if self.base.is_none() {
+            self.base = flag
+                .and_then(|flag| flag.split_once("_REVOLT"))
+                .map(|(tag, _)| tag)
+                .filter(|tag| !tag.contains('_'));
+        }
+        self
+    }
+
     fn present(&self, ctx: &LocalizationContext<'_, '_>) -> String {
-        let template = ctx.localization.get(self.key).unwrap_or(self.key);
-        interpolate_country_name(template, self.base, &self.variables, ctx.localization)
+        self.text(ctx.localization)
+    }
+
+    fn text(&self, localization: &Localization) -> String {
+        let name = localization
+            .get(self.key)
+            .map_or_else(String::new, |template| {
+                interpolate_country_name(template, self.base, &self.variables, localization)
+            });
+        if !name.is_empty() {
+            return name;
+        }
+        readable_name_key(self.key).unwrap_or_else(|| {
+            let raw = interpolate_country_name(self.key, self.base, &self.variables, localization);
+            if raw.is_empty() {
+                self.key.replace(['$', '[', ']'], "")
+            } else {
+                raw
+            }
+        })
     }
 }
 
-/// The localized display name of a country from its save name record, or
-/// from its tag when the record is missing.
-fn present_country_name(
-    name: Option<&CountryName<'_>>,
-    tag: &str,
-    ctx: &LocalizationContext<'_, '_>,
-) -> String {
-    CountryNameParts::new(name, tag).present(ctx)
+/// A readable name from a key that has no text, as in a mod or a new patch. The
+/// stem is usually the English name, so `new_spain_scripted_country_name` becomes
+/// "New Spain". The game's text can differ, so this comes last.
+fn readable_name_key(key: &str) -> Option<String> {
+    let stem = ["_scripted_country_name", "_country", "_area", "_dynasty"]
+        .iter()
+        .find_map(|suffix| key.strip_suffix(suffix))
+        .or_else(|| key.strip_prefix("name_").map(character_name_stem))
+        .or_else(|| tag_prefixed_stem(key))
+        .filter(|stem| !stem.is_empty())?;
+    let words: Vec<String> = stem
+        .split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().chain(chars).collect(),
+                None => String::new(),
+            }
+        })
+        .collect();
+    Some(words.join(" "))
+}
+
+/// The name in a character name key. The rest of the key tells names apart:
+/// `name_zhang1`, `name_precious_f` and `name_aaron.arabic_language`.
+fn character_name_stem(stem: &str) -> &str {
+    let stem = stem.split('.').next().unwrap_or(stem);
+    let stem = stem.trim_end_matches(|c: char| c.is_ascii_digit());
+    stem.strip_suffix("_f").unwrap_or(stem)
 }
 
 /// A country name detached from the save arena.
@@ -624,7 +676,7 @@ fn present_country_name(
 /// A DTO without a lifetime can carry this where it cannot carry a
 /// [`CountryName`]: the owner of a location on a past date can be a dead
 /// country whose name lives only in the timeline archive. The live paths
-/// keep to the borrowed [`present_country_name`].
+/// keep to the borrowed [`CountryNameParts`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OwnedCountryName {
     key: String,
@@ -633,8 +685,8 @@ pub(crate) struct OwnedCountryName {
 }
 
 impl OwnedCountryName {
-    pub(crate) fn new(name: Option<&CountryName<'_>>, tag: &str) -> Self {
-        let parts = CountryNameParts::new(name, tag);
+    pub(crate) fn new(name: Option<&CountryName<'_>>, tag: &str, flag: Option<&str>) -> Self {
+        let parts = CountryNameParts::new(name, tag).with_flag(flag);
         Self {
             key: parts.key.to_string(),
             base: parts.base.map(str::to_string),
@@ -666,38 +718,84 @@ impl Present for OwnedCountryName {
 
 /// Substitute `$TOKEN$` in a country-name template: `$NAME$`/`$ADJ$` from the
 /// base tag (`<base>` / `<base>_ADJ`), other tokens from `variables` (value
-/// treated as a loc key). Unknown tokens are left intact; output is not rescanned.
+/// treated as a loc key), and then the token as a loc key itself: a province's
+/// name is `$sevilla$`. An area token reads from its key. A token with no text goes
+/// away, because no name shows a raw token.
 fn interpolate_country_name(
     template: &str,
     base: Option<&str>,
     variables: &[(&str, &str)],
     localization: &Localization,
 ) -> String {
-    if !template.contains('$') {
-        return template.to_string();
+    if !template.contains(['$', '[']) {
+        return template.trim().to_string();
     }
 
     let mut out = String::with_capacity(template.len());
+    push_interpolated(&mut out, template, base, variables, localization, 0);
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The text of a token can hold tokens: `KHT_ADJ` is `$quhestan_area$`. This
+/// stops at a limit because two texts can name each other.
+fn push_interpolated(
+    out: &mut String,
+    template: &str,
+    base: Option<&str>,
+    variables: &[(&str, &str)],
+    localization: &Localization,
+    depth: u8,
+) {
+    const MOST_DEPTH: u8 = 4;
+    let without_script = read_script(template, localization);
     let mut lookup_key = String::new();
-    let mut rest = template;
+    let mut rest = without_script.as_str();
     while let Some((prefix, after_start)) = rest.split_once('$') {
         out.push_str(prefix);
         let Some((token, tail)) = after_start.split_once('$') else {
-            out.push('$');
-            out.push_str(after_start);
-            return out;
+            rest = after_start;
+            break;
         };
         if let Some(sub) = resolve_token(token, base, variables, localization, &mut lookup_key) {
-            out.push_str(sub);
-        } else {
-            out.push('$');
-            out.push_str(token);
-            out.push('$');
+            if !sub.contains(['$', '[']) {
+                out.push_str(sub);
+            } else if depth < MOST_DEPTH {
+                push_interpolated(out, sub, base, variables, localization, depth + 1);
+            }
+        } else if let Some(readable) = readable_name_key(token) {
+            out.push_str(&readable);
+        }
+        rest = tail;
+    }
+    out.push_str(rest);
+}
+
+/// `[ShowDynastyName('marinid_dynasty')]` reads as the text of its key. Other game
+/// script needs the running game, so it goes away.
+fn read_script(text: &str, localization: &Localization) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some((prefix, after_start)) = rest.split_once('[') {
+        out.push_str(prefix);
+        let Some((script, tail)) = after_start.split_once(']') else {
+            rest = after_start;
+            break;
+        };
+        if let Some(text) = script_name_key(script).and_then(|key| localization.get(key)) {
+            out.push_str(text);
         }
         rest = tail;
     }
     out.push_str(rest);
     out
+}
+
+/// A tag such as `AAA26`, which the game makes for a new country.
+fn is_generated_tag(tag: &str) -> bool {
+    tag.len() > 3
+        && tag
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
 }
 
 fn resolve_token<'a>(
@@ -710,12 +808,16 @@ fn resolve_token<'a>(
     // Base-tag tokens take precedence so a variable can't shadow $NAME$/$ADJ$.
     if let Some(b) = base {
         match token {
-            "NAME" => return Some(localization.get(b).unwrap_or(b)),
+            // A tag that the game generated has no text, and it means nothing to a reader.
+            "NAME" => return localization.get(b).or((!is_generated_tag(b)).then_some(b)),
             "ADJ" => {
                 lookup_key.clear();
                 lookup_key.push_str(b);
                 lookup_key.push_str("_ADJ");
-                return Some(localization.get(lookup_key).unwrap_or(b));
+                return localization
+                    .get(lookup_key)
+                    .or_else(|| localization.get(b))
+                    .or((!is_generated_tag(b)).then_some(b));
             }
             _ => {}
         }
@@ -724,6 +826,7 @@ fn resolve_token<'a>(
         .iter()
         .find(|(key, _)| *key == token)
         .map(|(_, val)| localization.get(val).unwrap_or(val))
+        .or_else(|| localization.get(token))
 }
 
 /// Workspace-side source for a good's rich presentation form.
@@ -927,10 +1030,184 @@ mod tests {
     }
 
     #[test]
-    fn interpolate_unknown_token_is_preserved() {
+    fn interpolate_token_resolves_as_its_own_key() {
+        let l = loc(&[("sevilla", "Sevilla")]);
+        let out = interpolate_country_name("$sevilla$", None, &[], &l);
+        assert_eq!(out, "Sevilla");
+    }
+
+    #[test]
+    fn readable_name_key_uses_the_stem_of_known_families() {
+        assert_eq!(
+            readable_name_key("new_spain_scripted_country_name").as_deref(),
+            Some("New Spain")
+        );
+        assert_eq!(
+            readable_name_key("transoxiana_area").as_deref(),
+            Some("Transoxiana")
+        );
+        assert_eq!(
+            readable_name_key("toshima_dynasty").as_deref(),
+            Some("Toshima")
+        );
+        assert_eq!(readable_name_key("AAA22"), None);
+        assert_eq!(
+            readable_name_key("SAR_piedmont").as_deref(),
+            Some("Piedmont")
+        );
+        assert_eq!(readable_name_key("sar_piedmont"), None);
+        assert_eq!(readable_name_key("PON_f"), None);
+        assert_eq!(readable_name_key("name_zhang1").as_deref(), Some("Zhang"));
+        assert_eq!(
+            readable_name_key("name_precious_f").as_deref(),
+            Some("Precious")
+        );
+        assert_eq!(
+            readable_name_key("name_aaron.arabic_language").as_deref(),
+            Some("Aaron")
+        );
+        assert_eq!(readable_name_key("DAI_NGU"), None);
+        assert_eq!(readable_name_key("XYZ_ADJ"), None);
+        assert_eq!(readable_name_key("_area"), None);
+        assert_eq!(
+            readable_name_key("hungarian_nobles_country").as_deref(),
+            Some("Hungarian Nobles")
+        );
+        assert_eq!(
+            readable_name_key("name_abu_bakr").as_deref(),
+            Some("Abu Bakr")
+        );
+    }
+
+    #[test]
+    fn interpolate_unknown_token_goes_away() {
         let l = loc(&[]);
         let out = interpolate_country_name("$FOO$ Whatever", Some("TIM"), &[], &l);
-        assert_eq!(out, "$FOO$ Whatever");
+        assert_eq!(out, "Whatever");
+    }
+
+    #[test]
+    fn interpolate_area_token_reads_from_its_key() {
+        let l = loc(&[]);
+        assert_eq!(
+            interpolate_country_name("$quhestan_area$", None, &[], &l),
+            "Quhestan"
+        );
+    }
+
+    #[test]
+    fn interpolate_generated_base_says_nothing() {
+        let l = loc(&[]);
+        assert_eq!(
+            interpolate_country_name("$ADJ$ Revolt", Some("AAA26"), &[], &l),
+            "Revolt"
+        );
+    }
+
+    #[test]
+    fn interpolate_reads_tokens_in_the_text_of_a_token() {
+        let l = loc(&[
+            ("KHT_ADJ", "$quhestan_area$"),
+            ("ASR_ADJ", "$astarabad$"),
+            ("astarabad", "Astarabad"),
+        ]);
+        assert_eq!(
+            interpolate_country_name("$ADJ$ Revolt", Some("KHT"), &[], &l),
+            "Quhestan Revolt"
+        );
+        assert_eq!(
+            interpolate_country_name("$ADJ$ Revolt", Some("ASR"), &[], &l),
+            "Astarabad Revolt"
+        );
+    }
+
+    #[test]
+    fn interpolate_stops_when_two_texts_name_each_other() {
+        let l = loc(&[("AAA", "$BBB$"), ("BBB", "$AAA$")]);
+        assert_eq!(
+            interpolate_country_name("$AAA$ Revolt", None, &[], &l),
+            "Revolt"
+        );
+    }
+
+    #[test]
+    fn interpolate_adj_uses_the_name_of_a_base_with_no_adjective() {
+        let l = loc(&[("kalmius_province", "Kalmius")]);
+        assert_eq!(
+            interpolate_country_name("$ADJ$ Revolt", Some("kalmius_province"), &[], &l),
+            "Kalmius Revolt"
+        );
+    }
+
+    #[test]
+    fn interpolate_drops_a_lone_dollar() {
+        let l = loc(&[]);
+        assert_eq!(
+            interpolate_country_name("Some $Name", None, &[], &l),
+            "Some Name"
+        );
+    }
+
+    #[test]
+    fn name_with_no_text_reads_from_its_key() {
+        let l = loc(&[("hanover_dynasty", "$Hanover$"), ("LIE", "$liege$")]);
+        let name = |key| {
+            CountryNameParts {
+                key,
+                base: None,
+                variables: Vec::new(),
+            }
+            .text(&l)
+        };
+        assert_eq!(name("hanover_dynasty"), "Hanover");
+        assert_eq!(name("LIE"), "LIE");
+        assert_eq!(name("new_spain_scripted_country_name"), "New Spain");
+        assert_eq!(name("ABCHU"), "ABCHU");
+        assert_eq!(name("My $x$"), "My");
+        assert_eq!(name("$x$"), "x");
+    }
+
+    #[test]
+    fn interpolate_reads_game_script() {
+        let l = loc(&[
+            ("marinid_dynasty", "Marinid"),
+            ("rebels", "[ShowDynastyName('marinid_dynasty')] Rebels"),
+        ]);
+        assert_eq!(
+            interpolate_country_name("[ShowDynastyName('marinid_dynasty')] Rebels", None, &[], &l),
+            "Marinid Rebels"
+        );
+        assert_eq!(
+            interpolate_country_name("$rebels$", None, &[], &l),
+            "Marinid Rebels"
+        );
+        assert_eq!(
+            interpolate_country_name("[ROOT.GetVariable('x').GetName] Rebels", None, &[], &l),
+            "Rebels"
+        );
+        assert_eq!(interpolate_country_name("[country|e]", None, &[], &l), "");
+    }
+
+    #[test]
+    fn revolt_takes_its_source_from_the_flag() {
+        let parts = CountryNameParts::new(None, "AAA83").with_flag(Some("TWS_REVOLT_218103988"));
+        assert_eq!(parts.base, Some("TWS"));
+        let parts = CountryNameParts::new(None, "AAA83").with_flag(Some("DLH_REVOLT"));
+        assert_eq!(parts.base, Some("DLH"));
+        let parts =
+            CountryNameParts::new(None, "ABA78").with_flag(Some("CHI_Ming_REVOLT_50333908"));
+        assert_eq!(parts.base, None);
+    }
+
+    #[test]
+    fn flag_does_not_replace_a_base() {
+        let parts = CountryNameParts {
+            key: "CIVILWAR_FACTION_religious_NAME",
+            base: Some("farghana_province"),
+            variables: Vec::new(),
+        }
+        .with_flag(Some("AAA83_REVOLT_218103988"));
+        assert_eq!(parts.base, Some("farghana_province"));
     }
 
     #[test]
@@ -941,10 +1218,10 @@ mod tests {
     }
 
     #[test]
-    fn interpolate_without_base_leaves_base_tokens_intact() {
+    fn interpolate_without_base_drops_base_tokens() {
         let l = loc(&[("TIM_ADJ", "Timurid")]);
         let out = interpolate_country_name("$ADJ$ Rival", None, &[], &l);
-        assert_eq!(out, "$ADJ$ Rival");
+        assert_eq!(out, "Rival");
     }
 
     #[test]
