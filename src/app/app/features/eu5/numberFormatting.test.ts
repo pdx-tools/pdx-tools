@@ -102,6 +102,8 @@ describe("formatExactAmount", () => {
     expect(formatExactAmount(1000)).toBe("1,000");
     expect(formatExactAmount(958)).toBeUndefined();
     expect(formatExactAmount(72.2)).toBeUndefined();
+    expect(formatExactAmount(0.001)).toBe("<0.01");
+    expect(formatExactAmount(0)).toBeUndefined();
   });
 });
 
@@ -110,6 +112,7 @@ describe("formatExactCount", () => {
     expect(formatExactCount(958.4)).toBe("958.4");
     expect(formatExactCount(958)).toBeUndefined();
     expect(formatExactCount(22_894)).toBe("22,894");
+    expect(formatExactCount(0.001)).toBe("<0.01");
   });
 });
 

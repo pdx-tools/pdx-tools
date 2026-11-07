@@ -98,14 +98,17 @@ function showsInFull(x: number, digits: number): boolean {
   return Math.abs(rounded) < 1000 && Number(rounded.toFixed(digits)) === rounded;
 }
 
+/** A value that a figure rounds to zero, although it is not zero */
+const isTiny = (x: number) => x !== 0 && Math.abs(x) < 0.005;
+
 /** The full value of an amount, such as 12,073.9 behind 12.1K, if a compact figure hides one */
 export function formatExactAmount(x: number): string | undefined {
-  return showsInFull(x, 1) ? undefined : formatExact(x);
+  return !isTiny(x) && showsInFull(x, 1) ? undefined : formatExact(x);
 }
 
 /** The full value of a count, such as 958.4 behind 958, if a compact figure hides one */
 export function formatExactCount(x: number): string | undefined {
-  return showsInFull(x, 0) ? undefined : formatExact(x);
+  return !isTiny(x) && showsInFull(x, 0) ? undefined : formatExact(x);
 }
 
 /** The full value of a ratio from 0 to 1, such as 73.21% behind 73.2%, if a compact figure hides one */
