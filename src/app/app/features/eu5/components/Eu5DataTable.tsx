@@ -98,7 +98,7 @@ const exactCell = cx(
   "after:rounded-plate after:border after:border-solid after:border-game-line-strong after:bg-game-panel-2",
   "after:px-1.5 after:py-0.5 after:font-game-num after:text-[12px] after:whitespace-nowrap after:text-game-ink-100",
   "after:opacity-0 after:transition-opacity after:content-[attr(data-exact)]",
-  "hover:after:opacity-100 hover:after:delay-300 focus:after:opacity-100",
+  "hover:after:opacity-100 hover:after:delay-300 focus:after:opacity-100 data-dismissed:after:hidden",
   focusRingInset,
 );
 
@@ -112,16 +112,18 @@ export function exactCellValue(
   return meta?.variant === "num" ? formatExactAmount(value) : undefined;
 }
 
-/** The next cell with a full value from `cell` in the direction of an arrow key */
+/**
+ * The next cell with a full value from `cell` in the direction of an arrow key. Left
+ * and right go through the rows in reading order, so they reach each such cell. Up and
+ * down stay in the column.
+ */
 function nextExactCell(cell: HTMLTableCellElement, key: string): HTMLElement | null {
   const row = cell.parentElement;
   if (!(row instanceof HTMLTableRowElement)) return null;
   if (key === "ArrowLeft" || key === "ArrowRight") {
-    const step = key === "ArrowLeft" ? -1 : 1;
-    for (let i = cell.cellIndex + step; i >= 0 && i < row.cells.length; i += step) {
-      if (row.cells[i].dataset.exact !== undefined) return row.cells[i];
-    }
-    return null;
+    const cells = [...(row.parentElement?.querySelectorAll("td[data-exact]") ?? [])];
+    const next = cells[cells.indexOf(cell) + (key === "ArrowLeft" ? -1 : 1)];
+    return next instanceof HTMLElement ? next : null;
   }
   if (key !== "ArrowUp" && key !== "ArrowDown") return null;
   const step = key === "ArrowUp" ? "previousElementSibling" : "nextElementSibling";
@@ -132,14 +134,24 @@ function nextExactCell(cell: HTMLTableCellElement, key: string): HTMLElement | n
   return null;
 }
 
-function moveExactFocus(event: React.KeyboardEvent<HTMLTableSectionElement>) {
+function onExactCellKeyDown(event: React.KeyboardEvent<HTMLTableSectionElement>) {
   const cell = event.target;
   if (!(cell instanceof HTMLTableCellElement) || cell.dataset.exact === undefined) return;
+  // The full value can cover other text. The first Escape hides it, and only that.
+  if (event.key === "Escape" && cell.dataset.dismissed === undefined) {
+    cell.dataset.dismissed = "";
+    event.stopPropagation();
+    return;
+  }
   const next = nextExactCell(cell, event.key);
   if (!next) return;
   event.preventDefault();
   next.focus();
   next.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function restoreExactValue(event: React.FocusEvent<HTMLTableSectionElement>) {
+  delete event.target.dataset.dismissed;
 }
 
 const sortBtnClass =
@@ -304,7 +316,7 @@ export function Eu5DataTable<TData extends RowData>({
         <table className="w-full min-w-full table-auto border-separate border-spacing-0">
           <ColumnGroup table={table} />
           <HeaderBand table={table} />
-          <tbody onKeyDown={moveExactFocus}>
+          <tbody onKeyDown={onExactCellKeyDown} onBlur={restoreExactValue}>
             {rows.length === 0 ? (
               <tr>
                 <td

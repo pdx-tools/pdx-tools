@@ -43,6 +43,12 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await page.keyboard.press("ArrowLeft");
   await expect(tabStop).toBeFocused();
 
+  // Left and right go on to the next row, so each cell can be reached.
+  const firstRowCells = table.locator("tbody tr").first().locator("td[data-exact]");
+  await firstRowCells.last().focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(table.locator("tbody tr").nth(1).locator("td[data-exact]:focus")).toHaveCount(1);
+
   // The figures of a country's rail are one stop as well.
   await table.getByRole("button", { name: /Mali/ }).first().click();
   const railFigures = page.locator("[data-rail-value]");
@@ -58,6 +64,18 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   // A rank that hundreds of countries share reads as a tie.
   await expect(page.getByText("=#1", { exact: true })).toBeVisible();
   await expect(page.getByText("446 tied", { exact: true })).toBeVisible();
+
+  // Escape hides a full value that covers other text, and it keeps the selection.
+  const locationsTab = page.getByRole("tab", { name: "Locations" });
+  await locationsTab.click();
+  const profileCell = page.locator("td[data-exact]").first();
+  await profileCell.focus();
+  const afterDisplay = () =>
+    profileCell.evaluate((cell) => getComputedStyle(cell, "::after").display);
+  await expect.poll(afterDisplay).not.toBe("none");
+  await page.keyboard.press("Escape");
+  await expect.poll(afterDisplay).toBe("none");
+  await expect(locationsTab).toBeVisible();
 
   // A header that names a defined term explains it, and the sort button keeps its one stop.
   await page.getByRole("button", { name: "Tax Base Gap", exact: true }).click();
