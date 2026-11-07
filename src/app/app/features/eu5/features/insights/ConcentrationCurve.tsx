@@ -3,7 +3,7 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { chartTooltip, getEChartsTheme, seriesColor } from "@/components/viz/echartsTheme";
 import type { ConcentrationPoint } from "@/wasm/wasm_eu5";
-import { formatInt, formatPercent, formatTick } from "@/lib/format";
+import { formatInt, formatPercent, formatPercentTick } from "@/lib/format";
 
 const DEFAULT_FORMAT_VALUE = (value: number) => formatInt(Math.round(value));
 
@@ -50,7 +50,7 @@ export function ConcentrationCurve({
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => `${formatTick(value * 100)}%`,
+          formatter: formatPercentTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },

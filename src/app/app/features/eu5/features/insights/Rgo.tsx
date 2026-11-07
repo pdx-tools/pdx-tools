@@ -10,7 +10,14 @@ import type {
   RgoScopeSummary,
   RgoTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatExact, formatFixed, formatInt, formatPercent, formatTick } from "@/lib/format";
+import {
+  formatExact,
+  formatFixed,
+  formatInt,
+  formatPercent,
+  formatPercentTick,
+  formatTick,
+} from "@/lib/format";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
@@ -83,7 +90,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatTick(v),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -97,7 +104,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatTick(v),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -226,7 +233,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => `${formatTick(v * 100)}%`,
+          formatter: formatPercentTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },

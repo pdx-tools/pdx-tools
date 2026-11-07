@@ -11,7 +11,7 @@ import type {
   PopulationTypeProfileRow,
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
-import { formatFixed, formatInt, formatPercent, formatTick } from "@/lib/format";
+import { formatFixed, formatInt, formatPercent, formatPercentTick, formatTick } from "@/lib/format";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { popRankColors } from "../../gameColors";
 import {
@@ -191,7 +191,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatTick(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -301,7 +301,7 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatTick(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { show: false },
@@ -472,7 +472,7 @@ export function PopulationTypeProfile({
           axisLabel: {
             color: tickColor,
             fontSize: 10,
-            formatter: (v: number) => `${formatTick(v * 100)}%`,
+            formatter: formatPercentTick,
           },
           axisLine: { lineStyle: { color: axisColor } },
           splitLine: {
@@ -529,7 +529,7 @@ export function PopulationTypeProfile({
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => `${formatTick(v * 100)}%`,
+          formatter: formatPercentTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: {

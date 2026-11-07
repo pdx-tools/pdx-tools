@@ -2,7 +2,14 @@ import { useMemo, useState, useEffectEvent } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
-import { formatExact, formatInt, formatPercent, formatRate, formatTick } from "@/lib/format";
+import {
+  formatExact,
+  formatInt,
+  formatPercent,
+  formatPercentTick,
+  formatRate,
+  formatTick,
+} from "@/lib/format";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
@@ -765,7 +772,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
           nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
           axisLabel: {
             color: tickColor,
-            formatter: (value: number) => formatTick(value),
+            formatter: formatTick,
           },
           axisLine: { lineStyle: { color: axisColor } },
           splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
@@ -783,7 +790,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
                 axisLabel: {
                   color: tickColor,
                   formatter: (v: number) =>
-                    Math.abs(v) <= pctRange * 0.6 ? `${formatTick(v)}%` : "",
+                    Math.abs(v) <= pctRange * 0.6 ? `${formatPercentTick(v / 100)}` : "",
                 },
                 axisLine: { lineStyle: { color: axisColor } },
                 splitLine: { show: false },
@@ -1068,7 +1075,7 @@ export function GoodsPriceVsBaseChart({
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
           color: tickColor,
-          formatter: (v: number) => `${v > 0 ? "+" : ""}${formatTick(v)}%`,
+          formatter: (v: number) => `${v > 0 ? "+" : ""}${formatPercentTick(v / 100)}`,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },

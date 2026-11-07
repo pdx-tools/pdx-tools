@@ -96,7 +96,7 @@ export function PopulationHistoryChart({
         nameLocation: "middle",
         nameGap: 46,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatTick(v) },
+        axisLabel: { color: tickColor, formatter: formatTick },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
       },

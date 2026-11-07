@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { formatExact, formatPercent, formatTick } from "@/lib/format";
+import { formatExact, formatPercent, formatPercentTick, formatTick } from "@/lib/format";
 import { Figure } from "../../../components/Figure";
 import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
@@ -211,7 +211,7 @@ function HistoryChart({
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
           color: tickColor,
-          formatter: (value: number) => formatTick(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
@@ -337,7 +337,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
           max: rightMax,
           axisLabel: {
             color: tickColor,
-            formatter: (value: number) => `${formatTick(value)}%`,
+            formatter: (value: number) => formatPercentTick(value / 100),
           },
           axisLine: { lineStyle: { color: axisColor } },
           splitLine: { show: false },
@@ -446,13 +446,13 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
           const d = eligible[params.dataIndex ?? -1];
           if (!d) return "";
           const gap = d.wealth - d.taxBase;
-          const realization = d.wealth > 0 ? (d.taxBase / d.wealth) * 100 : 100;
+          const realization = d.wealth > 0 ? d.taxBase / d.wealth : 1;
           return [
             `<strong>${escapeEChartsHtml(d.location.name)}</strong>`,
             `Wealth: ${formatExact(d.wealth)}`,
             `Tax Base: ${formatExact(d.taxBase)}`,
             `Tax Base Gap: ${formatExact(gap)}`,
-            `Realization: ${formatPercent(realization / 100)}`,
+            `Realization: ${formatPercent(realization)}`,
           ].join("<br/>");
         },
       },

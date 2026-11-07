@@ -6,7 +6,7 @@ import type {
   PopulationGrowthScopeSummary,
   PopulationGrowthTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFixed, formatRate, formatTick } from "@/lib/format";
+import { formatFixed, formatPercentTick, formatRate, formatTick } from "@/lib/format";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -168,7 +168,7 @@ function GrowthRateBars({
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => `${formatTick(value)}%`,
+          formatter: (value: number) => formatPercentTick(value / 100),
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -300,7 +300,7 @@ function GrowthScaleScatter({
         axisLabel: {
           color: tickColor,
           hideOverlap: true,
-          formatter: (value: number) => formatTick(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -311,7 +311,7 @@ function GrowthScaleScatter({
         nameLocation: "middle",
         nameGap: 46,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => `${formatTick(v)}%` },
+        axisLabel: { color: tickColor, formatter: (v: number) => formatPercentTick(v / 100) },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
         min: 0,

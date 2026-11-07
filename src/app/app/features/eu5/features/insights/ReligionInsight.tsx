@@ -140,7 +140,7 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatTick(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },

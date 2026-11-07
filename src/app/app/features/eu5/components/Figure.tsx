@@ -1,6 +1,7 @@
 import {
   formatCount,
   formatExactAmount,
+  formatExactCount,
   formatExactPercent,
   formatLevel,
   formatMetric,
@@ -13,7 +14,7 @@ const FORMS = {
   metric: { text: formatMetric, exact: formatExactAmount },
   level: { text: formatLevel, exact: formatExactAmount },
   scale: { text: formatScale, exact: formatExactAmount },
-  count: { text: formatCount, exact: (x: number) => formatExactAmount(x, 0) },
+  count: { text: formatCount, exact: formatExactCount },
   percent: { text: formatPercent, exact: formatExactPercent },
 };
 

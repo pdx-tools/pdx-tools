@@ -9,7 +9,14 @@ import type {
   CountryControlBarSummary,
   CountryControlPoint,
 } from "@/wasm/wasm_eu5";
-import { formatExact, formatFixed, formatInt, formatPercent, formatTick } from "@/lib/format";
+import {
+  formatExact,
+  formatFixed,
+  formatInt,
+  formatPercent,
+  formatPercentTick,
+  formatTick,
+} from "@/lib/format";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
@@ -184,7 +191,7 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatTick(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -297,7 +304,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         nameLocation: "middle",
         nameGap: 40,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatTick(v) },
+        axisLabel: { color: tickColor, formatter: formatTick },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
         min: 0,
@@ -310,7 +317,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
           color: tickColor,
-          formatter: (v: number) => `${formatTick(v * 100)}%`,
+          formatter: formatPercentTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },

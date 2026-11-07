@@ -76,7 +76,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatTick(v),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
