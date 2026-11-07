@@ -1,4 +1,4 @@
-import { formatInt, formatRate } from "@/lib/format";
+import { formatExact, formatInt, formatRate } from "@/lib/format";
 
 /** Years until the population doubles at a constant yearly rate. */
 export function doublingYears(rate: number): number {
@@ -27,7 +27,7 @@ export function countryGrowthLines(c: {
   return [
     `Population: ${formatInt(c.totalPopulation)}`,
     `Growth: ${formatRate(c.growthRate)}/yr, ${formatDoubling(c.growthRate)}`,
-    `Births: ${formatInt(c.birthsPerYear)}/yr`,
+    `Births: ${formatExact(c.birthsPerYear)}/yr`,
     `Locations: ${formatInt(c.locationCount)}`,
   ];
 }

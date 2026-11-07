@@ -10,9 +10,9 @@ import {
 import { ExactValue } from "./ExactValue";
 
 const FORMS = {
-  metric: { text: formatMetric, exact: (x: number) => formatExactAmount(x) },
-  level: { text: formatLevel, exact: (x: number) => formatExactAmount(x) },
-  scale: { text: formatScale, exact: (x: number) => formatExactAmount(x) },
+  metric: { text: formatMetric, exact: formatExactAmount },
+  level: { text: formatLevel, exact: formatExactAmount },
+  scale: { text: formatScale, exact: formatExactAmount },
   count: { text: formatCount, exact: (x: number) => formatExactAmount(x, 0) },
   percent: { text: formatPercent, exact: formatExactPercent },
 };

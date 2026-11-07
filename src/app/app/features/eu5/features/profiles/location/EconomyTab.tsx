@@ -1,5 +1,5 @@
 import type { LocationProfile } from "@/wasm/wasm_eu5";
-import { formatLevel } from "@/lib/format";
+import { Figure } from "../../../components/Figure";
 import { SectionTitle } from "../../../components";
 
 interface Props {
@@ -18,7 +18,9 @@ export function LocationEconomyTab({ profile }: Props) {
         {profile.buildings.map((b, i) => (
           <div key={i} className="flex items-center justify-between text-sm">
             <span className="text-game-ink-300">{b.building.name}</span>
-            <span className="font-game-num text-xs text-game-ink-300">{formatLevel(b.level)}</span>
+            <span className="font-game-num text-xs text-game-ink-300">
+              <Figure value={b.level} form="level" />
+            </span>
           </div>
         ))}
       </div>

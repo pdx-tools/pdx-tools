@@ -116,7 +116,11 @@ const exactFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits:
 
 /** The full value behind a compact figure, such as 12,073.9 behind 12.1K */
 export function formatExact(x: number): string {
-  return `${x < 0 ? "\u2212" : ""}${exactFormatter.format(Math.abs(x))}`;
+  const sign = x < 0 ? "\u2212" : "";
+  const abs = Math.abs(x);
+  // A value that rounds to zero is not zero, so it does not read "0".
+  if (abs > 0 && abs < 0.005) return `${sign}<0.01`;
+  return `${sign}${exactFormatter.format(abs)}`;
 }
 
 /** True if a figure with these decimals, and no unit, loses nothing of `formatExact` */

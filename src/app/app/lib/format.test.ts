@@ -103,6 +103,9 @@ describe("formatExact", () => {
     expect(formatExact(14252.733)).toBe("14,252.73");
     expect(formatExact(-5.1)).toBe("\u22125.1");
     expect(formatExact(958)).toBe("958");
+    expect(formatExact(0)).toBe("0");
+    expect(formatExact(0.004)).toBe("<0.01");
+    expect(formatExact(-0.004)).toBe("\u2212<0.01");
   });
 });
 
