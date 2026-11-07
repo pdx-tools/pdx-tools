@@ -1,7 +1,12 @@
 import { useMemo } from "react";
 import { cx } from "class-variance-authority";
 import { createColumnHelper } from "@/lib/tanstack-table";
-import { formatExactPercent, formatFixed, formatPercent } from "../../../numberFormatting";
+import {
+  formatExact,
+  formatExactPercent,
+  formatFixed,
+  formatPercent,
+} from "../../../numberFormatting";
 import type {
   CountryMetrics,
   CountryRef,
@@ -96,12 +101,15 @@ const buildColumns = (backLabel?: string) => [
       <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
-  columnHelper.accessor((row) => row.metrics.activeStateCapacity / 1_000_000, {
+  columnHelper.accessor((row) => row.metrics.activeStateCapacity, {
     id: "activeCap",
     sortFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Active Cap", variant: "num" }),
+    // The cell is in millions, so a small value reads 0.0.
+    meta: Eu5DataTable.meta({ headerLabel: "Active Cap", variant: "num", exact: formatExact }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>
+        {formatFixed(info.getValue() / 1_000_000, 1)}
+      </Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor((row) => row.metrics.totalPopulation, {
