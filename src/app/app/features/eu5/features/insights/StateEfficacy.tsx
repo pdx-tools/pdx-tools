@@ -254,7 +254,11 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
       }),
       columnHelper.accessor("stateEfficacy", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Effective Development", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Effective Development",
+          variant: "num",
+          term: "effectiveDevelopment",
+        }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
