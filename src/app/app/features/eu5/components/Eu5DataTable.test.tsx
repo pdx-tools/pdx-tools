@@ -45,7 +45,7 @@ it("has one tab stop for the cells with a full value", () => {
   expect(markup).not.toContain('data-exact="293"');
 });
 
-it("marks a header that names a defined term", () => {
+it("marks only a header that has a defined term", () => {
   type Gap = { gap: number; other: number };
   const helper = createColumnHelper<Gap>();
   const markup = renderToStaticMarkup(
@@ -53,10 +53,10 @@ it("marks a header that names a defined term", () => {
       <Eu5DataTable
         columns={[
           helper.accessor("gap", {
-            meta: Eu5DataTable.meta({ headerLabel: "Tax Gap", variant: "num" }),
+            meta: Eu5DataTable.meta({ headerLabel: "Gap", variant: "num", term: "taxGap" }),
           }),
           helper.accessor("other", {
-            meta: Eu5DataTable.meta({ headerLabel: "Other", variant: "num" }),
+            meta: Eu5DataTable.meta({ headerLabel: "Tax Gap", variant: "num" }),
           }),
         ]}
         data={[]}

@@ -82,7 +82,7 @@ const columns = [
   columnHelper.accessor((row) => row.wealth - row.taxBase, {
     id: "unrealizedTaxBase",
     sortFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Tax Base Gap", variant: "num" }),
+    meta: Eu5DataTable.meta({ headerLabel: "Tax Base Gap", variant: "num", term: "taxGap" }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),

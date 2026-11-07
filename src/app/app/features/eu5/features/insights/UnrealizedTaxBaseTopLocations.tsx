@@ -50,7 +50,7 @@ export function UnrealizedTaxBaseTopLocations({
       }),
       columnHelper.accessor("unrealizedTaxBase", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Tax Gap", variant: "num" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Tax Gap", variant: "num", term: "taxGap" }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),

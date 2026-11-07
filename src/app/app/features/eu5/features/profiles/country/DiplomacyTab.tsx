@@ -96,7 +96,11 @@ const buildColumns = (backLabel?: string) => [
   columnHelper.accessor((row) => row.metrics.totalStateEfficacy, {
     id: "effDev",
     sortFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Eff. Dev", variant: "num" }),
+    meta: Eu5DataTable.meta({
+      headerLabel: "Eff. Dev",
+      variant: "num",
+      term: "effectiveDevelopment",
+    }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),

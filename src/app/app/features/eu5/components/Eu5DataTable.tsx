@@ -1,4 +1,4 @@
-import { DefinedTerm, definedTermMark } from "./EntityName";
+import { DefinedTerm, glossaryTerm } from "./EntityName";
 import React, { useId, useMemo, useState } from "react";
 import { flexRender, useTable } from "@tanstack/react-table";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
@@ -512,7 +512,7 @@ function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData
           "min-w-0 overflow-hidden font-game-num text-ellipsis whitespace-nowrap",
           align === "right" && "text-right",
           align === "center" && "text-center",
-          definedTermMark(sortLabel),
+          meta?.term && glossaryTerm,
         )}
       >
         {isPlaceholder
@@ -544,7 +544,7 @@ function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData
       )}
       style={cellStyle(meta?.minWidth)}
     >
-      <DefinedTerm label={sortLabel}>
+      <DefinedTerm term={meta?.term}>
         {canSort ? (
           <button
             type="button"
@@ -560,12 +560,12 @@ function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData
           </button>
         ) : (
           <div
-            tabIndex={definedTermMark(sortLabel) ? 0 : undefined}
+            tabIndex={meta?.term ? 0 : undefined}
             className={cx(
               "flex h-[30px] min-w-0 items-center gap-1 max-md:h-11",
               align === "right" && "justify-end",
               align === "center" && "justify-center",
-              definedTermMark(sortLabel) && focusRing,
+              meta?.term && focusRing,
             )}
           >
             {headerContent}
