@@ -72,7 +72,7 @@ const COMPACT_UNITS = [
 export function formatMetric(x: number): string {
   const abs = Math.abs(x);
   // A value that rounds to zero is not zero, so it does not read "0.0".
-  if (abs > 0 && abs < 0.05) return `${x < 0 ? "-" : ""}<0.1`;
+  if (abs > 0 && abs < 0.05) return `${x < 0 ? "-" : ""}<${fixedFormatters[1].format(0.1)}`;
   // A unit starts where the value rounds to 1,000 of the unit under it, so 999.96 is 1.0K.
   const unit = COMPACT_UNITS.find((u) => Number(((abs * 1000) / u.size).toFixed(1)) >= 1000);
   return `${formatFixed(x / (unit?.size ?? 1), 1)}${unit?.suffix ?? ""}`;
@@ -122,7 +122,7 @@ export function formatFixed(x: number, digits: 0 | 1 | 2): string {
  */
 export function formatPercent(ratio: number): string {
   const abs = Math.abs(ratio);
-  if (abs > 0 && abs < 0.001) return `${ratio < 0 ? "-" : ""}<0.1%`;
+  if (abs > 0 && abs < 0.001) return `${ratio < 0 ? "-" : ""}<${percentFormatter.format(0.001)}`;
   return percentFormatter.format(ratio);
 }
 
@@ -135,7 +135,7 @@ export function formatRate(ratio: number): string {
 export function formatExact(x: number): string {
   const abs = Math.abs(x);
   // A value that rounds to zero is not zero, so it does not read "0".
-  if (abs > 0 && abs < 0.005) return `${x < 0 ? "-" : ""}<0.01`;
+  if (abs > 0 && abs < 0.005) return `${x < 0 ? "-" : ""}<${exactFormatter.format(0.01)}`;
   return exactFormatter.format(x);
 }
 
