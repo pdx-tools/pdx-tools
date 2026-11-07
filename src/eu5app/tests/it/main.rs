@@ -2,7 +2,7 @@ mod analysis;
 mod fixtures;
 mod utils;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use eu5app::game_data::Localization;
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
@@ -129,6 +129,10 @@ fn workspace_scenarios() {
         snapshot["returning_countries"] =
             run_workspace_scenario(save_name, "returning countries", ws, |ws| {
                 returning_countries_stay_one_country(ws, &localization, save_name)
+            });
+        snapshot["largest_stability_tie"] =
+            run_workspace_scenario(save_name, "country ranks", ws, |ws| {
+                country_ranks_count_ties(ws, &localization)
             });
         insta::assert_json_snapshot!(snapshot);
 
@@ -340,6 +344,47 @@ fn market_selection_uses_location_anchors(ws: &mut Eu5Workspace, localization: &
         ));
         assert!(ws.selection_state().focused_location().is_none());
     }
+}
+
+/// A rank counts the countries that own land and have more, and a tie counts those
+/// that have the same. A country that no longer exists keeps its values in the save,
+/// so it must not count. Returns the largest tie found, so the snapshot shows that the
+/// fixture covers a tie.
+fn country_ranks_count_ties(
+    ws: &mut Eu5Workspace,
+    localization: &Localization,
+) -> serde_json::Value {
+    let gamestate = ws.gamestate();
+    let owners: BTreeSet<_> = gamestate
+        .locations
+        .iter()
+        .filter_map(|entry| entry.location().owner.real_id())
+        .filter_map(|id| gamestate.countries.get(id.country_id()))
+        .collect();
+    let stabilities: Vec<f64> = owners
+        .iter()
+        .filter_map(|idx| gamestate.countries.index(*idx).data())
+        .map(|data| data.currency_data.stability)
+        .collect();
+
+    // A profile takes time, so a sample of the countries is enough.
+    let presenter = ws.localized(localization).presenter();
+    let mut largest_tie = 0;
+    for idx in owners.iter().step_by(50) {
+        let overview = presenter
+            .country_profile_for(*idx)
+            .expect("a land owner has a profile")
+            .overview;
+        let ranks = overview.ranks;
+        let own = overview.stability;
+        assert_eq!(ranks.cohort as usize, stabilities.len());
+        let above = stabilities.iter().filter(|x| **x > own).count();
+        let tied = stabilities.iter().filter(|x| **x == own).count();
+        assert_eq!(ranks.stability as usize, above + 1);
+        assert_eq!(ranks.ties.stability as usize, tied);
+        largest_tie = largest_tie.max(ranks.ties.stability);
+    }
+    largest_tie.into()
 }
 
 fn focused_locations_have_location_profiles(ws: &mut Eu5Workspace, localization: &Localization) {

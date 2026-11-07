@@ -190,14 +190,37 @@ pub struct CountryOverviewSection {
     pub ranks: CountryOverviewRanks,
 }
 
-/// This country's 1-based ordinal rank for each overview metric among all real
-/// countries. `cohort` is the size of that universe and is shared by every
-/// metric (so the UI shows the cohort once rather than repeating it per row).
+/// This country's 1-based ordinal rank for each overview metric among the
+/// countries that own land. `cohort` is the size of that universe and is shared
+/// by every metric (so the UI shows the cohort once rather than repeating it per
+/// row).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct CountryOverviewRanks {
     pub cohort: u32,
+    /// How many countries have this country's exact value, with this country.
+    pub ties: CountryOverviewTies,
+    pub net_gold: u32,
+    pub manpower: u32,
+    pub stability: u32,
+    pub prestige: u32,
+    pub government_power: u32,
+    pub income: u32,
+    pub wealth: u32,
+    pub tax_base: u32,
+    pub total_population: u32,
+    pub effective_development: u32,
+    pub active_state_capacity: u32,
+    pub building_levels: u32,
+}
+
+/// The size of the tie at this country's value, for each ranked metric. A value
+/// that one country has is a tie of one.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct CountryOverviewTies {
     pub net_gold: u32,
     pub manpower: u32,
     pub stability: u32,
