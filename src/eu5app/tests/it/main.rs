@@ -384,6 +384,23 @@ fn country_ranks_count_ties(
         assert_eq!(ranks.ties.stability as usize, tied);
         largest_tie = largest_tie.max(ranks.ties.stability);
     }
+
+    // A country with no land is not in the cohort, but it is one of its own tie.
+    let landless = gamestate
+        .countries
+        .iter()
+        .find(|entry| entry.data().is_some() && !owners.contains(&entry.idx()))
+        .expect("a save has countries with no land");
+    let overview = presenter
+        .country_profile_for(landless.idx())
+        .expect("a country with data has a profile")
+        .overview;
+    let tied = stabilities
+        .iter()
+        .filter(|x| **x == overview.stability)
+        .count();
+    assert_eq!(overview.ranks.ties.stability as usize, tied + 1);
+
     largest_tie.into()
 }
 

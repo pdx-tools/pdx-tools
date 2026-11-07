@@ -528,21 +528,23 @@ impl<'bump> Eu5Workspace<'bump> {
                 active_state_capacity_max.max(other_territory.active_state_capacity);
             building_levels_max = building_levels_max.max(other_territory.building_levels);
         }
+        // A country outside the cohort still has its value, so it is one of the tie.
+        let outside = u32::from(!territory_by_country.contains_key(&country_idx));
         let ranks = CountryOverviewRanks {
             cohort,
             ties: CountryOverviewTies {
-                net_gold: net_gold_rank.tied,
-                manpower: manpower_rank.tied,
-                stability: stability_rank.tied,
-                prestige: prestige_rank.tied,
-                government_power: government_power_rank.tied,
-                income: income_rank.tied,
-                wealth: wealth_rank.tied,
-                tax_base: tax_base_rank.tied,
-                total_population: total_population_rank.tied,
-                effective_development: effective_development_rank.tied,
-                active_state_capacity: active_state_capacity_rank.tied,
-                building_levels: building_levels_rank.tied,
+                net_gold: net_gold_rank.tied + outside,
+                manpower: manpower_rank.tied + outside,
+                stability: stability_rank.tied + outside,
+                prestige: prestige_rank.tied + outside,
+                government_power: government_power_rank.tied + outside,
+                income: income_rank.tied + outside,
+                wealth: wealth_rank.tied + outside,
+                tax_base: tax_base_rank.tied + outside,
+                total_population: total_population_rank.tied + outside,
+                effective_development: effective_development_rank.tied + outside,
+                active_state_capacity: active_state_capacity_rank.tied + outside,
+                building_levels: building_levels_rank.tied + outside,
             },
             net_gold: net_gold_rank.rank(),
             manpower: manpower_rank.rank(),
