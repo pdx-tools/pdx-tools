@@ -16,7 +16,7 @@ import {
   formatPercent,
   formatPercentTick,
   formatTick,
-} from "../../numberForms";
+} from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {

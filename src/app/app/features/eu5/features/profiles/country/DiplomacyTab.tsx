@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { cx } from "class-variance-authority";
 import { createColumnHelper } from "@/lib/tanstack-table";
-import { formatFixed, formatPercent } from "../../../numberForms";
+import { formatFixed, formatPercent } from "../../../numberFormatting";
 import type {
   CountryMetrics,
   CountryRef,

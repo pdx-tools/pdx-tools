@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { formatExact, formatPercent, formatPercentTick, formatTick } from "../../../numberForms";
+import {
+  formatExact,
+  formatPercent,
+  formatPercentTick,
+  formatTick,
+} from "../../../numberFormatting";
 import { Figure } from "../../../components/Figure";
 import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";

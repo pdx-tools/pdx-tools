@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { GameTabs, Skeleton } from "../../../components";
-import { formatFixed } from "../../../numberForms";
+import { formatFixed } from "../../../numberFormatting";
 import { Figure } from "../../../components/Figure";
 import type { MarketMemberCountry, MarketProfile as MarketProfileData } from "@/wasm/wasm_eu5";
 import { MarketProductionLocations } from "../../insights/MarketProductionLocations";

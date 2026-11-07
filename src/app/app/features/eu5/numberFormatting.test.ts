@@ -11,7 +11,7 @@ import {
   formatPercentTick,
   formatRate,
   formatTick,
-} from "./numberForms";
+} from "./numberFormatting";
 
 describe("formatMetric", () => {
   it("has one decimal in each value, so that the decimal column lines up", () => {

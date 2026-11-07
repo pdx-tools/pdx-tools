@@ -6,7 +6,7 @@ import type {
   PopulationGrowthScopeSummary,
   PopulationGrowthTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFixed, formatPercentTick, formatRate, formatTick } from "../../numberForms";
+import { formatFixed, formatPercentTick, formatRate, formatTick } from "../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";

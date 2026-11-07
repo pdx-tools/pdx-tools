@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { ConcentrationPoint, LocationRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatTick } from "../../../numberForms";
+import { formatTick } from "../../../numberFormatting";
 import {
   PopulationSankey,
   PopulationTypeProfile,

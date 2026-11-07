@@ -5,7 +5,7 @@ import {
   formatExactPercent,
   formatMetric,
   formatPercent,
-} from "../numberForms";
+} from "../numberFormatting";
 import { ExactValue } from "./ExactValue";
 
 /** A building or RGO level: 17 stays 17, and a mean is 16.5 */

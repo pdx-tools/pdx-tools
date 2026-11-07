@@ -12,7 +12,7 @@ import type {
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatFixed, formatPercent, formatPercentTick, formatTick } from "../../numberForms";
+import { formatFixed, formatPercent, formatPercentTick, formatTick } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { popRankColors } from "../../gameColors";
 import {

@@ -3,7 +3,7 @@ import { createColumnHelper } from "@/lib/tanstack-table";
 import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatFixed } from "../../numberForms";
+import { formatFixed } from "../../numberFormatting";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";

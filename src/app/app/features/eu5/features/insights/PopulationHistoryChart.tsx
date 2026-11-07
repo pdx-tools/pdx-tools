@@ -8,7 +8,7 @@ import { SectionTitle } from "../../components";
 import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { formatInt } from "@/lib/format";
-import { formatTick } from "../../numberForms";
+import { formatTick } from "../../numberFormatting";
 
 export type PopulationHistorySeries = {
   country: CountryRef;

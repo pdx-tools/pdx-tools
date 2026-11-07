@@ -5,7 +5,7 @@ import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, SectionTitle } from "../../components";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatPercent, formatTick } from "../../numberForms";
+import { formatPercent, formatTick } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,

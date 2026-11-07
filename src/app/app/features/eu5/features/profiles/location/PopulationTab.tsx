@@ -1,5 +1,5 @@
 import type { LocationProfile, LocationPopRow } from "@/wasm/wasm_eu5";
-import { formatFixed, formatPercent } from "../../../numberForms";
+import { formatFixed, formatPercent } from "../../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable } from "../../../components";
 import { PopulationSankey } from "../../insights/Population";

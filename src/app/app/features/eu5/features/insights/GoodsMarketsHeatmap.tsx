@@ -6,7 +6,7 @@ import type {
   ScopedGoodSummary,
   ScopedMarketSummary,
 } from "@/wasm/wasm_eu5";
-import { formatExact } from "../../numberForms";
+import { formatExact } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,

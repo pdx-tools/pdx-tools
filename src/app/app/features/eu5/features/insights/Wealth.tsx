@@ -3,7 +3,7 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryWealth } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatExact } from "../../numberForms";
+import { formatExact } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {

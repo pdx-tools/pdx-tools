@@ -1,5 +1,5 @@
 import { formatInt } from "@/lib/format";
-import { formatExact, formatRate } from "../../numberForms";
+import { formatExact, formatRate } from "../../numberFormatting";
 
 /** Years until the population doubles at a constant yearly rate. */
 export function doublingYears(rate: number): number {
