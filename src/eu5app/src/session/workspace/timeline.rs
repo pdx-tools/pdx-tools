@@ -1,5 +1,5 @@
 use super::*;
-use crate::timeline::{CountryIdentities, CountryIdentity, TimelineIndex};
+use crate::timeline::{CountryIdentities, CountryIdentity, TimelineIndex, is_same_country};
 use eu5save::Eu5Date;
 
 /// The date the map shows, and the owners on that date.
@@ -13,6 +13,11 @@ pub(super) struct TimelineState<'bump> {
     save_date: Eu5Date,
     date: Eu5Date,
     owners: LocationIndexedVec<CountryId>,
+    /// The dead ids of a live country, and the live country of a dead id. A
+    /// country that dies and returns gets a new id. For a reader the two are
+    /// one country.
+    earlier_ids: FxHashMap<CountryIdx, Vec<CountryId>>,
+    returned_as: FxHashMap<CountryId, CountryIdx>,
 }
 
 impl<'bump> TimelineState<'bump> {
@@ -24,12 +29,35 @@ impl<'bump> TimelineState<'bump> {
             save_date,
         );
         let owners = index.owners_at(gamestate.locations.len(), save_date);
+        let identities = CountryIdentities::new(gamestate);
+        let live_by_tag: FxHashMap<_, _> = gamestate
+            .countries
+            .iter()
+            .filter_map(|entry| Some((entry.tag().as_str(), (entry.idx(), entry.data()?))))
+            .collect();
+        let mut earlier_ids: FxHashMap<CountryIdx, Vec<CountryId>> = FxHashMap::default();
+        let mut returned_as = FxHashMap::default();
+        for (id, dead) in identities.dead_countries() {
+            let tag = dead.tag.as_str();
+            if let Some(&(live, data)) = live_by_tag.get(tag)
+                && is_same_country(
+                    tag,
+                    (&dead.name, dead.flag),
+                    (&data.country_name, data.flag),
+                )
+            {
+                earlier_ids.entry(live).or_default().push(id);
+                returned_as.insert(id, live);
+            }
+        }
         Self {
             index,
-            identities: CountryIdentities::new(gamestate),
+            identities,
             save_date,
             date: save_date,
             owners,
+            earlier_ids,
+            returned_as,
         }
     }
 }
@@ -107,6 +135,24 @@ impl<'bump> Eu5Workspace<'bump> {
             change_counts,
             notes,
         }
+    }
+
+    /// The live country that an owner on any date is now: itself, or the country
+    /// that came back under its tag. None for a country that did not return.
+    pub(crate) fn live_country_of(&self, country: CountryId) -> Option<CountryIdx> {
+        self.gamestate
+            .countries
+            .get(country)
+            .or_else(|| self.timeline.returned_as.get(&country).copied())
+    }
+
+    /// Each id that a live country has had, itself first.
+    pub fn lineage_ids(&self, country_idx: CountryIdx) -> Vec<CountryId> {
+        let mut ids = vec![self.gamestate.countries.index(country_idx).id()];
+        if let Some(earlier) = self.timeline.earlier_ids.get(&country_idx) {
+            ids.extend_from_slice(earlier);
+        }
+        ids
     }
 
     /// Show the map on `date`.

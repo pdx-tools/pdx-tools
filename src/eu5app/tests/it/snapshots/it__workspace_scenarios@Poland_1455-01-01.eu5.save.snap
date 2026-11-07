@@ -161,6 +161,20 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
     ]
   },
   "projection": "0x862f443ac40db67a",
+  "returning_countries": {
+    "countries": [
+      {
+        "ids": [
+          33554944,
+          33555405
+        ],
+        "tag": "AAA43"
+      }
+    ],
+    "dead_id_checked": true,
+    "one_id_dates": 25,
+    "two_id_dates": 0
+  },
   "save_version": "1.4.1",
   "selected": {
     "locations": "0xa8953e544c2f28be",

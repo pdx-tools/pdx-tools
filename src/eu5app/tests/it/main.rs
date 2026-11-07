@@ -123,9 +123,13 @@ fn workspace_scenarios() {
         let localization = loaded.localization;
         let ws = &mut loaded.workspace;
 
-        let snapshot = run_workspace_scenario(save_name, "snapshot", ws, |ws| {
+        let mut snapshot = run_workspace_scenario(save_name, "snapshot", ws, |ws| {
             workspace_snapshot(ws, &localization)
         });
+        snapshot["returning_countries"] =
+            run_workspace_scenario(save_name, "returning countries", ws, |ws| {
+                returning_countries_stay_one_country(ws, &localization, save_name)
+            });
         insta::assert_json_snapshot!(snapshot);
 
         run_workspace_scenario(save_name, "market selection", ws, |ws| {
@@ -488,15 +492,9 @@ fn land_on_timeline_date(ws: &Eu5Workspace, country: CountryId) -> FnvHashSet<Lo
         .collect()
 }
 
-/// A selected country keeps its selection through the timeline, and the
-/// selected locations are its land on each date. A click on a past date
-/// selects the country that held the land on that date.
-fn country_selection_follows_the_timeline(
-    ws: &mut Eu5Workspace,
-    localization: &Localization,
-    save_name: &str,
-) {
-    let profile_country = |ws: &Eu5Workspace| match ws
+/// The country of the active profile.
+fn active_country(ws: &Eu5Workspace, localization: &Localization) -> Option<u32> {
+    match ws
         .localized(localization)
         .presenter()
         .active_profile_identity()
@@ -505,7 +503,18 @@ fn country_selection_follows_the_timeline(
             Some(country.key.value())
         }
         _ => None,
-    };
+    }
+}
+
+/// A selected country keeps its selection through the timeline, and the
+/// selected locations are its land on each date. A click on a past date
+/// selects the country that held the land on that date.
+fn country_selection_follows_the_timeline(
+    ws: &mut Eu5Workspace,
+    localization: &Localization,
+    save_name: &str,
+) {
+    let profile_country = |ws: &Eu5Workspace| active_country(ws, localization);
     let summary = ws.timeline_summary();
     if !summary.available {
         return;
@@ -590,6 +599,215 @@ fn country_selection_follows_the_timeline(
         &land_on_timeline_date(ws, start_owner),
         "{save_name}: a click selects the owner on the timeline date"
     );
+}
+
+/// The land of each id on the timeline date, and how many of the ids hold land.
+fn land_of_ids(ws: &Eu5Workspace, ids: &[CountryId]) -> (FnvHashSet<LocationIdx>, usize) {
+    let mut land = FnvHashSet::default();
+    let mut holders = 0;
+    for &id in ids {
+        let held = land_on_timeline_date(ws, id);
+        holders += usize::from(!held.is_empty());
+        land.extend(held);
+    }
+    (land, holders)
+}
+
+/// A country that dies and returns has a new id, and its ids are one country on each
+/// date. A dead id that did not return reads as dead. The result goes in the snapshot,
+/// so a save that stops covering a case shows in the diff.
+fn returning_countries_stay_one_country(
+    ws: &mut Eu5Workspace,
+    localization: &Localization,
+    save_name: &str,
+) -> serde_json::Value {
+    let summary = ws.timeline_summary();
+    if !summary.available {
+        return serde_json::Value::Null;
+    }
+    let reads_as_dead = |ws: &Eu5Workspace, location: LocationIdx| {
+        matches!(
+            ws.localized(localization).presenter().hover_data(location),
+            HoverDisplayData::HistoricalCountry { dead: true, .. }
+        )
+    };
+
+    let past_dates: Vec<_> = summary
+        .change_dates
+        .iter()
+        .copied()
+        .filter(|&date| date < summary.end)
+        .collect();
+    let every = past_dates.len().div_ceil(40).max(1);
+    let dates: Vec<_> = past_dates
+        .into_iter()
+        .step_by(every)
+        .chain([summary.end])
+        .collect();
+
+    let returning: Vec<_> = ws
+        .gamestate()
+        .countries
+        .iter()
+        .filter(|entry| entry.data().is_some())
+        .map(|entry| {
+            (
+                entry.idx(),
+                entry.tag().as_str().to_owned(),
+                ws.lineage_ids(entry.idx()),
+            )
+        })
+        .filter(|(_, _, ids)| ids.len() > 1)
+        .collect();
+
+    let (mut one_id_dates, mut two_id_dates) = (0, 0);
+    for (country, _, ids) in &returning {
+        let country = *country;
+        let mut one_id_date = None;
+        let mut no_land_date = None;
+        for &date in &dates {
+            ws.set_timeline_date(date);
+            ws.clear_selection();
+            let (land, holders) = land_of_ids(ws, ids);
+            ws.select_country_by_idx(country);
+            assert_eq!(
+                ws.selection_state().selected_locations(),
+                &land,
+                "{save_name}: {date:?} selects the land of each id"
+            );
+            // With no land, there is nothing to select. Two ids with land count as two
+            // countries, so these dates have no profile.
+            if holders == 1 {
+                assert_eq!(
+                    active_country(ws, localization),
+                    Some(country.value()),
+                    "{save_name}: {date:?} keeps the country profile"
+                );
+            }
+            if let Some(&location) = land.iter().next() {
+                assert!(
+                    !reads_as_dead(ws, location),
+                    "{save_name}: {date:?} a returning country lives"
+                );
+            }
+            ws.remove_country_by_idx(country);
+            assert!(
+                ws.selection_state().is_empty(),
+                "{save_name}: {date:?} a removal takes the land of each id"
+            );
+            ws.add_country_by_idx(country);
+            assert_eq!(
+                ws.selection_state().selected_locations(),
+                &land,
+                "{save_name}: {date:?} an addition takes the land of each id"
+            );
+            match holders {
+                0 => {
+                    no_land_date.get_or_insert(date);
+                }
+                1 => {
+                    one_id_dates += 1;
+                    one_id_date.get_or_insert(date);
+                }
+                _ => two_id_dates += 1,
+            }
+        }
+
+        let Some(start) = one_id_date else {
+            continue;
+        };
+        ws.set_timeline_date(start);
+        ws.clear_selection();
+        ws.select_country_by_idx(country);
+        for &date in dates.iter().chain(dates.iter().rev()) {
+            ws.set_timeline_date(date);
+            let (land, holders) = land_of_ids(ws, ids);
+            assert_eq!(
+                ws.selection_state().selected_locations(),
+                &land,
+                "{save_name}: a step to {date:?} keeps the land when it changes id"
+            );
+            // A selection follows the country on dates when it has no land.
+            if holders < 2 {
+                assert_eq!(
+                    active_country(ws, localization),
+                    Some(country.value()),
+                    "{save_name}: a step to {date:?} keeps the country profile"
+                );
+            }
+        }
+
+        ws.set_timeline_date(start);
+        let location = *ws
+            .selection_state()
+            .selected_locations()
+            .iter()
+            .next()
+            .unwrap();
+        ws.remove_country_at(location);
+        assert!(
+            ws.selection_state().is_empty(),
+            "{save_name}: no id of the country stays selected without its land"
+        );
+
+        // A removal on a date with no land holds when the land comes back. Another
+        // country keeps the selection from being empty.
+        let Some(no_land) = no_land_date else {
+            continue;
+        };
+        ws.clear_selection();
+        ws.select_country_by_idx(country);
+        ws.set_timeline_date(no_land);
+        let other = ws.gamestate().locations.iter().find_map(|entry| {
+            let owner = ws.owner_at_timeline_date(entry.idx());
+            ws.gamestate().countries.get(owner)
+        });
+        let Some(other) = other else {
+            continue;
+        };
+        ws.add_country_by_idx(other);
+        ws.remove_country_by_idx(country);
+        ws.set_timeline_date(start);
+        let (land, _) = land_of_ids(ws, ids);
+        assert!(
+            ws.selection_state().selected_locations().is_disjoint(&land),
+            "{save_name}: a removed country does not come back with its land"
+        );
+    }
+
+    ws.set_timeline_date(summary.start);
+    let dead_id = ws
+        .gamestate()
+        .locations
+        .iter()
+        .map(|entry| entry.idx())
+        .find(|&idx| {
+            let owner = ws.owner_at_timeline_date(idx);
+            !owner.is_dummy()
+                && ws.gamestate().countries.get(owner).is_none()
+                && !returning.iter().any(|(_, _, ids)| ids.contains(&owner))
+        });
+    if let Some(location) = dead_id {
+        assert!(
+            reads_as_dead(ws, location),
+            "{save_name}: a dead id that did not return reads as dead"
+        );
+    }
+
+    let countries: Vec<_> = returning
+        .iter()
+        .map(|(_, tag, ids)| {
+            let mut ids: Vec<u32> = ids.iter().map(|id| id.value()).collect();
+            ids.sort_unstable();
+            serde_json::json!({ "tag": tag, "ids": ids })
+        })
+        .collect();
+    serde_json::json!({
+        "countries": countries,
+        "one_id_dates": one_id_dates,
+        "two_id_dates": two_id_dates,
+        "dead_id_checked": dead_id.is_some(),
+    })
 }
 
 /// Markets have no history, so a market scope stays on a past date.

@@ -122,7 +122,7 @@ impl<'bump> Eu5Workspace<'bump> {
         HoverDisplayDataSource::HistoricalCountry {
             location_id: location_idx.value(),
             name: OwnedCountryName::new(identity.name, identity.tag, identity.flag),
-            dead: identity.dead,
+            dead: self.live_country_of(owner).is_none(),
         }
     }
 

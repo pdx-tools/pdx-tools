@@ -54,17 +54,24 @@ impl<'bump> Eu5Workspace<'bump> {
         anchor: eu5save::models::LocationIdx,
     ) -> Option<eu5save::models::CountryIdx> {
         let owner = self.owner_at_timeline_date(anchor).real_id()?;
-        self.gamestate.countries.get(owner.country_id())
+        self.live_country_of(owner.country_id())
     }
 
-    /// The only followed country, when it has no land on the timeline date.
+    /// The only followed country, when it has no land on the timeline date. It can
+    /// have more than one id.
     pub(crate) fn landless_followed_country(&self) -> Option<eu5save::models::CountryIdx> {
         let selection = &self.selection_state;
-        if !selection.selected_locations().is_empty() || selection.followed().len() != 1 {
+        if !selection.selected_locations().is_empty() {
             return None;
         }
-        let owner = selection.followed().iter().next()?;
-        self.gamestate.countries.get(owner.country_id())
+        let mut countries = selection
+            .followed()
+            .iter()
+            .map(|owner| self.live_country_of(owner.country_id()));
+        let country = countries.next()??;
+        countries
+            .all(|other| other == Some(country))
+            .then_some(country)
     }
 
     fn headline_for_locations(

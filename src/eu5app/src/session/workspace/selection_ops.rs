@@ -174,20 +174,30 @@ impl<'bump> Eu5Workspace<'bump> {
         self.rebuild_colors()
     }
 
-    /// Replace the selection with all locations owned by `country_idx`.
+    /// The land on the timeline date of a country and of the ids it had before.
+    fn land_of_lineage(
+        &self,
+        country_idx: eu5save::models::CountryIdx,
+    ) -> FnvHashSet<eu5save::models::LocationIdx> {
+        let adapter = SelectionAdapter::new(self);
+        self.lineage_ids(country_idx)
+            .into_iter()
+            .filter_map(|id| id.real_id())
+            .flat_map(|owner| adapter.resolve_by_country_id(owner))
+            .collect()
+    }
+
+    /// Replace the selection with the land of `country_idx` and of its earlier ids.
     pub fn select_country_by_idx(
         &mut self,
         country_idx: eu5save::models::CountryIdx,
     ) -> (Option<crate::ColorIdx>, MapChange) {
         let entry = self.gamestate.countries.index(country_idx);
-        let Some(owner) = entry.id().real_id() else {
-            return (None, self.no_map_change());
-        };
         let capital_location_idx = entry
             .data()
             .and_then(|d| d.capital)
             .and_then(|id| self.gamestate.locations.get(id));
-        let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
+        let locs = self.land_of_lineage(country_idx);
         if locs.is_empty() {
             return (None, self.no_map_change());
         }
@@ -198,24 +208,22 @@ impl<'bump> Eu5Workspace<'bump> {
         (center, gradient)
     }
 
-    /// Add all locations owned by `country_idx` to the existing selection.
+    /// Add the land of `country_idx` and of its earlier ids to the selection.
     pub fn add_country_by_idx(&mut self, country_idx: eu5save::models::CountryIdx) -> MapChange {
-        let Some(owner) = self.gamestate.countries.index(country_idx).id().real_id() else {
-            return self.no_map_change();
-        };
-        let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
+        let locs = self.land_of_lineage(country_idx);
         self.selection_state.add_all(locs);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
         self.rebuild_colors()
     }
 
-    /// Remove all locations owned by `country_idx` from the selection.
+    /// Remove the land of `country_idx` and of its earlier ids from the selection.
     pub fn remove_country_by_idx(&mut self, country_idx: eu5save::models::CountryIdx) -> MapChange {
-        let Some(owner) = self.gamestate.countries.index(country_idx).id().real_id() else {
-            return self.no_map_change();
-        };
-        self.selection_state.unfollow(owner);
-        let locs = SelectionAdapter::new(&*self).resolve_by_country_id(owner);
+        for owner in self.lineage_ids(country_idx) {
+            if let Some(owner) = owner.real_id() {
+                self.selection_state.unfollow(owner);
+            }
+        }
+        let locs = self.land_of_lineage(country_idx);
         self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
         self.recompute_derived_scope_for_kind(EntityKind::Country);
         self.rebuild_colors()
