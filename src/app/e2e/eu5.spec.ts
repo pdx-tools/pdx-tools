@@ -63,7 +63,7 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
 
   // A rank that hundreds of countries share reads as a tie.
   await expect(page.getByText("=#1", { exact: true })).toBeVisible();
-  await expect(page.getByText("446 tied", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("446 countries share this rank")).toBeVisible();
 
   // Escape hides a full value that covers other text, and it keeps the selection.
   const locationsTab = page.getByRole("tab", { name: "Locations" });

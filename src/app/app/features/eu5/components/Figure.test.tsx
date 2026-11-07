@@ -19,7 +19,7 @@ describe("Figure", () => {
 });
 
 describe("StatRail", () => {
-  const rail = (props: { rank: number; tied?: number; percentile?: number }) =>
+  const rail = (props: { rank: number; tied?: number }) =>
     renderToStaticMarkup(
       <Tooltip.Provider>
         <StatRail title="Overview">
@@ -29,15 +29,10 @@ describe("StatRail", () => {
     );
 
   it("reads a tied rank as a tie", () => {
-    const markup = rail({ rank: 5, tied: 3, percentile: 0.5 });
-    expect(markup).toContain("=#5");
-    expect(markup).toContain("3 countries share this rank");
-    expect(rail({ rank: 5, tied: 1, percentile: 0.5 })).not.toContain("=#5");
-  });
-
-  it("names a mass tie, and has no place on the track for it", () => {
-    expect(rail({ rank: 1, tied: 461, percentile: 1 })).toContain("461 tied");
-    expect(rail({ rank: 1, tied: 10, percentile: 1 })).not.toContain("tied");
+    const markup = rail({ rank: 1, tied: 461 });
+    expect(markup).toContain("=#1");
+    expect(markup).toContain("461 countries share this rank");
+    expect(rail({ rank: 5, tied: 1 })).not.toContain("=#5");
   });
 
   it("takes a figure out of the page's tab order", () => {

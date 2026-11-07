@@ -3,7 +3,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { Tooltip } from "@/components/Tooltip";
 import { formatInt } from "@/lib/format";
-import { MASS_TIE, rankLabel } from "../stack/selection";
+import { rankLabel } from "../stack/selection";
 import { RailFigureName } from "./ExactValue";
 
 /**
@@ -38,11 +38,8 @@ export interface StatRailRowProps {
   value: ReactNode;
   /** Dimmed denominator rendered after the value, e.g. `88 / 112`. */
   denom?: ReactNode;
-  /**
-   * Where the row stands among the cohort, from 0 to 1, as a dot on a thin rule. A
-   * dot does not read as the length of the value, and it does not read as a slider.
-   */
-  percentile?: number;
+  /** Bounded ratio in [0, 1]. Omit for raw counts — the track stays empty. */
+  bar?: number;
   /** 1-based rank within the rail's cohort, as "#293". */
   rank?: number;
   /** How many countries share this rank, with this one */
@@ -64,7 +61,7 @@ function Rank({ rank, tied }: { rank: number | undefined; tied: number }) {
   );
 }
 
-function Row({ label, value, denom, percentile, rank, tied = 1, icon, tooltip }: StatRailRowProps) {
+function Row({ label, value, denom, bar, rank, tied = 1, icon, tooltip }: StatRailRowProps) {
   const labelNode = (
     <span
       className={cx(
@@ -97,18 +94,13 @@ function Row({ label, value, denom, percentile, rank, tied = 1, icon, tooltip }:
         labelNode
       )}
 
+      {/* Bar track — only painted for bounded ratios. */}
       <span className="flex items-center">
-        {percentile !== undefined && tied > MASS_TIE ? (
-          // A rank that hundreds share has no place on the track.
-          <span className="font-game-ui text-[12px] leading-none whitespace-nowrap text-game-ink-500">
-            {formatInt(tied)} tied
-          </span>
-        ) : null}
-        {percentile !== undefined && tied <= MASS_TIE && (
-          <span className="relative h-px w-full bg-game-ink-rule">
+        {bar !== undefined && (
+          <span className="relative h-1 w-full rounded-[1px] border border-game-line bg-game-panel-2">
             <span
-              className="absolute top-1/2 h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-game-ink-100"
-              style={{ left: `${Math.min(1, Math.max(0, percentile)) * 100}%` }}
+              className="absolute inset-y-0 left-0 rounded-[1px] bg-game-ink-500"
+              style={{ width: `${Math.max(0, Math.min(1, bar)) * 100}%` }}
             />
           </span>
         )}
@@ -136,10 +128,7 @@ function ColumnHeads({ label, className }: { label?: string; className?: string 
       )}
     >
       <span className="col-span-2">{label}</span>
-      <span className="flex justify-between">
-        <span>Last</span>
-        <span>1st</span>
-      </span>
+      <span />
       <span className="text-right">Value</span>
       <span className="text-right">Rank</span>
     </div>

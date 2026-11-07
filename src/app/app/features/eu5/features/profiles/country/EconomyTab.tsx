@@ -20,7 +20,6 @@ import {
 } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, StatRail } from "../../../components";
-import { percentileOf } from "../../../stack/selection";
 
 const MONTH_NAMES = [
   "Jan",
@@ -55,7 +54,6 @@ export function CountryOverviewTabContent({
   const standing = (metric: keyof CountryOverviewSection["ranks"]["ties"]) => ({
     rank: ranks[metric],
     tied: ranks.ties[metric],
-    percentile: percentileOf(ranks[metric], ranks.cohort),
   });
   return (
     <div className="flex flex-col gap-4">
@@ -64,27 +62,34 @@ export function CountryOverviewTabContent({
         <StatRail.Row
           label="Net Gold"
           value={<Figure value={data.netGold} />}
+          bar={data.netGoldMax > 0 ? data.netGold / data.netGoldMax : undefined}
           {...standing("netGold")}
         />
         <StatRail.Row
           label="Income"
           value={<Figure value={data.income} />}
+          bar={data.incomeMax > 0 ? data.income / data.incomeMax : undefined}
           {...standing("income")}
         />
         <StatRail.Row label="Expense" value={<Figure value={data.expense} />} />
         <StatRail.Row
           label="Wealth"
           value={<Figure value={data.wealth} />}
+          bar={data.wealthMax > 0 ? data.wealth / data.wealthMax : undefined}
           {...standing("wealth")}
         />
         <StatRail.Row
           label="Tax Base"
           value={<Figure value={data.taxBase} />}
+          bar={data.taxBaseMax > 0 ? data.taxBase / data.taxBaseMax : undefined}
           {...standing("taxBase")}
         />
         <StatRail.Row
           label="Buildings"
           value={<Figure value={data.buildingLevels} form="level" />}
+          bar={
+            data.buildingLevelsMax > 0 ? data.buildingLevels / data.buildingLevelsMax : undefined
+          }
           {...standing("buildingLevels")}
         />
 
@@ -92,11 +97,15 @@ export function CountryOverviewTabContent({
         <StatRail.Row
           label="Population"
           value={<Figure value={data.totalPopulation} form="count" />}
+          bar={
+            data.totalPopulationMax > 0 ? data.totalPopulation / data.totalPopulationMax : undefined
+          }
           {...standing("totalPopulation")}
         />
         <StatRail.Row
           label="Manpower"
           value={<Figure value={data.manpower * 1000} form="count" />}
+          bar={data.manpowerMax > 0 ? data.manpower / data.manpowerMax : undefined}
           {...standing("manpower")}
         />
 
@@ -105,27 +114,40 @@ export function CountryOverviewTabContent({
           label="Effective Development"
           tooltip="Effective Development: sum of control × development across owned locations."
           value={<Figure value={data.effectiveDevelopment} />}
+          bar={
+            data.effectiveDevelopmentMax > 0
+              ? data.effectiveDevelopment / data.effectiveDevelopmentMax
+              : undefined
+          }
           {...standing("effectiveDevelopment")}
         />
         <StatRail.Row
           label="Active State Capacity"
           tooltip="Active State Capacity: sum of population × control × development across owned locations."
           value={<Figure value={data.activeStateCapacity} />}
+          bar={
+            data.activeStateCapacityMax > 0
+              ? data.activeStateCapacity / data.activeStateCapacityMax
+              : undefined
+          }
           {...standing("activeStateCapacity")}
         />
         <StatRail.Row
           label="Stability"
           value={<Figure value={data.stability} />}
+          bar={(data.stability + 100) / 200}
           {...standing("stability")}
         />
         <StatRail.Row
           label="Prestige"
           value={<Figure value={data.prestige} />}
+          bar={data.prestige / 100}
           {...standing("prestige")}
         />
         <StatRail.Row
           label="Gov. Power"
           value={<Figure value={data.governmentPower} />}
+          bar={data.governmentPower / 100}
           {...standing("governmentPower")}
         />
       </StatRail>
