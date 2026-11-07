@@ -79,6 +79,11 @@ export function formatPercent(ratio: number): string {
   return percentFormatter.format(ratio);
 }
 
+/** A rank, such as #16, and =#1 when other countries share it */
+export function formatRank(rank: number, tied = 1): string {
+  return `${tied > 1 ? "=" : ""}#${formatFixed(rank, 0)}`;
+}
+
 /** A yearly rate, such as growth: two decimals, because its values are small, and a sign. */
 export function formatRate(ratio: number): string {
   return rateFormatter.format(ratio);

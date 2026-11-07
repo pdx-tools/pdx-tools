@@ -3,7 +3,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { Tooltip } from "@/components/Tooltip";
 import { formatInt } from "@/lib/format";
-import { rankLabel } from "../stack/selection";
+import { formatRank } from "../numberFormatting";
 import { RailFigureName } from "./ExactValue";
 
 /**
@@ -56,7 +56,7 @@ function Rank({ rank, tied }: { rank: number | undefined; tied: number }) {
       title={tied > 1 ? `${formatInt(tied)} countries share this rank` : undefined}
       className="text-right font-game-num text-[12px] whitespace-nowrap text-game-ink-300 tabular-nums"
     >
-      {rank !== undefined && rankLabel(rank, tied)}
+      {rank !== undefined && formatRank(rank, tied)}
     </span>
   );
 }

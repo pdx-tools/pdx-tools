@@ -9,6 +9,7 @@ import {
   formatFixed,
   formatPercent,
   formatPercentTick,
+  formatRank,
   formatRate,
   formatTick,
 } from "./numberFormatting";
@@ -69,6 +70,14 @@ describe("formatPercent", () => {
   it("keeps the sign of a difference", () => {
     expect(formatPercent(-0.012)).toBe("-1.2%");
     expect(formatPercent(-0.0004)).toBe("-<0.1%");
+  });
+});
+
+describe("formatRank", () => {
+  it("marks a rank that other countries share", () => {
+    expect(formatRank(1, 461)).toBe("=#1");
+    expect(formatRank(5)).toBe("#5");
+    expect(formatRank(1234, 1)).toBe("#1,234");
   });
 });
 
