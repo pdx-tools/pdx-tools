@@ -20,7 +20,7 @@ import {
 } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, StatRail } from "../../../components";
-import { rankPosition } from "../../../stack/selection";
+import { percentileOf } from "../../../stack/selection";
 import { formatInt } from "@/lib/format";
 
 const MONTH_NAMES = [
@@ -53,18 +53,16 @@ export function CountryOverviewTabContent({
   locations: LocationRow[];
 }) {
   const { ranks } = data;
-  const ticks = [rankPosition(100, ranks.cohort), rankPosition(10, ranks.cohort)];
   const standing = (metric: keyof CountryOverviewSection["ranks"]["ties"]) => ({
     rank: ranks[metric],
     tied: ranks.ties[metric],
-    percentile: rankPosition(ranks[metric], ranks.cohort),
-    ticks,
+    percentile: percentileOf(ranks[metric], ranks.cohort),
   });
   return (
     <div className="flex flex-col gap-4">
       <StatRail
         title="Overview"
-        meta={`Rank among ${formatInt(ranks.cohort)} land owners. The track is a log scale.`}
+        meta={`Rank among ${formatInt(ranks.cohort)} countries with land. Further right ranks higher.`}
       >
         <StatRail.Section label="Economy" />
         <StatRail.Row

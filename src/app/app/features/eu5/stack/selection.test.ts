@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rankLabel, rankPosition } from "./selection";
+import { percentileOf, rankLabel } from "./selection";
 
 describe("rankLabel", () => {
   it("marks a rank that other countries share", () => {
@@ -9,10 +9,10 @@ describe("rankLabel", () => {
   });
 });
 
-describe("rankPosition", () => {
+describe("percentileOf", () => {
   it("puts the first rank at the end of the track and the last at the start", () => {
-    expect(rankPosition(1, 646)).toBe(1);
-    expect(rankPosition(646, 646)).toBeCloseTo(0);
-    expect(rankPosition(1, 1)).toBe(1);
+    expect(percentileOf(1, 646)).toBe(1);
+    expect(percentileOf(646, 646)).toBe(0);
+    expect(percentileOf(1, 1)).toBe(1);
   });
 });

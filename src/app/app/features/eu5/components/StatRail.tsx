@@ -43,8 +43,6 @@ export interface StatRailRowProps {
    * dot does not read as the length of the value, and it does not read as a slider.
    */
   percentile?: number;
-  /** Positions on the same scale, as short dim ticks */
-  ticks?: readonly number[];
   /** 1-based rank within the rail's cohort, as "#293". */
   rank?: number;
   /** How many countries share this rank, with this one */
@@ -66,17 +64,7 @@ function Rank({ rank, tied }: { rank: number | undefined; tied: number }) {
   );
 }
 
-function Row({
-  label,
-  value,
-  denom,
-  percentile,
-  ticks = [],
-  rank,
-  tied = 1,
-  icon,
-  tooltip,
-}: StatRailRowProps) {
+function Row({ label, value, denom, percentile, rank, tied = 1, icon, tooltip }: StatRailRowProps) {
   const labelNode = (
     <span
       className={cx(
@@ -118,13 +106,6 @@ function Row({
         ) : null}
         {percentile !== undefined && tied <= MASS_TIE && (
           <span className="relative h-px w-full bg-game-ink-rule">
-            {ticks.map((tick) => (
-              <span
-                key={tick}
-                className="absolute top-1/2 h-1.5 w-px -translate-y-1/2 bg-game-ink-500"
-                style={{ left: `${tick * 100}%` }}
-              />
-            ))}
             <span
               className="absolute top-1/2 h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-game-ink-100"
               style={{ left: `${Math.min(1, Math.max(0, percentile)) * 100}%` }}
