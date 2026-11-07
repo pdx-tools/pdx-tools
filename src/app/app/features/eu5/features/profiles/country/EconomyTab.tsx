@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { formatExact, formatPercent, formatPercentTick, formatTick } from "@/lib/format";
+import { formatExact, formatPercent, formatPercentTick, formatTick } from "../../../numberForms";
 import { Figure } from "../../../components/Figure";
 import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
@@ -125,19 +125,19 @@ export function CountryOverviewTabContent({
         />
         <StatRail.Row
           label="Stability"
-          value={<Figure value={data.stability} form="scale" />}
+          value={<Figure value={data.stability} />}
           bar={(data.stability + 100) / 200}
           rank={ranks.stability}
         />
         <StatRail.Row
           label="Prestige"
-          value={<Figure value={data.prestige} form="scale" />}
+          value={<Figure value={data.prestige} />}
           bar={data.prestige / 100}
           rank={ranks.prestige}
         />
         <StatRail.Row
           label="Gov. Power"
-          value={<Figure value={data.governmentPower} form="scale" />}
+          value={<Figure value={data.governmentPower} />}
           bar={data.governmentPower / 100}
           rank={ranks.governmentPower}
         />

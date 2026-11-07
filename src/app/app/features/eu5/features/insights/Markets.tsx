@@ -2,14 +2,14 @@ import { useMemo, useState, useEffectEvent } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { MarketScopeSummary, ScopedGoodSummary, ScopedMarketSummary } from "@/wasm/wasm_eu5";
+import { formatInt } from "@/lib/format";
 import {
   formatExact,
-  formatInt,
   formatPercent,
   formatPercentTick,
   formatRate,
   formatTick,
-} from "@/lib/format";
+} from "../../numberForms";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {

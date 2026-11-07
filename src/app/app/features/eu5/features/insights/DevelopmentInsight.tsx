@@ -3,7 +3,8 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { GameButton } from "@/components/game/Button";
 import type { CountryDevSummary, DevelopmentInsightData } from "@/wasm/wasm_eu5";
-import { formatExact, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact } from "../../numberForms";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {

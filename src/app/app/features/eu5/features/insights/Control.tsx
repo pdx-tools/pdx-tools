@@ -9,14 +9,14 @@ import type {
   CountryControlBarSummary,
   CountryControlPoint,
 } from "@/wasm/wasm_eu5";
+import { formatInt } from "@/lib/format";
 import {
   formatExact,
   formatFixed,
-  formatInt,
   formatPercent,
   formatPercentTick,
   formatTick,
-} from "@/lib/format";
+} from "../../numberForms";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {

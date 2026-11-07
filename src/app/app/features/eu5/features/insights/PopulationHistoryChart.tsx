@@ -7,7 +7,8 @@ import type { CountryRef } from "@/wasm/wasm_eu5";
 import { SectionTitle } from "../../components";
 import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { formatInt, formatTick } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatTick } from "../../numberForms";
 
 export type PopulationHistorySeries = {
   country: CountryRef;

@@ -2,7 +2,7 @@ import { GameButton } from "@/components/game/Button";
 import type { MapMode } from "@/wasm/wasm_eu5";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5Engine } from "../../store";
-import { formatRate } from "@/lib/format";
+import { formatRate } from "../../numberForms";
 import { Figure } from "../../components/Figure";
 import { formatDoubling } from "./populationFormatting";
 

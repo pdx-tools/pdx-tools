@@ -7,7 +7,8 @@ import type {
   StateEfficacyScopeSummary,
   StateEfficacyTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatExact, formatFixed, formatInt, formatPercent } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact, formatFixed, formatPercent } from "../../numberForms";
 import { Figure } from "../../components/Figure";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";

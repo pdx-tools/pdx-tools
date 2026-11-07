@@ -3,7 +3,8 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { chartTooltip, getEChartsTheme, seriesColor } from "@/components/viz/echartsTheme";
 import type { ConcentrationPoint } from "@/wasm/wasm_eu5";
-import { formatInt, formatPercent, formatPercentTick } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatPercent, formatPercentTick } from "../../numberForms";
 
 const DEFAULT_FORMAT_VALUE = (value: number) => formatInt(Math.round(value));
 

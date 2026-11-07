@@ -3,17 +3,19 @@ import {
   formatExactAmount,
   formatExactCount,
   formatExactPercent,
-  formatLevel,
   formatMetric,
   formatPercent,
-  formatScale,
-} from "@/lib/format";
+} from "../numberForms";
 import { ExactValue } from "./ExactValue";
+
+/** A building or RGO level: 17 stays 17, and a mean is 16.5 */
+function formatLevel(x: number): string {
+  return Number.isInteger(x) ? formatCount(x) : formatMetric(x);
+}
 
 const FORMS = {
   metric: { text: formatMetric, exact: formatExactAmount },
   level: { text: formatLevel, exact: formatExactAmount },
-  scale: { text: formatScale, exact: formatExactAmount },
   count: { text: formatCount, exact: formatExactCount },
   percent: { text: formatPercent, exact: formatExactPercent },
 };

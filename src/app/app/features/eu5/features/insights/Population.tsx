@@ -11,7 +11,8 @@ import type {
   PopulationTypeProfileRow,
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
-import { formatFixed, formatInt, formatPercent, formatPercentTick, formatTick } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatFixed, formatPercent, formatPercentTick, formatTick } from "../../numberForms";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { popRankColors } from "../../gameColors";
 import {

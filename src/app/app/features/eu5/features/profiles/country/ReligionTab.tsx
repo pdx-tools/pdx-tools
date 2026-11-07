@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { formatInt, formatPercent } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatPercent } from "../../../numberForms";
 import type { CountryReligionSection, ReligionShare } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";

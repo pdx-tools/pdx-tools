@@ -5,15 +5,13 @@ import {
   formatExactAmount,
   formatExactCount,
   formatExactPercent,
-  formatLevel,
   formatMetric,
   formatFixed,
   formatPercent,
   formatPercentTick,
   formatRate,
-  formatScale,
   formatTick,
-} from "./format";
+} from "./numberForms";
 
 describe("formatMetric", () => {
   it("has one decimal in each value, so that the decimal column lines up", () => {
@@ -54,21 +52,6 @@ describe("formatCount", () => {
     expect(formatCount(0)).toBe("0");
     expect(formatCount(22_894)).toBe("22.9K");
     expect(formatCount(999.6)).toBe("1.0K");
-  });
-});
-
-describe("formatLevel", () => {
-  it("keeps a whole level whole", () => {
-    expect(formatLevel(17)).toBe("17");
-    expect(formatLevel(16.52)).toBe("16.5");
-  });
-});
-
-describe("formatScale", () => {
-  it("gives one decimal for each value", () => {
-    expect(formatScale(100)).toBe("100.0");
-    expect(formatScale(-5.14)).toBe("-5.1");
-    expect(formatScale(-0.04)).toBe("0.0");
   });
 });
 

@@ -10,7 +10,8 @@ import type {
   BuildingLevelsTopLocation,
   ForeignBuildingLocationRow,
 } from "@/wasm/wasm_eu5";
-import { formatExact, formatFixed, formatInt, formatTick } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact, formatFixed, formatTick } from "../../numberForms";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { buildingOwnershipColors } from "../../gameColors";
