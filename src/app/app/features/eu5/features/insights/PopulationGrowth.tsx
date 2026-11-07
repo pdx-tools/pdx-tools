@@ -6,7 +6,7 @@ import type {
   PopulationGrowthScopeSummary,
   PopulationGrowthTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFixed, formatPercentTick, formatRate, formatTick } from "../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -29,20 +29,13 @@ import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { PopulationReadout, PopulationReadoutSkeleton } from "./PopulationReadout";
 import { PopulationHistoryChart } from "./PopulationHistoryChart";
 import { MOST_POPULOUS_CAP } from "./populationConstants";
-import { countryGrowthLines, formatRate } from "./populationFormatting";
+import { countryGrowthLines } from "./populationFormatting";
 
 const BACK_LABEL = "Population Growth";
 // Scatter labels: the powers that add the most people, and the fastest
 // growers among countries at least as populous as the scope's median.
 const SCATTER_LABEL_CAP = 8;
 const SCATTER_FAST_LABEL_CAP = 6;
-
-/** Ticks on a log axis land on powers of ten, so no decimals. */
-function formatLogTick(value: number): string {
-  if (value >= 1_000_000) return `${formatInt(value / 1_000_000)}M`;
-  if (value >= 1_000) return `${formatInt(value / 1_000)}K`;
-  return formatInt(value);
-}
 
 function countryTooltip(c: CountryPopulationGrowth): string {
   return [
@@ -175,7 +168,7 @@ function GrowthRateBars({
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => `${formatFloat(value, 1)}%`,
+          formatter: (value: number) => formatPercentTick(value / 100),
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -307,7 +300,7 @@ function GrowthScaleScatter({
         axisLabel: {
           color: tickColor,
           hideOverlap: true,
-          formatter: formatLogTick,
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -318,7 +311,7 @@ function GrowthScaleScatter({
         nameLocation: "middle",
         nameGap: 46,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => `${formatFloat(v, 1)}%` },
+        axisLabel: { color: tickColor, formatter: (v: number) => formatPercentTick(v / 100) },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
         min: 0,
@@ -414,9 +407,7 @@ function PopulationGrowthTopLocations({ locations }: { locations: PopulationGrow
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Births / yr", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>
-            {formatInt(Math.round(info.getValue()))}
-          </Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("growthRate", {
@@ -430,7 +421,7 @@ function PopulationGrowthTopLocations({ locations }: { locations: PopulationGrow
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

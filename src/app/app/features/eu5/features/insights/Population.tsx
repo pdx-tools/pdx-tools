@@ -11,7 +11,8 @@ import type {
   PopulationTypeProfileRow,
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatFixed, formatPercent, formatPercentTick, formatTick } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { popRankColors } from "../../gameColors";
 import {
@@ -34,17 +35,13 @@ import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { ConcentrationCurve } from "./ConcentrationCurve";
 import { PopulationReadout, PopulationReadoutSkeleton } from "./PopulationReadout";
 import { MOST_POPULOUS_CAP } from "./populationConstants";
-import { countryGrowthLines, formatPeople } from "./populationFormatting";
+import { countryGrowthLines } from "./populationFormatting";
 
 const BACK_LABEL = "Population";
 // Settlement ranks keep the game's own colours: this is an ordered set, but
 // player recognition outranks the ordinal ramp. See gameColors.ts.
 const RANK_COLORS = popRankColors;
 const RANK_LABELS = ["Rural", "Town", "City", "Megalopolis"] as const;
-
-function formatPercent(value: number, digits = 1) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
 
 function PopulationScopeHeader({ data }: { data?: PopulationScopeSummary }) {
   if (!data) return <PopulationReadoutSkeleton />;
@@ -195,7 +192,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatPeople(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -305,7 +302,7 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatInt(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { show: false },
@@ -394,7 +391,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("rank", {
@@ -476,7 +473,7 @@ export function PopulationTypeProfile({
           axisLabel: {
             color: tickColor,
             fontSize: 10,
-            formatter: (v: number) => formatPercent(v, 0),
+            formatter: formatPercentTick,
           },
           axisLine: { lineStyle: { color: axisColor } },
           splitLine: {
@@ -501,7 +498,7 @@ export function PopulationTypeProfile({
             if (!d) return "";
             return [
               `<strong>${escapeEChartsHtml(d.label)}</strong>`,
-              `Population: ${formatPeople(d.population)}`,
+              `Population: ${formatInt(d.population)}`,
               `Share: ${formatPercent(d.share)}`,
               `Avg Satisfaction: ${formatPercent(d.avgSatisfaction)}`,
               `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
@@ -533,7 +530,7 @@ export function PopulationTypeProfile({
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatPercent(v, 1),
+          formatter: formatPercentTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: {
@@ -558,9 +555,9 @@ export function PopulationTypeProfile({
           if (!d) return "";
           return [
             `<strong>${escapeEChartsHtml(d.label)}</strong>`,
-            `Selected pop: ${formatPeople(d.population)} (${formatPercent(d.share)})`,
+            `Selected pop: ${formatInt(d.population)} (${formatPercent(d.share)})`,
             `World share: ${formatPercent(d.baselineShare)}`,
-            `Difference: ${formatPercent(d.shareDelta, 1)}`,
+            `Difference: ${formatPercent(d.shareDelta)}`,
             `Avg Satisfaction: ${formatPercent(d.avgSatisfaction)}`,
             `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
           ].join("<br/>");

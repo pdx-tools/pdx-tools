@@ -9,7 +9,15 @@ import type {
   CountryControlBarSummary,
   CountryControlPoint,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import {
+  formatExact,
+  formatFixed,
+  formatPercent,
+  formatPercentTick,
+  formatTick,
+} from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
@@ -43,20 +51,19 @@ const CONTROL_BANDS = [
   { id: "great", label: "75-90%", color: BAND_COLORS[3]! },
 ] as const;
 
-function formatPercent(value: number, digits = 1) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
-
 function ControlScopeHeader({ data }: { data?: ControlScopeSummary }) {
   if (!data) return <InsightReadoutSkeleton />;
 
   // Control is a ratio, so it leads; the ledger says what it costs and how
   // much development sits in the weakly held bands.
   return (
-    <InsightReadout figure={formatPercent(data.weightedAvgControl)} unit="control">
-      <ReadoutFigure value={formatInt(Math.round(data.lostDevelopment))} label="development lost" />
+    <InsightReadout
+      figure={<Figure value={data.weightedAvgControl} form="percent" />}
+      unit="control"
+    >
+      <ReadoutFigure value={<Figure value={data.lostDevelopment} />} label="development lost" />
       <ReadoutFigure
-        value={formatPercent(data.weakControlDevelopmentShare, 0)}
+        value={<Figure value={data.weakControlDevelopmentShare} form="percent" />}
         label="of development under 50% control"
       />
     </InsightReadout>
@@ -124,9 +131,9 @@ function countryBarTooltip(country: BarRow): string {
   return [
     `<strong>${escapeEChartsHtml(country.name)}</strong> (${escapeEChartsHtml(country.tag)})`,
     `Avg Control: ${formatPercent(country.weightedAvgControl)}`,
-    `Total Dev: ${formatFloat(country.totalDevelopment, 1)}`,
-    `Effective Dev: ${formatFloat(country.effectiveDevelopment, 1)}`,
-    `Lost Dev: ${formatFloat(country.lostDevelopment, 1)}`,
+    `Total Dev: ${formatExact(country.totalDevelopment)}`,
+    `Effective Dev: ${formatExact(country.effectiveDevelopment)}`,
+    `Lost Dev: ${formatExact(country.lostDevelopment)}`,
     `Locations: ${formatInt(country.locationCount)}`,
   ]
     .filter(Boolean)
@@ -184,7 +191,7 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatFloat(value, 0),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -297,7 +304,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         nameLocation: "middle",
         nameGap: 40,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatFloat(v, 0) },
+        axisLabel: { color: tickColor, formatter: formatTick },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
         min: 0,
@@ -310,7 +317,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
           color: tickColor,
-          formatter: (v: number) => formatPercent(v, 0),
+          formatter: formatPercentTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -330,8 +337,8 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
           return [
             `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
             `Avg Control: ${formatPercent(d.weightedAvgControl)}`,
-            `Total Dev: ${formatFloat(d.totalDevelopment, 1)}`,
-            `Lost Dev: ${formatFloat(d.lostDevelopment, 1)}`,
+            `Total Dev: ${formatExact(d.totalDevelopment)}`,
+            `Lost Dev: ${formatExact(d.lostDevelopment)}`,
             `Locations: ${formatInt(d.locationCount)}`,
           ].join("<br/>");
         },
@@ -420,21 +427,21 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("lostDevelopment", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Lost Dev", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("population", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

@@ -10,7 +10,15 @@ import type {
   RgoScopeSummary,
   RgoTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import {
+  formatExact,
+  formatFixed,
+  formatPercent,
+  formatPercentTick,
+  formatTick,
+} from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartTooltip,
@@ -39,20 +47,15 @@ import {
 
 const BACK_LABEL = "RGO";
 
-function formatLevel(value: number) {
-  return formatFloat(value, 1);
-}
-
-function formatPercent(value: number) {
-  return `${formatFloat(value * 100, 1)}%`;
-}
-
 function RgoScopeHeader({ data }: { data?: RgoScopeSummary }) {
   if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightReadout figure={formatInt(Math.round(data.totalRgoLevel))} unit="RGO levels">
-      <ReadoutFigure value={formatLevel(data.medianRgoLevel)} label="median / location" />
+    <InsightReadout figure={<Figure value={data.totalRgoLevel} form="level" />} unit="RGO levels">
+      <ReadoutFigure
+        value={<Figure value={data.medianRgoLevel} form="level" />}
+        label="median / location"
+      />
     </InsightReadout>
   );
 }
@@ -87,7 +90,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatLevel(v),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -101,7 +104,7 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatLevel(v),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -115,9 +118,9 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
           if (!d) return "";
           return [
             `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">${goodsIconHtml(d.rawMaterial.key)}<strong>${escapeEChartsHtml(d.rawMaterial.name)}</strong></span>`,
-            `Total RGO: ${formatLevel(d.totalRgoLevel)}`,
-            `Avg RGO: ${formatLevel(d.avgRgoLevel)}`,
-            `Median RGO: ${formatLevel(d.medianRgoLevel)}`,
+            `Total RGO: ${formatExact(d.totalRgoLevel)}`,
+            `Avg RGO: ${formatExact(d.avgRgoLevel)}`,
+            `Median RGO: ${formatExact(d.medianRgoLevel)}`,
             `Locations: ${formatInt(d.locationCount)}`,
             `Selection share: ${formatPercent(d.scopedShare)}`,
             `Global share: ${formatPercent(d.globalShare)}`,
@@ -230,7 +233,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatPercent(v),
+          formatter: formatPercentTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -257,7 +260,7 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
             `Selection share: ${formatPercent(d.scopedShare)}`,
             `Global share: ${formatPercent(d.globalShare)}`,
             `Difference: ${formatPercent(d.shareDelta)}`,
-            `Total RGO: ${formatLevel(d.totalRgoLevel)}`,
+            `Total RGO: ${formatExact(d.totalRgoLevel)}`,
             `Locations: ${formatInt(d.locationCount)}`,
           ].join("<br/>");
         },
@@ -326,7 +329,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "RGO Level", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevel(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryWealth } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact } from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
@@ -24,12 +26,6 @@ import {
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { SectionTitle } from "../../components";
 
-function formatPercent(value: number, digits = 0) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
-
-const formatWealthValue = (value: number) => formatFloat(value, 1);
-
 function WealthScopeHeader() {
   const { data, error, loading } = useEu5SelectionTrigger((engine) =>
     engine.queries.getWealthScope(),
@@ -42,10 +38,10 @@ function WealthScopeHeader() {
   // Wealth is heavy-tailed, so the ledger says what a typical location has
   // and how much sits in the few richest, not the mean nobody is near.
   return (
-    <InsightReadout figure={formatInt(Math.round(data.totalWealth))} unit="total wealth">
-      <ReadoutFigure value={formatFloat(data.medianWealth, 1)} label="median / location" />
+    <InsightReadout figure={<Figure value={data.totalWealth} />} unit="total wealth">
+      <ReadoutFigure value={<Figure value={data.medianWealth} />} label="median / location" />
       <ReadoutFigure
-        value={formatPercent(data.topDecileShare)}
+        value={<Figure value={data.topDecileShare} form="percent" />}
         label="in the top 10% of locations"
       />
     </InsightReadout>
@@ -85,7 +81,7 @@ export function WealthInsight() {
               <ConcentrationCurve
                 points={insightQuery.data.concentration}
                 metric="wealth"
-                formatValue={formatWealthValue}
+                formatValue={formatExact}
               />
             </section>
           )}
@@ -172,8 +168,8 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
           const d = params.data as (typeof scatterData)[number];
           return [
             `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Total Wealth: ${formatFloat(d.totalWealth, 2)}`,
-            `Avg per Location: ${formatFloat(d.avgWealth, 2)}`,
+            `Total Wealth: ${formatExact(d.totalWealth)}`,
+            `Avg per Location: ${formatExact(d.avgWealth)}`,
             `Locations: ${formatInt(d.locationCount)}`,
             `Population: ${formatInt(d.totalPopulation)}`,
           ].join("<br/>");

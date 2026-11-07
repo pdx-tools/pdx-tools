@@ -16,6 +16,18 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await page.getByRole("button", { name: "Save date", exact: true }).click();
   await expect(saveDate).toHaveAttribute("aria-valuetext", "1617 Apr 1");
 
+  // A compact figure keeps its exact value on keyboard focus and on hover.
+  await page.getByRole("button", { name: "Wealth", exact: true }).click();
+  await page.getByRole("button", { name: /^Open .* panel$/ }).click();
+  const totalWealth = page.getByText("285.2K", { exact: true });
+  const exactValue = page.getByRole("tooltip");
+  await totalWealth.focus();
+  await expect(exactValue).toHaveText("285,182.72");
+  await page.keyboard.press("Escape");
+  await expect(exactValue).toBeHidden();
+  await totalWealth.hover();
+  await expect(exactValue).toHaveText("285,182.72");
+
   // The browser compresses the save before the upload.
   await page.getByRole("button", { name: "Share save" }).click();
   const permalink = page.getByRole("link", { name: "Open permalink" });

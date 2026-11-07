@@ -7,7 +7,9 @@ import type {
   StateEfficacyScopeSummary,
   StateEfficacyTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact, formatFixed, formatPercent } from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -39,7 +41,7 @@ function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }
   // ledger says how much of the development survives the discount.
   return (
     <InsightReadout
-      figure={formatInt(Math.round(data.totalEfficacy))}
+      figure={<Figure value={data.totalEfficacy} />}
       unit="effective development"
       action={
         <GameButton
@@ -53,10 +55,14 @@ function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }
       }
     >
       <ReadoutFigure
-        value={`${formatFloat(data.realizationRatio * 100, 1)}%`}
-        label={`of ${formatInt(Math.round(data.totalDevelopment))} development`}
+        value={<Figure value={data.realizationRatio} form="percent" />}
+        label={
+          <>
+            of <Figure value={data.totalDevelopment} /> development
+          </>
+        }
       />
-      <ReadoutFigure value={formatFloat(data.medianEfficacy, 1)} label="median / location" />
+      <ReadoutFigure value={<Figure value={data.medianEfficacy} />} label="median / location" />
     </InsightReadout>
   );
 }
@@ -173,8 +179,8 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
           const d = params.data as (typeof scatterData)[number];
           return [
             `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Total Effective Development: ${formatFloat(d.totalEfficacy, 1)}`,
-            `Avg Effective Development per Location: ${formatFloat(d.avgEfficacy, 2)}`,
+            `Total Effective Development: ${formatExact(d.totalEfficacy)}`,
+            `Avg Effective Development per Location: ${formatExact(d.avgEfficacy)}`,
             `Locations: ${formatInt(d.locationCount)}`,
             `Population: ${formatInt(d.totalPopulation)}`,
           ].join("<br/>");
@@ -245,21 +251,21 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Effective Development", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("development", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("control", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("owner", {
@@ -275,7 +281,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

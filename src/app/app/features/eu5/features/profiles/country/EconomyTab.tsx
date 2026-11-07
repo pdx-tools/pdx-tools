@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { formatCompact, formatFloat, formatInt } from "@/lib/format";
+import {
+  formatExact,
+  formatPercent,
+  formatPercentTick,
+  formatTick,
+} from "../../../numberFormatting";
+import { Figure } from "../../../components/Figure";
 import type { CountryOverviewSection, LocationRow } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -51,32 +57,32 @@ export function CountryOverviewTabContent({
         <StatRail.Section label="Economy" />
         <StatRail.Row
           label="Net Gold"
-          value={formatCompact(data.netGold, 1)}
+          value={<Figure value={data.netGold} />}
           bar={data.netGoldMax > 0 ? data.netGold / data.netGoldMax : undefined}
           rank={ranks.netGold}
         />
         <StatRail.Row
           label="Income"
-          value={formatCompact(data.income, 1)}
+          value={<Figure value={data.income} />}
           bar={data.incomeMax > 0 ? data.income / data.incomeMax : undefined}
           rank={ranks.income}
         />
-        <StatRail.Row label="Expense" value={formatCompact(data.expense, 1)} />
+        <StatRail.Row label="Expense" value={<Figure value={data.expense} />} />
         <StatRail.Row
           label="Wealth"
-          value={formatCompact(data.wealth, 1)}
+          value={<Figure value={data.wealth} />}
           bar={data.wealthMax > 0 ? data.wealth / data.wealthMax : undefined}
           rank={ranks.wealth}
         />
         <StatRail.Row
           label="Tax Base"
-          value={formatCompact(data.taxBase, 1)}
+          value={<Figure value={data.taxBase} />}
           bar={data.taxBaseMax > 0 ? data.taxBase / data.taxBaseMax : undefined}
           rank={ranks.taxBase}
         />
         <StatRail.Row
           label="Buildings"
-          value={formatInt(data.buildingLevels)}
+          value={<Figure value={data.buildingLevels} form="level" />}
           bar={
             data.buildingLevelsMax > 0 ? data.buildingLevels / data.buildingLevelsMax : undefined
           }
@@ -86,7 +92,7 @@ export function CountryOverviewTabContent({
         <StatRail.Section label="Society" />
         <StatRail.Row
           label="Population"
-          value={formatCompact(data.totalPopulation, 1)}
+          value={<Figure value={data.totalPopulation} form="count" />}
           bar={
             data.totalPopulationMax > 0 ? data.totalPopulation / data.totalPopulationMax : undefined
           }
@@ -94,7 +100,7 @@ export function CountryOverviewTabContent({
         />
         <StatRail.Row
           label="Manpower"
-          value={formatCompact(data.manpower * 1000, 1)}
+          value={<Figure value={data.manpower * 1000} form="count" />}
           bar={data.manpowerMax > 0 ? data.manpower / data.manpowerMax : undefined}
           rank={ranks.manpower}
         />
@@ -103,7 +109,7 @@ export function CountryOverviewTabContent({
         <StatRail.Row
           label="Effective Development"
           tooltip="Effective Development: sum of control × development across owned locations."
-          value={formatFloat(data.effectiveDevelopment, 1)}
+          value={<Figure value={data.effectiveDevelopment} />}
           bar={
             data.effectiveDevelopmentMax > 0
               ? data.effectiveDevelopment / data.effectiveDevelopmentMax
@@ -113,8 +119,8 @@ export function CountryOverviewTabContent({
         />
         <StatRail.Row
           label="Active State Capacity"
-          tooltip="Active State Capacity: sum of population × control × development across owned locations. Displayed in millions."
-          value={`${formatFloat(data.activeStateCapacity / 1_000_000, 1)}M`}
+          tooltip="Active State Capacity: sum of population × control × development across owned locations."
+          value={<Figure value={data.activeStateCapacity} />}
           bar={
             data.activeStateCapacityMax > 0
               ? data.activeStateCapacity / data.activeStateCapacityMax
@@ -124,19 +130,19 @@ export function CountryOverviewTabContent({
         />
         <StatRail.Row
           label="Stability"
-          value={formatFloat(data.stability, 1)}
+          value={<Figure value={data.stability} />}
           bar={(data.stability + 100) / 200}
           rank={ranks.stability}
         />
         <StatRail.Row
           label="Prestige"
-          value={formatFloat(data.prestige, 1)}
+          value={<Figure value={data.prestige} />}
           bar={data.prestige / 100}
           rank={ranks.prestige}
         />
         <StatRail.Row
           label="Gov. Power"
-          value={formatFloat(data.governmentPower, 1)}
+          value={<Figure value={data.governmentPower} />}
           bar={data.governmentPower / 100}
           rank={ranks.governmentPower}
         />
@@ -210,7 +216,7 @@ function HistoryChart({
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
           color: tickColor,
-          formatter: (value: number) => formatFloat(value, 1),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
@@ -224,7 +230,7 @@ function HistoryChart({
           if (!Array.isArray(value)) return "";
           const offset = Number(value[0]);
           const v = Number(value[1]);
-          return `<strong>${tooltipLabel(offset)}</strong><br/>${yLabel}: ${formatFloat(v, 2)}`;
+          return `<strong>${tooltipLabel(offset)}</strong><br/>${yLabel}: ${formatExact(v)}`;
         },
       },
       series: [
@@ -321,7 +327,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
           axisLabel: {
             color: tickColor,
             // hide the artificial negative labels introduced for zero alignment
-            formatter: (value: number) => (value < 0 ? "" : formatInt(value)),
+            formatter: (value: number) => (value < 0 ? "" : formatTick(value)),
           },
           axisLine: { lineStyle: { color: axisColor } },
           splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
@@ -336,7 +342,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
           max: rightMax,
           axisLabel: {
             color: tickColor,
-            formatter: (value: number) => `${formatInt(value)}%`,
+            formatter: (value: number) => formatPercentTick(value / 100),
           },
           axisLine: { lineStyle: { color: axisColor } },
           splitLine: { show: false },
@@ -352,8 +358,8 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
           const pct = Number(arr[1]?.value ?? 0);
           return [
             `<strong>${dateLabel}</strong>`,
-            `Revenue: ${formatFloat(rev, 2)}`,
-            `Net Margin: ${formatFloat(pct, 1)}%`,
+            `Revenue: ${formatExact(rev)}`,
+            `Net Margin: ${formatPercent(pct / 100)}`,
           ].join("<br/>");
         },
       },
@@ -445,13 +451,13 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
           const d = eligible[params.dataIndex ?? -1];
           if (!d) return "";
           const gap = d.wealth - d.taxBase;
-          const realization = d.wealth > 0 ? (d.taxBase / d.wealth) * 100 : 100;
+          const realization = d.wealth > 0 ? d.taxBase / d.wealth : 1;
           return [
             `<strong>${escapeEChartsHtml(d.location.name)}</strong>`,
-            `Wealth: ${formatFloat(d.wealth, 2)}`,
-            `Tax Base: ${formatFloat(d.taxBase, 2)}`,
-            `Tax Base Gap: ${formatFloat(gap, 2)}`,
-            `Realization: ${formatFloat(realization, 1)}%`,
+            `Wealth: ${formatExact(d.wealth)}`,
+            `Tax Base: ${formatExact(d.taxBase)}`,
+            `Tax Base Gap: ${formatExact(gap)}`,
+            `Realization: ${formatPercent(realization)}`,
           ].join("<br/>");
         },
       },

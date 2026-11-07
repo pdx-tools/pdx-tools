@@ -6,7 +6,7 @@ import type {
   ScopedGoodSummary,
   ScopedMarketSummary,
 } from "@/wasm/wasm_eu5";
-import { formatFloat } from "@/lib/format";
+import { formatExact } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,
@@ -128,11 +128,11 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
           return [
             `<strong>${escapeEChartsHtml(c.good.name)}</strong>`,
             `<em>${escapeEChartsHtml(c.market.market.name)}</em>`,
-            `Supply: ${formatFloat(c.supply, 2)}`,
-            `Demand: ${formatFloat(c.demand, 2)}`,
-            `Price: ${formatFloat(c.price, 2)}`,
-            `Balance: ${formatFloat(c.balanceRatio, 2)}`,
-            `Imbalance $: ${formatFloat(c.imbalanceValue, 0)}`,
+            `Supply: ${formatExact(c.supply)}`,
+            `Demand: ${formatExact(c.demand)}`,
+            `Price: ${formatExact(c.price)}`,
+            `Balance: ${formatExact(c.balanceRatio)}`,
+            `Imbalance $: ${formatExact(c.imbalanceValue)}`,
           ].join("<br/>");
         },
       },

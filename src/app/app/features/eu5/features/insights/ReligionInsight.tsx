@@ -4,7 +4,8 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, SectionTitle } from "../../components";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatPercent, formatTick } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,
@@ -22,10 +23,6 @@ import {
 import type * as echarts from "echarts/core";
 
 const STATE_RELIGION_CAP = 30;
-
-function formatPercent(value: number, digits = 1) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
 
 export function ReligionInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getReligionInsight());
@@ -144,7 +141,7 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (value: number) => formatInt(value),
+          formatter: formatTick,
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },

@@ -18,7 +18,7 @@ export function InsightReadout({
   action,
   children,
 }: {
-  figure: string;
+  figure: ReactNode;
   unit: string;
   /** An optional control on the headline row, such as a hand-off to a sibling panel. */
   action?: ReactNode;
@@ -48,11 +48,11 @@ export function InsightReadout({
   );
 }
 
-export function ReadoutFigure({ value, label }: { value: string; label?: string }) {
+export function ReadoutFigure({ value, label }: { value: ReactNode; label?: ReactNode }) {
   return (
     <span className="whitespace-nowrap">
       <span className="text-game-ink-100">{value}</span>
-      {label ? ` ${label}` : null}
+      {label ? <> {label}</> : null}
     </span>
   );
 }

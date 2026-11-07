@@ -3,7 +3,8 @@ import type React from "react";
 import { useCallback } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
-import { formatCompact, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { Figure } from "./components/Figure";
 import { Eu5Flag } from "./components/flags/Eu5Flag";
 import { formatLongDate } from "@/features/timeline/date";
 import {
@@ -325,11 +326,17 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
           </span>
         </span>
         <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <HeadlineStat label="Locations" value={formatInt(header.headline.locationCount)} />
-          <HeadlineStat label="Development" value={formatInt(header.headline.totalDevelopment)} />
+          <HeadlineStat
+            label="Locations"
+            value={<Figure value={header.headline.locationCount} form="count" />}
+          />
+          <HeadlineStat
+            label="Development"
+            value={<Figure value={header.headline.totalDevelopment} />}
+          />
           <HeadlineStat
             label="Population"
-            value={formatCompact(header.headline.totalPopulation, 1)}
+            value={<Figure value={header.headline.totalPopulation} form="count" />}
           />
         </span>
       </span>
@@ -337,7 +344,7 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
   );
 }
 
-function HeadlineStat({ label, value }: { label: string; value: string }) {
+function HeadlineStat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <span className="flex items-baseline gap-1">
       <span className="font-game-num text-[13px] font-medium text-game-ink-100 tabular-nums">
