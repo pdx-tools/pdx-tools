@@ -21,7 +21,6 @@ import {
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, StatRail } from "../../../components";
 import { percentileOf } from "../../../stack/selection";
-import { formatInt } from "@/lib/format";
 
 const MONTH_NAMES = [
   "Jan",
@@ -60,11 +59,8 @@ export function CountryOverviewTabContent({
   });
   return (
     <div className="flex flex-col gap-4">
-      <StatRail
-        title="Overview"
-        meta={`Rank among ${formatInt(ranks.cohort)} countries with land. Further right ranks higher.`}
-      >
-        <StatRail.Section label="Economy" />
+      <StatRail title="Overview" cohort={ranks.cohort}>
+        <StatRail.Section label="Economy" heads />
         <StatRail.Row
           label="Net Gold"
           value={<Figure value={data.netGold} />}

@@ -61,8 +61,6 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await expect(railStop).toHaveCount(1);
   await expect(page.getByRole("tooltip", { name: "1,913.11" })).toBeVisible();
 
-  await page.screenshot({
-    path: "/tmp/claude-1000/-home-nick-projects-pdx-tools/d1a0a78c-1b93-4917-b765-ba26305bf29f/scratchpad/rail2.png",
   // A rank that hundreds of countries share reads as a tie.
   await expect(page.getByText("=#1", { exact: true })).toBeVisible();
   await expect(page.getByText("446 tied", { exact: true })).toBeVisible();

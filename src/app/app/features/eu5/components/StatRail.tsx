@@ -125,10 +125,27 @@ function Row({ label, value, denom, percentile, rank, tied = 1, icon, tooltip }:
   );
 }
 
-function Section({ label }: { label: string }) {
+/** A band over a group of rows. With `heads`, it names the columns of the rows under it. */
+function Section({ label, heads }: { label: string; heads?: boolean }) {
   return (
-    <div className="col-span-full border-t border-b border-game-line bg-game-panel-2 px-3 pt-2 pb-1 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase first:border-t-0">
-      {label}
+    <div
+      className={cx(
+        "col-span-full border-t border-b border-game-line bg-game-panel-2 px-3 pt-2 pb-1 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase first:border-t-0",
+        heads && "grid grid-cols-[16px_1fr_60px_76px_64px] items-center gap-x-1.5",
+      )}
+    >
+      <span className={cx(heads && "col-span-2")}>{label}</span>
+      {heads && (
+        // In a wide rail the rows form columns of their own, so these would not line up.
+        <>
+          <span className="flex justify-between @[720px]/sg:hidden">
+            <span>Last</span>
+            <span>1st</span>
+          </span>
+          <span className="text-right @[720px]/sg:hidden">Value</span>
+          <span className="text-right @[720px]/sg:hidden">Rank</span>
+        </>
+      )}
     </div>
   );
 }
@@ -146,7 +163,7 @@ export interface StatRailProps {
 }
 
 export function StatRail({ title, meta, cohort, narrow, expand, children }: StatRailProps) {
-  const metaText = [meta, cohort !== undefined ? `${cohort} countries` : undefined]
+  const metaText = [meta, cohort !== undefined ? `${formatInt(cohort)} countries` : undefined]
     .filter((part) => part !== undefined && part !== null && part !== "")
     .reduce<ReactNode[]>((acc, part, i) => {
       if (i > 0) acc.push(" · ");
