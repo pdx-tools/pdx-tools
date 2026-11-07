@@ -125,27 +125,44 @@ function Row({ label, value, denom, percentile, rank, tied = 1, icon, tooltip }:
   );
 }
 
+/** The band's label, and the names of the columns under it. */
+function ColumnHeads({ label, className }: { label?: string; className?: string }) {
+  return (
+    <div
+      aria-hidden={label === undefined || undefined}
+      className={cx(
+        "grid-cols-[16px_1fr_60px_76px_64px] items-center gap-x-1.5 px-3 pt-2 pb-1",
+        className,
+      )}
+    >
+      <span className="col-span-2">{label}</span>
+      <span className="flex justify-between">
+        <span>Last</span>
+        <span>1st</span>
+      </span>
+      <span className="text-right">Value</span>
+      <span className="text-right">Rank</span>
+    </div>
+  );
+}
+
+const sectionBand =
+  "col-span-full border-t border-b border-game-line bg-game-panel-2 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase first:border-t-0";
+
 /** A band over a group of rows. With `heads`, it names the columns of the rows under it. */
 function Section({ label, heads }: { label: string; heads?: boolean }) {
+  if (!heads) return <div className={cx(sectionBand, "px-3 pt-2 pb-1")}>{label}</div>;
   return (
     <div
       className={cx(
-        "col-span-full border-t border-b border-game-line bg-game-panel-2 px-3 pt-2 pb-1 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase first:border-t-0",
-        heads && "grid grid-cols-[16px_1fr_60px_76px_64px] items-center gap-x-1.5",
+        sectionBand,
+        "@[720px]/sg:grid @[720px]/sg:grid-cols-2 @[720px]/sg:gap-x-px @[1040px]/sg:grid-cols-3",
       )}
     >
-      <span className={cx(heads && "col-span-2")}>{label}</span>
-      {heads && (
-        // In a wide rail the rows form columns of their own, so these would not line up.
-        <>
-          <span className="flex justify-between @[720px]/sg:hidden">
-            <span>Last</span>
-            <span>1st</span>
-          </span>
-          <span className="text-right @[720px]/sg:hidden">Value</span>
-          <span className="text-right @[720px]/sg:hidden">Rank</span>
-        </>
-      )}
+      <ColumnHeads label={label} className="grid" />
+      {/* A wide rail has more than one column of rows, so each column gets its names. */}
+      <ColumnHeads className="hidden @[720px]/sg:grid" />
+      <ColumnHeads className="hidden @[1040px]/sg:grid" />
     </div>
   );
 }
