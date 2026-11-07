@@ -17,7 +17,7 @@ import type { VariantProps } from "class-variance-authority";
 import { focusRing, focusRingInset } from "@/components/game/focusRing";
 import { sectionLabel } from "@/components/game/SectionTitle";
 import { formatInt } from "@/lib/format";
-import { formatExactAmount } from "../numberFormatting";
+import { formatExact, formatExactAmount } from "../numberFormatting";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Eu5DataTableColumnMeta, Eu5DataTableColumnVariant } from "@/types/tanstack-table";
@@ -109,7 +109,9 @@ export function exactCellValue(
 ): string | undefined {
   if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
   if (meta?.exact) return meta.exact(value);
-  return meta?.variant === "num" ? formatExactAmount(value) : undefined;
+  if (meta?.variant !== "num") return undefined;
+  // A cell rounds a tiny value to 0.0, so the full value says that it is not zero.
+  return value !== 0 && Math.abs(value) < 0.005 ? formatExact(value) : formatExactAmount(value);
 }
 
 /**
