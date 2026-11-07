@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { ConcentrationPoint, LocationRow } from "@/wasm/wasm_eu5";
-import { formatInt } from "@/lib/format";
+import { formatInt, formatTick } from "@/lib/format";
 import {
   PopulationSankey,
   PopulationTypeProfile,
@@ -18,18 +18,6 @@ import {
 } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, Skeleton } from "../../../components";
-
-function formatCompact(value: number): string {
-  if (value >= 1_000_000) {
-    const v = value / 1_000_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    const v = value / 1_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}K`;
-  }
-  return formatInt(Math.round(value));
-}
 
 function concentrationFromLocations(locations: LocationRow[]): ConcentrationPoint[] {
   const sorted = [...locations].sort(
@@ -86,7 +74,7 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
           color: tickColor,
-          formatter: formatCompact,
+          formatter: (value: number) => formatTick(value),
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
@@ -100,7 +88,7 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           if (!Array.isArray(value)) return "";
           const year = baseYear + Number(value[0]);
           const v = Number(value[1]);
-          return `<strong>${year}</strong><br/>Population: ${formatCompact(v)}`;
+          return `<strong>${year}</strong><br/>Population: ${formatInt(v)}`;
         },
       },
       series: [

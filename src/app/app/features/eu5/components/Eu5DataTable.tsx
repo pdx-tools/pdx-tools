@@ -13,6 +13,7 @@ import { appTableFeatures } from "@/lib/tanstack-table";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 import { focusRing } from "@/components/game/focusRing";
+import { formatInt } from "@/lib/format";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Eu5DataTableColumnMeta, Eu5DataTableColumnVariant } from "@/types/tanstack-table";
@@ -362,8 +363,8 @@ function TitleBand({
         )}
         {showCount && (
           <span className="font-game-num text-[11.5px] text-game-ink-100 tabular-nums">
-            {formatCount(filteredCount)}{" "}
-            <span className="text-game-ink-500">of {formatCount(totalCount)}</span>
+            {formatInt(filteredCount)}{" "}
+            <span className="text-game-ink-500">of {formatInt(totalCount)}</span>
           </span>
         )}
       </div>
@@ -554,7 +555,7 @@ function FooterBand({
           ))}
         </select>
         <span className="font-game-num text-[10.5px] tracking-[0.04em] text-game-ink-500">
-          of {formatCount(totalRows)} rows
+          of {formatInt(totalRows)} rows
         </span>
       </div>
       <div className="flex items-center gap-1.5">
@@ -761,10 +762,6 @@ function ariaSort(sorted: false | "asc" | "desc"): "ascending" | "descending" | 
 
 function headerLabelText(label: string | undefined, fallback: string): string {
   return typeof label === "string" ? label : fallback;
-}
-
-function formatCount(n: number): string {
-  return n.toLocaleString();
 }
 
 Eu5DataTable.NumericCell = NumericCell;

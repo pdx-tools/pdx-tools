@@ -7,7 +7,7 @@ import type { CountryRef } from "@/wasm/wasm_eu5";
 import { SectionTitle } from "../../components";
 import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { formatPeople } from "./populationFormatting";
+import { formatInt, formatTick } from "@/lib/format";
 
 export type PopulationHistorySeries = {
   country: CountryRef;
@@ -96,7 +96,7 @@ export function PopulationHistoryChart({
         nameLocation: "middle",
         nameGap: 46,
         nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatPeople(v) },
+        axisLabel: { color: tickColor, formatter: (v: number) => formatTick(v) },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
       },
@@ -112,7 +112,7 @@ export function PopulationHistoryChart({
             .filter((p) => Array.isArray(p.value))
             .map(
               (p) =>
-                `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(String(p.color))};margin-right:4px"></span>${escapeEChartsHtml(String(p.seriesName))}: ${formatPeople(Number((p.value as number[])[1]))}`,
+                `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(String(p.color))};margin-right:4px"></span>${escapeEChartsHtml(String(p.seriesName))}: ${formatInt(Number((p.value as number[])[1]))}`,
             );
           return `<strong>${year}</strong><br/>${lines.join("<br/>")}`;
         },

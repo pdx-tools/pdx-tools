@@ -3,7 +3,8 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { GameButton } from "@/components/game/Button";
 import type { CountryDevSummary, DevelopmentInsightData } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatExact, formatInt } from "@/lib/format";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
@@ -31,7 +32,7 @@ function DevelopmentScopeHeader({ data }: { data?: DevelopmentInsightData }) {
 
   return (
     <InsightReadout
-      figure={formatInt(Math.round(data.scope.totalDevelopment))}
+      figure={<Figure value={data.scope.totalDevelopment} />}
       unit="total development"
       action={
         <GameButton
@@ -44,8 +45,11 @@ function DevelopmentScopeHeader({ data }: { data?: DevelopmentInsightData }) {
         </GameButton>
       }
     >
-      <ReadoutFigure value={formatFloat(data.scope.avgDevelopment, 1)} label="avg / location" />
-      <ReadoutFigure value={formatFloat(data.distribution.median, 1)} label="median / location" />
+      <ReadoutFigure value={<Figure value={data.scope.avgDevelopment} />} label="avg / location" />
+      <ReadoutFigure
+        value={<Figure value={data.distribution.median} />}
+        label="median / location"
+      />
     </InsightReadout>
   );
 }
@@ -158,8 +162,8 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
           const d = params.data as (typeof scatterData)[number];
           return [
             `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Total Dev: ${formatFloat(d.totalDevelopment, 1)}`,
-            `Avg per Location: ${formatFloat(d.avgDevelopment, 2)}`,
+            `Total Dev: ${formatExact(d.totalDevelopment)}`,
+            `Avg per Location: ${formatExact(d.avgDevelopment)}`,
             `Locations: ${formatInt(d.locationCount)}`,
             `Population: ${formatInt(d.totalPopulation)}`,
           ].join("<br/>");

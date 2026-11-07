@@ -7,7 +7,7 @@ import {
 } from "../../insights/Markets";
 import type { GoodsPressureMetric } from "../../insights/Markets";
 import { useEu5Trigger } from "../useEu5Trigger";
-import { formatFloat, formatInt } from "@/lib/format";
+import { Figure } from "../../../components/Figure";
 import type { ScopedGoodSummary } from "@/wasm/wasm_eu5";
 import { GameSegmented, SectionTitle, Skeleton } from "../../../components";
 
@@ -128,11 +128,11 @@ function SummaryTable({
                 style={{ width: `${barPct}%`, color: row.colorHex || chartInk.muted }}
               />
             </div>
-            <span className="w-8 shrink-0 text-right text-xs font-semibold text-game-ink-100">
-              {metric === "units" ? formatFloat(primary, 1) : `$${formatInt(primary)}`}
+            <span className="w-11 shrink-0 text-right text-xs font-semibold text-game-ink-100">
+              <Figure value={primary} prefix={metric === "units" ? "" : "$"} />
             </span>
-            <span className="w-8 shrink-0 text-right text-xs text-game-ink-500">
-              {metric === "units" ? `$${formatInt(secondary)}` : formatFloat(secondary, 1)}
+            <span className="w-11 shrink-0 text-right text-xs text-game-ink-500">
+              <Figure value={secondary} prefix={metric === "units" ? "$" : ""} />
             </span>
           </div>
         );

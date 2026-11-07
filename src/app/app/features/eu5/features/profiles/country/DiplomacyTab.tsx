@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { cx } from "class-variance-authority";
 import { createColumnHelper } from "@/lib/tanstack-table";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFixed, formatPercent } from "@/lib/format";
 import type {
   CountryMetrics,
   CountryRef,
@@ -63,7 +63,7 @@ function LibertyCell({ row }: { row: AppRow<DiplomacyRow> }) {
     <span
       className={cx("font-game-num tabular-nums", libertyDesire > 50 ? "text-game-err" : undefined)}
     >
-      {formatFloat(libertyDesire, 1)}%
+      {formatPercent(libertyDesire / 100)}
     </span>
   );
 }
@@ -93,7 +93,7 @@ const buildColumns = (backLabel?: string) => [
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Eff. Dev", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor((row) => row.metrics.activeStateCapacity / 1_000_000, {
@@ -101,7 +101,7 @@ const buildColumns = (backLabel?: string) => [
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Active Cap", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor((row) => row.metrics.totalPopulation, {
@@ -109,7 +109,7 @@ const buildColumns = (backLabel?: string) => [
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor((row) => row.metrics.taxTradeIncome, {
@@ -117,7 +117,7 @@ const buildColumns = (backLabel?: string) => [
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Income", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor((row) => row.libertyDesire ?? -1, {

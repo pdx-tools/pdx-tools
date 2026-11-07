@@ -10,7 +10,8 @@ import type {
   BuildingLevelsTopLocation,
   ForeignBuildingLocationRow,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatExact, formatFixed, formatInt, formatTick } from "@/lib/format";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { buildingOwnershipColors } from "../../gameColors";
 import { chartTooltip, getEChartsTheme, markGap } from "@/components/viz/echartsTheme";
@@ -26,17 +27,22 @@ import {
 
 const BACK_LABEL = "Building Levels";
 
-function formatLevels(value: number) {
-  return formatInt(value);
-}
-
 function BuildingLevelsScopeHeader({ data }: { data?: BuildingLevelsScopeSummary }) {
   if (!data) return <InsightReadoutSkeleton />;
 
   return (
-    <InsightReadout figure={formatLevels(data.totalLevels)} unit="building levels">
-      <ReadoutFigure value={formatLevels(data.medianLevels)} label="median / location" />
-      <ReadoutFigure value={`${formatFloat(data.foreignShare * 100, 1)}%`} label="foreign-owned" />
+    <InsightReadout
+      figure={<Figure value={data.totalLevels} form="level" />}
+      unit="building levels"
+    >
+      <ReadoutFigure
+        value={<Figure value={data.medianLevels} form="level" />}
+        label="median / location"
+      />
+      <ReadoutFigure
+        value={<Figure value={data.foreignShare} form="percent" />}
+        label="foreign-owned"
+      />
     </InsightReadout>
   );
 }
@@ -70,7 +76,7 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
         axisLabel: {
           color: tickColor,
           fontSize: 10,
-          formatter: (v: number) => formatInt(v),
+          formatter: (v: number) => formatTick(v),
         },
         axisLine: { lineStyle: { color: axisColor } },
         splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
@@ -109,10 +115,10 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
           if (!d) return "";
           return [
             `<strong>${escapeEChartsHtml(d.building.name)}</strong>`,
-            `Domestic levels: ${formatLevels(d.domestic)}`,
-            `Foreign levels: ${formatLevels(d.foreignLevels)}`,
-            `Total levels: ${formatLevels(d.levels)}`,
-            `Employed: ${formatFloat(d.employed, 1)}`,
+            `Domestic levels: ${formatExact(d.domestic)}`,
+            `Foreign levels: ${formatExact(d.foreignLevels)}`,
+            `Total levels: ${formatExact(d.levels)}`,
+            `Employed: ${formatExact(d.employed)}`,
             `Buildings: ${formatInt(d.buildingCount)}`,
             `Locations: ${formatInt(d.locationCount)}`,
             `Foreign owners: ${formatInt(d.foreignOwnerCount)}`,
@@ -139,11 +145,13 @@ function ForeignShareCallout({ scope }: { scope: BuildingLevelsScopeSummary }) {
       <div className="flex items-baseline justify-between text-sm">
         <span className="text-game-ink-300">
           Foreign-owned:{" "}
-          <span className="font-semibold text-white">{formatLevels(scope.foreignLevels)}</span> /{" "}
-          {formatLevels(scope.totalLevels)} levels
+          <span className="font-semibold text-white">
+            <Figure value={scope.foreignLevels} form="level" />
+          </span>{" "}
+          / <Figure value={scope.totalLevels} form="level" /> levels
         </span>
         <span className="font-semibold" style={{ color: buildingOwnershipColors.foreign }}>
-          {formatFloat(pct, 1)}%
+          <Figure value={scope.foreignShare} form="percent" />
         </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-game-panel-hover">
@@ -202,7 +210,7 @@ function DomesticTopLocationsTable({ locations }: { locations: BuildingLevelsTop
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Levels", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
@@ -265,7 +273,7 @@ function ForeignBuildingLocationTable({ rows }: { rows: ForeignBuildingLocationR
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Foreign Lvls", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
@@ -308,14 +316,14 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Levels", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatLevels(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       foreignOwnerCellColHelper.accessor("buildingCount", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Buildings", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
