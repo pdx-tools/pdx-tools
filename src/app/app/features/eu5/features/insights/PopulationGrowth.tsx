@@ -6,7 +6,13 @@ import type {
   PopulationGrowthScopeSummary,
   PopulationGrowthTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFixed, formatPercentTick, formatRate, formatTick } from "../../numberFormatting";
+import {
+  formatExactCount,
+  formatFixed,
+  formatPercentTick,
+  formatRate,
+  formatTick,
+} from "../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
@@ -405,14 +411,23 @@ function PopulationGrowthTopLocations({ locations }: { locations: PopulationGrow
       }),
       columnHelper.accessor("birthsPerYear", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Births / yr", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Births / yr",
+          variant: "num",
+          exact: formatExactCount,
+        }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("growthRate", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Growth / yr", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Growth / yr",
+          variant: "num",
+          // The rate already shows all the digits that a full value has.
+          exact: () => undefined,
+        }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatRate(info.getValue())}</Eu5DataTable.NumericCell>
         ),

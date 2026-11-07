@@ -8,7 +8,12 @@ import type {
   StateEfficacyTopLocation,
 } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatExact, formatFixed, formatPercent } from "../../numberFormatting";
+import {
+  formatExact,
+  formatExactPercent,
+  formatFixed,
+  formatPercent,
+} from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
@@ -263,7 +268,11 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
       }),
       columnHelper.accessor("control", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Control",
+          variant: "num",
+          exact: formatExactPercent,
+        }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),

@@ -12,6 +12,7 @@ import type {
 import { formatInt } from "@/lib/format";
 import {
   formatExact,
+  formatExactPercent,
   formatFixed,
   formatPercent,
   formatPercentTick,
@@ -418,7 +419,11 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
       }),
       columnHelper.accessor("control", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Control",
+          variant: "num",
+          exact: formatExactPercent,
+        }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),

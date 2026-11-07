@@ -28,6 +28,42 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await totalWealth.hover();
   await expect(exactValue).toHaveText("285,182.72");
 
+  // The cells of a table are one stop for Tab, and arrow keys go from cell to cell.
+  const table = page
+    .locator("table")
+    .filter({ has: page.locator("td[data-exact]") })
+    .first();
+  const tabStop = table.locator('td[data-exact][tabindex="0"]');
+  await expect(tabStop).toHaveCount(1);
+  await tabStop.focus();
+  await page.keyboard.press("ArrowRight");
+  const focusedCell = table.locator("td[data-exact]:focus");
+  await expect(focusedCell).toHaveCount(1);
+  await expect(tabStop).not.toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(tabStop).toBeFocused();
+
+  // The figures of a country's rail are one stop as well.
+  await table.getByRole("button", { name: /Mali/ }).first().click();
+  const railFigures = page.locator("[data-rail-value]");
+  await expect(railFigures.first()).toBeVisible();
+  const railStop = page.locator('[data-rail-value][tabindex="0"]');
+  await expect(railStop).toHaveCount(1);
+  await railStop.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(railFigures.nth(1)).toBeFocused();
+  await expect(railStop).toHaveCount(1);
+  await expect(page.getByRole("tooltip", { name: "1,913.11" })).toBeVisible();
+
+  // A rank that hundreds of countries share reads as a tie.
+  await expect(page.getByText("=#1", { exact: true })).toBeVisible();
+  await expect(page.getByText("446 tied", { exact: true })).toBeVisible();
+
+  // A header that names a defined term explains it, and the sort button keeps its one stop.
+  await page.getByRole("button", { name: "Tax Base Gap", exact: true }).click();
+  await page.getByRole("button", { name: "Sort by Tax Gap" }).focus();
+  await expect(page.getByRole("tooltip", { name: /^Tax Base Gap:/ })).toBeVisible();
+
   // The browser compresses the save before the upload.
   await page.getByRole("button", { name: "Share save" }).click();
   const permalink = page.getByRole("link", { name: "Open permalink" });

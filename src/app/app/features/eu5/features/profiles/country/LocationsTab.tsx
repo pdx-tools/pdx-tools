@@ -1,6 +1,6 @@
 import { useEu5Engine } from "../../../store";
 import { usePanToEntity } from "../../../usePanToEntity";
-import { formatFixed, formatPercent } from "../../../numberFormatting";
+import { formatExactPercent, formatFixed, formatPercent } from "../../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
 import type { LocationRow, MapMode } from "@/wasm/wasm_eu5";
@@ -56,7 +56,11 @@ const columns = [
   }),
   columnHelper.accessor("control", {
     sortFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+    meta: Eu5DataTable.meta({
+      headerLabel: "Control",
+      variant: "num",
+      exact: formatExactPercent,
+    }),
     cell: (info) => (
       <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
     ),

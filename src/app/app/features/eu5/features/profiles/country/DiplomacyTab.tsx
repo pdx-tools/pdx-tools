@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { cx } from "class-variance-authority";
 import { createColumnHelper } from "@/lib/tanstack-table";
-import { formatFixed, formatPercent } from "../../../numberFormatting";
+import { formatExactPercent, formatFixed, formatPercent } from "../../../numberFormatting";
 import type {
   CountryMetrics,
   CountryRef,
@@ -123,7 +123,12 @@ const buildColumns = (backLabel?: string) => [
   columnHelper.accessor((row) => row.libertyDesire ?? -1, {
     id: "liberty",
     sortFn: "basic",
-    meta: Eu5DataTable.meta({ headerLabel: "Liberty", variant: "num" }),
+    meta: Eu5DataTable.meta({
+      headerLabel: "Liberty",
+      variant: "num",
+      // A country with no overlord has -1 here, and its cell is empty.
+      exact: (value) => (value < 0 ? undefined : formatExactPercent(value / 100)),
+    }),
     cell: ({ row }) => <LibertyCell row={row} />,
   }),
 ];
