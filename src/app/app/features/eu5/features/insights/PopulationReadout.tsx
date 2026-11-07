@@ -2,7 +2,9 @@ import { GameButton } from "@/components/game/Button";
 import type { MapMode } from "@/wasm/wasm_eu5";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5Engine } from "../../store";
-import { formatDoubling, formatPeople, formatRate } from "./populationFormatting";
+import { formatRate } from "@/lib/format";
+import { Figure } from "../../components/Figure";
+import { formatDoubling } from "./populationFormatting";
 
 export type PopulationStockFigures = {
   totalPopulation: number;
@@ -46,12 +48,18 @@ export function PopulationReadout(props: PopulationReadoutProps) {
   if (props.mode === "population") {
     return (
       <InsightReadout
-        figure={formatPeople(props.figures.totalPopulation)}
+        figure={<Figure value={props.figures.totalPopulation} form="count" />}
         unit="people"
         action={action}
       >
-        <ReadoutFigure value={formatRate(props.figures.urbanization, 1)} label="urban" />
-        <ReadoutFigure value={formatPeople(props.figures.peasantPopulation)} label="peasants" />
+        <ReadoutFigure
+          value={<Figure value={props.figures.urbanization} form="percent" />}
+          label="urban"
+        />
+        <ReadoutFigure
+          value={<Figure value={props.figures.peasantPopulation} form="count" />}
+          label="peasants"
+        />
       </InsightReadout>
     );
   }
@@ -59,13 +67,16 @@ export function PopulationReadout(props: PopulationReadoutProps) {
   const births = props.figures.birthsPerYear;
   return (
     <InsightReadout
-      figure={`${births > 0 ? "+" : ""}${formatPeople(births)}`}
+      figure={<Figure value={births} form="count" prefix={births > 0 ? "+" : ""} />}
       unit="people / yr"
       action={action}
     >
       <ReadoutFigure value={formatRate(props.figures.growthRate)} label="growth / yr" />
       <ReadoutFigure value={formatDoubling(props.figures.growthRate)} />
-      <ReadoutFigure value={formatPeople(props.figures.totalPopulation)} label="people" />
+      <ReadoutFigure
+        value={<Figure value={props.figures.totalPopulation} form="count" />}
+        label="people"
+      />
     </InsightReadout>
   );
 }

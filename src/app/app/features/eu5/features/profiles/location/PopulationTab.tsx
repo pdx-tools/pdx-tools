@@ -1,5 +1,5 @@
 import type { LocationProfile, LocationPopRow } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFixed, formatPercent } from "@/lib/format";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable } from "../../../components";
 import { PopulationSankey } from "../../insights/Population";
@@ -32,21 +32,21 @@ const columns = [
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Size", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor("satisfaction", {
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Satisfaction", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor("literacy", {
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Literacy", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
     ),
   }),
 ];

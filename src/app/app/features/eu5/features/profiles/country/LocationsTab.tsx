@@ -1,6 +1,6 @@
 import { useEu5Engine } from "../../../store";
 import { usePanToEntity } from "../../../usePanToEntity";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFixed, formatPercent } from "@/lib/format";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
 import type { LocationRow, MapMode } from "@/wasm/wasm_eu5";
@@ -44,35 +44,35 @@ const columns = [
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Dev", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor("population", {
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor("control", {
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor("wealth", {
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Wealth", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor("taxBase", {
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Tax Base", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor((row) => row.wealth - row.taxBase, {
@@ -80,7 +80,7 @@ const columns = [
     sortFn: "basic",
     meta: Eu5DataTable.meta({ headerLabel: "Tax Base Gap", variant: "num" }),
     cell: (info) => (
-      <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+      <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
     ),
   }),
   columnHelper.accessor((row) => row.owner?.country.name ?? "", {

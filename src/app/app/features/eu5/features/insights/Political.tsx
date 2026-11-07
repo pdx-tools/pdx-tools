@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatFixed, formatInt } from "@/lib/format";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
@@ -93,7 +93,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
           headerLabel: "Effective Development",
         }),
         cell: ({ getValue }) => (
-          <Eu5DataTable.NumericCell>{formatFloat(getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("activeStateCapacity", {
@@ -110,7 +110,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         }),
         cell: ({ getValue }) => (
           <Eu5DataTable.NumericCell>
-            {formatFloat(getValue() / 1_000_000, 1)}
+            {formatFixed(getValue() / 1_000_000, 1)}
           </Eu5DataTable.NumericCell>
         ),
       }),
@@ -143,7 +143,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
           headerLabel: "Income",
         }),
         cell: ({ getValue }) => (
-          <Eu5DataTable.NumericCell>{formatFloat(getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.display({

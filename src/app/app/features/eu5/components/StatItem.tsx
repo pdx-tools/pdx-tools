@@ -1,10 +1,10 @@
-import React from "react";
+import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { sectionLabel } from "@/components/game/SectionTitle";
 
 export interface StatItemProps {
   label: string;
-  value: string;
+  value: ReactNode;
   /**
    * Draw the stat on its own bounded plate. Use inside a grid of peers, where
    * the border is what separates one figure from the next. Leave it off in a

@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatExact, formatInt, formatPercent } from "@/lib/format";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
@@ -26,10 +27,6 @@ import { SectionTitle } from "../../components";
 
 const BAR_CAP = 25;
 
-function formatPercent(value: number, digits = 0) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
-
 function UnrealizedTaxBaseScopeHeader() {
   const { data, error, loading } = useEu5SelectionTrigger((engine) =>
     engine.queries.getUnrealizedTaxBaseScope(),
@@ -42,13 +39,17 @@ function UnrealizedTaxBaseScopeHeader() {
   // The gap is a to-do list, not a distribution: the ledger says how much of
   // the wealth it is and whether a few locations hold most of it.
   return (
-    <InsightReadout figure={formatInt(Math.round(data.unrealizedTaxBase))} unit="tax base gap">
+    <InsightReadout figure={<Figure value={data.unrealizedTaxBase} />} unit="tax base gap">
       <ReadoutFigure
-        value={formatPercent(data.unrealizedRatio, 1)}
-        label={`of ${formatInt(Math.round(data.totalWealth))} wealth`}
+        value={<Figure value={data.unrealizedRatio} form="percent" />}
+        label={
+          <>
+            of <Figure value={data.totalWealth} /> wealth
+          </>
+        }
       />
       <ReadoutFigure
-        value={formatPercent(data.topDecileShare)}
+        value={<Figure value={data.topDecileShare} form="percent" />}
         label="in the top 10% of locations"
       />
     </InsightReadout>
@@ -122,10 +123,10 @@ type ScatterDatum = [x: number, y: number];
 function countryTooltip(d: CountryUnrealizedTaxBase): string {
   return [
     `<strong>${escapeEChartsHtml(d.country.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
-    `Tax Base: ${formatFloat(d.totalTaxBase, 2)}`,
-    `Wealth: ${formatFloat(d.totalWealth, 2)}`,
-    `Tax Base Gap: ${formatFloat(d.unrealizedTaxBase, 2)}`,
-    `Realization: ${formatFloat(d.realizationRatio * 100, 1)}%`,
+    `Tax Base: ${formatExact(d.totalTaxBase)}`,
+    `Wealth: ${formatExact(d.totalWealth)}`,
+    `Tax Base Gap: ${formatExact(d.unrealizedTaxBase)}`,
+    `Realization: ${formatPercent(d.realizationRatio)}`,
     `Locations: ${formatInt(d.locationCount)}`,
     `Population: ${formatInt(d.totalPopulation)}`,
   ].join("<br/>");
@@ -206,7 +207,7 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
             position: "right",
             formatter: (params) => {
               const d = params.data as CountryUnrealizedTaxBase & { value: number };
-              return `${formatFloat(d.realizationRatio * 100, 1)}%`;
+              return formatPercent(d.realizationRatio);
             },
             fontSize: 10,
             fontWeight: 600,
@@ -310,10 +311,10 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
           if (!d) return "";
           return [
             `<strong>${escapeEChartsHtml(d.country.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
-            `Tax Base: ${formatFloat(d.totalTaxBase, 2)}`,
-            `Wealth: ${formatFloat(d.totalWealth, 2)}`,
-            `Tax Base Gap: ${formatFloat(d.unrealizedTaxBase, 2)}`,
-            `Realization: ${formatFloat(d.realizationRatio * 100, 1)}%`,
+            `Tax Base: ${formatExact(d.totalTaxBase)}`,
+            `Wealth: ${formatExact(d.totalWealth)}`,
+            `Tax Base Gap: ${formatExact(d.unrealizedTaxBase)}`,
+            `Realization: ${formatPercent(d.realizationRatio)}`,
             `Locations: ${formatInt(d.locationCount)}`,
             `Population: ${formatInt(d.totalPopulation)}`,
           ].join("<br/>");
