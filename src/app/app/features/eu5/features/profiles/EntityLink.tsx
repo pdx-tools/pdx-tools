@@ -2,7 +2,7 @@ import type React from "react";
 import { cx } from "class-variance-authority";
 import type { CountryRef, MarketRef } from "@/wasm/wasm_eu5";
 import { usePanelNav, entityProfileEntry } from "./PanelNavContext";
-import { usePanToEntity } from "../../usePanToEntity";
+import { useJumpToEntity } from "../../useJumpToEntity";
 import { useEu5Engine } from "../../store";
 import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
@@ -94,7 +94,7 @@ function LinkBody({
   ...rest
 }: LinkBodyProps) {
   const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
+  const jumpToEntity = useJumpToEntity();
   const s = sizeClasses[size];
   const hoverProps = useEu5MapHoverTarget(hoverTarget);
   const nameClass = cx(
@@ -135,7 +135,7 @@ function LinkBody({
           return;
         }
         nav.pushMany([entityProfileEntry(kind, id, name)], backLabel);
-        panToEntity(anchorLocationIdx);
+        jumpToEntity(anchorLocationIdx);
       }}
       {...hoverProps}
       className={cx(

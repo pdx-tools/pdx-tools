@@ -3,7 +3,7 @@ import type * as echarts from "echarts/core";
 import type { EntityKind } from "@/wasm/wasm_eu5";
 import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
-import { usePanToEntity } from "../../usePanToEntity";
+import { useJumpToEntity } from "../../useJumpToEntity";
 import { useEu5MapHoverSource } from "../../useEu5MapHoverTarget";
 
 type EntityChartTarget = {
@@ -19,7 +19,7 @@ export function useEu5EntityChartClick(opts: {
 }) {
   const nav = usePanelNav();
   const engine = useEu5Engine();
-  const panToEntity = usePanToEntity();
+  const jumpToEntity = useJumpToEntity();
   const hoverSource = useEu5MapHoverSource();
 
   const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
@@ -35,7 +35,7 @@ export function useEu5EntityChartClick(opts: {
     }
 
     nav.pushMany([entityProfileEntry(opts.kind, target.id, target.label)], opts.backLabel);
-    panToEntity(target.anchorLocationIdx);
+    jumpToEntity(target.anchorLocationIdx);
   });
 
   const handleMouseover = useEffectEvent((params: echarts.ECElementEvent) => {

@@ -1,5 +1,5 @@
 use crate::{
-    Aabb, LogicalPoint, LogicalSize, Rect, WorldRect, WorldSize,
+    Aabb, LogicalPoint, LogicalRect, LogicalSize, Rect, WorldRect, WorldSize,
     units::{Length, Logical, WorldPoint},
 };
 use std::fmt;
@@ -23,6 +23,15 @@ pub struct ViewportInsets {
 pub enum PanTarget {
     /// A single-location focus (e.g., a city marker or country capital).
     Point(WorldPoint<f32>),
+}
+
+/// The zoom levels of a jump to a target.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct JumpZoom {
+    /// A jump from a view below this zoom zooms in.
+    pub zoom_in_below: f32,
+    /// The zoom of a jump that zooms in.
+    pub to: f32,
 }
 
 /// Represents the bounds of the current viewport in world coordinates
@@ -312,7 +321,11 @@ impl MapViewport {
             "canvas dimensions must be positive"
         );
 
-        let [vis_left, vis_right, vis_top, vis_bottom] = self.visible_region(insets);
+        let visible = self.visible_region(insets);
+        let (vis_left, vis_top) = (visible.origin.x, visible.origin.y);
+        let vis_right = vis_left + visible.size.width;
+        let vis_bottom = vis_top + visible.size.height;
+        let vis_center = visible.center();
 
         let PanTarget::Point(target) = target;
 
@@ -325,7 +338,6 @@ impl MapViewport {
         let raw_canvas_y = (target.y - self.viewport_position.y) * zoom;
 
         // Choose the horizontal wrap variant closest to the visible region center.
-        let vis_center_x = (vis_left + vis_right) / 2.0;
         let canvas_x = [
             raw_canvas_x - map_w_canvas,
             raw_canvas_x,
@@ -333,9 +345,9 @@ impl MapViewport {
         ]
         .into_iter()
         .min_by(|a, b| {
-            (a - vis_center_x)
+            (a - vis_center.x)
                 .abs()
-                .partial_cmp(&(b - vis_center_x).abs())
+                .partial_cmp(&(b - vis_center.x).abs())
                 .unwrap()
         })
         .unwrap();
@@ -350,11 +362,8 @@ impl MapViewport {
         }
 
         // New viewport position that places the target at the visible region center.
-        let vis_center_canvas_x = (vis_left + vis_right) / 2.0;
-        let vis_center_canvas_y = (vis_top + vis_bottom) / 2.0;
-
-        let new_viewport_x = target.x - vis_center_canvas_x / zoom;
-        let new_viewport_y = target.y - vis_center_canvas_y / zoom;
+        let new_viewport_x = target.x - vis_center.x / zoom;
+        let new_viewport_y = target.y - vis_center.y / zoom;
 
         let world_height = canvas_h / zoom;
         let max_y = (self.map_size.height as f32 - world_height).max(0.0);
@@ -369,29 +378,32 @@ impl MapViewport {
     /// the region that the insets do not cover.
     pub fn zoom_to(&mut self, target: WorldPoint<f32>, zoom: f32, insets: ViewportInsets) {
         self.zoom_level = zoom.clamp(self.min_zoom(), Self::MAX_ZOOM);
-        let [left, right, top, bottom] = self.visible_region(insets);
-        let center = LogicalPoint::new((left + right) / 2.0, (top + bottom) / 2.0);
+        let center = self.visible_region(insets).center();
         self.set_world_point_under_cursor(target, center);
     }
 
-    /// The canvas region that the insets do not cover, as left, right, top and
-    /// bottom. If the insets cover all of one axis, that axis uses the full canvas.
-    fn visible_region(&self, insets: ViewportInsets) -> [f32; 4] {
-        let canvas_w = self.canvas_size.width as f32;
-        let canvas_h = self.canvas_size.height as f32;
-        let (left, right) = (insets.left.value, canvas_w - insets.right.value);
-        let (top, bottom) = (insets.top.value, canvas_h - insets.bottom.value);
-        let (left, right) = if left >= right {
-            (0.0, canvas_w)
-        } else {
-            (left, right)
+    /// The canvas region that the insets do not cover. If the insets cover all
+    /// of one axis, that axis uses the full canvas.
+    fn visible_region(&self, insets: ViewportInsets) -> LogicalRect<f32> {
+        let span = |start: f32, end_inset: f32, full: f32| {
+            let end = full - end_inset;
+            if start < end {
+                (start, end - start)
+            } else {
+                (0.0, full)
+            }
         };
-        let (top, bottom) = if top >= bottom {
-            (0.0, canvas_h)
-        } else {
-            (top, bottom)
-        };
-        [left, right, top, bottom]
+        let (x, width) = span(
+            insets.left.value,
+            insets.right.value,
+            self.canvas_size.width as f32,
+        );
+        let (y, height) = span(
+            insets.top.value,
+            insets.bottom.value,
+            self.canvas_size.height as f32,
+        );
+        LogicalRect::new(LogicalPoint::new(x, y), LogicalSize::new(width, height))
     }
 
     /// Whether `target` is currently fully contained in the visible region.

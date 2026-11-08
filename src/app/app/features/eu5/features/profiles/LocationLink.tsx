@@ -3,7 +3,7 @@ import { cx } from "class-variance-authority";
 import { MapHoverButton } from "../../MapHoverButton";
 import { EntityName, entityLinkControl } from "../../components/EntityName";
 import { usePanelNav, locationProfileEntry } from "./PanelNavContext";
-import { usePanToEntity } from "../../usePanToEntity";
+import { useJumpToEntity } from "../../useJumpToEntity";
 
 export type LocationTarget = { key: number; name: string };
 
@@ -22,12 +22,12 @@ export function LocationLink({
   ...props
 }: LocationLinkProps) {
   const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
+  const jumpToEntity = useJumpToEntity();
   const activate =
     onActivate ??
     ((target: LocationTarget) => {
       nav.pushMany([locationProfileEntry(target.key, target.name)], backLabel);
-      panToEntity(target.key);
+      jumpToEntity(target.key);
     });
 
   return (

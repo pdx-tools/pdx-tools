@@ -1,13 +1,13 @@
 use eu5app::{
-    GroupId, GroupingTable, OpeningView, game_data::OptimizedMapBundle,
+    GroupId, GroupingTable, JUMP_ZOOM, OpeningView, game_data::OptimizedMapBundle,
     should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
-    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
-    R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
+    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PhysicalSize, R16,
+    SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
     default_clock,
 };
 use std::time::Duration;
@@ -487,26 +487,20 @@ impl Eu5WasmMapRenderer {
 
     /// Show the location with `color_id` (R16 texture index) in the region that
     /// the insets do not cover. From a far view, also zoom in so that the location
-    /// is large enough to see. A closer view keeps its zoom. Returns true if the
-    /// view moves. The target is a pixel of the location from the spatial index,
-    /// so a location that wraps around the map has a real target.
+    /// is large enough to see. The target is a pixel of the location, so a
+    /// location that wraps around the map has a real target.
     #[wasm_bindgen]
     pub fn jump_to_color_id(
         &mut self,
         color_id: u16,
         insets: Ts<WasmViewportInsets>,
-    ) -> Result<bool, JsError> {
+    ) -> Result<(), JsError> {
         let point = self.spatial_index.point_of(R16::new(color_id));
         let target = WorldPoint::new(point.x as f32, point.y as f32);
         let insets: ViewportInsets = insets.to_rust()?.into();
-        Ok(match jump_to(&mut self.input, target, insets) {
-            Jump::Zoom => {
-                self.apply_zoomed_viewport();
-                true
-            }
-            Jump::Pan => true,
-            Jump::Stay => false,
-        })
+        self.input.jump_to(target, insets, JUMP_ZOOM);
+        self.apply_zoomed_viewport();
+        Ok(())
     }
 
     /// Enable or disable owner border rendering
@@ -518,74 +512,6 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
         WasmQueuedWorkFuture::from_queued_work_future(self.controller.queued_work())
-    }
-}
-
-/// Below this zoom, a location is too small to see.
-const FAR_ZOOM: f32 = 0.4;
-/// The zoom of a jump from a far view. The map shows location borders at this zoom.
-const JUMP_ZOOM: f32 = 1.0;
-
-#[derive(Debug, PartialEq)]
-enum Jump {
-    Zoom,
-    Pan,
-    Stay,
-}
-
-fn jump_to(
-    input: &mut InteractionController,
-    target: WorldPoint<f32>,
-    insets: ViewportInsets,
-) -> Jump {
-    if input.zoom_level() < FAR_ZOOM {
-        input.zoom_to(target, JUMP_ZOOM, insets);
-        Jump::Zoom
-    } else if input.pan_to_visible_region(PanTarget::Point(target), insets) {
-        Jump::Pan
-    } else {
-        Jump::Stay
-    }
-}
-
-#[cfg(test)]
-mod jump_tests {
-    use super::*;
-    use pdx_map::Length;
-
-    // A 1600 x 900 canvas with a panel on each side leaves x = 332..1200 free.
-    fn setup() -> (InteractionController, ViewportInsets) {
-        let input = InteractionController::new(
-            LogicalSize::new(1600, 900),
-            eu5app::hemisphere_size().world(),
-        );
-        let insets = ViewportInsets {
-            left: Length::new(332.0),
-            right: Length::new(400.0),
-            top: Length::new(0.0),
-            bottom: Length::new(0.0),
-        };
-        (input, insets)
-    }
-
-    #[test]
-    fn a_jump_from_the_world_view_zooms_to_the_target() {
-        let (mut input, insets) = setup();
-        input.fit_map();
-        let target = WorldPoint::new(5000.0, 3000.0);
-        assert_eq!(jump_to(&mut input, target, insets), Jump::Zoom);
-        assert_eq!(input.zoom_level(), JUMP_ZOOM);
-        let center = input.canvas_to_world(LogicalPoint::new(766.0, 450.0));
-        assert_eq!(center, target);
-    }
-
-    #[test]
-    fn a_jump_from_a_close_view_keeps_its_zoom() {
-        let (mut input, insets) = setup();
-        input.zoom_to(WorldPoint::new(5000.0, 3000.0), 0.6, insets);
-        let far_away = WorldPoint::new(12000.0, 3000.0);
-        assert_eq!(jump_to(&mut input, far_away, insets), Jump::Pan);
-        assert_eq!(input.zoom_level(), 0.6);
     }
 }
 

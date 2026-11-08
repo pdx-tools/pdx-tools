@@ -1,7 +1,7 @@
 use crate::{
     Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize,
     units::{WorldLength, WorldPoint, WorldRect},
-    viewport::{PanTarget, ViewportInsets},
+    viewport::{JumpZoom, PanTarget, ViewportInsets},
 };
 use std::time::Duration;
 
@@ -340,11 +340,16 @@ impl InteractionController {
         self.viewport.fit(rect);
     }
 
-    /// Set the zoom and show `target` in the center of the region that the
-    /// insets do not cover. This stops a pan that is in progress.
-    pub fn zoom_to(&mut self, target: WorldPoint<f32>, zoom: f32, insets: ViewportInsets) {
-        self.pan_animation = None;
-        self.viewport.zoom_to(target, zoom, insets);
+    /// Show `target` in the region that the insets do not cover. From a view
+    /// below `zoom.zoom_in_below`, also zoom in to `zoom.to`, so that the target
+    /// is large enough to see. A closer view keeps its zoom and pans.
+    pub fn jump_to(&mut self, target: WorldPoint<f32>, insets: ViewportInsets, zoom: JumpZoom) {
+        if self.viewport.zoom_level() < zoom.zoom_in_below {
+            self.pan_animation = None;
+            self.viewport.zoom_to(target, zoom.to, insets);
+        } else {
+            self.pan_to_visible_region(PanTarget::Point(target), insets);
+        }
     }
 
     /// Center on world point.
@@ -756,6 +761,53 @@ mod tests {
                 "should not have reached target yet"
             );
         }
+    }
+
+    const JUMP_ZOOM: JumpZoom = JumpZoom {
+        zoom_in_below: 0.4,
+        to: 1.0,
+    };
+
+    #[test]
+    fn a_jump_from_a_far_view_zooms_in_on_the_target() {
+        let mut c = make_controller(LogicalSize::new(1600, 900), WorldSize::new(16384, 8192));
+        let insets = ViewportInsets {
+            left: Length::new(332.0),
+            right: Length::new(400.0),
+            ..ViewportInsets::default()
+        };
+
+        // A far view that shows half the world, with a pan in progress.
+        c.fit(WorldRect::new(
+            WorldPoint::new(0, 0),
+            WorldSize::new(8192, 4096),
+        ));
+        assert!(c.zoom_level() < JUMP_ZOOM.zoom_in_below);
+        c.pan_to_visible_region(PanTarget::Point(WorldPoint::new(12000.0, 500.0)), insets);
+        assert!(c.is_animating_pan());
+
+        let target = WorldPoint::new(5000.0, 3000.0);
+        c.jump_to(target, insets, JUMP_ZOOM);
+        c.tick(Duration::from_millis(100));
+
+        assert_eq!(c.zoom_level(), JUMP_ZOOM.to);
+        // The free region is x = 332..1200, so its center is x = 766.
+        assert_eq!(c.canvas_to_world(LogicalPoint::new(766.0, 450.0)), target);
+    }
+
+    #[test]
+    fn a_jump_from_a_close_view_keeps_its_zoom() {
+        let mut c = make_controller(LogicalSize::new(1600, 900), WorldSize::new(16384, 8192));
+        c.fit(WorldRect::new(
+            WorldPoint::new(4000, 2000),
+            WorldSize::new(2400, 1350),
+        ));
+        let zoom = c.zoom_level();
+        assert!(zoom >= JUMP_ZOOM.zoom_in_below);
+
+        c.jump_to(WorldPoint::new(12000.0, 3000.0), no_insets(), JUMP_ZOOM);
+        assert!(c.is_animating_pan());
+        assert_eq!(c.zoom_level(), zoom);
     }
 
     #[test]

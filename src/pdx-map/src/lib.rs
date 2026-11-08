@@ -23,7 +23,7 @@ pub use image::StitchedImage;
 pub use loc_arrays::*;
 pub use pixel::{R16, R16Palette, R16SecondaryMap, Rgb};
 pub use units::*;
-pub use viewport::{MapViewport, PanTarget, ViewportBounds, ViewportInsets};
+pub use viewport::{JumpZoom, MapViewport, PanTarget, ViewportBounds, ViewportInsets};
 pub use world::{Aabb, Hemisphere, LocationBitset, SpatialIndex, TopologyIndex, World};
 
 #[cfg(feature = "render")]
