@@ -340,6 +340,13 @@ impl InteractionController {
         self.viewport.fit(rect);
     }
 
+    /// Set the zoom and show `target` in the center of the region that the
+    /// insets do not cover. This stops a pan that is in progress.
+    pub fn zoom_to(&mut self, target: WorldPoint<f32>, zoom: f32, insets: ViewportInsets) {
+        self.pan_animation = None;
+        self.viewport.zoom_to(target, zoom, insets);
+    }
+
     /// Center on world point.
     pub fn center_on(&mut self, world: WorldPoint<f32>) {
         let canvas_size = self.viewport_bounds().rect.size;

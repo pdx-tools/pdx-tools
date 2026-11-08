@@ -449,7 +449,7 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
       if (isReleased) return;
       const colorId = await save.getLocationColorId(locationIdx);
       if (colorId != null) {
-        await mapEngine.pan_to_color_id(colorId, insets);
+        await mapEngine.jump_to_color_id(colorId, insets);
       }
     },
   };

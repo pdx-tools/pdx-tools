@@ -312,22 +312,7 @@ impl MapViewport {
             "canvas dimensions must be positive"
         );
 
-        // Compute visible region, falling back to full canvas on degenerate insets.
-        let vis_left = insets.left.value;
-        let vis_right = canvas_w - insets.right.value;
-        let vis_top = insets.top.value;
-        let vis_bottom = canvas_h - insets.bottom.value;
-
-        let (vis_left, vis_right) = if vis_left >= vis_right {
-            (0.0, canvas_w)
-        } else {
-            (vis_left, vis_right)
-        };
-        let (vis_top, vis_bottom) = if vis_top >= vis_bottom {
-            (0.0, canvas_h)
-        } else {
-            (vis_top, vis_bottom)
-        };
+        let [vis_left, vis_right, vis_top, vis_bottom] = self.visible_region(insets);
 
         let PanTarget::Point(target) = target;
 
@@ -378,6 +363,35 @@ impl MapViewport {
             new_viewport_x.rem_euclid(map_w),
             new_viewport_y.clamp(0.0, max_y),
         ))
+    }
+
+    /// Set the zoom, within the zoom limits, and show `target` in the center of
+    /// the region that the insets do not cover.
+    pub fn zoom_to(&mut self, target: WorldPoint<f32>, zoom: f32, insets: ViewportInsets) {
+        self.zoom_level = zoom.clamp(self.min_zoom(), Self::MAX_ZOOM);
+        let [left, right, top, bottom] = self.visible_region(insets);
+        let center = LogicalPoint::new((left + right) / 2.0, (top + bottom) / 2.0);
+        self.set_world_point_under_cursor(target, center);
+    }
+
+    /// The canvas region that the insets do not cover, as left, right, top and
+    /// bottom. If the insets cover all of one axis, that axis uses the full canvas.
+    fn visible_region(&self, insets: ViewportInsets) -> [f32; 4] {
+        let canvas_w = self.canvas_size.width as f32;
+        let canvas_h = self.canvas_size.height as f32;
+        let (left, right) = (insets.left.value, canvas_w - insets.right.value);
+        let (top, bottom) = (insets.top.value, canvas_h - insets.bottom.value);
+        let (left, right) = if left >= right {
+            (0.0, canvas_w)
+        } else {
+            (left, right)
+        };
+        let (top, bottom) = if top >= bottom {
+            (0.0, canvas_h)
+        } else {
+            (top, bottom)
+        };
+        [left, right, top, bottom]
     }
 
     /// Whether `target` is currently fully contained in the visible region.
@@ -802,6 +816,25 @@ mod tests {
         // world (5, 5) → canvas x = 5 < vis_left=100 → not visible
         let result = vp.resolve_pan(PanTarget::Point(WorldPoint::new(5.0, 5.0)), insets);
         assert!(result.is_some());
+    }
+
+    #[test]
+    fn zoom_to_centers_the_target_in_the_region_the_insets_leave() {
+        let mut vp = MapViewport::new(LogicalSize::new(1000, 500), WorldSize::new(8192, 8192));
+
+        // The left inset covers half the canvas, so the target is at x = 750.
+        vp.zoom_to(
+            WorldPoint::new(4000.0, 4000.0),
+            0.5,
+            insets(500.0, 0.0, 0.0, 0.0),
+        );
+        assert_eq!(vp.zoom_level(), 0.5);
+        let center = vp.canvas_to_world(LogicalPoint::new(750.0, 250.0));
+        assert_eq!(center, WorldPoint::new(4000.0, 4000.0));
+
+        // A zoom past the limit stops at the limit.
+        vp.zoom_to(WorldPoint::new(4000.0, 4000.0), 10.0, no_insets());
+        assert_eq!(vp.zoom_level(), MapViewport::MAX_ZOOM);
     }
 
     #[test]
