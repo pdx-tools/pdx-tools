@@ -780,3 +780,12 @@ test("achievement index redirects to the hub", async () => {
     pdxUrl("/eu4#achievements"),
   );
 });
+
+test("unknown pages are not found and old site assets are gone", async () => {
+  const page = await fetch(pdxUrl("/akp.php"));
+  expect(page.status).toBe(404);
+  expect(await page.text()).toContain("Page not found");
+
+  const asset = await fetch(pdxUrl("/_next/static/media/302.f96d6560.png"));
+  expect(asset.status).toBe(410);
+});
