@@ -259,11 +259,14 @@ impl SpatialIndex {
         }
     }
 
-    /// Returns the first pixel encountered in scan order that belongs to `loc`.
+    /// A pixel near the middle of `loc`: the middle of its middle run. The pixel
+    /// belongs to `loc`, also when `loc` wraps around the map.
     pub fn point_of(&self, loc: R16) -> WorldPoint<u16> {
         let idx = loc.value() as usize;
-        let first = self.spans[self.span_offsets[idx] as usize];
-        WorldPoint::new(first.x_start, first.y)
+        let lo = self.span_offsets[idx] as usize;
+        let hi = self.span_offsets[idx + 1] as usize;
+        let span = self.spans[(lo + hi) / 2];
+        WorldPoint::new(span.x_start + (span.x_end - span.x_start) / 2, span.y)
     }
 
     pub fn len(&self) -> usize {
@@ -543,6 +546,15 @@ mod tests {
             world.at(WorldPoint::new(point.x as f32, point.y as f32)),
             R16::new(0)
         );
+    }
+
+    #[test]
+    fn point_of_is_near_the_middle_of_the_location() {
+        // Location 0 fills the west half of 3 rows, x = 0..=7.
+        let row = [[0; 8], [1; 8]].concat();
+        let world = world_from_grid(row.repeat(3), 16);
+        let index = world.build_spatial_index();
+        assert_eq!(index.point_of(R16::new(0)), WorldPoint::new(3, 1));
     }
 
     #[test]

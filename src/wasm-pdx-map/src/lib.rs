@@ -369,7 +369,7 @@ impl PdxMapRenderer {
     /// Whether a programmatic pan animation is currently in flight.
     #[wasm_bindgen]
     pub fn is_animating_pan(&self) -> bool {
-        self.interaction.is_animating_pan()
+        self.interaction.is_animating()
     }
 
     /// Enable or disable owner border rendering

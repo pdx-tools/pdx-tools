@@ -1,13 +1,13 @@
 use eu5app::{
-    GroupId, GroupingTable, OpeningView, game_data::OptimizedMapBundle,
+    GroupId, GroupingTable, JUMP_ZOOM, OpeningView, game_data::OptimizedMapBundle,
     should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
-    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
-    R16, SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
+    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PhysicalSize, R16,
+    SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
     default_clock,
 };
 use std::time::Duration;
@@ -356,8 +356,7 @@ impl Eu5WasmMapRenderer {
         self.last_tick = Some(now);
 
         self.input.tick(delta);
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_zoomed_viewport();
     }
 
     /// Check if currently dragging
@@ -485,23 +484,22 @@ impl Eu5WasmMapRenderer {
         self.controller.set_viewport_bounds(bounds);
     }
 
-    /// Pan to make the location with `color_id` (R16 texture index) visible,
-    /// respecting panel insets. Returns true if a pan was started.
-    /// Uses a concrete pixel from the spatial index, so wrapping locations pan
-    /// to an actual owned pixel instead of an invalid world-midpoint AABB.
+    /// Show the location with `color_id` (R16 texture index) in the region that
+    /// the insets do not cover. From a far view, also zoom in so that the location
+    /// is large enough to see. The target is a pixel of the location, so a
+    /// location that wraps around the map has a real target.
     #[wasm_bindgen]
-    pub fn pan_to_color_id(
+    pub fn jump_to_color_id(
         &mut self,
         color_id: u16,
         insets: Ts<WasmViewportInsets>,
-    ) -> Result<bool, JsError> {
+    ) -> Result<(), JsError> {
         let point = self.spatial_index.point_of(R16::new(color_id));
-        let center = WorldPoint::new(point.x as f32, point.y as f32);
-        let insets = insets.to_rust()?;
-        let viewport_insets: ViewportInsets = insets.into();
-        Ok(self
-            .input
-            .pan_to_visible_region(PanTarget::Point(center), viewport_insets))
+        let target = WorldPoint::new(point.x as f32, point.y as f32);
+        let insets: ViewportInsets = insets.to_rust()?.into();
+        self.input.jump_to(target, insets, JUMP_ZOOM);
+        self.apply_zoomed_viewport();
+        Ok(())
     }
 
     /// Enable or disable owner border rendering

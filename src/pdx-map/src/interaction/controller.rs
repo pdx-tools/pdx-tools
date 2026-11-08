@@ -1,7 +1,7 @@
 use crate::{
     Aabb, LogicalPoint, LogicalSize, MapViewport, ViewportBounds, WorldSize,
     units::{WorldLength, WorldPoint, WorldRect},
-    viewport::{PanTarget, ViewportInsets},
+    viewport::{JumpZoom, PanTarget, ViewportInsets},
 };
 use std::time::Duration;
 
@@ -9,14 +9,46 @@ use super::keyboard::{KeyboardKey, KeyboardState};
 use super::mouse::MouseButton;
 
 const PAN_SNAP_PX: f32 = 20.0;
-const PAN_DURATION_MS: u64 = 300;
+const MOVE_DURATION_MS: u64 = 300;
 
+/// A programmatic camera move. The world point under `anchor` changes from
+/// `from` to `to`, and the zoom changes from `from_zoom` to `to_zoom`.
 #[derive(Debug, Clone, Copy)]
-struct PanAnimation {
+struct CameraAnimation {
+    anchor: LogicalPoint<f32>,
     from: WorldPoint<f32>,
     to: WorldPoint<f32>,
+    from_zoom: f32,
+    to_zoom: f32,
     elapsed: Duration,
     duration: Duration,
+}
+
+impl CameraAnimation {
+    /// The zoom, and the world point under `anchor`, at the elapsed time.
+    fn frame(&self, map_width: f32) -> (f32, WorldPoint<f32>) {
+        if self.elapsed >= self.duration {
+            return (self.to_zoom, self.to);
+        }
+
+        let t = self.elapsed.as_secs_f32() / self.duration.as_secs_f32();
+        let eased = 1.0 - (1.0 - t).powi(3);
+
+        // Shortest-path signed delta in world space; handles antimeridian wrap.
+        let delta = WorldLength::wrapped_delta(
+            WorldLength::new(self.from.x),
+            WorldLength::new(self.to.x),
+            WorldLength::new(map_width),
+        );
+        // Equal zoom ratios per step make the zoom look steady.
+        let zoom = self.from_zoom * (self.to_zoom / self.from_zoom).powf(eased);
+        // Scale the remaining distance by the zoom, so that `to` moves to the
+        // anchor in a straight line on the screen.
+        let remaining = (1.0 - eased) * self.from_zoom / zoom;
+        let x = self.to.x - delta.value * remaining;
+        let y = self.to.y + (self.from.y - self.to.y) * remaining;
+        (zoom, WorldPoint::new(x, y))
+    }
 }
 
 /// Input controller for map navigation.
@@ -37,7 +69,7 @@ pub struct InteractionController {
 
     keyboard_state: KeyboardState,
     was_keyboard_active: bool,
-    pan_animation: Option<PanAnimation>,
+    animation: Option<CameraAnimation>,
 }
 
 impl InteractionController {
@@ -58,7 +90,7 @@ impl InteractionController {
                 right: false,
             },
             was_keyboard_active: false,
-            pan_animation: None,
+            animation: None,
         }
     }
 
@@ -90,7 +122,7 @@ impl InteractionController {
 
         if pressed {
             // Start drag: capture world coordinates under cursor
-            self.pan_animation = None;
+            self.animation = None;
             let canvas_pos = self.cursor_position();
             self.drag_anchor_world = Some(self.viewport.canvas_to_world(canvas_pos));
             self.is_dragging = true;
@@ -110,6 +142,8 @@ impl InteractionController {
         if scroll_lines.abs() < f32::EPSILON {
             return;
         }
+
+        self.animation = None;
 
         // Clamp scroll to prevent extreme zoom changes
         let clamped = scroll_lines.clamp(-6.0, 6.0);
@@ -134,7 +168,7 @@ impl InteractionController {
     )]
     pub fn on_key_down(&mut self, key: KeyboardKey) {
         if key.is_pan_key() {
-            self.pan_animation = None;
+            self.animation = None;
         }
         self.keyboard_state.set(key, true);
     }
@@ -150,28 +184,13 @@ impl InteractionController {
 
     /// Apply per-frame updates.
     pub fn tick(&mut self, mut delta: Duration) {
-        // Advance pan animation before keyboard so a key press that same frame overrides it.
-        if let Some(ref mut anim) = self.pan_animation {
+        // Advance the camera animation before keyboard so a key press that same frame overrides it.
+        if let Some(mut anim) = self.animation {
             anim.elapsed = (anim.elapsed + delta).min(anim.duration);
-            let t = anim.elapsed.as_secs_f32() / anim.duration.as_secs_f32();
-            let eased = 1.0 - (1.0 - t).powi(3);
-
-            let map_w = self.viewport.map_size().width as f32;
-            // Shortest-path signed delta in world space; handles antimeridian wrap.
-            let delta = WorldLength::wrapped_delta(
-                WorldLength::new(anim.from.x),
-                WorldLength::new(anim.to.x),
-                WorldLength::new(map_w),
-            );
-            let interp_x = anim.to.x - delta.value * (1.0 - eased);
-            let interp_y = anim.from.y + (anim.to.y - anim.from.y) * eased;
-
+            self.animation = (anim.elapsed < anim.duration).then_some(anim);
+            let (zoom, point) = anim.frame(self.viewport.map_size().width as f32);
             self.viewport
-                .set_position_clamped(WorldPoint::new(interp_x, interp_y));
-
-            if anim.elapsed >= anim.duration {
-                self.pan_animation = None;
-            }
+                .set_zoom_with_point_at(zoom, point, anim.anchor);
         }
 
         let is_active = self.keyboard_state.active();
@@ -291,33 +310,45 @@ impl InteractionController {
             return false;
         };
 
-        let current = self.viewport.viewport_position();
-        let zoom = self.viewport.zoom_level();
-        let map_w = self.viewport.map_size().width as f32;
+        let mut end = self.viewport.clone();
+        end.set_position_clamped(resolved);
+        self.move_to(end, insets);
+        true
+    }
+
+    /// Move the camera to the `end` view, with the center of the region that
+    /// the insets leave as the anchor. A short pan snaps.
+    fn move_to(&mut self, end: MapViewport, insets: ViewportInsets) {
+        let anchor = self.viewport.visible_region(insets).center();
+        let from = self.viewport.canvas_to_world(anchor);
+        let to = end.canvas_to_world(anchor);
+        let from_zoom = self.viewport.zoom_level();
+        let to_zoom = end.zoom_level();
 
         // Screen-space distance via the short horizontal wrap path.
         let dx_canvas = WorldLength::wrapped_delta(
-            WorldLength::new(current.x),
-            WorldLength::new(resolved.x),
-            WorldLength::new(map_w),
+            WorldLength::new(from.x),
+            WorldLength::new(to.x),
+            WorldLength::new(self.viewport.map_size().width as f32),
         )
-        .to_logical(zoom);
-        let dy_canvas = (resolved.y - current.y) * zoom;
+        .to_logical(from_zoom);
+        let dy_canvas = (to.y - from.y) * from_zoom;
         let distance = (dx_canvas.value * dx_canvas.value + dy_canvas * dy_canvas).sqrt();
 
-        if distance < PAN_SNAP_PX {
-            self.viewport.set_position_clamped(resolved);
-            self.pan_animation = None;
+        if from_zoom == to_zoom && distance < PAN_SNAP_PX {
+            self.viewport = end;
+            self.animation = None;
         } else {
-            self.pan_animation = Some(PanAnimation {
-                from: current,
-                to: resolved,
+            self.animation = Some(CameraAnimation {
+                anchor,
+                from,
+                to,
+                from_zoom,
+                to_zoom,
                 elapsed: Duration::ZERO,
-                duration: Duration::from_millis(PAN_DURATION_MS),
+                duration: Duration::from_millis(MOVE_DURATION_MS),
             });
         }
-
-        true
     }
 
     /// Whether `target` is currently fully contained in the visible region.
@@ -325,23 +356,39 @@ impl InteractionController {
         self.viewport.is_target_visible(target, insets)
     }
 
-    /// Whether a programmatic pan animation is currently in flight.
-    pub fn is_animating_pan(&self) -> bool {
-        self.pan_animation.is_some()
+    /// Whether a programmatic camera move is currently in flight.
+    pub fn is_animating(&self) -> bool {
+        self.animation.is_some()
     }
 
     /// Show the whole map, as large as the zoom limits allow.
     pub fn fit_map(&mut self) {
+        self.animation = None;
         self.viewport.fit_map();
     }
 
     /// Fit the rectangle within the camera zoom limits.
     pub fn fit(&mut self, rect: WorldRect<u32>) {
+        self.animation = None;
         self.viewport.fit(rect);
+    }
+
+    /// Show `target` in the region that the insets do not cover. From a view
+    /// below `zoom.zoom_in_below`, also zoom in to `zoom.to`, so that the target
+    /// is large enough to see. A closer view keeps its zoom and pans.
+    pub fn jump_to(&mut self, target: WorldPoint<f32>, insets: ViewportInsets, zoom: JumpZoom) {
+        if self.viewport.zoom_level() < zoom.zoom_in_below {
+            let mut end = self.viewport.clone();
+            end.zoom_to(target, zoom.to, insets);
+            self.move_to(end, insets);
+        } else {
+            self.pan_to_visible_region(PanTarget::Point(target), insets);
+        }
     }
 
     /// Center on world point.
     pub fn center_on(&mut self, world: WorldPoint<f32>) {
+        self.animation = None;
         let canvas_size = self.viewport_bounds().rect.size;
         let canvas_center = LogicalPoint::new(
             canvas_size.width as f32 / 2.0,
@@ -582,11 +629,11 @@ mod tests {
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         let started = c.pan_to_visible_region(target, no_insets());
         assert!(started);
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         // Tick past the full duration.
-        c.tick(Duration::from_millis(PAN_DURATION_MS + 10));
-        assert!(!c.is_animating_pan(), "animation should be done");
+        c.tick(Duration::from_millis(MOVE_DURATION_MS + 10));
+        assert!(!c.is_animating(), "animation should be done");
     }
 
     #[test]
@@ -609,7 +656,7 @@ mod tests {
             .map(|p| p.x)
             .unwrap_or(from_x); // 600.0
 
-        c.tick(Duration::from_millis(PAN_DURATION_MS / 2));
+        c.tick(Duration::from_millis(MOVE_DURATION_MS / 2));
 
         let mid_x = c.viewport.viewport_position().x;
         let expected = from_x + (to_x - from_x) * 0.875;
@@ -630,7 +677,7 @@ mod tests {
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         let resolved = c.viewport.resolve_pan(target, no_insets()).unwrap();
         c.pan_to_visible_region(target, no_insets());
-        c.tick(Duration::from_millis(PAN_DURATION_MS + 50));
+        c.tick(Duration::from_millis(MOVE_DURATION_MS + 50));
 
         let pos = c.viewport.viewport_position();
         assert!((pos.x - resolved.x).abs() < 1.0, "x should land on target");
@@ -653,10 +700,7 @@ mod tests {
         let target = PanTarget::Point(WorldPoint::new(415.0, 300.0));
         let result = c.pan_to_visible_region(target, insets);
         assert!(result, "pan should be triggered");
-        assert!(
-            !c.is_animating_pan(),
-            "sub-20px pan should snap, not animate"
-        );
+        assert!(!c.is_animating(), "sub-20px pan should snap, not animate");
     }
 
     #[test]
@@ -664,16 +708,16 @@ mod tests {
         let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         c.pan_to_visible_region(target, no_insets());
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         // Tick partway.
         c.tick(Duration::from_millis(100));
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         // Drag start clears animation.
         c.on_cursor_move(LogicalPoint::new(400.0, 300.0));
         c.on_mouse_button(MouseButton::Left, true);
-        assert!(!c.is_animating_pan(), "drag should interrupt animation");
+        assert!(!c.is_animating(), "drag should interrupt animation");
         assert!(c.is_dragging());
     }
 
@@ -689,7 +733,7 @@ mod tests {
         c.pan_to_visible_region(target_a, no_insets());
 
         // Tick to halfway.
-        c.tick(Duration::from_millis(PAN_DURATION_MS / 2));
+        c.tick(Duration::from_millis(MOVE_DURATION_MS / 2));
         let mid_pos = c.viewport.viewport_position();
 
         // Start a second pan toward a different target.
@@ -708,17 +752,18 @@ mod tests {
     }
 
     #[test]
-    fn test_keyboard_interrupts_animation() {
+    fn test_keys_and_scroll_interrupt_animation() {
         let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         c.pan_to_visible_region(target, no_insets());
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         c.on_key_down(KeyboardKey::ArrowLeft);
-        assert!(
-            !c.is_animating_pan(),
-            "arrow key should interrupt animation"
-        );
+        assert!(!c.is_animating(), "arrow key should interrupt animation");
+
+        c.pan_to_visible_region(target, no_insets());
+        c.on_scroll(1.0);
+        assert!(!c.is_animating(), "scroll should interrupt animation");
     }
 
     #[test]
@@ -749,6 +794,68 @@ mod tests {
                 "should not have reached target yet"
             );
         }
+    }
+
+    const JUMP_ZOOM: JumpZoom = JumpZoom::new(0.4, 1.0);
+
+    #[test]
+    fn a_jump_from_a_far_view_zooms_in_on_the_target() {
+        let mut c = make_controller(LogicalSize::new(1600, 900), WorldSize::new(16384, 8192));
+        let insets = ViewportInsets {
+            left: Length::new(332.0),
+            right: Length::new(400.0),
+            ..ViewportInsets::default()
+        };
+
+        // A far view that shows half the world, with a pan in progress.
+        c.fit(WorldRect::new(
+            WorldPoint::new(0, 0),
+            WorldSize::new(8192, 4096),
+        ));
+        assert!(c.zoom_level() < JUMP_ZOOM.zoom_in_below);
+        c.pan_to_visible_region(PanTarget::Point(WorldPoint::new(12000.0, 500.0)), insets);
+        assert!(c.is_animating());
+
+        let target = WorldPoint::new(5000.0, 3000.0);
+        let on_canvas = |c: &InteractionController| {
+            let pos = c.viewport.viewport_position();
+            let zoom = c.zoom_level();
+            LogicalPoint::new((target.x - pos.x) * zoom, (target.y - pos.y) * zoom)
+        };
+        let start_zoom = c.zoom_level();
+        let start = on_canvas(&c);
+        c.jump_to(target, insets, JUMP_ZOOM);
+
+        // At half time, the cubic ease-out is at 0.875. The zoom is at 0.875 of
+        // the zoom ratio, and the target is at 0.875 of a straight line to the
+        // center of the free region (x = 766, y = 450).
+        c.tick(Duration::from_millis(MOVE_DURATION_MS / 2));
+        let expected = start_zoom * (JUMP_ZOOM.to / start_zoom).powf(0.875);
+        assert!((c.zoom_level() - expected).abs() < 1e-4);
+        let mid = on_canvas(&c);
+        assert!((mid.x - (start.x + (766.0 - start.x) * 0.875)).abs() < 0.5);
+        assert!((mid.y - (start.y + (450.0 - start.y) * 0.875)).abs() < 0.5);
+
+        c.tick(Duration::from_millis(MOVE_DURATION_MS));
+        assert!(!c.is_animating());
+        assert_eq!(c.zoom_level(), JUMP_ZOOM.to);
+        // The free region is x = 332..1200, so its center is x = 766.
+        assert_eq!(c.canvas_to_world(LogicalPoint::new(766.0, 450.0)), target);
+    }
+
+    #[test]
+    fn a_jump_from_a_close_view_keeps_its_zoom() {
+        let mut c = make_controller(LogicalSize::new(1600, 900), WorldSize::new(16384, 8192));
+        c.fit(WorldRect::new(
+            WorldPoint::new(4000, 2000),
+            WorldSize::new(2400, 1350),
+        ));
+        let zoom = c.zoom_level();
+        assert!(zoom >= JUMP_ZOOM.zoom_in_below);
+
+        c.jump_to(WorldPoint::new(12000.0, 3000.0), no_insets(), JUMP_ZOOM);
+        assert!(c.is_animating());
+        assert_eq!(c.zoom_level(), zoom);
     }
 
     #[test]

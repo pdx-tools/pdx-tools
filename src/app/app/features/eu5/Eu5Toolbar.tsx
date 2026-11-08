@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useEu5SelectionState, useEu5Engine, useEu5Players } from "./store";
-import { usePanToEntity } from "./usePanToEntity";
+import { useJumpToEntity } from "./useJumpToEntity";
 import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon";
 import { Command as CommandPrimitive } from "cmdk";
 import { cx } from "class-variance-authority";
@@ -67,7 +67,7 @@ export function Eu5Toolbar() {
     return () => clearTimeout(timer);
   }, [engine, searchQuery]);
 
-  const panToEntity = usePanToEntity();
+  const jumpToEntity = useJumpToEntity();
 
   const handleSelect = useCallback(
     async (result: SearchResult) => {
@@ -77,12 +77,12 @@ export function Eu5Toolbar() {
       } else {
         await engine.commands.setFocusedLocation(selection.locationIdx);
       }
-      panToEntity(selection.panTo);
+      jumpToEntity(selection.jumpTo);
       setSearchActive(false);
       setQuery("");
       setResults([]);
     },
-    [engine, panToEntity],
+    [engine, jumpToEntity],
   );
 
   const handleDismiss = useCallback(() => {

@@ -441,15 +441,15 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
       if (lastViewport !== null) callback(lastViewport);
     },
 
-    panToLocation: async (
+    jumpToLocation: async (
       locationIdx: number,
       insets: { left: number; right: number; top: number; bottom: number },
     ) => {
-      // Like a command, a pan on a released save does nothing.
+      // Like a command, a jump on a released save does nothing.
       if (isReleased) return;
       const colorId = await save.getLocationColorId(locationIdx);
       if (colorId != null) {
-        await mapEngine.pan_to_color_id(colorId, insets);
+        await mapEngine.jumpToColorId(colorId, insets);
       }
     },
   };

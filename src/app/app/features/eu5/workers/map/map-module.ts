@@ -881,11 +881,11 @@ export const createMapEngine = async (
       app.fit_world_rect(rect.x, rect.y, rect.width, rect.height);
     },
 
-    pan_to_color_id: (
+    jumpToColorId: (
       colorId: number,
       insets: { left: number; right: number; top: number; bottom: number },
     ) => {
-      return app.pan_to_color_id(colorId, insets);
+      return app.jump_to_color_id(colorId, insets);
     },
 
     onBoxSelectRectUpdate: (callback: (rect: BoxSelectOverlayRect | null) => void) => {

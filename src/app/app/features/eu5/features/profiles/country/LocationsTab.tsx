@@ -1,5 +1,5 @@
 import { useEu5Engine } from "../../../store";
-import { usePanToEntity } from "../../../usePanToEntity";
+import { useJumpToEntity } from "../../../useJumpToEntity";
 import { formatExactPercent, formatFixed, formatPercent } from "../../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../../components";
@@ -16,13 +16,13 @@ const columnHelper = createColumnHelper<LocationRow>();
 function NameCell({ row }: { row: AppRow<LocationRow> }) {
   const engine = useEu5Engine();
   const nav = usePanelNav();
-  const panToEntity = usePanToEntity();
+  const jumpToEntity = useJumpToEntity();
   return (
     <LocationLink
       location={row.original.location}
       className="text-xs"
       onActivate={(location) => {
-        panToEntity(location.key);
+        jumpToEntity(location.key);
         if (nav.stack.length > 0) {
           nav.pushMany([locationProfileEntry(location.key, location.name)]);
         } else {

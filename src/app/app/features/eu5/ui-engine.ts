@@ -221,7 +221,7 @@ export interface AppTriggers {
   stopTimelapse(): void;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
   toggleOwnerBorders(): Promise<void>;
-  panToLocation(
+  jumpToLocation(
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
   ): Promise<void>;
@@ -363,7 +363,7 @@ export class Eu5UIEngine implements AppEngine {
     stopTimelapse: () => this.handleStopTimelapse(),
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
-    panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
+    jumpToLocation: (locationIdx, insets) => this.gameInstance.jumpToLocation(locationIdx, insets),
     fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };
 
