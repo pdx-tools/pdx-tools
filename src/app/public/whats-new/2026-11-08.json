@@ -1,0 +1,15 @@
+{
+  "sections": {
+    "fixes": [
+      "Support EU5 1.4.7 saves",
+      "Support Vic3 1.15.0 saves",
+      "Support HOI4 1.19.4 saves",
+      "Fix EU5 country names that showed raw keys or $TOKEN$ text",
+      "EU5: consistent number formats across insights and profiles, with the full value on hover or keyboard focus",
+      "EU5: tables have even rows and arrow key navigation, and location shares read as percents",
+      "EU5: country ranks show ties (=#1) and count only countries that own land",
+      "EU5: a country that dies and comes back stays selectable on past timeline dates",
+      "Show \"Page not found\" in place of an error screen for broken links"
+    ]
+  }
+}
