@@ -1,3 +1,4 @@
+import { DefinedTerm, glossaryTerm } from "./EntityName";
 import React, { useId, useMemo, useState } from "react";
 import { flexRender, useTable } from "@tanstack/react-table";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
@@ -5,6 +6,7 @@ import type {
   AppCell,
   AppColumnDef,
   AppHeader,
+  AppRow,
   AppTable,
   AppTableOptions,
   RowData,
@@ -12,8 +14,10 @@ import type {
 import { appTableFeatures } from "@/lib/tanstack-table";
 import { cva, cx } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import { focusRing } from "@/components/game/focusRing";
+import { focusRing, focusRingInset } from "@/components/game/focusRing";
+import { sectionLabel } from "@/components/game/SectionTitle";
 import { formatInt } from "@/lib/format";
+import { formatExactAmount } from "../numberFormatting";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Eu5DataTableColumnMeta, Eu5DataTableColumnVariant } from "@/types/tanstack-table";
@@ -37,14 +41,14 @@ const usePaginationStore = create<PaginationSettings>()(
 );
 
 const headColVariants = cva(
-  "relative h-[30px] min-w-0 px-2 py-0 text-left align-middle font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase",
+  cx("relative h-[30px] min-w-0 px-2 py-0 text-left align-middle max-md:h-11", sectionLabel),
   {
     variants: {
       variant: {
         default: "",
         pin: "bg-game-panel-2",
         num: "text-right",
-        vis: "text-game-ink-700",
+        vis: "text-game-ink-500",
         end: "text-center",
       },
     },
@@ -53,7 +57,7 @@ const headColVariants = cva(
 );
 
 const cellVariants = cva(
-  "min-w-0 px-2 py-1.5 align-middle font-game-ui text-[12px] text-game-ink-100",
+  "h-[30px] min-w-0 px-2 py-0.5 align-middle font-game-ui text-[12px] text-game-ink-100 max-md:h-11",
   {
     variants: {
       variant: {
@@ -69,7 +73,7 @@ const cellVariants = cva(
 );
 
 const summaryCellVariants = cva(
-  "min-w-0 p-2 align-baseline font-game-num text-[11.5px] tabular-nums text-game-ink-100",
+  "min-w-0 p-2 align-baseline font-game-num text-[12px] tabular-nums text-game-ink-100",
   {
     variants: {
       variant: {
@@ -84,11 +88,93 @@ const summaryCellVariants = cva(
   },
 );
 
+/**
+ * A cell with a full value behind its figure. The value shows over the cell on
+ * hover and on focus, which is also a tap on a touch screen. The table has one
+ * tab stop for its cells, and the arrow keys move from cell to cell.
+ */
+const exactCell = cx(
+  "relative after:pointer-events-none after:absolute after:right-1 after:bottom-full after:z-20",
+  "after:rounded-plate after:border after:border-solid after:border-game-line-strong after:bg-game-panel-2",
+  "after:px-1.5 after:py-0.5 after:font-game-num after:text-[12px] after:whitespace-nowrap after:text-game-ink-100",
+  "after:opacity-0 after:transition-opacity after:content-[attr(data-exact)]",
+  "hover:after:opacity-100 hover:after:delay-300 focus:after:opacity-100 data-dismissed:after:hidden",
+  focusRingInset,
+);
+
+/** The full value of a cell, if its figure can hide one */
+export function exactCellValue(
+  value: unknown,
+  meta: Eu5DataTableColumnMeta | undefined,
+): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  if (meta?.exact) return meta.exact(value);
+  return meta?.variant === "num" ? formatExactAmount(value) : undefined;
+}
+
+/**
+ * The next cell with a full value from `cell` in the direction of an arrow key. Left
+ * and right go through the rows in reading order, so they reach each such cell. Up and
+ * down stay in the column.
+ */
+function nextExactCell(cell: HTMLTableCellElement, key: string): HTMLElement | null {
+  const row = cell.parentElement;
+  if (!(row instanceof HTMLTableRowElement)) return null;
+  if (key === "ArrowLeft" || key === "ArrowRight") {
+    const cells = [...(row.parentElement?.querySelectorAll("td[data-exact]") ?? [])];
+    const next = cells[cells.indexOf(cell) + (key === "ArrowLeft" ? -1 : 1)];
+    return next instanceof HTMLElement ? next : null;
+  }
+  if (key !== "ArrowUp" && key !== "ArrowDown") return null;
+  const step = key === "ArrowUp" ? "previousElementSibling" : "nextElementSibling";
+  for (let next = row[step]; next instanceof HTMLTableRowElement; next = next[step]) {
+    const below = next.cells[cell.cellIndex];
+    if (below?.dataset.exact !== undefined) return below;
+  }
+  return null;
+}
+
+function onExactCellKeyDown(event: React.KeyboardEvent<HTMLTableSectionElement>) {
+  const cell = event.target;
+  if (!(cell instanceof HTMLTableCellElement) || cell.dataset.exact === undefined) return;
+  // The full value can cover other text. The first Escape hides it, and only that.
+  if (event.key === "Escape" && cell.dataset.dismissed === undefined) {
+    cell.dataset.dismissed = "";
+    event.stopPropagation();
+    return;
+  }
+  const next = nextExactCell(cell, event.key);
+  if (!next) return;
+  event.preventDefault();
+  next.focus();
+  next.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function restoreExactValue(event: React.FocusEvent<HTMLTableSectionElement>) {
+  delete event.target.dataset.dismissed;
+}
+
 const sortBtnClass =
-  "inline-flex h-[18px] shrink-0 items-center justify-center border-0 bg-transparent font-game-num text-[10px] text-game-ink-500 data-[active=true]:text-game-accent-100";
+  "inline-flex h-[1em] shrink-0 items-center justify-center self-center border-0 bg-transparent font-game-ui text-[9px] leading-none text-game-ink-500 data-[active=true]:text-game-accent-100";
+
+/** The one sign of a sort: a filled triangle when a column sorts, and a dim ↕ when it can. */
+function SortMark({
+  sorted,
+  children,
+}: {
+  sorted: false | "asc" | "desc";
+  children?: React.ReactNode;
+}) {
+  return (
+    <span data-active={sorted !== false || undefined} className={sortBtnClass} aria-hidden="true">
+      {sorted === "desc" ? "▼" : sorted === "asc" ? "▲" : "↕"}
+      {children}
+    </span>
+  );
+}
 
 const headerSortBtnClass = cx(
-  "flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit uppercase hover:text-game-ink-100",
+  "flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit uppercase hover:text-game-ink-100 max-md:h-11",
   focusRing,
 );
 
@@ -207,6 +293,7 @@ export function Eu5DataTable<TData extends RowData>({
   const displayTotal = totalCount ?? data.length;
   const showTitleCount = totalCount !== undefined || data.length !== filteredCount;
   const summaryContent = typeof summary === "function" ? summary(table) : summary;
+  const exactStop = firstExactCellId(rows);
 
   return (
     <div
@@ -229,7 +316,7 @@ export function Eu5DataTable<TData extends RowData>({
         <table className="w-full min-w-full table-auto border-separate border-spacing-0">
           <ColumnGroup table={table} />
           <HeaderBand table={table} />
-          <tbody>
+          <tbody onKeyDown={onExactCellKeyDown} onBlur={restoreExactValue}>
             {rows.length === 0 ? (
               <tr>
                 <td
@@ -291,7 +378,7 @@ export function Eu5DataTable<TData extends RowData>({
                       )}
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <BodyCell key={cell.id} cell={cell} />
+                        <BodyCell key={cell.id} cell={cell} tabStop={cell.id === exactStop} />
                       ))}
                     </tr>
                   </React.Fragment>
@@ -359,10 +446,12 @@ function TitleBand({
     <div className="flex items-center justify-between border-b border-solid border-game-line px-4 py-3">
       <div className="flex items-center gap-2">
         {title && (
-          <span className="font-game-ui text-[13px] font-semibold text-game-ink-100">{title}</span>
+          <span className="font-game-ui text-[12.5px] font-semibold text-game-ink-100">
+            {title}
+          </span>
         )}
         {showCount && (
-          <span className="font-game-num text-[11.5px] text-game-ink-100 tabular-nums">
+          <span className="font-game-num text-[12px] text-game-ink-100 tabular-nums">
             {formatInt(filteredCount)}{" "}
             <span className="text-game-ink-500">of {formatInt(totalCount)}</span>
           </span>
@@ -406,6 +495,9 @@ function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData
   const sorted = header.column.getIsSorted();
   const sortIndex = header.column.getSortIndex();
   const showRank = sorted !== false && header.column.getSortFn() && sortIndex >= 0;
+  const sortCount = (header.headerGroup?.headers ?? []).filter(
+    (other) => other.column.getIsSorted() !== false,
+  ).length;
   const align = meta?.align ?? alignForVariant(variant);
 
   const headerDef = header.column.columnDef.header;
@@ -420,6 +512,7 @@ function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData
           "min-w-0 overflow-hidden font-game-num text-ellipsis whitespace-nowrap",
           align === "right" && "text-right",
           align === "center" && "text-center",
+          meta?.term && glossaryTerm,
         )}
       >
         {isPlaceholder
@@ -429,16 +522,12 @@ function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData
             : label}
       </span>
       {canSort && (
-        <span
-          data-active={sorted !== false || undefined}
-          className={sortBtnClass}
-          aria-hidden="true"
-        >
-          {sorted === "desc" ? "▼" : sorted === "asc" ? "▲" : "↕"}
-          {showRank && sortIndex >= 0 && (
-            <sup className="ml-px text-[7.5px] text-game-accent-100">{sortIndex + 1}</sup>
+        <SortMark sorted={sorted}>
+          {/* The order number means something only when a second sort is active. */}
+          {showRank && sortCount > 1 && (
+            <span className="ml-px text-[12px] text-game-accent-100">{sortIndex + 1}</span>
           )}
-        </span>
+        </SortMark>
       )}
     </>
   );
@@ -455,41 +544,69 @@ function HeaderCell<TData extends RowData>({ header }: { header: AppHeader<TData
       )}
       style={cellStyle(meta?.minWidth)}
     >
-      {canSort ? (
-        <button
-          type="button"
-          aria-label={`Sort by ${headerLabelText(sortLabel, header.column.id)}`}
-          onClick={header.column.getToggleSortingHandler()}
-          className={cx(
-            headerSortBtnClass,
-            align === "right" && "justify-end text-right",
-            align === "center" && "justify-center text-center",
-          )}
-        >
-          {headerContent}
-        </button>
-      ) : (
-        <div
-          className={cx(
-            "flex h-[30px] min-w-0 items-center gap-1",
-            align === "right" && "justify-end",
-            align === "center" && "justify-center",
-          )}
-        >
-          {headerContent}
-        </div>
-      )}
+      <DefinedTerm term={meta?.term}>
+        {canSort ? (
+          <button
+            type="button"
+            aria-label={`Sort by ${headerLabelText(sortLabel, header.column.id)}`}
+            onClick={header.column.getToggleSortingHandler()}
+            className={cx(
+              headerSortBtnClass,
+              align === "right" && "justify-end text-right",
+              align === "center" && "justify-center text-center",
+            )}
+          >
+            {headerContent}
+          </button>
+        ) : (
+          <div
+            tabIndex={meta?.term ? 0 : undefined}
+            className={cx(
+              "flex h-[30px] min-w-0 items-center gap-1 max-md:h-11",
+              align === "right" && "justify-end",
+              align === "center" && "justify-center",
+              meta?.term && focusRing,
+            )}
+          >
+            {headerContent}
+          </div>
+        )}
+      </DefinedTerm>
     </th>
   );
 }
 
-function BodyCell<TData extends RowData>({ cell }: { cell: AppCell<TData> }) {
+function firstExactCellId<TData extends RowData>(rows: AppRow<TData>[]): string | undefined {
+  for (const row of rows) {
+    for (const cell of row.getVisibleCells()) {
+      if (exactCellValue(cell.getValue(), cell.column.columnDef.meta?.eu5)) return cell.id;
+    }
+  }
+  return undefined;
+}
+
+function BodyCell<TData extends RowData>({
+  cell,
+  tabStop,
+}: {
+  cell: AppCell<TData>;
+  tabStop: boolean;
+}) {
   const meta = cell.column.columnDef.meta?.eu5;
   const variant: Eu5DataTableColumnVariant = meta?.variant ?? "default";
   const align = meta?.align ?? alignForVariant(variant);
+  const exact = exactCellValue(cell.getValue(), meta);
   return (
     <td
-      className={cx(cellVariants({ variant }), alignClass(align), "border-b border-game-line")}
+      className={cx(
+        cellVariants({ variant }),
+        alignClass(align),
+        "border-b border-game-line",
+        exact && exactCell,
+      )}
+      data-exact={exact}
+      aria-description={exact}
+      tabIndex={exact ? (tabStop ? 0 : -1) : undefined}
       style={cellStyle(meta?.minWidth)}
     >
       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -538,7 +655,7 @@ function FooterBand({
       <div className="flex items-center gap-1.5">
         <label
           htmlFor={selectId}
-          className="font-game-num text-[10.5px] tracking-[0.04em] text-game-ink-500"
+          className="font-game-num text-[12px] tracking-[0.04em] text-game-ink-500"
         >
           Showing
         </label>
@@ -546,7 +663,7 @@ function FooterBand({
           id={selectId}
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value) as PageSize)}
-          className="h-[22px] cursor-pointer rounded-control border border-solid border-game-line-strong bg-game-page px-1.5 font-game-num text-[11px] text-game-ink-100"
+          className="h-[22px] cursor-pointer rounded-control border border-solid border-game-line-strong bg-game-page px-1.5 font-game-num text-[12px] text-game-ink-100 max-md:h-9"
         >
           {pageSizeOptions.map((s) => (
             <option key={s} value={s}>
@@ -554,7 +671,7 @@ function FooterBand({
             </option>
           ))}
         </select>
-        <span className="font-game-num text-[10.5px] tracking-[0.04em] text-game-ink-500">
+        <span className="font-game-num text-[12px] tracking-[0.04em] text-game-ink-500">
           of {formatInt(totalRows)} rows
         </span>
       </div>
@@ -565,7 +682,7 @@ function FooterBand({
         <PagerBtn onClick={onPrev} disabled={!canPrev} label="previous">
           ‹
         </PagerBtn>
-        <span className="px-1.5 font-game-num text-[11px] text-game-ink-300">
+        <span className="px-1.5 font-game-num text-[12px] text-game-ink-300">
           Page <b className="text-game-ink-100">{pageIndex + 1}</b> of {Math.max(1, pageCount)}
         </span>
         <PagerBtn onClick={onNext} disabled={!canNext} label="next">
@@ -596,7 +713,8 @@ function PagerBtn({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-control border border-solid border-game-line-strong bg-game-page font-game-num text-[11px] text-game-ink-300 hover:text-game-ink-100 disabled:cursor-not-allowed disabled:opacity-40"
+      title={label}
+      className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-control border border-solid border-game-line-strong bg-game-page font-game-num text-[12px] text-game-ink-300 hover:text-game-ink-100 disabled:cursor-not-allowed disabled:opacity-40 max-md:h-9 max-md:w-9"
     >
       {children}
     </button>
@@ -614,7 +732,7 @@ function NumericCell({ children, delta, className, ...rest }: NumericCellProps) 
       {delta && (
         <span
           className={cx(
-            "ml-1.5 font-game-num text-[10.5px]",
+            "ml-1.5 font-game-num text-[12px]",
             delta.direction === "up" && "text-game-good",
             delta.direction === "down" && "text-game-err",
             delta.direction === "flat" && "text-game-ink-500",
@@ -645,7 +763,7 @@ function Pill({ children, className }: { children: React.ReactNode; className?: 
   return (
     <span
       className={cx(
-        "inline-flex h-[18px] items-center rounded-plate border border-solid border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[10px] tracking-[0.04em] text-game-ink-300",
+        "inline-flex h-[18px] items-center rounded-plate border border-solid border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[12px] tracking-[0.04em] text-game-ink-300",
         className,
       )}
     >
@@ -666,6 +784,7 @@ function Affordance({ kind, onClick, label }: AffordanceProps) {
       type="button"
       onClick={onClick}
       aria-label={label ?? (kind === "add" ? "add to filter" : "remove from filter")}
+      title={label ?? (kind === "add" ? "add to filter" : "remove from filter")}
       className={cx(
         "inline-flex h-5 w-5 cursor-pointer items-center justify-center border-0 bg-transparent font-game-num text-[12px] text-game-ink-500",
         kind === "add" && "hover:text-game-accent-100",
@@ -706,15 +825,11 @@ function SummaryCell({
 }
 
 function SummaryLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="font-game-num text-[9.5px] tracking-[0.14em] text-game-ink-500 uppercase">
-      {children}
-    </span>
-  );
+  return <span className={sectionLabel}>{children}</span>;
 }
 
 function SummaryMeta({ children }: { children: React.ReactNode }) {
-  return <span className="font-game-num text-[10px] text-game-ink-500">{children}</span>;
+  return <span className="font-game-num text-[12px] text-game-ink-500">{children}</span>;
 }
 
 function eu5Meta(meta: Eu5DataTableColumnMeta): { eu5: Eu5DataTableColumnMeta } {

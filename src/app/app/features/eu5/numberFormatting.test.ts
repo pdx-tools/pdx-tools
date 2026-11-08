@@ -9,6 +9,7 @@ import {
   formatFixed,
   formatPercent,
   formatPercentTick,
+  formatRank,
   formatRate,
   formatTick,
 } from "./numberFormatting";
@@ -72,6 +73,14 @@ describe("formatPercent", () => {
   });
 });
 
+describe("formatRank", () => {
+  it("marks a rank that other countries share", () => {
+    expect(formatRank(1, 461)).toBe("=#1");
+    expect(formatRank(5)).toBe("#5");
+    expect(formatRank(1234, 1)).toBe("#1,234");
+  });
+});
+
 describe("formatRate", () => {
   it("has two decimals and a sign", () => {
     expect(formatRate(0.0079)).toBe("+0.79%");
@@ -102,6 +111,8 @@ describe("formatExactAmount", () => {
     expect(formatExactAmount(1000)).toBe("1,000");
     expect(formatExactAmount(958)).toBeUndefined();
     expect(formatExactAmount(72.2)).toBeUndefined();
+    expect(formatExactAmount(0.001)).toBe("<0.01");
+    expect(formatExactAmount(0)).toBeUndefined();
   });
 });
 
@@ -110,6 +121,7 @@ describe("formatExactCount", () => {
     expect(formatExactCount(958.4)).toBe("958.4");
     expect(formatExactCount(958)).toBeUndefined();
     expect(formatExactCount(22_894)).toBe("22,894");
+    expect(formatExactCount(0.001)).toBe("<0.01");
   });
 });
 

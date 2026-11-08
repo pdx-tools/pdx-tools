@@ -4,6 +4,7 @@ expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
 {
+  "largest_stability_tie": 1,
   "location": [
     {
       "id": 1,

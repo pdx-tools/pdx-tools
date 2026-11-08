@@ -51,34 +51,38 @@ export function CountryOverviewTabContent({
   locations: LocationRow[];
 }) {
   const { ranks } = data;
+  const standing = (metric: keyof CountryOverviewSection["ranks"]["ties"]) => ({
+    rank: ranks[metric],
+    tied: ranks.ties[metric],
+  });
   return (
     <div className="flex flex-col gap-4">
-      <StatRail title="Overview">
-        <StatRail.Section label="Economy" />
+      <StatRail title="Overview" cohort={ranks.cohort}>
+        <StatRail.Section label="Economy" heads />
         <StatRail.Row
           label="Net Gold"
           value={<Figure value={data.netGold} />}
           bar={data.netGoldMax > 0 ? data.netGold / data.netGoldMax : undefined}
-          rank={ranks.netGold}
+          {...standing("netGold")}
         />
         <StatRail.Row
           label="Income"
           value={<Figure value={data.income} />}
           bar={data.incomeMax > 0 ? data.income / data.incomeMax : undefined}
-          rank={ranks.income}
+          {...standing("income")}
         />
         <StatRail.Row label="Expense" value={<Figure value={data.expense} />} />
         <StatRail.Row
           label="Wealth"
           value={<Figure value={data.wealth} />}
           bar={data.wealthMax > 0 ? data.wealth / data.wealthMax : undefined}
-          rank={ranks.wealth}
+          {...standing("wealth")}
         />
         <StatRail.Row
           label="Tax Base"
           value={<Figure value={data.taxBase} />}
           bar={data.taxBaseMax > 0 ? data.taxBase / data.taxBaseMax : undefined}
-          rank={ranks.taxBase}
+          {...standing("taxBase")}
         />
         <StatRail.Row
           label="Buildings"
@@ -86,7 +90,7 @@ export function CountryOverviewTabContent({
           bar={
             data.buildingLevelsMax > 0 ? data.buildingLevels / data.buildingLevelsMax : undefined
           }
-          rank={ranks.buildingLevels}
+          {...standing("buildingLevels")}
         />
 
         <StatRail.Section label="Society" />
@@ -96,13 +100,13 @@ export function CountryOverviewTabContent({
           bar={
             data.totalPopulationMax > 0 ? data.totalPopulation / data.totalPopulationMax : undefined
           }
-          rank={ranks.totalPopulation}
+          {...standing("totalPopulation")}
         />
         <StatRail.Row
           label="Manpower"
           value={<Figure value={data.manpower * 1000} form="count" />}
           bar={data.manpowerMax > 0 ? data.manpower / data.manpowerMax : undefined}
-          rank={ranks.manpower}
+          {...standing("manpower")}
         />
 
         <StatRail.Section label="State" />
@@ -115,7 +119,7 @@ export function CountryOverviewTabContent({
               ? data.effectiveDevelopment / data.effectiveDevelopmentMax
               : undefined
           }
-          rank={ranks.effectiveDevelopment}
+          {...standing("effectiveDevelopment")}
         />
         <StatRail.Row
           label="Active State Capacity"
@@ -126,25 +130,25 @@ export function CountryOverviewTabContent({
               ? data.activeStateCapacity / data.activeStateCapacityMax
               : undefined
           }
-          rank={ranks.activeStateCapacity}
+          {...standing("activeStateCapacity")}
         />
         <StatRail.Row
           label="Stability"
           value={<Figure value={data.stability} />}
           bar={(data.stability + 100) / 200}
-          rank={ranks.stability}
+          {...standing("stability")}
         />
         <StatRail.Row
           label="Prestige"
           value={<Figure value={data.prestige} />}
           bar={data.prestige / 100}
-          rank={ranks.prestige}
+          {...standing("prestige")}
         />
         <StatRail.Row
           label="Gov. Power"
           value={<Figure value={data.governmentPower} />}
           bar={data.governmentPower / 100}
-          rank={ranks.governmentPower}
+          {...standing("governmentPower")}
         />
       </StatRail>
 

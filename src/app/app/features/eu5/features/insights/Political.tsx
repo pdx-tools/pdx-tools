@@ -3,7 +3,7 @@ import { createColumnHelper } from "@/lib/tanstack-table";
 import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatFixed } from "../../numberFormatting";
+import { formatExact, formatFixed } from "../../numberFormatting";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
@@ -108,6 +108,8 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
           variant: "num",
           width: 108,
           headerLabel: "Active State Capacity",
+          // The cell is in millions, so a small value reads 0.0.
+          exact: formatExact,
         }),
         cell: ({ getValue }) => (
           <Eu5DataTable.NumericCell>

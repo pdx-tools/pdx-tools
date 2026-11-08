@@ -458,27 +458,28 @@ impl<'bump> Eu5Workspace<'bump> {
         let active_state_capacity = territory.active_state_capacity;
         let building_levels = territory.building_levels;
 
-        // Rank this country's value against every real country (the same
-        // `great_power_rank > 0` universe the political scoreboard uses) and
+        // Rank this country's value against every country that owns land, and
         // capture each bounded metric's cohort maximum so the UI can scale its
         // bar. A metric's rank is one plus the number of countries with a
         // strictly greater value, so ties share the better rank. `cohort` is
         // that universe's size and is identical across metrics. Maxima are
         // seeded with this country's own value so its own bar never exceeds 1
-        // even when it sits outside the cohort.
+        // even when it sits outside the cohort. A country that no longer exists
+        // keeps its last great power rank and its values in the save, so a rank
+        // is not a test of existence.
         let mut cohort = 0u32;
-        let mut net_gold_rank = 1u32;
-        let mut manpower_rank = 1u32;
-        let mut stability_rank = 1u32;
-        let mut prestige_rank = 1u32;
-        let mut government_power_rank = 1u32;
-        let mut income_rank = 1u32;
-        let mut wealth_rank = 1u32;
-        let mut tax_base_rank = 1u32;
-        let mut total_population_rank = 1u32;
-        let mut effective_development_rank = 1u32;
-        let mut active_state_capacity_rank = 1u32;
-        let mut building_levels_rank = 1u32;
+        let mut net_gold_rank = RankCount::default();
+        let mut manpower_rank = RankCount::default();
+        let mut stability_rank = RankCount::default();
+        let mut prestige_rank = RankCount::default();
+        let mut government_power_rank = RankCount::default();
+        let mut income_rank = RankCount::default();
+        let mut wealth_rank = RankCount::default();
+        let mut tax_base_rank = RankCount::default();
+        let mut total_population_rank = RankCount::default();
+        let mut effective_development_rank = RankCount::default();
+        let mut active_state_capacity_rank = RankCount::default();
+        let mut building_levels_rank = RankCount::default();
         let mut net_gold_max = net_gold;
         let mut income_max = income;
         let mut manpower_max = manpower;
@@ -490,7 +491,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let mut building_levels_max = building_levels;
         for entry in self.gamestate.countries.iter() {
             let Some(other) = entry.data() else { continue };
-            if other.great_power_rank <= 0 {
+            if !territory_by_country.contains_key(&entry.idx()) {
                 continue;
             }
             cohort += 1;
@@ -498,42 +499,23 @@ impl<'bump> Eu5Workspace<'bump> {
             let other_territory = territory_for(entry.idx());
             let other_wealth = other_territory.wealth;
             let other_tax_base = other_territory.tax_base;
-            if other_net_gold > net_gold {
-                net_gold_rank += 1;
-            }
-            if other.currency_data.manpower > manpower {
-                manpower_rank += 1;
-            }
-            if other.currency_data.stability > stability {
-                stability_rank += 1;
-            }
-            if other.currency_data.prestige > prestige {
-                prestige_rank += 1;
-            }
-            if other.currency_data.government_power > government_power {
-                government_power_rank += 1;
-            }
-            if other.economy.income > income {
-                income_rank += 1;
-            }
-            if other_wealth > wealth {
-                wealth_rank += 1;
-            }
-            if other_tax_base > tax_base {
-                tax_base_rank += 1;
-            }
-            if other_territory.total_population > total_population {
-                total_population_rank += 1;
-            }
-            if other_territory.effective_development > effective_development {
-                effective_development_rank += 1;
-            }
-            if other_territory.active_state_capacity > active_state_capacity {
-                active_state_capacity_rank += 1;
-            }
-            if other_territory.building_levels > building_levels {
-                building_levels_rank += 1;
-            }
+            net_gold_rank.see(other_net_gold, net_gold);
+            manpower_rank.see(other.currency_data.manpower, manpower);
+            stability_rank.see(other.currency_data.stability, stability);
+            prestige_rank.see(other.currency_data.prestige, prestige);
+            government_power_rank.see(other.currency_data.government_power, government_power);
+            income_rank.see(other.economy.income, income);
+            wealth_rank.see(other_wealth, wealth);
+            tax_base_rank.see(other_tax_base, tax_base);
+            total_population_rank.see(
+                f64::from(other_territory.total_population),
+                f64::from(total_population),
+            );
+            effective_development_rank
+                .see(other_territory.effective_development, effective_development);
+            active_state_capacity_rank
+                .see(other_territory.active_state_capacity, active_state_capacity);
+            building_levels_rank.see(other_territory.building_levels, building_levels);
             net_gold_max = net_gold_max.max(other_net_gold);
             income_max = income_max.max(other.economy.income);
             manpower_max = manpower_max.max(other.currency_data.manpower);
@@ -546,20 +528,36 @@ impl<'bump> Eu5Workspace<'bump> {
                 active_state_capacity_max.max(other_territory.active_state_capacity);
             building_levels_max = building_levels_max.max(other_territory.building_levels);
         }
+        // A country outside the cohort still has its value, so it is one of the tie.
+        let outside = u32::from(!territory_by_country.contains_key(&country_idx));
         let ranks = CountryOverviewRanks {
             cohort,
-            net_gold: net_gold_rank,
-            manpower: manpower_rank,
-            stability: stability_rank,
-            prestige: prestige_rank,
-            government_power: government_power_rank,
-            income: income_rank,
-            wealth: wealth_rank,
-            tax_base: tax_base_rank,
-            total_population: total_population_rank,
-            effective_development: effective_development_rank,
-            active_state_capacity: active_state_capacity_rank,
-            building_levels: building_levels_rank,
+            ties: CountryOverviewTies {
+                net_gold: net_gold_rank.tied + outside,
+                manpower: manpower_rank.tied + outside,
+                stability: stability_rank.tied + outside,
+                prestige: prestige_rank.tied + outside,
+                government_power: government_power_rank.tied + outside,
+                income: income_rank.tied + outside,
+                wealth: wealth_rank.tied + outside,
+                tax_base: tax_base_rank.tied + outside,
+                total_population: total_population_rank.tied + outside,
+                effective_development: effective_development_rank.tied + outside,
+                active_state_capacity: active_state_capacity_rank.tied + outside,
+                building_levels: building_levels_rank.tied + outside,
+            },
+            net_gold: net_gold_rank.rank(),
+            manpower: manpower_rank.rank(),
+            stability: stability_rank.rank(),
+            prestige: prestige_rank.rank(),
+            government_power: government_power_rank.rank(),
+            income: income_rank.rank(),
+            wealth: wealth_rank.rank(),
+            tax_base: tax_base_rank.rank(),
+            total_population: total_population_rank.rank(),
+            effective_development: effective_development_rank.rank(),
+            active_state_capacity: active_state_capacity_rank.rank(),
+            building_levels: building_levels_rank.rank(),
         };
 
         Some(CountryOverviewSection {
@@ -1271,5 +1269,27 @@ fn into_profile_subject_type(t: SaveDiplomacySubjectType) -> DiplomacySubjectTyp
         SaveDiplomacySubjectType::Conquistador => DiplomacySubjectType::Conquistador,
         SaveDiplomacySubjectType::TradeCompany => DiplomacySubjectType::TradeCompany,
         SaveDiplomacySubjectType::Other => DiplomacySubjectType::Other,
+    }
+}
+
+/// A rank in the making: the countries above a value, and those that have it.
+#[derive(Default)]
+struct RankCount {
+    above: u32,
+    tied: u32,
+}
+
+impl RankCount {
+    fn see(&mut self, other: f64, own: f64) {
+        if other > own {
+            self.above += 1;
+        } else if other == own {
+            self.tied += 1;
+        }
+    }
+
+    /// One plus the countries above, so a tie shares the better rank.
+    fn rank(&self) -> u32 {
+        self.above + 1
     }
 }

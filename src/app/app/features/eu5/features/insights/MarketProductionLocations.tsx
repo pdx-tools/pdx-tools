@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type { MarketProductionLocationSummary } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatExactPercent, formatFixed, formatPercent } from "../../numberFormatting";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 
@@ -36,14 +36,18 @@ export function MarketProductionLocations({
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "RGO", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 0)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("marketAccess", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Access", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Access",
+          variant: "num",
+          exact: formatExactPercent,
+        }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 0)}%`}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("owner", {
@@ -59,14 +63,14 @@ export function MarketProductionLocations({
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Dev", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("population", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],
