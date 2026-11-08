@@ -7,6 +7,8 @@ import { focusRing } from "@/components/game/focusRing";
 interface Shortcut {
   action: string;
   keys: string[];
+  /** Show only on macOS, where Cmd-click adds to a selection. */
+  macOnly?: boolean;
 }
 
 interface ShortcutGroup {
@@ -28,6 +30,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { action: "Select entity", keys: ["Click"] },
       { action: "Add to selection", keys: ["Shift", "+", "Click"] },
+      { action: "Add to selection", keys: ["⌘", "+", "Click"], macOnly: true },
       { action: "Remove from selection", keys: ["Alt", "+", "Click"] },
       { action: "Focus location in selected entity", keys: ["Click"] },
       { action: "Clear focused location", keys: ["Click"] },
@@ -40,6 +43,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     label: "Box select",
     shortcuts: [
       { action: "Select area", keys: ["Shift", "+", "Drag"] },
+      { action: "Select area", keys: ["⌘", "+", "Drag"], macOnly: true },
       { action: "Remove area", keys: ["Alt", "+", "Drag"] },
       { action: "Location box-select (replace)", keys: ["Ctrl", "+", "Drag"] },
       { action: "Location box-select (add)", keys: ["Ctrl", "+", "Shift", "+", "Drag"] },
@@ -68,6 +72,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 
 export function Eu5ShortcutPanel() {
   const [open, setOpen] = useState(false);
+  // The list renders only when open, so it does not render on the server.
+  const isMac = open && navigator.userAgent.includes("Mac");
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -111,27 +117,29 @@ export function Eu5ShortcutPanel() {
               <div className="mb-2 pl-0.5 font-game-num text-[10px] font-medium tracking-[0.18em] text-game-ink-500 uppercase">
                 {group.label}
               </div>
-              {group.shortcuts.map((shortcut, i) => (
-                <div key={i} className="flex items-center justify-between gap-3 py-[5px]">
-                  <span className="text-[13px] text-game-ink-300">{shortcut.action}</span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    {shortcut.keys.map((key, j) =>
-                      key === "+" ? (
-                        <span key={j} className="text-[10px] text-game-ink-700">
-                          +
-                        </span>
-                      ) : (
-                        <kbd
-                          key={j}
-                          className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-plate border border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[11px] text-game-ink-300"
-                        >
-                          {key}
-                        </kbd>
-                      ),
-                    )}
-                  </span>
-                </div>
-              ))}
+              {group.shortcuts
+                .filter((shortcut) => isMac || !shortcut.macOnly)
+                .map((shortcut, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 py-[5px]">
+                    <span className="text-[13px] text-game-ink-300">{shortcut.action}</span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      {shortcut.keys.map((key, j) =>
+                        key === "+" ? (
+                          <span key={j} className="text-[10px] text-game-ink-700">
+                            +
+                          </span>
+                        ) : (
+                          <kbd
+                            key={j}
+                            className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-plate border border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[11px] text-game-ink-300"
+                          >
+                            {key}
+                          </kbd>
+                        ),
+                      )}
+                    </span>
+                  </div>
+                ))}
             </div>
           ))}
         </div>
