@@ -9,7 +9,7 @@ use super::keyboard::{KeyboardKey, KeyboardState};
 use super::mouse::MouseButton;
 
 const PAN_SNAP_PX: f32 = 20.0;
-const PAN_DURATION_MS: u64 = 300;
+const MOVE_DURATION_MS: u64 = 300;
 
 /// A programmatic camera move. The world point under `anchor` changes from
 /// `from` to `to`, and the zoom changes from `from_zoom` to `to_zoom`.
@@ -22,6 +22,33 @@ struct CameraAnimation {
     to_zoom: f32,
     elapsed: Duration,
     duration: Duration,
+}
+
+impl CameraAnimation {
+    /// The zoom, and the world point under `anchor`, at the elapsed time.
+    fn frame(&self, map_width: f32) -> (f32, WorldPoint<f32>) {
+        if self.elapsed >= self.duration {
+            return (self.to_zoom, self.to);
+        }
+
+        let t = self.elapsed.as_secs_f32() / self.duration.as_secs_f32();
+        let eased = 1.0 - (1.0 - t).powi(3);
+
+        // Shortest-path signed delta in world space; handles antimeridian wrap.
+        let delta = WorldLength::wrapped_delta(
+            WorldLength::new(self.from.x),
+            WorldLength::new(self.to.x),
+            WorldLength::new(map_width),
+        );
+        // Equal zoom ratios per step make the zoom look steady.
+        let zoom = self.from_zoom * (self.to_zoom / self.from_zoom).powf(eased);
+        // Scale the remaining distance by the zoom, so that `to` moves to the
+        // anchor in a straight line on the screen.
+        let remaining = (1.0 - eased) * self.from_zoom / zoom;
+        let x = self.to.x - delta.value * remaining;
+        let y = self.to.y + (self.from.y - self.to.y) * remaining;
+        (zoom, WorldPoint::new(x, y))
+    }
 }
 
 /// Input controller for map navigation.
@@ -158,32 +185,10 @@ impl InteractionController {
     /// Apply per-frame updates.
     pub fn tick(&mut self, mut delta: Duration) {
         // Advance the camera animation before keyboard so a key press that same frame overrides it.
-        if let Some(anim) = &mut self.animation {
+        if let Some(mut anim) = self.animation {
             anim.elapsed = (anim.elapsed + delta).min(anim.duration);
-            let anim = *anim;
-            let (zoom, point) = if anim.elapsed >= anim.duration {
-                self.animation = None;
-                (anim.to_zoom, anim.to)
-            } else {
-                let t = anim.elapsed.as_secs_f32() / anim.duration.as_secs_f32();
-                let eased = 1.0 - (1.0 - t).powi(3);
-
-                let map_w = self.viewport.map_size().width as f32;
-                // Shortest-path signed delta in world space; handles antimeridian wrap.
-                let delta = WorldLength::wrapped_delta(
-                    WorldLength::new(anim.from.x),
-                    WorldLength::new(anim.to.x),
-                    WorldLength::new(map_w),
-                );
-                // Equal zoom ratios per step make the zoom look steady.
-                let zoom = anim.from_zoom * (anim.to_zoom / anim.from_zoom).powf(eased);
-                // Scale the remaining distance by the zoom, so that `to` moves
-                // to the anchor in a straight line on the screen.
-                let remaining = (1.0 - eased) * anim.from_zoom / zoom;
-                let x = anim.to.x - delta.value * remaining;
-                let y = anim.to.y + (anim.from.y - anim.to.y) * remaining;
-                (zoom, WorldPoint::new(x, y))
-            };
+            self.animation = (anim.elapsed < anim.duration).then_some(anim);
+            let (zoom, point) = anim.frame(self.viewport.map_size().width as f32);
             self.viewport
                 .set_zoom_with_point_at(zoom, point, anim.anchor);
         }
@@ -341,7 +346,7 @@ impl InteractionController {
                 from_zoom,
                 to_zoom,
                 elapsed: Duration::ZERO,
-                duration: Duration::from_millis(PAN_DURATION_MS),
+                duration: Duration::from_millis(MOVE_DURATION_MS),
             });
         }
     }
@@ -352,7 +357,7 @@ impl InteractionController {
     }
 
     /// Whether a programmatic camera move is currently in flight.
-    pub fn is_animating_pan(&self) -> bool {
+    pub fn is_animating(&self) -> bool {
         self.animation.is_some()
     }
 
@@ -383,6 +388,7 @@ impl InteractionController {
 
     /// Center on world point.
     pub fn center_on(&mut self, world: WorldPoint<f32>) {
+        self.animation = None;
         let canvas_size = self.viewport_bounds().rect.size;
         let canvas_center = LogicalPoint::new(
             canvas_size.width as f32 / 2.0,
@@ -623,11 +629,11 @@ mod tests {
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         let started = c.pan_to_visible_region(target, no_insets());
         assert!(started);
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         // Tick past the full duration.
-        c.tick(Duration::from_millis(PAN_DURATION_MS + 10));
-        assert!(!c.is_animating_pan(), "animation should be done");
+        c.tick(Duration::from_millis(MOVE_DURATION_MS + 10));
+        assert!(!c.is_animating(), "animation should be done");
     }
 
     #[test]
@@ -650,7 +656,7 @@ mod tests {
             .map(|p| p.x)
             .unwrap_or(from_x); // 600.0
 
-        c.tick(Duration::from_millis(PAN_DURATION_MS / 2));
+        c.tick(Duration::from_millis(MOVE_DURATION_MS / 2));
 
         let mid_x = c.viewport.viewport_position().x;
         let expected = from_x + (to_x - from_x) * 0.875;
@@ -671,7 +677,7 @@ mod tests {
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         let resolved = c.viewport.resolve_pan(target, no_insets()).unwrap();
         c.pan_to_visible_region(target, no_insets());
-        c.tick(Duration::from_millis(PAN_DURATION_MS + 50));
+        c.tick(Duration::from_millis(MOVE_DURATION_MS + 50));
 
         let pos = c.viewport.viewport_position();
         assert!((pos.x - resolved.x).abs() < 1.0, "x should land on target");
@@ -694,10 +700,7 @@ mod tests {
         let target = PanTarget::Point(WorldPoint::new(415.0, 300.0));
         let result = c.pan_to_visible_region(target, insets);
         assert!(result, "pan should be triggered");
-        assert!(
-            !c.is_animating_pan(),
-            "sub-20px pan should snap, not animate"
-        );
+        assert!(!c.is_animating(), "sub-20px pan should snap, not animate");
     }
 
     #[test]
@@ -705,16 +708,16 @@ mod tests {
         let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         c.pan_to_visible_region(target, no_insets());
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         // Tick partway.
         c.tick(Duration::from_millis(100));
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         // Drag start clears animation.
         c.on_cursor_move(LogicalPoint::new(400.0, 300.0));
         c.on_mouse_button(MouseButton::Left, true);
-        assert!(!c.is_animating_pan(), "drag should interrupt animation");
+        assert!(!c.is_animating(), "drag should interrupt animation");
         assert!(c.is_dragging());
     }
 
@@ -730,7 +733,7 @@ mod tests {
         c.pan_to_visible_region(target_a, no_insets());
 
         // Tick to halfway.
-        c.tick(Duration::from_millis(PAN_DURATION_MS / 2));
+        c.tick(Duration::from_millis(MOVE_DURATION_MS / 2));
         let mid_pos = c.viewport.viewport_position();
 
         // Start a second pan toward a different target.
@@ -749,21 +752,18 @@ mod tests {
     }
 
     #[test]
-    fn test_keyboard_interrupts_animation() {
+    fn test_keys_and_scroll_interrupt_animation() {
         let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
         let target = PanTarget::Point(WorldPoint::new(1600.0, 300.0));
         c.pan_to_visible_region(target, no_insets());
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         c.on_key_down(KeyboardKey::ArrowLeft);
-        assert!(
-            !c.is_animating_pan(),
-            "arrow key should interrupt animation"
-        );
+        assert!(!c.is_animating(), "arrow key should interrupt animation");
 
         c.pan_to_visible_region(target, no_insets());
         c.on_scroll(1.0);
-        assert!(!c.is_animating_pan(), "scroll should interrupt animation");
+        assert!(!c.is_animating(), "scroll should interrupt animation");
     }
 
     #[test]
@@ -796,10 +796,7 @@ mod tests {
         }
     }
 
-    const JUMP_ZOOM: JumpZoom = JumpZoom {
-        zoom_in_below: 0.4,
-        to: 1.0,
-    };
+    const JUMP_ZOOM: JumpZoom = JumpZoom::new(0.4, 1.0);
 
     #[test]
     fn a_jump_from_a_far_view_zooms_in_on_the_target() {
@@ -817,7 +814,7 @@ mod tests {
         ));
         assert!(c.zoom_level() < JUMP_ZOOM.zoom_in_below);
         c.pan_to_visible_region(PanTarget::Point(WorldPoint::new(12000.0, 500.0)), insets);
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
 
         let target = WorldPoint::new(5000.0, 3000.0);
         let on_canvas = |c: &InteractionController| {
@@ -832,15 +829,15 @@ mod tests {
         // At half time, the cubic ease-out is at 0.875. The zoom is at 0.875 of
         // the zoom ratio, and the target is at 0.875 of a straight line to the
         // center of the free region (x = 766, y = 450).
-        c.tick(Duration::from_millis(PAN_DURATION_MS / 2));
+        c.tick(Duration::from_millis(MOVE_DURATION_MS / 2));
         let expected = start_zoom * (JUMP_ZOOM.to / start_zoom).powf(0.875);
         assert!((c.zoom_level() - expected).abs() < 1e-4);
         let mid = on_canvas(&c);
         assert!((mid.x - (start.x + (766.0 - start.x) * 0.875)).abs() < 0.5);
         assert!((mid.y - (start.y + (450.0 - start.y) * 0.875)).abs() < 0.5);
 
-        c.tick(Duration::from_millis(PAN_DURATION_MS));
-        assert!(!c.is_animating_pan());
+        c.tick(Duration::from_millis(MOVE_DURATION_MS));
+        assert!(!c.is_animating());
         assert_eq!(c.zoom_level(), JUMP_ZOOM.to);
         // The free region is x = 332..1200, so its center is x = 766.
         assert_eq!(c.canvas_to_world(LogicalPoint::new(766.0, 450.0)), target);
@@ -857,7 +854,7 @@ mod tests {
         assert!(zoom >= JUMP_ZOOM.zoom_in_below);
 
         c.jump_to(WorldPoint::new(12000.0, 3000.0), no_insets(), JUMP_ZOOM);
-        assert!(c.is_animating_pan());
+        assert!(c.is_animating());
         assert_eq!(c.zoom_level(), zoom);
     }
 

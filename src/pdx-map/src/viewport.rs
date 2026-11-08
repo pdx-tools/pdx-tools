@@ -25,13 +25,32 @@ pub enum PanTarget {
     Point(WorldPoint<f32>),
 }
 
-/// The zoom levels of a jump to a target.
+/// The zoom levels of a jump to a target. A jump from a view below
+/// `zoom_in_below` zooms in to `to`. A closer view keeps its zoom.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct JumpZoom {
-    /// A jump from a view below this zoom zooms in.
-    pub zoom_in_below: f32,
+    pub(crate) zoom_in_below: f32,
+    pub(crate) to: f32,
+}
+
+impl JumpZoom {
+    /// # Panics
+    ///
+    /// If `zoom_in_below` is not positive, or `to` is below `zoom_in_below`.
+    /// Then a jump from a far view would end in a far view. In a `const`, this
+    /// is a compile error.
+    pub const fn new(zoom_in_below: f32, to: f32) -> Self {
+        assert!(
+            0.0 < zoom_in_below && zoom_in_below <= to,
+            "a jump must zoom in to a close view"
+        );
+        Self { zoom_in_below, to }
+    }
+
     /// The zoom of a jump that zooms in.
-    pub to: f32,
+    pub const fn to(self) -> f32 {
+        self.to
+    }
 }
 
 /// Represents the bounds of the current viewport in world coordinates

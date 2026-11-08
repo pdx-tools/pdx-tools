@@ -24,14 +24,10 @@ pub const fn should_highlight_individual_locations(zoom: f32) -> bool {
 }
 
 /// Below a zoom of 0.4, a location is too small to see, so a jump zooms in.
-pub const JUMP_ZOOM: JumpZoom = JumpZoom {
-    zoom_in_below: 0.4,
-    to: 1.0,
-};
+pub const JUMP_ZOOM: JumpZoom = JumpZoom::new(0.4, 1.0);
 
-// A second jump only pans, and the jump shows location borders.
-const _: () = assert!(JUMP_ZOOM.to >= JUMP_ZOOM.zoom_in_below);
-const _: () = assert!(should_highlight_individual_locations(JUMP_ZOOM.to));
+// A jump shows location borders.
+const _: () = assert!(should_highlight_individual_locations(JUMP_ZOOM.to()));
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
