@@ -356,8 +356,7 @@ impl Eu5WasmMapRenderer {
         self.last_tick = Some(now);
 
         self.input.tick(delta);
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_zoomed_viewport();
     }
 
     /// Check if currently dragging

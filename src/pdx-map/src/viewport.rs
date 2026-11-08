@@ -377,14 +377,24 @@ impl MapViewport {
     /// Set the zoom, within the zoom limits, and show `target` in the center of
     /// the region that the insets do not cover.
     pub fn zoom_to(&mut self, target: WorldPoint<f32>, zoom: f32, insets: ViewportInsets) {
-        self.zoom_level = zoom.clamp(self.min_zoom(), Self::MAX_ZOOM);
         let center = self.visible_region(insets).center();
-        self.set_world_point_under_cursor(target, center);
+        self.set_zoom_with_point_at(zoom, target, center);
+    }
+
+    /// Set the zoom, within the zoom limits, and put `world` under `canvas`.
+    pub(crate) fn set_zoom_with_point_at(
+        &mut self,
+        zoom: f32,
+        world: WorldPoint<f32>,
+        canvas: LogicalPoint<f32>,
+    ) {
+        self.zoom_level = zoom.clamp(self.min_zoom(), Self::MAX_ZOOM);
+        self.set_world_point_under_cursor(world, canvas);
     }
 
     /// The canvas region that the insets do not cover. If the insets cover all
     /// of one axis, that axis uses the full canvas.
-    fn visible_region(&self, insets: ViewportInsets) -> LogicalRect<f32> {
+    pub(crate) fn visible_region(&self, insets: ViewportInsets) -> LogicalRect<f32> {
         let span = |start: f32, end_inset: f32, full: f32| {
             let end = full - end_inset;
             if start < end {
