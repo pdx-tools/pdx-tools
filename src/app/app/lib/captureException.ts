@@ -1,4 +1,5 @@
 import type { captureException as SentryCaptureException } from "@sentry/react-router";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { isStaleVersion } from "@/lib/staleVersion";
 
 type CaptureException = typeof SentryCaptureException;
@@ -16,7 +17,7 @@ export const captureException = (
   if (exception !== null && typeof exception === "object" && "stack" in exception) {
     console.error(exception, exception.stack);
   } else {
-    console.error(exception);
+    console.error(getErrorMessage(exception));
   }
 
   if (isStaleVersion()) {
