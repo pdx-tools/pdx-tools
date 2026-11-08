@@ -6,7 +6,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use eu5app::game_data::Localization;
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
-use eu5app::{EntityKind, Eu5SaveLoader, Eu5Workspace, MapMode};
+use eu5app::{
+    EntityKind, Eu5SaveLoader, Eu5Workspace, LocationData, MapMode, SelectionOp, SelectionSet,
+    SelectionTarget,
+};
 use eu5save::hash::FnvHashSet;
 use eu5save::models::{CountryId, LocationIdx, MarketId};
 use eu5save::{Eu5File, JominiFileKind};
@@ -134,6 +137,10 @@ fn workspace_scenarios() {
             run_workspace_scenario(save_name, "country ranks", ws, |ws| {
                 country_ranks_count_ties(ws, &localization)
             });
+        snapshot["selection_targets"] =
+            run_workspace_scenario(save_name, "selection targets", ws, |ws| {
+                selection_targets_select_the_same_land(ws, save_name)
+            });
         insta::assert_json_snapshot!(snapshot);
 
         run_workspace_scenario(save_name, "market selection", ws, |ws| {
@@ -183,7 +190,7 @@ fn workspace_snapshot(ws: &mut Eu5Workspace, localization: &Localization) -> ser
     // The same modes with one country selected: dimming and the domains of
     // the selected locations change.
     let selected = find_owned_location(ws).map(|location| {
-        ws.select_country_at(location);
+        ws.change_selection(SelectionOp::Replace, countries_at(ws, location));
         let mut locations: Vec<u32> = ws
             .selection_state()
             .selected_locations()
@@ -224,19 +231,19 @@ fn workspace_snapshot(ws: &mut Eu5Workspace, localization: &Localization) -> ser
     let mut after_add = 0;
     let mut after_remove = 0;
     if let Some(a) = find_owned_location(ws) {
-        ws.select_country_at(a);
+        ws.change_selection(SelectionOp::Replace, countries_at(ws, a));
         after_select = ws.selection_state().selected_locations().len();
         assert!(after_select > 0, "select_country_at should add locations");
 
         if let Some(b) = find_different_owner_location(ws, a) {
-            ws.add_country_at(b);
+            ws.change_selection(SelectionOp::Add, countries_at(ws, b));
             after_add = ws.selection_state().selected_locations().len();
             assert!(
                 after_add > after_select,
                 "add_country_at should grow the selection"
             );
 
-            ws.remove_country_at(a);
+            ws.change_selection(SelectionOp::Remove, countries_at(ws, a));
             after_remove = ws.selection_state().selected_locations().len();
             assert!(
                 after_remove < after_add,
@@ -332,7 +339,10 @@ fn market_selection_uses_location_anchors(ws: &mut Eu5Workspace, localization: &
     for mode in [MapMode::Political, MapMode::Markets, MapMode::Population] {
         ws.clear_selection();
         ws.set_map_mode(mode);
-        ws.select_market_at(LocationIdx::new(header.anchor_location_idx));
+        ws.change_selection(
+            SelectionOp::Replace,
+            markets_at(ws, LocationIdx::new(header.anchor_location_idx)),
+        );
         let profile = ws
             .localized(localization)
             .presenter()
@@ -411,7 +421,7 @@ fn focused_locations_have_location_profiles(ws: &mut Eu5Workspace, localization:
     };
     ws.clear_selection();
     ws.set_map_mode(MapMode::Political);
-    ws.select_country_at(anchor);
+    ws.change_selection(SelectionOp::Replace, countries_at(ws, anchor));
     assert!(matches!(
         ws.localized(localization)
             .presenter()
@@ -453,7 +463,8 @@ fn market_selection_without_a_market_stays_empty(ws: &mut Eu5Workspace) {
         return;
     };
     ws.clear_selection();
-    ws.select_market_at(outside_market);
+    ws.set_map_mode(MapMode::Markets);
+    ws.click(SelectionOp::Replace, outside_market);
     assert!(ws.selection_state().is_empty());
 }
 
@@ -544,6 +555,200 @@ fn incremental_timeline_steps_match_a_full_repaint(ws: &mut Eu5Workspace, save_n
     );
 }
 
+/// The selection's target selects the same land again, for each kind of target.
+/// The result goes in the snapshot, so a save that stops covering a case shows
+/// in the diff.
+fn selection_targets_select_the_same_land(
+    ws: &mut Eu5Workspace,
+    save_name: &str,
+) -> serde_json::Value {
+    let replace_restores =
+        |ws: &mut Eu5Workspace, what: &str| target_selects_the_same_land(ws, save_name, what);
+
+    // The three countries and the three markets with the most land.
+    let mut country_land: BTreeMap<u32, usize> = BTreeMap::new();
+    let mut market_land: BTreeMap<u32, usize> = BTreeMap::new();
+    for entry in ws.gamestate().locations.iter() {
+        let info = ws.location_info(entry.idx());
+        if let Some(owner) = info.owner {
+            *country_land.entry(owner.country_id().value()).or_default() += 1;
+        }
+        if let Some(market) = info.market {
+            *market_land.entry(market.value()).or_default() += 1;
+        }
+    }
+    let largest = |land: BTreeMap<u32, usize>| {
+        let mut land: Vec<_> = land.into_iter().collect();
+        land.sort_by_key(|&(id, count)| (std::cmp::Reverse(count), id));
+        let mut ids: Vec<_> = land.into_iter().take(3).map(|(id, _)| id).collect();
+        assert_eq!(ids.len(), 3, "{save_name}: three entities hold land");
+        ids.sort_unstable();
+        ids
+    };
+    let owners: Vec<_> = largest(country_land)
+        .into_iter()
+        .map(CountryId::new)
+        .collect();
+    let mut countries: Vec<_> = owners
+        .iter()
+        .map(|&id| ws.gamestate().countries.get(id).unwrap())
+        .collect();
+    countries.sort_unstable_by_key(|idx| idx.value());
+    let markets: Vec<_> = largest(market_land)
+        .into_iter()
+        .map(MarketId::new)
+        .collect();
+
+    let set = SelectionSet::Countries(countries.clone());
+    ws.change_selection(SelectionOp::Replace, set.clone());
+    let land: FnvHashSet<_> = owners
+        .iter()
+        .flat_map(|&id| land_on_timeline_date(ws, id))
+        .collect();
+    assert_eq!(ws.selection_state().selected_locations(), &land);
+    assert_eq!(
+        replace_restores(ws, "countries"),
+        SelectionTarget::Set(set.clone())
+    );
+
+    // A step through the markets mode does not make the countries a set of locations.
+    ws.set_map_mode(MapMode::Markets);
+    ws.change_selection(SelectionOp::Add, SelectionSet::Locations(Vec::new()));
+    ws.set_map_mode(MapMode::Political);
+    assert_eq!(
+        replace_restores(ws, "countries after markets"),
+        SelectionTarget::Set(set)
+    );
+
+    // Part of a country is its locations.
+    let one = *land_on_timeline_date(ws, owners[0]).iter().next().unwrap();
+    ws.change_selection(SelectionOp::Remove, SelectionSet::Locations(vec![one]));
+    let target = replace_restores(ws, "part of a country");
+    assert!(matches!(
+        target,
+        SelectionTarget::Set(SelectionSet::Locations(_))
+    ));
+
+    // A market carries by the id of its center location.
+    for &market in &markets {
+        let center = ws.market_center_id(market).unwrap();
+        assert_eq!(ws.market_at_center_id(center), Some(market));
+    }
+    ws.set_map_mode(MapMode::Markets);
+    let set = SelectionSet::Markets(markets);
+    ws.change_selection(SelectionOp::Replace, set.clone());
+    assert_eq!(replace_restores(ws, "markets"), SelectionTarget::Set(set));
+    ws.set_map_mode(MapMode::Political);
+
+    ws.clear_selection();
+    ws.select_players();
+    // Only some saves have players, so the snapshot shows if this ran.
+    let players = ws.selection_state().preset().is_some();
+    if players {
+        assert_eq!(replace_restores(ws, "players"), SelectionTarget::Players);
+    }
+
+    // A step keeps a focus on land that has no owner at the start. A replace
+    // with the target, then a focus inside it, gives the same focus again.
+    let summary = ws.timeline_summary();
+    let mut focus_on_unowned_land = false;
+    if summary.available {
+        ws.set_timeline_date(summary.start);
+        let unowned: FnvHashSet<_> = ws
+            .gamestate()
+            .locations
+            .iter()
+            .map(|entry| entry.idx())
+            .filter(|&idx| ws.owner_at_timeline_date(idx).is_dummy())
+            .collect();
+        ws.set_timeline_date(summary.end);
+        let candidates: Vec<_> = ws
+            .gamestate()
+            .locations
+            .iter()
+            .filter(|entry| unowned.contains(&entry.idx()))
+            .filter_map(|entry| {
+                let country = ws.gamestate().countries.get(entry.location().owner)?;
+                Some((entry.idx(), country))
+            })
+            .collect();
+        // A location in the country's land on the map.
+        let found = candidates.into_iter().find(|&(location, country)| {
+            ws.change_selection(SelectionOp::Replace, SelectionSet::Countries(vec![country]));
+            ws.selection_state().contains(location)
+        });
+        if let Some((location, _)) = found {
+            ws.focus_in_selection(location);
+            ws.set_timeline_date(summary.start);
+            if ws.selection_state().focused_location() == Some(location) {
+                focus_on_unowned_land = true;
+                replace_restores(ws, "a focus on unowned land");
+                ws.focus_in_selection(location);
+                assert_eq!(
+                    ws.selection_state().focused_location(),
+                    Some(location),
+                    "{save_name}: a focus on unowned land comes back"
+                );
+            }
+        }
+    }
+
+    // A removal that takes out the last followed country leaves nothing.
+    ws.set_timeline_date(summary.end);
+    let landless = ws.gamestate().countries.iter().find_map(|entry| {
+        entry.data()?;
+        let ids = ws.lineage_ids(entry.idx());
+        land_of_ids(ws, &ids).0.is_empty().then_some(entry.idx())
+    });
+    if let Some(landless) = landless {
+        let both = vec![landless, countries[0]];
+        ws.clear_selection();
+        ws.change_selection(SelectionOp::Add, SelectionSet::Countries(vec![landless]));
+        ws.change_selection(SelectionOp::Remove, SelectionSet::Countries(both));
+        assert!(
+            ws.selection_state().is_empty(),
+            "{save_name}: removing every selected country leaves nothing"
+        );
+    }
+    serde_json::json!({
+        "players": players,
+        "focus_on_unowned_land": focus_on_unowned_land,
+        "remove_with_a_landless_country": landless.is_some(),
+    })
+}
+
+/// Replace with the selection's target and check that the land is the same.
+fn target_selects_the_same_land(
+    ws: &mut Eu5Workspace,
+    save_name: &str,
+    what: &str,
+) -> SelectionTarget {
+    let land = ws.selection_state().selected_locations().clone();
+    let target = ws.selection_target().expect("a selection has a target");
+    ws.clear_selection();
+    match target.clone() {
+        SelectionTarget::Players => ws.select_players(),
+        SelectionTarget::Set(set) => ws.change_selection(SelectionOp::Replace, set),
+    };
+    assert_eq!(
+        ws.selection_state().selected_locations(),
+        &land,
+        "{save_name}: {what} selects the same land again"
+    );
+    target
+}
+
+/// The country that owns `location` on the timeline date.
+fn countries_at(ws: &Eu5Workspace, location: LocationIdx) -> SelectionSet {
+    let owner = ws.owner_at_timeline_date(location);
+    SelectionSet::Countries(ws.gamestate().countries.get(owner).into_iter().collect())
+}
+
+/// The market of `location`.
+fn markets_at(ws: &Eu5Workspace, location: LocationIdx) -> SelectionSet {
+    SelectionSet::Markets(ws.location_info(location).market.into_iter().collect())
+}
+
 /// The locations a country owns on the timeline date.
 fn land_on_timeline_date(ws: &Eu5Workspace, country: CountryId) -> FnvHashSet<LocationIdx> {
     ws.gamestate()
@@ -604,7 +809,10 @@ fn country_selection_follows_the_timeline(
     let country = CountryId::new(country);
     let country_idx = ws.gamestate().countries.get(country).unwrap();
 
-    ws.select_country_by_idx(country_idx);
+    ws.change_selection(
+        SelectionOp::Replace,
+        SelectionSet::Countries(vec![country_idx]),
+    );
     let live = ws.selection_state().selected_locations().clone();
     assert_eq!(live, land_on_timeline_date(ws, country));
     assert_eq!(profile_country(ws), Some(country_idx.value()));
@@ -655,7 +863,7 @@ fn country_selection_follows_the_timeline(
     };
     let start_owner = ws.owner_at_timeline_date(clicked);
     ws.clear_selection();
-    ws.select_entity(clicked);
+    ws.click(SelectionOp::Replace, clicked);
     assert_eq!(
         ws.selection_state().selected_locations(),
         &land_on_timeline_date(ws, start_owner),
@@ -731,7 +939,7 @@ fn returning_countries_stay_one_country(
             ws.set_timeline_date(date);
             ws.clear_selection();
             let (land, holders) = land_of_ids(ws, ids);
-            ws.select_country_by_idx(country);
+            ws.change_selection(SelectionOp::Replace, SelectionSet::Countries(vec![country]));
             assert_eq!(
                 ws.selection_state().selected_locations(),
                 &land,
@@ -751,13 +959,18 @@ fn returning_countries_stay_one_country(
                     !reads_as_dead(ws, location),
                     "{save_name}: {date:?} a returning country lives"
                 );
+                // A click selects the land of one id, which is not the whole country
+                // when another id also holds land.
+                ws.clear_selection();
+                ws.click(SelectionOp::Replace, location);
+                target_selects_the_same_land(ws, save_name, &format!("{date:?} one id"));
             }
-            ws.remove_country_by_idx(country);
+            ws.change_selection(SelectionOp::Remove, SelectionSet::Countries(vec![country]));
             assert!(
                 ws.selection_state().is_empty(),
                 "{save_name}: {date:?} a removal takes the land of each id"
             );
-            ws.add_country_by_idx(country);
+            ws.change_selection(SelectionOp::Add, SelectionSet::Countries(vec![country]));
             assert_eq!(
                 ws.selection_state().selected_locations(),
                 &land,
@@ -780,7 +993,7 @@ fn returning_countries_stay_one_country(
         };
         ws.set_timeline_date(start);
         ws.clear_selection();
-        ws.select_country_by_idx(country);
+        ws.change_selection(SelectionOp::Replace, SelectionSet::Countries(vec![country]));
         for &date in dates.iter().chain(dates.iter().rev()) {
             ws.set_timeline_date(date);
             let (land, holders) = land_of_ids(ws, ids);
@@ -800,13 +1013,7 @@ fn returning_countries_stay_one_country(
         }
 
         ws.set_timeline_date(start);
-        let location = *ws
-            .selection_state()
-            .selected_locations()
-            .iter()
-            .next()
-            .unwrap();
-        ws.remove_country_at(location);
+        ws.change_selection(SelectionOp::Remove, SelectionSet::Countries(vec![country]));
         assert!(
             ws.selection_state().is_empty(),
             "{save_name}: no id of the country stays selected without its land"
@@ -818,7 +1025,7 @@ fn returning_countries_stay_one_country(
             continue;
         };
         ws.clear_selection();
-        ws.select_country_by_idx(country);
+        ws.change_selection(SelectionOp::Replace, SelectionSet::Countries(vec![country]));
         ws.set_timeline_date(no_land);
         let other = ws.gamestate().locations.iter().find_map(|entry| {
             let owner = ws.owner_at_timeline_date(entry.idx());
@@ -827,8 +1034,8 @@ fn returning_countries_stay_one_country(
         let Some(other) = other else {
             continue;
         };
-        ws.add_country_by_idx(other);
-        ws.remove_country_by_idx(country);
+        ws.change_selection(SelectionOp::Add, SelectionSet::Countries(vec![other]));
+        ws.change_selection(SelectionOp::Remove, SelectionSet::Countries(vec![country]));
         ws.set_timeline_date(start);
         let (land, _) = land_of_ids(ws, ids);
         assert!(
@@ -879,7 +1086,7 @@ fn market_scope_survives_the_timeline(ws: &mut Eu5Workspace, save_name: &str) {
         return;
     };
     ws.set_map_mode(MapMode::Markets);
-    ws.select_market_at(anchor);
+    ws.change_selection(SelectionOp::Replace, markets_at(ws, anchor));
     assert_eq!(ws.derived_entity_kind(), Some(EntityKind::Market));
 
     for date in [summary.start, summary.end] {

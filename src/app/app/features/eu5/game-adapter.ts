@@ -2,7 +2,6 @@ import type { Eu5Carry } from "./campaignCarry";
 import { wrap, transfer, proxy, releaseProxy } from "comlink";
 import type { Remote } from "comlink";
 import type {
-  ActiveProfileIdentity,
   GradientConfig,
   GradientPalette,
   DisplayData,
@@ -263,12 +262,7 @@ export type SaveQueries = Pick<
 /** Changes to the selection, focus and highlight of the open save. */
 export type SaveCommands = Pick<
   SaveEngine,
-  | "selectCountry"
-  | "addCountry"
-  | "removeCountry"
-  | "selectMarket"
-  | "addMarket"
-  | "removeMarket"
+  | "changeSelection"
   | "setFocusedLocation"
   | "clearFocus"
   | "clearFocusOrSelection"
@@ -382,8 +376,7 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
     getTimeline: (): Promise<TimelineData> => save.getTimeline(),
     setTimelineDate: (date: Eu5DateComponents): Promise<TimelineChange> =>
       save.setTimelineDate(date),
-    getCampaignIdentities: (profiles: ActiveProfileIdentity[]) =>
-      save.getCampaignIdentities(profiles),
+    getCarriedSelection: () => save.getCarriedSelection(),
     restoreCampaignView: (carry: Eu5Carry) => save.restoreCampaignView(carry),
     beginTimelapseRecording: (options: {
       framing: TimelapseFraming;

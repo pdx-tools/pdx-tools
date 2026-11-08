@@ -29,6 +29,7 @@ use eu5app::{
     UiCountryIdx,
 };
 use eu5app::{Eu5AnySaveLoader, Eu5LoadedSave};
+use eu5app::{SelectionOp, SelectionSet, SelectionTarget};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
 use eu5save::{FailedResolveStrategy, MeltOptions};
@@ -77,6 +78,25 @@ pub enum MapMode {
     Religion,
     StateEfficacy,
     PopulationGrowth,
+}
+
+/// The kind of ids in a selection change.
+#[derive(Debug, Clone, Copy, tsify::Tsify, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SelectionKind {
+    Countries,
+    Markets,
+    Locations,
+}
+
+/// The selection in a form that a replace selects again.
+#[derive(Debug, Clone, tsify::Tsify, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum SelectionTargetData {
+    Players,
+    Countries { ids: Vec<u32> },
+    Markets { ids: Vec<u32> },
+    Locations { ids: Vec<u32> },
 }
 
 #[derive(Debug, Clone, tsify::Tsify, Serialize)]
@@ -167,15 +187,6 @@ impl From<Eu5TableCell> for TableCell {
 }
 
 pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
-
-#[derive(Clone, Debug, Serialize, tsify::Tsify)]
-#[serde(rename_all = "camelCase")]
-#[tsify(hashmap_as_object)]
-pub struct SelectionChange {
-    center_color_id: Option<u32>,
-    #[serde(flatten)]
-    map: MapChangeData,
-}
 
 /// Which GPU buffers a map operation left stale, and the legend to show.
 #[derive(Clone, Debug, Serialize, tsify::Tsify)]
@@ -278,16 +289,6 @@ fn legend_to_gradient(legend: eu5app::gradient::MapLegend) -> Option<GradientCon
         eu5app::gradient::MapLegend::Qualitative => None,
         eu5app::gradient::MapLegend::Quantitative(c) => Some(c),
     }
-}
-
-fn selection_change_ts(
-    center: Option<eu5app::ColorIdx>,
-    change: MapChange,
-) -> Result<Ts<SelectionChange>, JsError> {
-    into_ts(SelectionChange {
-        center_color_id: center.map(|c| c.value() as u32),
-        map: change.into(),
-    })
 }
 
 fn map_change_ts(change: MapChange) -> Result<Ts<MapChangeData>, JsError> {
@@ -858,77 +859,73 @@ impl Eu5App {
         self.app.highlight_market(market_id);
     }
 
-    /// Select the entity at the given location based on the current interaction mode.
+    /// Change the selection as a click at `location_idx` does.
     #[wasm_bindgen]
-    pub fn select_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
+    pub fn click(
+        &mut self,
+        op: Ts<SelectionOp>,
+        location_idx: u32,
+    ) -> Result<Ts<MapChangeData>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        map_change_ts(self.app.select_entity(idx))
+        map_change_ts(self.app.click(op.to_rust()?, idx))
     }
 
-    /// Add the entity at `location_idx` to the existing selection.
+    /// Change the selection by whole countries, whole markets or single locations.
     #[wasm_bindgen]
-    pub fn add_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let idx = eu5save::models::LocationIdx::new(location_idx);
-        map_change_ts(self.app.add_entity(idx))
-    }
-
-    /// Remove the entity at `location_idx` from the selection.
-    #[wasm_bindgen]
-    pub fn remove_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let idx = eu5save::models::LocationIdx::new(location_idx);
-        map_change_ts(self.app.remove_entity(idx))
-    }
-
-    #[wasm_bindgen]
-    pub fn select_country(&mut self, country_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
-        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return selection_change_ts(None, self.app.no_map_change());
+    pub fn change_selection(
+        &mut self,
+        op: Ts<SelectionOp>,
+        kind: Ts<SelectionKind>,
+        ids: Vec<u32>,
+    ) -> Result<Ts<MapChangeData>, JsError> {
+        let set = match kind.to_rust()? {
+            SelectionKind::Countries => SelectionSet::Countries(
+                ids.into_iter()
+                    .filter_map(eu5save::models::CountryIdx::from_value)
+                    .collect(),
+            ),
+            SelectionKind::Markets => SelectionSet::Markets(
+                ids.into_iter()
+                    .map(eu5save::models::MarketId::new)
+                    .collect(),
+            ),
+            SelectionKind::Locations => SelectionSet::Locations(
+                ids.into_iter()
+                    .map(eu5save::models::LocationIdx::new)
+                    .collect(),
+            ),
         };
-        let (center, gradient) = self.app.select_country_by_idx(idx);
-        selection_change_ts(center, gradient)
+        map_change_ts(self.app.change_selection(op.to_rust()?, set))
     }
 
+    /// The selection in a form that a replace selects again. None for an
+    /// empty selection.
     #[wasm_bindgen]
-    pub fn add_country(&mut self, country_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return map_change_ts(self.app.no_map_change());
+    pub fn selection_target(&self) -> Result<Option<Ts<SelectionTargetData>>, JsError> {
+        let Some(target) = self.app().selection_target() else {
+            return Ok(None);
         };
-        map_change_ts(self.app.add_country_by_idx(idx))
-    }
-
-    #[wasm_bindgen]
-    pub fn remove_country(&mut self, country_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return map_change_ts(self.app.no_map_change());
+        let data = match target {
+            SelectionTarget::Players => SelectionTargetData::Players,
+            SelectionTarget::Set(SelectionSet::Countries(ids)) => SelectionTargetData::Countries {
+                ids: ids.into_iter().map(|idx| idx.value()).collect(),
+            },
+            SelectionTarget::Set(SelectionSet::Markets(ids)) => SelectionTargetData::Markets {
+                ids: ids.into_iter().map(|id| id.value()).collect(),
+            },
+            SelectionTarget::Set(SelectionSet::Locations(ids)) => SelectionTargetData::Locations {
+                ids: ids.into_iter().map(|idx| idx.value()).collect(),
+            },
         };
-        map_change_ts(self.app.remove_country_by_idx(idx))
+        into_ts(data).map(Some)
     }
 
+    /// The id of the location at the center of a market. It stays the same
+    /// across saves.
     #[wasm_bindgen]
-    pub fn select_market(&mut self, market_id: u32) -> Result<Ts<SelectionChange>, JsError> {
-        let id = eu5save::models::MarketId::new(market_id);
-        let (center, gradient) = self.app.select_market_by_id(id);
-        selection_change_ts(center, gradient)
-    }
-
-    /// Select the market at a location using the current save's market IDs.
-    #[wasm_bindgen]
-    pub fn select_market_at(&mut self, location_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
-        let idx = eu5save::models::LocationIdx::new(location_idx);
-        let (center, gradient) = self.app.select_market_at(idx);
-        selection_change_ts(center, gradient)
-    }
-
-    #[wasm_bindgen]
-    pub fn add_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let id = eu5save::models::MarketId::new(market_id);
-        map_change_ts(self.app.add_market_by_id(id))
-    }
-
-    #[wasm_bindgen]
-    pub fn remove_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let id = eu5save::models::MarketId::new(market_id);
-        map_change_ts(self.app.remove_market_by_id(id))
+    pub fn market_center_id(&self, market_id: u32) -> Option<u32> {
+        let market = eu5save::models::MarketId::new(market_id);
+        self.app().market_center_id(market).map(|id| id.value())
     }
 
     /// Clear the current selection and focus.
@@ -943,10 +940,16 @@ impl Eu5App {
     pub fn set_focused_location(
         &mut self,
         location_idx: u32,
-    ) -> Result<Ts<SelectionChange>, JsError> {
+    ) -> Result<Ts<MapChangeData>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        let (center, gradient) = self.app.set_focused_location(idx);
-        selection_change_ts(center, gradient)
+        map_change_ts(self.app.set_focused_location(idx))
+    }
+
+    /// Focus `location_idx` when it is in the selection. Otherwise nothing changes.
+    #[wasm_bindgen]
+    pub fn focus_in_selection(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        map_change_ts(self.app.focus_in_selection(idx))
     }
 
     /// Clear the focused location.
@@ -971,35 +974,6 @@ impl Eu5App {
     #[wasm_bindgen]
     pub fn scope_display_name(&self) -> Option<String> {
         self.localized().presenter().scope_display_name()
-    }
-
-    #[wasm_bindgen]
-    pub fn apply_resolved_box_selection(
-        &mut self,
-        location_idxs: js_sys::Uint32Array,
-        add: bool,
-    ) -> Result<Ts<MapChangeData>, JsError> {
-        let locations = location_idxs
-            .to_vec()
-            .into_iter()
-            .map(eu5save::models::LocationIdx::new);
-        let change = self.app.apply_resolved_box_selection(locations, add);
-        self.app.clear_highlights();
-        map_change_ts(change)
-    }
-
-    #[wasm_bindgen]
-    pub fn replace_selection_with_locations(
-        &mut self,
-        location_idxs: js_sys::Uint32Array,
-    ) -> Result<Ts<MapChangeData>, JsError> {
-        let locations = location_idxs
-            .to_vec()
-            .into_iter()
-            .map(eu5save::models::LocationIdx::new);
-        let change = self.app.replace_selection_with_locations(locations);
-        self.app.clear_highlights();
-        map_change_ts(change)
     }
 
     #[wasm_bindgen]
@@ -1209,15 +1183,11 @@ impl Eu5App {
         )
     }
 
+    /// The market whose center is the location with this id.
     #[wasm_bindgen]
-    pub fn market_id_at_center(&self, center_id: u32) -> Option<u32> {
-        self.app()
-            .gamestate()
-            .market_manager
-            .database
-            .iter_with_id()
-            .find(|(_, m)| m.center.value() == center_id)
-            .map(|(id, _)| id.value())
+    pub fn market_at_center_id(&self, center_id: u32) -> Option<u32> {
+        let center = eu5save::models::LocationId::new(center_id);
+        self.app().market_at_center_id(center).map(|id| id.value())
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.

@@ -324,6 +324,11 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
     "after_remove": 42,
     "after_select": 482
   },
+  "selection_targets": {
+    "focus_on_unowned_land": true,
+    "players": false,
+    "remove_with_a_landless_country": true
+  },
   "timeline": {
     "available": true,
     "change_dates": 4077
