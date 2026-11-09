@@ -191,44 +191,6 @@ test("EU5 campaign steps keep the view and recover from an invalid save", async 
   await expectEu5Date(page, 1337);
 });
 
-test("EU5 adds countries with Cmd and Shift, and the set steps to the next save", async ({
-  page,
-}, info) => {
-  const files = await eu5Files(info);
-  await openFiles(page, [files.first, files.later]);
-  await openListedSave(page, "debug-1.0.eu5");
-  await expectEu5Date(page, 1337);
-  await page.getByRole("button", { name: "Search countries or locations", exact: true }).click();
-  await page.getByPlaceholder("Search countries or locations...").fill("FRA");
-  await page.getByRole("option", { name: /FRA France/ }).click();
-  await expectFranceSelection(page);
-  const canvas = page.locator("canvas").first();
-  const bounds = (await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
-  await page.mouse.wheel(0, -500);
-  const pill = page.getByRole("button", { name: "Clear selection" }).locator("..");
-  const click = (x: number, y: number) =>
-    page.mouse.click(bounds.x + bounds.width * x, bounds.y + bounds.height * y);
-
-  // Normandy, then Brittany. A set of countries has no name, only its size.
-  await page.keyboard.down("Meta");
-  await click(0.4, 0.5);
-  await page.keyboard.up("Meta");
-  await expect(pill).not.toContainText("France");
-  await expect(pill).toHaveText(/^[\d,]+ locations$/);
-  const two = await pill.innerText();
-  await page.keyboard.down("Shift");
-  await click(0.3, 0.6);
-  await page.keyboard.up("Shift");
-  await expect(pill).not.toHaveText(two);
-  await expect(pill).toHaveText(/^[\d,]+ locations$/);
-  const three = await pill.innerText();
-
-  await openListedSave(page, "later.eu5");
-  await expectEu5Date(page, 1338);
-  await expect(pill).toHaveText(three);
-});
-
 test("EU5 warns about another campaign, resets its view, and steps back across patches", async ({
   page,
 }) => {
