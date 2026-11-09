@@ -260,6 +260,14 @@ fn workspace_snapshot(ws: &mut Eu5Workspace, localization: &Localization) -> ser
     let owner = ws.gamestate().countries.index(owner_idx);
     let owner_tag = owner.tag();
     let localized = ws.localized(localization);
+    let great_powers: Vec<_> = localized
+        .presenter()
+        .political_world_scoreboard()
+        .rows
+        .iter()
+        .take(3)
+        .map(|row| format!("{} {:.0}", row.country.tag, row.tax_trade_income))
+        .collect();
     let timeline = ws.timeline_summary();
     serde_json::json!({
         "save_version": ws.gamestate().metadata().version.to_string(),
@@ -272,6 +280,7 @@ fn workspace_snapshot(ws: &mut Eu5Workspace, localization: &Localization) -> ser
             "owned_market_anchor": find_owned_market_anchor(ws).is_some(),
             "location_without_market": find_location_without_market(ws).is_some(),
         },
+        "great_powers": great_powers,
         "map_modes": map_modes,
         "selected": selected,
         "past_political": past_political,
