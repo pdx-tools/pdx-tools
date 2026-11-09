@@ -4,6 +4,11 @@ expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
 ---
 {
+  "great_powers": [
+    "FRA 379",
+    "ENG 387",
+    "POL 486"
+  ],
   "largest_stability_tie": 13,
   "location": [
     {

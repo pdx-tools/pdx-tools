@@ -288,7 +288,7 @@ impl<'bump> Eu5Workspace<'bump> {
                         total_state_efficacy: aggregate.total_state_efficacy,
                         active_state_capacity: aggregate.active_state_capacity,
                         total_population: aggregate.total_population,
-                        tax_trade_income: data.estimated_monthly_income_trade_and_tax,
+                        tax_trade_income: data.monthly_tax_and_trade_income(),
                     },
                 })
             })

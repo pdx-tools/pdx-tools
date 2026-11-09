@@ -4,6 +4,11 @@ expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
 {
+  "great_powers": [
+    "PUN 9776",
+    "--- 6667",
+    "TUR 19241"
+  ],
   "largest_stability_tie": 1,
   "location": [
     {

@@ -957,7 +957,7 @@ impl<'bump> Eu5Workspace<'bump> {
         let agg = metrics_map.get(&idx).cloned().unwrap_or_default();
         let data = self.gamestate.countries.index(idx).data();
         let tax_trade_income = data
-            .map(|d| d.estimated_monthly_income_trade_and_tax)
+            .map(|d| d.monthly_tax_and_trade_income())
             .unwrap_or(0.0);
         let great_power_rank = data.map(|d| d.great_power_rank).unwrap_or(0);
         CountryMetrics {
