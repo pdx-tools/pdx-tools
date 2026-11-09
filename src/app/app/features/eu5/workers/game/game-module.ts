@@ -378,8 +378,13 @@ const loadSaveInner = async (
 
     boxSelect: (event) => {
       const change = app.change_selection(event.operation, "locations", event.locationIdxs);
-      // The map highlights the area while the player draws it.
+      // The map keeps the area highlight until these flags show. They include
+      // the hover, so that the highlight does not go off for a frame.
       app.clear_highlights();
+      if (event.hoverLocationIdx !== null) {
+        app.handle_location_hover(event.hoverLocationIdx);
+        hoverDisplayCallback?.(app.get_hover_data(event.hoverLocationIdx));
+      }
       return afterMutation(change);
     },
   };

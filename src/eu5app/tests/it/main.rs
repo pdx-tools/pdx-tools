@@ -141,6 +141,10 @@ fn workspace_scenarios() {
             run_workspace_scenario(save_name, "selection targets", ws, |ws| {
                 selection_targets_select_the_same_land(ws, save_name)
             });
+        snapshot["box_on_filled_terrain"] =
+            run_workspace_scenario(save_name, "box on filled terrain", ws, |ws| {
+                a_box_on_filled_terrain_adds_its_country(ws, save_name)
+            });
         insta::assert_json_snapshot!(snapshot);
 
         run_workspace_scenario(save_name, "market selection", ws, |ws| {
@@ -724,6 +728,64 @@ fn selection_targets_select_the_same_land(
         "focus_on_unowned_land": focus_on_unowned_land,
         "remove_with_a_landless_country": landless.is_some(),
     })
+}
+
+/// A box on filled terrain, as from a Shift-click, covers the country it
+/// takes its color from, as a hover does, and adds that country as a whole
+/// country. The map finds the area of a box from the grouping table, so this
+/// does the same.
+fn a_box_on_filled_terrain_adds_its_country(
+    ws: &mut Eu5Workspace,
+    save_name: &str,
+) -> serde_json::Value {
+    ws.set_map_mode(MapMode::Political);
+    ws.clear_selection();
+    let filled = ws
+        .gamestate()
+        .locations
+        .iter()
+        .map(|entry| entry.idx())
+        .find(|&idx| {
+            ws.owner_at_timeline_date(idx).real_id().is_none()
+                && ws.location_info(idx).owner.is_some()
+        });
+    let Some(filled) = filled else {
+        return false.into();
+    };
+
+    let groups = ws.build_grouping_table();
+    let location_ids = ws.location_arrays().buffers().location_ids();
+    let (_, hit) = groups
+        .iter()
+        .find(|&(gpu, _)| location_ids[gpu.value() as usize].value() == filled.value())
+        .expect("filled terrain is on the map");
+    let area: Vec<_> = groups
+        .iter()
+        .filter(|&(_, group)| group == hit)
+        .map(|(gpu, _)| gpu)
+        .collect();
+    let area_locations: Vec<_> = area
+        .iter()
+        .map(|gpu| LocationIdx::new(location_ids[gpu.value() as usize].value()))
+        .collect();
+
+    ws.change_selection(SelectionOp::Add, SelectionSet::Locations(area_locations));
+    let owner = ws.location_info(filled).owner.unwrap();
+    let country = ws.gamestate().countries.get(owner.country_id());
+    assert_eq!(
+        ws.selection_target(),
+        Some(SelectionTarget::Set(SelectionSet::Countries(
+            country.into_iter().collect()
+        ))),
+        "{save_name}: a box on filled terrain adds the country around it"
+    );
+    let flags = ws.location_arrays().buffers().state_flags();
+    assert!(
+        area.iter()
+            .all(|gpu| !flags[gpu.value() as usize].contains(pdx_map::LocationFlags::DIMMED)),
+        "{save_name}: the selection shows all of the area that the box covered"
+    );
+    true.into()
 }
 
 /// Replace with the selection's target and check that the land is the same.

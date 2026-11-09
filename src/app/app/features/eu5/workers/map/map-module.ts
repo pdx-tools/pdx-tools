@@ -78,7 +78,7 @@ let appTask = new Promise<Eu5WasmMapRenderer>((res, rej) => {
 let hoverEventCallback: ((event: LocationHoverChangeEvent) => void) | null = null;
 let clickEventCallback: ((event: LocationClickChangeEvent) => void) | null = null;
 let zoomChangeCallback: ((zoom: number) => void) | null = null;
-let boxSelectCommitCallback: ((event: BoxSelectCommitEvent) => void) | null = null;
+let boxSelectCommitCallback: ((event: BoxSelectCommitEvent) => Promise<void> | void) | null = null;
 let boxSelectRectCallback: ((rect: BoxSelectOverlayRect | null) => void) | null = null;
 let cursorHintCallback: ((hint: CursorHint) => void) | null = null;
 let lastCursorHint: CursorHint | null = null;
@@ -220,7 +220,7 @@ const mapGameEndpoint = () => {
       zoomChangeCallback = callback;
     },
 
-    onBoxSelectCommit: (callback: (event: BoxSelectCommitEvent) => void) => {
+    onBoxSelectCommit: (callback: (event: BoxSelectCommitEvent) => Promise<void> | void) => {
       boxSelectCommitCallback = callback;
     },
 
@@ -307,6 +307,11 @@ export const createMapEngine = async (
   let lastProcessedWorldCoordinates: { x: number; y: number } | null = null;
   let boxDrag: BoxSelectDrag | null = null;
   let boxDragDirty = false;
+  // A committed area stays highlighted until the game worker applies it.
+  // Only the last commit clears the highlight, because the game worker
+  // applies commits in order.
+  let latestBoxCommitId = 0;
+  let boxHighlightClearDue = false;
   let paused = false;
 
   let _dirtyRender: boolean = false;
@@ -507,6 +512,8 @@ export const createMapEngine = async (
         } else if (action === SharedCanvasEventAction.Up) {
           const btn = button >= 0 ? button : 0;
           if (btn === 0 && boxDrag !== null) {
+            app.on_cursor_move(x, y);
+            lastCursorPosition = { x, y };
             boxDrag.current = { x, y };
             const locationIdxs =
               boxDrag.resolution === "location"
@@ -522,8 +529,30 @@ export const createMapEngine = async (
                     boxDrag.current.x,
                     boxDrag.current.y,
                   );
-            boxSelectCommitCallback?.({ locationIdxs, operation: boxDrag.operation });
-            app.clear_box_highlight();
+            // Hover shows again with the new selection, as after a plain click.
+            // The hover caches go to the pointer-up position with it.
+            let hoverLocationIdx: number | null = null;
+            lastProcessedWorldCoordinates = null;
+            if (hoverTrackingActive) {
+              const [worldX, worldY] = app.canvas_to_world();
+              lastProcessedWorldCoordinates = { x: worldX, y: worldY };
+              hoverLocationIdx = app.gpu_loc_to_app(app.pick_location()) || null;
+            }
+            lastKnownLocationId = hoverLocationIdx;
+            const commitId = ++latestBoxCommitId;
+            void Promise.resolve(
+              boxSelectCommitCallback?.({
+                locationIdxs,
+                operation: boxDrag.operation,
+                hoverLocationIdx,
+              }),
+            ).finally(() => {
+              if (commitId !== latestBoxCommitId) return;
+              // The selection shows at the next frame. Clear the highlight in
+              // the same frame, so that the area does not go blank between them.
+              boxHighlightClearDue = true;
+              renderOrQueue();
+            });
             boxDrag = null;
             boxDragDirty = false;
             boxSelectRectCallback?.(null);
@@ -633,6 +662,10 @@ export const createMapEngine = async (
     if (newGroupingTable) {
       app.sync_grouping_table(newGroupingTable);
       newGroupingTable = null;
+    }
+    if (boxHighlightClearDue) {
+      app.clear_committed_box_highlight();
+      boxHighlightClearDue = false;
     }
     if (overlay && overlayDirty) {
       app.sync_color_array(overlay.colors);

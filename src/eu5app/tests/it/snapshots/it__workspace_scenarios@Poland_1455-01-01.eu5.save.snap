@@ -1,9 +1,11 @@
 ---
 source: src/eu5app/tests/it/main.rs
+assertion_line: 148
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
 ---
 {
+  "box_on_filled_terrain": true,
   "great_powers": [
     "FRA 379",
     "ENG 387",
@@ -69,7 +71,7 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
     "political": {
       "colors": 991,
       "fingerprint": "0x5ef4aa7d0b7149e2",
-      "groups": "0x50e18b21122559de",
+      "groups": "0x2d64a1c56eccacb9",
       "legend": "Qualitative",
       "top": [
         "#ff808080 x7216",
@@ -102,7 +104,7 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
     "religion": {
       "colors": 252,
       "fingerprint": "0x5c947bfda523f10f",
-      "groups": "0x50e18b21122559de",
+      "groups": "0x0b3b897ddcffb44e",
       "legend": "Qualitative",
       "top": [
         "#ff455e77 x5381",
@@ -158,7 +160,7 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
   "past_political": {
     "colors": 1083,
     "fingerprint": "0x3b890aba70402810",
-    "groups": "0x50bbcb8d726ae8ff",
+    "groups": "0xed2ec8845ac8763e",
     "legend": "Qualitative",
     "top": [
       "#ff808080 x7299",
@@ -232,7 +234,7 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       "political": {
         "colors": 991,
         "fingerprint": "0x7d77ccd48c67e2b3",
-        "groups": "0x50e18b21122559de",
+        "groups": "0x2d64a1c56eccacb9",
         "legend": "Qualitative",
         "top": [
           "#ff808080 x7216",
@@ -265,7 +267,7 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       "religion": {
         "colors": 252,
         "fingerprint": "0xd58b404e50fa7c42",
-        "groups": "0x50e18b21122559de",
+        "groups": "0x0b3b897ddcffb44e",
         "legend": "Qualitative",
         "top": [
           "#ff455e77 x5381",

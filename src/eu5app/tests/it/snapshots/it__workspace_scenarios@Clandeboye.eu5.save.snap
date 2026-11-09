@@ -1,9 +1,11 @@
 ---
 source: src/eu5app/tests/it/main.rs
+assertion_line: 148
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
 {
+  "box_on_filled_terrain": true,
   "great_powers": [
     "PUN 9776",
     "--- 6667",
@@ -69,7 +71,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "political": {
       "colors": 435,
       "fingerprint": "0x3493b568ee45bb28",
-      "groups": "0x5a2f4ba4c5aba582",
+      "groups": "0x618ac59bbd533a93",
       "legend": "Qualitative",
       "top": [
         "#ff455e77 x5082",
@@ -102,7 +104,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "religion": {
       "colors": 95,
       "fingerprint": "0x2966b950bca9c127",
-      "groups": "0x5a2f4ba4c5aba582",
+      "groups": "0xe97bc60578a06eb3",
       "legend": "Qualitative",
       "top": [
         "#ffb27f00 x9196",
@@ -209,7 +211,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       "political": {
         "colors": 435,
         "fingerprint": "0x70037e057c057435",
-        "groups": "0x5a2f4ba4c5aba582",
+        "groups": "0x618ac59bbd533a93",
         "legend": "Qualitative",
         "top": [
           "#ff455e77 x5082",
@@ -242,7 +244,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       "religion": {
         "colors": 95,
         "fingerprint": "0x6cfd02f86a98dcbb",
-        "groups": "0x5a2f4ba4c5aba582",
+        "groups": "0xe97bc60578a06eb3",
         "legend": "Qualitative",
         "top": [
           "#ffb27f00 x9196",

@@ -98,6 +98,8 @@ pub struct Eu5WasmMapRenderer {
     location_arrays: LocationArrays,
     /// The locations inside the current box-select drag.
     preview_locations: LocationBitset,
+    /// The areas of committed drags that the game worker has not applied.
+    committed_locations: LocationBitset,
     grouping_table: GroupingTable,
     clock: Box<dyn Clock>,
     last_tick: Option<Duration>,
@@ -147,6 +149,7 @@ impl Eu5WasmMapRenderer {
             spatial_scratch: LocationBitset::new(),
             location_arrays: LocationArrays::new(),
             preview_locations: LocationBitset::new(),
+            committed_locations: LocationBitset::new(),
             grouping_table: GroupingTable::empty(),
             clock: default_clock(),
             last_tick: None,
@@ -211,6 +214,8 @@ impl Eu5WasmMapRenderer {
     /// Resolve the canvas rect to a flat array of app-level location indices,
     /// expanding each hit location to all members of the same group.
     /// Called once on pointer-up to produce the final selection payload.
+    /// The area stays highlighted until `clear_committed_box_highlight`, so
+    /// that it does not go off before the selection shows.
     #[wasm_bindgen]
     pub fn commit_box_selection(
         &mut self,
@@ -219,19 +224,24 @@ impl Eu5WasmMapRenderer {
         end_x: f32,
         end_y: f32,
     ) -> js_sys::Uint32Array {
-        if self.preview_locations.count() == 0 {
-            let start = LogicalPoint::new(start_x, start_y);
-            let end = LogicalPoint::new(end_x, end_y);
-            self.fill_preview_groups(start, end);
-        }
-        self.take_preview()
+        let start = LogicalPoint::new(start_x, start_y);
+        let end = LogicalPoint::new(end_x, end_y);
+        self.fill_preview_groups(start, end);
+        self.commit_preview()
     }
 
-    /// Clear all box-select preview highlights.
-    /// Called after the commit has been applied to the game worker.
+    /// Clear the highlight of the drag in progress, as when it is cancelled.
     #[wasm_bindgen]
     pub fn clear_box_highlight(&mut self) {
         self.preview_locations.clear();
+        self.upload_preview();
+    }
+
+    /// Clear the highlight of committed drags.
+    /// Called after the game worker applies the commits.
+    #[wasm_bindgen]
+    pub fn clear_committed_box_highlight(&mut self) {
+        self.committed_locations.clear();
         self.upload_preview();
     }
 
@@ -252,7 +262,8 @@ impl Eu5WasmMapRenderer {
     }
 
     /// Resolve the canvas rect to individual app-level location indices without entity expansion.
-    /// Called once on pointer-up during a Ctrl+drag box-select.
+    /// Called once on pointer-up during a Ctrl+drag box-select. The area stays
+    /// highlighted, as in `commit_box_selection`.
     #[wasm_bindgen]
     pub fn commit_box_selection_locations(
         &mut self,
@@ -261,12 +272,10 @@ impl Eu5WasmMapRenderer {
         end_x: f32,
         end_y: f32,
     ) -> js_sys::Uint32Array {
-        if self.preview_locations.count() == 0 {
-            let start = LogicalPoint::new(start_x, start_y);
-            let end = LogicalPoint::new(end_x, end_y);
-            self.fill_preview_locations(start, end);
-        }
-        self.take_preview()
+        let start = LogicalPoint::new(start_x, start_y);
+        let end = LogicalPoint::new(end_x, end_y);
+        self.fill_preview_locations(start, end);
+        self.commit_preview()
     }
 
     #[wasm_bindgen]
@@ -563,28 +572,31 @@ impl Eu5WasmMapRenderer {
         }
     }
 
-    /// Drain the preview into app-level location ids and clear it from the map.
-    fn take_preview(&mut self) -> js_sys::Uint32Array {
-        let app_ids: Vec<u32> = self
-            .preview_locations
-            .drain()
-            .map(|r16| {
-                self.location_arrays
-                    .get_location_id(GpuLocationIdx::new(r16.value()))
-                    .value()
-            })
-            .collect();
+    /// Move the preview to the committed areas, and return it as app-level
+    /// location ids.
+    fn commit_preview(&mut self) -> js_sys::Uint32Array {
+        let mut app_ids = Vec::new();
+        for r16 in self.preview_locations.drain() {
+            self.committed_locations.set(r16);
+            let gpu = GpuLocationIdx::new(r16.value());
+            app_ids.push(self.location_arrays.get_location_id(gpu).value());
+        }
+        // The last pointer move can come in the same frame as the release,
+        // so the final area can be different from the area on the map.
         self.upload_preview();
         js_sys::Uint32Array::from(app_ids.as_slice())
     }
 
-    /// Write the preview bit of every location from `preview_locations`.
+    /// Write the preview bit of every location from the drag in progress and
+    /// the committed areas.
     /// The other flags come from the game worker and stay untouched.
     fn compose_preview(&mut self) {
         let preview = &self.preview_locations;
+        let committed = &self.committed_locations;
         for (index, flags) in self.location_arrays.flag_data_mut().iter_mut().enumerate() {
             let bit = LocationFlags::PREVIEW.bits();
-            if preview.contains(R16::new(index as u16)) {
+            let location = R16::new(index as u16);
+            if preview.contains(location) || committed.contains(location) {
                 *flags |= bit;
             } else {
                 *flags &= !bit;

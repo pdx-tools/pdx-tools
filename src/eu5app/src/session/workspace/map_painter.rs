@@ -43,6 +43,8 @@ pub(crate) trait LocationValues {
     /// The color of the primary religion of the owner.
     fn owner_religion_color(&self, idx: LocationIdx) -> Option<GpuColor>;
     fn market(&self, idx: LocationIdx) -> LocationMarket;
+    /// The identity of the market, also when it has no record.
+    fn market_id(&self, idx: LocationIdx) -> Option<u32>;
     /// False when the date has no record of occupation.
     fn has_controllers(&self) -> bool;
     /// The result of [`owner_fill`].
@@ -142,12 +144,36 @@ pub(crate) fn border_color(
         .unwrap_or_else(|| political_color(values, layout, values.owner_fill()[idx].unwrap_or(idx)))
 }
 
-pub(crate) fn group_id(mode: MapMode, owner: u32, market: u32) -> u32 {
-    if mode == MapMode::Markets {
-        market
-    } else {
-        owner
+/// The location whose color filled terrain shows in `mode`. `None` for
+/// land, for terrain that no one color surrounds, and in the modes that do
+/// not fill terrain.
+pub(crate) fn fill_donor(
+    values: &(impl LocationValues + ?Sized),
+    mode: MapMode,
+    idx: LocationIdx,
+) -> Option<LocationIdx> {
+    match mode {
+        MapMode::Political => values.owner_fill()[idx],
+        MapMode::Religion => values.religion_fill()[idx],
+        _ => None,
     }
+}
+
+/// The group of a location for box selection: the owner, or the market in
+/// the markets mode, of the land whose color it shows. `u32::MAX` when it
+/// has none.
+pub(crate) fn group(
+    values: &(impl LocationValues + ?Sized),
+    mode: MapMode,
+    idx: LocationIdx,
+) -> u32 {
+    let source = fill_donor(values, mode, idx).unwrap_or(idx);
+    let id = if mode == MapMode::Markets {
+        values.market_id(source)
+    } else {
+        values.owner(source)
+    };
+    id.unwrap_or(u32::MAX)
 }
 
 enum Domain {

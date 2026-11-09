@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
     viewport_world_rect: vi.fn(() => [0, 0, 800, 400]),
     canvas_to_world: vi.fn(() => [100, 100]),
     pick_location: vi.fn(() => 1),
-    gpu_loc_to_app: vi.fn(() => 1),
+    gpu_loc_to_app: vi.fn((_gpu: number) => 1),
     sync_location_array: vi.fn(),
     sync_grouping_table: vi.fn(),
     sync_color_array: vi.fn(),
@@ -20,7 +20,9 @@ const mocks = vi.hoisted(() => ({
     on_cursor_move: vi.fn(),
     on_mouse_button: vi.fn(),
     preview_box_highlight: vi.fn(),
+    commit_box_selection: vi.fn(() => new Uint32Array([1])),
     clear_box_highlight: vi.fn(),
+    clear_committed_box_highlight: vi.fn(),
     queued_work: vi.fn(() => ({ wait: async () => {} })),
     resize: vi.fn(),
     tick: vi.fn(),
@@ -56,7 +58,20 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  mocks.app.canvas_to_world.mockImplementation(() => [100, 100]);
+  mocks.app.pick_location.mockImplementation(() => 1);
+  mocks.app.gpu_loc_to_app.mockImplementation(() => 1);
+});
+
+/** The world position and location under the cursor are the last x that the map was given. */
+function followCursor() {
+  const x = () => mocks.app.on_cursor_move.mock.lastCall?.[0] ?? 0;
+  mocks.app.canvas_to_world.mockImplementation(() => [x(), 0]);
+  mocks.app.pick_location.mockImplementation(x);
+  mocks.app.gpu_loc_to_app.mockImplementation((gpu: number) => gpu);
+}
 
 async function nextFrame() {
   const frame = frames.shift();
@@ -87,9 +102,9 @@ function key(code: string): KeyboardEvent {
   return { type: "keydown", code, repeat: false, location: 0, timeStamp: 1 } as KeyboardEvent;
 }
 
-function pointer(shiftKey = false): PointerEvent {
+function pointer(shiftKey = false, offsetX = 10): PointerEvent {
   return {
-    offsetX: 10,
+    offsetX,
     offsetY: 20,
     button: 0,
     pointerId: 1,
@@ -208,5 +223,87 @@ describe("EU5 map overlay", () => {
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(new Uint32Array([6]));
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_color_array).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("EU5 map box selection", () => {
+  // Let the commit promises settle.
+  const settle = () => new Promise((resolve) => setTimeout(resolve));
+
+  async function shiftClick(writer: SharedCanvasInputWriter, upX = 10) {
+    writer.enqueuePointer(pointer(true), SharedCanvasEventAction.Down);
+    writer.enqueuePointer(pointer(true, upX), SharedCanvasEventAction.Up);
+    await nextFrame();
+  }
+
+  it("keeps committed areas highlighted until the game worker applies the last one", async () => {
+    const { writer, endpoint } = await openMap();
+    const applied: Array<() => void> = [];
+    endpoint.onBoxSelectCommit(() => new Promise<void>((resolve) => applied.push(resolve)));
+    await shiftClick(writer);
+    await shiftClick(writer);
+    expect(applied).toHaveLength(2);
+
+    applied[0]();
+    await settle();
+    await nextFrame();
+    expect(mocks.app.clear_committed_box_highlight).not.toHaveBeenCalled();
+
+    // The game worker sends the new flags before its commit settles. The
+    // highlight clears in the frame that applies them, after them.
+    const flags = new Uint32Array([5]);
+    await endpoint.syncMapData({ flags });
+    applied[1]();
+    await settle();
+    expect(mocks.app.clear_committed_box_highlight).not.toHaveBeenCalled();
+    await nextFrame();
+    expect(mocks.app.clear_committed_box_highlight).toHaveBeenCalledOnce();
+    expect(mocks.app.sync_flag_array).toHaveBeenLastCalledWith(flags);
+    expect(mocks.app.sync_flag_array.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.app.clear_committed_box_highlight.mock.invocationCallOrder[0],
+    );
+    expect(mocks.app.clear_box_highlight).not.toHaveBeenCalled();
+  });
+
+  it("sends the hover at the pointer-up position and clears it when the pointer leaves", async () => {
+    const { writer, engine, endpoint } = await openMap();
+    const hover = vi.fn();
+    const commit = vi.fn(async () => {});
+    endpoint.onLocationHoverUpdate(hover);
+    endpoint.onBoxSelectCommit(commit);
+    engine.startHoverTracking();
+    followCursor();
+
+    await shiftClick(writer, 30);
+    expect(commit).toHaveBeenCalledWith(expect.objectContaining({ hoverLocationIdx: 30 }));
+
+    writer.enqueuePointerLeave(pointer());
+    await nextFrame();
+    expect(hover).toHaveBeenLastCalledWith({ kind: "clear" });
+  });
+
+  it("hovers and clicks the location under the cursor after a drag", async () => {
+    const { writer, engine, endpoint } = await openMap();
+    const hover = vi.fn();
+    const click = vi.fn();
+    endpoint.onLocationHoverUpdate(hover);
+    endpoint.onLocationClickUpdate(click);
+    endpoint.onBoxSelectCommit(vi.fn(async () => {}));
+    engine.startHoverTracking();
+    followCursor();
+    writer.enqueuePointer(pointer(false, 10), SharedCanvasEventAction.Move);
+    await nextFrame();
+    expect(hover).toHaveBeenLastCalledWith({ kind: "update", locationIdx: 10 });
+
+    // Drag from 10 to 30, then go back to 10 and click.
+    await shiftClick(writer, 30);
+    writer.enqueuePointer(pointer(false, 10), SharedCanvasEventAction.Move);
+    writer.enqueuePointer(pointer(false, 10), SharedCanvasEventAction.Down);
+    writer.enqueuePointer(pointer(false, 10), SharedCanvasEventAction.Up);
+    await nextFrame();
+    expect(hover).toHaveBeenLastCalledWith({ kind: "update", locationIdx: 10 });
+    expect(click).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "update", locationIdx: 10 }),
+    );
   });
 });

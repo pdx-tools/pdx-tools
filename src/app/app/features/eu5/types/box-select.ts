@@ -11,4 +11,6 @@ export type BoxSelectOverlayRect = {
 export type BoxSelectCommitEvent = {
   locationIdxs: Uint32Array;
   operation: SelectionOp;
+  /** The location under the cursor at the end of the drag. */
+  hoverLocationIdx: number | null;
 };
