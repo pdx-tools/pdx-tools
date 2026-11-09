@@ -143,12 +143,6 @@ pub struct MapChange {
     pub legend: crate::gradient::MapLegend,
 }
 
-enum SelectionSetOperation {
-    Add,
-    Remove,
-    Replace,
-}
-
 fn market_good_breakdown_entries<T: std::fmt::Display>(
     entries: &[(T, f64)],
 ) -> Vec<GoodBreakdownEntry> {

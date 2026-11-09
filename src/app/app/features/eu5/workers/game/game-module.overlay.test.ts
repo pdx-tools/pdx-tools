@@ -91,12 +91,9 @@ beforeEach(() => {
     clear_highlights: vi.fn(),
     handle_location_hover: vi.fn(),
     get_hover_data: vi.fn(),
-    select_entity: vi.fn(change),
-    add_entity: vi.fn(change),
-    remove_entity: vi.fn(change),
+    click: vi.fn(change),
     clear_focus_or_selection: vi.fn(change),
-    apply_resolved_box_selection: vi.fn(change),
-    replace_selection_with_locations: vi.fn(change),
+    change_selection: vi.fn(change),
   };
   mocks.map.syncSave.mockResolvedValue(undefined);
   mocks.map.syncMapData.mockResolvedValue(undefined);
@@ -180,12 +177,12 @@ it("keeps hover, click and box select away from the save during a preview", asyn
   input.click(click);
 
   expect(mocks.app.handle_location_hover).not.toHaveBeenCalled();
-  expect(mocks.app.replace_selection_with_locations).not.toHaveBeenCalled();
-  expect(mocks.app.select_entity).not.toHaveBeenCalled();
+  expect(mocks.app.change_selection).not.toHaveBeenCalled();
+  expect(mocks.app.click).not.toHaveBeenCalled();
   expect(onClick).toHaveBeenCalledExactlyOnceWith(click);
 
   module.setInputGate(null);
   input.click(click);
-  expect(mocks.app.select_entity).toHaveBeenCalledExactlyOnceWith(5);
+  expect(mocks.app.click).toHaveBeenCalledExactlyOnceWith("replace", 5);
   expect(onClick).toHaveBeenCalledOnce();
 });

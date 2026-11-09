@@ -26,8 +26,8 @@ pub use presentation::{
 
 pub use entity_profile::EntityKind;
 pub use selection::{
-    ClickOutcome, GroupId, GroupingTable, LocationData, SelectionPreset, SelectionState,
-    SelectionSummary, single_entity_scope,
+    ClickOutcome, GroupId, GroupingTable, LocationData, SelectionOp, SelectionPreset, SelectionSet,
+    SelectionState, SelectionSummary, SelectionTarget, single_entity_scope,
 };
 pub use session::{
     Eu5AnySaveLoader, Eu5DateComponents, Eu5DebugSaveLoader, Eu5LoadError, Eu5LoadedSave,

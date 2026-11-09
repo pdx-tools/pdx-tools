@@ -73,7 +73,7 @@ export function Eu5Toolbar() {
     async (result: SearchResult) => {
       const selection = resolveSearchSelection(result);
       if (selection.kind === "country") {
-        await engine.commands.selectCountry(selection.countryIdx);
+        await engine.commands.changeSelection("replace", "countries", [selection.countryIdx]);
       } else {
         await engine.commands.setFocusedLocation(selection.locationIdx);
       }

@@ -28,9 +28,8 @@ export function useEu5EntityChartClick(opts: {
     const ev = params.event?.event as MouseEvent | undefined;
 
     if (ev?.altKey) {
-      void (opts.kind === "country"
-        ? engine.commands.removeCountry(target.id)
-        : engine.commands.removeMarket(target.id));
+      const kind = opts.kind === "country" ? "countries" : "markets";
+      void engine.commands.changeSelection("remove", kind, [target.id]);
       return;
     }
 

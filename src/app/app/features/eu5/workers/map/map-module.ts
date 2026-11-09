@@ -11,7 +11,7 @@ import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm
 import wasmPath from "../../../../wasm/wasm_eu5_map_bg.wasm?url";
 import { proxy, expose } from "comlink";
 import { formatInt } from "@/lib/format";
-import type { ScreenshotOverlayData, TableCell } from "@/wasm/wasm_eu5";
+import type { ScreenshotOverlayData, SelectionOp, TableCell } from "@/wasm/wasm_eu5";
 import {
   SharedCanvasInputReader,
   SharedCanvasEventType,
@@ -21,11 +21,7 @@ import {
   WebKeyCode,
 } from "@/lib/canvas_courier";
 import type { SharedCanvasInputConfig, SharedCanvasDecodedEvent } from "@/lib/canvas_courier";
-import type {
-  BoxSelectOperation,
-  BoxSelectOverlayRect,
-  BoxSelectCommitEvent,
-} from "../../types/box-select";
+import type { BoxSelectOverlayRect, BoxSelectCommitEvent } from "../../types/box-select";
 import { layoutTimelapseFrame } from "@pdx.tools/timelapse";
 import type {
   DatePlateColors,
@@ -482,7 +478,7 @@ export const createMapEngine = async (
             const isCtrl = (modifiers & SharedCanvasModifierBits.Ctrl) !== 0;
             const isAlt = (modifiers & SharedCanvasModifierBits.Alt) !== 0;
             const isShift = (modifiers & SharedCanvasModifierBits.Shift) !== 0;
-            const operation: BoxSelectOperation = isAlt
+            const operation: SelectionOp = isAlt
               ? "remove"
               : isCtrl && !isShift
                 ? "replace"
@@ -937,7 +933,7 @@ export type MapDataSync = {
 type BoxSelectDrag = {
   start: { x: number; y: number };
   current: { x: number; y: number };
-  operation: BoxSelectOperation;
+  operation: SelectionOp;
   resolution: "entity" | "location";
 };
 

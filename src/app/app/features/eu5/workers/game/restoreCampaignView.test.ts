@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Eu5App, UiCountryId } from "@/wasm/wasm_eu5";
+import type { Eu5App, SelectionTargetData, UiCountryId } from "@/wasm/wasm_eu5";
 import type { Eu5Carry } from "../../campaignCarry";
-import { campaignIdentities, restoreCampaignView } from "./restoreCampaignView";
+import { captureSelection, clickChange, restoreCampaignView } from "./restoreCampaignView";
 
 const id = (value: number) => value as UiCountryId;
+type Countries = ReturnType<Eu5App["get_countries"]>["countries"];
+const country = (key: number, value: number, tag: string, landed = true) => ({
+  id: id(value),
+  landed,
+  tag,
+  country: { key, name: tag },
+  capital: undefined,
+});
 
 const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   mapMode: "population",
@@ -12,153 +20,148 @@ const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   selection: null,
   ...extra,
 });
-const countries = [
-  { id: id(611), landed: true, tag: "FRA", country: { key: 77, name: "France" }, capital: 100 },
-] as ReturnType<Eu5App["get_countries"]>["countries"];
-function app() {
+
+/** A save with its own country keys and market ids. */
+function save({
+  target,
+  focusedLocation,
+  centers = new Map<number, number>(),
+}: {
+  target?: SelectionTargetData;
+  focusedLocation?: number;
+  centers?: Map<number, number>;
+} = {}) {
   const change = () => ({ colorsChanged: false, flagsChanged: true, gradient: undefined });
+  const marketAt = new Map([...centers].map(([market, center]) => [center, market]));
   return {
     set_map_mode: vi.fn((mapMode) => ({
       ...change(),
       mapMode,
-      date: { year: 1400, month: 1, day: 1 },
+      date: { year: 1, month: 1, day: 1 },
     })),
     select_players: vi.fn(change),
-    select_country: vi.fn(change),
-    select_market: vi.fn(change),
-    set_focused_location: vi.fn(change),
-    market_id_at_center: vi.fn((): number | undefined => 91),
-    get_market_profile: vi.fn(() => ({ centerId: 100, header: { name: "Paris" } })),
-    get_location_profile: vi.fn(() => ({ header: { location: { key: 100, name: "Paris" } } })),
-    get_selection_summary: vi.fn(() => ({ preset: null })),
-    add_entity: vi.fn(change),
-    remove_entity: vi.fn(change),
-    select_entity: vi.fn(change),
+    change_selection: vi.fn(change),
+    focus_in_selection: vi.fn(change),
+    click: vi.fn(change),
     clear_focus_or_selection: vi.fn(change),
+    selection_target: vi.fn(() => target),
+    market_center_id: vi.fn((market: number) => centers.get(market)),
+    market_at_center_id: vi.fn((center: number) => marketAt.get(center)),
+    get_selection_summary: vi.fn(() => ({ focusedLocation })),
   };
 }
-const restore = (a: ReturnType<typeof app>, view: Eu5Carry) =>
-  restoreCampaignView(a as unknown as Eu5App, countries, view);
+type Save = ReturnType<typeof save>;
+const asApp = (s: Save) => s as unknown as Eu5App;
 
-describe("worker campaign view restoration", () => {
-  it("remaps countries by exact tag and restores focus without location search", () => {
-    const a = app();
-    restore(
-      a,
-      carry({
-        selection: { kind: "country", tag: "FRA", focusedLocation: 100 },
-      }),
+/** Carry the selection of one save into the next, as a campaign step does. */
+function step(from: Save, fromCountries: Countries, to: Save, toCountries: Countries) {
+  const selection = captureSelection(asApp(from), fromCountries);
+  restoreCampaignView(asApp(to), toCountries, carry({ selection }));
+  return selection;
+}
+
+describe("a campaign step keeps the selection", () => {
+  it("finds countries by id, then by tag, and drops a country that is gone", () => {
+    const before = [country(5, 611, "YMT"), country(6, 612, "CAS"), country(7, 613, "POR")];
+    // YMT took a new tag and CAS has other keys; POR is gone and another NTC has no land.
+    const after = [country(1, 700, "NTC", false), country(2, 611, "NTC"), country(3, 612, "CAS")];
+    const next = save();
+    step(save({ target: { kind: "countries", ids: [5, 6, 7] } }), before, next, after);
+    expect(next.change_selection).toHaveBeenCalledExactlyOnceWith(
+      "replace",
+      "countries",
+      Uint32Array.from([2, 3]),
     );
-    expect(a.set_map_mode).toHaveBeenCalledWith("population");
-    expect(a.select_country).toHaveBeenCalledWith(77);
-    expect(a.set_focused_location).toHaveBeenCalledWith(100);
-    expect(a.get_selection_summary).toHaveBeenCalledTimes(1);
   });
-  it("remaps market selections and breadcrumbs by center", () => {
-    const a = app();
-    restore(
-      a,
-      carry({
-        selection: { kind: "market", center: 100 },
-      }),
-    );
-    expect(a.select_market).toHaveBeenCalledWith(91);
-  });
-  it("drops descendants of vanished breadcrumbs and leaves missing selections empty", () => {
-    const a = app();
-    a.market_id_at_center.mockReturnValue(undefined);
-    restore(
-      a,
-      carry({
-        selection: { kind: "market", center: 100 },
-      }),
-    );
-    expect(a.select_market).not.toHaveBeenCalled();
-    expect(a.get_location_profile).not.toHaveBeenCalled();
-  });
-  it("combines buffer changes and returns the final selection gradient", () => {
-    const a = app();
-    a.select_country.mockReturnValue({
-      colorsChanged: true,
-      flagsChanged: false,
-      gradient: undefined,
+
+  it("finds markets by their center, and drops a market that is gone", () => {
+    const next = save({ centers: new Map([[40, 100]]) });
+    const before = save({
+      target: { kind: "markets", ids: [3, 4] },
+      centers: new Map([
+        [3, 100],
+        [4, 200],
+      ]),
     });
-    const result = restore(
-      a,
-      carry({ selection: { kind: "country", tag: "FRA", focusedLocation: null } }),
+    step(before, [], next, []);
+    expect(next.change_selection).toHaveBeenCalledExactlyOnceWith(
+      "replace",
+      "markets",
+      Uint32Array.from([40]),
     );
-    expect(result.change).toMatchObject({
-      colorsChanged: true,
-      flagsChanged: true,
-      gradient: undefined,
-    });
   });
-  it("restores player and location selections", () => {
-    const a = app();
-    restore(a, carry({ selection: { kind: "players" } }));
-    restore(a, carry({ selection: { kind: "location", locationIdx: 100 } }));
-    expect(a.select_players).toHaveBeenCalledTimes(1);
-    expect(a.set_focused_location).toHaveBeenCalledWith(100);
+
+  it("keeps the same land, the players, and focus only inside the new selection", () => {
+    const land = save();
+    step(save({ target: { kind: "locations", ids: [8, 9] }, focusedLocation: 9 }), [], land, []);
+    expect(land.change_selection).toHaveBeenCalledExactlyOnceWith(
+      "replace",
+      "locations",
+      Uint32Array.from([8, 9]),
+    );
+    expect(land.focus_in_selection).toHaveBeenCalledExactlyOnceWith(9);
+    expect(land.change_selection.mock.invocationCallOrder[0]).toBeLessThan(
+      land.focus_in_selection.mock.invocationCallOrder[0],
+    );
+
+    const players = save();
+    step(save({ target: { kind: "players" } }), [], players, []);
+    expect(players.select_players).toHaveBeenCalledOnce();
+    expect(players.change_selection).not.toHaveBeenCalled();
+  });
+
+  it("carries nothing for an empty selection", () => {
+    const next = save();
+    expect(step(save(), [], next, [])).toBeNull();
+    expect(next.change_selection).not.toHaveBeenCalled();
+    expect(next.select_players).not.toHaveBeenCalled();
   });
 });
 
-it("captures mixed profile identities using the country index", () => {
-  const a = app();
-  expect(
-    campaignIdentities(a as unknown as Eu5App, countries, [
-      { kind: "country", country: { key: 77, name: "France" } },
-      { kind: "country", country: { key: 99, name: "Missing" } },
-      { kind: "market", market: { key: 91, name: "Paris" } },
-      { kind: "location", location: { key: 100, name: "Paris" } },
-    ]),
-  ).toEqual([
-    { kind: "country", id: id(611), tag: "FRA" },
-    null,
-    { kind: "market", center: 100 },
-    { kind: "location", locationIdx: 100 },
-  ]);
+describe("a click on the map", () => {
+  it("adds with Shift, removes with Alt, and otherwise replaces", () => {
+    const app = save();
+    clickChange(asApp(app), { kind: "update", locationIdx: 4, modifiers: 1 });
+    clickChange(asApp(app), { kind: "update", locationIdx: 4, modifiers: 4 });
+    clickChange(asApp(app), { kind: "update", locationIdx: 4, modifiers: 0 });
+    clickChange(asApp(app), { kind: "clear" });
+    expect(app.click.mock.calls).toEqual([
+      ["add", 4],
+      ["remove", 4],
+      ["replace", 4],
+    ]);
+    expect(app.clear_focus_or_selection).toHaveBeenCalledOnce();
+  });
+
+  it("from a snapshot applies after the carried selection", () => {
+    const app = save();
+    restoreCampaignView(
+      asApp(app),
+      [],
+      carry({
+        selection: { target: { kind: "players" }, focusedLocation: null },
+        inspection: { click: { kind: "update", locationIdx: 42, modifiers: 1 } },
+      }),
+    );
+    expect(app.click).toHaveBeenCalledExactlyOnceWith("add", 42);
+    expect(app.select_players.mock.invocationCallOrder[0]).toBeLessThan(
+      app.click.mock.invocationCallOrder[0],
+    );
+  });
 });
 
-it("keeps selections and breadcrumb profiles on the same country across a tag change", () => {
-  const a = app();
-  const countries = [
-    {
-      id: id(611),
-      landed: true,
-      tag: "YMT",
-      country: { key: 5, name: "Yamato" },
-      capital: undefined,
-    },
-    { id: id(700), landed: true, tag: "NTC", country: { key: 6, name: "New NTC" }, capital: 100 },
-  ];
-  restoreCampaignView(
-    a as unknown as Eu5App,
-    countries,
-    carry({
-      selection: { kind: "country", id: id(611), tag: "NTC", focusedLocation: null },
-    }),
-  );
-  expect(a.select_country).toHaveBeenCalledWith(5);
-  expect(
-    campaignIdentities(a as unknown as Eu5App, countries, [
-      { kind: "country", country: { key: 5, name: "Yamato" } },
-    ]),
-  ).toEqual([{ kind: "country", id: id(611), tag: "YMT" }]);
-});
-
-it("applies a carried click after the carried selection", () => {
-  const a = app();
-  restore(
-    a,
-    carry({
-      selection: { kind: "players" },
-      inspection: { click: { kind: "update", locationIdx: 42, modifiers: 1 } },
-    }),
-  );
-  // Shift adds the clicked entity to the carried selection.
-  expect(a.add_entity).toHaveBeenCalledExactlyOnceWith(42);
-  expect(a.select_players.mock.invocationCallOrder[0]).toBeLessThan(
-    a.add_entity.mock.invocationCallOrder[0],
-  );
-  expect(a.select_entity).not.toHaveBeenCalled();
+it("combines the buffer changes of a restore", () => {
+  const app = save();
+  app.change_selection.mockReturnValue({
+    colorsChanged: true,
+    flagsChanged: false,
+    gradient: undefined,
+  });
+  const selection = {
+    target: { kind: "locations" as const, locations: [1] },
+    focusedLocation: null,
+  };
+  const result = restoreCampaignView(asApp(app), [], carry({ selection }));
+  expect(app.set_map_mode).toHaveBeenCalledWith("population");
+  expect(result.change).toMatchObject({ colorsChanged: true, flagsChanged: true });
 });

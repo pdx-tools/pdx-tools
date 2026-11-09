@@ -158,7 +158,11 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
           <Eu5DataTable.Affordance
             kind="remove"
             label={`Remove ${row.original.country.country.name} from selection`}
-            onClick={() => void engine.commands.removeCountry(row.original.country.country.key)}
+            onClick={() =>
+              void engine.commands.changeSelection("remove", "countries", [
+                row.original.country.country.key,
+              ])
+            }
           />
         ),
       }),

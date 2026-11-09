@@ -1,4 +1,6 @@
 use super::*;
+use crate::selection::{SelectionOp, SelectionPreset, SelectionSet, SelectionTarget};
+use eu5save::models::{LocationId, LocationIdx, MarketId, RealCountryId};
 
 impl<'bump> Eu5Workspace<'bump> {
     /// Build a flat lookup table mapping GPU location index → group ID for
@@ -26,9 +28,10 @@ impl<'bump> Eu5Workspace<'bump> {
         GroupingTable::new(groups)
     }
 
-    /// Select the entity at `clicked_idx`, or focus a location when the current
-    /// filter already resolves to that location's entity.
-    pub fn select_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) -> MapChange {
+    /// Change the selection as a click at `clicked_idx` does. A click on the
+    /// selected entity acts on the clicked location: a replace sets or clears
+    /// its focus, an add focuses it, and a remove takes out only that location.
+    pub fn click(&mut self, op: SelectionOp, clicked_idx: LocationIdx) -> MapChange {
         let mode = self.current_map_mode;
         let derived_entity_anchor = self.map_click_derived_anchor();
         let outcome = SelectionAdapter::new(&*self).resolve_click(
@@ -37,67 +40,42 @@ impl<'bump> Eu5Workspace<'bump> {
             &self.selection_state,
             derived_entity_anchor,
         );
+        match op {
+            SelectionOp::Replace => {
+                let focused_location = outcome.focused_location.filter(|&f| self.can_focus(f));
+                let is_same_entity_click = focused_location.is_none()
+                    && !outcome.locations.is_empty()
+                    && self.selection_state.len() == outcome.locations.len()
+                    && derived_entity_anchor
+                        .is_some_and(|anchor| self.same_entity(anchor, clicked_idx, mode));
 
-        let focused_location = outcome.focused_location.filter(|&f| self.can_focus(f));
-        let is_same_entity_click = focused_location.is_none()
-            && !outcome.locations.is_empty()
-            && self.selection_state.len() == outcome.locations.len()
-            && derived_entity_anchor
-                .is_some_and(|anchor| self.same_entity(anchor, clicked_idx, mode));
-
-        if let Some(focus) = focused_location {
-            if self.selection_state.focused_location() == Some(focus) {
-                self.selection_state.clear_focus();
-            } else {
-                self.selection_state.set_focus(focus);
+                if let Some(focus) = focused_location {
+                    if self.selection_state.focused_location() == Some(focus) {
+                        self.selection_state.clear_focus();
+                    } else {
+                        self.selection_state.set_focus(focus);
+                    }
+                } else if is_same_entity_click {
+                    self.selection_state.clear_focus();
+                } else {
+                    self.selection_state.replace(outcome.locations);
+                }
             }
-        } else if is_same_entity_click {
-            if self.selection_state.has_focus() {
-                self.selection_state.clear_focus();
+            SelectionOp::Add => {
+                if outcome.focused_location.is_some_and(|f| self.can_focus(f)) {
+                    self.selection_state.set_focus(clicked_idx);
+                } else {
+                    self.selection_state.add_all(outcome.locations);
+                }
             }
-        } else {
-            self.selection_state.replace(outcome.locations);
-        }
-        self.recompute_derived_scope();
-        self.rebuild_colors()
-    }
-
-    /// Add the entity at `clicked_idx` to the existing selection.
-    pub fn add_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) -> MapChange {
-        let mode = self.current_map_mode;
-        let derived_entity_anchor = self.map_click_derived_anchor();
-        let outcome = SelectionAdapter::new(&*self).resolve_click(
-            clicked_idx,
-            mode,
-            &self.selection_state,
-            derived_entity_anchor,
-        );
-        if outcome.focused_location.is_some_and(|f| self.can_focus(f)) {
-            self.selection_state.set_focus(clicked_idx);
-        } else {
-            for idx in outcome.locations {
-                self.selection_state.add(idx);
+            SelectionOp::Remove => {
+                if outcome.focused_location.is_some() {
+                    self.selection_state.remove(clicked_idx);
+                } else {
+                    let kind = Self::entity_kind_for_map_mode(mode);
+                    self.remove_locations_from_scope_for_kind(&outcome.locations, kind);
+                }
             }
-        }
-        self.recompute_derived_scope();
-        self.rebuild_colors()
-    }
-
-    /// Remove the entity at `clicked_idx` from the selection.
-    pub fn remove_entity(&mut self, clicked_idx: eu5save::models::LocationIdx) -> MapChange {
-        let mode = self.current_map_mode;
-        let kind = Self::entity_kind_for_map_mode(mode);
-        let derived_entity_anchor = self.map_click_derived_anchor();
-        let outcome = SelectionAdapter::new(&*self).resolve_click(
-            clicked_idx,
-            mode,
-            &self.selection_state,
-            derived_entity_anchor,
-        );
-        if outcome.focused_location.is_some() {
-            self.selection_state.remove(clicked_idx);
-        } else {
-            self.remove_locations_from_scope_for_kind(&outcome.locations, kind);
         }
         self.recompute_derived_scope();
         self.rebuild_colors()
@@ -105,211 +83,164 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Filled terrain joins its country for a click, but it has no profile
     /// of its own, so a click inside the selected country does not focus it.
-    fn can_focus(&self, idx: eu5save::models::LocationIdx) -> bool {
+    fn can_focus(&self, idx: LocationIdx) -> bool {
         !self.owner_at_timeline_date(idx).is_dummy()
     }
 
-    /// Replace the selection with the country owning `anchor_idx`.
-    pub fn select_country_at(
-        &mut self,
-        anchor_idx: eu5save::models::LocationIdx,
-    ) -> (Option<crate::ColorIdx>, MapChange) {
-        let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
-        if locs.is_empty() {
-            return (None, self.no_map_change());
+    /// Change the selection by whole countries, whole markets or single
+    /// locations. Countries stay followed when they have no land on the
+    /// timeline date. A replace with countries or markets that have no land
+    /// changes nothing, and a replace with no locations clears the selection.
+    pub fn change_selection(&mut self, op: SelectionOp, set: SelectionSet) -> MapChange {
+        let mut lineage = FnvHashSet::default();
+        let (locations, kind): (FnvHashSet<LocationIdx>, _) = match &set {
+            SelectionSet::Countries(countries) => {
+                lineage = self.lineage_of(countries);
+                (self.land_of_owners(&lineage), EntityKind::Country)
+            }
+            SelectionSet::Markets(markets) => (self.land_of_markets(markets), EntityKind::Market),
+            SelectionSet::Locations(locations) => (
+                locations.iter().copied().collect(),
+                Self::entity_kind_for_map_mode(self.current_map_mode),
+            ),
+        };
+
+        match op {
+            SelectionOp::Replace => {
+                let is_locations = matches!(set, SelectionSet::Locations(_));
+                if locations.is_empty() && !is_locations {
+                    return self.no_map_change();
+                }
+                self.selection_state.replace(locations);
+                self.selection_state.set_followed(lineage);
+            }
+            SelectionOp::Add => {
+                self.selection_state.add_all(locations);
+                self.selection_state.follow_all(lineage);
+            }
+            SelectionOp::Remove => {
+                // Take out the land first. An unfollow can empty the selection,
+                // and a removal from an empty selection starts from all land.
+                self.remove_locations_from_scope_for_kind(&locations, kind);
+                for &id in &lineage {
+                    self.selection_state.unfollow(id);
+                }
+            }
         }
-        self.selection_state.replace(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Country);
-        let gradient = self.rebuild_colors();
-        (self.center_at(anchor_idx), gradient)
-    }
-
-    /// Add the country owning `anchor_idx` to the existing selection.
-    pub fn add_country_at(&mut self, anchor_idx: eu5save::models::LocationIdx) -> MapChange {
-        let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
-        self.selection_state.add_all(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Country);
+        self.recompute_derived_scope_for_kind(kind);
         self.rebuild_colors()
     }
 
-    /// Remove the country owning `anchor_idx` from the selection.
-    pub fn remove_country_at(&mut self, anchor_idx: eu5save::models::LocationIdx) -> MapChange {
-        if let Some(owner) = self.location_info(anchor_idx).owner {
-            self.selection_state.unfollow(owner);
+    /// The selection as a target that a replace selects again: the Players
+    /// preset, whole countries, whole markets, or else its locations. Each
+    /// target is checked to give this exact land. The
+    /// kind of the single-entity scope, or else of the map mode, is tried
+    /// first. None for an empty selection.
+    pub fn selection_target(&self) -> Option<SelectionTarget> {
+        let selection = &self.selection_state;
+        if selection.is_empty() {
+            return None;
         }
-        let locs = SelectionAdapter::new(&*self).resolve_by_owner(anchor_idx);
-        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
-        self.recompute_derived_scope_for_kind(EntityKind::Country);
-        self.rebuild_colors()
-    }
-
-    /// Replace the selection with the market containing `anchor_idx`.
-    pub fn select_market_at(
-        &mut self,
-        anchor_idx: eu5save::models::LocationIdx,
-    ) -> (Option<crate::ColorIdx>, MapChange) {
-        let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
-        if locs.is_empty() {
-            return (None, self.no_map_change());
+        // A focused location can stay after a step, though no player owns it.
+        let players_land = || self.players_land().map(|(_, land)| land);
+        if selection.preset() == Some(SelectionPreset::Players)
+            && players_land().is_some_and(|land| land == *selection.selected_locations())
+        {
+            return Some(SelectionTarget::Players);
         }
-        self.selection_state.replace(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Market);
-        let gradient = self.rebuild_colors();
-        (self.center_at(anchor_idx), gradient)
+        let kind = self
+            .derived_entity_kind()
+            .unwrap_or_else(|| Self::entity_kind_for_map_mode(self.current_map_mode));
+        let countries = || self.whole_countries().map(SelectionSet::Countries);
+        let markets = || self.whole_markets().map(SelectionSet::Markets);
+        let set = match kind {
+            EntityKind::Country => countries().or_else(markets),
+            EntityKind::Market => markets().or_else(countries),
+        };
+        let set = set.or_else(|| {
+            let mut locations: Vec<_> = selection.selected_locations().iter().copied().collect();
+            locations.sort_unstable_by_key(|idx| idx.value());
+            (!locations.is_empty()).then_some(SelectionSet::Locations(locations))
+        })?;
+        Some(SelectionTarget::Set(set))
     }
 
-    /// Add the market containing `anchor_idx` to the existing selection.
-    pub fn add_market_at(&mut self, anchor_idx: eu5save::models::LocationIdx) -> MapChange {
-        let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
-        self.selection_state.add_all(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Market);
-        self.rebuild_colors()
-    }
-
-    /// Remove the market containing `anchor_idx` from the selection.
-    pub fn remove_market_at(&mut self, anchor_idx: eu5save::models::LocationIdx) -> MapChange {
-        let locs = SelectionAdapter::new(&*self).resolve_by_market(anchor_idx);
-        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Market);
-        self.recompute_derived_scope_for_kind(EntityKind::Market);
-        self.rebuild_colors()
-    }
-
-    /// The land on the timeline date of a country and of the ids it had before.
-    fn land_of_lineage(
-        &self,
-        country_idx: eu5save::models::CountryIdx,
-    ) -> FnvHashSet<eu5save::models::LocationIdx> {
-        let adapter = SelectionAdapter::new(self);
-        self.lineage_ids(country_idx)
-            .into_iter()
+    /// Each id that these countries have had.
+    fn lineage_of(&self, countries: &[CountryIdx]) -> FnvHashSet<RealCountryId> {
+        countries
+            .iter()
+            .flat_map(|&idx| self.lineage_ids(idx))
             .filter_map(|id| id.real_id())
-            .flat_map(|owner| adapter.resolve_by_country_id(owner))
             .collect()
     }
 
-    /// Replace the selection with the land of `country_idx` and of its earlier ids.
-    pub fn select_country_by_idx(
-        &mut self,
-        country_idx: eu5save::models::CountryIdx,
-    ) -> (Option<crate::ColorIdx>, MapChange) {
-        let entry = self.gamestate.countries.index(country_idx);
-        let capital_location_idx = entry
-            .data()
-            .and_then(|d| d.capital)
-            .and_then(|id| self.gamestate.locations.get(id));
-        let locs = self.land_of_lineage(country_idx);
-        if locs.is_empty() {
-            return (None, self.no_map_change());
-        }
-        self.selection_state.replace(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Country);
-        let gradient = self.rebuild_colors();
-        let center = capital_location_idx.and_then(|idx| self.center_at(idx));
-        (center, gradient)
+    /// The land of these owners on the timeline date.
+    fn land_of_owners(&self, owners: &FnvHashSet<RealCountryId>) -> FnvHashSet<LocationIdx> {
+        self.iter_locations()
+            .filter_map(|(idx, info)| owners.contains(&info.owner?).then_some(idx))
+            .collect()
     }
 
-    /// Add the land of `country_idx` and of its earlier ids to the selection.
-    pub fn add_country_by_idx(&mut self, country_idx: eu5save::models::CountryIdx) -> MapChange {
-        let locs = self.land_of_lineage(country_idx);
-        self.selection_state.add_all(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Country);
-        self.rebuild_colors()
+    fn land_of_markets(&self, markets: &[MarketId]) -> FnvHashSet<LocationIdx> {
+        let markets: FnvHashSet<_> = markets.iter().copied().collect();
+        self.iter_locations()
+            .filter_map(|(idx, info)| markets.contains(&info.market?).then_some(idx))
+            .collect()
     }
 
-    /// Remove the land of `country_idx` and of its earlier ids from the selection.
-    pub fn remove_country_by_idx(&mut self, country_idx: eu5save::models::CountryIdx) -> MapChange {
-        for owner in self.lineage_ids(country_idx) {
-            if let Some(owner) = owner.real_id() {
-                self.selection_state.unfollow(owner);
-            }
-        }
-        let locs = self.land_of_lineage(country_idx);
-        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Country);
-        self.recompute_derived_scope_for_kind(EntityKind::Country);
-        self.rebuild_colors()
-    }
-
-    /// Replace the selection with all locations belonging to `market_id`.
-    pub fn select_market_by_id(
-        &mut self,
-        market_id: eu5save::models::MarketId,
-    ) -> (Option<crate::ColorIdx>, MapChange) {
-        let locs = SelectionAdapter::new(&*self).resolve_by_market_id(market_id);
-        if locs.is_empty() {
-            return (None, self.no_map_change());
-        }
-        self.selection_state.replace(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Market);
-        let gradient = self.rebuild_colors();
-        let center = self
-            .gamestate
-            .market_manager
-            .get(market_id)
-            .and_then(|m| self.gamestate.locations.get(m.center))
-            .and_then(|idx| self.center_at(idx));
-        (center, gradient)
-    }
-
-    /// Add all locations belonging to `market_id` to the existing selection.
-    pub fn add_market_by_id(&mut self, market_id: eu5save::models::MarketId) -> MapChange {
-        let locs = SelectionAdapter::new(&*self).resolve_by_market_id(market_id);
-        self.selection_state.add_all(locs);
-        self.recompute_derived_scope_for_kind(EntityKind::Market);
-        self.rebuild_colors()
-    }
-
-    /// Remove all locations belonging to `market_id` from the selection.
-    pub fn remove_market_by_id(&mut self, market_id: eu5save::models::MarketId) -> MapChange {
-        let locs = SelectionAdapter::new(&*self).resolve_by_market_id(market_id);
-        self.remove_locations_from_scope_for_kind(&locs, EntityKind::Market);
-        self.recompute_derived_scope_for_kind(EntityKind::Market);
-        self.rebuild_colors()
-    }
-
-    /// Apply a pre-resolved set of locations (produced by the map renderer's
-    /// `commit_box_selection`) to the selection state.
-    pub fn apply_resolved_box_selection(
-        &mut self,
-        resolved_locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
-        add: bool,
-    ) -> MapChange {
-        let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
-        let operation = if add {
-            SelectionSetOperation::Add
-        } else {
-            SelectionSetOperation::Remove
+    /// The live countries that a replace selects this exact land with, and
+    /// the followed countries with no land on the timeline date. None when no
+    /// set of whole countries gives this land.
+    fn whole_countries(&self) -> Option<Vec<CountryIdx>> {
+        let selection = &self.selection_state;
+        let in_save = |id: RealCountryId| {
+            self.live_country_of(id.country_id())
+                .filter(|&idx| self.gamestate.countries.index(idx).data().is_some())
         };
-        self.apply_selection_set(set, operation)
-    }
-
-    pub fn replace_selection_with_locations(
-        &mut self,
-        resolved_locations: impl IntoIterator<Item = eu5save::models::LocationIdx>,
-    ) -> MapChange {
-        let set: FnvHashSet<_> = resolved_locations.into_iter().collect();
-        self.apply_selection_set(set, SelectionSetOperation::Replace)
-    }
-
-    fn apply_selection_set(
-        &mut self,
-        locations: FnvHashSet<eu5save::models::LocationIdx>,
-        operation: SelectionSetOperation,
-    ) -> MapChange {
-        match operation {
-            SelectionSetOperation::Add => self.selection_state.add_all(locations),
-            SelectionSetOperation::Remove => {
-                let kind = Self::entity_kind_for_map_mode(self.current_map_mode);
-                self.remove_locations_from_scope_for_kind(&locations, kind);
-            }
-            SelectionSetOperation::Replace => self.selection_state.replace(locations),
+        let mut countries = FnvHashSet::default();
+        for &idx in selection.selected_locations() {
+            countries.insert(in_save(self.owner_at_timeline_date(idx).real_id()?)?);
         }
-        self.recompute_derived_scope();
-        self.rebuild_colors()
+        countries.extend(selection.followed().iter().copied().filter_map(in_save));
+        let mut countries: Vec<_> = countries.into_iter().collect();
+        countries.sort_unstable_by_key(|idx| idx.value());
+        let land = self.land_of_owners(&self.lineage_of(&countries));
+        (!countries.is_empty() && land == *selection.selected_locations()).then_some(countries)
+    }
+
+    /// The markets that a replace selects this exact land with. None when no
+    /// set of whole markets gives this land.
+    fn whole_markets(&self) -> Option<Vec<MarketId>> {
+        let selection = &self.selection_state;
+        let mut markets = FnvHashSet::default();
+        for &idx in selection.selected_locations() {
+            markets.insert(self.location_info(idx).market?);
+        }
+        let mut markets: Vec<_> = markets.into_iter().collect();
+        markets.sort_unstable_by_key(|id| id.value());
+        let land = self.land_of_markets(&markets);
+        (!markets.is_empty() && land == *selection.selected_locations()).then_some(markets)
+    }
+
+    /// The id of the location at the center of a market. It stays the same
+    /// across saves, so a market carries by it.
+    pub fn market_center_id(&self, market: MarketId) -> Option<LocationId> {
+        self.gamestate.market_manager.get(market).map(|m| m.center)
+    }
+
+    /// The market whose center is the location with this id.
+    pub fn market_at_center_id(&self, center: LocationId) -> Option<MarketId> {
+        self.gamestate
+            .market_manager
+            .database
+            .iter_with_id()
+            .find(|(_, m)| m.center == center)
+            .map(|(id, _)| id)
     }
 
     fn remove_locations_from_scope_for_kind(
         &mut self,
-        locations: &FnvHashSet<eu5save::models::LocationIdx>,
+        locations: &FnvHashSet<LocationIdx>,
         kind: EntityKind,
     ) {
         if self.selection_state.is_empty() && !locations.is_empty() {
@@ -346,10 +277,7 @@ impl<'bump> Eu5Workspace<'bump> {
 
     /// Set focus to `location`, replacing the filter with its entity first if
     /// the current filter does not already resolve to that entity.
-    pub fn set_focused_location(
-        &mut self,
-        location: eu5save::models::LocationIdx,
-    ) -> (Option<crate::ColorIdx>, MapChange) {
+    pub fn set_focused_location(&mut self, location: LocationIdx) -> MapChange {
         let scope_mode = self.derived_scope_map_mode();
         let already_scoped_here = self
             .derived_entity_anchor()
@@ -360,7 +288,7 @@ impl<'bump> Eu5Workspace<'bump> {
             let entity_locs = SelectionAdapter::new(&*self)
                 .resolve_in_entity_mode(location, self.current_map_mode);
             if entity_locs.is_empty() {
-                return (None, self.no_map_change());
+                return self.no_map_change();
             }
             self.selection_state.replace(entity_locs);
             self.recompute_derived_scope();
@@ -368,36 +296,24 @@ impl<'bump> Eu5Workspace<'bump> {
 
         self.selection_state.set_focus(location);
         self.recompute_derived_scope();
-        let change = self.rebuild_colors();
-        (self.center_at(location), change)
+        self.rebuild_colors()
+    }
+
+    /// Focus `location` when it is in the selection. Otherwise nothing changes.
+    /// A focus that a timeline step keeps can be on land with no owner.
+    pub fn focus_in_selection(&mut self, location: LocationIdx) -> MapChange {
+        if !self.selection_state.contains(location) {
+            return self.no_map_change();
+        }
+        self.selection_state.set_focus(location);
+        self.rebuild_colors()
     }
 
     /// Select all locations owned by human-controlled countries and their subjects.
     pub fn select_players(&mut self) -> MapChange {
-        let player_idxs: FnvHashSet<CountryIdx> = self.players().map(|p| p.country).collect();
-
-        if player_idxs.is_empty() {
+        let Some((player_and_subjects, locations)) = self.players_land() else {
             return self.no_map_change();
-        }
-
-        let player_and_subjects: FnvHashSet<CountryIdx> = self
-            .gamestate
-            .countries
-            .iter()
-            .filter_map(|entry| {
-                self.is_player_or_subject(entry.idx(), &player_idxs)
-                    .then_some(entry.idx())
-            })
-            .collect();
-
-        let locations: FnvHashSet<eu5save::models::LocationIdx> = self
-            .iter_locations()
-            .filter_map(|(idx, info)| {
-                let owner_idx = self.gamestate.countries.get(info.owner?.country_id())?;
-                player_and_subjects.contains(&owner_idx).then_some(idx)
-            })
-            .collect();
-
+        };
         self.selection_state
             .replace_with_preset(locations, crate::selection::SelectionPreset::Players);
         self.recompute_derived_scope();
@@ -410,6 +326,32 @@ impl<'bump> Eu5Workspace<'bump> {
         );
         self.selection_state.set_followed(followed);
         self.rebuild_colors()
+    }
+
+    /// The players and their subjects, and their land on the timeline date.
+    /// None when the save has no players.
+    fn players_land(&self) -> Option<(FnvHashSet<CountryIdx>, FnvHashSet<LocationIdx>)> {
+        let player_idxs: FnvHashSet<CountryIdx> = self.players().map(|p| p.country).collect();
+        if player_idxs.is_empty() {
+            return None;
+        }
+        let player_and_subjects: FnvHashSet<CountryIdx> = self
+            .gamestate
+            .countries
+            .iter()
+            .filter_map(|entry| {
+                self.is_player_or_subject(entry.idx(), &player_idxs)
+                    .then_some(entry.idx())
+            })
+            .collect();
+        let locations = self
+            .iter_locations()
+            .filter_map(|(idx, info)| {
+                let owner_idx = self.gamestate.countries.get(info.owner?.country_id())?;
+                player_and_subjects.contains(&owner_idx).then_some(idx)
+            })
+            .collect();
+        Some((player_and_subjects, locations))
     }
 
     fn is_player_or_subject(
