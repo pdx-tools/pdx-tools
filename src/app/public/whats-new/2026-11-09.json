@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "EU4: filter provincess by terrain, autonomy, and more",
+      "EU5: improve selection in cross save market navigation"
+    ],
+    "fixes": [
+      "EU5: Fix income calculation for 1.3 and 1.4 save files",
+      "EU5: removing countries from a selection no longer selects all other land"
+    ]
+  }
+}
