@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAnalysisWorker } from "../../worker";
 import type { ProvinceItem, ProvinceList } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
@@ -9,6 +9,9 @@ import { formatInt } from "@/lib/format";
 import { DataTable } from "@/components/DataTable";
 import { useVisualizationDispatch } from "@/components/viz";
 import { createCsv } from "@/lib/csv";
+import { useTagFilter } from "../../store";
+
+const yesNo = (value: boolean) => (value ? "Yes" : "No");
 
 const columnHelper = createColumnHelper<ProvinceItem>();
 const columns = [
@@ -24,6 +27,21 @@ const columns = [
     sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
     cell: ({ row }) => <Flag tag={row.original.owner.tag} name={row.original.owner.name} />,
+  }),
+
+  columnHelper.accessor("terrain", {
+    sortFn: "basic",
+    filterFn: "excludes",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Terrain" />,
+    cell: (info) => info.getValue(),
+  }),
+
+  columnHelper.accessor((x) => yesNo(x.cored), {
+    id: "cored",
+    sortFn: "basic",
+    filterFn: "excludes",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Cored" />,
+    cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("tax", {
@@ -52,30 +70,38 @@ const columns = [
 
   columnHelper.accessor("development", {
     sortFn: "basic",
-    enableColumnFilter: false,
+    filterFn: "inNumberRange",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Development" />,
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
 
+  columnHelper.accessor("autonomy", {
+    sortFn: "basic",
+    filterFn: "inNumberRange",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Autonomy" />,
+    meta: { className: "text-right" },
+    cell: (info) => `${formatInt(info.getValue())}%`,
+  }),
+
   columnHelper.accessor("religion", {
     sortFn: "basic",
-    enableColumnFilter: false,
+    filterFn: "excludes",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("culture", {
     sortFn: "basic",
-    enableColumnFilter: false,
+    filterFn: "excludes",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Culture" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("tradeGoods", {
     sortFn: "basic",
-    enableColumnFilter: false,
-    header: ({ column }) => <Table.ColumnHeader column={column} title="TradeGoods" />,
+    filterFn: "excludes",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Trade Goods" />,
     cell: (info) => info.getValue(),
   }),
 
@@ -87,11 +113,12 @@ const columns = [
     cell: (info) => formatInt(info.getValue()),
   }),
 
-  columnHelper.accessor("inHre", {
+  columnHelper.accessor((x) => yesNo(x.inHre), {
+    id: "inHre",
     sortFn: "basic",
-    enableColumnFilter: false,
+    filterFn: "excludes",
     header: ({ column }) => <Table.ColumnHeader column={column} title="In HRE" />,
-    cell: (info) => `${info.getValue()}`,
+    cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("exploitDate", {
@@ -118,22 +145,17 @@ const columns = [
   }),
 ];
 
-function ProvinceTable({ data }: { data: ProvinceList | undefined }) {
-  return (
-    <DataTable
-      columns={columns}
-      data={data ?? []}
-      pagination={true}
-      initialSorting={[{ id: "development", desc: true }]}
-      enableColumnFilters={true}
-    />
-  );
-}
-
 export function ProvinceDataTable() {
+  const countryFilter = useTagFilter();
   const { data, error } = useAnalysisWorker(
-    useCallback(async (worker) => worker.eu4GetProvinces(), []),
+    useCallback(async (worker) => worker.eu4GetProvinces(countryFilter), [countryFilter]),
   );
+
+  // The CSV export holds only the rows that the column filters keep.
+  const filteredRows = useRef<ProvinceList>([]);
+  const onFilteredRowsChange = useCallback((rows: ProvinceList) => {
+    filteredRows.current = rows;
+  }, []);
 
   const visualizationDispatch = useVisualizationDispatch();
 
@@ -141,11 +163,7 @@ export function ProvinceDataTable() {
     visualizationDispatch({
       type: "update-csv-data",
       getCsvData: async () => {
-        if (!data) {
-          return "";
-        }
-
-        const dataCsv = data.map(({ owner, ...x }) => ({
+        const dataCsv = filteredRows.current.map(({ owner, ...x }) => ({
           ...x,
           ownerTag: owner.tag,
           ownerName: owner.name,
@@ -156,10 +174,13 @@ export function ProvinceDataTable() {
           "name",
           "ownerTag",
           "ownerName",
+          "terrain",
+          "cored",
           "tax",
           "production",
           "manpower",
           "development",
+          "autonomy",
           "expandInfrastructure",
           "numCentralizedState",
           "religion",
@@ -171,12 +192,20 @@ export function ProvinceDataTable() {
         ]);
       },
     });
-  }, [data, visualizationDispatch]);
+  }, [visualizationDispatch]);
 
   return (
     <>
       <Alert.Error msg={error} />
-      <ProvinceTable data={data} />
+      <DataTable
+        columns={columns}
+        data={data ?? []}
+        pagination={true}
+        initialSorting={[{ id: "development", desc: true }]}
+        enableColumnFilters={true}
+        rowNoun="provinces"
+        onFilteredRowsChange={onFilteredRowsChange}
+      />
     </>
   );
 }

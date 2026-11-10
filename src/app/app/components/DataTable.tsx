@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useState } from "react";
+import React, { useEffect, useEffectEvent, useId, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
 import ChevronLeftIcon from "@heroicons/react/24/outline/ChevronLeftIcon";
 import ChevronRightIcon from "@heroicons/react/24/outline/ChevronRightIcon";
@@ -11,17 +11,12 @@ import type {
   ColumnOrderState,
   PaginationState,
 } from "@tanstack/react-table";
-import type {
-  AppCell,
-  AppColumn,
-  AppColumnDef,
-  AppTableOptions,
-  RowData,
-} from "@/lib/tanstack-table";
+import type { AppCell, AppColumnDef, AppTableOptions, RowData } from "@/lib/tanstack-table";
 import { appTableFeatures } from "@/lib/tanstack-table";
 import { Button } from "./Button";
 import { cx } from "class-variance-authority";
-import { Input } from "./Input";
+import { DataTableFilter } from "./DataTableFilter";
+import { formatInt } from "@/lib/format";
 import { Select } from "./Select";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -62,6 +57,10 @@ type DataTableProps<TData extends RowData> = {
   className?: string;
   enableColumnReordering?: boolean;
   pageSizeOptions?: readonly number[];
+  /** The plural noun for a row. When given, the table shows how many rows the filters keep. */
+  rowNoun?: string;
+  /** Receives the rows that the filters keep, each time they change. */
+  onFilteredRowsChange?: (rows: TData[]) => void;
 } & Omit<Partial<AppTableOptions<TData>>, "columns" | "data"> &
   ComponentProps<typeof Table>;
 
@@ -75,6 +74,8 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
   enableColumnFilters = false,
   enableColumnReordering = false,
   pageSizeOptions = PAGE_SIZE_OPTIONS,
+  rowNoun,
+  onFilteredRowsChange,
   size,
   ...options
 }: DataTableProps<TData>) {
@@ -118,6 +119,21 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
   });
 
   const rows = table.getRowModel().rows;
+  const filteredRows = table.getFilteredRowModel().rows;
+  // An effect event, so a new callback on each render does not notify again.
+  const notifyFilteredRows = useEffectEvent((rows: typeof filteredRows) =>
+    onFilteredRowsChange?.(rows.map((row) => row.original)),
+  );
+  useEffect(() => notifyFilteredRows(filteredRows), [filteredRows]);
+
+  const totalRows = table.getPreFilteredRowModel().rows.length;
+  const rowCount = rowNoun ? (
+    <div className="text-sm text-gray-600 tabular-nums dark:text-gray-300" aria-live="polite">
+      {filteredRows.length === totalRows
+        ? `${formatInt(totalRows)} ${rowNoun}`
+        : `${formatInt(filteredRows.length)} of ${formatInt(totalRows)} ${rowNoun}`}
+    </div>
+  ) : null;
 
   // Drag and drop handlers
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
@@ -229,7 +245,9 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getCanFilter() ? <Filter column={header.column} /> : null}
+                    {header.column.getCanFilter() ? (
+                      <DataTableFilter column={header.column} />
+                    ) : null}
                   </div>
                 </Table.Head>
               ))}
@@ -292,6 +310,7 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
               </Select.Content>
             </Select>
           </div>
+          {rowCount}
           <div className="flex items-center space-x-2">
             <Button
               shape="square"
@@ -314,7 +333,9 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
             </Button>
           </div>
         </div>
-      ) : null}
+      ) : (
+        rowCount
+      )}
     </div>
   );
 }
@@ -332,17 +353,4 @@ function cellClassName<TData extends RowData>(cell: AppCell<TData, unknown>): st
   }
 
   return cz;
-}
-
-function Filter<TData extends RowData>({ column }: { column: AppColumn<TData> }) {
-  const columnFilterValue = column.getFilterValue();
-  return (
-    <Input
-      type="text"
-      value={`${columnFilterValue ?? ""}`}
-      onChange={(value) => column.setFilterValue(value.currentTarget.value)}
-      placeholder={`Search...`}
-      className="pl-1"
-    />
-  );
 }
