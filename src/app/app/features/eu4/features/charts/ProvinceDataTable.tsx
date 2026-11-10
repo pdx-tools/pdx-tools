@@ -36,14 +36,6 @@ const columns = [
     cell: (info) => info.getValue(),
   }),
 
-  columnHelper.accessor((x) => yesNo(x.cored), {
-    id: "cored",
-    sortFn: "basic",
-    filterFn: "excludes",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Cored" />,
-    cell: (info) => info.getValue(),
-  }),
-
   columnHelper.accessor("tax", {
     sortFn: "basic",
     enableColumnFilter: false,
@@ -175,7 +167,6 @@ export function ProvinceDataTable() {
           "ownerTag",
           "ownerName",
           "terrain",
-          "cored",
           "tax",
           "production",
           "manpower",

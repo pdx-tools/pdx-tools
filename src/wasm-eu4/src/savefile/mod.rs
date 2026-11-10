@@ -1031,7 +1031,6 @@ impl SaveFileImpl {
                     .get_province(id)
                     .map(|x| terrain_name(x.terrain))
                     .unwrap_or_default(),
-                cored: prov.cores.contains(&owner),
                 autonomy: prov.local_autonomy,
                 devastation: prov.devastation,
                 exploit_date: prov.exploit_date,

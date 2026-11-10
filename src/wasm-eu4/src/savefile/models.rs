@@ -82,7 +82,6 @@ pub struct ProvinceItem {
     pub culture: Option<String>,
     pub trade_goods: Option<String>,
     pub terrain: String,
-    pub cored: bool,
     pub autonomy: f32,
     pub devastation: f32,
     pub exploit_date: Option<Eu4Date>,
