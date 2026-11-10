@@ -2,8 +2,8 @@ import { useId, useMemo, useState } from "react";
 import ChevronDownIcon from "@heroicons/react/20/solid/ChevronDownIcon";
 import { cx } from "class-variance-authority";
 import { filterFn_inNumberRange } from "@tanstack/react-table";
-import { filterFn_excludes } from "@/lib/tanstack-table";
-import type { AppColumn, RowData } from "@/lib/tanstack-table";
+import { filterFn_checklist } from "@/lib/tanstack-table";
+import type { AppColumn, ChecklistFilter, RowData } from "@/lib/tanstack-table";
 import { formatInt } from "@/lib/format";
 import { Button } from "./Button";
 import { Input } from "./Input";
@@ -12,7 +12,7 @@ import { Popover } from "./Popover";
 /** The header control follows the column's filter function, so the two always agree. */
 export function DataTableFilter<TData extends RowData>({ column }: { column: AppColumn<TData> }) {
   const filterFn: unknown = column.getFilterFn();
-  if (filterFn === filterFn_excludes) {
+  if (filterFn === filterFn_checklist) {
     return <ValuesFilter column={column} />;
   } else if (filterFn === filterFn_inNumberRange) {
     return <RangeFilter column={column} />;
@@ -62,82 +62,139 @@ function compareValues(a: unknown, b: unknown) {
   return valueLabel(a).localeCompare(valueLabel(b));
 }
 
+function isShown(filter: ChecklistFilter | undefined, value: unknown) {
+  return filter === undefined || filter.values.includes(value) === (filter.mode === "only");
+}
+
+/** Lists the values of the rows and the values in the filter, sorted. */
+function checklistValues(facets: Map<unknown, number>, ...lists: unknown[][]) {
+  return [...new Set([...facets.keys(), ...lists.flat()])].sort(compareValues);
+}
+
 /** Shows a checkbox for each distinct value. A cleared checkbox hides its rows. */
 function ValuesFilter<TData extends RowData>({ column }: { column: AppColumn<TData> }) {
   const [search, setSearch] = useState("");
   const facets = column.getFacetedUniqueValues();
-  const hidden = (column.getFilterValue() as unknown[] | undefined) ?? [];
+  const filter = column.getFilterValue() as ChecklistFilter | undefined;
 
-  const values = useMemo(() => [...facets.keys()].sort(compareValues), [facets]);
-  const query = search.trim().toLowerCase();
-  const matches = query
-    ? values.filter((value) => valueLabel(value).toLowerCase().includes(query))
-    : values;
-
-  const shown = values.filter((value) => !hidden.includes(value));
+  const values = useMemo(() => checklistValues(facets, filter?.values ?? []), [facets, filter]);
+  const shown = values.filter((value) => isShown(filter, value));
   const label =
-    hidden.length === 0
+    filter === undefined
       ? "All"
       : shown.length === 1
         ? valueLabel(shown[0])
         : `${shown.length} of ${values.length}`;
 
-  const setHidden = (next: unknown[]) => column.setFilterValue(next);
-  const toggle = (value: unknown, visible: boolean) =>
-    setHidden(visible ? hidden.filter((x) => x !== value) : [...hidden, value]);
-  // Without a search, show every value, including values that other filters remove.
-  const showMatches = () =>
-    query
-      ? setHidden(hidden.filter((x) => !matches.includes(x)))
-      : column.setFilterValue(undefined);
-  const hideMatches = () =>
-    setHidden([...hidden, ...matches.filter((value) => !hidden.includes(value))]);
-
   return (
     <Popover>
-      <FilterTrigger label={label} active={hidden.length > 0} />
+      <FilterTrigger label={label} active={filter !== undefined} />
       <Popover.Content align="start" className={cx(panelClassName, "flex w-64 flex-col gap-2")}>
-        {values.length > 8 || search !== "" ? (
-          <Input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-            placeholder="Search..."
-            aria-label="Search values"
-            className="px-2 py-1"
-          />
-        ) : null}
-        <div className="flex justify-between">
-          <Button variant="ghost" shape="none" className="text-xs underline" onClick={showMatches}>
-            {query ? "Show matches" : "Show all"}
-          </Button>
-          <Button variant="ghost" shape="none" className="text-xs underline" onClick={hideMatches}>
-            {query ? "Hide matches" : "Hide all"}
-          </Button>
-        </div>
-        <ul className="flex max-h-72 flex-col overflow-y-auto">
-          {matches.map((value) => (
-            <li key={valueLabel(value)}>
-              <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-gray-200/50 dark:hover:bg-gray-600/50">
-                <input
-                  type="checkbox"
-                  className="accent-sky-600"
-                  checked={!hidden.includes(value)}
-                  onChange={(e) => toggle(value, e.currentTarget.checked)}
-                />
-                <span className="grow truncate">{valueLabel(value)}</span>
-                <span className="text-gray-500 tabular-nums dark:text-gray-400">
-                  {facets.get(value)}
-                </span>
-              </label>
-            </li>
-          ))}
-          {matches.length === 0 ? (
-            <li className="px-1 py-0.5 text-gray-500 dark:text-gray-400">No values match.</li>
-          ) : null}
-        </ul>
+        <ValuesList column={column} search={search} setSearch={setSearch} />
       </Popover.Content>
     </Popover>
+  );
+}
+
+function ValuesList<TData extends RowData>({
+  column,
+  search,
+  setSearch,
+}: {
+  column: AppColumn<TData>;
+  search: string;
+  setSearch: (search: string) => void;
+}) {
+  const facets = column.getFacetedUniqueValues();
+  const filter = column.getFilterValue() as ChecklistFilter | undefined;
+  // A value in the filter that no current row has stays in the list until the
+  // list closes, so a click on its checkbox does not remove it from the list.
+  const [listedAtOpen] = useState(() => filter?.values ?? []);
+
+  const values = useMemo(
+    () => checklistValues(facets, listedAtOpen, filter?.values ?? []),
+    [facets, listedAtOpen, filter],
+  );
+  const query = search.trim().toLowerCase();
+  const matches = query
+    ? values.filter((value) => valueLabel(value).toLowerCase().includes(query))
+    : values;
+
+  const setShown = (subset: unknown[], visible: boolean) => {
+    const mode = filter?.mode ?? "except";
+    const listed = filter?.values ?? [];
+    // An "only" filter lists the shown values. An "except" filter lists the hidden values.
+    const next =
+      (mode === "only") === visible
+        ? [...listed, ...subset.filter((value) => !listed.includes(value))]
+        : listed.filter((value) => !subset.includes(value));
+    column.setFilterValue({ mode, values: next } satisfies ChecklistFilter);
+  };
+  const toggle = (value: unknown, visible: boolean) => setShown([value], visible);
+  // Without a search, the two buttons apply to all values, including values
+  // that other filters remove and new values.
+  const showMatches = () => (query ? setShown(matches, true) : column.setFilterValue(undefined));
+  const hideMatches = () =>
+    query
+      ? setShown(matches, false)
+      : column.setFilterValue({ mode: "only", values: [] } satisfies ChecklistFilter);
+  const showOnly = (value: unknown) =>
+    column.setFilterValue({ mode: "only", values: [value] } satisfies ChecklistFilter);
+
+  return (
+    <>
+      {values.length > 8 || search !== "" ? (
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          placeholder="Search..."
+          aria-label="Search values"
+          className="px-2 py-1"
+        />
+      ) : null}
+      <div className="flex justify-between">
+        <Button variant="ghost" shape="none" className="text-xs underline" onClick={showMatches}>
+          {query ? "Show matches" : "Show all"}
+        </Button>
+        <Button variant="ghost" shape="none" className="text-xs underline" onClick={hideMatches}>
+          {query ? "Hide matches" : "Hide all"}
+        </Button>
+      </div>
+      <ul className="flex max-h-72 flex-col overflow-y-auto">
+        {matches.map((value) => (
+          <li
+            key={valueLabel(value)}
+            className="group flex items-center gap-1 rounded hover:bg-gray-200/50 dark:hover:bg-gray-600/50"
+          >
+            <label className="flex min-w-0 grow cursor-pointer items-center gap-2 px-1 py-0.5">
+              <input
+                type="checkbox"
+                className="accent-sky-600"
+                checked={isShown(filter, value)}
+                onChange={(e) => toggle(value, e.currentTarget.checked)}
+              />
+              <span className="grow truncate">{valueLabel(value)}</span>
+              <span className="text-gray-500 tabular-nums dark:text-gray-400">
+                {facets.get(value) ?? 0}
+              </span>
+            </label>
+            <Button
+              variant="ghost"
+              shape="none"
+              className="px-1 text-xs underline opacity-0 group-hover:opacity-100 focus-visible:opacity-100 any-pointer-coarse:opacity-100"
+              aria-label={`Show only ${valueLabel(value)}`}
+              onClick={() => showOnly(value)}
+            >
+              Only
+            </Button>
+          </li>
+        ))}
+        {matches.length === 0 ? (
+          <li className="px-1 py-0.5 text-gray-500 dark:text-gray-400">No values match.</li>
+        ) : null}
+      </ul>
+    </>
   );
 }
 

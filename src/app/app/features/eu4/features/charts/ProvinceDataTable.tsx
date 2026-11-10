@@ -14,7 +14,7 @@ import { useTagFilter } from "../../store";
 
 const yesNo = (value: boolean) => (value ? "Yes" : "No");
 
-type ProvinceTable = { table: AppTable<ProvinceItem> };
+type FooterProps = { table: AppTable<ProvinceItem> };
 
 function filteredProvinces(table: AppTable<ProvinceItem>) {
   return table.getFilteredRowModel().rows.map((row) => row.original);
@@ -22,7 +22,7 @@ function filteredProvinces(table: AppTable<ProvinceItem>) {
 
 /** A footer with the sum of a value over the provinces that the filters keep. */
 function totalFooter(value: (province: ProvinceItem) => number) {
-  return function TotalFooter({ table }: ProvinceTable) {
+  return function TotalFooter({ table }: FooterProps) {
     const total = filteredProvinces(table).reduce((acc, x) => acc + value(x), 0);
     return formatInt(total);
   };
@@ -33,7 +33,7 @@ function totalFooter(value: (province: ProvinceItem) => number) {
  * keep. Each province counts as much as its development.
  */
 function averageFooter(value: (province: ProvinceItem) => number, unit = "") {
-  return function AverageFooter({ table }: ProvinceTable) {
+  return function AverageFooter({ table }: FooterProps) {
     let weighted = 0;
     let development = 0;
     for (const x of filteredProvinces(table)) {
@@ -55,6 +55,14 @@ function averageFooter(value: (province: ProvinceItem) => number, unit = "") {
 }
 
 const columnHelper = createColumnHelper<ProvinceItem>();
+
+const ownerColumn = columnHelper.accessor("owner.tag", {
+  enableColumnFilter: false,
+  sortFn: "basic",
+  header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
+  cell: ({ row }) => <Flag tag={row.original.owner.tag} name={row.original.owner.name} />,
+});
+
 const columns = [
   columnHelper.accessor((x) => `${x.name} (${x.id})`, {
     id: "name",
@@ -64,12 +72,7 @@ const columns = [
     enableColumnFilter: true,
   }),
 
-  columnHelper.accessor("owner.tag", {
-    enableColumnFilter: false,
-    sortFn: "basic",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Owner" />,
-    cell: ({ row }) => <Flag tag={row.original.owner.tag} name={row.original.owner.name} />,
-  }),
+  ownerColumn,
 
   columnHelper.accessor("tax", {
     sortFn: "basic",
@@ -118,35 +121,35 @@ const columns = [
 
   columnHelper.accessor("religion", {
     sortFn: "basic",
-    filterFn: "excludes",
+    filterFn: "checklist",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Religion" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("culture", {
     sortFn: "basic",
-    filterFn: "excludes",
+    filterFn: "checklist",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Culture" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("tradeGoods", {
     sortFn: "basic",
-    filterFn: "excludes",
+    filterFn: "checklist",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Trade Goods" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("terrain", {
     sortFn: "basic",
-    filterFn: "excludes",
+    filterFn: "checklist",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Terrain" />,
     cell: (info) => info.getValue(),
   }),
 
   columnHelper.accessor("region", {
     sortFn: "basic",
-    filterFn: "excludes",
+    filterFn: "checklist",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Region" />,
     cell: (info) => info.getValue(),
   }),
@@ -163,7 +166,7 @@ const columns = [
   columnHelper.accessor((x) => yesNo(x.inHre), {
     id: "inHre",
     sortFn: "basic",
-    filterFn: "excludes",
+    filterFn: "checklist",
     header: ({ column }) => <Table.ColumnHeader column={column} title="In HRE" />,
     cell: (info) => info.getValue(),
   }),
@@ -191,6 +194,39 @@ const columns = [
     cell: (info) => formatInt(info.getValue()),
   }),
 ];
+
+// A table of one country's provinces does not need to show the owner.
+const columnsWithoutOwner = columns.filter((column) => column !== ownerColumn);
+
+type ProvinceTableProps = {
+  provinces: ProvinceList | undefined;
+  error: string | undefined;
+  showOwner: boolean;
+  onFilteredRowsChange?: (rows: ProvinceList) => void;
+};
+
+/** A table of provinces, with column filters and a totals row. */
+export function ProvinceTable({
+  provinces,
+  error,
+  showOwner,
+  onFilteredRowsChange,
+}: ProvinceTableProps) {
+  return (
+    <>
+      <Alert.Error msg={error} />
+      <DataTable
+        columns={showOwner ? columns : columnsWithoutOwner}
+        data={provinces ?? []}
+        pagination={true}
+        initialSorting={[{ id: "development", desc: true }]}
+        enableColumnFilters={true}
+        rowNoun="provinces"
+        onFilteredRowsChange={onFilteredRowsChange}
+      />
+    </>
+  );
+}
 
 export function ProvinceDataTable() {
   const countryFilter = useTagFilter();
@@ -242,17 +278,11 @@ export function ProvinceDataTable() {
   }, [visualizationDispatch]);
 
   return (
-    <>
-      <Alert.Error msg={error} />
-      <DataTable
-        columns={columns}
-        data={data ?? []}
-        pagination={true}
-        initialSorting={[{ id: "development", desc: true }]}
-        enableColumnFilters={true}
-        rowNoun="provinces"
-        onFilteredRowsChange={onFilteredRowsChange}
-      />
-    </>
+    <ProvinceTable
+      provinces={data}
+      error={error}
+      showOwner={true}
+      onFilteredRowsChange={onFilteredRowsChange}
+    />
   );
 }

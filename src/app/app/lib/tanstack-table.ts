@@ -46,13 +46,21 @@ import type {
 } from "@tanstack/react-table";
 
 /**
- * Keeps the rows whose value is not in the list of hidden values. A column with
- * this filter gets a checklist of its values in the header.
+ * The value of a checklist filter. "except" keeps all values except the listed
+ * values, so a new value is kept. "only" keeps only the listed values, so a new
+ * value is removed.
  */
-export const filterFn_excludes = constructFilterFn({
-  filter: (dataValue, hidden: Set<unknown>) => !hidden.has(dataValue),
-  resolveFilterValue: (val: unknown[]) => new Set(val),
-  autoRemove: (val) => !Array.isArray(val) || val.length === 0,
+export type ChecklistFilter = { mode: "except" | "only"; values: unknown[] };
+
+/** A column with this filter gets a checklist of its values in the header. */
+export const filterFn_checklist = constructFilterFn({
+  filter: (dataValue, filter: { only: boolean; values: Set<unknown> }) =>
+    filter.values.has(dataValue) === filter.only,
+  resolveFilterValue: (val: ChecklistFilter) => ({
+    only: val.mode === "only",
+    values: new Set(val.values),
+  }),
+  autoRemove: (val?: ChecklistFilter) => !val || (val.mode === "except" && val.values.length === 0),
 });
 
 export const appTableFeatures = createTableFeatures({
@@ -74,7 +82,7 @@ export const appTableFeatures = createTableFeatures({
   facetedMinMaxValues: createFacetedMinMaxValues(),
   filterFns: {
     arrIncludes: filterFn_arrIncludes,
-    excludes: filterFn_excludes,
+    checklist: filterFn_checklist,
     includesString: filterFn_includesString,
     inNumberRange: filterFn_inNumberRange,
   },
