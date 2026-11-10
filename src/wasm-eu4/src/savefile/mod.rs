@@ -1003,17 +1003,21 @@ impl SaveFileImpl {
         }
     }
 
-    pub fn get_provinces(&self) -> Vec<ProvinceItem> {
+    pub fn get_provinces(&self, payload: TagFilterPayloadRaw) -> Vec<ProvinceItem> {
+        let tags = self.matching_tags(&TagFilterPayload::from(payload));
         self.query
             .save()
             .game
             .provinces
             .iter()
-            .filter_map(|(id, prov)| prov.owner.as_ref().map(|owner| (id, prov, owner)))
+            .filter_map(|(id, prov)| {
+                let owner = prov.owner.filter(|owner| tags.contains(owner))?;
+                Some((id, prov, owner))
+            })
             .map(|(id, prov, owner)| ProvinceItem {
                 id: *id,
                 name: prov.name.clone(),
-                owner: self.localize_tag(*owner),
+                owner: self.localize_tag(owner),
                 tax: prov.base_tax,
                 production: prov.base_production,
                 manpower: prov.base_manpower,
@@ -1022,6 +1026,12 @@ impl SaveFileImpl {
                 num_centralized_state: prov.num_centralize_state,
                 religion: prov.religion.clone(),
                 culture: prov.culture.clone(),
+                terrain: self
+                    .game
+                    .get_province(id)
+                    .map(|x| terrain_name(x.terrain))
+                    .unwrap_or_default(),
+                autonomy: prov.local_autonomy,
                 devastation: prov.devastation,
                 exploit_date: prov.exploit_date,
                 in_hre: prov.hre,
@@ -2219,5 +2229,34 @@ pub fn hex_color(colors: [u8; 3]) -> String {
         )
     } else {
         format!("#{:02x}{:02x}{:02x}", colors[0], colors[1], colors[2])
+    }
+}
+
+/// The terrain name as the game shows it, e.g. "Coastal Desert".
+fn terrain_name(terrain: schemas::eu4::Terrain) -> String {
+    let name = terrain.variant_name().unwrap_or_default();
+    let mut result = String::with_capacity(name.len() + 2);
+    for (i, c) in name.char_indices() {
+        if i > 0 && c.is_ascii_uppercase() {
+            result.push(' ');
+        }
+        result.push(c);
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use schemas::eu4::Terrain;
+
+    #[test]
+    fn terrain_names_match_the_game() {
+        assert_eq!(terrain_name(Terrain::Desert), "Desert");
+        assert_eq!(terrain_name(Terrain::CoastalDesert), "Coastal Desert");
+        assert_eq!(
+            terrain_name(Terrain::ImpassableMountain),
+            "Impassable Mountain"
+        );
     }
 }
