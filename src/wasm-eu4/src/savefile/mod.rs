@@ -1005,6 +1005,7 @@ impl SaveFileImpl {
 
     pub fn get_provinces(&self, payload: TagFilterPayloadRaw) -> Vec<ProvinceItem> {
         let tags = self.matching_tags(&TagFilterPayload::from(payload));
+        let prov_region = self.game.province_region_lookup();
         self.query
             .save()
             .game
@@ -1031,6 +1032,9 @@ impl SaveFileImpl {
                     .get_province(id)
                     .map(|x| terrain_name(x.terrain))
                     .unwrap_or_default(),
+                region: prov_region
+                    .get(id)
+                    .map(|region| String::from(self.game.localize(region).unwrap_or(region))),
                 autonomy: prov.local_autonomy,
                 devastation: prov.devastation,
                 exploit_date: prov.exploit_date,

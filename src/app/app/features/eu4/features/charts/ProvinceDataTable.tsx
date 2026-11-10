@@ -4,6 +4,7 @@ import type { ProvinceItem, ProvinceList } from "@/wasm/wasm_eu4";
 import { Alert } from "@/components/Alert";
 import { Table } from "@/components/Table";
 import { createColumnHelper } from "@/lib/tanstack-table";
+import type { AppTable } from "@/lib/tanstack-table";
 import { Flag } from "../../components/avatars";
 import { formatInt } from "@/lib/format";
 import { DataTable } from "@/components/DataTable";
@@ -13,12 +14,53 @@ import { useTagFilter } from "../../store";
 
 const yesNo = (value: boolean) => (value ? "Yes" : "No");
 
+type ProvinceTable = { table: AppTable<ProvinceItem> };
+
+function filteredProvinces(table: AppTable<ProvinceItem>) {
+  return table.getFilteredRowModel().rows.map((row) => row.original);
+}
+
+/** A footer with the sum of a value over the provinces that the filters keep. */
+function totalFooter(value: (province: ProvinceItem) => number) {
+  return function TotalFooter({ table }: ProvinceTable) {
+    const total = filteredProvinces(table).reduce((acc, x) => acc + value(x), 0);
+    return formatInt(total);
+  };
+}
+
+/**
+ * A footer with the average of a value over the provinces that the filters
+ * keep. Each province counts as much as its development.
+ */
+function averageFooter(value: (province: ProvinceItem) => number, unit = "") {
+  return function AverageFooter({ table }: ProvinceTable) {
+    let weighted = 0;
+    let development = 0;
+    for (const x of filteredProvinces(table)) {
+      weighted += value(x) * x.development;
+      development += x.development;
+    }
+
+    if (development === 0) {
+      return null;
+    }
+
+    return (
+      <span title="Average, weighted by development">
+        {formatInt(weighted / development)}
+        {unit} avg
+      </span>
+    );
+  };
+}
+
 const columnHelper = createColumnHelper<ProvinceItem>();
 const columns = [
   columnHelper.accessor((x) => `${x.name} (${x.id})`, {
     id: "name",
     sortFn: "basic",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Province" />,
+    footer: () => "Total",
     enableColumnFilter: true,
   }),
 
@@ -29,17 +71,11 @@ const columns = [
     cell: ({ row }) => <Flag tag={row.original.owner.tag} name={row.original.owner.name} />,
   }),
 
-  columnHelper.accessor("terrain", {
-    sortFn: "basic",
-    filterFn: "excludes",
-    header: ({ column }) => <Table.ColumnHeader column={column} title="Terrain" />,
-    cell: (info) => info.getValue(),
-  }),
-
   columnHelper.accessor("tax", {
     sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Tax" />,
+    footer: totalFooter((x) => x.tax),
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -48,6 +84,7 @@ const columns = [
     sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Production" />,
+    footer: totalFooter((x) => x.production),
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -56,6 +93,7 @@ const columns = [
     sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Manpower" />,
+    footer: totalFooter((x) => x.manpower),
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -64,6 +102,7 @@ const columns = [
     sortFn: "basic",
     filterFn: "inNumberRange",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Development" />,
+    footer: totalFooter((x) => x.development),
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -72,6 +111,7 @@ const columns = [
     sortFn: "basic",
     filterFn: "inNumberRange",
     header: ({ column }) => <Table.ColumnHeader column={column} title="Autonomy" />,
+    footer: averageFooter((x) => x.autonomy, "%"),
     meta: { className: "text-right" },
     cell: (info) => `${formatInt(info.getValue())}%`,
   }),
@@ -97,10 +137,25 @@ const columns = [
     cell: (info) => info.getValue(),
   }),
 
+  columnHelper.accessor("terrain", {
+    sortFn: "basic",
+    filterFn: "excludes",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Terrain" />,
+    cell: (info) => info.getValue(),
+  }),
+
+  columnHelper.accessor("region", {
+    sortFn: "basic",
+    filterFn: "excludes",
+    header: ({ column }) => <Table.ColumnHeader column={column} title="Region" />,
+    cell: (info) => info.getValue(),
+  }),
+
   columnHelper.accessor("devastation", {
     sortFn: "basic",
     enableColumnFilter: false,
     header: ({ column }) => <Table.ColumnHeader column={column} title="Devastation" />,
+    footer: averageFooter((x) => x.devastation),
     meta: { className: "text-right" },
     cell: (info) => formatInt(info.getValue()),
   }),
@@ -166,7 +221,6 @@ export function ProvinceDataTable() {
           "name",
           "ownerTag",
           "ownerName",
-          "terrain",
           "tax",
           "production",
           "manpower",
@@ -177,6 +231,8 @@ export function ProvinceDataTable() {
           "religion",
           "culture",
           "tradeGoods",
+          "terrain",
+          "region",
           "devastation",
           "exploitDate",
           "inHre",
