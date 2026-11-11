@@ -84,15 +84,6 @@ impl<'a> FrameValues<'a> {
                 .collect()
         })
     }
-
-    /// The group of a location for box selection: the ID of its owner, or
-    /// of its market in the markets mode.
-    fn group(&self, mode: MapMode, idx: LocationIdx) -> u32 {
-        let owner = self.owner(idx).unwrap_or(u32::MAX);
-        let market = Self::row(self.frame.markets, idx)
-            .map_or(u32::MAX, |row| self.frame.market_colors[row * 3]);
-        map_painter::group_id(mode, owner, market)
-    }
 }
 
 impl LocationValues for FrameValues<'_> {
@@ -143,6 +134,10 @@ impl LocationValues for FrameValues<'_> {
                 .collect()
         });
         colors.get(&country[3]).copied()
+    }
+
+    fn market_id(&self, idx: LocationIdx) -> Option<u32> {
+        Self::row(self.frame.markets, idx).map(|row| self.frame.market_colors[row * 3])
     }
 
     fn market(&self, idx: LocationIdx) -> LocationMarket {
@@ -237,7 +232,7 @@ impl Eu5Workspace<'_> {
                     values.owner(idx).is_none(),
                 );
             }
-            groups[gpu.value() as usize] = values.group(mode, idx);
+            groups[gpu.value() as usize] = map_painter::group(&values, mode, idx);
         }
         Ok(ProjectionPaint {
             arrays,

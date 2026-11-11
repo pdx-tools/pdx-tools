@@ -1,9 +1,11 @@
 ---
 source: src/eu5app/tests/it/main.rs
+assertion_line: 148
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5.save
 ---
 {
+  "box_on_filled_terrain": true,
   "great_powers": [
     "GBR 4436",
     "UJJ 4032",
@@ -69,7 +71,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
     "political": {
       "colors": 579,
       "fingerprint": "0xb4a9e7aecc74cc13",
-      "groups": "0x5fb1d48ac20cf6f9",
+      "groups": "0x4a74a72f19918e2f",
       "legend": "Qualitative",
       "top": [
         "#ff808080 x6281",
@@ -102,7 +104,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
     "religion": {
       "colors": 221,
       "fingerprint": "0x224757e2cefc7754",
-      "groups": "0x5fb1d48ac20cf6f9",
+      "groups": "0x8c4187b4f39a1eea",
       "legend": "Qualitative",
       "top": [
         "#ff455e77 x5279",
@@ -158,7 +160,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
   "past_political": {
     "colors": 1022,
     "fingerprint": "0x3f948bad2b993358",
-    "groups": "0x7807c4533f50d33a",
+    "groups": "0x45c5689b4933121e",
     "legend": "Qualitative",
     "top": [
       "#ff808080 x7268",
@@ -232,7 +234,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "political": {
         "colors": 579,
         "fingerprint": "0x547cc0833da3bdad",
-        "groups": "0x5fb1d48ac20cf6f9",
+        "groups": "0x4a74a72f19918e2f",
         "legend": "Qualitative",
         "top": [
           "#ff808080 x6281",
@@ -265,7 +267,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "religion": {
         "colors": 221,
         "fingerprint": "0xb46d9f2cc3114b46",
-        "groups": "0x5fb1d48ac20cf6f9",
+        "groups": "0x8c4187b4f39a1eea",
         "legend": "Qualitative",
         "top": [
           "#ff455e77 x5279",

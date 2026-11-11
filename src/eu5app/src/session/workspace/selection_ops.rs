@@ -10,18 +10,20 @@ impl<'bump> Eu5Workspace<'bump> {
     pub fn build_grouping_table(&self) -> GroupingTable {
         let len = self.location_arrays.len();
         let mut groups = vec![GroupId::NONE; len];
+        let values = self.live_values();
 
-        for (idx, info) in self.iter_locations() {
+        for entry in self.gamestate.locations.iter() {
+            let idx = entry.idx();
             let Some(gpu_idx) = self.gpu_indices[idx] else {
                 continue;
             };
 
-            groups[gpu_idx.value() as usize] = GroupId::from_raw(super::map_painter::group_id(
+            // Filled terrain goes in the group of the land it takes its color
+            // from, so an area over it shows the land that its selection shows.
+            groups[gpu_idx.value() as usize] = GroupId::from_raw(super::map_painter::group(
+                &values,
                 self.current_map_mode,
-                info.owner
-                    .map(|id| id.country_id().value())
-                    .unwrap_or(u32::MAX),
-                info.market.map(|id| id.value()).unwrap_or(u32::MAX),
+                idx,
             ));
         }
 
@@ -99,8 +101,14 @@ impl<'bump> Eu5Workspace<'bump> {
                 (self.land_of_owners(&lineage), EntityKind::Country)
             }
             SelectionSet::Markets(markets) => (self.land_of_markets(markets), EntityKind::Market),
+            // Filled terrain is never a member. It shows as selected with the
+            // land around it.
             SelectionSet::Locations(locations) => (
-                locations.iter().copied().collect(),
+                locations
+                    .iter()
+                    .copied()
+                    .filter(|&idx| self.fill_donor(idx).is_none())
+                    .collect(),
                 Self::entity_kind_for_map_mode(self.current_map_mode),
             ),
         };

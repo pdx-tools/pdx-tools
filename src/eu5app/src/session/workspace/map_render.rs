@@ -97,6 +97,10 @@ impl LocationValues for LiveValues<'_, '_> {
         Some(GpuColor::from(religion.color.0))
     }
 
+    fn market_id(&self, idx: LocationIdx) -> Option<u32> {
+        self.location(idx).market.map(|id| id.value())
+    }
+
     fn market(&self, idx: LocationIdx) -> LocationMarket {
         let game = &self.workspace.gamestate;
         let Some(market) = self.location(idx).market else {
@@ -160,11 +164,7 @@ impl<'bump> Eu5Workspace<'bump> {
         &self,
         idx: eu5save::models::LocationIdx,
     ) -> Option<eu5save::models::LocationIdx> {
-        match self.current_map_mode {
-            MapMode::Political => self.fill_donors[idx],
-            MapMode::Religion => self.religion_fill_donors()[idx],
-            _ => None,
-        }
+        map_painter::fill_donor(&self.live_values(), self.current_map_mode, idx)
     }
 
     /// The location whose color `idx` shows in the current map mode: its
