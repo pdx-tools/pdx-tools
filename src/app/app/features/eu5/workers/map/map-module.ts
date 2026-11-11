@@ -337,10 +337,13 @@ export const createMapEngine = async (
       return (
         (modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
         (modifiers & SharedCanvasModifierBits.Alt) !== 0 ||
-        (modifiers & SharedCanvasModifierBits.Ctrl) !== 0
+        (modifiers & SharedCanvasModifierBits.Ctrl) !== 0 ||
+        (modifiers & SharedCanvasModifierBits.Meta) !== 0
       );
     }
     return (
+      pressedKeys.has("MetaLeft") ||
+      pressedKeys.has("MetaRight") ||
       pressedKeys.has("ShiftLeft") ||
       pressedKeys.has("ShiftRight") ||
       pressedKeys.has("AltLeft") ||
@@ -474,15 +477,14 @@ export const createMapEngine = async (
         } else if (action === SharedCanvasEventAction.Down) {
           app.on_cursor_move(x, y);
           lastCursorPosition = { x, y };
-          const useBoxSelect =
-            button === 0 &&
-            ((modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
-              (modifiers & SharedCanvasModifierBits.Alt) !== 0 ||
-              (modifiers & SharedCanvasModifierBits.Ctrl) !== 0);
+          const useBoxSelect = button === 0 && hasBoxSelectModifier(modifiers);
           if (useBoxSelect) {
             const isCtrl = (modifiers & SharedCanvasModifierBits.Ctrl) !== 0;
             const isAlt = (modifiers & SharedCanvasModifierBits.Alt) !== 0;
-            const isShift = (modifiers & SharedCanvasModifierBits.Shift) !== 0;
+            // Cmd adds, as Shift does, because Cmd-click adds to a selection on macOS.
+            const isShift =
+              (modifiers & SharedCanvasModifierBits.Shift) !== 0 ||
+              (modifiers & SharedCanvasModifierBits.Meta) !== 0;
             const operation: SelectionOp = isAlt
               ? "remove"
               : isCtrl && !isShift
