@@ -126,6 +126,11 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
   );
   useEffect(() => notifyFilteredRows(filteredRows), [filteredRows]);
 
+  // Only the row of leaf columns gets footers.
+  const hasFooter = table
+    .getAllLeafColumns()
+    .some((column) => column.columnDef.footer !== undefined);
+
   const totalRows = table.getPreFilteredRowModel().rows.length;
   const rowCount = rowNoun ? (
     <div className="text-sm text-gray-600 tabular-nums dark:text-gray-300" aria-live="polite">
@@ -279,7 +284,26 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
             </Table.Row>
           )}
         </Table.Body>
-        {summary ? <Table.Footer>{summary}</Table.Footer> : null}
+        {hasFooter || summary ? (
+          <Table.Footer>
+            {hasFooter ? (
+              <Table.Row>
+                {table.getFooterGroups()[0].headers.map((header) => (
+                  <Table.Cell
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    className={footerClassName(header.column.columnDef.meta?.className)}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.footer, header.getContext())}
+                  </Table.Cell>
+                ))}
+              </Table.Row>
+            ) : null}
+            {summary}
+          </Table.Footer>
+        ) : null}
       </Table>
       {pagination ? (
         <div className="flex items-center justify-between px-2">
@@ -338,6 +362,10 @@ export function DataTable<TData extends RowData & Partial<{ rowSpan: number }>>(
       )}
     </div>
   );
+}
+
+function footerClassName(className: unknown): string | undefined {
+  return typeof className === "string" ? className : undefined;
 }
 
 function cellClassName<TData extends RowData>(cell: AppCell<TData, unknown>): string | undefined {
