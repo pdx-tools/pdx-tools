@@ -11,11 +11,11 @@ import type {
   ForeignBuildingLocationRow,
 } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatExact, formatFixed, formatTick } from "../../numberFormatting";
+import { formatExact, formatFixed } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { buildingOwnershipColors } from "../../gameColors";
-import { chartTooltip, getEChartsTheme, markGap } from "@/components/viz/echartsTheme";
+import { chartTooltip, markGap } from "@/components/viz/echartsTheme";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
@@ -60,8 +60,6 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: rows,
@@ -73,20 +71,11 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
         name: "Building Levels",
         nameLocation: "middle",
         nameGap: 28,
-        nameTextStyle: { color: tickColor, fontSize: 10 },
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 130 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 130 },
         axisTick: { show: false },
       },
       series: [
@@ -128,7 +117,6 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
       },
       legend: {
         data: ["Domestic", "Foreign"],
-        textStyle: { color: tickColor, fontSize: 10 },
         top: "bottom",
       },
     };

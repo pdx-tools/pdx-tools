@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { chartTooltip, getEChartsTheme, seriesColor } from "@/components/viz/echartsTheme";
+import { chartTooltip, neutralFill, neutralMark } from "@/components/viz/echartsTheme";
 import type { ConcentrationPoint } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import { formatPercent, formatPercentTick } from "../../numberFormatting";
@@ -23,38 +23,28 @@ export function ConcentrationCurve({
   formatValue?: (value: number) => string;
 }) {
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       grid: {
         left: 48,
         right: 18,
         top: 10,
-        bottom: 36,
+        bottom: 48,
         outerBounds: { left: 0, right: 0, top: 0, bottom: 0 },
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
         type: "value",
         name: "Locations",
+        nameLocation: "middle",
+        nameGap: 28,
         min: 1,
         max: points.at(-1)?.locationRank ?? 1,
-        nameTextStyle: { color: tickColor, fontSize: 10 },
-        axisLabel: { color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.4, width: 1 } },
       },
       yAxis: {
         type: "value",
         min: 0,
         max: 1,
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatPercentTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        axisLabel: { formatter: formatPercentTick },
       },
       tooltip: {
         ...chartTooltip,
@@ -78,9 +68,9 @@ export function ConcentrationCurve({
           type: "line",
           smooth: true,
           showSymbol: false,
-          areaStyle: { opacity: 0.16 },
-          lineStyle: { width: 2, color: seriesColor(0) },
-          itemStyle: { color: seriesColor(0) },
+          areaStyle: { color: neutralFill },
+          lineStyle: { width: 2, color: neutralMark },
+          itemStyle: { color: neutralMark },
           data: points.map((point) => [point.locationRank, point.share]),
         },
       ],

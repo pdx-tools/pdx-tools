@@ -1,3 +1,6 @@
+import type { GameTheme } from "@/components/GameThemeProvider";
+import { formatTick } from "@/features/eu5/numberFormatting";
+
 /**
  * EU5's dark-only chart palette. Slot order is CVD-safe; assign colors in order
  * and do not cycle.
@@ -71,13 +74,6 @@ export const divergingPoles = { warm: "#bb5e1f", cool: "#6a8dce" } as const;
 /** Brass retains its application-wide meaning of selected/active. */
 export const selectionColor = "#ce9a43";
 
-/** Translucent fill under a line or area series, keyed to its slot. */
-export function seriesFill(index: number, alpha = 0.12): string {
-  const hex = seriesColor(index);
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 /** Status colors describe state, never series identity. Pair them with labels. */
 export const statusColors = {
   good: "#10b981",
@@ -89,8 +85,10 @@ export const statusColors = {
 export const chartInk = {
   /** Values and axis names. */
   primary: "#f2eade",
-  /** Small text; unlike `muted`, this clears 4.5:1 against the chart surface. */
+  /** Bright small text and reference lines. */
   secondary: "#c5c0b8",
+  /** All chart text, the same as `--game-ink-500`: 6.5:1 against the chart surface. */
+  tick: "#9c9890",
   /** Non-text annotations and in-plot metadata. */
   muted: "#7d7a74",
   surface: "#0e1217",
@@ -98,24 +96,81 @@ export const chartInk = {
   track: "#161b21",
 } as const;
 
-export interface EChartsTheme {
-  axisColor: string;
-  labelColor: string;
-  gridLineColor: string;
-  tickColor: string;
-  numFamily: string;
+/**
+ * A chart with one series that shows a magnitude. The series identifies
+ * nothing on the map, so it does not take a data colour. A mid grey stays
+ * quieter than the data colours and has 5:1 on the chart surface.
+ */
+export const neutralMark = "#8a857e";
+
+/** The fill under a neutral line. */
+export const neutralFill = "rgba(138,133,126,0.12)";
+
+/** Text in a chart: one size and one muted colour. */
+export const chartText = {
+  color: chartInk.tick,
+  fontFamily: '"Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif',
+  fontSize: 12,
+  fontWeight: 400,
+} as const;
+
+/** Text in a chart that is a number or a tag, such as the value at the end of a bar. */
+export const chartNumberText = {
+  ...chartText,
+  fontFamily: '"IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace',
+} as const;
+
+/** An outline in the surface colour, so that a label over a dot stays clear. */
+export const labelHalo = { textBorderColor: chartInk.surface, textBorderWidth: 2 } as const;
+
+/** The hairlines of a chart: a grid line at each tick, and the axis line. */
+const chartLine = { grid: "rgba(255,255,255,0.06)", axis: "rgba(255,255,255,0.1)" } as const;
+
+const axisLine = { lineStyle: { color: chartLine.axis } };
+const gridLines = { lineStyle: { color: chartLine.grid, type: "solid" as const, width: 1 } };
+
+const valueAxis = {
+  axisLabel: { ...chartNumberText, formatter: (value: number) => formatTick(value) },
+  nameTextStyle: chartText,
+  axisLine,
+  splitLine: gridLines,
+};
+
+const eu5ChartTheme = {
+  textStyle: chartText,
+  categoryAxis: { axisLabel: chartText, nameTextStyle: chartText, axisLine },
+  valueAxis,
+  logAxis: valueAxis,
+  timeAxis: {
+    axisLabel: chartNumberText,
+    nameTextStyle: chartText,
+    axisLine,
+    splitLine: gridLines,
+  },
+  legend: { textStyle: chartText, pageTextStyle: chartText },
+  visualMap: { textStyle: chartText },
+};
+
+/**
+ * The ECharts theme of a game. EU5 charts get one text style, hairline axes,
+ * and a grid line and a compact tick on each value axis. A chart option can
+ * replace each part. Other games
+ * get no theme, so their charts do not change.
+ */
+export function chartTheme(game: GameTheme | undefined): object | undefined {
+  return game === "eu5" ? eu5ChartTheme : undefined;
 }
 
 /**
- * Axis, grid and label styling. No mode argument: the surface is always dark.
+ * The name of a y axis: flat, over the top of the axis, and from the axis
+ * line toward the plot. The plot needs space above it for the name.
  */
-export function getEChartsTheme(): EChartsTheme {
+export function yAxisName(name: string, side: "left" | "right" = "left") {
   return {
-    axisColor: "rgba(255,255,255,0.1)",
-    labelColor: chartInk.primary,
-    gridLineColor: "rgba(255,255,255,0.06)",
-    tickColor: chartInk.secondary,
-    numFamily: '"IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace',
+    name,
+    nameLocation: "end" as const,
+    nameGap: 10,
+    nameTextStyle: { align: side === "left" ? ("left" as const) : ("right" as const) },
   };
 }
 
@@ -125,7 +180,7 @@ export const chartTooltip = {
   borderColor: "rgba(255,255,255,0.1)",
   borderWidth: 1,
   padding: [6, 10] as [number, number],
-  textStyle: { color: chartInk.primary, fontSize: 11 },
+  textStyle: { color: chartInk.primary, fontSize: 12 },
   extraCssText:
     "backdrop-filter: blur(8px); border-radius: 3px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);",
 } as const;
@@ -156,5 +211,5 @@ export const chartDataZoomSlider = {
     lineStyle: { color: chartInk.secondary, width: 1, opacity: 0.8 },
     areaStyle: { color: chartInk.secondary, opacity: 0.2 },
   },
-  textStyle: { color: chartInk.secondary, fontSize: 10 },
+  textStyle: chartNumberText,
 } as const;

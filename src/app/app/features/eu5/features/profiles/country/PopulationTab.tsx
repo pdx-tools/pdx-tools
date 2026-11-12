@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import type { ConcentrationPoint, LocationRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatTick } from "../../../numberFormatting";
 import {
   PopulationSankey,
   PopulationTypeProfile,
@@ -11,12 +10,7 @@ import { useEu5Trigger } from "../useEu5Trigger";
 import { ConcentrationCurve } from "../../insights/ConcentrationCurve";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import {
-  chartTooltip,
-  getEChartsTheme,
-  seriesColor,
-  seriesFill,
-} from "@/components/viz/echartsTheme";
+import { chartTooltip, neutralFill, neutralMark, yAxisName } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, Skeleton } from "../../../components";
 
@@ -48,37 +42,19 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
 
     return {
-      grid: { left: 60, right: 20, top: 16, bottom: 50 },
+      grid: { left: 60, right: 20, top: 32, bottom: 50 },
       xAxis: {
         type: "value",
         min: data.length > 0 ? (data[0] as number[])[0] : 0,
         max: 0,
-        nameLocation: "middle",
-        nameGap: 34,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: (value: number) => String(baseYear + value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
+        axisLabel: { formatter: (value: number) => String(baseYear + value) },
       },
       yAxis: {
         type: "value",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+        ...yAxisName("Population"),
       },
       tooltip: {
         ...chartTooltip,
@@ -98,8 +74,8 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           data,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: seriesColor(0), width: 2 },
-          areaStyle: { color: seriesFill(0) },
+          lineStyle: { color: neutralMark, width: 2 },
+          areaStyle: { color: neutralFill },
         },
       ],
     };

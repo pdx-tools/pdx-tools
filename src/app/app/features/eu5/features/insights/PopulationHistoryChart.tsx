@@ -2,13 +2,12 @@ import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { chartTooltip, getEChartsTheme } from "@/components/viz/echartsTheme";
+import { chartTooltip, yAxisName } from "@/components/viz/echartsTheme";
 import type { CountryRef } from "@/wasm/wasm_eu5";
 import { SectionTitle } from "../../components";
 import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { formatInt } from "@/lib/format";
-import { formatTick } from "../../numberFormatting";
 
 export type PopulationHistorySeries = {
   country: CountryRef;
@@ -53,7 +52,6 @@ export function PopulationHistoryChart({
   }, [countries, scopeIsEmpty]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
 
     const series = filtered.map((c) => {
@@ -76,30 +74,17 @@ export function PopulationHistoryChart({
       legend: {
         type: "scroll",
         bottom: 0,
-        textStyle: { color: labelColor, fontSize: 11 },
-        pageTextStyle: { color: labelColor },
       },
-      grid: { left: 60, right: 20, top: 16, bottom: 56 },
+      grid: { left: 60, right: 20, top: 32, bottom: 56 },
       xAxis: {
         type: "value",
         min: minX,
         max: 0,
-        axisLabel: {
-          color: tickColor,
-          formatter: (value: number) => String(baseYear + value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
+        axisLabel: { formatter: (value: number) => String(baseYear + value) },
       },
       yAxis: {
         type: "value",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: formatTick },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+        ...yAxisName("Population"),
       },
       tooltip: {
         ...chartTooltip,

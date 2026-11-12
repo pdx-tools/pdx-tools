@@ -3,9 +3,10 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import {
   chartInk,
+  chartNumberText,
   chartTooltip,
-  getEChartsTheme,
   seriesColor,
+  yAxisName,
 } from "@/components/viz/echartsTheme";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
@@ -38,26 +39,18 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
   }, [countries]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     return {
-      grid: { left: 45, right: 20, top: 20, bottom: 45 },
+      grid: { left: 45, right: 20, top: 32, bottom: 45 },
       xAxis: {
         type: "category",
         name: "Realization",
         nameLocation: "middle",
         nameGap: 32,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         data: buckets.map((b) => `${formatInt(b.lo)}-${formatInt(b.hi)}%`),
-        axisLabel: { color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
       },
       yAxis: {
         type: "value",
-        name: "Countries",
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        ...yAxisName("Countries"),
         minInterval: 1,
       },
       tooltip: {
@@ -83,7 +76,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
             animation: false,
             data: [{ xAxis: "95-100%" }],
             lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-            label: { color: tickColor, formatter: "100%" },
+            label: { ...chartNumberText, formatter: "100%" },
           },
         },
       ],

@@ -3,15 +3,18 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatExact, formatPercent } from "../../numberFormatting";
+import { formatExact, formatMetric, formatPercent } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
   chartInk,
+  chartNumberText,
   chartTooltip,
-  getEChartsTheme,
+  neutralMark,
   seriesColor,
+  yAxisName,
+  labelHalo,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
@@ -143,13 +146,12 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
   const hasGap = sorted.some((d) => d.unrealizedTaxBase !== 0);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, labelColor, tickColor } = getEChartsTheme();
     const showZoom = sorted.length > BAR_CAP;
 
     return {
       grid: {
         left: 60,
-        right: 70,
+        right: 56,
         top: 10,
         bottom: 38,
       },
@@ -158,19 +160,12 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
         name: "Tax Base Gap",
         nameLocation: "middle",
         nameGap: 26,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
       },
       yAxis: {
         type: "category",
         inverse: true,
         data: sorted.map((d) => d.country.tag),
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 44 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 44 },
       },
       ...(showZoom
         ? {
@@ -202,17 +197,15 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
           type: "bar",
           data: sorted.map((d) => ({ ...d, value: d.unrealizedTaxBase })),
           // `wealth - tax base` is a non-negative magnitude.
-          color: seriesColor(0),
+          color: neutralMark,
+          // A thin bar, so that a long list of a bright neutral is not a block.
+          barMaxWidth: 10,
           label: {
+            ...chartNumberText,
             show: true,
             position: "right",
-            formatter: (params) => {
-              const d = params.data as CountryUnrealizedTaxBase & { value: number };
-              return formatPercent(d.realizationRatio);
-            },
-            fontSize: 10,
-            fontWeight: 600,
-            color: chartInk.primary,
+            // The bar's own value. The tooltip gives the realization.
+            formatter: (params) => formatMetric((params.data as { value: number }).value),
           },
         },
       ],
@@ -267,34 +260,18 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
   }, [countries]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
+      grid: { left: 56, right: 60, top: 32, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Tax Base",
         nameLocation: "middle",
         nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
         min: 0,
       },
       yAxis: {
         type: "value",
-        name: "Total Wealth (ceiling)",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
+        ...yAxisName("Total Wealth (ceiling)"),
         min: 0,
       },
       dataZoom: [
@@ -356,10 +333,9 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
                 ? d.country.tag
                 : "";
             },
+            ...chartNumberText,
+            ...labelHalo,
             position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
             distance: 4,
           },
         },

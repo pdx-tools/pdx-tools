@@ -5,15 +5,9 @@ import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, SectionTitle } from "../../components";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatPercent, formatTick } from "../../numberFormatting";
+import { formatPercent } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartInk,
-  chartTooltip,
-  getEChartsTheme,
-  markGap,
-  seriesColor,
-} from "@/components/viz/echartsTheme";
+import { chartInk, chartTooltip, markGap, seriesColor } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import {
   Eu5InsightEmptyState,
@@ -120,8 +114,6 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: flatSource,
@@ -133,24 +125,15 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
       },
 
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,

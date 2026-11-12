@@ -9,10 +9,11 @@ import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
-  chartInk,
+  chartNumberText,
   chartTooltip,
-  getEChartsTheme,
   seriesColor,
+  yAxisName,
+  labelHalo,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { useEu5Engine } from "../../store";
@@ -122,34 +123,18 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
+      grid: { left: 56, right: 60, top: 32, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Total Development",
         nameLocation: "middle",
         nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
         min: 0,
       },
       yAxis: {
         type: "value",
-        name: "Avg Dev per Location",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
+        ...yAxisName("Avg Dev per Location"),
       },
       dataZoom: [
         { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
@@ -190,10 +175,9 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
               const d = params.data as (typeof scatterData)[number];
               return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
             },
+            ...chartNumberText,
+            ...labelHalo,
             position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
             distance: 4,
           },
         },

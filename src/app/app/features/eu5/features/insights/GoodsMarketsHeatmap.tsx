@@ -8,12 +8,7 @@ import type {
 } from "@/wasm/wasm_eu5";
 import { formatExact } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartInk,
-  chartTooltip,
-  divergingRamp,
-  getEChartsTheme,
-} from "@/components/viz/echartsTheme";
+import { chartInk, chartTooltip, divergingRamp } from "@/components/viz/echartsTheme";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 
 const MARKETS_COLS = 20;
@@ -76,30 +71,24 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, tickColor } = getEChartsTheme();
-
     return {
       grid: { left: 120, right: 40, top: 20, bottom: 100 },
       xAxis: {
         type: "category",
         data: marketLabels,
         axisLabel: {
-          color: tickColor,
-          fontSize: 10,
           rotate: 55,
           interval: 0,
           width: 90,
           overflow: "truncate",
         },
-        axisLine: { lineStyle: { color: axisColor } },
         splitArea: { show: true },
       },
       yAxis: {
         type: "category",
         data: topGoods.map((g) => g.good.name),
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 110 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 110 },
         splitArea: { show: true },
       },
       visualMap: {
@@ -113,7 +102,6 @@ export function GoodsMarketsHeatmap({ goods, markets, cells }: Props) {
         itemHeight: 80,
         precision: 0,
         text: ["Surplus", "Shortage"],
-        textStyle: { color: tickColor, fontSize: 10 },
         inRange: { color: [...divergingRamp] },
       },
       tooltip: {
