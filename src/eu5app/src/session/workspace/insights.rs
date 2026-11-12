@@ -1939,9 +1939,16 @@ impl<'bump> Eu5Workspace<'bump> {
         });
         foreign_owner_vec.truncate(20);
 
-        // Build foreign owner cells for top 20 types x top 20 foreign owners
-        let top_type_kinds: FxHashSet<&str> =
-            types_with_keys.iter().take(20).map(|t| t.0).collect();
+        // Build foreign owner cells for the top 20 types x top 20 foreign owners.
+        // Rank the types by foreign levels, because most foreign levels are in
+        // types that are not in the top 20 by all levels, such as trade offices.
+        let mut foreign_types: Vec<(&str, f64)> = types_with_keys
+            .iter()
+            .filter(|t| t.1.foreign_levels > 0.0)
+            .map(|t| (t.0, t.1.foreign_levels))
+            .collect();
+        foreign_types.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let top_type_kinds: FxHashSet<&str> = foreign_types.iter().take(20).map(|t| t.0).collect();
         let top_owner_ids: FxHashSet<CountryId> = foreign_owner_vec
             .iter()
             .take(20)

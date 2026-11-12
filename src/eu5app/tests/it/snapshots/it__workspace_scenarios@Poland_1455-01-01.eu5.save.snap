@@ -1,6 +1,5 @@
 ---
 source: src/eu5app/tests/it/main.rs
-assertion_line: 148
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
 ---
@@ -157,6 +156,7 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       ]
     }
   },
+  "most_foreign_building": "banking_office 940",
   "past_political": {
     "colors": 1083,
     "fingerprint": "0x3b890aba70402810",
