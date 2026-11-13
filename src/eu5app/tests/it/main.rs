@@ -145,6 +145,11 @@ fn workspace_scenarios() {
             run_workspace_scenario(save_name, "box on filled terrain", ws, |ws| {
                 a_box_on_filled_terrain_adds_its_country(ws, save_name)
             });
+        snapshot["most_foreign_building"] =
+            run_workspace_scenario(save_name, "foreign owner cells", ws, |ws| {
+                foreign_owner_cells_hold_the_most_foreign_building(ws, &localization)
+            })
+            .into();
         insta::assert_json_snapshot!(snapshot);
 
         run_workspace_scenario(save_name, "market selection", ws, |ws| {
@@ -1168,6 +1173,36 @@ fn market_scope_survives_the_timeline(ws: &mut Eu5Workspace, save_name: &str) {
             "{save_name}: {date:?} keeps the market scope"
         );
     }
+}
+
+/// The table of foreign owners by building type holds the type that foreign
+/// countries own the most levels of, although that type is often not in the
+/// top types by all levels.
+fn foreign_owner_cells_hold_the_most_foreign_building(
+    ws: &mut Eu5Workspace,
+    localization: &Localization,
+) -> Option<String> {
+    let insight = ws
+        .localized(localization)
+        .presenter()
+        .calculate_building_levels_insight();
+    let most_foreign = insight
+        .types
+        .iter()
+        .filter(|t| t.foreign_levels > 0.0)
+        .max_by(|a, b| a.foreign_levels.total_cmp(&b.foreign_levels))?;
+    assert!(
+        insight
+            .foreign_owner_cells
+            .iter()
+            .any(|cell| cell.building.key == most_foreign.building.key),
+        "no foreign owner cell for {}",
+        most_foreign.building.key
+    );
+    Some(format!(
+        "{} {:.0}",
+        most_foreign.building.key, most_foreign.foreign_levels
+    ))
 }
 
 /// The search list has the live countries. Only the hover of a past date has the dead

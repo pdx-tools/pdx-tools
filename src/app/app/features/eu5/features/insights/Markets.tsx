@@ -15,12 +15,16 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
   chartInk,
+  chartNumberText,
+  chartText,
   chartTooltip,
   divergingPoles,
-  getEChartsTheme,
+  neutralFill,
+  neutralMark,
   selectionColor,
   seriesColor,
-  seriesFill,
+  yAxisName,
+  labelHalo,
 } from "@/components/viz/echartsTheme";
 import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
 import {
@@ -301,7 +305,6 @@ export function GoodsPressureChart({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     const metricLabel = isValueMetric ? "value" : "units";
 
     // Label each populated side at zero, where surplus and shortage diverge.
@@ -310,7 +313,8 @@ export function GoodsPressureChart({
 
     const pivotLabel = (text: string, swatch: string, side: "left" | "right") => ({
       xAxis: 0,
-      lineStyle: { color: axisColor, width: 1, type: "solid" as const },
+      // The zero line is brighter than the grid lines, because both sides start at it.
+      lineStyle: { color: chartInk.muted, width: 1, type: "solid" as const },
       label: {
         show: true,
         position: "start" as const,
@@ -318,8 +322,7 @@ export function GoodsPressureChart({
         align: side === "left" ? ("right" as const) : ("left" as const),
         verticalAlign: "bottom" as const,
         offset: [side === "left" ? -5 : 5, 0] as [number, number],
-        color: tickColor,
-        fontSize: 10,
+        ...chartText,
         formatter: text,
         rich: { sw: { backgroundColor: swatch, width: 7, height: 7, borderRadius: 2 } },
       },
@@ -343,21 +346,14 @@ export function GoodsPressureChart({
       xAxis: {
         type: "value",
         axisLabel: {
-          color: tickColor,
-          fontSize: 10,
           // Surplus is negated only to place it left of zero.
           formatter: (value: number) => formatTick(Math.abs(value)),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
         },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 90 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 90 },
       },
       tooltip: {
         ...chartTooltip,
@@ -605,8 +601,7 @@ function buildMarketGoodSankeyOption(good: ScopedGoodSummary): EChartsOption {
         nodeGap: 10,
         label: {
           formatter: (params: unknown) => formatSankeyLabel((params as { name: string }).name),
-          color: chartInk.primary,
-          fontSize: 11,
+          ...chartText,
           backgroundColor: chartTooltip.backgroundColor,
           padding: [2, 5],
           borderRadius: 3,
@@ -633,7 +628,6 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
   }, [good]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     return {
       dataset: {
         source: rows,
@@ -642,16 +636,12 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
       grid: { left: 110, right: 20, top: 20, bottom: 30 },
       xAxis: {
         type: "value",
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
         min: 0,
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -726,7 +716,6 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
     const baseMonth = saveDate?.month ?? 1;
     const prices = good.history;
@@ -748,34 +737,21 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
     const showZoom = data.length > 40;
 
     return {
-      grid: { left: 60, right: rightGap, top: 20, bottom: showZoom ? 68 : 50 },
+      grid: { left: 60, right: rightGap, top: 32, bottom: showZoom ? 68 : 50 },
       xAxis: {
         type: "value",
         name: "Date",
         nameLocation: "middle",
         nameGap: 34,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
-          color: tickColor,
           formatter: (value: number) => monthOffsetToDate(baseYear, baseMonth, value),
           rotate: 30,
         },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
       },
       yAxis: [
         {
           type: "value",
-          name: "Price",
-          nameLocation: "middle",
-          nameGap: 42,
-          nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-          axisLabel: {
-            color: tickColor,
-            formatter: formatTick,
-          },
-          axisLine: { lineStyle: { color: axisColor } },
-          splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+          ...yAxisName("Price"),
           min: yMin,
           max: yMax,
         },
@@ -783,16 +759,11 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
           ? [
               {
                 type: "value" as const,
-                name: "% vs base",
-                nameLocation: "middle" as const,
-                nameGap: 48,
-                nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
+                ...yAxisName("% vs base", "right"),
                 axisLabel: {
-                  color: tickColor,
                   formatter: (v: number) =>
                     Math.abs(v) <= pctRange * 0.6 ? `${formatPercentTick(v / 100)}` : "",
                 },
-                axisLine: { lineStyle: { color: axisColor } },
                 splitLine: { show: false },
                 min: pctMin,
                 max: pctMax,
@@ -828,8 +799,8 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
           yAxisIndex: 0,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: seriesColor(0), width: 2 },
-          areaStyle: { color: seriesFill(0) },
+          lineStyle: { color: neutralMark, width: 2 },
+          areaStyle: { color: neutralFill },
           ...(base != null
             ? {
                 markLine: {
@@ -841,9 +812,8 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
                     // Avoid the right-side percentage axis.
                     position: "insideStartTop" as const,
                     distance: 2,
+                    ...chartNumberText,
                     formatter: `Base: ${formatExact(base)}`,
-                    color: chartInk.secondary,
-                    fontSize: 10,
                   },
                   lineStyle: {
                     type: "dashed" as const,
@@ -894,7 +864,6 @@ export function GoodsPriceVsBaseChart({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const arrowColor = chartInk.muted;
     const topMoverKeys = selectGoodsPriceTrajectoryKeys(filtered);
     const data = filtered.map((g) => {
@@ -1066,29 +1035,19 @@ export function GoodsPriceVsBaseChart({
     ];
 
     return {
-      grid: { left: 70, right: 20, top: 20, bottom: 50 },
+      grid: { left: 56, right: 20, top: 32, bottom: 50 },
       xAxis: {
         type: "value",
         name: "% vs Base Price",
         nameLocation: "middle",
         nameGap: 34,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
-          color: tickColor,
           formatter: (v: number) => `${v > 0 ? "+" : ""}${formatPercentTick(v / 100)}`,
         },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "value",
-        name: "Current Price",
-        nameLocation: "middle",
-        nameGap: 50,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        ...yAxisName("Current Price"),
         min: 0,
       },
       tooltip: {
@@ -1170,34 +1129,18 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
   const maxTaken = useMemo(() => Math.max(1, ...markets.map((m) => m.totalTaken)), [markets]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
+      grid: { left: 56, right: 60, top: 32, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Market Value",
         nameLocation: "middle",
         nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
         min: 0,
       },
       yAxis: {
         type: "value",
-        name: "Shortage Pressure ($)",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
+        ...yAxisName("Shortage Pressure ($)"),
         min: 0,
       },
       dataZoom: [
@@ -1242,10 +1185,9 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
                 ? d.market.market.name.replace(/ Market$/, "")
                 : "";
             },
+            ...chartText,
+            ...labelHalo,
             position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
             distance: 4,
           },
         },

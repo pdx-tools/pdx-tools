@@ -14,9 +14,10 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,
   chartTooltip,
-  getEChartsTheme,
+  neutralFill,
+  neutralMark,
   seriesColor,
-  seriesFill,
+  yAxisName,
 } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, StatRail } from "../../../components";
@@ -184,7 +185,6 @@ function HistoryChart({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     const baseYear = saveDate?.year ?? 0;
     const baseMonth = saveDate?.month ?? 1;
 
@@ -197,33 +197,18 @@ function HistoryChart({
       : (offset: number) => monthOffsetToDate(baseYear, baseMonth, offset);
 
     return {
-      grid: { left: 60, right: 20, top: 16, bottom: 50 },
+      grid: { left: 60, right: 20, top: 32, bottom: 50 },
       xAxis: {
         type: "value",
-        nameLocation: "middle",
-        nameGap: 34,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
         axisLabel: {
-          color: tickColor,
           formatter: xFormatter,
           rotate: isYearly ? 0 : 30,
         },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
         min: "dataMin",
       },
       yAxis: {
         type: "value",
-        name: yLabel,
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+        ...yAxisName(yLabel),
       },
       tooltip: {
         ...chartTooltip,
@@ -243,8 +228,8 @@ function HistoryChart({
           data,
           symbol: "none",
           smooth: true,
-          lineStyle: { color: seriesColor(0), width: 2 },
-          areaStyle: { color: seriesFill(0) },
+          lineStyle: { color: neutralMark, width: 2 },
+          areaStyle: { color: neutralFill },
         },
       ],
     };
@@ -297,58 +282,38 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
   }, [revenue, balance, n, saveDate]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
-      grid: { left: 68, right: 72, top: 16, bottom: 62 },
+      grid: { left: 68, right: 72, top: 32, bottom: 62 },
       legend: {
         bottom: 0,
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
       },
       xAxis: {
         type: "category",
         data: categories,
-        axisLabel: {
-          color: tickColor,
-          rotate: 30,
-          interval: "auto",
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
+        axisLabel: { rotate: 30, interval: "auto" },
       },
       yAxis: [
         {
           type: "value",
-          name: "Revenue",
-          nameLocation: "middle",
-          nameGap: 38,
-          nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
+          ...yAxisName("Revenue"),
           min: leftMin,
           max: leftMax,
           axisLabel: {
-            color: tickColor,
             // hide the artificial negative labels introduced for zero alignment
             formatter: (value: number) => (value < 0 ? "" : formatTick(value)),
           },
-          axisLine: { lineStyle: { color: axisColor } },
-          splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
         },
         {
           type: "value",
-          name: "Net Margin %",
-          nameLocation: "middle",
-          nameGap: 44,
-          nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
+          ...yAxisName("Net Margin %", "right"),
           min: rightMin,
           max: rightMax,
           axisLabel: {
-            color: tickColor,
             formatter: (value: number) => formatPercentTick(value / 100),
           },
-          axisLine: { lineStyle: { color: axisColor } },
           splitLine: { show: false },
         },
       ],
@@ -422,29 +387,18 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
   }, [eligible]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
     return {
-      grid: { left: 70, right: 20, top: 16, bottom: 50 },
+      grid: { left: 56, right: 20, top: 32, bottom: 50 },
       xAxis: {
         type: "value",
         name: "Wealth",
         nameLocation: "middle",
         nameGap: 36,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
         min: 0,
       },
       yAxis: {
         type: "value",
-        name: "Tax Base",
-        nameLocation: "middle",
-        nameGap: 52,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+        ...yAxisName("Tax Base"),
         min: 0,
       },
       tooltip: {
@@ -481,7 +435,7 @@ function UnrealizedTaxBaseScatter({ locations }: { locations: LocationRow[] }) {
           type: "scatter",
           data: scatterData,
           symbolSize: 6,
-          itemStyle: { color: seriesColor(0), opacity: 0.8 },
+          itemStyle: { color: neutralMark, opacity: 0.8 },
         },
       ],
     };

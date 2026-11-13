@@ -6,10 +6,12 @@ export function doublingYears(rate: number): number {
   return Math.LN2 / rate;
 }
 
-export function formatDoubling(rate: number): string {
-  if (rate <= 0) return "not growing";
+/** The doubling time as a figure and its label, such as "132 yr" "to double" */
+export function doublingFigure(rate: number): { value: string; label?: string } {
+  if (rate <= 0) return { value: "not growing" };
   const years = doublingYears(rate);
-  return years > 999 ? "doubles in >999 yr" : `doubles in ${formatInt(Math.round(years))} yr`;
+  const value = years > 999 ? ">999 yr" : `${formatInt(Math.round(years))} yr`;
+  return { value, label: "to double" };
 }
 
 export function formatDoublingShort(rate: number): string {
@@ -27,7 +29,7 @@ export function countryGrowthLines(c: {
 }): string[] {
   return [
     `Population: ${formatInt(c.totalPopulation)}`,
-    `Growth: ${formatRate(c.growthRate)}/yr, ${formatDoubling(c.growthRate)}`,
+    `Growth: ${formatRate(c.growthRate)}/yr, ${formatDoublingShort(c.growthRate)}`,
     `Births: ${formatExact(c.birthsPerYear)}/yr`,
     `Locations: ${formatInt(c.locationCount)}`,
   ];

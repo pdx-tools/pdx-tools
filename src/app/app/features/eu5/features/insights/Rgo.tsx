@@ -11,21 +11,15 @@ import type {
   RgoTopLocation,
 } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import {
-  formatExact,
-  formatFixed,
-  formatPercent,
-  formatPercentTick,
-  formatTick,
-} from "../../numberFormatting";
+import { formatExact, formatFixed, formatPercent, formatPercentTick } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartTooltip,
   divergingPoles,
-  getEChartsTheme,
   markGap,
   seriesColor,
+  yAxisName,
 } from "@/components/viz/echartsTheme";
 import { Eu5Icon } from "../../components/icons/Eu5Icon";
 import { goodsIconHtml } from "../../components/icons/eu5IconHtml";
@@ -76,7 +70,6 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor, labelColor } = getEChartsTheme();
     const fallbackColor = seriesColor(0);
 
     return {
@@ -86,28 +79,10 @@ function RawMaterialScatter({ materials }: { materials: RgoMaterialSummary[] }) 
         name: "Total RGO Level",
         nameLocation: "middle",
         nameGap: 28,
-        nameTextStyle: { color: labelColor, fontSize: 10, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "value",
-        name: "Avg RGO Level",
-        nameLocation: "middle",
-        nameGap: 44,
-        nameTextStyle: { color: labelColor, fontSize: 10, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        ...yAxisName("Avg RGO Level"),
       },
       tooltip: {
         ...chartTooltip,
@@ -208,8 +183,6 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: data.map((d) => ({
@@ -225,24 +198,16 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
       },
 
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatPercentTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        axisLabel: { formatter: formatPercentTick },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 10, fontWeight: 600, width: 92 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 92 },
         axisTick: { show: false },
       },
       tooltip: {

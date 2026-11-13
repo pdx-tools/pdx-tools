@@ -1,6 +1,5 @@
 ---
 source: src/eu5app/tests/it/main.rs
-assertion_line: 148
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
@@ -157,6 +156,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       ]
     }
   },
+  "most_foreign_building": "trade_office 4108",
   "past_political": null,
   "projection": "0xb49cd287e8dbdbc6",
   "returning_countries": null,

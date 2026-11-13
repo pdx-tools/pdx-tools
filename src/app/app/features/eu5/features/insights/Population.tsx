@@ -12,16 +12,16 @@ import type {
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
-import { formatFixed, formatPercent, formatPercentTick, formatTick } from "../../numberFormatting";
+import { formatFixed, formatPercent, formatPercentTick } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { popRankColors } from "../../gameColors";
 import {
   chartInk,
+  chartText,
   chartTooltip,
   divergingPoles,
-  getEChartsTheme,
   markGap,
-  seriesColor,
+  neutralMark,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
@@ -179,8 +179,6 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: rows,
@@ -189,19 +187,11 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
       grid: { left: 110, right: 24, top: 10, bottom: 28 },
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -281,8 +271,6 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
   const total = row.rural + row.town + row.city + row.megalopolis;
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: [row],
@@ -299,12 +287,6 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
       xAxis: {
         type: "value",
         max: total || 1,
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
         splitLine: { show: false },
       },
       yAxis: {
@@ -460,8 +442,6 @@ export function PopulationTypeProfile({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     if (isEmpty) {
       return {
         dataset: { source: data, dimensions: ["label", "share"] },
@@ -470,21 +450,12 @@ export function PopulationTypeProfile({
           type: "value",
           min: 0,
           max: 1,
-          axisLabel: {
-            color: tickColor,
-            fontSize: 10,
-            formatter: formatPercentTick,
-          },
-          axisLine: { lineStyle: { color: axisColor } },
-          splitLine: {
-            lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-          },
+          axisLabel: { formatter: formatPercentTick },
         },
         yAxis: {
           type: "category",
           inverse: true,
-          axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
-          axisLine: { lineStyle: { color: axisColor } },
+          axisLabel: { width: 66 },
         },
         tooltip: {
           ...chartTooltip,
@@ -509,7 +480,9 @@ export function PopulationTypeProfile({
           {
             type: "bar",
             encode: { x: "share", y: "label" },
-            itemStyle: { color: seriesColor(0) },
+            itemStyle: { color: neutralMark },
+            // A thin bar, so that a long list of a bright neutral is not a block.
+            barMaxWidth: 10,
           },
         ],
       };
@@ -523,25 +496,15 @@ export function PopulationTypeProfile({
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
       },
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatPercentTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
+        axisLabel: { formatter: formatPercentTick },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 66 },
       },
       tooltip: {
         ...chartTooltip,
@@ -690,8 +653,7 @@ function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
         nodeAlign: "left",
         label: {
           formatter: (params: unknown) => (params as { name: string }).name.replace(/^[rc]:/, ""),
-          color: chartInk.primary,
-          fontSize: 11,
+          ...chartText,
           backgroundColor: chartTooltip.backgroundColor,
           padding: [2, 5],
           borderRadius: 3,

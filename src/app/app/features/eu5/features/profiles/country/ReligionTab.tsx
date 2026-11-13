@@ -5,7 +5,7 @@ import type { CountryReligionSection, ReligionShare } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { chartInk, chartTooltip } from "@/components/viz/echartsTheme";
+import { chartTooltip } from "@/components/viz/echartsTheme";
 import { SectionTitle } from "../../../components";
 
 export function ReligionTabContent({ data }: { data: CountryReligionSection }) {
@@ -50,7 +50,6 @@ function ReligionStackedBars({ breakdown }: { breakdown: ReligionShare[] }) {
       },
       yAxis: {
         type: "category",
-        axisLabel: { color: chartInk.secondary, fontSize: 11 },
         axisLine: { show: false },
         axisTick: { show: false },
       },

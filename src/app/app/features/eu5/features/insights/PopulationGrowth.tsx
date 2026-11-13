@@ -11,16 +11,18 @@ import {
   formatFixed,
   formatPercentTick,
   formatRate,
-  formatTick,
 } from "../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,
+  chartNumberText,
   chartTooltip,
-  getEChartsTheme,
+  neutralMark,
   seriesColor,
+  yAxisName,
+  labelHalo,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
@@ -163,27 +165,18 @@ function GrowthRateBars({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: { source: rows, dimensions: ["name", "ratePercent"] },
       grid: { left: 110, right: 24, top: 22, bottom: 28 },
       xAxis: {
         type: "value",
         min: 0,
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatPercentTick(value / 100),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        axisLabel: { formatter: (value: number) => formatPercentTick(value / 100) },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -201,16 +194,18 @@ function GrowthRateBars({
         {
           type: "bar",
           encode: { x: "ratePercent", y: "name" },
-          itemStyle: { color: seriesColor(0) },
+          itemStyle: { color: neutralMark },
+          // A thin bar, so that a long list of a bright neutral is not a block.
+          barMaxWidth: 10,
           markLine: {
             symbol: "none",
             silent: true,
             animation: false,
             data: [{ xAxis: scopeRate * 100 }],
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
+            // A bright line, so that it shows over the grey bars.
+            lineStyle: { type: "dashed", color: chartInk.secondary, width: 1 },
             label: {
-              color: tickColor,
-              fontSize: 10,
+              ...chartNumberText,
               position: "start",
               formatter: `${scopeLabel} ${formatRate(scopeRate)}`,
             },
@@ -293,33 +288,19 @@ function GrowthScaleScatter({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
-      grid: { left: 64, right: 60, top: 20, bottom: 52 },
+      grid: { left: 56, right: 60, top: 32, bottom: 52 },
       xAxis: {
         type: "log",
         name: "Population",
         nameLocation: "middle",
         nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          hideOverlap: true,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        axisLabel: { hideOverlap: true },
       },
       yAxis: {
         type: "value",
-        name: "Growth / yr",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatPercentTick(v / 100) },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        ...yAxisName("Growth / yr"),
+        axisLabel: { formatter: (v: number) => formatPercentTick(v / 100) },
         min: 0,
       },
       dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0 }],
@@ -349,10 +330,9 @@ function GrowthScaleScatter({
               const d = params.data as (typeof scatterData)[number];
               return labelSet.has(d.tag) ? d.tag : "";
             },
+            ...chartNumberText,
+            ...labelHalo,
             position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
             distance: 4,
           },
           labelLayout: { hideOverlap: true },
@@ -363,8 +343,7 @@ function GrowthScaleScatter({
             data: [{ yAxis: scopeRate * 100 }],
             lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
             label: {
-              color: tickColor,
-              fontSize: 10,
+              ...chartNumberText,
               position: "insideStartTop",
               formatter: `${scopeLabel} ${formatRate(scopeRate)}`,
             },

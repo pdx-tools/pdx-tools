@@ -4,7 +4,7 @@ import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../Insigh
 import { useEu5Engine } from "../../store";
 import { formatRate } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
-import { formatDoubling } from "./populationFormatting";
+import { doublingFigure } from "./populationFormatting";
 
 export type PopulationStockFigures = {
   totalPopulation: number;
@@ -72,7 +72,7 @@ export function PopulationReadout(props: PopulationReadoutProps) {
       action={action}
     >
       <ReadoutFigure value={formatRate(props.figures.growthRate)} label="growth / yr" />
-      <ReadoutFigure value={formatDoubling(props.figures.growthRate)} />
+      <ReadoutFigure {...doublingFigure(props.figures.growthRate)} />
       <ReadoutFigure
         value={<Figure value={props.figures.totalPopulation} form="count" />}
         label="people"

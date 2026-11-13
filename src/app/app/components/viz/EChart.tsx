@@ -24,6 +24,8 @@ import {
 import { CanvasRenderer } from "echarts/renderers";
 import { LabelLayout } from "echarts/features";
 import type { ComposeOption } from "echarts/core";
+import { useGameTheme } from "@/components/GameThemeProvider";
+import { chartTheme } from "./echartsTheme";
 import type {
   PieSeriesOption,
   BarSeriesOption,
@@ -101,6 +103,7 @@ export const escapeEChartsHtml = (value: unknown) =>
 export const EChart = memo(function EChart({ option, style, onInit, className }: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const theme = chartTheme(useGameTheme()?.theme);
   const onInitEvent = useEffectEvent((chart: echarts.ECharts) => {
     onInit?.(chart);
   });
@@ -108,7 +111,7 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const chart = echarts.init(containerRef.current);
+    const chart = echarts.init(containerRef.current, theme);
     chartRef.current = chart;
     onInitEvent(chart);
 
@@ -128,14 +131,14 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
       chart.dispose();
       chartRef.current = null;
     };
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
 
     chart.setOption(option, { notMerge: true });
-  }, [option]);
+  }, [option, theme]);
 
   return (
     <div

@@ -3,9 +3,10 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import {
   chartInk,
+  chartNumberText,
   chartTooltip,
-  getEChartsTheme,
   seriesColor,
+  yAxisName,
 } from "@/components/viz/echartsTheme";
 import type { DistributionBucket, LocationDistribution } from "@/wasm/wasm_eu5";
 import { formatFloat, formatInt } from "@/lib/format";
@@ -45,7 +46,6 @@ interface Props {
 export function LocationDistributionChart({ distribution, title }: Props) {
   const option = useMemo<EChartsOption>(() => {
     const { buckets, median, p90 } = distribution;
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
     // Median and p90 land on the shape the bars draw, so the reader sees
     // where the middle and the tail begin without holding a number.
     const marks = [
@@ -72,15 +72,11 @@ export function LocationDistributionChart({ distribution, title }: Props) {
       xAxis: {
         type: "category",
         data: buckets.map(formatBucket),
-        axisLabel: { rotate: 35, color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { rotate: 35 },
       },
       yAxis: {
         type: "value",
-        name: "Locations",
-        nameTextStyle: { color: chartInk.secondary, fontSize: 10 },
-        axisLabel: { color: tickColor, fontSize: 10 },
-        splitLine: { lineStyle: { color: gridLineColor } },
+        ...yAxisName("Locations"),
         minInterval: 1,
       },
       series: [
@@ -96,8 +92,7 @@ export function LocationDistributionChart({ distribution, title }: Props) {
             data: marks,
             lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
             label: {
-              color: tickColor,
-              fontSize: 10,
+              ...chartNumberText,
               position: "end",
               formatter: "{b}",
             },

@@ -16,18 +16,18 @@ import {
   formatFixed,
   formatPercent,
   formatPercentTick,
-  formatTick,
 } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
-  chartInk,
+  chartNumberText,
   chartTooltip,
-  getEChartsTheme,
   markGap,
   ordinalRamp,
   seriesColor,
+  yAxisName,
+  labelHalo,
 } from "@/components/viz/echartsTheme";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
@@ -169,8 +169,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: rows,
@@ -178,7 +176,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
       },
       legend: {
         bottom: 0,
-        textStyle: { color: tickColor, fontSize: 10 },
         data: [
           { name: "Superficial (<25%)", itemStyle: { color: CONTROL_BANDS[0].color } },
           { name: "Functional (25-50%)", itemStyle: { color: CONTROL_BANDS[1].color } },
@@ -189,19 +186,11 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
       grid: { left: 110, right: 24, top: 10, bottom: 48 },
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: formatTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -295,33 +284,19 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
+      grid: { left: 56, right: 60, top: 32, bottom: 76 },
       xAxis: {
         type: "value",
         name: "Total Development",
         nameLocation: "middle",
         nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: formatTick },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
         min: 0,
       },
       yAxis: {
         type: "value",
-        name: "Avg Control",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: formatPercentTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        ...yAxisName("Avg Control"),
+        axisLabel: { formatter: formatPercentTick },
         min: 0,
         max: 1,
       },
@@ -368,10 +343,9 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
               const d = params.data as (typeof scatterData)[number];
               return labelSet.has(d.tag) ? d.tag : "";
             },
+            ...chartNumberText,
+            ...labelHalo,
             position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
             distance: 4,
           },
         },
