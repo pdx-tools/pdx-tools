@@ -1,12 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import {
-  chartInk,
-  chartNumberText,
-  chartTooltip,
-  neutralMark,
-} from "@/components/viz/echartsTheme";
+import { chartInk, chartText, chartTooltip, neutralMark } from "@/components/viz/echartsTheme";
 import type { DistributionBucket, LocationDistribution } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import { formatExact, formatMetric, formatTick } from "../../numberFormatting";
@@ -29,8 +24,8 @@ function labelWidth(text: string): number {
   if (typeof document !== "undefined") {
     measureContext ??= document.createElement("canvas").getContext("2d");
   }
-  if (!measureContext) return text.length * chartNumberText.fontSize * 0.6;
-  measureContext.font = `${chartNumberText.fontSize}px ${chartNumberText.fontFamily}`;
+  if (!measureContext) return text.length * chartText.fontSize * 0.6;
+  measureContext.font = `${chartText.fontSize}px ${chartText.fontFamily}`;
   return measureContext.measureText(text).width;
 }
 
@@ -134,7 +129,7 @@ export function LocationDistributionChart({ distribution, title }: Props) {
             animation: false,
             data: marks,
             lineStyle: { type: "dashed", color: chartInk.secondary, width: 1 },
-            label: { ...chartNumberText, position: "end", formatter: "{b}" },
+            label: { ...chartText, position: "end", formatter: "{b}" },
           },
         },
       ],

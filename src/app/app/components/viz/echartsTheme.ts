@@ -106,18 +106,15 @@ export const neutralMark = "#8a857e";
 /** The fill under a neutral line. */
 export const neutralFill = "rgba(138,133,126,0.12)";
 
-/** Text in a chart: one size and one muted colour. */
+/**
+ * Text in a chart: one size, one muted color, and the face of the game's
+ * names and figures. A canvas does not inherit the page font.
+ */
 export const chartText = {
   color: chartInk.tick,
   fontFamily: '"Public Sans", -apple-system, system-ui, "Segoe UI", sans-serif',
   fontSize: 12,
   fontWeight: 400,
-} as const;
-
-/** Text in a chart that is a number or a tag, such as the value at the end of a bar. */
-export const chartNumberText = {
-  ...chartText,
-  fontFamily: '"IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace',
 } as const;
 
 /** An outline in the surface colour, so that a label over a dot stays clear. */
@@ -130,7 +127,7 @@ const axisLine = { lineStyle: { color: chartLine.axis } };
 const gridLines = { lineStyle: { color: chartLine.grid, type: "solid" as const, width: 1 } };
 
 const valueAxis = {
-  axisLabel: { ...chartNumberText, formatter: (value: number) => formatTick(value) },
+  axisLabel: { ...chartText, formatter: (value: number) => formatTick(value) },
   nameTextStyle: chartText,
   axisLine,
   splitLine: gridLines,
@@ -142,7 +139,7 @@ const eu5ChartTheme = {
   valueAxis,
   logAxis: valueAxis,
   timeAxis: {
-    axisLabel: chartNumberText,
+    axisLabel: chartText,
     nameTextStyle: chartText,
     axisLine,
     splitLine: gridLines,
@@ -211,5 +208,5 @@ export const chartDataZoomSlider = {
     lineStyle: { color: chartInk.secondary, width: 1, opacity: 0.8 },
     areaStyle: { color: chartInk.secondary, opacity: 0.2 },
   },
-  textStyle: chartNumberText,
+  textStyle: chartText,
 } as const;

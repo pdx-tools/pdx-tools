@@ -9,7 +9,7 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
   chartInk,
-  chartNumberText,
+  chartText,
   chartTooltip,
   neutralMark,
   seriesColor,
@@ -201,7 +201,7 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
           // A thin bar, so that a long list of a bright neutral is not a block.
           barMaxWidth: 10,
           label: {
-            ...chartNumberText,
+            ...chartText,
             show: true,
             position: "right",
             // The bar's own value. The tooltip gives the realization.
@@ -333,7 +333,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
                 ? d.country.tag
                 : "";
             },
-            ...chartNumberText,
+            ...chartText,
             ...labelHalo,
             position: "top",
             distance: 4,

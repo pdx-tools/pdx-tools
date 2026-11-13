@@ -8,7 +8,7 @@ import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
-  chartNumberText,
+  chartText,
   chartTooltip,
   seriesColor,
   yAxisName,
@@ -180,7 +180,7 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
               const d = params.data as (typeof scatterData)[number];
               return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
             },
-            ...chartNumberText,
+            ...chartText,
             ...labelHalo,
             position: "top",
             distance: 4,

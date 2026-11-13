@@ -15,7 +15,6 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
   chartInk,
-  chartNumberText,
   chartText,
   chartTooltip,
   divergingPoles,
@@ -812,7 +811,7 @@ function MarketGoodPriceHistoryChart({ good }: { good: ScopedGoodSummary }) {
                     // Avoid the right-side percentage axis.
                     position: "insideStartTop" as const,
                     distance: 2,
-                    ...chartNumberText,
+                    ...chartText,
                     formatter: `Base: ${formatExact(base)}`,
                   },
                   lineStyle: {
