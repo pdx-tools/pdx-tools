@@ -586,7 +586,7 @@ impl<'bump> Eu5Workspace<'bump> {
             monthly_gold: data.economy.monthly_gold.to_vec(),
             recent_balance: data.economy.recent_balance.to_vec(),
             historical_tax_base: data.historical_tax_base.to_vec(),
-            historical_population: data.historical_population.to_vec(),
+            historical_population: crate::population::population_history(&self.gamestate, data),
             ranks,
         })
     }

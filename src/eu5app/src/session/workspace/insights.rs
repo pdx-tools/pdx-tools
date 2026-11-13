@@ -1255,9 +1255,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 let data = self.gamestate.countries.index(cidx).data()?;
                 let historical_population =
                     if is_empty || Some(&agg.location_count) == total_country_locations.get(&cid) {
-                        data.historical_population.to_vec()
+                        crate::population::population_history(&self.gamestate, data)
                     } else {
-                        Vec::new()
+                        Default::default()
                     };
                 let great_power_rank = data.great_power_rank;
                 let country = self.country_ref_from_country_idx(cidx);
@@ -1515,9 +1515,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 let historical_population = if is_empty
                     || Some(&agg.location_count) == total_country_locations.get(&country_id)
                 {
-                    data.historical_population.to_vec()
+                    crate::population::population_history(&self.gamestate, data)
                 } else {
-                    Vec::new()
+                    Default::default()
                 };
                 Some(CountryPopulationGrowth {
                     country: self.country_ref_from_country_idx(country_idx),

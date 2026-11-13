@@ -101,7 +101,7 @@ export function PopulationGrowthInsight() {
             <section>
               <LocationDistributionChart
                 distribution={data.distribution}
-                title="Growth rate (%/yr) across locations"
+                title="Locations by growth rate (%/yr)"
               />
             </section>
           )}

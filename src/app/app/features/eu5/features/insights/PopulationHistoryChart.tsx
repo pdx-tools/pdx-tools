@@ -3,16 +3,17 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { chartTooltip, yAxisName } from "@/components/viz/echartsTheme";
-import type { CountryRef } from "@/wasm/wasm_eu5";
+import type { CountryRef, PopulationHistory } from "@/wasm/wasm_eu5";
 import { SectionTitle } from "../../components";
 import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { formatInt } from "@/lib/format";
+import { firstYear, pointLabel, pointsToSave, yearAxis, yearOfDate } from "./yearlySeries";
 
 export type PopulationHistorySeries = {
   country: CountryRef;
   totalPopulation: number;
-  historicalPopulation: number[];
+  historicalPopulation: PopulationHistory;
   greatPowerRank: number;
 };
 
@@ -36,7 +37,7 @@ export function PopulationHistoryChart({
   const saveDate = useEu5SaveDate();
 
   const filtered = useMemo(() => {
-    const withHistory = countries.filter((c) => c.historicalPopulation.length >= 2);
+    const withHistory = countries.filter((c) => c.historicalPopulation.people.length >= 2);
     if (!scopeIsEmpty) {
       return [...withHistory]
         .sort((a, b) => b.totalPopulation - a.totalPopulation)
@@ -52,23 +53,25 @@ export function PopulationHistoryChart({
   }, [countries, scopeIsEmpty]);
 
   const option = useMemo((): EChartsOption => {
-    const baseYear = saveDate?.year ?? 0;
-
     const series = filtered.map((c) => {
-      const len = c.historicalPopulation.length;
       return {
         name: c.country.country.name,
         type: "line" as const,
-        smooth: true,
         showSymbol: false,
         color: c.country.colorHex,
         lineStyle: { color: c.country.colorHex, width: 2 },
         itemStyle: { color: c.country.colorHex },
-        data: c.historicalPopulation.flatMap((v, i) => (v === 0 ? [] : [[i - len + 1, v * 1000]])),
+        // A year of the record with no people has no point.
+        data: pointsToSave(c.historicalPopulation, saveDate, c.totalPopulation).filter(
+          ([, v], i, all) => v !== 0 || i === all.length - 1,
+        ),
       };
     });
 
-    const minX = filtered.reduce((min, c) => Math.min(min, 1 - c.historicalPopulation.length), 0);
+    const start = filtered.reduce(
+      (min, c) => Math.min(min, firstYear(c.historicalPopulation)),
+      saveDate.year,
+    );
 
     return {
       legend: {
@@ -76,12 +79,7 @@ export function PopulationHistoryChart({
         bottom: 0,
       },
       grid: { left: 60, right: 20, top: 32, bottom: 56 },
-      xAxis: {
-        type: "value",
-        min: minX,
-        max: 0,
-        axisLabel: { formatter: (value: number) => String(baseYear + value) },
-      },
+      xAxis: yearAxis(start, yearOfDate(saveDate)),
       yAxis: {
         type: "value",
         ...yAxisName("Population"),
@@ -93,7 +91,7 @@ export function PopulationHistoryChart({
           const arr = Array.isArray(params) ? params : [params];
           if (arr.length === 0) return "";
           const firstVal = arr[0]?.value;
-          const year = baseYear + Number(Array.isArray(firstVal) ? firstVal[0] : 0);
+          const year = pointLabel(Number(Array.isArray(firstVal) ? firstVal[0] : 0), saveDate);
           const lines = arr
             .filter((p) => Array.isArray(p.value))
             .map(

@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use eu5app::game_data::Localization;
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
+use eu5app::population::PopulationHistory;
 use eu5app::{
     EntityKind, Eu5SaveLoader, Eu5Workspace, LocationData, MapMode, SelectionOp, SelectionSet,
     SelectionTarget,
@@ -14,6 +15,7 @@ use eu5save::hash::FnvHashSet;
 use eu5save::models::{CountryId, LocationIdx, MarketId};
 use eu5save::{Eu5File, JominiFileKind};
 use jomini::binary::TokenResolver;
+use jomini::common::PdsDate;
 
 const MLO_SAVE: &str = "SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5";
 
@@ -175,6 +177,9 @@ fn workspace_scenarios() {
         });
         run_workspace_scenario(save_name, "no name shows a token", ws, |ws| {
             no_name_shows_a_token(ws, &localization)
+        });
+        run_workspace_scenario(save_name, "population history is in people", ws, |ws| {
+            population_history_is_in_people(ws, &localization)
         });
     });
 }
@@ -1245,10 +1250,85 @@ fn no_name_shows_a_token(ws: &mut Eu5Workspace, localization: &Localization) {
     assert!(names.is_empty(), "names with a raw key or token: {names:?}");
 }
 
-/// The browser uploads saves after `pdx-save-codec` remuxes the zip entries to
-/// zstd. The permalink page opens that upload with the same feature set as
-/// this crate's defaults, so the zstd zip path must work without the C
-/// backend.
+/// The middle ratio of each history's last sample to the country's population now.
+/// The save writes a sample each year and a country can gain land after it, so one
+/// country can differ, but the middle cannot. A history in thousands gives 0.001.
+fn middle_history_ratio(
+    save_year: i16,
+    rows: impl Iterator<Item = (f64, PopulationHistory)>,
+) -> Option<f64> {
+    let mut ratios: Vec<f64> = rows
+        .filter_map(|(now, history)| {
+            let last = history.people.last().copied()?;
+            assert!(history.last_year <= save_year, "a sample after the save");
+            (now >= 100_000.0 && last > 0.0).then_some(last / now)
+        })
+        .collect();
+    ratios.sort_by(f64::total_cmp);
+    ratios.get(ratios.len() / 2).copied()
+}
+
+fn population_history_is_in_people(ws: &mut Eu5Workspace, localization: &Localization) {
+    let save_year = ws.gamestate().metadata().date.year();
+    let countries: Vec<_> = ws
+        .gamestate()
+        .countries
+        .iter()
+        .filter_map(|entry| entry.data().map(|_| entry.idx()))
+        // A sample of the countries keeps the scenario fast.
+        .step_by(10)
+        .collect();
+    let presenter = ws.localized(localization).presenter();
+    let mut profiles: Vec<_> = countries
+        .into_iter()
+        .filter_map(|idx| Some((idx, presenter.country_profile_for(idx)?.overview)))
+        .collect();
+    let in_profiles = middle_history_ratio(
+        save_year,
+        profiles.iter().map(|(_, overview)| {
+            let now = f64::from(overview.total_population);
+            (now, overview.historical_population.clone())
+        }),
+    );
+
+    let growth = presenter.calculate_population_growth_insight();
+    let in_world = middle_history_ratio(
+        save_year,
+        growth
+            .countries
+            .into_iter()
+            .map(|c| (f64::from(c.total_population), c.historical_population)),
+    );
+
+    // A selection of whole countries keeps their history.
+    profiles.sort_by_key(|(_, overview)| std::cmp::Reverse(overview.total_population));
+    let largest = profiles.iter().take(9).map(|(idx, _)| *idx).collect();
+    ws.change_selection(SelectionOp::Replace, SelectionSet::Countries(largest));
+    let selected = ws
+        .localized(localization)
+        .presenter()
+        .calculate_population_growth_insight();
+    let in_selection = middle_history_ratio(
+        save_year,
+        selected
+            .countries
+            .into_iter()
+            .map(|c| (f64::from(c.total_population), c.historical_population)),
+    );
+
+    for (scope, ratio) in [
+        ("profiles", in_profiles),
+        ("world", in_world),
+        ("selection", in_selection),
+    ] {
+        let ratio = ratio.unwrap_or_else(|| panic!("{scope}: no population history"));
+        assert!(
+            (0.8..1.25).contains(&ratio),
+            "{scope}: middle ratio {ratio}"
+        );
+    }
+}
+
 #[test]
 fn opens_a_zstd_remuxed_zip_save() {
     let mut file = utils::request_file(MLO_SAVE);
