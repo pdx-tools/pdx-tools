@@ -50,7 +50,7 @@ function NameCell({ row, backLabel }: { row: AppRow<DiplomacyRow>; backLabel?: s
   return (
     <span className="flex w-full min-w-0 items-center gap-1">
       {subjectLabel && (
-        <span className="shrink-0 text-[11px] text-game-ink-500">{subjectLabel}</span>
+        <span className="shrink-0 text-[12px] text-game-ink-500">{subjectLabel}</span>
       )}
       {isActive ? (
         <CountryLink country={entity} aligned static />
@@ -81,7 +81,7 @@ const buildColumns = (backLabel?: string) => [
     cell: (info) => {
       const rank = info.getValue();
       return rank > 0 ? (
-        <Eu5DataTable.NumericCell className="text-[10.5px] text-game-ink-500">
+        <Eu5DataTable.NumericCell className="text-[12px] text-game-ink-500">
           #{rank}
         </Eu5DataTable.NumericCell>
       ) : null;

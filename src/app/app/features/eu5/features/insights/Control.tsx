@@ -21,7 +21,7 @@ import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
-  chartNumberText,
+  chartText,
   chartTooltip,
   markGap,
   ordinalRamp,
@@ -343,7 +343,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
               const d = params.data as (typeof scatterData)[number];
               return labelSet.has(d.tag) ? d.tag : "";
             },
-            ...chartNumberText,
+            ...chartText,
             ...labelHalo,
             position: "top",
             distance: 4,

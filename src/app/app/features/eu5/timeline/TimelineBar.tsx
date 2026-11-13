@@ -9,6 +9,7 @@ import { useHistory } from "../history/store";
 import { useMapHistory } from "../history/context";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
+import { focusRing } from "@/components/game/focusRing";
 import { SavedDateExport, TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
 import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
@@ -116,7 +117,10 @@ export function TimelineBar() {
             <select
               aria-label="Saved-date playback speed"
               value={speed}
-              className="rounded-control border border-game-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300"
+              className={cx(
+                "rounded-control border border-game-control-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300",
+                focusRing,
+              )}
               onChange={(event) =>
                 useHistory.getState().setPlaybackSpeed(Number(event.target.value))
               }
@@ -134,7 +138,7 @@ export function TimelineBar() {
         )}
         {history?.enabled && hasLocalSaves && (
           <span
-            className="flex flex-col gap-0.5 text-[10px] leading-tight text-game-ink-500"
+            className="flex flex-col gap-0.5 text-[12px] leading-tight text-game-ink-500"
             aria-label="Save analysis status"
           >
             {Object.entries(saveAnalysisPresentation).map(([status, { label }]) => (

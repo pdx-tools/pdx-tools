@@ -56,7 +56,7 @@ export const Eu5ErrorDisplay = ({ error }: Eu5ErrorDisplayProps) => {
         ) : null}
 
         {detail ? (
-          <p className="mt-4 border-t border-game-line pt-3 font-game-num text-[10.5px] leading-[1.5] break-words text-game-ink-500">
+          <p className="mt-4 border-t border-game-line pt-3 font-game-num text-[12px] leading-[1.5] break-words text-game-ink-500">
             {detail}
           </p>
         ) : null}

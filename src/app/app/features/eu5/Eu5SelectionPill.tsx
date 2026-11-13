@@ -45,11 +45,11 @@ export function Eu5SelectionPill() {
     >
       {name !== null && (
         <>
-          <span className="text-[11px] font-semibold text-game-ink-100">{name}</span>
+          <span className="text-[12px] font-semibold text-game-ink-100">{name}</span>
           <span className="h-3.5 w-px shrink-0 bg-game-line-strong" aria-hidden="true" />
         </>
       )}
-      <span className="font-game-num text-[10.5px] text-game-accent-100">{meta}</span>
+      <span className="font-game-num text-[12px] text-game-accent-100">{meta}</span>
       <button
         type="button"
         onClick={() => void handleClear()}

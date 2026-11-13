@@ -17,7 +17,7 @@ import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartInk,
-  chartNumberText,
+  chartText,
   chartTooltip,
   neutralMark,
   seriesColor,
@@ -205,7 +205,7 @@ function GrowthRateBars({
             // A bright line, so that it shows over the grey bars.
             lineStyle: { type: "dashed", color: chartInk.secondary, width: 1 },
             label: {
-              ...chartNumberText,
+              ...chartText,
               position: "start",
               formatter: `${scopeLabel} ${formatRate(scopeRate)}`,
             },
@@ -330,7 +330,7 @@ function GrowthScaleScatter({
               const d = params.data as (typeof scatterData)[number];
               return labelSet.has(d.tag) ? d.tag : "";
             },
-            ...chartNumberText,
+            ...chartText,
             ...labelHalo,
             position: "top",
             distance: 4,
@@ -343,7 +343,7 @@ function GrowthScaleScatter({
             data: [{ yAxis: scopeRate * 100 }],
             lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
             label: {
-              ...chartNumberText,
+              ...chartText,
               position: "insideStartTop",
               formatter: `${scopeLabel} ${formatRate(scopeRate)}`,
             },

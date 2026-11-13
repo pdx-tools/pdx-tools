@@ -30,7 +30,7 @@ export function Breadcrumb() {
         {crumbs.map((entry, i) => (
           <li key={entry.depth} className="flex items-center">
             {i > 0 && (
-              <span aria-hidden="true" className="mx-1.5 text-[11px] text-game-ink-700 select-none">
+              <span aria-hidden="true" className="mx-1.5 text-[12px] text-game-ink-700 select-none">
                 ›
               </span>
             )}

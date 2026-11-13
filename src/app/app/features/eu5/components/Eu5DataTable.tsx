@@ -374,7 +374,7 @@ export function Eu5DataTable<TData extends RowData>({
                       className={cx(
                         "bg-game-panel transition-colors duration-75 hover:bg-game-panel-hover",
                         "data-[in-filter=true]:bg-game-panel-active data-[in-filter=true]:hover:bg-game-panel-active",
-                        "data-[in-filter=true]:shadow-[inset_2px_0_0_var(--color-game-accent-300)]",
+                        "data-[in-filter=true]:shadow-[inset_2px_0_0_var(--game-accent-300)]",
                       )}
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -663,7 +663,10 @@ function FooterBand({
           id={selectId}
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value) as PageSize)}
-          className="h-[22px] cursor-pointer rounded-control border border-solid border-game-line-strong bg-game-page px-1.5 font-game-num text-[12px] text-game-ink-100 max-md:h-9"
+          className={cx(
+            "h-[22px] cursor-pointer rounded-control border border-solid border-game-control-line bg-game-page px-1.5 font-game-num text-[12px] text-game-ink-100 max-md:h-9",
+            focusRing,
+          )}
         >
           {pageSizeOptions.map((s) => (
             <option key={s} value={s}>
@@ -714,7 +717,10 @@ function PagerBtn({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-control border border-solid border-game-line-strong bg-game-page font-game-num text-[12px] text-game-ink-300 hover:text-game-ink-100 disabled:cursor-not-allowed disabled:opacity-40 max-md:h-9 max-md:w-9"
+      className={cx(
+        "inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-control border border-solid border-game-control-line bg-game-page font-game-num text-[12px] text-game-ink-300 hover:text-game-ink-100 disabled:cursor-not-allowed disabled:opacity-40 max-md:h-9 max-md:w-9",
+        focusRing,
+      )}
     >
       {children}
     </button>

@@ -3,6 +3,8 @@ import QuestionMarkCircleIcon from "@heroicons/react/24/outline/QuestionMarkCirc
 import { cx } from "class-variance-authority";
 import { Popover } from "@/components/Popover";
 import { focusRing } from "@/components/game/focusRing";
+import { sectionLabel } from "@/components/game/SectionTitle";
+import { Kbd } from "@/components/game/Kbd";
 
 interface Shortcut {
   action: string;
@@ -114,9 +116,7 @@ export function Eu5ShortcutPanel() {
           {SHORTCUT_GROUPS.map((group, groupIdx) => (
             <div key={group.label}>
               {groupIdx > 0 && <div className="my-3 h-px bg-game-line" />}
-              <div className="mb-2 pl-0.5 font-game-num text-[10px] font-medium tracking-[0.18em] text-game-ink-500 uppercase">
-                {group.label}
-              </div>
+              <div className={cx("mb-2 pl-0.5", sectionLabel)}>{group.label}</div>
               {group.shortcuts
                 .filter((shortcut) => isMac || !shortcut.macOnly)
                 .map((shortcut, i) => (
@@ -125,16 +125,13 @@ export function Eu5ShortcutPanel() {
                     <span className="flex shrink-0 items-center gap-1">
                       {shortcut.keys.map((key, j) =>
                         key === "+" ? (
-                          <span key={j} className="text-[10px] text-game-ink-700">
+                          <span key={j} className="text-[12px] text-game-ink-500">
                             +
                           </span>
                         ) : (
-                          <kbd
-                            key={j}
-                            className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-plate border border-game-line-strong bg-game-panel-2 px-1.5 font-game-num text-[11px] text-game-ink-300"
-                          >
+                          <Kbd key={j} className="h-[22px] min-w-[22px] px-1.5">
                             {key}
-                          </kbd>
+                          </Kbd>
                         ),
                       )}
                     </span>
@@ -145,10 +142,8 @@ export function Eu5ShortcutPanel() {
         </div>
 
         <div className="flex items-center justify-center gap-1 border-t border-game-line py-2.5">
-          <kbd className="inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-plate border border-game-line-strong bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500">
-            ?
-          </kbd>
-          <span className="text-[11px] text-game-ink-500">to dismiss</span>
+          <Kbd>?</Kbd>
+          <span className="text-[12px] text-game-ink-500">to dismiss</span>
         </div>
       </Popover.Content>
     </Popover>

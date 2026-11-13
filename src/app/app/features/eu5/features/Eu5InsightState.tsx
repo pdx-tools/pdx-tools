@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { sectionLabel } from "@/components/game/SectionTitle";
 
 type Eu5InsightStateKind = "loading" | "empty" | "no-data" | "unsupported" | "error";
 
@@ -38,9 +39,7 @@ export function Eu5InsightState({
         className,
       ].join(" ")}
     >
-      <div className="font-game-num text-[10.5px] tracking-[.14em] text-game-ink-500 uppercase">
-        {copy.eyebrow}
-      </div>
+      <div className={sectionLabel}>{copy.eyebrow}</div>
       <div className="text-sm font-semibold text-game-ink-100">{title ?? copy.title}</div>
       {body ? <div className="max-w-[36ch] text-[12.5px] text-game-ink-500">{body}</div> : null}
       {kind === "loading" ? <Eu5InsightSkeletonRows /> : null}

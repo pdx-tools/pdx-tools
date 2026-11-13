@@ -51,10 +51,10 @@ export function readDatePlateColors(): DatePlateColors {
 const PLATE_FAMILY = "IBM Plex Mono";
 
 /**
- * The plate's face: the page's numeral face, with the files at the two
- * weights the plate uses. They are the same files the page loads for
- * `--font-game-num`, named here so a worker can load them into its own
- * font set before it draws the first frame.
+ * The plate's face: IBM Plex Mono, with the files at the two weights the
+ * plate uses, so a worker can load them into its own font set before it
+ * draws the first frame. A canvas cannot ask for fixed-width figures, so the
+ * plate keeps a mono face even where the page uses another number font.
  *
  * The page's `--font-game-num` is a stack. It is kept for `ctx.font` as the
  * plate's fallbacks, but the files register under the one family they are.
