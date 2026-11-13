@@ -125,6 +125,21 @@ pub(crate) fn terrain_color(layout: &MapLayout, idx: LocationIdx) -> Option<GpuC
     }
 }
 
+/// The color of a market at full access: its own color blended toward the
+/// color of the land at its center.
+pub(crate) fn market_color(
+    values: &(impl LocationValues + ?Sized),
+    layout: &MapLayout,
+    color: GpuColor,
+    center: Option<LocationIdx>,
+) -> GpuColor {
+    let center = center
+        .map(|center| political_color(values, layout, center))
+        .unwrap_or(GpuColor::UNOWNED);
+    let (r, g, b) = crate::subject_color::blend_color(color.rgb(), center.rgb());
+    GpuColor::from_rgb(r, g, b)
+}
+
 /// The owner color of a location, without its fill.
 pub(crate) fn political_color(
     values: &(impl LocationValues + ?Sized),
@@ -338,13 +353,11 @@ pub(crate) fn paint(
                     LocationMarket::None => terrain_color(layout, idx).unwrap_or(GpuColor::UNOWNED),
                     LocationMarket::Unknown => GpuColor::DEBUG,
                     LocationMarket::Member { color, center } => {
-                        let owner = center
-                            .map(|center| political_color(values, layout, center))
-                            .unwrap_or(GpuColor::UNOWNED);
-                        let (r, g, b) = crate::subject_color::blend_color(color.rgb(), owner.rgb());
                         let access = values.fraction(idx, Fraction::MarketAccess);
-                        GpuColor::from_rgb(20, 5, 5)
-                            .blend(GpuColor::from_rgb(r, g, b), access.clamp(0.0, 1.0) as f32)
+                        GpuColor::from_rgb(20, 5, 5).blend(
+                            market_color(values, layout, color, center),
+                            access.clamp(0.0, 1.0) as f32,
+                        )
                     }
                 })
                 .collect();

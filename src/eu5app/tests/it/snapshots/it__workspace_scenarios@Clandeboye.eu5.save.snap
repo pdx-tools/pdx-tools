@@ -1,5 +1,6 @@
 ---
 source: src/eu5app/tests/it/main.rs
+assertion_line: 159
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
@@ -312,6 +313,10 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "focus_on_unowned_land": false,
     "players": true,
     "remove_with_a_landless_country": true
+  },
+  "swatches": {
+    "blended_countries": 236,
+    "checked_markets": 237
   },
   "timeline": {
     "available": false,

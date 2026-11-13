@@ -19,6 +19,13 @@ impl From<Srgb> for Rgb {
     }
 }
 
+impl From<pdx_map::GpuColor> for Srgb {
+    fn from(color: pdx_map::GpuColor) -> Srgb {
+        let (r, g, b) = color.rgb();
+        Srgb([r, g, b])
+    }
+}
+
 impl From<Color> for Srgb {
     fn from(color: Color) -> Srgb {
         Srgb(color.0)

@@ -152,6 +152,10 @@ fn workspace_scenarios() {
                 foreign_owner_cells_hold_the_most_foreign_building(ws, &localization)
             })
             .into();
+        snapshot["swatches"] =
+            run_workspace_scenario(save_name, "swatches match the map", ws, |ws| {
+                swatches_match_the_map(ws, &localization)
+            });
         insta::assert_json_snapshot!(snapshot);
 
         run_workspace_scenario(save_name, "market selection", ws, |ws| {
@@ -344,6 +348,83 @@ fn map_mode_summary(ws: &Eu5Workspace, legend: eu5app::gradient::MapLegend) -> s
     summary["groups"] = utils::hash_u32s(&groups).into();
     summary["legend"] = format!("{legend:?}").into();
     summary
+}
+
+/// The primary color that the map paints at each location in the map texture.
+fn painted_colors(ws: &Eu5Workspace) -> BTreeMap<LocationIdx, [u8; 3]> {
+    let colors = ws.location_arrays().buffers().primary_colors();
+    ws.gamestate()
+        .locations
+        .iter()
+        .filter_map(|entry| {
+            let slot = ws.center_at(entry.idx())?;
+            let (r, g, b) = colors[usize::from(slot.value())].rgb();
+            Some((entry.idx(), [r, g, b]))
+        })
+        .collect()
+}
+
+/// A swatch has the color that the map paints. The land of a country has the color
+/// of the country's swatch, and a location with full market access has the color of
+/// its market's swatch. Returns what the save covers: swatches with a subject's
+/// blend, and markets checked.
+fn swatches_match_the_map(ws: &mut Eu5Workspace, localization: &Localization) -> serde_json::Value {
+    let painted = painted_colors(ws);
+    let presenter = ws.localized(localization).presenter();
+    let mut owners = BTreeSet::new();
+    let mut blended_countries = 0;
+    for entry in ws.gamestate().locations.iter() {
+        let Some(owner) = entry.location().owner.real_id() else {
+            continue;
+        };
+        let Some(&color) = painted.get(&entry.idx()) else {
+            continue;
+        };
+        let terrain = ws.location_terrain(entry.idx());
+        if terrain.is_water() || !terrain.is_passable() || !owners.insert(owner.country_id()) {
+            continue;
+        }
+        let HoverDisplayData::Country { country, .. } = presenter.hover_data(entry.idx()) else {
+            panic!("owned land names its owner");
+        };
+        assert_eq!(country.color_hex.0, color, "{} swatch", country.tag);
+        let countries = &ws.gamestate().countries;
+        let saved = countries
+            .get(owner)
+            .and_then(|idx| countries.index(idx).data());
+        if saved.is_some_and(|data| data.color.0 != country.color_hex.0) {
+            blended_countries += 1;
+        }
+    }
+
+    ws.set_map_mode(MapMode::Markets);
+    let painted = painted_colors(ws);
+    let swatches: BTreeMap<u32, [u8; 3]> = ws
+        .localized(localization)
+        .presenter()
+        .calculate_market_insight()
+        .markets
+        .iter()
+        .map(|row| (row.market.market.key.value(), row.market.color_hex.0))
+        .collect();
+    let mut checked_markets = BTreeSet::new();
+    for entry in ws.gamestate().locations.iter() {
+        let location = entry.location();
+        let (Some(market), Some(&color)) = (location.market, painted.get(&entry.idx())) else {
+            continue;
+        };
+        if location.market_access < 1.0 {
+            continue;
+        }
+        let swatch = swatches[&market.value()];
+        assert_eq!(swatch, color, "market {} swatch", market.value());
+        checked_markets.insert(market.value());
+    }
+
+    serde_json::json!({
+        "blended_countries": blended_countries,
+        "checked_markets": checked_markets.len(),
+    })
 }
 
 fn market_selection_uses_location_anchors(ws: &mut Eu5Workspace, localization: &Localization) {

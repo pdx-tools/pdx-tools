@@ -348,22 +348,22 @@ impl<'bump> Eu5Workspace<'bump> {
             .identity_at(&self.gamestate, country, self.timeline.date)
     }
 
-    /// The political color of a country on the timeline date: its color on
-    /// that date, blended toward its current overlord when it is a subject
-    /// today. The save keeps no history of subject relations.
-    pub(super) fn country_color_at_timeline_date(&self, country: CountryId) -> GpuColor {
-        let Some(identity) = self.country_identity_at_timeline_date(country) else {
+    /// The political color of a country on `date`: its color on that date,
+    /// blended toward its current overlord when it is a subject today. The
+    /// save keeps no history of subject relations.
+    pub(super) fn country_color_at(&self, country: CountryId, date: Eu5Date) -> GpuColor {
+        let identities = &self.timeline.identities;
+        let color_at = |id| Some(identities.identity_at(&self.gamestate, id, date)?.color);
+        let Some(color) = color_at(country) else {
             return GpuColor::UNOWNED;
         };
 
         let Some(country_idx) = self.gamestate.countries.get(country) else {
-            return GpuColor::from(identity.color.0);
+            return GpuColor::from(color.0);
         };
 
-        self.subject_blended_color(country_idx, identity.color, |idx| {
-            let id = self.gamestate.countries.index(idx).id();
-            self.country_identity_at_timeline_date(id)
-                .map(|identity| identity.color)
+        self.subject_blended_color(country_idx, color, |idx| {
+            color_at(self.gamestate.countries.index(idx).id())
         })
     }
 }

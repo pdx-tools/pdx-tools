@@ -1,8 +1,9 @@
 use super::map_painter::{self, LocationMarket, LocationValues, MapLayout, PaintRequest};
 use super::*;
+use crate::Srgb;
 use crate::gradient;
 use crate::map_projection::{Fraction, Metric};
-use eu5save::models::Color;
+use eu5save::models::{Color, MarketId};
 
 /// The values of the loaded save. Owners and their colors are those on the
 /// timeline date.
@@ -62,7 +63,12 @@ impl LocationValues for LiveValues<'_, '_> {
         if owner.is_dummy() {
             return GpuColor::UNOWNED;
         }
-        self.workspace.country_color_at_timeline_date(owner)
+        let date = if self.timeline {
+            self.workspace.timeline_date()
+        } else {
+            self.workspace.save_date()
+        };
+        self.workspace.country_color_at(owner, date)
     }
 
     fn controller_color(&self, idx: LocationIdx) -> GpuColor {
@@ -128,11 +134,39 @@ impl LocationValues for LiveValues<'_, '_> {
     }
 }
 
+/// The colors that the map paints at the save date. A swatch shows them, so
+/// that it matches the land.
+pub(crate) struct MapColors {
+    /// The color of each country. A subject has a color near its overlord's.
+    countries: CountryIndexedVecOwned<Srgb>,
+    /// The color of each market at full access.
+    markets: FxHashMap<MarketId, Srgb>,
+}
+
+impl MapColors {
+    pub(crate) fn country(&self, idx: CountryIdx) -> Srgb {
+        self.countries[idx]
+    }
+
+    /// Every market of the save has a color.
+    pub(crate) fn market(&self, id: MarketId) -> Srgb {
+        self.markets[&id]
+    }
+}
+
 impl<'bump> Eu5Workspace<'bump> {
     pub(super) fn live_values(&self) -> LiveValues<'_, 'bump> {
         LiveValues {
             workspace: self,
             timeline: true,
+        }
+    }
+
+    /// The values of the save date, whatever the timeline date.
+    fn save_values(&self) -> LiveValues<'_, 'bump> {
+        LiveValues {
+            workspace: self,
+            timeline: false,
         }
     }
 
@@ -190,13 +224,8 @@ impl<'bump> Eu5Workspace<'bump> {
     /// the religion mode only shows the save date and the fill is computed
     /// once.
     fn religion_fill_donors(&self) -> &LocationIndexedVec<Option<eu5save::models::LocationIdx>> {
-        self.religion_fill_donors.get_or_init(|| {
-            let values = LiveValues {
-                workspace: self,
-                timeline: false,
-            };
-            map_painter::religion_fill(&self.fill_components, &values)
-        })
+        self.religion_fill_donors
+            .get_or_init(|| map_painter::religion_fill(&self.fill_components, &self.save_values()))
     }
 
     /// The owner color on the timeline date. At the save date the timeline
@@ -221,6 +250,32 @@ impl<'bump> Eu5Workspace<'bump> {
             |idx| self.overlord_of[idx],
             color_of,
         )
+    }
+
+    /// The colors that the map paints at the save date.
+    pub(crate) fn map_colors(&self) -> &MapColors {
+        self.map_colors.get_or_init(|| {
+            let mut countries = self.gamestate.countries.create_index(Srgb::default());
+            for entry in self.gamestate.countries.iter() {
+                let color = self.country_color_at(entry.id(), self.save_date());
+                countries[entry.idx()] = Srgb::from(color);
+            }
+            let values = self.save_values();
+            let layout = self.map_layout();
+            let markets = self
+                .gamestate
+                .market_manager
+                .database
+                .iter_with_id()
+                .map(|(id, market)| {
+                    let center = self.gamestate.locations.get(market.center);
+                    let color = GpuColor::from(market.color.0);
+                    let color = map_painter::market_color(&values, &layout, color, center);
+                    (id, Srgb::from(color))
+                })
+                .collect();
+            MapColors { countries, markets }
+        })
     }
 
     pub(super) fn build_location_arrays(&mut self) {

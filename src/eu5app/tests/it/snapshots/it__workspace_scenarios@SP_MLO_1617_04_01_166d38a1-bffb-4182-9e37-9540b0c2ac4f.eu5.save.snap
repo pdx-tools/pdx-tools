@@ -1,5 +1,6 @@
 ---
 source: src/eu5app/tests/it/main.rs
+assertion_line: 159
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5.save
 ---
@@ -335,6 +336,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
     "focus_on_unowned_land": true,
     "players": false,
     "remove_with_a_landless_country": true
+  },
+  "swatches": {
+    "blended_countries": 155,
+    "checked_markets": 148
   },
   "timeline": {
     "available": true,
