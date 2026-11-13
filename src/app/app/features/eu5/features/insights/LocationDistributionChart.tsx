@@ -1,116 +1,159 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import {
   chartInk,
   chartNumberText,
   chartTooltip,
-  seriesColor,
-  yAxisName,
+  neutralMark,
 } from "@/components/viz/echartsTheme";
 import type { DistributionBucket, LocationDistribution } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact, formatMetric, formatTick } from "../../numberFormatting";
 import { SectionTitle } from "../../components";
+import { binCoord, histogramLabels, histogramXAxes, LABEL_PAD } from "./histogramAxis";
 
-function formatBound(v: number): string {
-  return Number.isInteger(v) ? String(v) : formatFloat(v, 1);
-}
+const GUTTER = { left: 50, right: 20 };
+/** The height of one row of labels over the plot */
+const LABEL_ROW = 14;
 
 /** A bucket of one value, such as the zero bucket of a log ladder, is one number. */
 function formatBucket(b: DistributionBucket): string {
-  return b.lo === b.hi ? formatBound(b.lo) : `${formatBound(b.lo)}-${formatBound(b.hi)}`;
+  return b.lo === b.hi ? formatExact(b.lo) : `${formatExact(b.lo)} to ${formatExact(b.hi)}`;
 }
 
-/**
- * Where a metric value falls on the category axis. Category `i` is centred
- * at `i`, so its bucket spans `i - 0.5` to `i + 0.5`; the value sits a
- * fraction of the way across the bucket that holds it.
- */
-function bucketCoord(buckets: DistributionBucket[], value: number): number | null {
-  const last = buckets.length - 1;
-  if (last < 0) return null;
-  const i = buckets.findIndex((b, idx) => value < b.hi || idx === last);
-  const b = buckets[i];
-  if (!b) return null;
-  const span = b.hi - b.lo;
-  const t = span > 0 ? Math.min(1, Math.max(0, (value - b.lo) / span)) : 0.5;
-  return i - 0.5 + t;
+let measureContext: CanvasRenderingContext2D | null | undefined;
+
+/** The width in px of a label in the number text of a chart */
+function labelWidth(text: string): number {
+  if (typeof document !== "undefined") {
+    measureContext ??= document.createElement("canvas").getContext("2d");
+  }
+  if (!measureContext) return text.length * chartNumberText.fontSize * 0.6;
+  measureContext.font = `${chartNumberText.fontSize}px ${chartNumberText.fontFamily}`;
+  return measureContext.measureText(text).width;
+}
+
+/** The width of the element that gets the ref, also after it changes */
+function useWidth() {
+  const [width, setWidth] = useState(0);
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width] as const;
 }
 
 interface Props {
   distribution: LocationDistribution;
-  /** Replaces the default "<metric> distribution" section title. */
+  /** Replaces the default section title, "Locations by <metric>". */
   title?: string;
 }
 
 export function LocationDistributionChart({ distribution, title }: Props) {
+  const { buckets, median, p90 } = distribution;
+  const [chartRef, chartWidth] = useWidth();
+
+  const medianName = `median ${formatMetric(median)}`;
+  const p90Name = `p90 ${formatMetric(p90)}`;
+  const medianCoord = binCoord(buckets, median);
+  const p90Coord = binCoord(buckets, p90);
+  const at = (coord: number | null) => (coord ?? 0) / Math.max(1, buckets.length);
+  // A new width changes the chart only when it moves a label.
+  const {
+    median: medianAlign,
+    p90: p90Align,
+    stacked,
+  } = histogramLabels({
+    median: { at: at(medianCoord), width: labelWidth(medianName) },
+    p90: { at: at(p90Coord), width: labelWidth(p90Name) },
+    plotWidth: Math.max(0, chartWidth - GUTTER.left - GUTTER.right),
+    gutter: GUTTER,
+  });
+
   const option = useMemo<EChartsOption>(() => {
-    const { buckets, median, p90 } = distribution;
-    // Median and p90 land on the shape the bars draw, so the reader sees
-    // where the middle and the tail begin without holding a number.
+    // The median and p90 lines are on the shape of the bars, so the reader
+    // sees where the middle and the tail start.
     const marks = [
-      { name: "median", value: median },
-      { name: "p90", value: p90 },
-    ].flatMap(({ name, value }) => {
-      const xAxis = bucketCoord(buckets, value);
-      // ECharts replaces a mark's `value` with its axis coordinate, so the
-      // label text is set here, not in the formatter.
-      return xAxis == null ? [] : [{ name: `${name} ${formatBound(value)}`, xAxis }];
-    });
+      { name: medianName, xAxis: medianCoord, align: medianAlign, row: stacked ? 1 : 0 },
+      { name: p90Name, xAxis: p90Coord, align: p90Align, row: 0 },
+    ].flatMap(({ name, xAxis, align, row }) =>
+      xAxis == null
+        ? []
+        : [
+            {
+              name,
+              xAxis,
+              label: {
+                align,
+                offset: [align === "right" ? -LABEL_PAD : LABEL_PAD, -row * LABEL_ROW] as [
+                  number,
+                  number,
+                ],
+              },
+            },
+          ],
+    );
     return {
       tooltip: {
         ...chartTooltip,
         trigger: "axis",
         formatter: (params) => {
           const p = (params as { dataIndex: number; value: number }[])[0];
-          if (!p) return "";
-          const b = buckets[p.dataIndex];
+          const b = p && buckets[p.dataIndex];
           if (!b) return "";
           return `${formatBucket(b)}: ${formatInt(p.value)} locations`;
         },
       },
-      xAxis: {
-        type: "category",
-        data: buckets.map(formatBucket),
-        axisLabel: { rotate: 35 },
-      },
+      xAxis: histogramXAxes(buckets, [formatTick, formatExact]),
       yAxis: {
         type: "value",
-        ...yAxisName("Locations"),
         minInterval: 1,
       },
       series: [
         {
           type: "bar",
           data: buckets.map((b) => b.count),
-          itemStyle: { color: seriesColor(0) },
+          itemStyle: { color: neutralMark },
           barCategoryGap: "10%",
+        },
+        // The lines are on the axis of values, so each is at its true place
+        // in its bar. On the axis of bars, a line goes to the middle of a bar.
+        {
+          type: "line",
+          xAxisIndex: 1,
+          data: [],
+          silent: true,
           markLine: {
             symbol: "none",
             silent: true,
             animation: false,
             data: marks,
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-            label: {
-              ...chartNumberText,
-              position: "end",
-              formatter: "{b}",
-            },
+            lineStyle: { type: "dashed", color: chartInk.secondary, width: 1 },
+            label: { ...chartNumberText, position: "end", formatter: "{b}" },
           },
         },
       ],
-      grid: { left: 50, right: 20, top: 30, bottom: 70 },
+      // The band over the plot holds two rows of labels, so a change of rows
+      // does not move the plot.
+      grid: { ...GUTTER, top: 18 + 2 * LABEL_ROW, bottom: 28 },
     };
-  }, [distribution]);
+  }, [buckets, medianName, p90Name, medianCoord, p90Coord, medianAlign, p90Align, stacked]);
 
-  if (distribution.buckets.length === 0) return null;
+  if (buckets.length === 0) return null;
 
   return (
     <div>
       <SectionTitle className="mb-1">
-        {title ?? `${distribution.metricLabel} distribution`}
+        {title ?? `Locations by ${distribution.metricLabel.toLowerCase()}`}
       </SectionTitle>
-      <EChart option={option} style={{ height: 180 }} />
+      <div ref={chartRef}>
+        <EChart option={option} style={{ height: 200 }} />
+      </div>
     </div>
   );
 }

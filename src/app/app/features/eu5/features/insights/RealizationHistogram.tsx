@@ -1,15 +1,11 @@
 import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import {
-  chartInk,
-  chartNumberText,
-  chartTooltip,
-  seriesColor,
-  yAxisName,
-} from "@/components/viz/echartsTheme";
+import { chartTooltip, neutralMark } from "@/components/viz/echartsTheme";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
+import { formatPercentTick } from "../../numberFormatting";
+import { histogramXAxes } from "./histogramAxis";
 
 const BUCKET_WIDTH = 5;
 const MAX_BUCKET = 100;
@@ -33,24 +29,18 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
     }
 
     return {
-      buckets: nextBuckets.filter((b) => b.count > 0 || b.hi === MAX_BUCKET),
+      // An empty bin stays, so that each bar has the same width of values.
+      buckets: nextBuckets,
       zeroWealthCount: countries.length - ratios.length,
     };
   }, [countries]);
 
   const option = useMemo((): EChartsOption => {
     return {
-      grid: { left: 45, right: 20, top: 32, bottom: 45 },
-      xAxis: {
-        type: "category",
-        name: "Realization",
-        nameLocation: "middle",
-        nameGap: 32,
-        data: buckets.map((b) => `${formatInt(b.lo)}-${formatInt(b.hi)}%`),
-      },
+      grid: { left: 45, right: 20, top: 12, bottom: 45 },
+      xAxis: histogramXAxes(buckets, [(edge) => formatPercentTick(edge / 100)], "Realization"),
       yAxis: {
         type: "value",
-        ...yAxisName("Countries"),
         minInterval: 1,
       },
       tooltip: {
@@ -60,7 +50,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
           if (Array.isArray(params)) return "";
           const d = params.data as { lo: number; hi: number; value: number };
           return [
-            `Realization: ${formatInt(d.lo)}-${formatInt(d.hi)}%`,
+            `Realization: ${formatInt(d.lo)}% to ${formatInt(d.hi)}%`,
             `Countries: ${formatInt(d.value)}`,
           ].join("<br/>");
         },
@@ -69,15 +59,7 @@ export function RealizationHistogram({ countries }: { countries: CountryUnrealiz
         {
           type: "bar",
           data: buckets.map((b) => ({ ...b, value: b.count })),
-          itemStyle: { color: seriesColor(0) },
-          markLine: {
-            symbol: "none",
-            silent: true,
-            animation: false,
-            data: [{ xAxis: "95-100%" }],
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-            label: { ...chartNumberText, formatter: "100%" },
-          },
+          itemStyle: { color: neutralMark },
         },
       ],
     };

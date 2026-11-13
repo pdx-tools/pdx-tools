@@ -95,7 +95,7 @@ export function UnrealizedTaxBaseInsight() {
 
           {countries.length >= 10 && (
             <section>
-              <SectionTitle>Realization Distribution</SectionTitle>
+              <SectionTitle>Countries by tax realization</SectionTitle>
               <RealizationHistogram countries={countries} />
             </section>
           )}

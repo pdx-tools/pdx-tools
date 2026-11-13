@@ -186,7 +186,7 @@ pub struct CountryOverviewSection {
     pub monthly_gold: Vec<f64>,
     pub recent_balance: Vec<f64>,
     pub historical_tax_base: Vec<f64>,
-    pub historical_population: Vec<f64>,
+    pub historical_population: crate::population::PopulationHistory,
     pub ranks: CountryOverviewRanks,
 }
 

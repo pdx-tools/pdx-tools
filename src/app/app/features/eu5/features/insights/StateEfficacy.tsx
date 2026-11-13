@@ -96,10 +96,7 @@ export function StateEfficacyInsight() {
 
           {insightQuery.data?.distribution && (
             <section>
-              <LocationDistributionChart
-                distribution={insightQuery.data.distribution}
-                title="Effective development distribution"
-              />
+              <LocationDistributionChart distribution={insightQuery.data.distribution} />
             </section>
           )}
 
