@@ -4,7 +4,7 @@ import { Chip } from "./Chip";
 import { focusRingAlways, focusRingWithin } from "@/components/game/focusRing";
 
 const baseInputClass = cx(
-  "h-7 w-full rounded-control border border-solid border-game-line bg-game-page px-2.5 font-game-ui text-[12.5px] text-game-ink-100 placeholder:text-game-ink-500 disabled:cursor-not-allowed disabled:opacity-40",
+  "h-7 w-full rounded-control border border-solid border-game-control-line bg-game-page px-2.5 font-game-ui text-[12.5px] text-game-ink-100 placeholder:text-game-ink-500 disabled:cursor-not-allowed disabled:opacity-40",
   focusRingAlways,
 );
 
@@ -24,7 +24,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     return (
       <div
         className={cx(
-          "relative flex h-7 items-center rounded-control border border-solid border-game-line bg-game-page",
+          "relative flex h-7 items-center rounded-control border border-solid border-game-control-line bg-game-page",
           focusRingWithin,
           className,
         )}
@@ -39,7 +39,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         />
         {shortcut && (
           <span className="mr-1.5 shrink-0">
-            <Chip className="font-game-num text-[10px] text-game-ink-500">{shortcut}</Chip>
+            <Chip className="font-game-num text-[12px] text-game-ink-500">{shortcut}</Chip>
           </span>
         )}
       </div>

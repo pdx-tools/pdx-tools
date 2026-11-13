@@ -463,11 +463,11 @@ export function StatPlate({
   return (
     <div className="min-w-0 border-r border-game-line bg-game-panel px-3 py-3 last:border-r-0">
       <SectionTitle className="mb-1.5 truncate">{label}</SectionTitle>
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 font-mono text-[18px] font-medium tracking-[-0.01em] text-game-ink-100 tabular-nums">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 font-game-num text-[18px] font-medium tracking-[-0.01em] text-game-ink-100 tabular-nums">
         {typeof value === "string" ? <span className="truncate">{value}</span> : value}
         {delta && (
           <span
-            className={`shrink-0 text-[10px] ${delta.positive ? "text-game-good" : "text-game-err"}`}
+            className={`shrink-0 text-[12px] ${delta.positive ? "text-game-good" : "text-game-err"}`}
           >
             {delta.text}
           </span>

@@ -13,7 +13,7 @@ function SaveDateReadout({ date }: { date: Eu5DateComponents }) {
   return (
     <p className="flex items-baseline gap-1">
       <span className="font-game-num text-[13px] text-game-ink-500">{date.year}</span>
-      <span className="font-mono text-[10px] text-game-ink-500">{monthDay}</span>
+      <span className="font-game-num text-[12px] text-game-ink-500">{monthDay}</span>
     </p>
   );
 }

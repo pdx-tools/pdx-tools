@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { Tooltip } from "@/components/Tooltip";
+import { sectionLabel } from "@/components/game/SectionTitle";
 import { formatInt } from "@/lib/format";
 import { formatRank } from "../numberFormatting";
 import { RailFigureName } from "./ExactValue";
@@ -18,19 +19,9 @@ import { RailFigureName } from "./ExactValue";
  * affords, leaving ragged (never blank) tails.
  */
 
-/** Placeholder icon slot — reserved 16px square until the iconography pass ships. */
+/** An empty 16px slot that keeps the column for a row icon. Rows have no icons yet. */
 function IconSlot() {
-  return (
-    <span
-      aria-hidden="true"
-      className="size-4 shrink-0 rounded-plate border border-game-line opacity-70"
-      style={{
-        backgroundImage:
-          "repeating-linear-gradient(45deg, var(--color-game-line-strong) 0 2px, transparent 2px 5px)",
-        backgroundColor: "var(--color-game-panel-2)",
-      }}
-    />
-  );
+  return <span aria-hidden="true" className="size-4 shrink-0" />;
 }
 
 export interface StatRailRowProps {
@@ -97,7 +88,7 @@ function Row({ label, value, denom, bar, rank, tied = 1, icon, tooltip }: StatRa
       {/* Bar track — only painted for bounded ratios. */}
       <span className="flex items-center">
         {bar !== undefined && (
-          <span className="relative h-1 w-full rounded-[1px] border border-game-line bg-game-panel-2">
+          <span className="relative h-1 w-full rounded-[1px] bg-game-track">
             <span
               className="absolute inset-y-0 left-0 rounded-[1px] bg-game-ink-500"
               style={{ width: `${Math.max(0, Math.min(1, bar)) * 100}%` }}
@@ -136,7 +127,8 @@ function ColumnHeads({ label, className }: { label?: string; className?: string 
 }
 
 const sectionBand =
-  "col-span-full border-t border-b border-game-line bg-game-panel-2 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase first:border-t-0";
+  "col-span-full border-t border-b border-game-line bg-game-panel-2 first:border-t-0 " +
+  sectionLabel;
 
 /** A band over a group of rows. With `heads`, it names the columns of the rows under it. */
 function Section({ label, heads }: { label: string; heads?: boolean }) {
@@ -207,11 +199,9 @@ export function StatRail({ title, meta, cohort, narrow, expand, children }: Stat
       )}
     >
       <div className="flex items-center justify-between border-b border-game-line px-3 py-2">
-        <span className="font-game-num text-[11px] tracking-[0.14em] text-game-ink-500 uppercase">
-          {title}
-        </span>
+        <span className={sectionLabel}>{title}</span>
         {metaText.length > 0 && (
-          <span className="font-game-num text-[10.5px] text-game-ink-500">{metaText}</span>
+          <span className="font-game-num text-[12px] text-game-ink-500">{metaText}</span>
         )}
       </div>
 

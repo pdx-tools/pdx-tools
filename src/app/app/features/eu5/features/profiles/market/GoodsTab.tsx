@@ -1,3 +1,5 @@
+import { cx } from "class-variance-authority";
+import { focusRing } from "@/components/game/focusRing";
 import { chartInk } from "@/components/viz/echartsTheme";
 import { useMemo, useState } from "react";
 import {
@@ -181,7 +183,7 @@ function ImportExportSummary({
       <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
         <div>
           <SectionTitle className="mb-0">Required imports</SectionTitle>
-          <p className="mt-0.5 text-[10px] text-game-ink-500">
+          <p className="mt-0.5 text-[12px] text-game-ink-500">
             Imports required to meet pop and building needs
           </p>
         </div>
@@ -191,7 +193,7 @@ function ImportExportSummary({
       <section className="flex flex-col gap-2 rounded-panel border border-game-line bg-game-panel p-3">
         <div>
           <SectionTitle className="mb-0">Exports shipped out</SectionTitle>
-          <p className="mt-0.5 text-[10px] text-game-ink-500">
+          <p className="mt-0.5 text-[12px] text-game-ink-500">
             Top exports shipped to other markets
           </p>
         </div>
@@ -272,7 +274,10 @@ export function MarketGoodsTabContent({ marketId }: { marketId: number }) {
             <select
               value={selectedGood.good.key}
               onChange={(event) => setSelectedGoodKey(event.target.value)}
-              className="rounded-control border border-game-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100"
+              className={cx(
+                "rounded-control border border-game-control-line bg-game-panel-hover px-2 py-1 text-xs font-semibold text-game-ink-100",
+                focusRing,
+              )}
               aria-label="Selected market good"
             >
               {sortedGoods.map((good) => (

@@ -38,7 +38,9 @@ function TransportButton({
       </Tooltip.Trigger>
       <Tooltip.Content side="top" className="font-game-ui text-xs">
         <span>{label}</span>
-        {hint && <span className="ml-2 font-game-num text-[10px] text-game-ink-300">{hint}</span>}
+        {hint && (
+          <span className="ml-2 font-game-num text-game-small text-game-ink-300">{hint}</span>
+        )}
       </Tooltip.Content>
     </Tooltip>
   );
@@ -167,7 +169,7 @@ export function TimelineTransport({ controller }: { controller: TimelineControll
               · {controller.playbackHint ?? "1 yr per second"}
             </span>
           </span>
-          <span className="ml-2 font-game-num text-[10px] text-game-ink-300">Space</span>
+          <span className="ml-2 font-game-num text-game-small text-game-ink-300">Space</span>
         </Tooltip.Content>
       </Tooltip>
 

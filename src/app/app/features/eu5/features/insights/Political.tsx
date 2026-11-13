@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { cx } from "class-variance-authority";
+import { sectionLabel } from "@/components/game/SectionTitle";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
@@ -68,7 +70,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
         enableSorting: false,
         meta: Eu5DataTable.meta({ variant: "num", width: 36 }),
         cell: ({ getValue }) => (
-          <span className="font-game-num text-[10.5px] text-game-ink-500">
+          <span className="font-game-num text-[12px] text-game-ink-500">
             #{formatInt(getValue())}
           </span>
         ),
@@ -177,7 +179,7 @@ function PoliticalWorldScoreboard({ rows }: { rows: PoliticalWorldRow[] }) {
       const prevRow = rows[idx - 1];
       if (prevRow && prevRow.ordinalRank <= 10 && row.ordinalRank > 10) {
         return (
-          <div className="flex items-center gap-3 px-3 py-0.5 font-game-num text-[10px] tracking-[.14em] text-game-ink-500 uppercase">
+          <div className={cx("flex items-center gap-3 px-3 py-0.5", sectionLabel)}>
             <span className="h-px flex-1 bg-game-line" />
             <span>Players outside top 10</span>
             <span className="h-px flex-1 bg-game-line" />

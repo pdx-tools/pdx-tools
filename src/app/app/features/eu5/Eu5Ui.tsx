@@ -122,9 +122,7 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
         )}
       >
         <ChevronLeftIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate font-game-num text-[11px] tracking-[0.14em] uppercase">
-          {label}
-        </span>
+        <span className="truncate font-game-num text-game-label uppercase">{label}</span>
       </button>
     </div>
   );

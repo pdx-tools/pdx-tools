@@ -2,6 +2,7 @@ import React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { cx } from "class-variance-authority";
 import { focusRingAlways } from "@/components/game/focusRing";
+import { sectionLabel } from "@/components/game/SectionTitle";
 import CheckIcon from "@heroicons/react/24/outline/CheckIcon";
 import ChevronDownIcon from "@heroicons/react/24/outline/ChevronDownIcon";
 import { useGameThemeContainer } from "@/components/GameThemeProvider";
@@ -27,7 +28,7 @@ const GameSelectTrigger = React.forwardRef<
       ref={ref}
       className={cx(
         "flex h-7 w-full items-center justify-between gap-1.5 rounded-[var(--radius-control)]",
-        "border border-solid border-game-line bg-game-page px-2.5",
+        "border border-solid border-game-control-line bg-game-page px-2.5",
         "font-game-ui text-[12.5px] text-game-ink-100",
         focusRingAlways,
         "disabled:cursor-not-allowed disabled:opacity-40",
@@ -90,10 +91,7 @@ const GameSelectLabel = React.forwardRef<
   return (
     <SelectPrimitive.Label
       ref={ref}
-      className={cx(
-        "px-2.5 py-1 font-game-ui text-[10px] tracking-wider text-game-ink-500 uppercase",
-        className,
-      )}
+      className={cx("px-2.5 py-1", sectionLabel, className)}
       {...props}
     />
   );

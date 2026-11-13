@@ -62,6 +62,9 @@
 
   --color-game-line: var(--game-line);
   --color-game-line-strong: var(--game-line-strong);
+  --color-game-control-line: var(--game-control-line);
+  --color-game-track: var(--game-track);
+  --color-game-rim: var(--game-rim);
 
   --color-game-ink-100: var(--game-ink-100);
   --color-game-ink-300: var(--game-ink-300);
@@ -104,6 +107,11 @@
   --font-game-ui: var(--font-game-ui);
   --font-game-num: var(--font-game-num);
 
+  /* Uppercase section labels, and the smallest text that is not a label. */
+  --text-game-label: var(--game-label-size);
+  --text-game-label--letter-spacing: var(--game-label-tracking);
+  --text-game-small: var(--game-small-size);
+
   /* Shape — low-radius plates */
   --radius-plate: 2px;
   --radius-panel: 4px;
@@ -125,11 +133,22 @@
 
   --game-line: rgba(255, 255, 255, 0.06);
   --game-line-strong: rgba(255, 255, 255, 0.1);
+  /* The edge of a control: 3.7:1 or more on page, panel and panel-2. */
+  --game-control-line: oklch(56% 0.012 80);
+  /* The empty part of a bar: about 2:1 on each ground, so the end of the scale shows. */
+  --game-track: rgba(255, 255, 255, 0.22);
+  /* The edge around a game color, so a dark color stays visible. The color does not change. */
+  --game-rim: rgba(255, 255, 255, 0.42);
+
+  /* Data text is 12px or more. Only uppercase section labels are smaller. */
+  --game-label-size: 11px;
+  --game-label-tracking: 0.04em;
+  --game-small-size: 12px;
 
   --game-ink-100: oklch(94% 0.018 80);
   --game-ink-300: oklch(81% 0.012 80);
-  /* Normal text; clears 4.5:1 on every game surface. */
-  --game-ink-500: oklch(68% 0.012 80);
+  /* Muted text: 7:1 or more on page, panel and panel-2. */
+  --game-ink-500: oklch(73% 0.012 80);
   /* Inert marks only: separators, key glyphs, and grips. */
   --game-ink-700: oklch(40% 0.01 80);
   /* Underline token; clears the 3:1 non-text floor on every game surface. */
@@ -185,6 +204,13 @@
   --game-overlay: rgba(15, 23, 42, 0.82);
   --game-line: rgba(226, 232, 240, 0.08);
   --game-line-strong: rgba(226, 232, 240, 0.16);
+  /* EU4 keeps its own edges and labels. Its small text is 11px. */
+  --game-control-line: var(--game-line);
+  --game-track: var(--game-line-strong);
+  --game-rim: rgba(0, 0, 0, 0.3);
+  --game-label-size: 10px;
+  --game-label-tracking: 0.14em;
+  --game-small-size: 11px;
   --game-ink-100: oklch(96% 0.012 85);
   --game-ink-300: oklch(84% 0.018 85);
   --game-ink-500: oklch(69% 0.02 85);

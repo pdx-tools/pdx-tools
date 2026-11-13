@@ -202,7 +202,7 @@ function CoverageBar({
         <div style={{ width: `${srPct * 100}%`, backgroundColor: colorHex }} />
         <div className="flex-1 bg-game-panel-hover" />
       </div>
-      <span className="text-[11px] text-game-ink-300">{formatPercent(srPct)} state religion</span>
+      <span className="text-[12px] text-game-ink-300">{formatPercent(srPct)} state religion</span>
     </div>
   );
 }
@@ -240,7 +240,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
                 {formatInt(r.stateCountryCount)}{" "}
                 {r.stateCountryCount === 1 ? "country" : "countries"}
               </span>
-              <span className="text-[11px] text-game-ink-300">
+              <span className="text-[12px] text-game-ink-300">
                 {formatInt(r.totalRuledPopulation)} ruled population
               </span>
             </div>
@@ -276,7 +276,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
           return (
             <div className="flex flex-col">
               <span>{formatInt(r.followerPopulation)}</span>
-              <span className="text-[11px] text-game-ink-300">
+              <span className="text-[12px] text-game-ink-300">
                 {formatInt(r.followersOutsideSameFaithStates)} outside same-faith states
               </span>
             </div>

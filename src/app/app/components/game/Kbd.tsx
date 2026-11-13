@@ -1,10 +1,11 @@
 import { cx } from "class-variance-authority";
 
+/** A key hint: a filled key with no edge, because an edge means a button. */
 export function Kbd({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
     <kbd
       className={cx(
-        "inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-plate border border-game-line-strong bg-game-panel-2 px-1 font-game-num text-[10px] text-game-ink-500",
+        "inline-flex h-[18px] min-w-[16px] items-center justify-center rounded-plate bg-game-panel-active px-1 font-game-num text-game-small text-game-ink-300",
         className,
       )}
     >

@@ -87,8 +87,8 @@ export const chartInk = {
   primary: "#f2eade",
   /** Bright small text and reference lines. */
   secondary: "#c5c0b8",
-  /** All chart text, the same as `--game-ink-500`: 6.5:1 against the chart surface. */
-  tick: "#9c9890",
+  /** All chart text, the same as `--game-ink-500`. */
+  tick: "#aca79f",
   /** Non-text annotations and in-plot metadata. */
   muted: "#7d7a74",
   surface: "#0e1217",
