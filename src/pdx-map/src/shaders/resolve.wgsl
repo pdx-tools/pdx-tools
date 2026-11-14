@@ -77,11 +77,15 @@ fn floor_div(a: vec2<i32>, b: vec2<i32>) -> vec2<i32> {
 
 // World pixel under the top-left corner of an output pixel. The math is in
 // integers, so at zoom 1 every output pixel lands on its own world pixel.
+// The view splits into whole surfaces and a remainder, so that no product
+// grows past the world coordinate it computes.
 fn world_pixel(output: vec2<i32>) -> vec2<i32> {
     let surface = max(vec2<i32>(i32(uniforms.surface_width), i32(uniforms.surface_height)), vec2<i32>(1));
     let view_origin = vec2<i32>(i32(uniforms.view_x), i32(uniforms.view_y));
     let view_size = vec2<i32>(i32(uniforms.view_width), i32(uniforms.view_height));
-    return floor_div(output * view_size, surface) + view_origin;
+    let whole = view_size / surface;
+    let rest = view_size % surface;
+    return output * whole + floor_div(output * rest, surface) + view_origin;
 }
 
 @fragment
