@@ -1435,8 +1435,16 @@ impl SurfaceMapRenderer {
         self.scene.resize_layers(&self.surface_config);
     }
 
+    pub fn location_borders(&self) -> bool {
+        self.scene.renderer().config.enable_location_borders
+    }
+
     pub fn set_location_borders(&mut self, enabled: bool) {
         self.scene.renderer_mut().config.enable_location_borders = enabled;
+    }
+
+    pub fn owner_borders(&self) -> bool {
+        self.scene.renderer().config.enable_owner_borders
     }
 
     pub fn set_owner_borders(&mut self, enabled: bool) {

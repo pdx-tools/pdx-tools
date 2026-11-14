@@ -868,4 +868,38 @@ mod tests {
         let controller_says = c.pan_to_visible_region(target, insets);
         assert_eq!(viewport_says, controller_says);
     }
+
+    // A map that draws only when its view changes relies on both halves.
+    #[test]
+    fn ticks_move_the_view_until_it_settles_then_leave_it_still() {
+        let mut c = make_controller(LogicalSize::new(800, 600), WorldSize::new(2000, 1000));
+        let frame = Duration::from_millis(16);
+
+        let start = c.viewport_bounds();
+        c.pan_to_visible_region(
+            PanTarget::Point(WorldPoint::new(1600.0, 300.0)),
+            no_insets(),
+        );
+        let mut moved = 0;
+        while c.is_animating() {
+            let before = c.viewport_bounds();
+            c.tick(frame);
+            moved += usize::from(c.viewport_bounds() != before);
+        }
+        let landed = c.viewport_bounds();
+        assert_ne!(landed, start);
+        assert!(moved > 1, "moved on {moved} ticks");
+        c.tick(frame);
+        assert_eq!(c.viewport_bounds(), landed);
+
+        c.on_key_down(KeyboardKey::ArrowLeft);
+        c.tick(frame);
+        c.tick(frame);
+        assert_ne!(c.viewport_bounds(), landed);
+        c.on_key_up(KeyboardKey::ArrowLeft);
+        c.tick(frame);
+        let released = c.viewport_bounds();
+        c.tick(frame);
+        assert_eq!(c.viewport_bounds(), released);
+    }
 }
