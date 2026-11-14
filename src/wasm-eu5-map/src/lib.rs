@@ -3,6 +3,7 @@ use eu5app::{
     should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
+use live_map::LiveMap;
 use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
@@ -14,6 +15,8 @@ use std::time::Duration;
 use tsify::Ts;
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
+
+mod live_map;
 
 // Re-export common types from wasm-pdxmap
 pub use wasm_pdx_map::{
@@ -90,7 +93,7 @@ pub fn location_borders_at_zoom(zoom: f32) -> bool {
 
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
-    controller: MapViewController,
+    map: LiveMap,
     input: InteractionController,
     world: World,
     spatial_index: SpatialIndex,
@@ -131,18 +134,13 @@ impl Eu5WasmMapRenderer {
         let map_size = renderer.hemisphere_size().world();
         let world = texture_data.into_world(renderer.hemisphere_size().width_length());
         let spatial_index = world.build_spatial_index();
-        let mut controller = MapViewController::new(renderer);
+        let map = LiveMap::new(MapViewController::new(renderer));
 
         // Initialize input controller with map size
         let input = InteractionController::new(display.logical_size(), map_size);
 
-        let show_location_borders = should_highlight_individual_locations(controller.get_zoom());
-        controller
-            .renderer_mut()
-            .set_location_borders(show_location_borders);
-
-        Ok(Eu5WasmMapRenderer {
-            controller,
+        let mut app = Eu5WasmMapRenderer {
+            map,
             input,
             world,
             spatial_index,
@@ -153,7 +151,9 @@ impl Eu5WasmMapRenderer {
             grouping_table: GroupingTable::empty(),
             clock: default_clock(),
             last_tick: None,
-        })
+        };
+        app.apply_viewport();
+        Ok(app)
     }
 
     /// Get current raw zoom value
@@ -189,7 +189,7 @@ impl Eu5WasmMapRenderer {
     /// The size of the whole world in world units: `[width, height]`.
     #[wasm_bindgen]
     pub fn world_size(&self) -> Vec<u32> {
-        let size = self.controller.hemisphere_size().world();
+        let size = self.map.hemisphere_size().world();
         vec![size.width, size.height]
     }
 
@@ -294,9 +294,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn on_cursor_move(&mut self, x: f32, y: f32) {
         self.input.on_cursor_move(LogicalPoint::new(x, y));
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_viewport();
     }
 
     /// Handle mouse button press/release
@@ -314,9 +312,7 @@ impl Eu5WasmMapRenderer {
         };
 
         self.input.on_mouse_button(mouse_button, pressed);
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_viewport();
     }
 
     /// Handle scroll/zoom input
@@ -326,20 +322,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn on_scroll(&mut self, scroll_lines: f32) {
         self.input.on_scroll(scroll_lines);
-        self.apply_zoomed_viewport();
-    }
-
-    /// Send the input viewport to the renderer, and show location borders
-    /// only at zoom levels where they are legible. Call this after a change
-    /// to the zoom level.
-    fn apply_zoomed_viewport(&mut self) {
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
-
-        let show_borders = should_highlight_individual_locations(bounds.zoom_level);
-        self.controller
-            .renderer_mut()
-            .set_location_borders(show_borders);
+        self.apply_viewport();
     }
 
     /// Handle keyboard input for movement.
@@ -365,7 +348,7 @@ impl Eu5WasmMapRenderer {
         self.last_tick = Some(now);
 
         self.input.tick(delta);
-        self.apply_zoomed_viewport();
+        self.apply_viewport();
     }
 
     /// Check if currently dragging
@@ -384,11 +367,8 @@ impl Eu5WasmMapRenderer {
             ((height as f32) / scale_factor) as u32,
         ));
 
-        // Transfer updated viewport bounds to render controller
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
-
-        self.controller.resize(PhysicalSize::new(width, height));
+        self.apply_viewport();
+        self.map.resize(PhysicalSize::new(width, height));
     }
 
     /// Create a separate screenshot renderer that shares GPU resources but operates independently
@@ -397,7 +377,8 @@ impl Eu5WasmMapRenderer {
         &self,
         canvas: OffscreenCanvas,
     ) -> Result<WasmScreenshotRenderer, JsError> {
-        create_screenshot_renderer_for_app(&self.controller, canvas)
+        self.map
+            .create_screenshot_renderer(canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
     }
 
@@ -412,7 +393,7 @@ impl Eu5WasmMapRenderer {
         }
 
         self.compose_preview();
-        self.upload_location_arrays();
+        self.map.update_locations(&self.location_arrays);
     }
 
     #[wasm_bindgen]
@@ -424,9 +405,7 @@ impl Eu5WasmMapRenderer {
             "Color data length must match initialized location arrays"
         );
         color_data.copy_to(destination);
-        self.controller
-            .renderer_mut()
-            .update_colors(&self.location_arrays);
+        self.map.update_colors(&self.location_arrays);
     }
 
     #[wasm_bindgen]
@@ -441,9 +420,23 @@ impl Eu5WasmMapRenderer {
         self.upload_preview();
     }
 
+    /// Whether the picture has changed since the last frame was drawn.
+    #[wasm_bindgen]
+    pub fn frame_due(&self) -> bool {
+        self.map.frame_due()
+    }
+
+    /// Draw the next frame even if nothing has changed, as for a canvas that
+    /// was hidden.
+    #[wasm_bindgen]
+    pub fn request_frame(&mut self) {
+        self.map.request_frame();
+    }
+
+    /// Draw the current picture. A failed frame stays due.
     #[wasm_bindgen]
     pub fn render(&mut self) -> Result<(), JsError> {
-        self.controller
+        self.map
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
@@ -453,9 +446,7 @@ impl Eu5WasmMapRenderer {
     pub fn center_at_world(&mut self, x: f32, y: f32) {
         let world = WorldPoint::new(x, y);
         self.input.center_on(world);
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_viewport();
     }
 
     /// Restore a view in the world units returned by `viewport_world_rect`.
@@ -463,7 +454,7 @@ impl Eu5WasmMapRenderer {
     pub fn fit_world_rect(&mut self, x: u32, y: u32, width: u32, height: u32) {
         let rect = WorldRect::new(WorldPoint::new(x, y), WorldSize::new(width, height));
         self.input.fit(rect);
-        self.apply_zoomed_viewport();
+        self.apply_viewport();
     }
 
     /// Open the map on the view the save calls for.
@@ -473,7 +464,7 @@ impl Eu5WasmMapRenderer {
             OpeningView::Capital { color_id } => self.center_at_color_id(color_id.value()),
             OpeningView::World => {
                 self.input.fit_map();
-                self.apply_zoomed_viewport();
+                self.apply_viewport();
             }
         }
         Ok(())
@@ -488,9 +479,7 @@ impl Eu5WasmMapRenderer {
         // Convert u32 world coordinates to f32 for viewport
         let world = WorldPoint::new(center.x as f32, center.y as f32);
         self.input.center_on(world);
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_viewport();
     }
 
     /// Show the location with `color_id` (R16 texture index) in the region that
@@ -507,26 +496,31 @@ impl Eu5WasmMapRenderer {
         let target = WorldPoint::new(point.x as f32, point.y as f32);
         let insets: ViewportInsets = insets.to_rust()?.into();
         self.input.jump_to(target, insets, JUMP_ZOOM);
-        self.apply_zoomed_viewport();
+        self.apply_viewport();
         Ok(())
     }
 
     /// Enable or disable owner border rendering
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.controller.renderer_mut().set_owner_borders(enabled);
+        self.map.set_owner_borders(enabled);
     }
 
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
-        WasmQueuedWorkFuture::from_queued_work_future(self.controller.queued_work())
+        WasmQueuedWorkFuture::from_queued_work_future(self.map.queued_work())
     }
 }
 
 impl Eu5WasmMapRenderer {
-    fn upload_location_arrays(&mut self) {
-        let renderer = self.controller.renderer_mut();
-        renderer.update_locations(&self.location_arrays);
+    /// Send the input viewport to the map, and show location borders only at
+    /// zoom levels where they are legible. Call this after any change to the
+    /// input viewport.
+    fn apply_viewport(&mut self) {
+        let bounds = self.input.viewport_bounds();
+        self.map.set_viewport_bounds(bounds);
+        self.map
+            .set_location_borders(should_highlight_individual_locations(bounds.zoom_level));
     }
 
     fn fill_locations_in_rect(&mut self, start: LogicalPoint<f32>, end: LogicalPoint<f32>) {
@@ -606,9 +600,7 @@ impl Eu5WasmMapRenderer {
 
     fn upload_preview(&mut self) {
         self.compose_preview();
-        self.controller
-            .renderer_mut()
-            .update_flags(&self.location_arrays);
+        self.map.update_flags(&self.location_arrays);
     }
 }
 
