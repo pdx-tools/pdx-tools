@@ -86,10 +86,24 @@ export const createMapEngine = async ({
   const app = await appTask;
   app.render();
 
+  // A failed frame is logged once, not on every frame until it recovers.
+  let frameFailing = false;
   const rafTick = () => {
-    app.tick();
-    app.render();
-    requestAnimationFrame(rafTick);
+    try {
+      app.tick();
+      app.render();
+      if (frameFailing) {
+        frameFailing = false;
+        console.log("Map frames recovered");
+      }
+    } catch (error) {
+      if (!frameFailing) {
+        frameFailing = true;
+        console.error("Map frame failed; retrying each frame:", error);
+      }
+    } finally {
+      requestAnimationFrame(rafTick);
+    }
   };
   rafTick();
 

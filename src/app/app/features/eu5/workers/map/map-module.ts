@@ -677,7 +677,26 @@ export const createMapEngine = async (
     }
   };
 
+  // A failed frame is logged once, not on every frame until it recovers.
+  let frameFailing = false;
   const rafRender = async () => {
+    try {
+      await drawFrame();
+      if (frameFailing) {
+        frameFailing = false;
+        log("EU5 map frames recovered");
+      }
+    } catch (error) {
+      if (!frameFailing) {
+        frameFailing = true;
+        console.error("EU5 map frame failed; retrying each frame:", error);
+      }
+    } finally {
+      requestAnimationFrame(rafRender);
+    }
+  };
+
+  const drawFrame = async () => {
     // Sync location data before draining events so that updateCursorWorldPosition
     // always has valid location arrays available when it calls gpu_loc_to_app.
     applyPendingSync();
@@ -685,7 +704,6 @@ export const createMapEngine = async (
     // Drain canvas_courier input events before ticking
     inputReader.drain(processInputEvent);
     if (paused) {
-      requestAnimationFrame(rafRender);
       return;
     }
     if (boxDrag !== null && boxDragDirty) {
@@ -700,11 +718,12 @@ export const createMapEngine = async (
         Math.abs(newDimensions.scaleFactor - prevDimensions.scaleFactor);
 
       if (diff >= 4) {
-        prevDimensions = { ...newDimensions };
         // Firefox also needs to wait for queued work before resizing
         // otherwise it will freeze up
         await app.queued_work().wait();
         app.resize(newDimensions.width, newDimensions.height, newDimensions.scaleFactor);
+        // Only after the resize, so a failed one is tried again next frame.
+        prevDimensions = { ...newDimensions };
       }
 
       newDimensions = null;
@@ -719,7 +738,6 @@ export const createMapEngine = async (
     if (hasLocationInformation) {
       app.render();
     }
-    requestAnimationFrame(rafRender);
   };
   // Four integers read off the input state: cheap enough for every frame,
   // and the comparison keeps a resting map silent.
