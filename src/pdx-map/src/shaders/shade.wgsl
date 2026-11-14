@@ -190,46 +190,6 @@ fn resolved_id(p: vec2<i32>) -> u32 {
     return textureLoad(resolved_texture, c, 0).r;
 }
 
-// Check if this pixel should be a location border: a different location
-// within the L1 (diamond) neighborhood of the location border radius.
-fn is_location_border_pixel(p: vec2<i32>, center_location_idx: u32, in_secondary_zone: bool, secondary_color: u32) -> bool {
-    if (uniforms.enable_location_borders == 0u) {
-        return false;
-    }
-
-    // Check if this location opts out of location border drawing
-    let state_flags = get_state_flags_by_index(center_location_idx);
-    if ((state_flags & STATE_NO_LOCATION_BORDERS) != 0u) {
-        return false;
-    }
-
-    let r = i32(uniforms.location_border_radius);
-    for (var dy = -r; dy <= r; dy++) {
-        let span = r - abs(dy);
-        for (var dx = -span; dx <= span; dx++) {
-            if (dx == 0 && dy == 0) {
-                continue;
-            }
-            let neighbor_location_idx = resolved_id(p + vec2<i32>(dx, dy));
-            if (neighbor_location_idx == center_location_idx) {
-                continue;
-            }
-
-            // If we're in secondary zone, check if neighbor has same secondary color
-            if (in_secondary_zone) {
-                let neighbor_secondary = get_secondary_color_by_index(neighbor_location_idx);
-                if (neighbor_secondary == secondary_color) {
-                    continue; // Same secondary color, don't draw border here
-                }
-            }
-
-            return true; // Draw border
-        }
-    }
-
-    return false; // All neighbors have same location
-}
-
 // Terrain class of a location. Only owned land has a political border.
 // Water, lakes, impassable terrain, and unowned land have no owner, so
 // their own edges are not political borders, but a country that meets
@@ -258,31 +218,48 @@ fn terrain_class(state_flags: u32) -> u32 {
     return TERRAIN_LAND;
 }
 
-// Distances in L1 (diamond) pixels from `p` to the nearest pixel of a
-// different owner, to the nearest coast, and to the nearest edge of
-// another terrain class, each capped at `max_r + 1` when none is within
-// reach. Only owned land has an owner, and its frontier with unowned land
-// counts as an owner edge. A coast is an edge between water and anything
-// else. `terrain` is any edge between terrain classes, so it includes
-// coasts and the edges of impassable and unowned land. Impassable terrain
-// or a lake that shows the color of the country around it has no terrain
-// edge against that country: it is filled so that it merges with the
-// country, and an outline would undo that.
-struct EdgeDistances {
+// Distance of an edge that is not within reach
+const FAR = 0x7fffffff;
+
+// What lies around a pixel. The distances are in L1 (diamond) pixels to
+// the nearest pixel of a different owner, to the nearest coast, and to the
+// nearest edge of another terrain class, or FAR. Only owned land has an
+// owner, and its frontier with unowned land counts as an owner edge. A
+// coast is an edge between water and anything else. `terrain` is any edge
+// between terrain classes, so it includes coasts and the edges of
+// impassable and unowned land. Impassable terrain or a lake that shows the
+// color of the country around it has no terrain edge against that country:
+// it is filled so that it merges with the country, and an outline would
+// undo that. `location_border` is a different location within the
+// location border radius.
+struct Surroundings {
     owner: i32,
     coast: i32,
     terrain: i32,
+    location_border: bool,
 }
 
-fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: u32, center_border_color: u32, center_terrain: u32, max_r: i32) -> EdgeDistances {
-    var result = EdgeDistances(max_r + 1, max_r + 1, max_r + 1);
-    // Unowned land draws no edge from this scan, so skip it
-    if (uniforms.enable_owner_borders == 0u || center_terrain == TERRAIN_UNOWNED) {
-        return result;
-    }
+// Scan the rings around `p`, out to `edge_r` for edges and to `location_r`
+// for a location border. A radius of 0 skips that search. Each texel is
+// read once for both.
+fn scan_surroundings(
+    p: vec2<i32>,
+    center_location_idx: u32,
+    center_primary_color: u32,
+    center_secondary_color: u32,
+    center_border_color: u32,
+    center_terrain: u32,
+    in_secondary_zone: bool,
+    edge_r: i32,
+    location_r: i32,
+) -> Surroundings {
+    var result = Surroundings(FAR, FAR, FAR, false);
 
-    // Scan ring by ring so a pixel on a border stops at the first ring.
-    for (var d = 1; d <= max_r; d++) {
+    // Each search stops at the ring that answers it, so a pixel on a border
+    // stops early and an interior pixel reads each ring once.
+    var edge_reach = edge_r;
+    var location_reach = location_r;
+    for (var d = 1; d <= max(edge_reach, location_reach); d++) {
         for (var dy = -d; dy <= d; dy++) {
             let span = d - abs(dy);
             // Only the two points on the ring for this row
@@ -293,6 +270,21 @@ fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: 
                 }
                 let neighbor_location_idx = resolved_id(p + vec2<i32>(dx, dy));
                 if (neighbor_location_idx == center_location_idx) {
+                    continue;
+                }
+
+                if (d <= location_reach) {
+                    // In the secondary stripe zone, a neighbor with the
+                    // same stripe color is not a location border
+                    let same_stripe = in_secondary_zone
+                        && get_secondary_color_by_index(neighbor_location_idx) == center_secondary_color;
+                    if (!same_stripe) {
+                        result.location_border = true;
+                        location_reach = 0;
+                    }
+                }
+
+                if (d > edge_reach) {
                     continue;
                 }
                 let neighbor_terrain = terrain_class(get_state_flags_by_index(neighbor_location_idx));
@@ -316,11 +308,11 @@ fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: 
                 }
             }
         }
-        // Stop at the first ring that decides this pixel's edge: the owner
-        // edge on land, the coast on water, and any edge on a lake or on
-        // impassable terrain. A closer coast cannot change a land pixel
-        // that already has its owner edge, because the band takes the
-        // nearer of the two.
+        // The edge search stops at the first ring that decides this
+        // pixel's edge: the owner edge on land, the coast on water, and any
+        // edge on a lake or on impassable terrain. A closer coast cannot
+        // change a land pixel that already has its owner edge, because the
+        // band takes the nearer of the two.
         var found = result.terrain <= d;
         if (center_terrain == TERRAIN_LAND) {
             found = result.owner <= d;
@@ -328,7 +320,7 @@ fn edge_distances(p: vec2<i32>, center_location_idx: u32, center_primary_color: 
             found = result.coast <= d;
         }
         if (found) {
-            break;
+            edge_reach = 0;
         }
     }
 
@@ -383,8 +375,23 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let center_border_color = get_border_color_by_index(location_idx);
     let owner_r = i32(uniforms.owner_border_radius);
     let glow_r = i32(uniforms.owner_glow_radius);
-    let edges = edge_distances(screen, location_idx, primary_color, center_border_color, center_terrain, owner_r + glow_r);
-    let is_location_border = is_location_border_pixel(screen, location_idx, in_secondary_zone, secondary_color);
+    // Unowned land draws no owner, coast or terrain edge of its own
+    let draws_edges = uniforms.enable_owner_borders != 0u && center_terrain != TERRAIN_UNOWNED;
+    // Water shows its location borders only as the focused outline
+    let draws_location_borders = uniforms.enable_location_borders != 0u
+        && (state_flags & STATE_NO_LOCATION_BORDERS) == 0u
+        && (is_focused || center_terrain != TERRAIN_WATER);
+    let around = scan_surroundings(
+        screen,
+        location_idx,
+        primary_color,
+        secondary_color,
+        center_border_color,
+        center_terrain,
+        in_secondary_zone,
+        select(0, owner_r + glow_r, draws_edges),
+        select(0, i32(uniforms.location_border_radius), draws_location_borders),
+    );
 
     var fill_color: vec4<f32>;
     // Apply interaction effects after the domain fill is complete.
@@ -426,32 +433,32 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // fades into the country with the rest of the grid.
     // Unowned land draws only its location borders: it is not a country.
     var rgb = fill_color.rgb;
-    if (is_focused && is_location_border) {
+    if (is_focused && around.location_border) {
         // Focused border: bright white outline to distinguish the focused tile
         rgb = vec3<f32>(1.0, 1.0, 1.0);
     } else if (center_terrain == TERRAIN_WATER) {
-        if (edges.coast <= owner_r) {
+        if (around.coast <= owner_r) {
             rgb = shift_lightness(rgb, -COAST_DARKEN * uniforms.edge_strength);
-        } else if (edges.coast <= owner_r + glow_r) {
+        } else if (around.coast <= owner_r + glow_r) {
             rgb = lighten(rgb, SHALLOWS_LIGHTEN);
         }
     } else if (center_terrain == TERRAIN_IMPASSABLE || center_terrain == TERRAIN_LAKE) {
-        if (edges.terrain <= owner_r) {
+        if (around.terrain <= owner_r) {
             rgb = shift_lightness(rgb, -IMPASSABLE_EDGE_DARKEN * uniforms.edge_strength);
-        } else if (is_location_border) {
+        } else if (around.location_border) {
             rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
         }
     } else if (center_terrain == TERRAIN_UNOWNED) {
-        if (is_location_border) {
+        if (around.location_border) {
             rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
         }
-    } else if (edges.owner <= owner_r) {
+    } else if (around.owner <= owner_r) {
         rgb = shift_lightness(unpack_color(center_border_color), -OWNER_BORDER_DARKEN * uniforms.edge_strength);
     } else {
-        if (min(edges.owner, edges.coast) <= owner_r + glow_r) {
+        if (min(around.owner, around.coast) <= owner_r + glow_r) {
             rgb = lighten(rgb, OWNER_GLOW_LIGHTEN);
         }
-        if (is_location_border) {
+        if (around.location_border) {
             rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
         }
     }

@@ -559,3 +559,44 @@ fn zoom_one_shows_every_world_column() {
         }
     }
 }
+
+#[test]
+fn focused_outline_looks_past_the_owner_edge() {
+    // On a 2x display, the focused corner block and the red land below it
+    // share a stripe color, so in the stripe their edge is not a location
+    // border. Physical (5, 11) is next to red and two pixels from yellow:
+    // the owner edge is one ring in, the location border two. (6, 10) has
+    // only red within two pixels.
+    let stripe = GpuColor::from_rgb(120, 60, 160);
+    let colors = palette();
+    let mut flags = [LocationFlags::empty(); LOCATIONS];
+    flags[2] = LocationFlags::FOCUSED;
+    let mut arrays = location_arrays(flags);
+    arrays.set_secondary_colors(&[stripe, colors[1], stripe, colors[3]]);
+
+    for owner_borders in [true, false] {
+        let frame = frame_or_skip!(async {
+            let mut renderer = headless(&hemisphere(0), &hemisphere(HEMI_W), &arrays).await?;
+            renderer.set_interaction_mask(LocationFlags::FOCUSED);
+            renderer.set_owner_borders(owner_borders);
+            renderer.set_scale_factor(2.0);
+            let bounds = ViewportBounds {
+                rect: full_world(),
+                zoom_level: 1.0,
+            };
+            let surface = PhysicalSize::new(HEMI_W * 4, HEMI_H * 2);
+            let buffer = renderer.capture_viewport(bounds, surface).await.unwrap();
+            let rgba: Vec<u8> = buffer.rows().flat_map(|r| r.iter().copied()).collect();
+            buffer.finish();
+            Some(Frame {
+                width: surface.width,
+                rgba,
+            })
+        });
+
+        frame.assert_px(5, 11, [255, 255, 255], "focused outline");
+        if owner_borders {
+            frame.assert_px(6, 10, owner_border(BLUE), "owner border, same stripe");
+        }
+    }
+}
