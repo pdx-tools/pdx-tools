@@ -69,6 +69,7 @@ const STATE_WATER = 32u; // Bit 5: location is water, so its edge with land is a
 const STATE_IMPASSABLE = 64u; // Bit 6: location is impassable terrain, which no one owns
 const STATE_UNOWNED = 128u; // Bit 7: location is land that no country owns
 const STATE_LAKE = 256u; // Bit 8: location is a lake, which has no coast
+const STATE_SOFTENED = 512u; // Bit 9: location is selected, but another location has the focus
 
 // Lightness offsets in Oklab. Oklab lightness is perceptual, so the same
 // offset reads the same on a navy fill and on a cream fill.
@@ -78,6 +79,24 @@ const OWNER_GLOW_LIGHTEN = 0.05;
 const COAST_DARKEN = 0.14;
 const SHALLOWS_LIGHTEN = 0.05;
 const IMPASSABLE_EDGE_DARKEN = 0.10;
+
+// Out of the selection, land moves into a narrow band of Oklab lightness
+// and keeps a trace of its hue. Then only the selection reaches the light
+// and dark ends of the scale, whatever the colors of the map. The sea goes
+// below the band, so land stays above water.
+const DIMMED_LAND_FLOOR = 0.28;
+const DIMMED_LAND_RANGE = 0.14;
+const DIMMED_CHROMA = 0.32;
+const DIMMED_WATER_SCALE = 0.53;
+// A bright sea, such as a market color, stops below the land band, with
+// room for the shallows
+const DIMMED_WATER_CEILING = 0.24;
+// Edges out of the selection are weaker, so the quiet land does not have
+// the strongest lines on the map
+const DIMMED_EDGE_SCALE = 0.5;
+// Around a focused location, the selection moves this part of the way to
+// the dimmed color
+const SOFTENED_SHARE = 0.5;
 
 // Stripe period in logical pixels
 const STRIPE_WIDTH = 8.0;
@@ -155,6 +174,34 @@ fn lighten(c: vec3<f32>, delta: f32) -> vec3<f32> {
     let chroma_scale = 1.0 - shortfall / delta;
     lab.y *= chroma_scale;
     lab.z *= chroma_scale;
+    return oklab_to_srgb(lab);
+}
+
+// The dimmed form of a color in Oklab
+fn dim_lab(lab: vec3<f32>, is_water: bool) -> vec3<f32> {
+    if (is_water) {
+        let water = lab * DIMMED_WATER_SCALE;
+        return vec3<f32>(min(water.x, DIMMED_WATER_CEILING), water.yz);
+    }
+    return vec3<f32>(DIMMED_LAND_FLOOR + lab.x * DIMMED_LAND_RANGE, lab.yz * DIMMED_CHROMA);
+}
+
+// Show the selection on a color: dim it out of the selection, or soften it
+// around a focused location
+fn selection_color(c: vec3<f32>, is_dimmed: bool, is_softened: bool, is_water: bool) -> vec3<f32> {
+    if (!is_dimmed && !is_softened) {
+        return c;
+    }
+    let lab = srgb_to_oklab(c);
+    let dimmed = dim_lab(lab, is_water);
+    return oklab_to_srgb(select(mix(lab, dimmed, SOFTENED_SHARE), dimmed, is_dimmed));
+}
+
+// A line on a fill: darker by `delta`, or lighter when the fill is too dark
+// for a darker line to show
+fn contrast_line(fill: vec3<f32>, delta: f32) -> vec3<f32> {
+    var lab = srgb_to_oklab(fill);
+    lab.x = clamp(lab.x + select(-delta, delta, lab.x < delta), 0.0, 1.0);
     return oklab_to_srgb(lab);
 }
 
@@ -360,6 +407,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Check which interaction effects are active for this renderer.
     let state_flags = get_state_flags_by_index(location_idx);
     let is_dimmed = is_interaction_enabled(state_flags, STATE_DIMMED);
+    let is_softened = is_interaction_enabled(state_flags, STATE_SOFTENED);
     let is_highlighted = is_interaction_enabled(state_flags, STATE_HIGHLIGHTED)
         || is_interaction_enabled(state_flags, STATE_PREVIEW);
     let is_focused = is_interaction_enabled(state_flags, STATE_FOCUSED);
@@ -402,22 +450,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         fill_color = vec4<f32>(mapped_rgb.r, mapped_rgb.g, mapped_rgb.b, 1.0);
     }
 
-    if (is_dimmed) {
-        fill_color = vec4<f32>(fill_color.rgb * 0.3, 1.0);
-    }
+    let is_water = center_terrain == TERRAIN_WATER;
+    fill_color = vec4<f32>(selection_color(fill_color.rgb, is_dimmed, is_softened, is_water), 1.0);
     if (is_highlighted) {
         fill_color = vec4<f32>(
             min(1.0, fill_color.r + 0.25),
             min(1.0, fill_color.g + 0.25),
             min(1.0, fill_color.b + 0.25),
-            1.0
-        );
-    }
-    if (is_focused) {
-        fill_color = vec4<f32>(
-            min(1.0, fill_color.r + 0.35),
-            min(1.0, fill_color.g + 0.35),
-            min(1.0, fill_color.b + 0.35),
             1.0
         );
     }
@@ -432,34 +471,42 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // country's color has no such edge, only its location borders, so it
     // fades into the country with the rest of the grid.
     // Unowned land draws only its location borders: it is not a country.
+    let edge_scale = select(1.0, DIMMED_EDGE_SCALE, is_dimmed);
+    let edge_strength = uniforms.edge_strength * edge_scale;
+    let location_edge = LOCATION_BORDER_DARKEN * uniforms.location_edge_strength * edge_scale;
+    let rim = OWNER_GLOW_LIGHTEN * edge_scale;
     var rgb = fill_color.rgb;
     if (is_focused && around.location_border) {
         // Focused border: bright white outline to distinguish the focused tile
         rgb = vec3<f32>(1.0, 1.0, 1.0);
     } else if (center_terrain == TERRAIN_WATER) {
         if (around.coast <= owner_r) {
-            rgb = shift_lightness(rgb, -COAST_DARKEN * uniforms.edge_strength);
+            rgb = shift_lightness(rgb, -COAST_DARKEN * edge_strength);
         } else if (around.coast <= owner_r + glow_r) {
-            rgb = lighten(rgb, SHALLOWS_LIGHTEN);
+            rgb = lighten(rgb, SHALLOWS_LIGHTEN * edge_scale);
         }
     } else if (center_terrain == TERRAIN_IMPASSABLE || center_terrain == TERRAIN_LAKE) {
         if (around.terrain <= owner_r) {
-            rgb = shift_lightness(rgb, -IMPASSABLE_EDGE_DARKEN * uniforms.edge_strength);
+            rgb = shift_lightness(rgb, -IMPASSABLE_EDGE_DARKEN * edge_strength);
         } else if (around.location_border) {
-            rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
+            rgb = shift_lightness(rgb, -location_edge);
         }
     } else if (center_terrain == TERRAIN_UNOWNED) {
         if (around.location_border) {
-            rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
+            rgb = shift_lightness(rgb, -location_edge);
         }
     } else if (around.owner <= owner_r) {
-        rgb = shift_lightness(unpack_color(center_border_color), -OWNER_BORDER_DARKEN * uniforms.edge_strength);
+        // The line is the primary color without stripes or hover. On a
+        // political map that is the owner color, and on a map of values it
+        // is the value.
+        let base = selection_color(unpack_color(primary_color), is_dimmed, is_softened, false);
+        rgb = contrast_line(base, OWNER_BORDER_DARKEN * edge_strength);
     } else {
         if (min(around.owner, around.coast) <= owner_r + glow_r) {
-            rgb = lighten(rgb, OWNER_GLOW_LIGHTEN);
+            rgb = lighten(rgb, rim);
         }
         if (around.location_border) {
-            rgb = shift_lightness(rgb, -LOCATION_BORDER_DARKEN * uniforms.location_edge_strength);
+            rgb = shift_lightness(rgb, -location_edge);
         }
     }
     let output_color = vec4<f32>(rgb, fill_color.a);

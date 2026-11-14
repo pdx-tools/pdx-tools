@@ -12,7 +12,7 @@ use eu5save::models::Gamestate;
 use eu5save::{BasicTokenResolver, Eu5File};
 use highway::HighwayHash;
 use jomini::binary::TokenResolver;
-use pdx_map::LocationArrays;
+use pdx_map::{LocationArrays, LocationFlags};
 
 pub use super::fixtures::request_file;
 
@@ -131,11 +131,21 @@ pub fn summarize_location_arrays(arrays: &LocationArrays) -> serde_json::Value {
 
     let hash = hash_location_arrays(arrays);
 
-    serde_json::json!({
+    let mut summary = serde_json::json!({
         "colors": counts.len(),
         "top": top,
         "fingerprint": &hash[..18],
-    })
+    });
+    // Only a map with a selection dims
+    let dimmed = buffers
+        .state_flags()
+        .iter()
+        .filter(|f| f.contains(LocationFlags::DIMMED))
+        .count();
+    if dimmed > 0 {
+        summary["dimmed"] = dimmed.into();
+    }
+    summary
 }
 
 /// Hash all four GPU color/flag buffers from `LocationArrays` into a single hex string.

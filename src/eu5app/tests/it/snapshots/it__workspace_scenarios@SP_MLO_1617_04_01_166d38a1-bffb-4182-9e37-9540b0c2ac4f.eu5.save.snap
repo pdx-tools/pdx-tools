@@ -1,6 +1,5 @@
 ---
 source: src/eu5app/tests/it/main.rs
-assertion_line: 159
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5.save
 ---
@@ -190,7 +189,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
     "map_modes": {
       "building_levels": {
         "colors": 283,
-        "fingerprint": "0x5f9f264824f8a22c",
+        "dimmed": 28091,
+        "fingerprint": "0xc46514479f52647f",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 92.0, max_value: 184.0 })",
         "top": [
@@ -201,7 +201,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "control": {
         "colors": 940,
-        "fingerprint": "0x3dc3accbb49f14a7",
+        "dimmed": 28091,
+        "fingerprint": "0xd2f3c1545d053012",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
         "top": [
@@ -212,7 +213,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "development": {
         "colors": 629,
-        "fingerprint": "0xe9f17be9322b31eb",
+        "dimmed": 28091,
+        "fingerprint": "0x4e6a47a5d10d7994",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 21.08892, max_value: 42.17784 })",
         "top": [
@@ -223,7 +225,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "markets": {
         "colors": 12541,
-        "fingerprint": "0xe3cdcba156375bdd",
+        "dimmed": 28091,
+        "fingerprint": "0xa483aa168b3bfb7f",
         "groups": "0x04971734ea416760",
         "legend": "Qualitative",
         "top": [
@@ -234,7 +237,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "political": {
         "colors": 579,
-        "fingerprint": "0x547cc0833da3bdad",
+        "dimmed": 28001,
+        "fingerprint": "0xdfea4f96115dbb5d",
         "groups": "0x4a74a72f19918e2f",
         "legend": "Qualitative",
         "top": [
@@ -245,7 +249,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "population": {
         "colors": 747,
-        "fingerprint": "0x3bd0451004007c4c",
+        "dimmed": 28091,
+        "fingerprint": "0x35b3e275935da5e9",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 6822.595477205759, max_value: 60193.0 })",
         "top": [
@@ -256,7 +261,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "population_growth": {
         "colors": 859,
-        "fingerprint": "0x9e1ac0d632e465aa",
+        "dimmed": 28091,
+        "fingerprint": "0xa335d1a62c56e0c3",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.003241486872887965, max_value: 0.00648297374577593 })",
         "top": [
@@ -267,7 +273,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "religion": {
         "colors": 221,
-        "fingerprint": "0xb46d9f2cc3114b46",
+        "dimmed": 28007,
+        "fingerprint": "0xce1387f5441db4a1",
         "groups": "0x8c4187b4f39a1eea",
         "legend": "Qualitative",
         "top": [
@@ -278,7 +285,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "rgo_level": {
         "colors": 59,
-        "fingerprint": "0x4e3470393215bbc4",
+        "dimmed": 28091,
+        "fingerprint": "0xd1bd6349e313d7e6",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 8.5, max_value: 17.0 })",
         "top": [
@@ -289,7 +297,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "state_efficacy": {
         "colors": 583,
-        "fingerprint": "0xac20f324a9d8743d",
+        "dimmed": 28091,
+        "fingerprint": "0xe197225721037743",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 18.91038, max_value: 37.82076 })",
         "top": [
@@ -300,7 +309,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "unrealized_tax_base": {
         "colors": 256,
-        "fingerprint": "0xc3b469fa6fa3c958",
+        "dimmed": 28091,
+        "fingerprint": "0x708b3e3e6404d192",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 22.53762, max_value: 45.07524 })",
         "top": [
@@ -311,7 +321,8 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       },
       "wealth": {
         "colors": 305,
-        "fingerprint": "0x4ed5cd4899b03af1",
+        "dimmed": 28091,
+        "fingerprint": "0x15eff97a61b8ca6c",
         "groups": "0x5fb1d48ac20cf6f9",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 56.781955, max_value: 113.56391 })",
         "top": [
