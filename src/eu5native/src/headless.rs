@@ -7,7 +7,7 @@ use eu5app::{
 };
 use eu5save::{BasicTokenResolver, Eu5File};
 use pdx_map::layers::DateLayer;
-use pdx_map::{PhysicalSize, StitchedImage, ViewportBounds, World, WorldSize};
+use pdx_map::{PhysicalSize, World, WorldPoint, WorldRect, WorldSize};
 use tracing::{info, info_span};
 
 /// Validate that width and height are both provided or both absent
@@ -162,40 +162,23 @@ async fn render_viewport(
         (0, 0) // Full world starts at origin
     };
 
-    // Wide images render in strips, so borders continue across the seams
-    let strip_width = pdx_map::seamless_strip_width(width);
-    let world_width = eu5app::hemisphere_size().world().width;
-
-    let mut viewport = ViewportBounds::new(WorldSize::new(strip_width, height));
-    viewport.rect.origin.y = y_offset;
-
-    let mut renderer = pdx_map::HeadlessMapRenderer::new(
-        pipeline_components.clone(),
-        west_view,
-        east_view,
-        strip_width,
-        height,
-    )?;
+    let mut renderer =
+        pdx_map::HeadlessMapRenderer::new(pipeline_components.clone(), west_view, east_view)?;
 
     map_app.set_map_mode(MapMode::Political);
     renderer.update_locations(map_app.location_arrays());
 
-    let text_scale = calculate_text_scale(height);
-    let date_layer = renderer.add_layer(DateLayer::new(save_date, text_scale));
+    let origin = WorldPoint::new(x_offset, y_offset);
+    let rect = WorldRect::new(origin, WorldSize::new(width, height));
+    let mut image_data = renderer.capture_world(rect).await?;
 
-    let mut stitched = StitchedImage::new(PhysicalSize::new(width, height));
-    for x in (0..width).step_by(strip_width as usize) {
-        let span = info_span!("readback_strip", x);
-        let _enter = span.enter();
-
-        // The date sits in the bottom left corner, so only the first strip has it
-        renderer.set_layer_visible(date_layer, x == 0);
-        viewport.rect.origin.x = (x_offset + x) % world_width;
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-        stitched.write_strip(x, viewport_data.rows());
-        viewport_data.finish();
-    }
-    let image_data = stitched.into_inner();
+    let size = PhysicalSize::new(width, height);
+    DateLayer::write_over(
+        &save_date,
+        calculate_text_scale(height),
+        &mut image_data,
+        size,
+    );
 
     let span = info_span!("RgbaImage::from_raw");
     let _enter = span.enter();

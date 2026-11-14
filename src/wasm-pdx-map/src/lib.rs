@@ -7,7 +7,7 @@ use pdx_map::{
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tsify::Ts;
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -570,7 +570,7 @@ impl PdxScreenshotRenderer {
     /// rectangle of the same aspect as the surface lands edge to edge. This is
     /// what a recording needs, because the output size must not follow the
     /// window the player happens to have open, and what a world screenshot
-    /// renders each of its strips with.
+    /// renders each strip of its [`seamless_strip_plan`] with.
     #[wasm_bindgen]
     pub fn render_world_rect(
         &mut self,
@@ -594,12 +594,40 @@ impl PdxScreenshotRenderer {
     }
 }
 
-/// Width of the strips to render an image `width` pixels wide in, so that
-/// borders continue across the seams between strips. The last strip may run
-/// past the right edge of the image.
+/// One vertical strip of a wide image, in image pixels.
+#[derive(Copy, Clone, Debug, Serialize, tsify::Tsify)]
+pub struct WasmStrip {
+    pub x: u32,
+    pub width: u32,
+}
+
+/// How to render an image too wide for one surface, so that borders
+/// continue across the seams. Each strip renders on a surface
+/// `renderWidth` wide, of which it keeps the first `width` columns.
+#[derive(Clone, Debug, Serialize, tsify::Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct WasmStripPlan {
+    pub render_width: u32,
+    pub strips: Vec<WasmStrip>,
+}
+
+/// Plan the strips to render an image `width` pixels wide in.
 #[wasm_bindgen]
-pub fn seamless_strip_width(width: u32) -> u32 {
-    pdx_map::seamless_strip_width(width)
+pub fn seamless_strip_plan(width: u32) -> Result<Ts<WasmStripPlan>, JsError> {
+    let plan = pdx_map::StripPlan::new(width);
+    let strips = plan
+        .strips()
+        .iter()
+        .map(|strip| WasmStrip {
+            x: strip.x,
+            width: strip.width,
+        })
+        .collect();
+    let plan = WasmStripPlan {
+        render_width: plan.render_width(),
+        strips,
+    };
+    plan.into_ts().map_err(JsError::from)
 }
 
 /// Shared helper to create a screenshot renderer for any MapApp<SurfaceMapRenderer>

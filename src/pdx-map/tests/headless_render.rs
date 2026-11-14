@@ -236,13 +236,8 @@ async fn render_flagged(
     scale_factor: f32,
     flags: [LocationFlags; LOCATIONS],
 ) -> Option<Frame> {
-    let gpu = shared_gpu().await?;
-    let size = PhysicalSize::new(HEMI_W, HEMI_H);
-    let west = gpu.create_texture(&hemisphere(0), size, "West");
-    let east = gpu.create_texture(&hemisphere(HEMI_W), size, "East");
     let mut renderer =
-        HeadlessMapRenderer::new(gpu, west, east, surface.width, surface.height).unwrap();
-    renderer.update_locations(&location_arrays(flags));
+        headless(&hemisphere(0), &hemisphere(HEMI_W), &location_arrays(flags)).await?;
     renderer.set_location_borders(location_borders);
     renderer.set_owner_borders(owner_borders);
     renderer.set_scale_factor(scale_factor);
@@ -251,13 +246,28 @@ async fn render_flagged(
         rect,
         zoom_level: 1.0,
     };
-    let buffer = renderer.capture_viewport(bounds).await.unwrap();
+    let buffer = renderer.capture_viewport(bounds, surface).await.unwrap();
     let rgba: Vec<u8> = buffer.rows().flat_map(|r| r.iter().copied()).collect();
     buffer.finish();
     Some(Frame {
         width: surface.width,
         rgba,
     })
+}
+
+/// A renderer for a world of two hemispheres, or `None` without a GPU
+async fn headless(
+    west: &[R16],
+    east: &[R16],
+    arrays: &LocationArrays,
+) -> Option<HeadlessMapRenderer> {
+    let gpu = shared_gpu().await?;
+    let size = PhysicalSize::new(HEMI_W, HEMI_H);
+    let west = gpu.create_texture(west, size, "West");
+    let east = gpu.create_texture(east, size, "East");
+    let mut renderer = HeadlessMapRenderer::new(gpu, west, east).unwrap();
+    renderer.update_locations(arrays);
+    Some(renderer)
 }
 
 fn block_on<T>(fut: impl std::future::Future<Output = T>) -> T {
@@ -507,4 +517,45 @@ fn borders_keep_their_width_when_zoomed_out() {
     frame.assert_px(4, 1, owner_border_zoomed_out(RED), "red owner border");
     frame.assert_px(5, 1, glow(RED), "red glow");
     frame.assert_px(6, 1, RED, "red fill");
+}
+
+#[test]
+fn zoom_one_shows_every_world_column() {
+    // Every world column is its own location with its own color, and the
+    // view is wider than the world, so it wraps. Widths that are not a
+    // power of two once put some columns one pixel off, and the wider one
+    // renders in two strips.
+    let columns = HEMI_W * 2;
+    let rgb = |column: u32| [(column * 4) as u8, 100, 160];
+    let hemisphere = |offset: u32| -> Vec<R16> {
+        (0..HEMI_H)
+            .flat_map(|_| (0..HEMI_W).map(move |x| R16::new((x + offset) as u16)))
+            .collect()
+    };
+    let ids: Vec<LocationId> = (0..columns).map(LocationId::new).collect();
+    let colors: Vec<GpuColor> = (0..columns)
+        .map(|column| {
+            let [r, g, b] = rgb(column);
+            GpuColor::from_rgb(r, g, b)
+        })
+        .collect();
+    let mut arrays = LocationArrays::from_locations(&ids);
+    arrays.set_primary_colors(&colors);
+    arrays.set_secondary_colors(&colors);
+    arrays.set_border_colors(&colors);
+
+    for width in [1200, 8177] {
+        let frame = frame_or_skip!(async {
+            let mut renderer = headless(&hemisphere(0), &hemisphere(HEMI_W), &arrays).await?;
+            renderer.set_location_borders(false);
+            renderer.set_owner_borders(false);
+            let rect = Rect::new(WorldPoint::new(0, 0), WorldSize::new(width, HEMI_H));
+            let rgba = renderer.capture_world(rect).await.unwrap();
+            Some(Frame { width, rgba })
+        });
+
+        for x in 0..width {
+            frame.assert_px(x, 12, rgb(x % columns), "world column");
+        }
+    }
 }

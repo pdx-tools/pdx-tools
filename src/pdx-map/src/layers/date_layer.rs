@@ -71,6 +71,34 @@ impl DateLayer {
         rasterize_text_overlay(text, glyph_scale)
     }
 
+    /// Write a date over the bottom left corner of an RGBA image, where the
+    /// layer draws it on a render target. The part that does not fit is
+    /// left out.
+    pub fn write_over(text: &str, glyph_scale: u32, image: &mut [u8], size: PhysicalSize<u32>) {
+        let (overlay, overlay_size) = Self::rasterize(text, glyph_scale);
+        let overlay_stride = overlay_size.width as usize * 4;
+        let image_stride = size.width as usize * 4;
+        let visible = overlay_stride.min(image_stride);
+        let top = size.height.saturating_sub(overlay_size.height) as usize;
+
+        for (src_row, dst_row) in overlay
+            .chunks_exact(overlay_stride)
+            .zip(image.chunks_exact_mut(image_stride).skip(top))
+        {
+            let pixels = src_row[..visible].as_chunks::<4>().0;
+            let targets = dst_row[..visible].as_chunks_mut::<4>().0;
+            for (src, dst) in pixels.iter().zip(targets) {
+                let alpha = u32::from(src[3]);
+                for channel in 0..3 {
+                    let blended =
+                        u32::from(src[channel]) * alpha + u32::from(dst[channel]) * (255 - alpha);
+                    dst[channel] = ((blended + 127) / 255) as u8;
+                }
+                dst[3] = 255;
+            }
+        }
+    }
+
     fn ensure_pipeline(&mut self, device: &wgpu::Device, format: wgpu::TextureFormat) {
         if let Some(pipeline) = &self.pipeline
             && pipeline.format == format

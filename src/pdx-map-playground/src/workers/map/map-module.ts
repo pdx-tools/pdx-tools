@@ -2,7 +2,7 @@ import init, {
   PdxCanvasSurface,
   PdxMapImage,
   PdxMapRenderer,
-  seamless_strip_width,
+  seamless_strip_plan,
 } from "../wasm/wasm_pdx_map";
 import type { CanvasDisplay } from "../wasm/wasm_pdx_map";
 import wasmPath from "../wasm/wasm_pdx_map_bg.wasm?url";
@@ -184,17 +184,25 @@ export const createMapEngine = async ({
       }
 
       // The world renders in strips, so borders continue across the seams
-      const stripWidth = seamless_strip_width(fullWidth);
-      const screenshotCanvas = new OffscreenCanvas(stripWidth, fullHeight);
+      const plan = seamless_strip_plan(fullWidth);
+      const screenshotCanvas = new OffscreenCanvas(plan.renderWidth, fullHeight);
 
       // Create independent screenshot renderer
       const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
       try {
-        for (let x = 0; x < fullWidth; x += stripWidth) {
-          screenshotRenderer.render_world_rect(x, 0, stripWidth, fullHeight);
-          // The last strip can run past the edge of the world, which the
-          // composite canvas clips
-          ctx.drawImage(screenshotCanvas, x, 0);
+        for (const strip of plan.strips) {
+          screenshotRenderer.render_world_rect(strip.x, 0, plan.renderWidth, fullHeight);
+          ctx.drawImage(
+            screenshotCanvas,
+            0,
+            0,
+            strip.width,
+            fullHeight,
+            strip.x,
+            0,
+            strip.width,
+            fullHeight,
+          );
         }
       } finally {
         screenshotRenderer.free();

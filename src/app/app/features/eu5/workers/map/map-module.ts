@@ -5,7 +5,7 @@ import init, {
   Eu5WasmMapRenderer,
   Eu5WasmMapBundle,
   location_borders_at_zoom,
-  seamless_strip_width,
+  seamless_strip_plan,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
 import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm_eu5_map";
@@ -775,25 +775,23 @@ export const createMapEngine = async (
       }
 
       // The world renders in strips, so borders continue across the seams
-      const stripWidth = seamless_strip_width(worldWidth);
-      const screenshotCanvas = new OffscreenCanvas(stripWidth, worldHeight);
+      const plan = seamless_strip_plan(worldWidth);
+      const screenshotCanvas = new OffscreenCanvas(plan.renderWidth, worldHeight);
 
       // Create independent screenshot renderer
       const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
       try {
-        for (let x = 0; x < worldWidth; x += stripWidth) {
-          screenshotRenderer.render_world_rect(x, 0, stripWidth, worldHeight);
-          // The last strip can run past the edge of the world
-          const width = Math.min(stripWidth, worldWidth - x);
+        for (const strip of plan.strips) {
+          screenshotRenderer.render_world_rect(strip.x, 0, plan.renderWidth, worldHeight);
           ctx.drawImage(
             screenshotCanvas,
             0,
             0,
-            width,
+            strip.width,
             worldHeight,
-            x * scale,
+            strip.x * scale,
             0,
-            width * scale,
+            strip.width * scale,
             output.height,
           );
         }

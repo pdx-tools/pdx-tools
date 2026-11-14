@@ -22,7 +22,7 @@ mod live_map;
 pub use wasm_pdx_map::{
     CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, WasmGpuColor,
     WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture, WasmViewportInsets,
-    create_screenshot_renderer_for_app, get_surface_target, seamless_strip_width,
+    create_screenshot_renderer_for_app, get_surface_target, seamless_strip_plan,
 };
 
 #[wasm_bindgen]
