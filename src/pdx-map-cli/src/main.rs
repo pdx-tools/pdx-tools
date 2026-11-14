@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
-use pdx_map::{GpuColor, PhysicalSize, StitchedImage, ViewportBounds, World, WorldLength};
+use pdx_map::{GpuColor, PhysicalSize, World, WorldLength, WorldPoint, WorldRect};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
@@ -245,49 +245,25 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         start.elapsed().as_secs_f64()
     );
     let start = Instant::now();
-    let mut renderer = pdx_map::HeadlessMapRenderer::new(
-        gpu,
-        west_view,
-        east_view,
-        hemisphere_size.width,
-        hemisphere_size.height,
-    )?;
+    let mut renderer = pdx_map::HeadlessMapRenderer::new(gpu, west_view, east_view)?;
     renderer.update_locations(&location_arrays);
     renderer.set_location_borders(!args.no_location_borders);
     renderer.set_owner_borders(!args.no_owner_borders);
     println!("Created renderer ({:.2}s)", start.elapsed().as_secs_f64());
-    let mut dst_image = StitchedImage::new(PhysicalSize::new(world_size.width, world_size.height));
+
     let start = Instant::now();
-    let bounds = ViewportBounds::new(pdx_map::WorldSize::new(
-        hemisphere_size.width,
-        hemisphere_size.height,
-    ));
-    {
-        let west_buffer = renderer.capture_viewport(bounds).await?;
-        dst_image.write_west(west_buffer.rows());
-        west_buffer.finish();
-    };
+    let rect = WorldRect::new(WorldPoint::new(0, 0), world_size);
+    let rgba = renderer.capture_world(rect).await?;
     println!(
-        "Rendered and read back west half ({:.2}s)",
+        "Rendered and read back the world ({:.2}s)",
         start.elapsed().as_secs_f64()
     );
 
-    let start = Instant::now();
-    {
-        let east_buffer = renderer.capture_viewport(bounds).await?;
-        dst_image.write_east(east_buffer.rows());
-        east_buffer.finish();
-    };
-
-    println!(
-        "Rendered and read back east half ({:.2}s)",
-        start.elapsed().as_secs_f64()
-    );
     let start = Instant::now();
     let output_img = image::RgbaImage::from_raw(
         image_data.world.size().width,
         image_data.world.size().height,
-        dst_image.into_inner(),
+        rgba,
     )
     .ok_or_else(|| anyhow!("Failed to create image from buffer"))?;
     output_img

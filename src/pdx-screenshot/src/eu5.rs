@@ -186,13 +186,8 @@ fn world_viewport() -> ViewportBounds {
 /// Render a prepared save to a WebP image. Returns the WebP-encoded bytes.
 #[tracing::instrument(name = "eu5.screenshot.render", skip_all)]
 pub async fn render(gpu: &GpuContext, save: PreparedSave) -> Result<Vec<u8>, ScreenshotError> {
-    let mut renderer = HeadlessMapRenderer::new(
-        gpu.clone(),
-        save.hemispheres.west,
-        save.hemispheres.east,
-        OUTPUT_SIZE.width,
-        OUTPUT_SIZE.height,
-    )?;
+    let mut renderer =
+        HeadlessMapRenderer::new(gpu.clone(), save.hemispheres.west, save.hemispheres.east)?;
     renderer.update_locations(&save.locations);
     renderer.add_layer(DateLayer::new(save.date, 2));
 
@@ -203,7 +198,7 @@ pub async fn render(gpu: &GpuContext, save: PreparedSave) -> Result<Vec<u8>, Scr
 
     let zoom = OUTPUT_SIZE.width as f32 / viewport.rect.size.width as f32;
     renderer.set_location_borders(should_highlight_individual_locations(zoom));
-    let capture = renderer.capture_viewport(viewport).await?;
+    let capture = renderer.capture_viewport(viewport, OUTPUT_SIZE).await?;
     let stride = OUTPUT_SIZE.width as usize * 4;
     let mut rgba = vec![0; OUTPUT_SIZE.area() as usize * 4];
     for (source, destination) in capture.rows().zip(rgba.chunks_exact_mut(stride)) {

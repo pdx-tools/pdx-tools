@@ -236,13 +236,8 @@ async fn render_flagged(
     scale_factor: f32,
     flags: [LocationFlags; LOCATIONS],
 ) -> Option<Frame> {
-    let gpu = shared_gpu().await?;
-    let size = PhysicalSize::new(HEMI_W, HEMI_H);
-    let west = gpu.create_texture(&hemisphere(0), size, "West");
-    let east = gpu.create_texture(&hemisphere(HEMI_W), size, "East");
     let mut renderer =
-        HeadlessMapRenderer::new(gpu, west, east, surface.width, surface.height).unwrap();
-    renderer.update_locations(&location_arrays(flags));
+        headless(&hemisphere(0), &hemisphere(HEMI_W), &location_arrays(flags)).await?;
     renderer.set_location_borders(location_borders);
     renderer.set_owner_borders(owner_borders);
     renderer.set_scale_factor(scale_factor);
@@ -251,13 +246,28 @@ async fn render_flagged(
         rect,
         zoom_level: 1.0,
     };
-    let buffer = renderer.capture_viewport(bounds).await.unwrap();
+    let buffer = renderer.capture_viewport(bounds, surface).await.unwrap();
     let rgba: Vec<u8> = buffer.rows().flat_map(|r| r.iter().copied()).collect();
     buffer.finish();
     Some(Frame {
         width: surface.width,
         rgba,
     })
+}
+
+/// A renderer for a world of two hemispheres, or `None` without a GPU
+async fn headless(
+    west: &[R16],
+    east: &[R16],
+    arrays: &LocationArrays,
+) -> Option<HeadlessMapRenderer> {
+    let gpu = shared_gpu().await?;
+    let size = PhysicalSize::new(HEMI_W, HEMI_H);
+    let west = gpu.create_texture(west, size, "West");
+    let east = gpu.create_texture(east, size, "East");
+    let mut renderer = HeadlessMapRenderer::new(gpu, west, east).unwrap();
+    renderer.update_locations(arrays);
+    Some(renderer)
 }
 
 fn block_on<T>(fut: impl std::future::Future<Output = T>) -> T {
@@ -407,29 +417,34 @@ fn view_wraps_around_the_world() {
 fn borders_continue_across_tile_seams() {
     // Each hemisphere rendered as its own tile, as screenshots do. The
     // location boundary at world x 32 is the seam, and the owner strip at
-    // world x 62..2 straddles the wrap.
-    let west = Rect::new(WorldPoint::new(0, 0), WorldSize::new(HEMI_W, HEMI_H));
-    let west = frame_or_skip!(render(PhysicalSize::new(HEMI_W, HEMI_H), west, true, true));
-    west.assert_px(30, 12, RED, "red fill");
-    west.assert_px(31, 12, location_border(RED), "red location border at seam");
-    west.assert_px(0, 12, glow(YELLOW), "yellow glow at wrap");
-    west.assert_px(1, 12, owner_border(YELLOW), "yellow owner border at wrap");
+    // world x 62..2 straddles the wrap. Tiles as tall as the largest
+    // texture must still see across their left and right edges. Their view
+    // runs past the bottom of the map, which repeats its last row.
+    for height in [HEMI_H, 8192] {
+        let surface = PhysicalSize::new(HEMI_W, height);
+        let west = Rect::new(WorldPoint::new(0, 0), WorldSize::new(HEMI_W, height));
+        let west = frame_or_skip!(render(surface, west, true, true));
+        west.assert_px(30, 12, RED, "red fill");
+        west.assert_px(31, 12, location_border(RED), "red location border at seam");
+        west.assert_px(0, 12, glow(YELLOW), "yellow glow at wrap");
+        west.assert_px(1, 12, owner_border(YELLOW), "yellow owner border at wrap");
 
-    let east = Rect::new(WorldPoint::new(HEMI_W, 0), WorldSize::new(HEMI_W, HEMI_H));
-    let east = frame_or_skip!(render(PhysicalSize::new(HEMI_W, HEMI_H), east, true, true));
-    east.assert_px(
-        0,
-        12,
-        location_border(GREEN),
-        "green location border at seam",
-    );
-    east.assert_px(1, 12, GREEN, "green fill");
-    // Yellow strip: x 30..32 of the east tile. The owner border is one
-    // pixel in from green on the left, and the light band reaches across
-    // the wrap from red on the right. Green shares red's owner.
-    east.assert_px(29, 12, owner_border(RED), "owner border on green");
-    east.assert_px(30, 12, owner_border(YELLOW), "yellow owner border");
-    east.assert_px(31, 12, glow(YELLOW), "yellow glow across wrap");
+        let east = Rect::new(WorldPoint::new(HEMI_W, 0), WorldSize::new(HEMI_W, height));
+        let east = frame_or_skip!(render(surface, east, true, true));
+        east.assert_px(
+            0,
+            12,
+            location_border(GREEN),
+            "green location border at seam",
+        );
+        east.assert_px(1, 12, GREEN, "green fill");
+        // Yellow strip: x 30..32 of the east tile. The owner border is one
+        // pixel in from green on the left, and the light band reaches across
+        // the wrap from red on the right. Green shares red's owner.
+        east.assert_px(29, 12, owner_border(RED), "owner border on green");
+        east.assert_px(30, 12, owner_border(YELLOW), "yellow owner border");
+        east.assert_px(31, 12, glow(YELLOW), "yellow glow across wrap");
+    }
 }
 
 #[test]
@@ -502,4 +517,45 @@ fn borders_keep_their_width_when_zoomed_out() {
     frame.assert_px(4, 1, owner_border_zoomed_out(RED), "red owner border");
     frame.assert_px(5, 1, glow(RED), "red glow");
     frame.assert_px(6, 1, RED, "red fill");
+}
+
+#[test]
+fn zoom_one_shows_every_world_column() {
+    // Every world column is its own location with its own color, and the
+    // view is wider than the world, so it wraps. Widths that are not a
+    // power of two once put some columns one pixel off, and the wider one
+    // renders in two strips.
+    let columns = HEMI_W * 2;
+    let rgb = |column: u32| [(column * 4) as u8, 100, 160];
+    let hemisphere = |offset: u32| -> Vec<R16> {
+        (0..HEMI_H)
+            .flat_map(|_| (0..HEMI_W).map(move |x| R16::new((x + offset) as u16)))
+            .collect()
+    };
+    let ids: Vec<LocationId> = (0..columns).map(LocationId::new).collect();
+    let colors: Vec<GpuColor> = (0..columns)
+        .map(|column| {
+            let [r, g, b] = rgb(column);
+            GpuColor::from_rgb(r, g, b)
+        })
+        .collect();
+    let mut arrays = LocationArrays::from_locations(&ids);
+    arrays.set_primary_colors(&colors);
+    arrays.set_secondary_colors(&colors);
+    arrays.set_border_colors(&colors);
+
+    for width in [1200, 8177] {
+        let frame = frame_or_skip!(async {
+            let mut renderer = headless(&hemisphere(0), &hemisphere(HEMI_W), &arrays).await?;
+            renderer.set_location_borders(false);
+            renderer.set_owner_borders(false);
+            let rect = Rect::new(WorldPoint::new(0, 0), WorldSize::new(width, HEMI_H));
+            let rgba = renderer.capture_world(rect).await.unwrap();
+            Some(Frame { width, rgba })
+        });
+
+        for x in 0..width {
+            frame.assert_px(x, 12, rgb(x % columns), "world column");
+        }
+    }
 }

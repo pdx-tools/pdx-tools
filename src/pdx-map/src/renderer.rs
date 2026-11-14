@@ -4,9 +4,10 @@ use std::collections::HashMap;
 use wgpu::SurfaceTarget;
 
 use crate::error::{RenderError, RenderErrorKind, SurfaceError};
+use crate::image::{StitchedImage, StripPlan};
 use crate::{
     GpuLocationIdx, HemisphereSize, LocationArrays, LocationFlags, PhysicalSize, R16,
-    ViewportBounds, WorldPoint,
+    ViewportBounds, WorldPoint, WorldRect, WorldSize,
 };
 
 /// A drawable layer that can be composed into the main map render pass
@@ -47,7 +48,7 @@ impl LayerEntry {
 }
 
 /// Maximum texture dimension supported
-const MAX_TEXTURE_DIMENSION: u32 = 8192;
+pub(crate) const MAX_TEXTURE_DIMENSION: u32 = 8192;
 
 /// Combines a texture and its view for map rendering operations
 #[derive(Debug, Clone)]
@@ -133,10 +134,10 @@ struct ResolveUniforms {
     surface_width: u32,
     surface_height: u32,
 
-    guard_band: u32,
+    guard_band_x: u32,
+    guard_band_y: u32,
     _pad0: u32,
     _pad1: u32,
-    _pad2: u32,
 }
 
 /// Physical pixels the resolved target extends past the output on each
@@ -144,9 +145,12 @@ struct ResolveUniforms {
 /// borders continue across the seams of tiled renders and do not pop at
 /// the screen edge while panning. Covers an owner border on a 4x display.
 ///
-/// This is the upper limit. [`guard_band`] shrinks it when the output is
-/// near [`MAX_TEXTURE_DIMENSION`], down to zero for a full-size tile.
+/// This is the upper limit. [`GuardBand`] shrinks it on an axis where the
+/// output is near [`MAX_TEXTURE_DIMENSION`], down to zero at the limit.
 const GUARD_BAND: u32 = 8;
+
+/// Widest output that keeps the full guard band on its left and right.
+pub(crate) const MAX_SEAMLESS_WIDTH: u32 = MAX_TEXTURE_DIMENSION - 2 * GUARD_BAND;
 
 /// Uniforms for the shade pass: the appearance
 #[repr(C)]
@@ -164,15 +168,15 @@ struct ShadeUniforms {
 
     location_border_radius: u32,
     owner_border_radius: u32,
-    guard_band: u32,
     owner_glow_radius: u32,
-
     // Strength of the owner border, coast, and impassable edge darkening
     edge_strength: f32,
+
     // Strength of the location border darkening
     location_edge_strength: f32,
+    guard_band_x: u32,
+    guard_band_y: u32,
     _pad0: u32,
-    _pad1: u32,
 }
 
 /// Border widths in logical pixels at zoom 1. The owner border is a thin
@@ -216,6 +220,7 @@ impl ShadeUniforms {
         // Physical pixels per world pixel on each axis
         let px_scale_x = size.width as f32 / bounds.rect.size.width.max(1) as f32;
         let px_scale_y = size.height as f32 / bounds.rect.size.height.max(1) as f32;
+        let band = GuardBand::around(size);
 
         // The zoom level is logical pixels per world pixel, so the ratio to
         // the physical scale recovers the display scale factor. Deriving it
@@ -242,12 +247,12 @@ impl ShadeUniforms {
                 scale_factor,
             ),
             owner_border_radius: border_radius(OWNER_BORDER_WIDTH, bounds.zoom_level, scale_factor),
-            guard_band: guard_band(size),
             owner_glow_radius: border_radius(OWNER_GLOW_WIDTH, bounds.zoom_level, scale_factor),
             edge_strength: edge_strength(bounds.zoom_level),
             location_edge_strength: location_edge_strength(bounds.zoom_level),
+            guard_band_x: band.x,
+            guard_band_y: band.y,
             _pad0: 0,
-            _pad1: 0,
         }
     }
 }
@@ -817,12 +822,12 @@ struct ResolvedTarget {
 
 impl ResolvedTarget {
     fn new(device: &wgpu::Device, size: PhysicalSize<u32>) -> Self {
-        let band = guard_band(size);
+        let band = GuardBand::around(size);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Resolved Location Texture"),
             size: wgpu::Extent3d {
-                width: size.width.max(1) + band * 2,
-                height: size.height.max(1) + band * 2,
+                width: size.width.max(1) + band.x * 2,
+                height: size.height.max(1) + band.y * 2,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -837,17 +842,27 @@ impl ResolvedTarget {
     }
 }
 
-/// The guard band that fits around an output of this size.
+/// The guard band on each axis that fits around an output.
 ///
-/// The resolved target grows by the band on each side, so a large output
-/// must use a smaller band to stay inside [`MAX_TEXTURE_DIMENSION`].
-fn guard_band(size: PhysicalSize<u32>) -> u32 {
-    let width = size.width.max(1);
-    let height = size.height.max(1);
-    let available = MAX_TEXTURE_DIMENSION
-        .saturating_sub(width)
-        .min(MAX_TEXTURE_DIMENSION.saturating_sub(height));
-    GUARD_BAND.min(available / 2)
+/// The resolved target grows by the band on each side, so an axis near
+/// [`MAX_TEXTURE_DIMENSION`] uses a smaller band to stay inside it. Each
+/// axis has its own band, so a tall, narrow strip keeps the full band at
+/// its left and right.
+#[derive(Debug, Clone, Copy)]
+struct GuardBand {
+    x: u32,
+    y: u32,
+}
+
+impl GuardBand {
+    fn around(size: PhysicalSize<u32>) -> Self {
+        let fit =
+            |length: u32| GUARD_BAND.min(MAX_TEXTURE_DIMENSION.saturating_sub(length.max(1)) / 2);
+        Self {
+            x: fit(size.width),
+            y: fit(size.height),
+        }
+    }
 }
 
 /// Bind groups for one frame. Cached until the resources or the resolved
@@ -939,6 +954,7 @@ impl MapRenderer {
         size: PhysicalSize<u32>,
     ) -> MapFrame {
         let hemisphere = self.config.hemisphere_size();
+        let band = GuardBand::around(size);
         let resolve_uniforms = ResolveUniforms {
             tile_width: hemisphere.width,
             tile_height: hemisphere.height,
@@ -948,10 +964,10 @@ impl MapRenderer {
             view_height: bounds.rect.size.height,
             surface_width: size.width,
             surface_height: size.height,
-            guard_band: guard_band(size),
+            guard_band_x: band.x,
+            guard_band_y: band.y,
             _pad0: 0,
             _pad1: 0,
-            _pad2: 0,
         };
         queue.write_buffer(
             &self.resolve_uniforms,
@@ -1605,14 +1621,18 @@ pub struct HeadlessMapRenderer {
     gpu: GpuContext,
     scene: MapScene,
 
-    // Offscreen rendering target
-    viewport_texture: wgpu::Texture,
-    viewport_staging_buffer: Option<wgpu::Buffer>,
+    // Offscreen rendering target, sized by the latest capture
+    target: Option<wgpu::Texture>,
+    staging_buffer: Option<wgpu::Buffer>,
     target_config: wgpu::SurfaceConfiguration,
 
     // Physical pixels per logical pixel of the simulated display
     scale_factor: f32,
 }
+
+/// Palette values are already gamma-encoded, so render to a linear target to
+/// avoid double encoding
+const HEADLESS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 impl HeadlessMapRenderer {
     /// Create a headless map renderer from initialized GPU context and texture data
@@ -1628,28 +1648,7 @@ impl HeadlessMapRenderer {
         gpu: GpuContext,
         west_texture: MapTexture,
         east_texture: MapTexture,
-        viewport_width: u32,
-        viewport_height: u32,
     ) -> Result<HeadlessMapRenderer, RenderError> {
-        let device = &gpu.gpu.device;
-
-        // Create offscreen rendering target
-        let viewport_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Viewport Offscreen Texture"),
-            size: wgpu::Extent3d {
-                width: viewport_width,
-                height: viewport_height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            // Palette values are already gamma-encoded, so render to a linear target to avoid double encoding
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
-        });
-
         let renderer = MapRenderer::new(
             &gpu,
             HemisphereSize::new(west_texture.width(), west_texture.height()),
@@ -1657,14 +1656,12 @@ impl HeadlessMapRenderer {
         let resources = MapResources::new(&gpu, west_texture, east_texture);
         let mut scene = MapScene::new(renderer, resources);
         scene.renderer_mut().config.disable_interactions();
-        let target_config =
-            offscreen_surface_config(viewport_width, viewport_height, viewport_texture.format());
         Ok(HeadlessMapRenderer {
             gpu,
             scene,
-            viewport_texture,
-            viewport_staging_buffer: None,
-            target_config,
+            target: None,
+            staging_buffer: None,
+            target_config: offscreen_surface_config(1, 1, HEADLESS_FORMAT),
             scale_factor: 1.0,
         })
     }
@@ -1678,24 +1675,101 @@ impl HeadlessMapRenderer {
         self.scale_factor = scale_factor;
     }
 
-    /// Render an arbitrary viewport to the offscreen texture and read back the bytes.
+    /// Render a viewport, scaled to fill an image of `size`, with its layers,
+    /// and read back the bytes.
     #[cfg_attr(feature = "tracing", tracing::instrument(name = "pdx-map.headless.capture-viewport", skip(self), fields(bounds = %bounds)))]
     pub async fn capture_viewport(
         &mut self,
         bounds: ViewportBounds,
+        size: PhysicalSize<u32>,
     ) -> Result<PdxBufferView<'_>, RenderError> {
-        // Note: we trust the caller has resized() this renderer to match the buffer size
-        let texture_width = self.viewport_texture.width();
-        let texture_height = self.viewport_texture.height();
+        self.ensure_target(size)?;
+        self.render(bounds, true).await
+    }
 
-        // Calculate the zoom level required to fit the requested world bounds
-        // into the current texture dimensions.
+    /// Render a rectangle of the world at one pixel per world pixel and
+    /// return the RGBA image, as wide and tall as the rectangle.
+    ///
+    /// An image wider than one render target renders in the strips of a
+    /// [`StripPlan`], so borders continue across the seams. Layers are not
+    /// drawn, since each belongs to one render target: write overlays over
+    /// the finished image instead.
+    #[cfg_attr(feature = "tracing", tracing::instrument(name = "pdx-map.headless.capture-world", skip(self), fields(rect = %rect)))]
+    pub async fn capture_world(&mut self, rect: WorldRect<u32>) -> Result<Vec<u8>, RenderError> {
+        let plan = StripPlan::new(rect.size.width);
+        let height = rect.size.height;
+        self.ensure_target(PhysicalSize::new(plan.render_width(), height))?;
+
+        let mut image = StitchedImage::new(PhysicalSize::new(rect.size.width, height));
+        for &strip in plan.strips() {
+            let origin = WorldPoint::new(rect.origin.x + strip.x, rect.origin.y);
+            let bounds = ViewportBounds {
+                rect: WorldRect::new(origin, WorldSize::new(plan.render_width(), height)),
+                // The render derives the zoom from the target size
+                zoom_level: 1.0,
+            };
+            let view = self.render(bounds, false).await?;
+            let strip_bytes = strip.width as usize * 4;
+            image.write_strip(strip, view.rows().map(|row| &row[..strip_bytes]));
+            view.finish();
+        }
+        Ok(image.into_inner())
+    }
+
+    /// Make the render target `size`, and let the layers know when it
+    /// changes.
+    fn ensure_target(&mut self, size: PhysicalSize<u32>) -> Result<(), RenderError> {
+        let fits = |length: u32| (1..=MAX_TEXTURE_DIMENSION).contains(&length);
+        if !fits(size.width) || !fits(size.height) {
+            return Err(RenderError::new(RenderErrorKind::TargetSize(size)));
+        }
+
+        let unchanged =
+            self.target_config.width == size.width && self.target_config.height == size.height;
+        if self.target.is_some() && unchanged {
+            return Ok(());
+        }
+
+        self.target = Some(
+            self.gpu
+                .gpu
+                .device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: Some("Viewport Offscreen Texture"),
+                    size: wgpu::Extent3d {
+                        width: size.width,
+                        height: size.height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: HEADLESS_FORMAT,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                    view_formats: &[],
+                }),
+        );
+        self.target_config.width = size.width;
+        self.target_config.height = size.height;
+        self.staging_buffer = None;
+        self.scene.resize_layers(&self.target_config);
+        Ok(())
+    }
+
+    /// Render `bounds` to the render target and read back the bytes
+    async fn render(
+        &mut self,
+        bounds: ViewportBounds,
+        draw_layers: bool,
+    ) -> Result<PdxBufferView<'_>, RenderError> {
+        let target = self.target.as_ref().expect("render target to be created");
+        let texture_width = target.width();
+        let texture_height = target.height();
+
+        // The zoom level that fits the world bounds into the target.
         // zoom = logical pixels / world_units
         let zoom_x = texture_width as f32 / self.scale_factor / bounds.rect.size.width as f32;
         let zoom_y = texture_height as f32 / self.scale_factor / bounds.rect.size.height as f32;
-
-        // Create the actual bounds passed to the shader
-        // We use the calculated zoom, but keep the requested x/y/width/height
         let render_bounds = ViewportBounds {
             rect: bounds.rect,
             zoom_level: zoom_x.max(zoom_y),
@@ -1711,13 +1785,12 @@ impl HeadlessMapRenderer {
 
         // Create staging buffer if it doesn't exist or has wrong size
         let buffer_size = (padded_bytes_per_row * texture_height) as u64;
-        if self.viewport_staging_buffer.is_none()
-            || self
-                .viewport_staging_buffer
-                .as_ref()
-                .is_some_and(|b| b.size() != buffer_size)
+        if self
+            .staging_buffer
+            .as_ref()
+            .is_none_or(|b| b.size() != buffer_size)
         {
-            self.viewport_staging_buffer = Some(self.scene.renderer().device.create_buffer(
+            self.staging_buffer = Some(self.scene.renderer().device.create_buffer(
                 &wgpu::BufferDescriptor {
                     label: Some("Viewport Staging Buffer"),
                     size: buffer_size,
@@ -1727,19 +1800,20 @@ impl HeadlessMapRenderer {
             ));
         }
 
-        let viewport_staging_buffer = self.viewport_staging_buffer.as_ref().unwrap();
+        let staging_buffer = self.staging_buffer.as_ref().unwrap();
+        let target = self.target.as_ref().expect("render target to be created");
 
         let device = &self.scene.renderer().device;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Offscreen Render Encoder"),
         });
 
-        let render_view = self
-            .viewport_texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+        let render_view = target.create_view(&wgpu::TextureViewDescriptor::default());
 
         let queue = &self.gpu.gpu.queue;
-        self.scene.update_layers(queue);
+        if draw_layers {
+            self.scene.update_layers(queue);
+        }
 
         let size = PhysicalSize::new(texture_width, texture_height);
         let frame = {
@@ -1768,24 +1842,25 @@ impl HeadlessMapRenderer {
                 multiview_mask: None,
             });
 
-            self.scene.draw(
-                &mut pass,
-                &frame,
-                self.viewport_texture.format(),
-                &render_bounds,
-                size,
-            );
+            if draw_layers {
+                let scene = &self.scene;
+                scene.draw(&mut pass, &frame, HEADLESS_FORMAT, &render_bounds, size);
+            } else {
+                self.scene
+                    .renderer()
+                    .draw(&mut pass, HEADLESS_FORMAT, &frame);
+            }
         }
 
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
-                texture: &self.viewport_texture,
+                texture: target,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
             wgpu::TexelCopyBufferInfo {
-                buffer: viewport_staging_buffer,
+                buffer: staging_buffer,
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(padded_bytes_per_row),
@@ -1802,7 +1877,7 @@ impl HeadlessMapRenderer {
         self.queue().submit(Some(encoder.finish()));
 
         // Read back results
-        let buffer_slice = viewport_staging_buffer.slice(..buffer_size);
+        let buffer_slice = staging_buffer.slice(..buffer_size);
         let (sender, receiver) = futures_channel::oneshot::channel();
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
@@ -1817,45 +1892,11 @@ impl HeadlessMapRenderer {
         let data = buffer_slice.get_mapped_range()?;
 
         Ok(PdxBufferView::new(
-            viewport_staging_buffer,
+            staging_buffer,
             data,
             texture_width,
             padded_bytes_per_row,
         ))
-    }
-
-    /// Resize the internal offscreen texture.
-    pub fn resize(&mut self, size: PhysicalSize<u32>) {
-        if self.target_config.width == size.width && self.target_config.height == size.height {
-            return;
-        }
-
-        // Recreate texture with new dimensions
-        self.viewport_texture = self
-            .gpu
-            .gpu
-            .device
-            .create_texture(&wgpu::TextureDescriptor {
-                label: Some("Viewport Offscreen Texture"),
-                size: wgpu::Extent3d {
-                    width: size.width,
-                    height: size.height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[],
-            });
-
-        // Update config
-        self.target_config.width = size.width;
-        self.target_config.height = size.height;
-
-        // Invalidate staging buffer so it gets recreated with correct size on next readback
-        self.viewport_staging_buffer = None;
     }
 
     pub fn set_location_borders(&mut self, enabled: bool) {
@@ -2007,17 +2048,19 @@ mod tests {
     }
 
     #[test]
-    fn guard_band_fits_the_texture_limit() {
-        let max = PhysicalSize::new(MAX_TEXTURE_DIMENSION, MAX_TEXTURE_DIMENSION);
-        assert_eq!(guard_band(max), 0);
+    fn guard_band_fits_the_texture_limit_per_axis() {
+        let band = |width, height| {
+            let band = GuardBand::around(PhysicalSize::new(width, height));
+            (band.x, band.y)
+        };
+        assert_eq!(band(1024, 1024), (GUARD_BAND, GUARD_BAND));
+        assert_eq!(band(MAX_TEXTURE_DIMENSION - 8, 1024), (4, GUARD_BAND));
+
+        // A full-height strip keeps its band at the left and right
         assert_eq!(
-            guard_band(PhysicalSize::new(
-                MAX_TEXTURE_DIMENSION - 8,
-                MAX_TEXTURE_DIMENSION - 8
-            )),
-            4
+            band(MAX_SEAMLESS_WIDTH, MAX_TEXTURE_DIMENSION),
+            (GUARD_BAND, 0)
         );
-        assert_eq!(guard_band(PhysicalSize::new(1024, 1024)), GUARD_BAND);
     }
 
     #[test]

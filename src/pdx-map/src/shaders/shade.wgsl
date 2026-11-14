@@ -37,19 +37,20 @@ struct ShadeUniforms {
     // Border radii in physical pixels, at least 1
     location_border_radius: u32,
     owner_border_radius: u32,
-    // Guard band in physical pixels around the output in the resolved texture
-    guard_band: u32,
     // Width in physical pixels of the light band inside an owner border
     owner_glow_radius: u32,
-
     // Strength of the owner border, coast, and impassable edge darkening,
     // 0 to 1. Eases off when zoomed out.
     edge_strength: f32,
+
     // Strength of the location border darkening, 0 to 1. Eases off faster
     // than `edge_strength`: zoomed out, the location grid is texture.
     location_edge_strength: f32,
+    // Guard band in physical pixels around the output in the resolved
+    // texture, per axis
+    guard_band_x: u32,
+    guard_band_y: u32,
     _pad0: u32,
-    _pad1: u32,
 }
 
 @group(0) @binding(0) var resolved_texture: texture_2d<u32>;
@@ -182,12 +183,10 @@ fn is_interaction_enabled(state_flags: u32, flag: u32) -> bool {
 // pixels. Coordinates clamp to the texture in case a radius exceeds the
 // band, so a read is never out of bounds.
 fn resolved_id(p: vec2<i32>) -> u32 {
-    let band = i32(uniforms.guard_band);
-    let max_coord = vec2<i32>(
-        i32(uniforms.surface_width) + band * 2 - 1,
-        i32(uniforms.surface_height) + band * 2 - 1,
-    );
-    let c = clamp(p + vec2<i32>(band, band), vec2<i32>(0, 0), max_coord);
+    let band = vec2<i32>(i32(uniforms.guard_band_x), i32(uniforms.guard_band_y));
+    let surface = vec2<i32>(i32(uniforms.surface_width), i32(uniforms.surface_height));
+    let max_coord = surface + band * 2 - vec2<i32>(1, 1);
+    let c = clamp(p + band, vec2<i32>(0, 0), max_coord);
     return textureLoad(resolved_texture, c, 0).r;
 }
 

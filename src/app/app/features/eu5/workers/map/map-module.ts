@@ -757,35 +757,39 @@ export const createMapEngine = async (
     ): Promise<Blob> => {
       applyPendingSync();
 
-      const output = fullResolution
-        ? { width: 16384, height: 8192 }
-        : { width: 8192, height: 4096 };
-
-      const compositeCanvas = new OffscreenCanvas(output.width, output.height);
-      const ctx = compositeCanvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context for composite canvas");
-      }
-
-      // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
-      let overlayInfo: OverlayCanvasInfo | null = null;
-      if (overlayData) {
-        overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
-      }
-
-      // Create dedicated screenshot canvas for independent screenshot renderer
-      const screenshotCanvas = new OffscreenCanvas(8192, 8192);
-
-      // Create independent screenshot renderer
-      const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
+      // The world renders in strips, so borders continue across the seams
+      const shot = app.create_world_screenshot();
       try {
-        // Render west tile using independent screenshot renderer
-        screenshotRenderer.render_west_tile();
-        ctx.drawImage(screenshotCanvas, 0, 0, output.width / 2, output.height);
+        const scale = fullResolution ? 1 : 0.5;
+        const output = { width: shot.width() * scale, height: shot.height() * scale };
 
-        // Render east tile using independent screenshot renderer
-        screenshotRenderer.render_east_tile();
-        ctx.drawImage(screenshotCanvas, output.width / 2, 0, output.width / 2, output.height);
+        const compositeCanvas = new OffscreenCanvas(output.width, output.height);
+        const ctx = compositeCanvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context for composite canvas");
+        }
+
+        // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
+        let overlayInfo: OverlayCanvasInfo | null = null;
+        if (overlayData) {
+          overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
+        }
+
+        const canvas = shot.canvas();
+        for (let i = 0; i < shot.strip_count(); i++) {
+          const strip = shot.render_strip(i);
+          ctx.drawImage(
+            canvas,
+            0,
+            0,
+            strip.width,
+            shot.height(),
+            strip.x * scale,
+            0,
+            strip.width * scale,
+            output.height,
+          );
+        }
 
         // Composite the small overlay canvas on top if provided
         if (overlayInfo) {
@@ -795,7 +799,7 @@ export const createMapEngine = async (
         // Convert composite canvas to PNG blob and return
         return await compositeCanvas.convertToBlob({ type: "image/png" });
       } finally {
-        screenshotRenderer.free();
+        shot.free();
       }
     },
 

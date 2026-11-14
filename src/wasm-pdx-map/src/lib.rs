@@ -2,12 +2,12 @@ use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint,
     LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
-    QueuedWorkFuture, R16Palette, RenderError, SurfaceMapRenderer, ViewportInsets, World,
-    WorldLength, WorldPoint, WorldSize, default_clock,
+    QueuedWorkFuture, R16Palette, RenderError, StripPlan, SurfaceMapRenderer, ViewportInsets,
+    World, WorldLength, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tsify::Ts;
+use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
@@ -394,6 +394,15 @@ impl PdxMapRenderer {
         create_screenshot_renderer_for_app(&self.controller, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
     }
+
+    /// Start a screenshot of the whole world
+    #[wasm_bindgen]
+    pub fn create_world_screenshot(&self) -> Result<PdxWorldScreenshot, JsError> {
+        let world = self.controller.hemisphere_size().world();
+        PdxWorldScreenshot::new(world, |canvas| {
+            create_screenshot_renderer_for_app(&self.controller, canvas)
+        })
+    }
 }
 
 impl PdxMapRenderer {
@@ -562,22 +571,6 @@ impl PdxScreenshotRenderer {
         self.map.renderer_mut().set_location_borders(enabled);
     }
 
-    /// Render the western tile to the screenshot surface
-    #[wasm_bindgen]
-    pub fn render_west_tile(&mut self) -> Result<(), JsError> {
-        let mut bounds = self.map.viewport_bounds();
-        bounds.rect.origin = WorldPoint::new(0, 0);
-        bounds.rect.size = WorldSize::new(
-            self.map.hemisphere_size().width,
-            self.map.hemisphere_size().height,
-        );
-        bounds.zoom_level = 1.0;
-        self.map.set_viewport_bounds(bounds);
-        self.map
-            .render()
-            .map_err(|e| JsError::new(&format!("Failed to render west tile: {e}")))
-    }
-
     /// Render a rectangle of the world to the screenshot surface, scaled to
     /// fill it.
     ///
@@ -607,21 +600,87 @@ impl PdxScreenshotRenderer {
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render world rectangle: {e}")))
     }
+}
 
-    /// Render the eastern tile to the screenshot surface
+/// Where a rendered strip goes in the world screenshot, in pixels.
+#[derive(Copy, Clone, Debug, Serialize, tsify::Tsify)]
+pub struct ScreenshotStrip {
+    pub x: u32,
+    pub width: u32,
+}
+
+/// A screenshot of the whole world at one pixel per world pixel, rendered
+/// strip by strip on a canvas of its own, so borders continue across the
+/// seams. After rendering a strip, draw the first `width` columns of the
+/// canvas at `x` of the screenshot.
+#[wasm_bindgen]
+pub struct PdxWorldScreenshot {
+    renderer: PdxScreenshotRenderer,
+    canvas: OffscreenCanvas,
+    plan: StripPlan,
+    world: WorldSize<u32>,
+}
+
+impl PdxWorldScreenshot {
+    /// Make the canvas the plan needs and a renderer for it.
+    pub fn new(
+        world: WorldSize<u32>,
+        create_renderer: impl FnOnce(OffscreenCanvas) -> Result<PdxScreenshotRenderer, RenderError>,
+    ) -> Result<Self, JsError> {
+        let plan = StripPlan::new(world.width);
+        let canvas = OffscreenCanvas::new(plan.render_width(), world.height)
+            .map_err(|_| JsError::new("Failed to create the screenshot canvas"))?;
+        let renderer = create_renderer(canvas.clone())
+            .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))?;
+        Ok(Self {
+            renderer,
+            canvas,
+            plan,
+            world,
+        })
+    }
+}
+
+#[wasm_bindgen]
+impl PdxWorldScreenshot {
+    /// The canvas each strip renders on
     #[wasm_bindgen]
-    pub fn render_east_tile(&mut self) -> Result<(), JsError> {
-        let mut bounds = self.map.viewport_bounds();
-        bounds.rect.size = WorldSize::new(
-            self.map.hemisphere_size().width,
-            self.map.hemisphere_size().height,
-        );
-        bounds.rect.origin = WorldPoint::new(self.map.hemisphere_size().width, 0);
-        bounds.zoom_level = 1.0;
-        self.map.set_viewport_bounds(bounds);
-        self.map
-            .render()
-            .map_err(|e| JsError::new(&format!("Failed to render east tile: {e}")))
+    pub fn canvas(&self) -> OffscreenCanvas {
+        self.canvas.clone()
+    }
+
+    /// Width of the screenshot, in pixels
+    #[wasm_bindgen]
+    pub fn width(&self) -> u32 {
+        self.world.width
+    }
+
+    /// Height of the screenshot and of the canvas, in pixels
+    #[wasm_bindgen]
+    pub fn height(&self) -> u32 {
+        self.world.height
+    }
+
+    #[wasm_bindgen]
+    pub fn strip_count(&self) -> usize {
+        self.plan.strips().len()
+    }
+
+    /// Render a strip to the canvas and say where it goes.
+    #[wasm_bindgen]
+    pub fn render_strip(&mut self, index: usize) -> Result<Ts<ScreenshotStrip>, JsError> {
+        let strip = *self
+            .plan
+            .strips()
+            .get(index)
+            .ok_or_else(|| JsError::new("screenshot strip out of range"))?;
+        self.renderer
+            .render_world_rect(strip.x, 0, self.plan.render_width(), self.world.height)?;
+        let strip = ScreenshotStrip {
+            x: strip.x,
+            width: strip.width,
+        };
+        strip.into_ts().map_err(JsError::from)
     }
 }
 

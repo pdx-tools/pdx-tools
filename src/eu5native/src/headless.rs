@@ -7,7 +7,7 @@ use eu5app::{
 };
 use eu5save::{BasicTokenResolver, Eu5File};
 use pdx_map::layers::DateLayer;
-use pdx_map::{PhysicalSize, StitchedImage, ViewportBounds, World, WorldSize};
+use pdx_map::{PhysicalSize, World, WorldPoint, WorldRect, WorldSize};
 use tracing::{info, info_span};
 
 /// Validate that width and height are both provided or both absent
@@ -20,9 +20,12 @@ fn validate_dimensions(
             if w == 0 || h == 0 {
                 return Err("Width and height must be greater than 0".into());
             }
-            let world_height = eu5app::hemisphere_size().world().height;
-            if h > world_height {
-                return Err(format!("Height {} exceeds world height {}", h, world_height).into());
+            let world = eu5app::hemisphere_size().world();
+            if w > world.width {
+                return Err(format!("Width {} exceeds world width {}", w, world.width).into());
+            }
+            if h > world.height {
+                return Err(format!("Height {} exceeds world height {}", h, world.height).into());
             }
             Ok(())
         }
@@ -159,76 +162,23 @@ async fn render_viewport(
         (0, 0) // Full world starts at origin
     };
 
-    let hemisphere = eu5app::hemisphere_size();
-    let viewport_width = if width > hemisphere.width {
-        width / 2
-    } else {
-        width
-    };
-
-    let mut viewport = ViewportBounds::new(WorldSize::new(viewport_width, height));
-    viewport.rect.origin.x = x_offset;
-    viewport.rect.origin.y = y_offset;
-
-    let mut renderer = pdx_map::HeadlessMapRenderer::new(
-        pipeline_components.clone(),
-        west_view,
-        east_view,
-        viewport.rect.size.width,
-        height,
-    )?;
+    let mut renderer =
+        pdx_map::HeadlessMapRenderer::new(pipeline_components.clone(), west_view, east_view)?;
 
     map_app.set_map_mode(MapMode::Political);
     renderer.update_locations(map_app.location_arrays());
 
-    let text_scale = calculate_text_scale(height);
-    let date_layer = renderer.add_layer(DateLayer::new(save_date, text_scale));
+    let origin = WorldPoint::new(x_offset, y_offset);
+    let rect = WorldRect::new(origin, WorldSize::new(width, height));
+    let mut image_data = renderer.capture_world(rect).await?;
 
-    // For viewports wider than tile_width (8192), we need to stitch two renders together
-    let image_data = if width > hemisphere.width {
-        assert!(
-            width <= hemisphere.width * 2,
-            "viewport width exceeds maximum for stitching"
-        );
-
-        let mut stitched_data = StitchedImage::new(PhysicalSize::new(width, height));
-
-        // Render west half
-        let span = info_span!("readback_west");
-        let _enter = span.enter();
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-        stitched_data.write_west(viewport_data.rows());
-        viewport_data.finish();
-        drop(_enter);
-
-        // Hide date layer for east half (only show once)
-        renderer.set_layer_visible(date_layer, false);
-
-        // Render east half
-        let span = info_span!("readback_east");
-        let _enter = span.enter();
-        viewport.rect.origin.x += viewport.rect.size.width;
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-        stitched_data.write_east(viewport_data.rows());
-        viewport_data.finish();
-        stitched_data.into_inner()
-    } else {
-        let mut image_buffer = vec![0u8; (width * height * 4) as usize];
-
-        let span = info_span!("readback_viewport_data");
-        let _enter = span.enter();
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-
-        for (src, dst) in viewport_data
-            .rows()
-            .zip(image_buffer.chunks_exact_mut(width as usize * 4))
-        {
-            dst.copy_from_slice(src);
-        }
-
-        viewport_data.finish();
-        image_buffer
-    };
+    let size = PhysicalSize::new(width, height);
+    DateLayer::write_over(
+        &save_date,
+        calculate_text_scale(height),
+        &mut image_data,
+        size,
+    );
 
     let span = info_span!("RgbaImage::from_raw");
     let _enter = span.enter();

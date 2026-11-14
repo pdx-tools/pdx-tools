@@ -71,6 +71,41 @@ impl DateLayer {
         rasterize_text_overlay(text, glyph_scale)
     }
 
+    /// Write a date over the bottom left corner of an RGBA image, where the
+    /// layer draws it on a render target. A date larger than the image is
+    /// squeezed to fit, as the layer squeezes it.
+    pub fn write_over(text: &str, glyph_scale: u32, image: &mut [u8], size: PhysicalSize<u32>) {
+        let (overlay, overlay_size) = Self::rasterize(text, glyph_scale);
+        let (ow, oh) = (overlay_size.width, overlay_size.height);
+
+        // The same box as `quad_vertices`, in whole pixels
+        let left = (CORNER_OFFSET_X as u32).min(size.width.saturating_sub(ow));
+        let bottom_limit = size.height.saturating_sub(CORNER_OFFSET_Y as u32).max(oh);
+        let top = bottom_limit - oh;
+        let right = (left + ow).min(size.width);
+        let bottom = (top + oh).min(size.height);
+        let (box_width, box_height) = (right - left, bottom - top);
+
+        let image_stride = size.width as usize * 4;
+        for y in top..bottom {
+            let src_y = (y - top) * oh / box_height;
+            let src_row = &overlay[(src_y * ow) as usize * 4..][..ow as usize * 4];
+            let dst_row = &mut image[y as usize * image_stride..][..image_stride];
+            for x in left..right {
+                let src_x = (x - left) * ow / box_width;
+                let src = &src_row[src_x as usize * 4..][..4];
+                let dst = &mut dst_row[x as usize * 4..][..4];
+                let alpha = u32::from(src[3]);
+                for channel in 0..3 {
+                    let blended =
+                        u32::from(src[channel]) * alpha + u32::from(dst[channel]) * (255 - alpha);
+                    dst[channel] = ((blended + 127) / 255) as u8;
+                }
+                dst[3] = 255;
+            }
+        }
+    }
+
     fn ensure_pipeline(&mut self, device: &wgpu::Device, format: wgpu::TextureFormat) {
         if let Some(pipeline) = &self.pipeline
             && pipeline.format == format

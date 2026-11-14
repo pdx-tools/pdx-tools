@@ -17,9 +17,7 @@ let appTask = new Promise<PdxMapRenderer>((res, rej) => {
 const pressedKeys = new Set<string>();
 
 // Process uploaded map image into textures
-async function processMapImage(
-  imageFile: File,
-): Promise<{ image: PdxMapImage; tileWidth: number; tileHeight: number }> {
+async function processMapImage(imageFile: File): Promise<{ image: PdxMapImage }> {
   // Create image bitmap
   const imageBitmap = await createImageBitmap(imageFile);
   const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height);
@@ -33,8 +31,6 @@ async function processMapImage(
       imageBitmap.width,
       imageBitmap.height,
     ),
-    tileWidth: imageBitmap.width / 2,
-    tileHeight: imageBitmap.height,
   };
 }
 
@@ -62,7 +58,7 @@ export const createMapEngine = async ({
 
   // Process the uploaded map image and upload textures
   console.log("Processing map image...");
-  const { tileWidth, tileHeight, image: indexedImage } = await processMapImage(mapImageFile);
+  const { image: indexedImage } = await processMapImage(mapImageFile);
 
   // Upload textures with their dimensions
   const westView = canvasInit.upload_west_texture(indexedImage);
@@ -169,31 +165,36 @@ export const createMapEngine = async ({
     },
 
     generateWorldScreenshot: async (): Promise<Blob> => {
-      // Create composite canvas with full map dimensions (2:1 aspect ratio)
-      const fullWidth = tileWidth * 2;
-      const fullHeight = tileHeight;
-      const compositeCanvas = new OffscreenCanvas(fullWidth, fullHeight);
-      const ctx = compositeCanvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context for composite canvas");
+      // The world renders in strips, so borders continue across the seams
+      const shot = app.create_world_screenshot();
+      try {
+        const compositeCanvas = new OffscreenCanvas(shot.width(), shot.height());
+        const ctx = compositeCanvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context for composite canvas");
+        }
+
+        const canvas = shot.canvas();
+        for (let i = 0; i < shot.strip_count(); i++) {
+          const strip = shot.render_strip(i);
+          ctx.drawImage(
+            canvas,
+            0,
+            0,
+            strip.width,
+            shot.height(),
+            strip.x,
+            0,
+            strip.width,
+            shot.height(),
+          );
+        }
+
+        // Convert to PNG blob
+        return await compositeCanvas.convertToBlob({ type: "image/png" });
+      } finally {
+        shot.free();
       }
-
-      // Create dedicated screenshot canvas for rendering each tile
-      const screenshotCanvas = new OffscreenCanvas(tileWidth, tileHeight);
-
-      // Create independent screenshot renderer
-      const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
-
-      // Render west tile
-      screenshotRenderer.render_west_tile();
-      ctx.drawImage(screenshotCanvas, 0, 0, tileWidth, fullHeight);
-
-      // Render east tile
-      screenshotRenderer.render_east_tile();
-      ctx.drawImage(screenshotCanvas, tileWidth, 0, tileWidth, fullHeight);
-
-      // Convert to PNG blob
-      return await compositeCanvas.convertToBlob({ type: "image/png" });
     },
   });
 };
