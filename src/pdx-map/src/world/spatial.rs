@@ -334,7 +334,9 @@ impl SpatialIndex {
 fn walk_runs<F: FnMut(R16, u16, u16, u16)>(world: &World, hemisphere_width: u16, mut visit: F) {
     // This exposes each maximal horizontal R16 run in full-world row-major
     // order: west half, then east half, for each row.
-    for (y, (west, east)) in (0..).zip(world.west().rows().zip(world.east().rows())) {
+    for (row, (west, east)) in world.west().rows().zip(world.east().rows()).enumerate() {
+        // `from_world` checked the height fits.
+        let y = row as u16;
         walk_row_runs(west, 0, y, &mut visit);
         walk_row_runs(east, hemisphere_width, y, &mut visit);
     }
@@ -938,10 +940,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "at most 65535x65535")]
-    fn world_wider_than_u16_is_rejected() {
-        let half = vec![0; 32768];
-        world_from_halves(half.clone(), half, 32768).build_spatial_index();
+    fn index_takes_worlds_up_to_u16_size() {
+        let tallest = world_from_halves(vec![0; 65535], vec![1; 65535], 1);
+        assert_eq!(tallest.build_spatial_index().len(), 2);
+        let widest = world_from_halves(vec![0; 32767], vec![1; 32767], 32767);
+        assert_eq!(widest.build_spatial_index().len(), 2);
+
+        let too_wide = world_from_halves(vec![0; 32768], vec![1; 32768], 32768);
+        let built = std::panic::catch_unwind(|| too_wide.build_spatial_index());
+        assert!(built.is_err());
     }
 
     #[test]
