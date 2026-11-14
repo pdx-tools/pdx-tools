@@ -215,6 +215,17 @@ describe("EU5 map frame loop", () => {
     expect(mocks.app.render).toHaveBeenCalledTimes(4);
   });
 
+  it("draws every frame in Firefox", async () => {
+    vi.stubGlobal("navigator", {
+      userAgent: "Mozilla/5.0 (rv:145.0) Gecko/20100101 Firefox/145.0",
+    });
+    await openMap();
+    const renders = mocks.app.render.mock.calls.length;
+    await nextFrame();
+    await nextFrame();
+    expect(mocks.app.render).toHaveBeenCalledTimes(renders + 2);
+  });
+
   it("keeps drawing after failed frames and logs the failure once", async () => {
     const { endpoint } = await openMap();
     await endpoint.syncMapData({ colors: new Uint32Array([7]) });

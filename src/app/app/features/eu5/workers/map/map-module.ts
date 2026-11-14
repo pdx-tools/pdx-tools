@@ -617,6 +617,8 @@ export const createMapEngine = async (
   };
 
   let hasLocationInformation = false;
+  // Firefox stalls and tears the map unless every frame is drawn.
+  const drawsEveryFrame = navigator.userAgent.includes("Firefox");
 
   // Location and grouping data arrive from the game worker between frames
   // and reach the GPU here, at the next use: the top of the render loop, or
@@ -714,7 +716,7 @@ export const createMapEngine = async (
 
     // A frame is costly on a large canvas or without a GPU, so the map draws
     // only when a change to its view, data or canvas has made one due.
-    if (hasLocationInformation && app.frame_due()) {
+    if (hasLocationInformation && (drawsEveryFrame || app.frame_due())) {
       app.render();
     }
   };
