@@ -657,12 +657,7 @@ fn init_renderer(
     texture_data: &TextureData,
 ) -> (SurfaceMapRenderer, InteractionController) {
     let hemisphere = eu5app::hemisphere_size();
-    let texture_size = hemisphere.physical();
-
-    let west_texture =
-        gpu_ctx.create_texture(texture_data.world.west().as_slice(), texture_size, "West");
-    let east_texture =
-        gpu_ctx.create_texture(texture_data.world.east().as_slice(), texture_size, "East");
+    let textures = gpu_ctx.create_world_textures(texture_data.world.as_rows());
 
     // Create surface pipeline
     let size = window.inner_size();
@@ -674,7 +669,7 @@ fn init_renderer(
     );
     let physical = logical.to_physical(scale_factor as f32);
 
-    let renderer = SurfaceMapRenderer::new(gpu_ctx, west_texture, east_texture, physical);
+    let renderer = SurfaceMapRenderer::new(gpu_ctx, textures, physical);
 
     // Create input controller with map dimensions
     let input_controller = InteractionController::new(logical, hemisphere.world());

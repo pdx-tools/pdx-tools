@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
-use pdx_map::{GpuColor, PhysicalSize, World, WorldLength, WorldPoint, WorldRect};
+use pdx_map::{GpuColor, World, WorldLength, WorldPoint, WorldRect};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
@@ -237,15 +237,13 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
     let start = Instant::now();
     let hemisphere_size = image_data.world.west().size();
     let world_size = hemisphere_size.world();
-    let size = PhysicalSize::new(hemisphere_size.width, hemisphere_size.height);
-    let west_view = gpu.create_texture(image_data.world.west().as_slice(), size, "West Texture");
-    let east_view = gpu.create_texture(image_data.world.east().as_slice(), size, "East Texture");
+    let textures = gpu.create_world_textures(image_data.world.as_rows());
     println!(
         "Created GPU textures ({:.2}s)",
         start.elapsed().as_secs_f64()
     );
     let start = Instant::now();
-    let mut renderer = pdx_map::HeadlessMapRenderer::new(gpu, west_view, east_view)?;
+    let mut renderer = pdx_map::HeadlessMapRenderer::new(gpu, textures)?;
     renderer.update_locations(&location_arrays);
     renderer.set_location_borders(!args.no_location_borders);
     renderer.set_owner_borders(!args.no_owner_borders);

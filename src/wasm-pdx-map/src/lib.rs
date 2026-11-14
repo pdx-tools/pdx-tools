@@ -1,9 +1,9 @@
 use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint,
-    LogicalSize, MapTexture, MouseButton, PanTarget, PhysicalSize, QueuedWorkFuture, R16Palette,
-    RenderError, ScreenshotRenderer, StripPlan, SurfaceMapRenderer, ViewportBounds, ViewportInsets,
-    World, WorldLength, WorldPoint, WorldRect, WorldSize, default_clock,
+    LogicalSize, MouseButton, PanTarget, PhysicalSize, QueuedWorkFuture, R16Palette, RenderError,
+    ScreenshotRenderer, StripPlan, SurfaceMapRenderer, ViewportBounds, ViewportInsets, World,
+    WorldLength, WorldPoint, WorldRect, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -53,26 +53,6 @@ impl PdxCanvasSurface {
             pipeline_components,
         })
     }
-
-    #[wasm_bindgen]
-    pub fn upload_west_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
-        let texture = self.pipeline_components.create_texture(
-            image.world.west().as_slice(),
-            image.world.west().size().physical(),
-            "West Texture Input",
-        );
-        Ok(PdxTexture { data: texture })
-    }
-
-    #[wasm_bindgen]
-    pub fn upload_east_texture(&self, image: &PdxMapImage) -> Result<PdxTexture, JsError> {
-        let texture = self.pipeline_components.create_texture(
-            image.world.east().as_slice(),
-            image.world.east().size().physical(),
-            "East Texture Input",
-        );
-        Ok(PdxTexture { data: texture })
-    }
 }
 
 #[wasm_bindgen]
@@ -90,16 +70,16 @@ impl PdxMapRenderer {
     pub fn create(
         surface: PdxCanvasSurface,
         image: PdxMapImage,
-        west_texture: PdxTexture,
-        east_texture: PdxTexture,
         display: Ts<CanvasDisplay>,
     ) -> Result<Self, JsError> {
         let canvas_dims: CanvasDimensions = display.to_rust()?.into();
 
+        let textures = surface
+            .pipeline_components
+            .create_world_textures(image.world.as_rows());
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
-            west_texture.data,
-            east_texture.data,
+            textures,
             canvas_dims.physical_size(),
         );
 
@@ -513,11 +493,6 @@ impl From<CanvasDisplay> for CanvasDimensions {
             display.scale_factor,
         )
     }
-}
-
-#[wasm_bindgen]
-pub struct PdxTexture {
-    data: MapTexture,
 }
 
 #[wasm_bindgen]

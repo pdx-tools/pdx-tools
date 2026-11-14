@@ -1,5 +1,5 @@
-use super::pixel_under;
-use crate::{R16, World, WorldPoint, WorldSize};
+use super::{WorldRows, pixel_under};
+use crate::{HemisphereSize, R16, World, WorldPoint, WorldSize};
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -65,18 +65,18 @@ fn from_stored(value: StoredCoord) -> u32 {
 
 /// One horizontal run of a location's pixels, from `x_start` to `x_end`
 /// inclusive.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Span {
     y: StoredCoord,
     x_start: StoredCoord,
     x_end: StoredCoord,
 }
 
-/// Where every location lies on the map, built from a [`World`]: the
-/// locations that touch each tile, and every horizontal run of each
-/// location's pixels. The runs cover every pixel, so the index answers what is
-/// at a point without the world.
-#[derive(Debug)]
+/// Where every location lies on the map, built from a [`World`] or from its
+/// rows with a [`SpatialIndexBuilder`]: the locations that touch each tile,
+/// and every horizontal run of each location's pixels. The runs cover every
+/// pixel, so the index answers what is at a point without the world.
+#[derive(Debug, PartialEq, Eq)]
 pub struct SpatialIndex {
     size: WorldSize<u32>,
     tiles_wide: u16,
@@ -97,151 +97,9 @@ impl SpatialIndex {
         tracing::instrument(name = "pdx-map.spatial-index.build", skip_all, level = "info")
     )]
     pub fn from_world(world: &World) -> Self {
-        let size = world.size();
-        let (Some(world_width), Some(world_height)) =
-            (to_stored(size.width), to_stored(size.height))
-        else {
-            panic!("a {size} world does not fit the spatial index's 16-bit coordinates");
-        };
-        let hemisphere_width = world_width / 2;
-        let tiles_wide = world_width.div_ceil(TILE_SIZE);
-        let tiles_tall = world_height.div_ceil(TILE_SIZE);
-        let tile_count = tiles_wide as usize * tiles_tall as usize;
-        let location_capacity = world.location_capacity();
-
-        let mut counts = vec![0u32; tile_count];
-        let mut span_counts = vec![0u32; location_capacity];
-
-        // Pass 1: count every tile touched by each horizontal run and count
-        // the exact per-location row spans.
-        walk_runs(
-            world,
-            hemisphere_width,
-            world_height,
-            |run_id, start_x, end_x, y| {
-                let li = run_id.value() as usize;
-                span_counts[li] += 1;
-                let ty = y / TILE_SIZE;
-                let tx_start = start_x / TILE_SIZE;
-                let tx_end = end_x / TILE_SIZE;
-                let row_base = ty as usize * tiles_wide as usize;
-                for tx in tx_start..=tx_end {
-                    counts[row_base + tx as usize] += 1;
-                }
-            },
-        );
-
-        // Per-location span storage is also CSR encoded. The offset slice lets
-        // query_exact() jump directly to one candidate location's row spans.
-        let mut span_offsets = Vec::with_capacity(location_capacity + 1);
-        let mut span_acc = 0u32;
-        span_offsets.push(0);
-        for count in &span_counts {
-            span_acc += count;
-            span_offsets.push(span_acc);
-        }
-
-        // Turn per-tile touch counts into provisional CSR offsets. These
-        // offsets address the temporary flat R16 entries before dedup/ranging.
-        let mut prov_offsets = Vec::with_capacity(tile_count + 1);
-        let mut acc = 0u32;
-        prov_offsets.push(0);
-        for count in &counts {
-            acc += count;
-            prov_offsets.push(acc);
-        }
-
-        let mut entries = vec![R16::new(0); acc as usize];
-        let mut cursors = prov_offsets[..tile_count].to_vec();
-        let mut spans = vec![
-            Span {
-                y: 0,
-                x_start: 0,
-                x_end: 0,
-            };
-            span_acc as usize
-        ];
-        let mut span_cursors = span_offsets[..location_capacity].to_vec();
-
-        // Pass 2: fill each tile's provisional slice and each location's exact
-        // spans. A location can appear multiple times in the same tile when it
-        // has several runs there.
-        walk_runs(
-            world,
-            hemisphere_width,
-            world_height,
-            |run_id, start_x, end_x, y| {
-                let li = run_id.value() as usize;
-                let span_slot = &mut span_cursors[li];
-                spans[*span_slot as usize] = Span {
-                    y,
-                    x_start: start_x,
-                    x_end: end_x,
-                };
-                *span_slot += 1;
-
-                let ty = y / TILE_SIZE;
-                let tx_start = start_x / TILE_SIZE;
-                let tx_end = end_x / TILE_SIZE;
-                let row_base = ty as usize * tiles_wide as usize;
-                for tx in tx_start..=tx_end {
-                    let slot = &mut cursors[row_base + tx as usize];
-                    entries[*slot as usize] = run_id;
-                    *slot += 1;
-                }
-            },
-        );
-
-        #[cfg(debug_assertions)]
-        assert_spans_sorted(&span_offsets, &spans);
-
-        // Pass 3: sort each tile independently so duplicates and consecutive
-        // location IDs can be collapsed into compact inclusive ranges.
-        for tile in 0..tile_count {
-            let lo = prov_offsets[tile] as usize;
-            let hi = prov_offsets[tile + 1] as usize;
-            entries[lo..hi].sort_unstable();
-        }
-
-        let mut tile_ranges = Vec::new();
-        let mut tile_offsets = Vec::with_capacity(tile_count + 1);
-        tile_offsets.push(0);
-
-        // Pass 4: build the final CSR payload. Equal IDs are deduplicated, and
-        // adjacent IDs become a single range because R16 assignment is usually
-        // spatially coherent.
-        for tile in 0..tile_count {
-            let lo = prov_offsets[tile] as usize;
-            let hi = prov_offsets[tile + 1] as usize;
-            let slice = &entries[lo..hi];
-            let mut i = 0;
-            while i < slice.len() {
-                let start = slice[i];
-                let mut end = start;
-                let mut j = i + 1;
-
-                while j < slice.len() && slice[j].value() <= end.value().saturating_add(1) {
-                    if slice[j].value() == end.value().saturating_add(1) {
-                        end = slice[j];
-                    }
-                    j += 1;
-                }
-
-                tile_ranges.push((start, end));
-                i = j;
-            }
-            tile_offsets.push(tile_ranges.len() as u32);
-        }
-
-        Self {
-            size,
-            tiles_wide,
-            tiles_tall,
-            tile_offsets,
-            tile_ranges,
-            span_offsets,
-            spans,
-        }
+        let mut builder = SpatialIndexBuilder::new(world.west().size());
+        builder.push(world.as_rows());
+        builder.finish()
     }
 
     /// Coarse query: union of tile hits across all `rects`. Clears `out`
@@ -357,31 +215,214 @@ impl SpatialIndex {
     }
 }
 
-fn walk_runs<F: FnMut(R16, StoredCoord, StoredCoord, StoredCoord)>(
-    world: &World,
-    hemisphere_width: StoredCoord,
-    height: StoredCoord,
-    mut visit: F,
-) {
-    // This exposes each maximal horizontal R16 run in full-world row-major
-    // order: west half, then east half, for each row.
-    for (y, (west, east)) in (0..height).zip(world.west().rows().zip(world.east().rows())) {
-        walk_row_runs(west, 0, y, &mut visit);
-        walk_row_runs(east, hemisphere_width, y, &mut visit);
-    }
+/// The runs are kept in chunks of this many, so the list never has to move
+/// to grow.
+const RUN_CHUNK: usize = 1 << 16;
+
+/// A run and the location it belongs to.
+#[derive(Debug, Clone, Copy)]
+struct Run {
+    location: R16,
+    span: Span,
 }
 
-fn walk_row_runs<F: FnMut(R16, StoredCoord, StoredCoord, StoredCoord)>(
-    row: &[R16],
-    mut x: StoredCoord,
-    y: StoredCoord,
-    visit: &mut F,
-) {
-    for group in row.chunk_by(|a, b| a == b) {
-        // A run is at most a hemisphere wide, which fits.
-        let len = group.len() as StoredCoord;
-        visit(group[0], x, x + len - 1, y);
-        x += len;
+/// Builds a [`SpatialIndex`] from the rows of a world, given top to bottom
+/// in as many bands as the caller likes, so the whole world never has to be
+/// in memory.
+#[derive(Debug)]
+pub struct SpatialIndexBuilder {
+    size: WorldSize<u32>,
+    hemisphere_width: StoredCoord,
+    tiles_wide: u16,
+    tiles_tall: u16,
+    /// The row that comes next.
+    next_row: u32,
+    /// Every run so far, in row order.
+    runs: Vec<Vec<Run>>,
+    /// The locations in each tile of the row of tiles in progress.
+    tile_row: Vec<Vec<R16>>,
+    tile_offsets: Vec<u32>,
+    tile_ranges: Vec<(R16, R16)>,
+    max_location: Option<R16>,
+}
+
+impl SpatialIndexBuilder {
+    /// A builder for a world of two hemispheres of `hemisphere` size.
+    ///
+    /// # Panics
+    ///
+    /// When the world is wider or taller than the index's 16-bit coordinates
+    /// hold (65,535).
+    pub fn new(hemisphere: HemisphereSize<u32>) -> Self {
+        let size = hemisphere.world();
+        let (Some(world_width), Some(world_height)) =
+            (to_stored(size.width), to_stored(size.height))
+        else {
+            panic!("a {size} world does not fit the spatial index's 16-bit coordinates");
+        };
+        let tiles_wide = world_width.div_ceil(TILE_SIZE);
+        let tiles_tall = world_height.div_ceil(TILE_SIZE);
+        let mut tile_offsets = Vec::with_capacity(tiles_wide as usize * tiles_tall as usize + 1);
+        tile_offsets.push(0);
+        Self {
+            size,
+            hemisphere_width: world_width / 2,
+            tiles_wide,
+            tiles_tall,
+            next_row: 0,
+            runs: Vec::new(),
+            tile_row: vec![Vec::new(); tiles_wide as usize],
+            tile_offsets,
+            tile_ranges: Vec::new(),
+            max_location: None,
+        }
+    }
+
+    /// Add `rows`, which start where the rows already added end.
+    ///
+    /// # Panics
+    ///
+    /// When `rows` are not as wide as the world's hemispheres, do not start
+    /// at the next row, or go past the world's last row.
+    pub fn push(&mut self, rows: WorldRows<'_>) {
+        assert_eq!(
+            rows.width().value,
+            u32::from(self.hemisphere_width),
+            "rows must be as wide as the world's hemispheres"
+        );
+        assert_eq!(
+            rows.first_row(),
+            self.next_row,
+            "rows must come top to bottom"
+        );
+        assert!(
+            rows.height() <= self.size.height - self.next_row,
+            "rows go past the bottom of a {} world",
+            self.size
+        );
+        for (west, east) in rows.rows() {
+            // Below the height, which fits.
+            let y = self.next_row as StoredCoord;
+            self.push_half_row(west, 0, y);
+            self.push_half_row(east, self.hemisphere_width, y);
+            self.next_row += 1;
+            if self.next_row.is_multiple_of(u32::from(TILE_SIZE))
+                || self.next_row == self.size.height
+            {
+                self.close_tile_row();
+            }
+        }
+    }
+
+    /// The index of every row.
+    ///
+    /// # Panics
+    ///
+    /// When rows are missing.
+    pub fn finish(self) -> SpatialIndex {
+        assert_eq!(
+            self.next_row, self.size.height,
+            "the index needs every row of the world"
+        );
+
+        // Group the runs by location. A location's runs stay in row order,
+        // west half before east half, which sorts them by (y, x_start).
+        let location_capacity = self
+            .max_location
+            .map_or(1, |max| usize::from(max.value()) + 1);
+        let mut span_offsets = vec![0u32; location_capacity + 1];
+        for run in self.runs.iter().flatten() {
+            span_offsets[usize::from(run.location.value()) + 1] += 1;
+        }
+        for i in 1..span_offsets.len() {
+            span_offsets[i] += span_offsets[i - 1];
+        }
+
+        let empty = Span {
+            y: 0,
+            x_start: 0,
+            x_end: 0,
+        };
+        let mut spans = vec![empty; span_offsets[location_capacity] as usize];
+        let mut cursors = span_offsets[..location_capacity].to_vec();
+        for chunk in self.runs {
+            for run in chunk {
+                let slot = &mut cursors[usize::from(run.location.value())];
+                spans[*slot as usize] = run.span;
+                *slot += 1;
+            }
+        }
+
+        SpatialIndex {
+            size: self.size,
+            tiles_wide: self.tiles_wide,
+            tiles_tall: self.tiles_tall,
+            tile_offsets: self.tile_offsets,
+            tile_ranges: self.tile_ranges,
+            span_offsets,
+            spans,
+        }
+    }
+
+    fn push_half_row(&mut self, row: &[R16], mut x: StoredCoord, y: StoredCoord) {
+        for group in row.chunk_by(|a, b| a == b) {
+            // A run is at most a hemisphere wide, which fits.
+            let x_end = x + (group.len() as StoredCoord - 1);
+            self.push_run(Run {
+                location: group[0],
+                span: Span {
+                    y,
+                    x_start: x,
+                    x_end,
+                },
+            });
+            x = x_end + 1;
+        }
+    }
+
+    fn push_run(&mut self, run: Run) {
+        self.max_location = self.max_location.max(Some(run.location));
+        let tiles =
+            usize::from(run.span.x_start / TILE_SIZE)..=usize::from(run.span.x_end / TILE_SIZE);
+        for tile in &mut self.tile_row[tiles] {
+            if tile.last() != Some(&run.location) {
+                tile.push(run.location);
+            }
+        }
+
+        match self.runs.last_mut() {
+            Some(chunk) if chunk.len() < RUN_CHUNK => chunk.push(run),
+            _ => {
+                let mut chunk = Vec::with_capacity(RUN_CHUNK);
+                chunk.push(run);
+                self.runs.push(chunk);
+            }
+        }
+    }
+
+    /// Store the locations of each tile in the row of tiles that just ended.
+    /// Equal locations are merged, and consecutive ones become one range,
+    /// as neighboring locations usually have neighboring ids.
+    fn close_tile_row(&mut self) {
+        for tile in &mut self.tile_row {
+            tile.sort_unstable();
+            let mut i = 0;
+            while i < tile.len() {
+                let start = tile[i];
+                let mut end = start;
+                let mut j = i + 1;
+                while j < tile.len() && tile[j].value() <= end.value().saturating_add(1) {
+                    if tile[j].value() == end.value().saturating_add(1) {
+                        end = tile[j];
+                    }
+                    j += 1;
+                }
+                self.tile_ranges.push((start, end));
+                i = j;
+            }
+            tile.clear();
+            self.tile_offsets.push(self.tile_ranges.len() as u32);
+        }
     }
 }
 
@@ -410,20 +451,6 @@ fn spans_intersect_rect(spans: &[Span], rect: Aabb) -> bool {
     }
 
     false
-}
-
-#[cfg(debug_assertions)]
-fn assert_spans_sorted(span_offsets: &[u32], spans: &[Span]) {
-    for loc in 0..span_offsets.len().saturating_sub(1) {
-        let lo = span_offsets[loc] as usize;
-        let hi = span_offsets[loc + 1] as usize;
-        for window in spans[lo..hi].windows(2) {
-            debug_assert!(
-                (window[0].y, window[0].x_start) < (window[1].y, window[1].x_start),
-                "spans must be sorted by (y, x_start) for location {loc}"
-            );
-        }
-    }
 }
 
 /// Reusable scratch buffer for [`SpatialIndex`] queries. Construct once and
@@ -1002,6 +1029,54 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Feed the builder `world` in bands of `rows` rows.
+    fn build_in_bands(world: &World, rows: u32) -> SpatialIndex {
+        let mut builder = SpatialIndexBuilder::new(world.west().size());
+        for band in world.as_rows().bands(rows) {
+            builder.push(band);
+        }
+        builder.finish()
+    }
+
+    #[test]
+    fn index_is_the_same_in_any_bands() {
+        let tallest = world_from_halves(vec![0; 65535], vec![1; 65535], 1);
+        for world in sample_worlds().iter().chain([&tallest]) {
+            let whole = world.build_spatial_index();
+            for band in [1, 3, 64, 65] {
+                assert_eq!(build_in_bands(world, band), whole, "bands of {band}");
+            }
+        }
+    }
+
+    #[test]
+    fn builder_takes_exactly_the_rows_of_the_world_in_order() {
+        let world = world_from_halves(vec![0, 1, 2, 3], vec![4, 5, 6, 7], 2);
+        let [top, bottom] = world.as_rows().bands(1).collect::<Vec<_>>()[..] else {
+            panic!("two rows");
+        };
+        let size = world.west().size();
+
+        let mut builder = SpatialIndexBuilder::new(size);
+        builder.push(top);
+        assert!(std::panic::catch_unwind(|| builder.finish()).is_err());
+
+        let mut builder = SpatialIndexBuilder::new(size);
+        let out_of_order = std::panic::catch_unwind(move || builder.push(bottom));
+        assert!(out_of_order.is_err());
+
+        let mut builder = SpatialIndexBuilder::new(size);
+        builder.push(world.as_rows());
+        let extra = std::panic::catch_unwind(move || builder.push(top));
+        assert!(extra.is_err());
+
+        let rows = world.as_rows();
+        let partial_row = std::panic::catch_unwind(|| {
+            WorldRows::new(0, &rows.west()[..3], &rows.east()[..3], rows.width())
+        });
+        assert!(partial_row.is_err());
     }
 
     #[test]

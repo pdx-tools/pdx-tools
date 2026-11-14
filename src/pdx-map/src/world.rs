@@ -4,10 +4,10 @@ mod spatial;
 mod topology;
 
 pub use hemisphere::Hemisphere;
-pub use spatial::{Aabb, LocationBitset, SpatialIndex};
+pub use spatial::{Aabb, LocationBitset, SpatialIndex, SpatialIndexBuilder};
 pub use topology::TopologyIndex;
 
-use crate::{R16, R16Palette, WorldLength, WorldPoint, WorldSize};
+use crate::{HemisphereLength, R16, R16Palette, WorldLength, WorldPoint, WorldSize};
 use std::sync::OnceLock;
 
 /// A world made up of two hemispheres: west and east.
@@ -156,6 +156,105 @@ impl World {
 
     pub fn build_topology_index(&self) -> TopologyIndex {
         TopologyIndex::from_world(self)
+    }
+
+    /// Every row of the world.
+    pub fn as_rows(&self) -> WorldRows<'_> {
+        WorldRows::new(
+            0,
+            self.west.as_slice(),
+            self.east.as_slice(),
+            self.west.size().width_length(),
+        )
+    }
+}
+
+/// Whole rows of a world, starting at `first_row`: the same rows of the west
+/// and the east hemisphere. A map that is read a band at a time hands these
+/// out top to bottom.
+#[derive(Debug, Clone, Copy)]
+pub struct WorldRows<'a> {
+    first_row: u32,
+    west: &'a [R16],
+    east: &'a [R16],
+    width: HemisphereLength<u32>,
+}
+
+impl<'a> WorldRows<'a> {
+    /// # Panics
+    ///
+    /// When `west` and `east` differ in length, or are not whole rows of a
+    /// hemisphere `width` wide.
+    pub fn new(
+        first_row: u32,
+        west: &'a [R16],
+        east: &'a [R16],
+        width: HemisphereLength<u32>,
+    ) -> Self {
+        assert_eq!(
+            west.len(),
+            east.len(),
+            "west and east must hold the same rows"
+        );
+        assert!(
+            width.value > 0 && west.len().is_multiple_of(width.value as usize),
+            "rows must be whole rows {} wide",
+            width.value
+        );
+        Self {
+            first_row,
+            west,
+            east,
+            width,
+        }
+    }
+
+    /// The row of the world that these rows start at.
+    pub fn first_row(&self) -> u32 {
+        self.first_row
+    }
+
+    pub fn width(&self) -> HemisphereLength<u32> {
+        self.width
+    }
+
+    /// The number of rows.
+    pub fn height(&self) -> u32 {
+        (self.west.len() / self.width.value as usize) as u32
+    }
+
+    pub fn west(&self) -> &'a [R16] {
+        self.west
+    }
+
+    pub fn east(&self) -> &'a [R16] {
+        self.east
+    }
+
+    /// Each row as its west and east half.
+    pub fn rows(&self) -> impl Iterator<Item = (&'a [R16], &'a [R16])> + use<'a> {
+        let width = self.width.value as usize;
+        self.west
+            .chunks_exact(width)
+            .zip(self.east.chunks_exact(width))
+    }
+
+    /// These rows in bands of `rows` rows, top to bottom. The last band can
+    /// be shorter.
+    ///
+    /// # Panics
+    ///
+    /// When `rows` is 0.
+    pub fn bands(&self, rows: u32) -> impl Iterator<Item = WorldRows<'a>> + use<'a> {
+        assert!(rows > 0, "a band needs at least one row");
+        let width = self.width;
+        let len = rows as usize * width.value as usize;
+        let first_row = self.first_row;
+        self.west
+            .chunks(len)
+            .zip(self.east.chunks(len))
+            .zip((0..).map(move |band: u32| first_row + band * rows))
+            .map(move |((west, east), first_row)| WorldRows::new(first_row, west, east, width))
     }
 }
 

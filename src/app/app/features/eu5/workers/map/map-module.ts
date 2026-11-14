@@ -3,7 +3,6 @@ import { log } from "@/lib/log";
 import init, {
   Eu5CanvasSurface,
   Eu5WasmMapRenderer,
-  Eu5WasmMapBundle,
   location_borders_at_zoom,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
@@ -65,9 +64,7 @@ function wheelScrollLines(
   return -pixels / WHEEL_PIXELS_PER_LINE;
 }
 
-const initialized = (async () => {
-  await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
-})();
+const initialized = timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
 
 let appResolve: (value: Eu5WasmMapRenderer | PromiseLike<Eu5WasmMapRenderer>) => void;
 let appReject: (reason?: any) => void;
@@ -257,7 +254,7 @@ export const createMapEngine = async (
     height: display.height,
     scaleFactor: display.scaleFactor,
   };
-  await initialized;
+  const wasm = await initialized;
   onProgress?.(5, "Preparing canvas");
 
   const canvasInit = await timeAsync("Canvas Initialization", () =>
@@ -266,25 +263,12 @@ export const createMapEngine = async (
   onProgress?.(5, "Loading map data");
 
   const bundle = await mapBundle.fetch();
-
-  const mapBundleWasm = Eu5WasmMapBundle.open(bundle);
-  const textureData = timeSync("Create Texture Data", () => mapBundleWasm.load_texture_data());
-
-  const westView = timeSync("Upload Texture Data (West)", () =>
-    canvasInit.upload_west_texture(textureData),
-  );
   onProgress?.(12, "Building map textures");
 
-  const eastView = timeSync("Upload Texture Data (East)", () =>
-    canvasInit.upload_east_texture(textureData),
-  );
-  onProgress?.(12, "Starting renderer");
-
   try {
-    const app = timeSync("Create Renderer", () =>
-      Eu5WasmMapRenderer.create(canvasInit, westView, eastView, textureData),
-    );
-    onProgress?.(6, "Rendering map");
+    const app = timeSync("Load Map", () => Eu5WasmMapRenderer.load(canvasInit, bundle));
+    log(`EU5 map wasm memory: ${formatInt(wasm.memory.buffer.byteLength / 2 ** 20)} MiB`);
+    onProgress?.(18, "Rendering map");
     appResolve(app);
   } catch (e) {
     appReject(e);

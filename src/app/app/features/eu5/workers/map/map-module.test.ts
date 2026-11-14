@@ -43,15 +43,9 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("../../../../wasm/wasm_eu5_map", () => ({
-  default: vi.fn(async () => {}),
-  Eu5CanvasSurface: {
-    init: vi.fn(async () => ({
-      upload_west_texture: vi.fn(),
-      upload_east_texture: vi.fn(),
-    })),
-  },
-  Eu5WasmMapBundle: { open: () => ({ load_texture_data: () => ({}) }) },
-  Eu5WasmMapRenderer: { create: () => mocks.app },
+  default: vi.fn(async () => ({ memory: { buffer: new ArrayBuffer(0) } })),
+  Eu5CanvasSurface: { init: vi.fn(async () => ({})) },
+  Eu5WasmMapRenderer: { load: () => mocks.app },
   setup_eu5_map_wasm: vi.fn(),
   location_borders_at_zoom: vi.fn(),
 }));
