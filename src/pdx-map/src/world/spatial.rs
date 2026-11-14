@@ -49,11 +49,27 @@ impl Display for Aabb {
 // time.
 const TILE_SIZE: u16 = 64;
 
+/// A world coordinate as the index stores it. Sixteen bits keep the runs
+/// small, so the index only takes a world whose size fits.
+type StoredCoord = u16;
+
+/// A world coordinate narrowed for storage, or `None` when it does not fit.
+fn to_stored(value: u32) -> Option<StoredCoord> {
+    StoredCoord::try_from(value).ok()
+}
+
+/// A stored coordinate widened back to a world coordinate.
+fn from_stored(value: StoredCoord) -> u32 {
+    u32::from(value)
+}
+
+/// One horizontal run of a location's pixels, from `x_start` to `x_end`
+/// inclusive.
 #[derive(Debug, Clone, Copy)]
 struct Span {
-    y: u16,
-    x_start: u16,
-    x_end: u16,
+    y: StoredCoord,
+    x_start: StoredCoord,
+    x_end: StoredCoord,
 }
 
 /// Where every location lies on the map, built from a [`World`]: the
@@ -74,18 +90,18 @@ pub struct SpatialIndex {
 impl SpatialIndex {
     /// # Panics
     ///
-    /// When the world is wider or taller than 65,535 pixels, as the index
-    /// stores coordinates in 16 bits.
+    /// When the world is wider or taller than the index's 16-bit coordinates
+    /// hold (65,535).
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(name = "pdx-map.spatial-index.build", skip_all, level = "info")
     )]
     pub fn from_world(world: &World) -> Self {
         let size = world.size();
-        let (Ok(world_width), Ok(world_height)) =
-            (u16::try_from(size.width), u16::try_from(size.height))
+        let (Some(world_width), Some(world_height)) =
+            (to_stored(size.width), to_stored(size.height))
         else {
-            panic!("spatial index needs a world at most 65535x65535, not {size}");
+            panic!("a {size} world does not fit the spatial index's 16-bit coordinates");
         };
         let hemisphere_width = world_width / 2;
         let tiles_wide = world_width.div_ceil(TILE_SIZE);
@@ -98,17 +114,22 @@ impl SpatialIndex {
 
         // Pass 1: count every tile touched by each horizontal run and count
         // the exact per-location row spans.
-        walk_runs(world, hemisphere_width, |run_id, start_x, end_x, y| {
-            let li = run_id.value() as usize;
-            span_counts[li] += 1;
-            let ty = y / TILE_SIZE;
-            let tx_start = start_x / TILE_SIZE;
-            let tx_end = end_x / TILE_SIZE;
-            let row_base = ty as usize * tiles_wide as usize;
-            for tx in tx_start..=tx_end {
-                counts[row_base + tx as usize] += 1;
-            }
-        });
+        walk_runs(
+            world,
+            hemisphere_width,
+            world_height,
+            |run_id, start_x, end_x, y| {
+                let li = run_id.value() as usize;
+                span_counts[li] += 1;
+                let ty = y / TILE_SIZE;
+                let tx_start = start_x / TILE_SIZE;
+                let tx_end = end_x / TILE_SIZE;
+                let row_base = ty as usize * tiles_wide as usize;
+                for tx in tx_start..=tx_end {
+                    counts[row_base + tx as usize] += 1;
+                }
+            },
+        );
 
         // Per-location span storage is also CSR encoded. The offset slice lets
         // query_exact() jump directly to one candidate location's row spans.
@@ -145,26 +166,31 @@ impl SpatialIndex {
         // Pass 2: fill each tile's provisional slice and each location's exact
         // spans. A location can appear multiple times in the same tile when it
         // has several runs there.
-        walk_runs(world, hemisphere_width, |run_id, start_x, end_x, y| {
-            let li = run_id.value() as usize;
-            let span_slot = &mut span_cursors[li];
-            spans[*span_slot as usize] = Span {
-                y,
-                x_start: start_x,
-                x_end: end_x,
-            };
-            *span_slot += 1;
+        walk_runs(
+            world,
+            hemisphere_width,
+            world_height,
+            |run_id, start_x, end_x, y| {
+                let li = run_id.value() as usize;
+                let span_slot = &mut span_cursors[li];
+                spans[*span_slot as usize] = Span {
+                    y,
+                    x_start: start_x,
+                    x_end: end_x,
+                };
+                *span_slot += 1;
 
-            let ty = y / TILE_SIZE;
-            let tx_start = start_x / TILE_SIZE;
-            let tx_end = end_x / TILE_SIZE;
-            let row_base = ty as usize * tiles_wide as usize;
-            for tx in tx_start..=tx_end {
-                let slot = &mut cursors[row_base + tx as usize];
-                entries[*slot as usize] = run_id;
-                *slot += 1;
-            }
-        });
+                let ty = y / TILE_SIZE;
+                let tx_start = start_x / TILE_SIZE;
+                let tx_end = end_x / TILE_SIZE;
+                let row_base = ty as usize * tiles_wide as usize;
+                for tx in tx_start..=tx_end {
+                    let slot = &mut cursors[row_base + tx as usize];
+                    entries[*slot as usize] = run_id;
+                    *slot += 1;
+                }
+            },
+        );
 
         #[cfg(debug_assertions)]
         assert_spans_sorted(&span_offsets, &spans);
@@ -275,8 +301,8 @@ impl SpatialIndex {
     /// [`World::at`].
     pub fn location_at(&self, point: WorldPoint<f32>) -> R16 {
         let pixel = pixel_under(point, self.size);
-        // The pixel is inside the world, which `from_world` checked fits.
-        let (x, y) = (pixel.x as u16, pixel.y as u16);
+        let stored = |value| to_stored(value).expect("a pixel of the world fits");
+        let (x, y) = (stored(pixel.x), stored(pixel.y));
         let tile = (y / TILE_SIZE) as usize * self.tiles_wide as usize + (x / TILE_SIZE) as usize;
         let lo = self.tile_offsets[tile] as usize;
         let hi = self.tile_offsets[tile + 1] as usize;
@@ -304,7 +330,7 @@ impl SpatialIndex {
         let spans = self.spans_of(loc);
         let span = spans.get(spans.len() / 2)?;
         let x = span.x_start + (span.x_end - span.x_start) / 2;
-        Some(WorldPoint::new(u32::from(x), u32::from(span.y)))
+        Some(WorldPoint::new(from_stored(x), from_stored(span.y)))
     }
 
     /// The [`point_of`](Self::point_of) every location, indexed by location.
@@ -331,27 +357,36 @@ impl SpatialIndex {
     }
 }
 
-fn walk_runs<F: FnMut(R16, u16, u16, u16)>(world: &World, hemisphere_width: u16, mut visit: F) {
+fn walk_runs<F: FnMut(R16, StoredCoord, StoredCoord, StoredCoord)>(
+    world: &World,
+    hemisphere_width: StoredCoord,
+    height: StoredCoord,
+    mut visit: F,
+) {
     // This exposes each maximal horizontal R16 run in full-world row-major
     // order: west half, then east half, for each row.
-    for (row, (west, east)) in world.west().rows().zip(world.east().rows()).enumerate() {
-        // `from_world` checked the height fits.
-        let y = row as u16;
+    for (y, (west, east)) in (0..height).zip(world.west().rows().zip(world.east().rows())) {
         walk_row_runs(west, 0, y, &mut visit);
         walk_row_runs(east, hemisphere_width, y, &mut visit);
     }
 }
 
-fn walk_row_runs<F: FnMut(R16, u16, u16, u16)>(row: &[R16], mut x: u16, y: u16, visit: &mut F) {
+fn walk_row_runs<F: FnMut(R16, StoredCoord, StoredCoord, StoredCoord)>(
+    row: &[R16],
+    mut x: StoredCoord,
+    y: StoredCoord,
+    visit: &mut F,
+) {
     for group in row.chunk_by(|a, b| a == b) {
-        let end = x + group.len() as u16 - 1;
-        visit(group[0], x, end, y);
-        x += group.len() as u16;
+        // A run is at most a hemisphere wide, which fits.
+        let len = group.len() as StoredCoord;
+        visit(group[0], x, x + len - 1, y);
+        x += len;
     }
 }
 
 /// Whether one of `spans`, sorted by `(y, x_start)`, covers pixel `(x, y)`.
-fn spans_contain(spans: &[Span], x: u16, y: u16) -> bool {
+fn spans_contain(spans: &[Span], x: StoredCoord, y: StoredCoord) -> bool {
     let idx = spans.partition_point(|span| (span.y, span.x_end) < (y, x));
     spans
         .get(idx)
@@ -589,6 +624,7 @@ mod tests {
 
         assert_eq!(size_of::<Aabb>(), 8);
         assert_eq!(size_of::<WorldPoint<u16>>(), 4);
+        assert_eq!(size_of::<Span>(), 6);
     }
 
     #[test]
