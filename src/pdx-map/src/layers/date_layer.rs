@@ -304,9 +304,9 @@ impl RenderLayer for DateLayer {
         self.upload(queue);
     }
 
-    fn draw<'a>(
-        &'a self,
-        pass: &mut wgpu::RenderPass<'a>,
+    fn draw(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
         _viewport: &ViewportBounds,
         _canvas_size: crate::PhysicalSize<u32>,
     ) {
