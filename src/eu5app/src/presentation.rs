@@ -39,6 +39,7 @@ use crate::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use crate::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use crate::overlay::OverlayBodyConfig;
 use crate::session::Eu5Workspace;
+use crate::session::workspace::MapColors;
 
 mod present_dto;
 
@@ -57,6 +58,7 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
                 localization,
                 workspace.game_data(),
                 workspace.gamestate(),
+                workspace.map_colors(),
             ),
         }
     }
@@ -338,7 +340,7 @@ impl Present for CountryRefSource {
         let entry = ctx.gamestate.countries.index(idx);
         let data = entry.data();
         let owner = entry.id().real_id();
-        let color_hex = data.map(|data| data.color.into()).unwrap_or_default();
+        let color_hex = ctx.map_colors.country(idx);
         let anchor_location_idx = data
             .and_then(|data| {
                 let owner = owner?;
@@ -399,7 +401,7 @@ impl Present for MarketRefSource {
         MarketRef {
             market: id.present(ctx),
             anchor_location_idx: UiLocationIdx::from(center_idx),
-            color_hex: market.color.into(),
+            color_hex: ctx.map_colors.market(id),
         }
     }
 }
@@ -502,18 +504,22 @@ pub struct LocalizationContext<'a, 'bump> {
     pub localization: &'a Localization,
     pub game_data: &'a GameData,
     pub gamestate: &'a eu5save::models::Gamestate<'bump>,
+    /// A swatch shows the color that the map paints.
+    pub(crate) map_colors: &'a MapColors,
 }
 
 impl<'a, 'bump> LocalizationContext<'a, 'bump> {
-    pub fn new(
+    pub(crate) fn new(
         localization: &'a Localization,
         game_data: &'a GameData,
         gamestate: &'a eu5save::models::Gamestate<'bump>,
+        map_colors: &'a MapColors,
     ) -> Self {
         Self {
             localization,
             game_data,
             gamestate,
+            map_colors,
         }
     }
 
