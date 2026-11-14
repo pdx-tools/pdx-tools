@@ -5,49 +5,76 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
 ---
 {
   "box_on_filled_terrain": true,
-  "dark_land": {
-    "building_levels": {
-      "dark": 0.29,
-      "near_black": 0.12
-    },
-    "control": {
-      "dark": 0.34,
-      "near_black": 0.13
-    },
-    "development": {
-      "dark": 0.21,
-      "near_black": 0.04
-    },
-    "population": {
-      "dark": 0.09,
-      "near_black": 0.01
-    },
-    "population_growth": {
-      "dark": 0.03,
-      "near_black": 0.01
-    },
-    "rgo_level": {
-      "dark": 0.0,
-      "near_black": 0.0
-    },
-    "state_efficacy": {
-      "dark": 0.26,
-      "near_black": 0.13
-    },
-    "unrealized_tax_base": {
-      "dark": 0.39,
-      "near_black": 0.15
-    },
-    "wealth": {
-      "dark": 0.37,
-      "near_black": 0.08
-    }
-  },
   "great_powers": [
     "FRA 379",
     "ENG 387",
     "POL 486"
   ],
+  "land_by_fifth": {
+    "building_levels": [
+      0.29,
+      0.3,
+      0.26,
+      0.07,
+      0.07
+    ],
+    "control": [
+      0.29,
+      0.14,
+      0.19,
+      0.16,
+      0.21
+    ],
+    "development": [
+      0.14,
+      0.21,
+      0.35,
+      0.19,
+      0.11
+    ],
+    "population": [
+      0.06,
+      0.17,
+      0.48,
+      0.18,
+      0.12
+    ],
+    "population_growth": [
+      0.02,
+      0.03,
+      0.12,
+      0.29,
+      0.54
+    ],
+    "rgo_level": [
+      0.0,
+      0.33,
+      0.22,
+      0.27,
+      0.18
+    ],
+    "state_efficacy": [
+      0.21,
+      0.16,
+      0.23,
+      0.23,
+      0.17
+    ],
+    "unrealized_tax_base": [
+      0.29,
+      0.25,
+      0.24,
+      0.13,
+      0.09
+    ],
+    "wealth": [
+      0.27,
+      0.25,
+      0.23,
+      0.15,
+      0.1
+    ]
+  },
   "largest_stability_tie": 13,
   "location": [
     {

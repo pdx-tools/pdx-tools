@@ -8,8 +8,8 @@ use eu5save::models::{LocationIdx, LocationIndexedVec};
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays};
 
 /// The top of a sequential map is this percentile of its land, so that a few
-/// places with very high values do not make the rest of the map dark. The
-/// key shows the land above the top.
+/// places with very high values do not squeeze the rest into the bottom colors.
+/// The key shows the land above the top.
 const CLIP_PERCENTILE: f64 = 0.98;
 
 /// A pop of a few hundred people that records a single birth has an annual
@@ -203,7 +203,7 @@ enum Top {
 struct Gradient {
     /// A log scale divides each value by a quarter of the median of the land
     /// above zero. Thus the middle of the land is near the middle of the
-    /// gradient, and only land far under the median is near black.
+    /// gradient, and land far under the median is at the bottom.
     scale: GradientScale,
     top: Top,
 }

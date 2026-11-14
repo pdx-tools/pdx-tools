@@ -5,49 +5,76 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
 ---
 {
   "box_on_filled_terrain": true,
-  "dark_land": {
-    "building_levels": {
-      "dark": 0.41,
-      "near_black": 0.16
-    },
-    "control": {
-      "dark": 0.26,
-      "near_black": 0.09
-    },
-    "development": {
-      "dark": 0.26,
-      "near_black": 0.02
-    },
-    "population": {
-      "dark": 0.12,
-      "near_black": 0.03
-    },
-    "population_growth": {
-      "dark": 0.03,
-      "near_black": 0.02
-    },
-    "rgo_level": {
-      "dark": 0.2,
-      "near_black": 0.0
-    },
-    "state_efficacy": {
-      "dark": 0.24,
-      "near_black": 0.1
-    },
-    "unrealized_tax_base": {
-      "dark": 0.37,
-      "near_black": 0.18
-    },
-    "wealth": {
-      "dark": 0.36,
-      "near_black": 0.17
-    }
-  },
   "great_powers": [
     "GBR 4436",
     "UJJ 4032",
     "KOR 3106"
   ],
+  "land_by_fifth": {
+    "building_levels": [
+      0.3,
+      0.26,
+      0.24,
+      0.12,
+      0.08
+    ],
+    "control": [
+      0.21,
+      0.14,
+      0.24,
+      0.24,
+      0.17
+    ],
+    "development": [
+      0.18,
+      0.27,
+      0.36,
+      0.11,
+      0.08
+    ],
+    "population": [
+      0.09,
+      0.17,
+      0.4,
+      0.21,
+      0.13
+    ],
+    "population_growth": [
+      0.02,
+      0.04,
+      0.2,
+      0.37,
+      0.36
+    ],
+    "rgo_level": [
+      0.15,
+      0.11,
+      0.21,
+      0.29,
+      0.25
+    ],
+    "state_efficacy": [
+      0.19,
+      0.15,
+      0.27,
+      0.27,
+      0.13
+    ],
+    "unrealized_tax_base": [
+      0.3,
+      0.19,
+      0.26,
+      0.17,
+      0.08
+    ],
+    "wealth": [
+      0.29,
+      0.19,
+      0.27,
+      0.16,
+      0.09
+    ]
+  },
   "largest_stability_tie": 4,
   "location": [
     {
