@@ -120,13 +120,14 @@ impl Ramp {
         }
     }
 
-    /// The value at `position` on the gradient.
-    fn value_at(&self, position: f64) -> f64 {
+    /// The value at the middle of the gradient.
+    ///
+    /// The log middle uses a square root, which gives the same answer on
+    /// every platform. Logarithms and exponentials do not.
+    fn middle(&self) -> f64 {
         match *self {
-            Ramp::Linear { max } => max * position,
-            Ramp::Log { max, softening } => {
-                ((max / softening).ln_1p() * position).exp_m1() * softening
-            }
+            Ramp::Linear { max } => max / 2.0,
+            Ramp::Log { max, softening } => max / ((1.0 + max / softening).sqrt() + 1.0),
         }
     }
 
@@ -144,7 +145,7 @@ impl Ramp {
             },
             palette: GradientPalette::Eu5,
             min_value: 0.0,
-            mid_value: self.value_at(0.5),
+            mid_value: self.middle(),
             max_value: self.max(),
             clip,
         }
