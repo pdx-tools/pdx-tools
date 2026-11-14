@@ -407,29 +407,34 @@ fn view_wraps_around_the_world() {
 fn borders_continue_across_tile_seams() {
     // Each hemisphere rendered as its own tile, as screenshots do. The
     // location boundary at world x 32 is the seam, and the owner strip at
-    // world x 62..2 straddles the wrap.
-    let west = Rect::new(WorldPoint::new(0, 0), WorldSize::new(HEMI_W, HEMI_H));
-    let west = frame_or_skip!(render(PhysicalSize::new(HEMI_W, HEMI_H), west, true, true));
-    west.assert_px(30, 12, RED, "red fill");
-    west.assert_px(31, 12, location_border(RED), "red location border at seam");
-    west.assert_px(0, 12, glow(YELLOW), "yellow glow at wrap");
-    west.assert_px(1, 12, owner_border(YELLOW), "yellow owner border at wrap");
+    // world x 62..2 straddles the wrap. Tiles as tall as the largest
+    // texture must still see across their left and right edges. Their view
+    // runs past the bottom of the map, which repeats its last row.
+    for height in [HEMI_H, 8192] {
+        let surface = PhysicalSize::new(HEMI_W, height);
+        let west = Rect::new(WorldPoint::new(0, 0), WorldSize::new(HEMI_W, height));
+        let west = frame_or_skip!(render(surface, west, true, true));
+        west.assert_px(30, 12, RED, "red fill");
+        west.assert_px(31, 12, location_border(RED), "red location border at seam");
+        west.assert_px(0, 12, glow(YELLOW), "yellow glow at wrap");
+        west.assert_px(1, 12, owner_border(YELLOW), "yellow owner border at wrap");
 
-    let east = Rect::new(WorldPoint::new(HEMI_W, 0), WorldSize::new(HEMI_W, HEMI_H));
-    let east = frame_or_skip!(render(PhysicalSize::new(HEMI_W, HEMI_H), east, true, true));
-    east.assert_px(
-        0,
-        12,
-        location_border(GREEN),
-        "green location border at seam",
-    );
-    east.assert_px(1, 12, GREEN, "green fill");
-    // Yellow strip: x 30..32 of the east tile. The owner border is one
-    // pixel in from green on the left, and the light band reaches across
-    // the wrap from red on the right. Green shares red's owner.
-    east.assert_px(29, 12, owner_border(RED), "owner border on green");
-    east.assert_px(30, 12, owner_border(YELLOW), "yellow owner border");
-    east.assert_px(31, 12, glow(YELLOW), "yellow glow across wrap");
+        let east = Rect::new(WorldPoint::new(HEMI_W, 0), WorldSize::new(HEMI_W, height));
+        let east = frame_or_skip!(render(surface, east, true, true));
+        east.assert_px(
+            0,
+            12,
+            location_border(GREEN),
+            "green location border at seam",
+        );
+        east.assert_px(1, 12, GREEN, "green fill");
+        // Yellow strip: x 30..32 of the east tile. The owner border is one
+        // pixel in from green on the left, and the light band reaches across
+        // the wrap from red on the right. Green shares red's owner.
+        east.assert_px(29, 12, owner_border(RED), "owner border on green");
+        east.assert_px(30, 12, owner_border(YELLOW), "yellow owner border");
+        east.assert_px(31, 12, glow(YELLOW), "yellow glow across wrap");
+    }
 }
 
 #[test]

@@ -133,10 +133,10 @@ struct ResolveUniforms {
     surface_width: u32,
     surface_height: u32,
 
-    guard_band: u32,
+    guard_band_x: u32,
+    guard_band_y: u32,
     _pad0: u32,
     _pad1: u32,
-    _pad2: u32,
 }
 
 /// Physical pixels the resolved target extends past the output on each
@@ -144,9 +144,27 @@ struct ResolveUniforms {
 /// borders continue across the seams of tiled renders and do not pop at
 /// the screen edge while panning. Covers an owner border on a 4x display.
 ///
-/// This is the upper limit. [`guard_band`] shrinks it when the output is
-/// near [`MAX_TEXTURE_DIMENSION`], down to zero for a full-size tile.
+/// This is the upper limit. [`GuardBand`] shrinks it on an axis where the
+/// output is near [`MAX_TEXTURE_DIMENSION`], down to zero at the limit.
 const GUARD_BAND: u32 = 8;
+
+/// Widest output that keeps the full guard band on its left and right.
+const MAX_SEAMLESS_WIDTH: u32 = MAX_TEXTURE_DIMENSION - 2 * GUARD_BAND;
+
+/// Width of the strips to render an image `width` pixels wide in, so that
+/// borders continue across the seams between strips.
+///
+/// An image narrow enough to keep the full guard band is one strip. A wider
+/// image splits into strips a power of two wide, so that at zoom 1 each
+/// pixel lands on exactly one world pixel, and the last strip may run past
+/// the right edge of the image.
+pub fn seamless_strip_width(width: u32) -> u32 {
+    if width <= MAX_SEAMLESS_WIDTH {
+        width
+    } else {
+        1 << MAX_SEAMLESS_WIDTH.ilog2()
+    }
+}
 
 /// Uniforms for the shade pass: the appearance
 #[repr(C)]
@@ -164,15 +182,15 @@ struct ShadeUniforms {
 
     location_border_radius: u32,
     owner_border_radius: u32,
-    guard_band: u32,
     owner_glow_radius: u32,
-
     // Strength of the owner border, coast, and impassable edge darkening
     edge_strength: f32,
+
     // Strength of the location border darkening
     location_edge_strength: f32,
+    guard_band_x: u32,
+    guard_band_y: u32,
     _pad0: u32,
-    _pad1: u32,
 }
 
 /// Border widths in logical pixels at zoom 1. The owner border is a thin
@@ -216,6 +234,7 @@ impl ShadeUniforms {
         // Physical pixels per world pixel on each axis
         let px_scale_x = size.width as f32 / bounds.rect.size.width.max(1) as f32;
         let px_scale_y = size.height as f32 / bounds.rect.size.height.max(1) as f32;
+        let band = GuardBand::around(size);
 
         // The zoom level is logical pixels per world pixel, so the ratio to
         // the physical scale recovers the display scale factor. Deriving it
@@ -242,12 +261,12 @@ impl ShadeUniforms {
                 scale_factor,
             ),
             owner_border_radius: border_radius(OWNER_BORDER_WIDTH, bounds.zoom_level, scale_factor),
-            guard_band: guard_band(size),
             owner_glow_radius: border_radius(OWNER_GLOW_WIDTH, bounds.zoom_level, scale_factor),
             edge_strength: edge_strength(bounds.zoom_level),
             location_edge_strength: location_edge_strength(bounds.zoom_level),
+            guard_band_x: band.x,
+            guard_band_y: band.y,
             _pad0: 0,
-            _pad1: 0,
         }
     }
 }
@@ -817,12 +836,12 @@ struct ResolvedTarget {
 
 impl ResolvedTarget {
     fn new(device: &wgpu::Device, size: PhysicalSize<u32>) -> Self {
-        let band = guard_band(size);
+        let band = GuardBand::around(size);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Resolved Location Texture"),
             size: wgpu::Extent3d {
-                width: size.width.max(1) + band * 2,
-                height: size.height.max(1) + band * 2,
+                width: size.width.max(1) + band.x * 2,
+                height: size.height.max(1) + band.y * 2,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -837,17 +856,27 @@ impl ResolvedTarget {
     }
 }
 
-/// The guard band that fits around an output of this size.
+/// The guard band on each axis that fits around an output.
 ///
-/// The resolved target grows by the band on each side, so a large output
-/// must use a smaller band to stay inside [`MAX_TEXTURE_DIMENSION`].
-fn guard_band(size: PhysicalSize<u32>) -> u32 {
-    let width = size.width.max(1);
-    let height = size.height.max(1);
-    let available = MAX_TEXTURE_DIMENSION
-        .saturating_sub(width)
-        .min(MAX_TEXTURE_DIMENSION.saturating_sub(height));
-    GUARD_BAND.min(available / 2)
+/// The resolved target grows by the band on each side, so an axis near
+/// [`MAX_TEXTURE_DIMENSION`] uses a smaller band to stay inside it. Each
+/// axis has its own band, so a tall, narrow strip keeps the full band at
+/// its left and right.
+#[derive(Debug, Clone, Copy)]
+struct GuardBand {
+    x: u32,
+    y: u32,
+}
+
+impl GuardBand {
+    fn around(size: PhysicalSize<u32>) -> Self {
+        let fit =
+            |length: u32| GUARD_BAND.min(MAX_TEXTURE_DIMENSION.saturating_sub(length.max(1)) / 2);
+        Self {
+            x: fit(size.width),
+            y: fit(size.height),
+        }
+    }
 }
 
 /// Bind groups for one frame. Cached until the resources or the resolved
@@ -939,6 +968,7 @@ impl MapRenderer {
         size: PhysicalSize<u32>,
     ) -> MapFrame {
         let hemisphere = self.config.hemisphere_size();
+        let band = GuardBand::around(size);
         let resolve_uniforms = ResolveUniforms {
             tile_width: hemisphere.width,
             tile_height: hemisphere.height,
@@ -948,10 +978,10 @@ impl MapRenderer {
             view_height: bounds.rect.size.height,
             surface_width: size.width,
             surface_height: size.height,
-            guard_band: guard_band(size),
+            guard_band_x: band.x,
+            guard_band_y: band.y,
             _pad0: 0,
             _pad1: 0,
-            _pad2: 0,
         };
         queue.write_buffer(
             &self.resolve_uniforms,
@@ -1999,17 +2029,28 @@ mod tests {
     }
 
     #[test]
-    fn guard_band_fits_the_texture_limit() {
-        let max = PhysicalSize::new(MAX_TEXTURE_DIMENSION, MAX_TEXTURE_DIMENSION);
-        assert_eq!(guard_band(max), 0);
+    fn guard_band_fits_the_texture_limit_per_axis() {
+        let band = |width, height| {
+            let band = GuardBand::around(PhysicalSize::new(width, height));
+            (band.x, band.y)
+        };
+        assert_eq!(band(1024, 1024), (GUARD_BAND, GUARD_BAND));
+        assert_eq!(band(MAX_TEXTURE_DIMENSION - 8, 1024), (4, GUARD_BAND));
+
+        // A full-height strip keeps its band at the left and right
         assert_eq!(
-            guard_band(PhysicalSize::new(
-                MAX_TEXTURE_DIMENSION - 8,
-                MAX_TEXTURE_DIMENSION - 8
-            )),
-            4
+            band(MAX_SEAMLESS_WIDTH, MAX_TEXTURE_DIMENSION),
+            (GUARD_BAND, 0)
         );
-        assert_eq!(guard_band(PhysicalSize::new(1024, 1024)), GUARD_BAND);
+    }
+
+    #[test]
+    fn seamless_strips_fit_the_guard_band() {
+        // EU4 fits in one strip, EU5 splits into four
+        assert_eq!(seamless_strip_width(5632), 5632);
+        assert_eq!(seamless_strip_width(16384), 4096);
+        assert_eq!(seamless_strip_width(MAX_SEAMLESS_WIDTH), MAX_SEAMLESS_WIDTH);
+        assert_eq!(seamless_strip_width(MAX_SEAMLESS_WIDTH + 1), 4096);
     }
 
     #[test]

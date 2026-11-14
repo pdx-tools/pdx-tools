@@ -1,4 +1,9 @@
-import init, { PdxCanvasSurface, PdxMapImage, PdxMapRenderer } from "../wasm/wasm_pdx_map";
+import init, {
+  PdxCanvasSurface,
+  PdxMapImage,
+  PdxMapRenderer,
+  seamless_strip_width,
+} from "../wasm/wasm_pdx_map";
 import type { CanvasDisplay } from "../wasm/wasm_pdx_map";
 import wasmPath from "../wasm/wasm_pdx_map_bg.wasm?url";
 import { proxy } from "comlink";
@@ -178,19 +183,22 @@ export const createMapEngine = async ({
         throw new Error("Failed to get 2D context for composite canvas");
       }
 
-      // Create dedicated screenshot canvas for rendering each tile
-      const screenshotCanvas = new OffscreenCanvas(tileWidth, tileHeight);
+      // The world renders in strips, so borders continue across the seams
+      const stripWidth = seamless_strip_width(fullWidth);
+      const screenshotCanvas = new OffscreenCanvas(stripWidth, fullHeight);
 
       // Create independent screenshot renderer
       const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
-
-      // Render west tile
-      screenshotRenderer.render_west_tile();
-      ctx.drawImage(screenshotCanvas, 0, 0, tileWidth, fullHeight);
-
-      // Render east tile
-      screenshotRenderer.render_east_tile();
-      ctx.drawImage(screenshotCanvas, tileWidth, 0, tileWidth, fullHeight);
+      try {
+        for (let x = 0; x < fullWidth; x += stripWidth) {
+          screenshotRenderer.render_world_rect(x, 0, stripWidth, fullHeight);
+          // The last strip can run past the edge of the world, which the
+          // composite canvas clips
+          ctx.drawImage(screenshotCanvas, x, 0);
+        }
+      } finally {
+        screenshotRenderer.free();
+      }
 
       // Convert to PNG blob
       return await compositeCanvas.convertToBlob({ type: "image/png" });

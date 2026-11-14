@@ -562,22 +562,6 @@ impl PdxScreenshotRenderer {
         self.map.renderer_mut().set_location_borders(enabled);
     }
 
-    /// Render the western tile to the screenshot surface
-    #[wasm_bindgen]
-    pub fn render_west_tile(&mut self) -> Result<(), JsError> {
-        let mut bounds = self.map.viewport_bounds();
-        bounds.rect.origin = WorldPoint::new(0, 0);
-        bounds.rect.size = WorldSize::new(
-            self.map.hemisphere_size().width,
-            self.map.hemisphere_size().height,
-        );
-        bounds.zoom_level = 1.0;
-        self.map.set_viewport_bounds(bounds);
-        self.map
-            .render()
-            .map_err(|e| JsError::new(&format!("Failed to render west tile: {e}")))
-    }
-
     /// Render a rectangle of the world to the screenshot surface, scaled to
     /// fill it.
     ///
@@ -585,7 +569,8 @@ impl PdxScreenshotRenderer {
     /// asked for: the zoom comes from the width the surface has to show, so a
     /// rectangle of the same aspect as the surface lands edge to edge. This is
     /// what a recording needs, because the output size must not follow the
-    /// window the player happens to have open.
+    /// window the player happens to have open, and what a world screenshot
+    /// renders each of its strips with.
     #[wasm_bindgen]
     pub fn render_world_rect(
         &mut self,
@@ -607,22 +592,14 @@ impl PdxScreenshotRenderer {
             .render()
             .map_err(|e| JsError::new(&format!("Failed to render world rectangle: {e}")))
     }
+}
 
-    /// Render the eastern tile to the screenshot surface
-    #[wasm_bindgen]
-    pub fn render_east_tile(&mut self) -> Result<(), JsError> {
-        let mut bounds = self.map.viewport_bounds();
-        bounds.rect.size = WorldSize::new(
-            self.map.hemisphere_size().width,
-            self.map.hemisphere_size().height,
-        );
-        bounds.rect.origin = WorldPoint::new(self.map.hemisphere_size().width, 0);
-        bounds.zoom_level = 1.0;
-        self.map.set_viewport_bounds(bounds);
-        self.map
-            .render()
-            .map_err(|e| JsError::new(&format!("Failed to render east tile: {e}")))
-    }
+/// Width of the strips to render an image `width` pixels wide in, so that
+/// borders continue across the seams between strips. The last strip may run
+/// past the right edge of the image.
+#[wasm_bindgen]
+pub fn seamless_strip_width(width: u32) -> u32 {
+    pdx_map::seamless_strip_width(width)
 }
 
 /// Shared helper to create a screenshot renderer for any MapApp<SurfaceMapRenderer>

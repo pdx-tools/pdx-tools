@@ -36,7 +36,7 @@ pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, de
 pub use renderer::{
     ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapFrame, MapRenderer,
     MapResources, MapScene, MapTexture, QueuedWorkFuture, RenderConfig, RenderLayer,
-    SurfaceMapRenderer,
+    SurfaceMapRenderer, seamless_strip_width,
 };
 #[cfg(feature = "render")]
 pub use wgpu;

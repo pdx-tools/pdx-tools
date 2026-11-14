@@ -5,6 +5,7 @@ import init, {
   Eu5WasmMapRenderer,
   Eu5WasmMapBundle,
   location_borders_at_zoom,
+  seamless_strip_width,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
 import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm_eu5_map";
@@ -772,9 +773,9 @@ export const createMapEngine = async (
     ): Promise<Blob> => {
       applyPendingSync();
 
-      const output = fullResolution
-        ? { width: 16384, height: 8192 }
-        : { width: 8192, height: 4096 };
+      const [worldWidth, worldHeight] = app.world_size();
+      const scale = fullResolution ? 1 : 0.5;
+      const output = { width: worldWidth * scale, height: worldHeight * scale };
 
       const compositeCanvas = new OffscreenCanvas(output.width, output.height);
       const ctx = compositeCanvas.getContext("2d");
@@ -788,19 +789,29 @@ export const createMapEngine = async (
         overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
       }
 
-      // Create dedicated screenshot canvas for independent screenshot renderer
-      const screenshotCanvas = new OffscreenCanvas(8192, 8192);
+      // The world renders in strips, so borders continue across the seams
+      const stripWidth = seamless_strip_width(worldWidth);
+      const screenshotCanvas = new OffscreenCanvas(stripWidth, worldHeight);
 
       // Create independent screenshot renderer
       const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
       try {
-        // Render west tile using independent screenshot renderer
-        screenshotRenderer.render_west_tile();
-        ctx.drawImage(screenshotCanvas, 0, 0, output.width / 2, output.height);
-
-        // Render east tile using independent screenshot renderer
-        screenshotRenderer.render_east_tile();
-        ctx.drawImage(screenshotCanvas, output.width / 2, 0, output.width / 2, output.height);
+        for (let x = 0; x < worldWidth; x += stripWidth) {
+          screenshotRenderer.render_world_rect(x, 0, stripWidth, worldHeight);
+          // The last strip can run past the edge of the world
+          const width = Math.min(stripWidth, worldWidth - x);
+          ctx.drawImage(
+            screenshotCanvas,
+            0,
+            0,
+            width,
+            worldHeight,
+            x * scale,
+            0,
+            width * scale,
+            output.height,
+          );
+        }
 
         // Composite the small overlay canvas on top if provided
         if (overlayInfo) {

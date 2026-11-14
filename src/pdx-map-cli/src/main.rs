@@ -245,44 +245,33 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
         start.elapsed().as_secs_f64()
     );
     let start = Instant::now();
+    // The world renders in strips, so borders continue across the seams
+    let strip_width = pdx_map::seamless_strip_width(world_size.width);
     let mut renderer = pdx_map::HeadlessMapRenderer::new(
         gpu,
         west_view,
         east_view,
-        hemisphere_size.width,
-        hemisphere_size.height,
+        strip_width,
+        world_size.height,
     )?;
     renderer.update_locations(&location_arrays);
     renderer.set_location_borders(!args.no_location_borders);
     renderer.set_owner_borders(!args.no_owner_borders);
     println!("Created renderer ({:.2}s)", start.elapsed().as_secs_f64());
     let mut dst_image = StitchedImage::new(PhysicalSize::new(world_size.width, world_size.height));
-    let start = Instant::now();
-    let bounds = ViewportBounds::new(pdx_map::WorldSize::new(
-        hemisphere_size.width,
-        hemisphere_size.height,
-    ));
-    {
-        let west_buffer = renderer.capture_viewport(bounds).await?;
-        dst_image.write_west(west_buffer.rows());
-        west_buffer.finish();
-    };
-    println!(
-        "Rendered and read back west half ({:.2}s)",
-        start.elapsed().as_secs_f64()
-    );
+    let mut bounds = ViewportBounds::new(pdx_map::WorldSize::new(strip_width, world_size.height));
+    for x in (0..world_size.width).step_by(strip_width as usize) {
+        let start = Instant::now();
+        bounds.rect.origin.x = x;
+        let buffer = renderer.capture_viewport(bounds).await?;
+        dst_image.write_strip(x, buffer.rows());
+        buffer.finish();
+        println!(
+            "Rendered and read back strip at x {x} ({:.2}s)",
+            start.elapsed().as_secs_f64()
+        );
+    }
 
-    let start = Instant::now();
-    {
-        let east_buffer = renderer.capture_viewport(bounds).await?;
-        dst_image.write_east(east_buffer.rows());
-        east_buffer.finish();
-    };
-
-    println!(
-        "Rendered and read back east half ({:.2}s)",
-        start.elapsed().as_secs_f64()
-    );
     let start = Instant::now();
     let output_img = image::RgbaImage::from_raw(
         image_data.world.size().width,

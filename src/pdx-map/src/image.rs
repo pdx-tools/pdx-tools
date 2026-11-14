@@ -1,5 +1,6 @@
 use crate::PhysicalSize;
 
+/// An image assembled from vertical strips rendered one at a time.
 #[derive(Debug)]
 pub struct StitchedImage {
     size: PhysicalSize<u32>,
@@ -8,44 +9,28 @@ pub struct StitchedImage {
 
 impl StitchedImage {
     pub fn new(size: PhysicalSize<u32>) -> Self {
-        assert!(
-            size.width.is_multiple_of(2),
-            "stitched image width must be even"
-        );
         Self {
             size,
             data: vec![0u8; (size.area() * 4) as usize],
         }
     }
 
-    fn write_half<'a, I>(&mut self, rows: I, x_offset: u32)
+    /// Write a strip of RGBA rows over the image, with its left edge at `x`.
+    /// The strip is as wide as its rows, and columns past the right edge of
+    /// the image are dropped.
+    pub fn write_strip<'a, I>(&mut self, x: u32, rows: I)
     where
         I: IntoIterator<Item = &'a [u8]>,
     {
-        let half_width = self.size.width / 2;
-        let row_bytes = (half_width * 4) as usize;
         let full_row_bytes = (self.size.width * 4) as usize;
-        let offset = (x_offset * 4) as usize;
+        let offset = (x * 4) as usize;
 
         let dest_rows = self.data.chunks_exact_mut(full_row_bytes);
         for (src_row, dest_row) in rows.into_iter().zip(dest_rows) {
-            debug_assert_eq!(src_row.len(), row_bytes);
-            dest_row[offset..offset + row_bytes].copy_from_slice(src_row);
+            let dest = &mut dest_row[offset..];
+            let len = src_row.len().min(dest.len());
+            dest[..len].copy_from_slice(&src_row[..len]);
         }
-    }
-
-    pub fn write_west<'a, I>(&mut self, rows: I)
-    where
-        I: IntoIterator<Item = &'a [u8]>,
-    {
-        self.write_half(rows, 0);
-    }
-
-    pub fn write_east<'a, I>(&mut self, rows: I)
-    where
-        I: IntoIterator<Item = &'a [u8]>,
-    {
-        self.write_half(rows, self.size.width / 2);
     }
 
     pub fn into_inner(self) -> Vec<u8> {
@@ -63,31 +48,22 @@ mod tests {
     }
 
     #[test]
-    fn test_stitched_image_multiple_rows() {
-        let mut img = StitchedImage::new(PhysicalSize::new(4, 3));
+    fn strips_fill_the_image_and_drop_columns_past_its_edge() {
+        let mut img = StitchedImage::new(PhysicalSize::new(5, 2));
 
-        let west_data = [
-            255, 0, 0, 255, 255, 0, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 0, 0,
-            255, 255,
-        ];
-
-        let east_data = [
-            255, 255, 0, 255, 255, 255, 0, 255, 0, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255,
-            255, 255, 0, 255, 255,
-        ];
-
-        img.write_west(west_data.as_chunks::<8>().0.iter().map(|row| &row[..]));
-        img.write_east(east_data.as_chunks::<8>().0.iter().map(|row| &row[..]));
+        // Two strips three pixels wide: x 0..3 and x 3..6, which runs one
+        // pixel past the right edge
+        let strip = |value: u8| [[value; 12], [value + 1; 12]];
+        let left = strip(10);
+        let right = strip(20);
+        img.write_strip(0, left.iter().map(|row| &row[..]));
+        img.write_strip(3, right.iter().map(|row| &row[..]));
 
         let result = img.into_inner();
-
-        assert_eq!(get_pixel_rgba(&result, 4, 0, 0), [255, 0, 0, 255]);
-        assert_eq!(get_pixel_rgba(&result, 4, 2, 0), [255, 255, 0, 255]);
-
-        assert_eq!(get_pixel_rgba(&result, 4, 0, 1), [0, 255, 0, 255]);
-        assert_eq!(get_pixel_rgba(&result, 4, 2, 1), [0, 255, 255, 255]);
-
-        assert_eq!(get_pixel_rgba(&result, 4, 0, 2), [0, 0, 255, 255]);
-        assert_eq!(get_pixel_rgba(&result, 4, 2, 2), [255, 0, 255, 255]);
+        assert_eq!(get_pixel_rgba(&result, 5, 2, 0), [10; 4]);
+        assert_eq!(get_pixel_rgba(&result, 5, 3, 0), [20; 4]);
+        assert_eq!(get_pixel_rgba(&result, 5, 4, 0), [20; 4]);
+        assert_eq!(get_pixel_rgba(&result, 5, 0, 1), [11; 4]);
+        assert_eq!(get_pixel_rgba(&result, 5, 4, 1), [21; 4]);
     }
 }

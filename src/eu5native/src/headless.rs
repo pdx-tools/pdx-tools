@@ -20,9 +20,12 @@ fn validate_dimensions(
             if w == 0 || h == 0 {
                 return Err("Width and height must be greater than 0".into());
             }
-            let world_height = eu5app::hemisphere_size().world().height;
-            if h > world_height {
-                return Err(format!("Height {} exceeds world height {}", h, world_height).into());
+            let world = eu5app::hemisphere_size().world();
+            if w > world.width {
+                return Err(format!("Width {} exceeds world width {}", w, world.width).into());
+            }
+            if h > world.height {
+                return Err(format!("Height {} exceeds world height {}", h, world.height).into());
             }
             Ok(())
         }
@@ -159,22 +162,18 @@ async fn render_viewport(
         (0, 0) // Full world starts at origin
     };
 
-    let hemisphere = eu5app::hemisphere_size();
-    let viewport_width = if width > hemisphere.width {
-        width / 2
-    } else {
-        width
-    };
+    // Wide images render in strips, so borders continue across the seams
+    let strip_width = pdx_map::seamless_strip_width(width);
+    let world_width = eu5app::hemisphere_size().world().width;
 
-    let mut viewport = ViewportBounds::new(WorldSize::new(viewport_width, height));
-    viewport.rect.origin.x = x_offset;
+    let mut viewport = ViewportBounds::new(WorldSize::new(strip_width, height));
     viewport.rect.origin.y = y_offset;
 
     let mut renderer = pdx_map::HeadlessMapRenderer::new(
         pipeline_components.clone(),
         west_view,
         east_view,
-        viewport.rect.size.width,
+        strip_width,
         height,
     )?;
 
@@ -184,51 +183,19 @@ async fn render_viewport(
     let text_scale = calculate_text_scale(height);
     let date_layer = renderer.add_layer(DateLayer::new(save_date, text_scale));
 
-    // For viewports wider than tile_width (8192), we need to stitch two renders together
-    let image_data = if width > hemisphere.width {
-        assert!(
-            width <= hemisphere.width * 2,
-            "viewport width exceeds maximum for stitching"
-        );
-
-        let mut stitched_data = StitchedImage::new(PhysicalSize::new(width, height));
-
-        // Render west half
-        let span = info_span!("readback_west");
+    let mut stitched = StitchedImage::new(PhysicalSize::new(width, height));
+    for x in (0..width).step_by(strip_width as usize) {
+        let span = info_span!("readback_strip", x);
         let _enter = span.enter();
+
+        // The date sits in the bottom left corner, so only the first strip has it
+        renderer.set_layer_visible(date_layer, x == 0);
+        viewport.rect.origin.x = (x_offset + x) % world_width;
         let viewport_data = renderer.capture_viewport(viewport).await?;
-        stitched_data.write_west(viewport_data.rows());
+        stitched.write_strip(x, viewport_data.rows());
         viewport_data.finish();
-        drop(_enter);
-
-        // Hide date layer for east half (only show once)
-        renderer.set_layer_visible(date_layer, false);
-
-        // Render east half
-        let span = info_span!("readback_east");
-        let _enter = span.enter();
-        viewport.rect.origin.x += viewport.rect.size.width;
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-        stitched_data.write_east(viewport_data.rows());
-        viewport_data.finish();
-        stitched_data.into_inner()
-    } else {
-        let mut image_buffer = vec![0u8; (width * height * 4) as usize];
-
-        let span = info_span!("readback_viewport_data");
-        let _enter = span.enter();
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-
-        for (src, dst) in viewport_data
-            .rows()
-            .zip(image_buffer.chunks_exact_mut(width as usize * 4))
-        {
-            dst.copy_from_slice(src);
-        }
-
-        viewport_data.finish();
-        image_buffer
-    };
+    }
+    let image_data = stitched.into_inner();
 
     let span = info_span!("RgbaImage::from_raw");
     let _enter = span.enter();

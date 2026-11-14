@@ -32,11 +32,11 @@ struct ResolveUniforms {
     surface_width: u32,
     surface_height: u32,
 
-    // Guard band in physical pixels around the output
-    guard_band: u32,
+    // Guard band in physical pixels around the output, per axis
+    guard_band_x: u32,
+    guard_band_y: u32,
     _pad0: u32,
     _pad1: u32,
-    _pad2: u32,
 }
 
 @group(0) @binding(0) var west_input_texture: texture_2d<u32>;
@@ -79,7 +79,8 @@ fn fs_main(in: VertexOutput) -> @location(0) u32 {
     let surface = vec2<f32>(f32(uniforms.surface_width), f32(uniforms.surface_height));
     // Fragment position relative to the output, which the guard band
     // shifts. Fragments in the band fall outside the output.
-    let output = floor(in.position.xy) - f32(uniforms.guard_band);
+    let band = vec2<f32>(f32(uniforms.guard_band_x), f32(uniforms.guard_band_y));
+    let output = floor(in.position.xy) - band;
 
     let view_origin = vec2<f32>(f32(uniforms.view_x), f32(uniforms.view_y));
     let view_size = vec2<f32>(f32(uniforms.view_width), f32(uniforms.view_height));
