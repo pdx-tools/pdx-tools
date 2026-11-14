@@ -62,6 +62,37 @@ export function formatCount(x: number): string {
 }
 
 /**
+ * The labels of one scale, such as a map key: one unit and one number of
+ * decimals for all labels, with fewer decimals for a wider range. For example
+ * 0, 22K, 124K or 0, 0.37%, 0.74%. A count under 1,000 has no decimals. A zero
+ * needs no unit. A value that would read as zero takes its own unit, or "<1" for a count.
+ */
+export function formatScaleTicks(
+  values: readonly number[],
+  kind: "amount" | "count" | "percent" = "amount",
+): string[] {
+  const percent = kind === "percent";
+  const scaled = values.map((v) => (percent ? v * 100 : v));
+  const largest = Math.max(0, ...scaled.map(Math.abs));
+  const unit = percent ? undefined : COMPACT_UNITS.find((u) => largest >= u.size);
+  const size = unit?.size ?? 1;
+  const range = largest / size;
+  const digits = range >= 10 || (kind === "count" && !unit) ? 0 : range >= 1 ? 1 : 2;
+  const suffix = percent ? "%" : (unit?.suffix ?? "");
+  const erased = (v: number) => v !== 0 && Math.round((Math.abs(v) / size) * 10 ** digits) === 0;
+  const shared = (v: number) => (v === 0 ? "0" : `${formatFixed(v / size, digits)}${suffix}`);
+  if (!scaled.some(erased)) return scaled.map(shared);
+  // A label that is not zero must not read as zero, so each label takes its own unit.
+  return values.map((v) => {
+    if (v === 0) return "0";
+    if (percent) return formatPercentTick(v);
+    if (kind === "count" && Math.abs(v) < 1_000)
+      return Math.abs(v) < 0.5 ? "<1" : formatFixed(v, 0);
+    return formatTick(v);
+  });
+}
+
+/**
  * An amount in one column of a sortable table: a fixed number of decimals, so
  * that the place values align down the column. A narrow list uses `formatMetric`.
  */

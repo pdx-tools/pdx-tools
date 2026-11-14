@@ -11,6 +11,7 @@ import {
   formatPercentTick,
   formatRank,
   formatRate,
+  formatScaleTicks,
   formatTick,
 } from "./numberFormatting";
 
@@ -151,6 +152,36 @@ describe("formatPercentTick", () => {
     expect(formatPercentTick(0.125)).toBe("12.5%");
     expect(formatPercentTick(0)).toBe("0%");
     expect(formatPercentTick(-0.01)).toBe("-1%");
+  });
+});
+
+describe("formatScaleTicks", () => {
+  it("gives each label of one scale one number of decimals", () => {
+    expect(formatScaleTicks([0, 36.1, 72.2])).toEqual(["0", "36", "72"]);
+    expect(formatScaleTicks([0, 2.75, 5.5])).toEqual(["0", "2.8", "5.5"]);
+    expect(formatScaleTicks([0, 0.3, 0.61])).toEqual(["0", "0.30", "0.61"]);
+  });
+
+  it("gives each label one unit, and a zero needs no unit", () => {
+    expect(formatScaleTicks([0, 21_736, 124_491])).toEqual(["0", "22K", "124K"]);
+    expect(formatScaleTicks([0, 1_750, 3_500])).toEqual(["0", "1.8K", "3.5K"]);
+  });
+
+  it("gives each label its own unit when one unit would show a value as zero", () => {
+    expect(formatScaleTicks([0, 15_563, 1_000_000])).toEqual(["0", "15.6K", "1M"]);
+    expect(formatScaleTicks([0, 0.00004, 0.0074], "percent")).toEqual(["0", "0.004%", "0.74%"]);
+  });
+
+  it("gives a count no decimals until it has a unit", () => {
+    expect(formatScaleTicks([0, 1.6, 6], "count")).toEqual(["0", "2", "6"]);
+    expect(formatScaleTicks([0, 900, 1_800], "count")).toEqual(["0", "0.9K", "1.8K"]);
+    expect(formatScaleTicks([0, 0.309, 1], "count")).toEqual(["0", "<1", "1"]);
+    expect(formatScaleTicks([0, 15.563, 1_000], "count")).toEqual(["0", "16", "1K"]);
+  });
+
+  it("shows a ratio as a percent", () => {
+    expect(formatScaleTicks([0, 0.5, 1], "percent")).toEqual(["0", "50%", "100%"]);
+    expect(formatScaleTicks([0, 0.0037, 0.0074], "percent")).toEqual(["0", "0.37%", "0.74%"]);
   });
 });
 

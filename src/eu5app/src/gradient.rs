@@ -27,13 +27,26 @@ pub struct GradientConfig {
     pub min_value: f64,
     pub mid_value: f64,
     pub max_value: f64,
+    /// The land above the top of the scale. The top color also shows this land.
+    pub clip: Option<GradientClip>,
 }
 
-/// Interpolates the EU5 6-stop HSV gradient.
+/// The land that a scale does not reach, because its top is a percentile.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct GradientClip {
+    /// The share of the land above the top, from 0 to 1.
+    pub share: f64,
+    /// The highest value of the land.
+    pub highest: f64,
+}
+
+/// The color at a place on the EU5 6-stop HSV gradient, from 0 to 1.
 ///
 /// Stops from EU5 game\loading_screen\common\defines\graphic\00_graphics.txt
 /// HSV: h in degrees (0–360), s and v in 0–1; evenly spaced at positions 0.0, 0.2, 0.4, 0.6, 0.8, 1.0.
-pub fn interpolate_eu5_gradient(value: f64, max_value: f64, scale: GradientScale) -> GpuColor {
+fn eu5_gradient_at(position: f64) -> GpuColor {
     const STOPS: [(f32, f32, f32); 6] = [
         (0.0, 0.85, 0.015),  // MAP_COLOR_MIN - near black
         (0.0, 0.85, 0.34),   // MAP_COLOR_LOW - dark red
@@ -43,18 +56,7 @@ pub fn interpolate_eu5_gradient(value: f64, max_value: f64, scale: GradientScale
         (176.4, 1.00, 1.00), // MAP_COLOR_TOP - cyan
     ];
 
-    if max_value == 0.0 {
-        let (h, s, v) = STOPS[0];
-        let rgb: UnitRgb = Hsv { h, s, v }.into();
-        let (r, g, b) = rgb.into();
-        return GpuColor::from_rgb(r, g, b);
-    }
-
-    let normalized = match scale {
-        GradientScale::Linear => (value / max_value).clamp(0.0, 1.0) as f32,
-        GradientScale::Log => (value.ln_1p() / max_value.ln_1p()).clamp(0.0, 1.0) as f32,
-    };
-
+    let normalized = position.clamp(0.0, 1.0) as f32;
     let segment = (normalized * 5.0).min(4.999) as usize;
     let local_t = normalized * 5.0 - segment as f32;
 
@@ -77,29 +79,75 @@ pub fn interpolate_eu5_gradient(value: f64, max_value: f64, scale: GradientScale
     GpuColor::from_rgb(r, g, b)
 }
 
-/// Mirrors the population color path's `ln_1p((value/1000)) / ln_1p(max/1000)`
-/// normalization: returns the value in original units that lands at the
-/// half-way point of the gradient. Only valid for the population log scale.
-fn population_log_midpoint(max: f64) -> f64 {
-    ((max / 1000.0).ln_1p() * 0.5).exp_m1() * 1000.0
+/// How a map puts a value on the gradient, from zero at the bottom to `max`
+/// at the top.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Ramp {
+    Linear {
+        max: f64,
+    },
+    /// Values far above `softening` are spaced by their ratios, and values
+    /// far below it are spaced evenly and near the bottom.
+    Log {
+        max: f64,
+        softening: f64,
+    },
 }
 
-/// Build a sequential EU5-palette config. The midpoint is derived from the
-/// scale so callers cannot pass an inconsistent value:
-/// - Linear → arithmetic mean of `min` and `max`
-/// - Log    → population log midpoint (assumes the /1000 softening that the
-///   population coloring path applies)
-pub fn sequential(scale: GradientScale, min_value: f64, max_value: f64) -> GradientConfig {
-    let mid_value = match scale {
-        GradientScale::Linear => (min_value + max_value) / 2.0,
-        GradientScale::Log => population_log_midpoint(max_value),
-    };
-    GradientConfig {
-        scale,
-        palette: GradientPalette::Eu5,
-        min_value,
-        mid_value,
-        max_value,
+impl Ramp {
+    fn max(&self) -> f64 {
+        match *self {
+            Ramp::Linear { max } | Ramp::Log { max, .. } => max,
+        }
+    }
+
+    /// The place of `value` on the gradient, from 0 to 1.
+    fn position(&self, value: f64) -> f64 {
+        // With no top, all land above zero is above the top.
+        if self.max() <= 0.0 {
+            return if value > 0.0 { 1.0 } else { 0.0 };
+        }
+        let at = match *self {
+            Ramp::Linear { max } => value / max,
+            Ramp::Log { max, softening } => {
+                (value.max(0.0) / softening).ln_1p() / (max / softening).ln_1p()
+            }
+        };
+        if at.is_finite() {
+            at.clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
+    /// The value at `position` on the gradient.
+    fn value_at(&self, position: f64) -> f64 {
+        match *self {
+            Ramp::Linear { max } => max * position,
+            Ramp::Log { max, softening } => {
+                ((max / softening).ln_1p() * position).exp_m1() * softening
+            }
+        }
+    }
+
+    pub fn color(&self, value: f64) -> GpuColor {
+        eu5_gradient_at(self.position(value))
+    }
+
+    /// The legend of this ramp. Its middle value is at the middle of the
+    /// gradient.
+    pub fn legend(&self, clip: Option<GradientClip>) -> GradientConfig {
+        GradientConfig {
+            scale: match self {
+                Ramp::Linear { .. } => GradientScale::Linear,
+                Ramp::Log { .. } => GradientScale::Log,
+            },
+            palette: GradientPalette::Eu5,
+            min_value: 0.0,
+            mid_value: self.value_at(0.5),
+            max_value: self.max(),
+            clip,
+        }
     }
 }
 
@@ -113,7 +161,7 @@ pub fn palette_stops(palette: GradientPalette) -> Vec<(f64, (u8, u8, u8))> {
             (0..SAMPLES)
                 .map(|i| {
                     let offset = i as f64 / (SAMPLES - 1) as f64;
-                    let color = interpolate_eu5_gradient(offset, 1.0, GradientScale::Linear).rgb();
+                    let color = eu5_gradient_at(offset).rgb();
                     (offset, color)
                 })
                 .collect()
@@ -135,10 +183,6 @@ pub enum MapLegend {
 mod tests {
     use super::*;
 
-    fn rgb(color: GpuColor) -> (u8, u8, u8) {
-        color.rgb()
-    }
-
     #[test]
     fn eu5_gradient_hits_expected_stops() {
         let expected = [
@@ -151,57 +195,50 @@ mod tests {
         ];
 
         for (value, expected_rgb) in expected {
-            assert_eq!(
-                rgb(interpolate_eu5_gradient(value, 1.0, GradientScale::Linear)),
-                expected_rgb
-            );
+            assert_eq!(eu5_gradient_at(value).rgb(), expected_rgb);
         }
     }
 
     #[test]
-    fn eu5_gradient_clamps_to_domain() {
-        assert_eq!(
-            rgb(interpolate_eu5_gradient(-1.0, 1.0, GradientScale::Linear)),
-            rgb(interpolate_eu5_gradient(0.0, 1.0, GradientScale::Linear))
-        );
-        assert_eq!(
-            rgb(interpolate_eu5_gradient(2.0, 1.0, GradientScale::Linear)),
-            rgb(interpolate_eu5_gradient(1.0, 1.0, GradientScale::Linear))
-        );
+    fn ramps_clamp_to_their_domain() {
+        let linear = Ramp::Linear { max: 1.0 };
+        assert_eq!(linear.color(-1.0), linear.color(0.0));
+        assert_eq!(linear.color(2.0), linear.color(1.0));
+        let log = Ramp::Log {
+            max: 100.0,
+            softening: 5.0,
+        };
+        assert_eq!(log.position(-3.0), 0.0);
+        assert_eq!(log.position(250.0), 1.0);
     }
 
     #[test]
-    fn eu5_gradient_zero_domain_uses_minimum_stop() {
-        assert_eq!(
-            rgb(interpolate_eu5_gradient(10.0, 0.0, GradientScale::Linear)),
-            (4, 1, 1)
-        );
+    fn a_ramp_without_a_top_puts_land_above_zero_at_the_top() {
+        let linear = Ramp::Linear { max: 0.0 };
+        assert_eq!(linear.color(0.0).rgb(), (4, 1, 1));
+        assert_eq!(linear.color(10.0).rgb(), (0, 255, 240));
+        let log = Ramp::Log {
+            max: 0.0,
+            softening: 1.0,
+        };
+        assert_eq!(log.color(0.0).rgb(), (4, 1, 1));
+        assert_eq!(log.color(10.0).rgb(), (0, 255, 240));
     }
 
     #[test]
-    fn eu5_gradient_log_midpoint_matches_half_normalization() {
-        let max = 99.0_f64;
-        let midpoint = (0.5_f64 * max.ln_1p()).exp_m1();
-        assert_eq!(
-            rgb(interpolate_eu5_gradient(midpoint, max, GradientScale::Log)),
-            rgb(interpolate_eu5_gradient(0.5, 1.0, GradientScale::Linear))
-        );
-    }
+    fn legend_middle_is_the_middle_of_the_gradient() {
+        let linear = Ramp::Linear { max: 10.0 }.legend(None);
+        assert_eq!(linear.palette, GradientPalette::Eu5);
+        assert_eq!(linear.min_value, 0.0);
+        assert_eq!(linear.mid_value, 5.0);
+        assert_eq!(linear.max_value, 10.0);
 
-    #[test]
-    fn sequential_linear_uses_arithmetic_midpoint() {
-        let config = sequential(GradientScale::Linear, 0.0, 10.0);
-        assert_eq!(config.palette, GradientPalette::Eu5);
-        assert_eq!(config.min_value, 0.0);
-        assert_eq!(config.mid_value, 5.0);
-        assert_eq!(config.max_value, 10.0);
-    }
-
-    #[test]
-    fn sequential_log_midpoint_matches_half_normalization() {
-        let max = 99_000.0;
-        let config = sequential(GradientScale::Log, 0.0, max);
-        let normalized = (config.mid_value / 1000.0).ln_1p() / (max / 1000.0).ln_1p();
-        assert!((normalized - 0.5).abs() < f64::EPSILON);
+        let log = Ramp::Log {
+            max: 99_000.0,
+            softening: 250.0,
+        };
+        let legend = log.legend(None);
+        assert_eq!(legend.scale, GradientScale::Log);
+        assert!((log.position(legend.mid_value) - 0.5).abs() < 1e-12);
     }
 }

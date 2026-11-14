@@ -5,6 +5,7 @@ mod utils;
 use std::collections::{BTreeMap, BTreeSet};
 
 use eu5app::game_data::Localization;
+use eu5app::gradient::MapLegend;
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
 use eu5app::population::PopulationHistory;
 use eu5app::{
@@ -155,6 +156,10 @@ fn workspace_scenarios() {
         snapshot["swatches"] =
             run_workspace_scenario(save_name, "swatches match the map", ws, |ws| {
                 swatches_match_the_map(ws, &localization)
+            });
+        snapshot["dark_land"] =
+            run_workspace_scenario(save_name, "sequential maps stay readable", ws, |ws| {
+                sequential_maps_keep_their_land_readable(ws)
             });
         insta::assert_json_snapshot!(snapshot);
 
@@ -338,7 +343,7 @@ fn map_mode_summaries(ws: &mut Eu5Workspace) -> BTreeMap<&'static str, serde_jso
         .collect()
 }
 
-fn map_mode_summary(ws: &Eu5Workspace, legend: eu5app::gradient::MapLegend) -> serde_json::Value {
+fn map_mode_summary(ws: &Eu5Workspace, legend: MapLegend) -> serde_json::Value {
     let groups: Vec<u32> = ws
         .build_grouping_table()
         .iter()
@@ -362,6 +367,57 @@ fn painted_colors(ws: &Eu5Workspace) -> BTreeMap<LocationIdx, [u8; 3]> {
             Some((entry.idx(), [r, g, b]))
         })
         .collect()
+}
+
+/// Each sequential map keeps most land out of the dark end of its gradient, and
+/// its key shows the land above the top. Returns the share of dark land and of
+/// near black land in each mode.
+fn sequential_maps_keep_their_land_readable(ws: &mut Eu5Workspace) -> serde_json::Value {
+    let mut shares = serde_json::Map::new();
+    for mode in ALL_MAP_MODES {
+        let MapLegend::Quantitative(legend) = ws.set_map_mode(mode).legend else {
+            continue;
+        };
+        if let Some(clip) = legend.clip {
+            assert_ne!(mode, MapMode::Control, "a share has a true top");
+            assert!(clip.highest > legend.max_value, "{mode:?}: {clip:?}");
+            assert!(
+                clip.share > 0.0 && clip.share <= 0.051,
+                "{mode:?}: {clip:?}"
+            );
+        }
+        let painted = painted_colors(ws);
+        let (mut land, mut dark, mut near_black) = (0, 0, 0);
+        for entry in ws.gamestate().locations.iter() {
+            let terrain = ws.location_terrain(entry.idx());
+            if entry.location().owner.real_id().is_none()
+                || terrain.is_water()
+                || !terrain.is_passable()
+            {
+                continue;
+            }
+            let Some(&[r, g, b]) = painted.get(&entry.idx()) else {
+                continue;
+            };
+            // Under 128 is the gradient from black to dark red.
+            let brightest = r.max(g).max(b);
+            land += 1;
+            dark += usize::from(brightest < 128);
+            near_black += usize::from(brightest < 40);
+        }
+        let share = |count: usize| count as f64 / land.max(1) as f64;
+        assert!(
+            share(dark) < 0.5,
+            "{mode:?}: {:.3} of the land is dark",
+            share(dark)
+        );
+        let round = |share: f64| (share * 100.0).round() / 100.0;
+        shares.insert(
+            mode_name(mode).to_string(),
+            serde_json::json!({ "dark": round(share(dark)), "near_black": round(share(near_black)) }),
+        );
+    }
+    shares.into()
 }
 
 /// A swatch has the color that the map paints. The land of a country has the color
