@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "improvements": [
+      "EU4: Add achievement 'Sunset Invasion'",
+      "EU5: country and market swatches match the colors painted on the map",
+      "EU5: easier to read text and charts"
+    ],
+    "fixes": [
+      "EU5: the foreign-owned buildings table no longer leaves out trade and banking offices"
+    ]
+  }
+}
