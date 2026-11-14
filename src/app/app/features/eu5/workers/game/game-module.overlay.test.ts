@@ -49,6 +49,7 @@ const gradient: GradientConfig = {
   minValue: 0,
   midValue: 50,
   maxValue: 100,
+  clip: undefined,
 };
 const cleanup: (() => void)[] = [];
 

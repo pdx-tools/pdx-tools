@@ -5,6 +5,7 @@ mod utils;
 use std::collections::{BTreeMap, BTreeSet};
 
 use eu5app::game_data::Localization;
+use eu5app::gradient::{GradientPalette, MapLegend};
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
 use eu5app::population::PopulationHistory;
 use eu5app::{
@@ -155,6 +156,10 @@ fn workspace_scenarios() {
         snapshot["swatches"] =
             run_workspace_scenario(save_name, "swatches match the map", ws, |ws| {
                 swatches_match_the_map(ws, &localization)
+            });
+        snapshot["land_by_fifth"] =
+            run_workspace_scenario(save_name, "sequential maps spread their land", ws, |ws| {
+                sequential_maps_spread_their_land(ws)
             });
         insta::assert_json_snapshot!(snapshot);
 
@@ -338,7 +343,7 @@ fn map_mode_summaries(ws: &mut Eu5Workspace) -> BTreeMap<&'static str, serde_jso
         .collect()
 }
 
-fn map_mode_summary(ws: &Eu5Workspace, legend: eu5app::gradient::MapLegend) -> serde_json::Value {
+fn map_mode_summary(ws: &Eu5Workspace, legend: MapLegend) -> serde_json::Value {
     let groups: Vec<u32> = ws
         .build_grouping_table()
         .iter()
@@ -362,6 +367,66 @@ fn painted_colors(ws: &Eu5Workspace) -> BTreeMap<LocationIdx, [u8; 3]> {
             Some((entry.idx(), [r, g, b]))
         })
         .collect()
+}
+
+/// A few extreme places must not squeeze most land into one fifth of a
+/// sequential map's gradient, at either end. Its key shows the land above the
+/// top. Returns the share of land in each fifth of each mode. A color gives
+/// its place on the gradient to within 1/64.
+fn sequential_maps_spread_their_land(ws: &mut Eu5Workspace) -> serde_json::Value {
+    let samples = eu5app::gradient::palette_stops(GradientPalette::Eu5);
+    let position = |[r, g, b]: [u8; 3]| {
+        let distance = |(sr, sg, sb): (u8, u8, u8)| {
+            [(r, sr), (g, sg), (b, sb)]
+                .map(|(x, y)| (i32::from(x) - i32::from(y)).pow(2))
+                .iter()
+                .sum::<i32>()
+        };
+        samples
+            .iter()
+            .min_by_key(|(_, rgb)| distance(*rgb))
+            .map_or(0.0, |(offset, _)| *offset)
+    };
+    let mut spread = serde_json::Map::new();
+    for mode in ALL_MAP_MODES {
+        let MapLegend::Quantitative(legend) = ws.set_map_mode(mode).legend else {
+            continue;
+        };
+        if let Some(clip) = legend.clip {
+            assert_ne!(mode, MapMode::Control, "a share has a true top");
+            assert!(clip.highest > legend.max_value, "{mode:?}: {clip:?}");
+            assert!(
+                clip.share > 0.0 && clip.share <= 0.051,
+                "{mode:?}: {clip:?}"
+            );
+        }
+        let painted = painted_colors(ws);
+        let mut fifths = [0usize; 5];
+        for entry in ws.gamestate().locations.iter() {
+            let terrain = ws.location_terrain(entry.idx());
+            if entry.location().owner.real_id().is_none()
+                || terrain.is_water()
+                || !terrain.is_passable()
+            {
+                continue;
+            }
+            if let Some(&color) = painted.get(&entry.idx()) {
+                fifths[((position(color) * 5.0) as usize).min(4)] += 1;
+            }
+        }
+        let land = fifths.iter().sum::<usize>().max(1);
+        let largest = fifths.iter().copied().max().unwrap_or(0);
+        // Growth keeps a bottom at zero, and most land grows at about one rate.
+        if mode != MapMode::PopulationGrowth {
+            assert!(
+                largest * 10 < land * 6,
+                "{mode:?}: one fifth holds {largest} of {land} locations"
+            );
+        }
+        let shares = fifths.map(|count| (count as f64 / land as f64 * 100.0).round() / 100.0);
+        spread.insert(mode_name(mode).to_string(), serde_json::json!(shares));
+    }
+    spread.into()
 }
 
 /// A swatch has the color that the map paints. The land of a country has the color

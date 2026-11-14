@@ -1,6 +1,5 @@
 ---
 source: src/eu5app/tests/it/main.rs
-assertion_line: 159
 expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
@@ -11,6 +10,71 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "--- 6667",
     "TUR 19241"
   ],
+  "land_by_fifth": {
+    "building_levels": [
+      0.31,
+      0.18,
+      0.26,
+      0.16,
+      0.1
+    ],
+    "control": [
+      0.19,
+      0.13,
+      0.13,
+      0.18,
+      0.38
+    ],
+    "development": [
+      0.2,
+      0.31,
+      0.3,
+      0.13,
+      0.07
+    ],
+    "population": [
+      0.15,
+      0.25,
+      0.32,
+      0.18,
+      0.09
+    ],
+    "population_growth": [
+      0.03,
+      0.19,
+      0.67,
+      0.03,
+      0.08
+    ],
+    "rgo_level": [
+      0.17,
+      0.11,
+      0.24,
+      0.28,
+      0.2
+    ],
+    "state_efficacy": [
+      0.2,
+      0.14,
+      0.22,
+      0.27,
+      0.18
+    ],
+    "unrealized_tax_base": [
+      0.41,
+      0.19,
+      0.21,
+      0.12,
+      0.07
+    ],
+    "wealth": [
+      0.33,
+      0.19,
+      0.25,
+      0.15,
+      0.09
+    ]
+  },
   "largest_stability_tie": 1,
   "location": [
     {
@@ -25,10 +89,10 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
   ],
   "map_modes": {
     "building_levels": {
-      "colors": 309,
-      "fingerprint": "0xd4b8f795d335c4ae",
+      "colors": 179,
+      "fingerprint": "0xfadaba00275a9b96",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 198.0, max_value: 396.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 24.470070157342196, max_value: 175.0, clip: Some(GradientClip { share: 0.01992648481331012, highest: 396.0 }) })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
@@ -39,7 +103,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       "colors": 934,
       "fingerprint": "0x2bbcf3b7426d76e4",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, clip: None })",
       "top": [
         "#ff455e77 x5708",
         "#ff00fff0 x2834",
@@ -47,14 +111,14 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       ]
     },
     "development": {
-      "colors": 889,
-      "fingerprint": "0x82694288e30cf5f9",
+      "colors": 925,
+      "fingerprint": "0x18b6b8cb671639ef",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 50.0, max_value: 100.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 43.901595, max_value: 87.80319, clip: Some(GradientClip { share: 0.019974850067711356, highest: 100.0 }) })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
-        "#ff808080 x217"
+        "#ff00fff0 x414"
       ]
     },
     "markets": {
@@ -80,21 +144,21 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       ]
     },
     "population": {
-      "colors": 823,
-      "fingerprint": "0xf75eaf53a76969ef",
+      "colors": 946,
+      "fingerprint": "0x370a74209482141a",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 30321.222836920017, max_value: 980019.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 38156.308556873715, max_value: 262722.0, clip: Some(GradientClip { share: 0.019974850067711356, highest: 980019.0 }) })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
-        "#ff808080 x217"
+        "#ff00fff0 x414"
       ]
     },
     "population_growth": {
       "colors": 818,
       "fingerprint": "0x13410b9a458ff1e5",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.005434009621418112, max_value: 0.010868019242836225 })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.005434009621418112, max_value: 0.010868019242836225, clip: Some(GradientClip { share: 0.05000967305088025, highest: 0.030155655482531993 }) })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
@@ -113,47 +177,47 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       ]
     },
     "rgo_level": {
-      "colors": 68,
-      "fingerprint": "0xe188e3e4b0e32ac9",
+      "colors": 45,
+      "fingerprint": "0x3ed1a4aa7a8f659e",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 32.0, max_value: 64.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.745966692414834, max_value: 28.0, clip: Some(GradientClip { share: 0.01958792803250145, highest: 64.0 }) })",
       "top": [
         "#ff455e77 x5708",
-        "#ff0a0202 x3415",
+        "#ff420a0a x3415",
         "#ff646464 x1972"
       ]
     },
     "state_efficacy": {
-      "colors": 869,
-      "fingerprint": "0x423e2ae90ed86157",
+      "colors": 949,
+      "fingerprint": "0xda280d885e550151",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 50.0, max_value: 100.0 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 16.634226263844205, max_value: 83.80046, clip: Some(GradientClip { share: 0.019974850067711356, highest: 100.0 }) })",
       "top": [
         "#ff455e77 x5708",
         "#ff646464 x1972",
-        "#ff040101 x907"
+        "#ff040101 x675"
       ]
     },
     "unrealized_tax_base": {
-      "colors": 162,
-      "fingerprint": "0x9cb610c8eba40283",
+      "colors": 951,
+      "fingerprint": "0x420b325945add69c",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 313.118745, max_value: 626.23749 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 6.186595056334024, max_value: 59.68602999999999, clip: Some(GradientClip { share: 0.019974850067711356, highest: 626.23749 }) })",
       "top": [
-        "#ff040101 x7980",
         "#ff455e77 x5708",
-        "#ff050101 x3063"
+        "#ff040101 x3376",
+        "#ff646464 x1972"
       ]
     },
     "wealth": {
-      "colors": 227,
-      "fingerprint": "0x64edc96ca5ec6a92",
+      "colors": 944,
+      "fingerprint": "0x466db7750be95fdb",
       "groups": "0x5a2f4ba4c5aba582",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 907.352, max_value: 1814.704 })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 29.332921814510502, max_value: 272.20236, clip: Some(GradientClip { share: 0.019974850067711356, highest: 1814.704 }) })",
       "top": [
         "#ff455e77 x5708",
-        "#ff040101 x5213",
-        "#ff050101 x2439"
+        "#ff646464 x1972",
+        "#ff040101 x591"
       ]
     }
   },
@@ -166,10 +230,10 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "locations": "0xb78b40bd8af7fc72",
     "map_modes": {
       "building_levels": {
-        "colors": 328,
-        "fingerprint": "0x2e196d0b88f19d43",
+        "colors": 233,
+        "fingerprint": "0x58735bf359ccb0a1",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 149.5, max_value: 299.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 21.651941216509062, max_value: 142.0, clip: Some(GradientClip { share: 0.019157088122605363, highest: 299.0 }) })",
         "top": [
           "#ff455e77 x5708",
           "#ff646464 x1972",
@@ -180,7 +244,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
         "colors": 934,
         "fingerprint": "0x7fd0a212625ad99f",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, clip: None })",
         "top": [
           "#ff455e77 x5708",
           "#ff00fff0 x2834",
@@ -188,14 +252,14 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
         ]
       },
       "development": {
-        "colors": 889,
-        "fingerprint": "0x03c196b4d9d4889f",
+        "colors": 924,
+        "fingerprint": "0x20a15b03deca34b0",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 42.57943, max_value: 85.15886 })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 28.55332, max_value: 57.10664, clip: Some(GradientClip { share: 0.019157088122605363, highest: 85.15886 }) })",
         "top": [
           "#ff455e77 x5708",
           "#ff646464 x1972",
-          "#ff808080 x217"
+          "#ff00fff0 x420"
         ]
       },
       "markets": {
@@ -221,21 +285,21 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
         ]
       },
       "population": {
-        "colors": 827,
-        "fingerprint": "0x1bc89770ff3eaec6",
+        "colors": 947,
+        "fingerprint": "0x8bf85fc5ad883836",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 11821.505371835245, max_value: 163391.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 18898.237902958866, max_value: 83524.0, clip: Some(GradientClip { share: 0.019157088122605363, highest: 163391.0 }) })",
         "top": [
           "#ff455e77 x5708",
           "#ff646464 x1972",
-          "#ff808080 x217"
+          "#ff00fff0 x420"
         ]
       },
       "population_growth": {
         "colors": 830,
         "fingerprint": "0x461a795b25d57ab6",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.002613302785136393, max_value: 0.005226605570272786 })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.002613302785136393, max_value: 0.005226605570272786, clip: Some(GradientClip { share: 0.04980842911877394, highest: 0.005947707787146602 }) })",
         "top": [
           "#ff455e77 x5708",
           "#ff646464 x1972",
@@ -254,47 +318,47 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
         ]
       },
       "rgo_level": {
-        "colors": 91,
-        "fingerprint": "0x4dd646281de9d819",
+        "colors": 65,
+        "fingerprint": "0x8fe2f910ecfa3cbb",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 13.5, max_value: 27.0 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 4.928203230275509, max_value: 22.0, clip: Some(GradientClip { share: 0.01532567049808429, highest: 27.0 }) })",
         "top": [
           "#ff455e77 x5708",
-          "#ff0a0202 x3366",
+          "#ff420a0a x3366",
           "#ff646464 x1972"
         ]
       },
       "state_efficacy": {
-        "colors": 870,
-        "fingerprint": "0xa45c1ecb7c638032",
+        "colors": 949,
+        "fingerprint": "0x55244799575e4dca",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 37.895692700000005, max_value: 75.79138540000001 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 12.481793090279579, max_value: 53.41575, clip: Some(GradientClip { share: 0.019157088122605363, highest: 75.79138540000001 }) })",
         "top": [
           "#ff455e77 x5708",
           "#ff646464 x1972",
-          "#ff040101 x907"
+          "#ff040101 x675"
         ]
       },
       "unrealized_tax_base": {
-        "colors": 162,
-        "fingerprint": "0x9d3815c9ca24a8d3",
+        "colors": 951,
+        "fingerprint": "0x9b102be92b1625d5",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 133.440905, max_value: 266.88181 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 4.5586194498120385, max_value: 34.805949999999996, clip: Some(GradientClip { share: 0.019157088122605363, highest: 266.88181 }) })",
         "top": [
-          "#ff040101 x7947",
           "#ff455e77 x5708",
-          "#ff050101 x3071"
+          "#ff040101 x3376",
+          "#ff646464 x1972"
         ]
       },
       "wealth": {
-        "colors": 237,
-        "fingerprint": "0x0680974d4cf5754c",
+        "colors": 944,
+        "fingerprint": "0x40267e956dfef9b6",
         "groups": "0x5a2f4ba4c5aba582",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 214.24222, max_value: 428.48444 })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 27.29685555633277, max_value: 239.51493, clip: Some(GradientClip { share: 0.019157088122605363, highest: 428.48444 }) })",
         "top": [
           "#ff455e77 x5708",
-          "#ff040101 x5166",
-          "#ff050101 x2439"
+          "#ff646464 x1972",
+          "#ff040101 x591"
         ]
       }
     }

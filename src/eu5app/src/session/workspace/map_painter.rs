@@ -1,17 +1,21 @@
 //! The coloring rules of each map mode. The live save and a snapshot frame
 //! supply the values through [`LocationValues`].
 use super::terrain_fill::FillComponents;
-use crate::gradient::{self, GradientScale, MapLegend};
+use crate::gradient::{GradientClip, GradientScale, MapLegend, Ramp};
 use crate::map_projection::{Fraction, Metric};
 use crate::{MapMode, SelectionState, Terrain};
 use eu5save::models::{LocationIdx, LocationIndexedVec};
 use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays};
 
-/// The reproduction gradient stops at this percentile. A pop of a few
-/// hundred people that records a single birth has an annual rate many times
-/// the median, and a handful of such locations must not flatten the rest of
-/// the map.
-const REPRODUCTION_PERCENTILE: f64 = 0.95;
+/// The top of a sequential map is this percentile of its land, so that a few
+/// places with very high values do not squeeze the rest into the bottom colors.
+/// The key shows the land above the top.
+const CLIP_PERCENTILE: f64 = 0.98;
+
+/// A pop of a few hundred people that records a single birth has an annual
+/// rate many times the median. More of such land is above the top of the
+/// growth map.
+const GROWTH_CLIP_PERCENTILE: f64 = 0.95;
 
 /// The market of a location.
 pub(crate) enum LocationMarket {
@@ -191,41 +195,88 @@ pub(crate) fn group(
     id.unwrap_or(u32::MAX)
 }
 
-enum Domain {
+enum Top {
     Fixed(f64),
-    Max,
     Percentile(f64),
 }
 
 struct Gradient {
+    /// A log scale divides each value by a quarter of the median of the land
+    /// above zero. Thus the middle of the land is near the middle of the
+    /// gradient, and land far under the median is at the bottom.
     scale: GradientScale,
-    domain: Domain,
-    /// The colors use the value and the domain divided by this number.
-    divisor: f64,
+    top: Top,
+}
+
+impl Gradient {
+    /// `softening` is used only by a log scale.
+    fn ramp(&self, max: f64, softening: f64) -> Ramp {
+        match self.scale {
+            GradientScale::Linear => Ramp::Linear { max },
+            GradientScale::Log => Ramp::Log { max, softening },
+        }
+    }
 }
 
 fn gradient(mode: MapMode) -> Option<Gradient> {
-    let linear = |domain| Gradient {
-        scale: GradientScale::Linear,
-        domain,
-        divisor: 1.0,
+    let clipped = |scale| Gradient {
+        scale,
+        top: Top::Percentile(CLIP_PERCENTILE),
     };
     match mode {
         MapMode::Political | MapMode::Religion | MapMode::Markets => None,
-        MapMode::Control => Some(linear(Domain::Fixed(1.0))),
-        MapMode::Population => Some(Gradient {
-            scale: GradientScale::Log,
-            domain: Domain::Max,
-            divisor: 1000.0,
+        // A share has a true top.
+        MapMode::Control => Some(Gradient {
+            scale: GradientScale::Linear,
+            top: Top::Fixed(1.0),
         }),
-        MapMode::PopulationGrowth => Some(linear(Domain::Percentile(REPRODUCTION_PERCENTILE))),
-        MapMode::Development
-        | MapMode::RgoLevel
-        | MapMode::BuildingLevels
+        MapMode::Development => Some(clipped(GradientScale::Linear)),
+        MapMode::PopulationGrowth => Some(Gradient {
+            scale: GradientScale::Linear,
+            top: Top::Percentile(GROWTH_CLIP_PERCENTILE),
+        }),
+        // Most land has little of these, and a few places have very much.
+        MapMode::Population
         | MapMode::Wealth
         | MapMode::UnrealizedTaxBase
-        | MapMode::StateEfficacy => Some(linear(Domain::Max)),
+        | MapMode::BuildingLevels
+        | MapMode::StateEfficacy
+        | MapMode::RgoLevel => Some(clipped(GradientScale::Log)),
     }
+}
+
+/// A quarter of the median of the values above zero, or 1 when there are none.
+fn quarter_median(values: &[f64]) -> f64 {
+    let mut positive: Vec<f64> = values.iter().copied().filter(|v| *v > 0.0).collect();
+    if positive.is_empty() {
+        return 1.0;
+    }
+    let middle = positive.len() / 2;
+    let (_, median, _) = positive.select_nth_unstable_by(middle, f64::total_cmp);
+    *median / 4.0
+}
+
+/// The top of the scale for some land, and the land above it. The values
+/// change order.
+fn fit(values: &mut [f64], top: &Top) -> (f64, Option<GradientClip>) {
+    let percentile = match *top {
+        Top::Fixed(top) => return (top, None),
+        Top::Percentile(percentile) => percentile,
+    };
+    if values.is_empty() {
+        return (0.0, None);
+    }
+    let at = ((values.len() - 1) as f64 * percentile).round() as usize;
+    let (_, top, above) = values.select_nth_unstable_by(at, f64::total_cmp);
+    // Land with no value above zero has no scale to show.
+    let top = top.max(0.0);
+    let highest = above.iter().copied().fold(top, f64::max);
+    let above = above.iter().filter(|v| **v > top).count();
+    let clip = (above > 0).then(|| GradientClip {
+        share: above as f64 / values.len() as f64,
+        highest,
+    });
+    (top, clip)
 }
 
 fn mode_value(values: &(impl LocationValues + ?Sized), idx: LocationIdx, mode: MapMode) -> f64 {
@@ -243,45 +294,6 @@ fn mode_value(values: &(impl LocationValues + ?Sized), idx: LocationIdx, mode: M
         }
         MapMode::Political | MapMode::Religion | MapMode::Markets => 0.0,
     }
-}
-
-/// The domain of all owned land and the domain of the selected land, which
-/// is all land when nothing is selected. `mode_values` is `None` for each
-/// location that is not owned land.
-fn gradient_domains(
-    mode_values: &[Option<f64>],
-    selected: impl Fn(LocationIdx) -> bool,
-    percentile: Option<f64>,
-) -> (f64, f64) {
-    let owned = mode_values
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, v)| Some((LocationIdx::new(idx as u32), (*v)?)));
-    let Some(percentile) = percentile else {
-        return owned.fold((0.0_f64, 0.0_f64), |(global, filtered), (idx, v)| {
-            let filtered = if selected(idx) {
-                filtered.max(v)
-            } else {
-                filtered
-            };
-            (global.max(v), filtered)
-        });
-    };
-    let (mut global, mut filtered) = (Vec::new(), Vec::new());
-    for (idx, v) in owned {
-        global.push(v);
-        if selected(idx) {
-            filtered.push(v);
-        }
-    }
-    let at = |mut values: Vec<f64>| {
-        if values.is_empty() {
-            return 0.0;
-        }
-        values.sort_by(f64::total_cmp);
-        values[((values.len() - 1) as f64 * percentile.clamp(0.0, 1.0)).round() as usize]
-    };
-    (at(global), at(filtered))
 }
 
 /// Paint every location in `request.mode`.
@@ -369,7 +381,7 @@ pub(crate) fn paint(
         }
         mode => {
             let gradient = gradient(mode).expect("a quantitative map mode");
-            let selection = request.selection;
+            let selection = request.selection.filter(|s| !s.is_empty());
             // Some values are expensive, so the domain and the colors share
             // one pass.
             let mode_values: Vec<Option<f64>> = locations
@@ -379,12 +391,25 @@ pub(crate) fn paint(
                         .then(|| mode_value(values, idx, mode))
                 })
                 .collect();
-            let selected = |idx| selection.is_none_or(|s| s.is_empty() || s.contains(idx));
-            let (global_max, filtered_max) = match gradient.domain {
-                Domain::Fixed(domain) => (domain, domain),
-                Domain::Max => gradient_domains(&mode_values, selected, None),
-                Domain::Percentile(percentile) => {
-                    gradient_domains(&mode_values, selected, Some(percentile))
+            let mut land: Vec<f64> = mode_values.iter().flatten().copied().collect();
+            let softening = match gradient.scale {
+                GradientScale::Log => quarter_median(&land),
+                GradientScale::Linear => 1.0,
+            };
+            let (top, clip) = fit(&mut land, &gradient.top);
+            let world = gradient.ramp(top, softening);
+            // Selected land has its own scale, with the same softening.
+            let (selected, clip) = match selection {
+                None => (world, clip),
+                Some(selection) => {
+                    let mut chosen: Vec<f64> = mode_values
+                        .iter()
+                        .enumerate()
+                        .filter(|(idx, _)| selection.contains(LocationIdx::new(*idx as u32)))
+                        .filter_map(|(_, value)| *value)
+                        .collect();
+                    let (top, clip) = fit(&mut chosen, &gradient.top);
+                    (gradient.ramp(top, softening), clip)
                 }
             };
             let primary = locations
@@ -394,28 +419,48 @@ pub(crate) fn paint(
                         let Some(value) = *value else {
                             return GpuColor::UNOWNED;
                         };
-                        let domain = if selection.is_some_and(|s| s.contains(idx)) {
-                            filtered_max
+                        if selection.is_some_and(|s| s.contains(idx)) {
+                            selected.color(value)
                         } else {
-                            global_max
-                        };
-                        gradient::interpolate_eu5_gradient(
-                            value / gradient.divisor,
-                            domain / gradient.divisor,
-                            gradient.scale,
-                        )
+                            world.color(value)
+                        }
                     })
                 })
                 .collect();
             PaintedMap {
                 primary,
                 secondary: None,
-                legend: MapLegend::Quantitative(gradient::sequential(
-                    gradient.scale,
-                    0.0,
-                    filtered_max,
-                )),
+                legend: MapLegend::Quantitative(selected.legend(clip)),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_clip_counts_only_the_land_above_the_top() {
+        let mut values: Vec<f64> = (1..=100).map(f64::from).collect();
+        let (top, clip) = fit(&mut values, &Top::Percentile(0.98));
+        assert_eq!(top, 98.0);
+        let clip = clip.expect("two values above the top");
+        assert_eq!(clip.share, 0.02);
+        assert_eq!(clip.highest, 100.0);
+
+        // Land that ties with the top is not above it.
+        let mut levels = vec![1.0; 50];
+        levels.extend([5.0; 50]);
+        assert_eq!(fit(&mut levels, &Top::Percentile(0.98)), (5.0, None));
+    }
+
+    #[test]
+    fn land_without_values_has_a_scale_at_zero() {
+        assert_eq!(fit(&mut [], &Top::Percentile(0.98)), (0.0, None));
+        let mut shrinking = [-0.02, -0.01, -0.03];
+        assert_eq!(fit(&mut shrinking, &Top::Percentile(0.98)).0, 0.0);
+        assert_eq!(quarter_median(&[0.0, -1.0]), 1.0);
+        assert_eq!(quarter_median(&[0.0, 4.0, 8.0, 12.0]), 2.0);
     }
 }
