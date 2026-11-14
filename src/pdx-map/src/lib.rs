@@ -24,7 +24,10 @@ pub use loc_arrays::*;
 pub use pixel::{R16, R16Palette, R16SecondaryMap, Rgb};
 pub use units::*;
 pub use viewport::{JumpZoom, MapViewport, PanTarget, ViewportBounds, ViewportInsets};
-pub use world::{Aabb, Hemisphere, LocationBitset, SpatialIndex, TopologyIndex, World};
+pub use world::{
+    Aabb, Hemisphere, LocationBitset, SpatialIndex, SpatialIndexBuilder, TopologyIndex, World,
+    WorldRows,
+};
 
 #[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind, SurfaceError};
@@ -35,7 +38,7 @@ pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, de
 #[cfg(feature = "render")]
 pub use renderer::{
     ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, LayerId, MapTexture,
-    QueuedWorkFuture, RenderLayer, ScreenshotRenderer, SurfaceMapRenderer,
+    QueuedWorkFuture, RenderLayer, ScreenshotRenderer, SurfaceMapRenderer, WorldTextureWriter,
 };
 #[cfg(feature = "render")]
 pub use wgpu;

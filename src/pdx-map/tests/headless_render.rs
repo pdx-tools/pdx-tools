@@ -3,8 +3,9 @@
 //! make a missing adapter fail the tests.
 
 use pdx_map::{
-    GpuColor, GpuContext, HeadlessMapRenderer, LocationArrays, LocationFlags, LocationId,
-    PhysicalSize, R16, Rect, ViewportBounds, WorldPoint, WorldRect, WorldSize,
+    GpuColor, GpuContext, HeadlessMapRenderer, HemisphereLength, HemisphereSize, LocationArrays,
+    LocationFlags, LocationId, PhysicalSize, R16, Rect, ViewportBounds, WorldPoint, WorldRect,
+    WorldRows, WorldSize,
 };
 
 const HEMI_W: u32 = 32;
@@ -599,4 +600,43 @@ fn focused_outline_looks_past_the_owner_edge() {
             frame.assert_px(6, 10, owner_border(BLUE), "owner border, same stripe");
         }
     }
+}
+
+#[test]
+fn textures_written_in_bands_render_the_same_frame() {
+    let capture = |banded: bool| async move {
+        let gpu = shared_gpu().await?;
+        let (west, east) = (hemisphere(0), hemisphere(HEMI_W));
+        let (west, east) = if banded {
+            let width = HemisphereLength::new(HEMI_W);
+            let mut writer = gpu.world_texture_writer(HemisphereSize::new(HEMI_W, HEMI_H));
+            for band in WorldRows::new(0, &west, &east, width).bands(5) {
+                writer.write_rows(band);
+            }
+            writer.finish()
+        } else {
+            let size = PhysicalSize::new(HEMI_W, HEMI_H);
+            (
+                gpu.create_texture(&west, size, "West"),
+                gpu.create_texture(&east, size, "East"),
+            )
+        };
+        let mut renderer = HeadlessMapRenderer::new(gpu, west, east).unwrap();
+        renderer.update_locations(&location_arrays([LocationFlags::empty(); LOCATIONS]));
+        let bounds = ViewportBounds {
+            rect: full_world(),
+            zoom_level: 1.0,
+        };
+        let buffer = renderer
+            .capture_viewport(bounds, PhysicalSize::new(HEMI_W * 2, HEMI_H))
+            .await
+            .unwrap();
+        let rgba: Vec<u8> = buffer.rows().flat_map(|r| r.iter().copied()).collect();
+        buffer.finish();
+        Some(rgba)
+    };
+
+    let whole = frame_or_skip!(capture(false));
+    let banded = frame_or_skip!(capture(true));
+    assert_eq!(banded, whole);
 }

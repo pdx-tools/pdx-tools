@@ -5,8 +5,8 @@ use eu5app::{
 };
 use pdx_map::layers::DateLayer;
 use pdx_map::{
-    GpuContext, HeadlessMapRenderer, Hemisphere, HemisphereLength, LocationArrays, MapTexture,
-    PhysicalSize, ViewportBounds, World, WorldPoint, WorldSize,
+    GpuContext, HeadlessMapRenderer, LocationArrays, MapTexture, PhysicalSize, ViewportBounds,
+    WorldPoint, WorldSize,
 };
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -61,17 +61,16 @@ struct Hemispheres {
 struct PatchMap {
     hemispheres: Hemispheres,
     /// The [`pdx_map::SpatialIndex::point_of`] every location, where the live
-    /// map opens on it. The hemisphere arrays and the index are dropped
-    /// before the save is parsed, so the point of every location is kept,
-    /// not only the capital's.
+    /// map opens on it. The index is dropped before the save is parsed, so
+    /// the point of every location is kept, not only the capital's.
     points: Arc<[Option<WorldPoint<u32>>]>,
 }
 
 /// The map data for one patch, with the hemisphere textures uploaded to the
 /// GPU. The textures are ~256 MiB, and the software GPU keeps them in host
 /// memory, so only the map of the most recent patch stays in the cache. The
-/// decoded arrays are dropped after the upload. The lock is held for the
-/// whole load, so only one patch is decoded at a time.
+/// map is decoded a band of rows at a time, straight into the textures. The
+/// lock is held for the whole load, so only one patch is decoded at a time.
 fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError> {
     static CACHED: Mutex<Option<(usize, PatchMap)>> = Mutex::new(None);
 
@@ -85,17 +84,13 @@ fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError>
     // Release the textures of the previous patch before the new patch is
     // decoded. A render that is in progress keeps its own reference.
     *cached = None;
-    let mut map_bundle = OptimizedMapBundle::open(PATCH_ASSETS[slot].map)?;
-    let (west, east) = map_bundle.load_hemispheres()?;
-    let size = eu5app::hemisphere_size();
-    let width = HemisphereLength::new(size.width);
-    let world = World::builder(Hemisphere::new(west, width), Hemisphere::new(east, width)).build();
+    let map_bundle = OptimizedMapBundle::open(PATCH_ASSETS[slot].map)?;
+    let mut textures = gpu.world_texture_writer(eu5app::hemisphere_size());
+    let index = map_bundle.read_map(|rows| textures.write_rows(rows))?;
+    let (west, east) = textures.finish();
     let map = PatchMap {
-        hemispheres: Hemispheres {
-            west: gpu.create_texture(world.west().as_slice(), size.physical(), "EU5 West Texture"),
-            east: gpu.create_texture(world.east().as_slice(), size.physical(), "EU5 East Texture"),
-        },
-        points: world.build_spatial_index().points().collect(),
+        hemispheres: Hemispheres { west, east },
+        points: index.points().collect(),
     };
     *cached = Some((slot, map.clone()));
     Ok(map)

@@ -4,11 +4,10 @@ use eu5app::{
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
-    Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
-    InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
-    LogicalPoint, LogicalSize, MapTexture, MouseButton, PhysicalSize, R16, SpatialIndex,
-    SurfaceMapRenderer, ViewportBounds, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
-    default_clock,
+    Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController,
+    KeyboardKey, LocationArrays, LocationBitset, LocationFlags, LogicalPoint, LogicalSize,
+    MouseButton, PhysicalSize, R16, SpatialIndex, SurfaceMapRenderer, ViewportBounds,
+    ViewportInsets, WorldPoint, WorldRect, WorldSize, default_clock,
 };
 use std::time::Duration;
 use tsify::Ts;
@@ -53,32 +52,6 @@ impl Eu5CanvasSurface {
             display,
         })
     }
-
-    #[wasm_bindgen]
-    pub fn upload_west_texture(
-        &self,
-        data: &Eu5WasmTextureHemispheres,
-    ) -> Result<Eu5WasmTexture, JsError> {
-        let view = self.pipeline_components.create_texture(
-            &data.west,
-            eu5app::hemisphere_size().physical(),
-            "West Texture Input",
-        );
-        Ok(Eu5WasmTexture { data: view })
-    }
-
-    #[wasm_bindgen]
-    pub fn upload_east_texture(
-        &self,
-        data: &Eu5WasmTextureHemispheres,
-    ) -> Result<Eu5WasmTexture, JsError> {
-        let view = self.pipeline_components.create_texture(
-            &data.east,
-            eu5app::hemisphere_size().physical(),
-            "East Texture Input",
-        );
-        Ok(Eu5WasmTexture { data: view })
-    }
 }
 
 /// Whether the map at `zoom` draws the borders between locations. The same
@@ -117,25 +90,29 @@ impl std::fmt::Debug for Eu5WasmMapRenderer {
 
 #[wasm_bindgen]
 impl Eu5WasmMapRenderer {
+    /// Start the map from a map bundle. The bundle is read a band of rows
+    /// at a time into the GPU textures and the location index, so the whole
+    /// map is never in memory.
     #[wasm_bindgen]
-    pub fn create(
-        surface: Eu5CanvasSurface,
-        west_texture: Eu5WasmTexture,
-        east_texture: Eu5WasmTexture,
-        texture_data: Eu5WasmTextureHemispheres,
-    ) -> Result<Self, JsError> {
+    pub fn load(surface: Eu5CanvasSurface, map_bundle: &[u8]) -> Result<Self, JsError> {
+        let bundle = OptimizedMapBundle::open(map_bundle)
+            .map_err(|e| JsError::new(&format!("Failed to open map bundle: {e}")))?;
+        let mut textures = surface
+            .pipeline_components
+            .world_texture_writer(eu5app::hemisphere_size());
+        let spatial_index = bundle
+            .read_map(|rows| textures.write_rows(rows))
+            .map_err(|e| JsError::new(&format!("Failed to load map: {e}")))?;
+        let (west, east) = textures.finish();
+
         let display: CanvasDimensions = surface.display.into();
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
-            west_texture.data,
-            east_texture.data,
+            west,
+            east,
             display.physical_size(),
         );
-
         let map_size = renderer.hemisphere_size().world();
-        let spatial_index = texture_data
-            .into_world(renderer.hemisphere_size().width_length())
-            .build_spatial_index();
 
         // Initialize input controller with map size
         let input = InteractionController::new(display.logical_size(), map_size);
@@ -620,72 +597,6 @@ impl Eu5WasmMapRenderer {
         self.compose_preview();
         self.map.update_flags(&self.location_arrays);
     }
-}
-
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct Eu5WasmMapBundle {
-    textures: OptimizedMapBundle<Vec<u8>>,
-}
-
-#[wasm_bindgen]
-impl Eu5WasmMapBundle {
-    #[wasm_bindgen]
-    pub fn open(data: Vec<u8>) -> Result<Self, JsError> {
-        OptimizedMapBundle::open(data)
-            .map(|textures| Eu5WasmMapBundle { textures })
-            .map_err(|e| JsError::new(&format!("Failed to open map bundle: {e}")))
-    }
-
-    #[wasm_bindgen]
-    pub fn load_texture_data(mut self) -> Result<Eu5WasmTextureHemispheres, JsError> {
-        let (west_data, east_data) = self
-            .textures
-            .load_hemispheres()
-            .map_err(|e| JsError::new(&format!("Failed to load textures: {e}")))?;
-        let max_location_index = self
-            .textures
-            .load_max_location_index()
-            .map_err(|e| JsError::new(&format!("Failed to load world metadata: {e}")))?
-            .map(|idx| idx.value());
-
-        Ok(Eu5WasmTextureHemispheres {
-            west: west_data,
-            east: east_data,
-            max_location_index,
-        })
-    }
-}
-
-/// West and east hemisphere texture data.
-/// Passed directly to renderer construction.
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct Eu5WasmTextureHemispheres {
-    west: Vec<pdx_map::R16>,
-    east: Vec<pdx_map::R16>,
-    max_location_index: Option<u16>,
-}
-
-impl Eu5WasmTextureHemispheres {
-    fn into_world(self, hemisphere_width: HemisphereLength<u32>) -> World {
-        let west = Hemisphere::new(self.west, hemisphere_width);
-        let east = Hemisphere::new(self.east, hemisphere_width);
-        let mut world_builder = World::builder(west, east);
-
-        if let Some(max) = self.max_location_index.map(R16::new) {
-            // SAFETY: Metadata is produced by the trusted bundle compiler.
-            world_builder = unsafe { world_builder.with_max_location_index_unchecked(max) };
-        }
-
-        world_builder.build()
-    }
-}
-
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct Eu5WasmTexture {
-    data: MapTexture,
 }
 
 #[wasm_bindgen]

@@ -2,9 +2,10 @@ use crate::{
     GameLocation,
     game_data::{GameData, GameDataError, GoodsData, Localization, LocalizationsData},
 };
-use pdx_map::{R16, TopologyIndex};
+use pdx_map::{R16, SpatialIndex, SpatialIndexBuilder, TopologyIndex, WorldRows};
 use rawzip::{ZipArchive, ZipSliceArchive};
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldMetadata {
@@ -254,17 +255,133 @@ where
         Ok(Some(metadata.max_location()))
     }
 
-    /// Load both hemisphere textures from the bundle.
-    pub fn load_hemispheres(&mut self) -> Result<(Vec<R16>, Vec<R16>), GameDataError> {
-        let (west_bytes, west_wayfinder) = &self.west_texture;
-        let (east_bytes, east_wayfinder) = &self.east_texture;
+    /// Read the map a band of rows at a time. Each band goes to `sink`, and
+    /// the spatial index is built from the same rows, so the whole map is
+    /// never in memory. On an error, the bands given to `sink` so far are
+    /// not the whole map.
+    #[tracing::instrument(name = "eu5.map_bundle.read_map", skip_all)]
+    pub fn read_map(
+        &self,
+        mut sink: impl FnMut(WorldRows<'_>),
+    ) -> Result<SpatialIndex, GameDataError> {
+        let mut index = SpatialIndexBuilder::new(crate::hemisphere_size());
+        self.for_each_band(|rows| {
+            index.push(rows);
+            sink(rows);
+        })?;
 
-        let mut west_data = vec![R16::new(0); *west_bytes as usize / std::mem::size_of::<R16>()];
-        self.read_entry(*west_wayfinder, bytemuck::cast_slice_mut(&mut west_data))?;
+        let index = index.finish();
+        if let Some(expected) = self.load_max_location_index()?
+            && index.len() != usize::from(expected.value()) + 1
+        {
+            return Err(GameDataError::InvalidMap(format!(
+                "world_meta.bin gives {} as the highest location, but the map's highest is {}",
+                expected.value(),
+                index.len() - 1
+            )));
+        }
+        Ok(index)
+    }
 
-        let mut east_data = vec![R16::new(0); *east_bytes as usize / std::mem::size_of::<R16>()];
-        self.read_entry(*east_wayfinder, bytemuck::cast_slice_mut(&mut east_data))?;
-        Ok((west_data, east_data))
+    /// Load both hemispheres whole.
+    pub fn load_hemispheres(&self) -> Result<(Vec<R16>, Vec<R16>), GameDataError> {
+        let len = crate::hemisphere_size().area() as usize;
+        let mut west = Vec::with_capacity(len);
+        let mut east = Vec::with_capacity(len);
+        self.for_each_band(|rows| {
+            west.extend_from_slice(rows.west());
+            east.extend_from_slice(rows.east());
+        })?;
+        Ok((west, east))
+    }
+
+    /// Decode both hemispheres side by side, and give each band of rows to
+    /// `sink`, top to bottom. Each entry must hold exactly one hemisphere.
+    fn for_each_band(&self, mut sink: impl FnMut(WorldRows<'_>)) -> Result<(), GameDataError> {
+        let size = crate::hemisphere_size();
+        let width = size.width_length();
+        let mut west = self.hemisphere_reader(&self.west_texture, "locations-0.r16")?;
+        let mut east = self.hemisphere_reader(&self.east_texture, "locations-1.r16")?;
+
+        let band_len = MAP_BAND_ROWS as usize * width.value as usize;
+        let mut west_band = vec![R16::new(0); band_len];
+        let mut east_band = vec![R16::new(0); band_len];
+        let mut row = 0;
+        while row < size.height {
+            let rows = MAP_BAND_ROWS.min(size.height - row);
+            let len = rows as usize * width.value as usize;
+            west.read_rows(&mut west_band[..len])?;
+            east.read_rows(&mut east_band[..len])?;
+            sink(WorldRows::new(
+                row,
+                &west_band[..len],
+                &east_band[..len],
+                width,
+            ));
+            row += rows;
+        }
+
+        west.finish()?;
+        east.finish()
+    }
+
+    fn hemisphere_reader(
+        &self,
+        (_, wayfinder): &(u64, rawzip::ZipArchiveEntryWayfinder),
+        name: &'static str,
+    ) -> Result<HemisphereReader<'_>, GameDataError> {
+        let entry = self
+            .zip
+            .get_entry(*wayfinder)
+            .map_err(GameDataError::ZipAccess)?;
+        let decoder = pdx_zstd::Decoder::with_window_log_max(entry.data(), MAP_WINDOW_LOG_MAX)?;
+        Ok(HemisphereReader { decoder, name })
+    }
+}
+
+/// Rows of each hemisphere decoded at a time.
+const MAP_BAND_ROWS: u32 = 64;
+
+/// The most history, as a power of two, that a map entry may ask its decoder
+/// to keep. The bundles are written with much less; a frame that asks for
+/// more is refused rather than given that much memory.
+const MAP_WINDOW_LOG_MAX: u32 = 23;
+
+/// The decoded rows of one hemisphere entry.
+struct HemisphereReader<'a> {
+    decoder: pdx_zstd::Decoder<&'a [u8]>,
+    name: &'static str,
+}
+
+impl HemisphereReader<'_> {
+    /// Fill `rows` with the next rows.
+    fn read_rows(&mut self, rows: &mut [R16]) -> Result<(), GameDataError> {
+        self.decoder
+            .read_exact(bytemuck::cast_slice_mut(rows))
+            .map_err(|error| match error.kind() {
+                std::io::ErrorKind::UnexpectedEof => GameDataError::InvalidMap(format!(
+                    "{} is smaller than a {} hemisphere",
+                    self.name,
+                    crate::hemisphere_size()
+                )),
+                _ => GameDataError::Io(error, self.name.to_string()),
+            })
+    }
+
+    /// Check that nothing comes after the rows.
+    fn finish(mut self) -> Result<(), GameDataError> {
+        let read = self
+            .decoder
+            .read(&mut [0u8; 1])
+            .map_err(|error| GameDataError::Io(error, self.name.to_string()))?;
+        if read != 0 || !self.decoder.get_ref().is_empty() {
+            return Err(GameDataError::InvalidMap(format!(
+                "{} is larger than a {} hemisphere",
+                self.name,
+                crate::hemisphere_size()
+            )));
+        }
+        Ok(())
     }
 }
 
@@ -330,7 +447,7 @@ mod tests {
 
     #[test]
     fn game_bundle_rejects_map_zip() {
-        let zip = test_map_zip();
+        let zip = test_map_zip(Vec::new(), Vec::new(), Some(7));
         let err = OptimizedGameBundle::open(zip).unwrap_err();
         match err {
             GameDataError::MissingData(msg) => assert!(msg.contains("location_lookup.bin")),
@@ -368,14 +485,115 @@ mod tests {
         }
     }
 
+    /// Bytes in a hemisphere entry.
+    const HEMISPHERE_BYTES: usize = 8192 * 8192 * 2;
+
     #[test]
-    fn map_bundle_loads_hemispheres_and_metadata() {
-        let zip = test_map_zip();
-        let mut bundle = OptimizedMapBundle::open(zip).unwrap();
-        let (west, east) = bundle.load_hemispheres().unwrap();
-        assert_eq!(west.len(), 4);
-        assert_eq!(east.len(), 4);
-        assert_eq!(bundle.load_max_location_index().unwrap(), Some(R16::new(7)));
+    fn map_bundle_reads_the_map_in_bands() {
+        // Every west byte is 0 and every east byte 1, so the east is
+        // location 0x0101 throughout.
+        let east_location = R16::new(0x0101);
+        let zip = test_map_zip(
+            rle_frame(0, HEMISPHERE_BYTES, 21),
+            rle_frame(1, HEMISPHERE_BYTES, 21),
+            Some(east_location.value()),
+        );
+        let bundle = OptimizedMapBundle::open(zip).unwrap();
+
+        let mut rows = 0;
+        let index = bundle
+            .read_map(|band| {
+                assert!(band.west().iter().all(|&loc| loc == R16::new(0)));
+                assert!(band.east().iter().all(|&loc| loc == east_location));
+                rows += band.height();
+            })
+            .unwrap();
+        assert_eq!(rows, 8192);
+        assert_eq!(index.len(), usize::from(east_location.value()) + 1);
+        assert_eq!(
+            index.point_of(R16::new(0)),
+            Some(pdx_map::WorldPoint::new(4095, 4096))
+        );
+        assert_eq!(
+            index.point_of(east_location),
+            Some(pdx_map::WorldPoint::new(12287, 4096))
+        );
+    }
+
+    #[test]
+    fn map_bundle_rejects_a_map_of_the_wrong_size() {
+        let row = 8192 * 2;
+        let whole = || rle_frame(0, HEMISPHERE_BYTES, 21);
+        let corrupt = {
+            let mut frame = whole();
+            frame[6] = 0xff;
+            frame
+        };
+        let cases = [
+            (
+                "west one row short",
+                rle_frame(0, HEMISPHERE_BYTES - row, 21),
+                whole(),
+                None,
+            ),
+            (
+                "east one row long",
+                whole(),
+                rle_frame(0, HEMISPHERE_BYTES + row, 21),
+                None,
+            ),
+            (
+                "east one byte short",
+                whole(),
+                rle_frame(0, HEMISPHERE_BYTES - 1, 21),
+                None,
+            ),
+            ("east empty", whole(), Vec::new(), None),
+            (
+                "west has a second frame",
+                [whole(), rle_frame(0, 2, 21)].concat(),
+                whole(),
+                None,
+            ),
+            (
+                "east has trailing bytes",
+                whole(),
+                [whole(), vec![0]].concat(),
+                None,
+            ),
+            ("west corrupt", corrupt, whole(), None),
+            (
+                "window too large",
+                rle_frame(0, HEMISPHERE_BYTES, 27),
+                whole(),
+                None,
+            ),
+            ("metadata disagrees", whole(), whole(), Some(7)),
+        ];
+
+        for (case, west, east, max_location) in cases {
+            let bundle = OptimizedMapBundle::open(test_map_zip(west, east, max_location)).unwrap();
+            assert!(bundle.read_map(|_| {}).is_err(), "{case}");
+        }
+    }
+
+    /// A zstd frame of `len` bytes of `byte` in run-length blocks, so a
+    /// whole hemisphere takes a few KiB.
+    fn rle_frame(byte: u8, len: usize, window_log: u8) -> Vec<u8> {
+        const BLOCK: usize = 128 << 10;
+        let mut frame = vec![0x28, 0xb5, 0x2f, 0xfd, 0, (window_log - 10) << 3];
+        let mut left = len;
+        loop {
+            let size = left.min(BLOCK);
+            left -= size;
+            let last = u32::from(left == 0);
+            let header = (size as u32) << 3 | 1 << 1 | last;
+            frame.extend_from_slice(&header.to_le_bytes()[..3]);
+            frame.push(byte);
+            if last == 1 {
+                return frame;
+            }
+        }
     }
 
     fn test_game_zip(goods: GoodsData) -> Vec<u8> {
@@ -408,26 +626,30 @@ mod tests {
         archive.finish().unwrap().into_inner()
     }
 
-    fn test_map_zip() -> Vec<u8> {
+    fn test_map_zip(west: Vec<u8>, east: Vec<u8>, max_location: Option<u16>) -> Vec<u8> {
         let output = Cursor::new(Vec::new());
         let mut archive = rawzip::ZipArchiveWriter::new(output);
 
-        for filename in ["locations-0.r16", "locations-1.r16"] {
-            let data = vec![R16::new(0); 4];
-            let (mut entry, config) = archive
+        for (filename, frame) in [("locations-0.r16", west), ("locations-1.r16", east)] {
+            let (mut entry, _) = archive
                 .new_file(filename)
                 .compression_method(CompressionMethod::ZSTD)
                 .start()
                 .unwrap();
-            let encoder = pdx_zstd::Encoder::new(&mut entry, 1).unwrap();
-            let mut writer = config.wrap(encoder);
-            writer.write_all(bytemuck::cast_slice(&data)).unwrap();
-            let (encoder, out) = writer.finish().unwrap();
-            encoder.finish().unwrap();
-            entry.finish(out).unwrap();
+            entry.write_all(&frame).unwrap();
+            let size = HEMISPHERE_BYTES as u64;
+            entry
+                .finish(rawzip::DataDescriptorOutput::new(0, size))
+                .unwrap();
         }
 
-        write_test_entry(&mut archive, "world_meta.bin", WorldMetadata::new(7));
+        if let Some(max_location) = max_location {
+            write_test_entry(
+                &mut archive,
+                "world_meta.bin",
+                WorldMetadata::new(max_location),
+            );
+        }
         archive.finish().unwrap().into_inner()
     }
 

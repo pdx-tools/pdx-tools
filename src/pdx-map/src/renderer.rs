@@ -7,7 +7,7 @@ use crate::frame_tracker::FrameTracker;
 use crate::image::{StitchedImage, StripPlan};
 use crate::{
     GpuLocationIdx, HemisphereSize, LocationArrays, LocationFlags, PhysicalSize, R16,
-    ViewportBounds, WorldPoint, WorldRect, WorldSize,
+    ViewportBounds, WorldPoint, WorldRect, WorldRows, WorldSize,
 };
 
 /// A drawable layer that can be composed into the main map render pass.
@@ -84,6 +84,139 @@ impl MapTexture {
     /// Get the texture height
     pub fn height(&self) -> u32 {
         self.texture.size().height
+    }
+}
+
+/// A [`MapTexture`] filled a band of rows at a time, top to bottom. The
+/// texture is handed out once every row is written.
+#[derive(Debug)]
+struct MapTextureWriter {
+    texture: wgpu::Texture,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    next_row: u32,
+    /// The upload of the band before, which may still hold its staging copy.
+    in_flight: Option<wgpu::SubmissionIndex>,
+}
+
+impl MapTextureWriter {
+    /// Write `rows`, whole rows of the texture, below the rows already
+    /// written.
+    ///
+    /// # Panics
+    ///
+    /// When `rows` are not whole rows, or go past the bottom of the texture.
+    fn write_rows(&mut self, rows: &[R16]) {
+        let size = self.texture.size();
+        let width = size.width as usize;
+        assert!(
+            width > 0 && rows.len().is_multiple_of(width),
+            "texture rows must be whole rows {width} wide"
+        );
+        let count = (rows.len() / width) as u32;
+        assert!(
+            count <= size.height - self.next_row,
+            "texture rows go past the bottom of a {}x{} texture",
+            size.width,
+            size.height
+        );
+        if count == 0 {
+            return;
+        }
+
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: self.next_row,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytemuck::cast_slice(rows),
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(2 * size.width), // R16 = 2 bytes per pixel
+                rows_per_image: Some(count),
+            },
+            wgpu::Extent3d {
+                width: size.width,
+                height: count,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.next_row += count;
+
+        // Hand the rows to the GPU now, and wait for the band before, so at
+        // most two bands of staging copies are alive at once. Waiting only
+        // bounds memory, so a failed wait is not an error.
+        let submitted = self.queue.submit([]);
+        if let Some(previous) = self.in_flight.replace(submitted) {
+            let _ = self.device.poll(wgpu::PollType::Wait {
+                submission_index: Some(previous),
+                timeout: None,
+            });
+        }
+    }
+
+    /// The texture.
+    ///
+    /// # Panics
+    ///
+    /// When rows are missing.
+    fn finish(self) -> MapTexture {
+        assert_eq!(
+            self.next_row,
+            self.texture.height(),
+            "every row of the texture must be written"
+        );
+        let view = self
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        MapTexture::new(self.texture, view)
+    }
+}
+
+/// The west and east textures of a world, filled with [`WorldRows`] a band
+/// at a time, top to bottom. The textures are handed out once every row is
+/// written.
+#[derive(Debug)]
+pub struct WorldTextureWriter {
+    west: MapTextureWriter,
+    east: MapTextureWriter,
+}
+
+impl WorldTextureWriter {
+    /// Write `rows`, which start where the rows already written end.
+    ///
+    /// # Panics
+    ///
+    /// When `rows` are not as wide as the textures, do not start at the next
+    /// row, or go past the textures' bottom.
+    pub fn write_rows(&mut self, rows: WorldRows<'_>) {
+        assert_eq!(
+            rows.width().value,
+            self.west.texture.width(),
+            "rows must be as wide as the textures"
+        );
+        assert_eq!(
+            rows.first_row(),
+            self.west.next_row,
+            "rows must come top to bottom"
+        );
+        self.west.write_rows(rows.west());
+        self.east.write_rows(rows.east());
+    }
+
+    /// The west and east textures.
+    ///
+    /// # Panics
+    ///
+    /// When rows are missing.
+    pub fn finish(self) -> (MapTexture, MapTexture) {
+        (self.west.finish(), self.east.finish())
     }
 }
 
@@ -301,6 +434,23 @@ impl GpuContext {
         size: PhysicalSize<u32>,
         label: &'static str,
     ) -> MapTexture {
+        let mut writer = self.texture_writer(size, label);
+        writer.write_rows(texture_data);
+        writer.finish()
+    }
+
+    /// Create the empty west and east textures of a world whose hemispheres
+    /// are `hemisphere` in size, to be filled a band of rows at a time.
+    pub fn world_texture_writer(&self, hemisphere: HemisphereSize<u32>) -> WorldTextureWriter {
+        let size = hemisphere.physical();
+        WorldTextureWriter {
+            west: self.texture_writer(size, "West Texture"),
+            east: self.texture_writer(size, "East Texture"),
+        }
+    }
+
+    /// An empty R16Uint texture for location index data.
+    fn texture_writer(&self, size: PhysicalSize<u32>, label: &'static str) -> MapTextureWriter {
         // Validate dimensions
         assert!(
             size.width <= MAX_TEXTURE_DIMENSION && size.height <= MAX_TEXTURE_DIMENSION,
@@ -326,28 +476,13 @@ impl GpuContext {
             view_formats: &[],
         });
 
-        self.gpu.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytemuck::cast_slice(texture_data),
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(2 * size.width), // R16 = 2 bytes per pixel
-                rows_per_image: Some(size.height),
-            },
-            wgpu::Extent3d {
-                width: size.width,
-                height: size.height,
-                depth_or_array_layers: 1,
-            },
-        );
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        MapTexture::new(texture, view)
+        MapTextureWriter {
+            texture,
+            device: self.gpu.device.clone(),
+            queue: self.gpu.queue.clone(),
+            next_row: 0,
+            in_flight: None,
+        }
     }
 
     /// Create a new GPU instance
@@ -482,6 +617,12 @@ impl GpuSurfaceContext {
         label: &'static str,
     ) -> MapTexture {
         self.core.create_texture(texture_data, size, label)
+    }
+
+    /// Create the empty west and east textures of a world whose hemispheres
+    /// are `hemisphere` in size, to be filled a band of rows at a time.
+    pub fn world_texture_writer(&self, hemisphere: HemisphereSize<u32>) -> WorldTextureWriter {
+        self.core.world_texture_writer(hemisphere)
     }
 
     pub fn as_ref(&self) -> GpuSurfaceContextRef<'_> {
