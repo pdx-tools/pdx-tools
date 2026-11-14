@@ -64,7 +64,7 @@ struct PatchMap {
     /// map opens on it. The hemisphere arrays and the index are dropped
     /// before the save is parsed, so the point of every location is kept,
     /// not only the capital's.
-    points: Arc<[Option<WorldPoint<u16>>]>,
+    points: Arc<[Option<WorldPoint<u32>>]>,
 }
 
 /// The map data for one patch, with the hemisphere textures uploaded to the
@@ -106,7 +106,7 @@ pub struct PreparedSave {
     hemispheres: Hemispheres,
     locations: LocationArrays,
     date: String,
-    capital: Option<WorldPoint<u16>>,
+    capital: Option<WorldPoint<u32>>,
 }
 
 impl std::fmt::Debug for PreparedSave {
@@ -158,7 +158,7 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
 
 const CAPITAL_ZOOM_OUT: f32 = std::f32::consts::SQRT_2;
 
-fn centered_viewport(center: WorldPoint<u16>) -> ViewportBounds {
+fn centered_viewport(center: WorldPoint<u32>) -> ViewportBounds {
     let world = eu5app::hemisphere_size().world();
     let size = WorldSize::new(
         (OUTPUT_SIZE.width as f32 * CAPITAL_ZOOM_OUT) as u32,
@@ -166,7 +166,8 @@ fn centered_viewport(center: WorldPoint<u16>) -> ViewportBounds {
     );
     let half = size / 2;
     let x = (center.x as i64 - half.width as i64).rem_euclid(world.width as i64) as u32;
-    let y = u32::from(center.y)
+    let y = center
+        .y
         .saturating_sub(half.height)
         .min(world.height.saturating_sub(size.height));
     let mut viewport = ViewportBounds::new(size);

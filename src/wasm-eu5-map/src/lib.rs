@@ -528,7 +528,7 @@ impl Eu5WasmMapRenderer {
     /// or jumps to it.
     fn location_point(&self, color_id: u16) -> Option<WorldPoint<f32>> {
         let point = self.spatial_index.point_of(R16::new(color_id))?;
-        Some(WorldPoint::new(f32::from(point.x), f32::from(point.y)))
+        Some(WorldPoint::new(point.x as f32, point.y as f32))
     }
 
     /// Send the input viewport to the map, and show location borders only at

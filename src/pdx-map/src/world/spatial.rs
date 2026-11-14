@@ -72,14 +72,22 @@ pub struct SpatialIndex {
 }
 
 impl SpatialIndex {
+    /// # Panics
+    ///
+    /// When the world is wider or taller than 65,535 pixels, as the index
+    /// stores coordinates in 16 bits.
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(name = "pdx-map.spatial-index.build", skip_all, level = "info")
     )]
     pub fn from_world(world: &World) -> Self {
-        let hemisphere_width = world.west().size().width as u16;
-        let world_width = hemisphere_width * 2;
-        let world_height = world.size().height as u16;
+        let size = world.size();
+        let (Ok(world_width), Ok(world_height)) =
+            (u16::try_from(size.width), u16::try_from(size.height))
+        else {
+            panic!("spatial index needs a world at most 65535x65535, not {size}");
+        };
+        let hemisphere_width = world_width / 2;
         let tiles_wide = world_width.div_ceil(TILE_SIZE);
         let tiles_tall = world_height.div_ceil(TILE_SIZE);
         let tile_count = tiles_wide as usize * tiles_tall as usize;
@@ -90,7 +98,7 @@ impl SpatialIndex {
 
         // Pass 1: count every tile touched by each horizontal run and count
         // the exact per-location row spans.
-        walk_runs(world, |run_id, start_x, end_x, y| {
+        walk_runs(world, hemisphere_width, |run_id, start_x, end_x, y| {
             let li = run_id.value() as usize;
             span_counts[li] += 1;
             let ty = y / TILE_SIZE;
@@ -137,7 +145,7 @@ impl SpatialIndex {
         // Pass 2: fill each tile's provisional slice and each location's exact
         // spans. A location can appear multiple times in the same tile when it
         // has several runs there.
-        walk_runs(world, |run_id, start_x, end_x, y| {
+        walk_runs(world, hemisphere_width, |run_id, start_x, end_x, y| {
             let li = run_id.value() as usize;
             let span_slot = &mut span_cursors[li];
             spans[*span_slot as usize] = Span {
@@ -200,7 +208,7 @@ impl SpatialIndex {
         }
 
         Self {
-            size: world.size(),
+            size,
             tiles_wide,
             tiles_tall,
             tile_offsets,
@@ -267,6 +275,7 @@ impl SpatialIndex {
     /// [`World::at`].
     pub fn location_at(&self, point: WorldPoint<f32>) -> R16 {
         let pixel = pixel_under(point, self.size);
+        // The pixel is inside the world, which `from_world` checked fits.
         let (x, y) = (pixel.x as u16, pixel.y as u16);
         let tile = (y / TILE_SIZE) as usize * self.tiles_wide as usize + (x / TILE_SIZE) as usize;
         let lo = self.tile_offsets[tile] as usize;
@@ -291,17 +300,15 @@ impl SpatialIndex {
     /// The pixel that stands for the middle of `loc`: the middle of its middle
     /// run, with runs in row order. It belongs to `loc`, also when `loc` wraps
     /// around the map. `None` when `loc` is not on the map.
-    pub fn point_of(&self, loc: R16) -> Option<WorldPoint<u16>> {
+    pub fn point_of(&self, loc: R16) -> Option<WorldPoint<u32>> {
         let spans = self.spans_of(loc);
         let span = spans.get(spans.len() / 2)?;
-        Some(WorldPoint::new(
-            span.x_start + (span.x_end - span.x_start) / 2,
-            span.y,
-        ))
+        let x = span.x_start + (span.x_end - span.x_start) / 2;
+        Some(WorldPoint::new(u32::from(x), u32::from(span.y)))
     }
 
     /// The [`point_of`](Self::point_of) every location, indexed by location.
-    pub fn points(&self) -> impl ExactSizeIterator<Item = Option<WorldPoint<u16>>> + '_ {
+    pub fn points(&self) -> impl ExactSizeIterator<Item = Option<WorldPoint<u32>>> + '_ {
         (0..self.len()).map(|loc| self.point_of(R16::new(loc as u16)))
     }
 
@@ -324,13 +331,10 @@ impl SpatialIndex {
     }
 }
 
-fn walk_runs<F: FnMut(R16, u16, u16, u16)>(world: &World, mut visit: F) {
+fn walk_runs<F: FnMut(R16, u16, u16, u16)>(world: &World, hemisphere_width: u16, mut visit: F) {
     // This exposes each maximal horizontal R16 run in full-world row-major
     // order: west half, then east half, for each row.
-    let hemisphere_width = world.west().size().width as u16;
-
-    for (row, (west, east)) in world.west().rows().zip(world.east().rows()).enumerate() {
-        let y = row as u16;
+    for (y, (west, east)) in (0..).zip(world.west().rows().zip(world.east().rows())) {
         walk_row_runs(west, 0, y, &mut visit);
         walk_row_runs(east, hemisphere_width, y, &mut visit);
     }
@@ -931,6 +935,13 @@ mod tests {
 
         assert!(!bitset.contains(first));
         assert_eq!(bitset.count(), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "at most 65535x65535")]
+    fn world_wider_than_u16_is_rejected() {
+        let half = vec![0; 32768];
+        world_from_halves(half.clone(), half, 32768).build_spatial_index();
     }
 
     #[test]

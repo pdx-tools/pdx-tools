@@ -53,7 +53,7 @@ fn calculate_viewport_bounds(
     };
     let (capital_x, capital_y) = capital.map_or(
         (hemisphere.width as u16, hemisphere.height as u16 / 2),
-        |center| (center.x, center.y),
+        |center| (center.x as u16, center.y as u16),
     );
 
     // Center horizontally with proper wraparound handling
