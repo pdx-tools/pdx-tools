@@ -291,6 +291,10 @@ fn legend_to_gradient(legend: eu5app::gradient::MapLegend) -> Option<GradientCon
     }
 }
 
+fn owner_borders_from_fill(mode: Eu5MapMode) -> bool {
+    mode.owner_border_color() == eu5app::OwnerBorderColor::Fill
+}
+
 fn map_change_ts(change: MapChange) -> Result<Ts<MapChangeData>, JsError> {
     into_ts(change.into())
 }
@@ -661,6 +665,12 @@ impl Eu5WasmWorkspace {
         js_sys::Uint32Array::from(raw.as_slice())
     }
 
+    /// See [`Eu5App::owner_borders_from_fill`].
+    #[wasm_bindgen]
+    pub fn owner_borders_from_fill(&self) -> bool {
+        owner_borders_from_fill(self.app.get_map_mode())
+    }
+
     /// Where the map opens for this save.
     #[wasm_bindgen]
     pub fn opening_view(&self) -> Result<Ts<OpeningView>, JsError> {
@@ -754,6 +764,13 @@ impl Eu5App {
         let generation = self.app().selection_state().selection_generation();
         let change = self.app.set_map_mode(mode.into());
         self.timeline_change(change, generation)
+    }
+
+    /// True when the owner borders of the current map mode take the fill,
+    /// and not the owner color. Send it with the colors.
+    #[wasm_bindgen]
+    pub fn owner_borders_from_fill(&self) -> bool {
+        owner_borders_from_fill(self.app().get_map_mode())
     }
 
     /// Get the current map mode
@@ -993,15 +1010,17 @@ impl Eu5App {
             campaign_analysis::Observation::<eu5app::analysis::Eu5Analysis>::decode(data)
                 .map_err(|e| JsError::new(&e.to_string()))?;
         let frame = eu5app::analysis::frame(&snapshot);
+        let mode = Eu5MapMode::from(mode.to_rust()?);
         let paint = self
             .app()
-            .paint_validated_map_projection(frame, mode.to_rust()?.into())
+            .paint_validated_map_projection(frame, mode)
             .map_err(|e| JsError::new(&e.to_string()))?;
         let flags: &[u32] = bytemuck::cast_slice(paint.arrays.buffers().state_flags());
         Ok(ProjectionPaintData {
             colors: js_sys::Uint32Array::from(paint.arrays.color_data()),
             flags: js_sys::Uint32Array::from(flags),
             groups: js_sys::Uint32Array::from(paint.groups.as_slice()),
+            owner_borders_from_fill: owner_borders_from_fill(mode),
             change: MapChange {
                 dirty: MapDirty::ALL,
                 legend: paint.legend,
@@ -1405,6 +1424,7 @@ pub struct ProjectionPaintData {
     colors: js_sys::Uint32Array,
     flags: js_sys::Uint32Array,
     groups: js_sys::Uint32Array,
+    owner_borders_from_fill: bool,
     change: MapChangeData,
 }
 
@@ -1423,6 +1443,11 @@ impl ProjectionPaintData {
     #[wasm_bindgen(getter)]
     pub fn groups(&self) -> js_sys::Uint32Array {
         self.groups.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn owner_borders_from_fill(&self) -> bool {
+        self.owner_borders_from_fill
     }
 
     /// The legend of the painted mode.

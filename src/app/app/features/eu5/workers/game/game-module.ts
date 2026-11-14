@@ -280,8 +280,12 @@ const loadSaveInner = async (
     // to 6ms.
     const locations = new Uint32Array(locationArray);
     const groupingTable = source.grouping_table();
+    const ownerBordersFromFill = source.owner_borders_from_fill();
     return map.syncSave(
-      transfer({ locations, groupingTable }, [locations.buffer, groupingTable.buffer]),
+      transfer({ locations, groupingTable, ownerBordersFromFill }, [
+        locations.buffer,
+        groupingTable.buffer,
+      ]),
     );
   };
 
@@ -312,10 +316,11 @@ const loadSaveInner = async (
   };
 
   // Apply changed buffers together. A held save waits until `show`.
-  const syncMapData = (data: MapDataSync) => {
+  const syncMapData = (data: Omit<MapDataSync, "ownerBordersFromFill">) => {
     if (held) return Promise.resolve();
     const buffers = [data.colors?.buffer, data.flags?.buffer].filter((x) => x !== undefined);
-    return map.syncMapData(transfer(data, buffers));
+    const sync = { ...data, ownerBordersFromFill: app.owner_borders_from_fill() };
+    return map.syncMapData(transfer(sync, buffers));
   };
 
   const syncFlagData = () => syncMapData({ flags: cloneBuffer(app.location_flag_data()) });
@@ -410,9 +415,14 @@ const loadSaveInner = async (
     if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
     const paint = app.paint_map_projection(mode, data);
     const { colors, flags, groups, change } = paint;
+    const ownerBordersFromFill = paint.owner_borders_from_fill;
     paint.free();
     const accepted = await map.presentOverlay(
-      transfer({ token, colors, flags, groups }, [colors.buffer, flags.buffer, groups.buffer]),
+      transfer({ token, colors, flags, groups, ownerBordersFromFill }, [
+        colors.buffer,
+        flags.buffer,
+        groups.buffer,
+      ]),
     );
     return { accepted, gradient: change.gradient ?? null, observation: descriptor };
   });

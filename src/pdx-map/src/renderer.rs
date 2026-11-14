@@ -6,8 +6,8 @@ use crate::error::{RenderError, RenderErrorKind, SurfaceError};
 use crate::frame_tracker::FrameTracker;
 use crate::image::{StitchedImage, StripPlan};
 use crate::{
-    GpuLocationIdx, HemisphereSize, LocationArrays, LocationFlags, PhysicalSize, R16,
-    ViewportBounds, WorldPoint, WorldRect, WorldRows, WorldSize,
+    GpuLocationIdx, HemisphereSize, LocationArrays, LocationFlags, OwnerBorderColor, PhysicalSize,
+    R16, ViewportBounds, WorldPoint, WorldRect, WorldRows, WorldSize,
 };
 
 /// A drawable layer that can be composed into the main map render pass.
@@ -252,6 +252,7 @@ pub(crate) struct RenderConfig {
 
     pub enable_location_borders: bool,
     pub enable_owner_borders: bool,
+    pub owner_border_color: OwnerBorderColor,
     pub interaction_mask: LocationFlags,
 }
 
@@ -262,6 +263,7 @@ impl RenderConfig {
             hemisphere,
             enable_location_borders: true,
             enable_owner_borders: true,
+            owner_border_color: OwnerBorderColor::Owner,
             interaction_mask: LocationFlags::INTERACTION,
         }
     }
@@ -337,7 +339,8 @@ struct ShadeUniforms {
     location_edge_strength: f32,
     guard_band_x: u32,
     guard_band_y: u32,
-    _pad0: u32,
+    // Non-zero: an owner border is the fill, darker
+    owner_border_from_fill: u32,
 }
 
 /// Border widths in logical pixels at zoom 1. The owner border is a thin
@@ -413,7 +416,7 @@ impl ShadeUniforms {
             location_edge_strength: location_edge_strength(bounds.zoom_level),
             guard_band_x: band.x,
             guard_band_y: band.y,
-            _pad0: 0,
+            owner_border_from_fill: (config.owner_border_color == OwnerBorderColor::Fill) as u32,
         }
     }
 }
@@ -1635,6 +1638,10 @@ impl SurfaceMapRenderer {
         self.change_config(|config| config.enable_owner_borders = enabled);
     }
 
+    pub fn set_owner_border_color(&mut self, color: OwnerBorderColor) {
+        self.change_config(|config| config.owner_border_color = color);
+    }
+
     pub fn set_interaction_mask(&mut self, mask: LocationFlags) {
         self.change_config(|config| config.set_interaction_mask(mask));
     }
@@ -1784,6 +1791,10 @@ impl ScreenshotRenderer {
     /// the settings of the one that made it.
     pub fn set_location_borders(&mut self, enabled: bool) {
         self.renderer.set_location_borders(enabled);
+    }
+
+    pub fn set_owner_border_color(&mut self, color: OwnerBorderColor) {
+        self.renderer.set_owner_border_color(color);
     }
 
     /// Draw `bounds` to the screenshot surface
@@ -2086,6 +2097,10 @@ impl HeadlessMapRenderer {
 
     pub fn set_owner_borders(&mut self, enabled: bool) {
         self.scene.config_mut().enable_owner_borders = enabled;
+    }
+
+    pub fn set_owner_border_color(&mut self, color: OwnerBorderColor) {
+        self.scene.config_mut().owner_border_color = color;
     }
 
     pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) -> LayerId {

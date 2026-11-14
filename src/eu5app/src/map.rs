@@ -1,3 +1,4 @@
+pub use pdx_map::OwnerBorderColor;
 use pdx_map::{HemisphereSize, JumpZoom};
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +59,26 @@ impl MapMode {
             | MapMode::UnrealizedTaxBase
             | MapMode::StateEfficacy
             | MapMode::PopulationGrowth => true,
+        }
+    }
+
+    /// Only the political map fills land with the owner color. On any other
+    /// map an owner color does not agree with the fill, so the owner border
+    /// is the fill, darker.
+    pub const fn owner_border_color(self) -> OwnerBorderColor {
+        match self {
+            MapMode::Political => OwnerBorderColor::Owner,
+            MapMode::Control
+            | MapMode::Development
+            | MapMode::Population
+            | MapMode::Markets
+            | MapMode::RgoLevel
+            | MapMode::BuildingLevels
+            | MapMode::Wealth
+            | MapMode::UnrealizedTaxBase
+            | MapMode::Religion
+            | MapMode::StateEfficacy
+            | MapMode::PopulationGrowth => OwnerBorderColor::Fill,
         }
     }
 

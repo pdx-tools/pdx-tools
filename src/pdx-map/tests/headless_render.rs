@@ -4,8 +4,8 @@
 
 use pdx_map::{
     GpuColor, GpuContext, HeadlessMapRenderer, HemisphereLength, HemisphereSize, LocationArrays,
-    LocationFlags, LocationId, PhysicalSize, R16, Rect, ViewportBounds, WorldPoint, WorldRect,
-    WorldRows, WorldSize,
+    LocationFlags, LocationId, OwnerBorderColor, PhysicalSize, R16, Rect, ViewportBounds,
+    WorldPoint, WorldRect, WorldRows, WorldSize,
 };
 
 const HEMI_W: u32 = 32;
@@ -104,15 +104,19 @@ fn linear_to_srgb(c: f64) -> f64 {
     }
 }
 
-/// Shift the Oklab lightness of a color, the way the shade pass does.
-fn shift_lightness(rgb: [u8; 3], delta: f64) -> [u8; 3] {
+fn to_oklab(rgb: [u8; 3]) -> [f64; 3] {
     let [r, g, b] = rgb.map(|c| srgb_to_linear(c as f64 / 255.0));
     let l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b).cbrt();
     let m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b).cbrt();
     let s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b).cbrt();
-    let lab_l = (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s + delta).clamp(0.0, 1.0);
-    let lab_a = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
-    let lab_b = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+    [
+        0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+        1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+        0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+    ]
+}
+
+fn from_oklab([lab_l, lab_a, lab_b]: [f64; 3]) -> [u8; 3] {
     let l = (lab_l + 0.3963377774 * lab_a + 0.2158037573 * lab_b).powi(3);
     let m = (lab_l - 0.1055613458 * lab_a - 0.0638541728 * lab_b).powi(3);
     let s = (lab_l - 0.0894841775 * lab_a - 1.2914855480 * lab_b).powi(3);
@@ -124,28 +128,37 @@ fn shift_lightness(rgb: [u8; 3], delta: f64) -> [u8; 3] {
     .map(|c| (linear_to_srgb(c) * 255.0).round() as u8)
 }
 
+/// Shift the Oklab lightness of a color, the way the shade pass does.
+fn shift_lightness(rgb: [u8; 3], delta: f64) -> [u8; 3] {
+    let [l, a, b] = to_oklab(rgb);
+    from_oklab([(l + delta).clamp(0.0, 1.0), a, b])
+}
+
 /// Lighten a color the way the shade pass does for a rim or a band: the
 /// part of the delta that lightness cannot absorb is spent on chroma.
 fn lighten(rgb: [u8; 3], delta: f64) -> [u8; 3] {
-    let [r, g, b] = rgb.map(|c| srgb_to_linear(c as f64 / 255.0));
-    let l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b).cbrt();
-    let m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b).cbrt();
-    let s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b).cbrt();
-    let lab_l = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
-    let shortfall = (delta - (1.0 - lab_l)).max(0.0);
+    let [l, a, b] = to_oklab(rgb);
+    let shortfall = (delta - (1.0 - l)).max(0.0);
     let chroma_scale = 1.0 - shortfall / delta;
-    let lab_l = (lab_l + delta).min(1.0);
-    let lab_a = (1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s) * chroma_scale;
-    let lab_b = (0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s) * chroma_scale;
-    let l = (lab_l + 0.3963377774 * lab_a + 0.2158037573 * lab_b).powi(3);
-    let m = (lab_l - 0.1055613458 * lab_a - 0.0638541728 * lab_b).powi(3);
-    let s = (lab_l - 0.0894841775 * lab_a - 1.2914855480 * lab_b).powi(3);
-    [
-        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
-    ]
-    .map(|c| (linear_to_srgb(c) * 255.0).round() as u8)
+    from_oklab([(l + delta).min(1.0), a * chroma_scale, b * chroma_scale])
+}
+
+/// Land out of the selection: a narrow band of lightness with a trace of
+/// its hue
+fn dimmed_lab(rgb: [u8; 3]) -> [f64; 3] {
+    let [l, a, b] = to_oklab(rgb);
+    [0.28 + l * 0.14, a * 0.32, b * 0.32]
+}
+
+fn dimmed(rgb: [u8; 3]) -> [u8; 3] {
+    from_oklab(dimmed_lab(rgb))
+}
+
+/// The selection around a focused location: half way to the dimmed color
+fn softened(rgb: [u8; 3]) -> [u8; 3] {
+    let lab = to_oklab(rgb);
+    let dim = dimmed_lab(rgb);
+    from_oklab([0, 1, 2].map(|i| (lab[i] + dim[i]) / 2.0))
 }
 
 /// Location border: the fill darkened a little
@@ -598,6 +611,69 @@ fn focused_outline_looks_past_the_owner_edge() {
         if owner_borders {
             frame.assert_px(6, 10, owner_border(BLUE), "owner border, same stripe");
         }
+    }
+}
+
+#[test]
+fn selection_dims_softens_and_shades_owner_borders() {
+    // Red land is out of the selection, green land is the selection around
+    // the focused blue block. Red and green share the red owner, so the
+    // owner border of green shows whether a line takes the owner color or
+    // the fill.
+    let mut flags = [LocationFlags::empty(); LOCATIONS];
+    flags[0] = LocationFlags::DIMMED;
+    flags[1] = LocationFlags::SOFTENED;
+    flags[2] = LocationFlags::FOCUSED;
+    // A green so dark that a darker line would not show
+    let dark_green = [10, 30, 10];
+    let cases = [
+        (OwnerBorderColor::Owner, GREEN),
+        (OwnerBorderColor::Fill, GREEN),
+        (OwnerBorderColor::Fill, dark_green),
+    ];
+
+    for (border_color, green) in cases {
+        let mut arrays = location_arrays(flags);
+        let colors = palette();
+        let [r, g, b] = green;
+        let fills = [colors[0], GpuColor::from_rgb(r, g, b), colors[2], colors[3]];
+        arrays.set_primary_colors(&fills);
+        arrays.set_secondary_colors(&fills);
+        let frame = frame_or_skip!(async {
+            let mut renderer = headless(&hemisphere(0), &hemisphere(HEMI_W), &arrays).await?;
+            renderer.set_interaction_mask(LocationFlags::INTERACTION);
+            renderer.set_location_borders(false);
+            renderer.set_owner_border_color(border_color);
+            let bounds = ViewportBounds {
+                rect: full_world(),
+                zoom_level: 1.0,
+            };
+            let surface = PhysicalSize::new(HEMI_W * 2, HEMI_H);
+            let buffer = renderer.capture_viewport(bounds, surface).await.unwrap();
+            let rgba: Vec<u8> = buffer.rows().flat_map(|r| r.iter().copied()).collect();
+            buffer.finish();
+            Some(Frame {
+                width: surface.width,
+                rgba,
+            })
+        });
+
+        frame.assert_px(20, 15, dimmed(RED), "dimmed land");
+        frame.assert_px(45, 15, softened(green), "softened land");
+        frame.assert_px(4, 2, glow(BLUE), "focused land keeps its color");
+        // Out of the selection, an edge has half its strength
+        frame.assert_px(
+            2,
+            15,
+            shift_lightness(dimmed(RED), -0.14),
+            "dimmed owner border",
+        );
+        let line = match border_color {
+            OwnerBorderColor::Owner => owner_border(softened(RED)),
+            OwnerBorderColor::Fill if green == GREEN => owner_border(softened(GREEN)),
+            OwnerBorderColor::Fill => shift_lightness(softened(green), 0.28),
+        };
+        frame.assert_px(61, 15, line, "softened owner border");
     }
 }
 

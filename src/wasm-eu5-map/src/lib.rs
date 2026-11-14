@@ -6,8 +6,8 @@ use eu5save::hash::FnvHashSet;
 use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController,
     KeyboardKey, LocationArrays, LocationBitset, LocationFlags, LogicalPoint, LogicalSize,
-    MouseButton, PhysicalSize, R16, SpatialIndex, SurfaceMapRenderer, ViewportBounds,
-    ViewportInsets, WorldPoint, WorldRect, WorldSize, default_clock,
+    MouseButton, OwnerBorderColor, PhysicalSize, R16, SpatialIndex, SurfaceMapRenderer,
+    ViewportBounds, ViewportInsets, WorldPoint, WorldRect, WorldSize, default_clock,
 };
 use std::time::Duration;
 use tsify::Ts;
@@ -491,6 +491,17 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
         self.map.set_owner_borders(enabled);
+    }
+
+    /// Draw owner borders from the fill, for colors that show a value
+    #[wasm_bindgen]
+    pub fn set_owner_borders_from_fill(&mut self, from_fill: bool) {
+        let color = if from_fill {
+            OwnerBorderColor::Fill
+        } else {
+            OwnerBorderColor::Owner
+        };
+        self.map.set_owner_border_color(color);
     }
 
     #[wasm_bindgen]
