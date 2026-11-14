@@ -56,20 +56,13 @@ export const createMapEngine = async ({
   const canvasInit = await PdxCanvasSurface.init(canvas, display);
   console.log("Canvas initialized");
 
-  // Process the uploaded map image and upload textures
+  // Process the uploaded map image
   console.log("Processing map image...");
   const { image: indexedImage } = await processMapImage(mapImageFile);
 
-  // Upload textures with their dimensions
-  const westView = canvasInit.upload_west_texture(indexedImage);
-  console.log("West texture uploaded");
-
-  const eastView = canvasInit.upload_east_texture(indexedImage);
-  console.log("East texture uploaded");
-
   try {
     console.log("Creating map renderer...");
-    const app = PdxMapRenderer.create(canvasInit, indexedImage, westView, eastView, display);
+    const app = PdxMapRenderer.create(canvasInit, indexedImage, display);
     console.log("Map renderer created");
 
     appResolve(app);

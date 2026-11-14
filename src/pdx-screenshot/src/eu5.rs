@@ -5,8 +5,8 @@ use eu5app::{
 };
 use pdx_map::layers::DateLayer;
 use pdx_map::{
-    GpuContext, HeadlessMapRenderer, LocationArrays, MapTexture, PhysicalSize, ViewportBounds,
-    WorldPoint, WorldSize,
+    GpuContext, HeadlessMapRenderer, LocationArrays, PhysicalSize, ViewportBounds, WorldPoint,
+    WorldSize, WorldTextures,
 };
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -49,17 +49,10 @@ fn patch_slot(major: u32, minor: u32) -> Result<usize, ScreenshotError> {
         .unwrap_or(latest))
 }
 
-/// The hemisphere textures for one patch.
-#[derive(Clone)]
-struct Hemispheres {
-    west: MapTexture,
-    east: MapTexture,
-}
-
 /// The map data of one patch that a render needs.
 #[derive(Clone)]
 struct PatchMap {
-    hemispheres: Hemispheres,
+    textures: WorldTextures,
     /// The [`pdx_map::SpatialIndex::point_of`] every location, where the live
     /// map opens on it. The index is dropped before the save is parsed, so
     /// the point of every location is kept, not only the capital's.
@@ -86,10 +79,9 @@ fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError>
     *cached = None;
     let map_bundle = OptimizedMapBundle::open(PATCH_ASSETS[slot].map)?;
     let mut textures = gpu.world_texture_writer(eu5app::hemisphere_size());
-    let index = map_bundle.read_map(|rows| textures.write_rows(rows))?;
-    let (west, east) = textures.finish();
+    let index = map_bundle.build_spatial_index(|rows| textures.write_rows(rows))?;
     let map = PatchMap {
-        hemispheres: Hemispheres { west, east },
+        textures: textures.finish(),
         points: index.points().collect(),
     };
     *cached = Some((slot, map.clone()));
@@ -98,7 +90,7 @@ fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError>
 
 /// A parsed save with the map data that [`render`] needs.
 pub struct PreparedSave {
-    hemispheres: Hemispheres,
+    textures: WorldTextures,
     locations: LocationArrays,
     date: String,
     capital: Option<WorldPoint<u32>>,
@@ -125,10 +117,7 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
 
     // Load the map before the gamestate is parsed, so that the memory to
     // decode the map is not needed at the same time as the parse memory.
-    let PatchMap {
-        hemispheres,
-        points,
-    } = patch_map(gpu, slot)?;
+    let PatchMap { textures, points } = patch_map(gpu, slot)?;
     let mut save = parser
         .parse()
         .map_err(|error| ScreenshotError::Parse(error.to_string()))?;
@@ -144,7 +133,7 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
         OpeningView::World => None,
     };
     Ok(PreparedSave {
-        hemispheres,
+        textures,
         locations: workspace.location_arrays().clone(),
         date,
         capital,
@@ -181,8 +170,7 @@ fn world_viewport() -> ViewportBounds {
 /// Render a prepared save to a WebP image. Returns the WebP-encoded bytes.
 #[tracing::instrument(name = "eu5.screenshot.render", skip_all)]
 pub async fn render(gpu: &GpuContext, save: PreparedSave) -> Result<Vec<u8>, ScreenshotError> {
-    let mut renderer =
-        HeadlessMapRenderer::new(gpu.clone(), save.hemispheres.west, save.hemispheres.east)?;
+    let mut renderer = HeadlessMapRenderer::new(gpu.clone(), save.textures)?;
     renderer.update_locations(&save.locations);
     renderer.add_layer(DateLayer::new(save.date, 2));
 

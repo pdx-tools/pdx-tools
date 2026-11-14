@@ -2,8 +2,7 @@ use std::path::PathBuf;
 
 use crate::Args;
 use eu5app::{
-    Eu5SaveLoader, Eu5Workspace, MapMode, OpeningView,
-    game_data::{TextureProvider, game_install::Eu5GameInstall},
+    Eu5SaveLoader, Eu5Workspace, MapMode, OpeningView, game_data::game_install::Eu5GameInstall,
 };
 use eu5save::{BasicTokenResolver, Eu5File};
 use pdx_map::layers::DateLayer;
@@ -99,17 +98,9 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
 
     let pipeline_components = pdx_map::GpuContext::new().await?;
 
-    let hemisphere = eu5app::hemisphere_size();
-    let size = hemisphere.physical();
-
-    // Access textures as slices directly from the bundle
-    let west_view =
-        pipeline_components.create_texture(game_bundle.west_texture(), size, "West Texture");
-    let east_view =
-        pipeline_components.create_texture(game_bundle.east_texture(), size, "East Texture");
-
     // Zero-copy: Arc::clone just increments ref count (no data duplication)
     let world = game_bundle.world();
+    let textures = pipeline_components.create_world_textures(world.as_rows());
 
     let map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
     let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();
@@ -134,8 +125,7 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
         map_app,
         &world,
         &pipeline_components,
-        west_view,
-        east_view,
+        textures,
         save_date,
         width,
         height,
@@ -150,8 +140,7 @@ async fn render_viewport(
     mut map_app: Eu5Workspace<'_>,
     world: &World,
     pipeline_components: &'_ pdx_map::GpuContext,
-    west_view: pdx_map::MapTexture,
-    east_view: pdx_map::MapTexture,
+    textures: pdx_map::WorldTextures,
     save_date: String,
     width: u32,
     height: u32,
@@ -165,8 +154,7 @@ async fn render_viewport(
         (0, 0) // Full world starts at origin
     };
 
-    let mut renderer =
-        pdx_map::HeadlessMapRenderer::new(pipeline_components.clone(), west_view, east_view)?;
+    let mut renderer = pdx_map::HeadlessMapRenderer::new(pipeline_components.clone(), textures)?;
 
     map_app.set_map_mode(MapMode::Political);
     renderer.update_locations(map_app.location_arrays());

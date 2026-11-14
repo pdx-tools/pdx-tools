@@ -10,6 +10,7 @@ use pdx_map::{
 
 const HEMI_W: u32 = 32;
 const HEMI_H: u32 = 24;
+const HEMI_WIDTH: HemisphereLength<u32> = HemisphereLength::new(HEMI_W);
 const LOCATIONS: usize = 4;
 
 /// Location index for a world pixel of the synthetic map.
@@ -263,10 +264,8 @@ async fn headless(
     arrays: &LocationArrays,
 ) -> Option<HeadlessMapRenderer> {
     let gpu = shared_gpu().await?;
-    let size = PhysicalSize::new(HEMI_W, HEMI_H);
-    let west = gpu.create_texture(west, size, "West");
-    let east = gpu.create_texture(east, size, "East");
-    let mut renderer = HeadlessMapRenderer::new(gpu, west, east).unwrap();
+    let textures = gpu.create_world_textures(WorldRows::new(0, west, east, HEMI_WIDTH));
+    let mut renderer = HeadlessMapRenderer::new(gpu, textures).unwrap();
     renderer.update_locations(arrays);
     Some(renderer)
 }
@@ -607,21 +606,17 @@ fn textures_written_in_bands_render_the_same_frame() {
     let capture = |banded: bool| async move {
         let gpu = shared_gpu().await?;
         let (west, east) = (hemisphere(0), hemisphere(HEMI_W));
-        let (west, east) = if banded {
-            let width = HemisphereLength::new(HEMI_W);
+        let rows = WorldRows::new(0, &west, &east, HEMI_WIDTH);
+        let textures = if banded {
             let mut writer = gpu.world_texture_writer(HemisphereSize::new(HEMI_W, HEMI_H));
-            for band in WorldRows::new(0, &west, &east, width).bands(5) {
+            for band in rows.bands(5) {
                 writer.write_rows(band);
             }
             writer.finish()
         } else {
-            let size = PhysicalSize::new(HEMI_W, HEMI_H);
-            (
-                gpu.create_texture(&west, size, "West"),
-                gpu.create_texture(&east, size, "East"),
-            )
+            gpu.create_world_textures(rows)
         };
-        let mut renderer = HeadlessMapRenderer::new(gpu, west, east).unwrap();
+        let mut renderer = HeadlessMapRenderer::new(gpu, textures).unwrap();
         renderer.update_locations(&location_arrays([LocationFlags::empty(); LOCATIONS]));
         let bounds = ViewportBounds {
             rect: full_world(),

@@ -36,7 +36,7 @@ fn reading_the_map_never_holds_a_hemisphere() {
 
     let before = LIVE.load(Ordering::Relaxed);
     PEAK.store(before, Ordering::Relaxed);
-    let index = bundle.read_map(|_| {}).unwrap();
+    let index = bundle.build_spatial_index(|_| {}).unwrap();
     let peak = PEAK.load(Ordering::Relaxed) - before;
 
     assert_eq!(index.len(), 1);

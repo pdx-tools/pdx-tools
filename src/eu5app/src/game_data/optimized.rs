@@ -255,19 +255,21 @@ where
         Ok(Some(metadata.max_location()))
     }
 
-    /// Read the map a band of rows at a time. Each band goes to `sink`, and
-    /// the spatial index is built from the same rows, so the whole map is
-    /// never in memory. On an error, the bands given to `sink` so far are
-    /// not the whole map.
-    #[tracing::instrument(name = "eu5.map_bundle.read_map", skip_all)]
-    pub fn read_map(
+    /// Build the spatial index of the map, reading the map a band of rows at
+    /// a time so the whole map is never in memory. `on_rows` sees every row
+    /// of both hemispheres exactly once, top to bottom, as the index does,
+    /// for a caller that also wants the rows, such as to fill textures. The
+    /// index is checked against `world_meta.bin` when the bundle has one.
+    /// On an error, the rows seen so far are not the whole map.
+    #[tracing::instrument(name = "eu5.map_bundle.build_spatial_index", skip_all)]
+    pub fn build_spatial_index(
         &self,
-        mut sink: impl FnMut(WorldRows<'_>),
+        mut on_rows: impl FnMut(WorldRows<'_>),
     ) -> Result<SpatialIndex, GameDataError> {
         let mut index = SpatialIndexBuilder::new(crate::hemisphere_size());
         self.for_each_band(|rows| {
             index.push(rows);
-            sink(rows);
+            on_rows(rows);
         })?;
 
         let index = index.finish();
@@ -502,7 +504,7 @@ mod tests {
 
         let mut rows = 0;
         let index = bundle
-            .read_map(|band| {
+            .build_spatial_index(|band| {
                 assert!(band.west().iter().all(|&loc| loc == R16::new(0)));
                 assert!(band.east().iter().all(|&loc| loc == east_location));
                 rows += band.height();
@@ -573,7 +575,7 @@ mod tests {
 
         for (case, west, east, max_location) in cases {
             let bundle = OptimizedMapBundle::open(test_map_zip(west, east, max_location)).unwrap();
-            assert!(bundle.read_map(|_| {}).is_err(), "{case}");
+            assert!(bundle.build_spatial_index(|_| {}).is_err(), "{case}");
         }
     }
 

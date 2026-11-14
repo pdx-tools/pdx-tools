@@ -101,15 +101,13 @@ impl Eu5WasmMapRenderer {
             .pipeline_components
             .world_texture_writer(eu5app::hemisphere_size());
         let spatial_index = bundle
-            .read_map(|rows| textures.write_rows(rows))
+            .build_spatial_index(|rows| textures.write_rows(rows))
             .map_err(|e| JsError::new(&format!("Failed to load map: {e}")))?;
-        let (west, east) = textures.finish();
 
         let display: CanvasDimensions = surface.display.into();
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
-            west,
-            east,
+            textures.finish(),
             display.physical_size(),
         );
         let map_size = renderer.hemisphere_size().world();

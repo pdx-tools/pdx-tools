@@ -210,13 +210,38 @@ impl WorldTextureWriter {
         self.east.write_rows(rows.east());
     }
 
-    /// The west and east textures.
+    /// The textures.
     ///
     /// # Panics
     ///
     /// When rows are missing.
-    pub fn finish(self) -> (MapTexture, MapTexture) {
-        (self.west.finish(), self.east.finish())
+    pub fn finish(self) -> WorldTextures {
+        WorldTextures {
+            west: self.west.finish(),
+            east: self.east.finish(),
+        }
+    }
+}
+
+/// The west and east hemisphere textures of one world, both the same size.
+/// Cloning is cheap: the clone shares the textures.
+#[derive(Debug, Clone)]
+pub struct WorldTextures {
+    west: MapTexture,
+    east: MapTexture,
+}
+
+impl WorldTextures {
+    pub fn west(&self) -> &MapTexture {
+        &self.west
+    }
+
+    pub fn east(&self) -> &MapTexture {
+        &self.east
+    }
+
+    pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
+        HemisphereSize::new(self.west.width(), self.west.height())
     }
 }
 
@@ -423,19 +448,19 @@ impl GpuContext {
         Self::from_instance_and_adapter(instance, adapter).await
     }
 
-    /// Create an R16Uint storage texture for location index data
+    /// Create the textures of a world from all of its rows.
+    ///
+    /// # Panics
+    ///
+    /// When `rows` do not start at the world's first row.
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(name = "pdx-map.gpu.create-texture", skip(self, texture_data), level = "debug", fields(texture_len = texture_data.len()))
+        tracing::instrument(name = "pdx-map.gpu.create-textures", skip_all, level = "debug")
     )]
-    pub fn create_texture(
-        &self,
-        texture_data: &[R16],
-        size: PhysicalSize<u32>,
-        label: &'static str,
-    ) -> MapTexture {
-        let mut writer = self.texture_writer(size, label);
-        writer.write_rows(texture_data);
+    pub fn create_world_textures(&self, rows: WorldRows<'_>) -> WorldTextures {
+        let mut writer =
+            self.world_texture_writer(HemisphereSize::new(rows.width().value, rows.height()));
+        writer.write_rows(rows);
         writer.finish()
     }
 
@@ -609,14 +634,13 @@ impl GpuSurfaceContext {
         Ok(GpuSurfaceContext { core, surface })
     }
 
-    /// Create an R16Uint storage texture for location index data
-    pub fn create_texture(
-        &self,
-        texture_data: &[R16],
-        size: PhysicalSize<u32>,
-        label: &'static str,
-    ) -> MapTexture {
-        self.core.create_texture(texture_data, size, label)
+    /// Create the textures of a world from all of its rows.
+    ///
+    /// # Panics
+    ///
+    /// When `rows` do not start at the world's first row.
+    pub fn create_world_textures(&self, rows: WorldRows<'_>) -> WorldTextures {
+        self.core.create_world_textures(rows)
     }
 
     /// Create the empty west and east textures of a world whose hemispheres
@@ -648,9 +672,7 @@ impl<'a> GpuSurfaceContextRef<'a> {
 /// GPU resource container - owns textures and storage buffers for map data
 #[derive(Debug, Clone)]
 pub(crate) struct MapResources {
-    // Textures
-    west_texture: MapTexture,
-    east_texture: MapTexture,
+    textures: WorldTextures,
 
     // Storage buffers
     primary_colors: wgpu::Buffer,
@@ -665,15 +687,14 @@ pub(crate) struct MapResources {
 
 impl MapResources {
     /// Create new map resources from textures
-    pub fn new(ctx: &GpuContext, west: MapTexture, east: MapTexture) -> Self {
+    pub fn new(ctx: &GpuContext, textures: WorldTextures) -> Self {
         let device = &ctx.gpu.device;
 
         let [primary_colors, border_colors, secondary_colors, states] =
             Self::location_buffers(device, 1);
 
         Self {
-            west_texture: west,
-            east_texture: east,
+            textures,
             primary_colors,
             border_colors,
             secondary_colors,
@@ -756,13 +777,8 @@ impl MapResources {
         })
     }
 
-    // Accessors
-    pub fn west_texture(&self) -> &MapTexture {
-        &self.west_texture
-    }
-
-    pub fn east_texture(&self) -> &MapTexture {
-        &self.east_texture
+    pub fn textures(&self) -> &WorldTextures {
+        &self.textures
     }
 }
 
@@ -1158,11 +1174,11 @@ impl MapRenderer {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(resources.west_texture.view()),
+                    resource: wgpu::BindingResource::TextureView(resources.textures.west().view()),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(resources.east_texture.view()),
+                    resource: wgpu::BindingResource::TextureView(resources.textures.east().view()),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -1443,8 +1459,7 @@ impl SurfaceMapRenderer {
     )]
     pub fn new(
         components: GpuSurfaceContext,
-        west_texture: MapTexture,
-        east_texture: MapTexture,
+        textures: WorldTextures,
         size: PhysicalSize<u32>,
     ) -> Self {
         // Get surface configuration before consuming components
@@ -1454,11 +1469,8 @@ impl SurfaceMapRenderer {
             .surface
             .configure(&surface_ctx_ref.core.gpu.device, &surface_config);
 
-        let renderer = MapRenderer::new(
-            &components.core,
-            HemisphereSize::new(west_texture.width(), west_texture.height()),
-        );
-        let resources = MapResources::new(&components.core, west_texture, east_texture);
+        let renderer = MapRenderer::new(&components.core, textures.hemisphere_size());
+        let resources = MapResources::new(&components.core, textures);
         let scene = MapScene::new(renderer, resources);
 
         Self {
@@ -1653,13 +1665,13 @@ impl SurfaceMapRenderer {
         let (texture, local_x) = if wrapped_x < self.hemisphere_size().width as i32 {
             // West texture
             (
-                self.scene.resources().west_texture().texture(),
+                self.scene.resources().textures().west().texture(),
                 wrapped_x as u32,
             )
         } else {
             // East texture
             (
-                self.scene.resources().east_texture().texture(),
+                self.scene.resources().textures().east().texture(),
                 (wrapped_x - self.hemisphere_size().width as i32) as u32,
             )
         };
@@ -1819,22 +1831,14 @@ impl HeadlessMapRenderer {
     /// Create a headless map renderer from initialized GPU context and texture data
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(
-            name = "pdx-map.headless.new",
-            skip(gpu, west_texture, east_texture),
-            level = "info"
-        )
+        tracing::instrument(name = "pdx-map.headless.new", skip(gpu, textures), level = "info")
     )]
     pub fn new(
         gpu: GpuContext,
-        west_texture: MapTexture,
-        east_texture: MapTexture,
+        textures: WorldTextures,
     ) -> Result<HeadlessMapRenderer, RenderError> {
-        let renderer = MapRenderer::new(
-            &gpu,
-            HemisphereSize::new(west_texture.width(), west_texture.height()),
-        );
-        let resources = MapResources::new(&gpu, west_texture, east_texture);
+        let renderer = MapRenderer::new(&gpu, textures.hemisphere_size());
+        let resources = MapResources::new(&gpu, textures);
         let mut scene = MapScene::new(renderer, resources);
         scene.config_mut().disable_interactions();
         Ok(HeadlessMapRenderer {
