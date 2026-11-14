@@ -2,33 +2,45 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SharedCanvasEventAction, SharedCanvasInputWriter } from "@/lib/canvas_courier/ring_buffer";
 import type { Eu5MapEndpoint } from "./map-module";
 
-const mocks = vi.hoisted(() => ({
-  expose: vi.fn(),
-  app: {
-    get_zoom: vi.fn(() => 1),
-    world_size: vi.fn(() => [1000, 500]),
-    viewport_world_rect: vi.fn(() => [0, 0, 800, 400]),
-    canvas_to_world: vi.fn(() => [100, 100]),
-    pick_location: vi.fn(() => 1),
-    gpu_loc_to_app: vi.fn((_gpu: number) => 1),
-    sync_location_array: vi.fn(),
-    sync_grouping_table: vi.fn(),
-    sync_color_array: vi.fn(),
-    sync_flag_array: vi.fn(),
-    on_key_down: vi.fn(),
-    on_key_up: vi.fn(),
-    on_cursor_move: vi.fn(),
-    on_mouse_button: vi.fn(),
-    preview_box_highlight: vi.fn(),
-    commit_box_selection: vi.fn(() => new Uint32Array([1])),
-    clear_box_highlight: vi.fn(),
-    clear_committed_box_highlight: vi.fn(),
-    queued_work: vi.fn(() => ({ wait: async () => {} })),
-    resize: vi.fn(),
-    tick: vi.fn(),
-    render: vi.fn(),
-  },
-}));
+const mocks = vi.hoisted(() => {
+  // The map draws only when a frame is due, which a change to its picture makes.
+  const frame = { due: true };
+  const change = () => {
+    frame.due = true;
+  };
+  return {
+    frame,
+    expose: vi.fn(),
+    app: {
+      get_zoom: vi.fn(() => 1),
+      world_size: vi.fn(() => [1000, 500]),
+      viewport_world_rect: vi.fn(() => [0, 0, 800, 400]),
+      canvas_to_world: vi.fn(() => [100, 100]),
+      pick_location: vi.fn(() => 1),
+      gpu_loc_to_app: vi.fn((_gpu: number) => 1),
+      sync_location_array: vi.fn(change),
+      sync_grouping_table: vi.fn(),
+      sync_color_array: vi.fn(change),
+      sync_flag_array: vi.fn(change),
+      on_key_down: vi.fn(),
+      on_key_up: vi.fn(),
+      on_cursor_move: vi.fn(),
+      on_mouse_button: vi.fn(),
+      preview_box_highlight: vi.fn(),
+      commit_box_selection: vi.fn(() => new Uint32Array([1])),
+      clear_box_highlight: vi.fn(),
+      clear_committed_box_highlight: vi.fn(),
+      queued_work: vi.fn(() => ({ wait: async () => {} })),
+      resize: vi.fn(change),
+      tick: vi.fn(),
+      frame_due: vi.fn(() => frame.due),
+      request_frame: vi.fn(change),
+      render: vi.fn(() => {
+        frame.due = false;
+      }),
+    },
+  };
+});
 
 vi.mock("../../../../wasm/wasm_eu5_map", () => ({
   default: vi.fn(async () => {}),
@@ -51,6 +63,7 @@ let frames: FrameRequestCallback[];
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  mocks.frame.due = true;
   frames = [];
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     frames.push(callback);
@@ -175,8 +188,36 @@ describe("EU5 map input lifecycle", () => {
 });
 
 describe("EU5 map frame loop", () => {
+  it("draws a resting map once, then once for each change", async () => {
+    const { writer, endpoint } = await openMap();
+    expect(mocks.app.render).toHaveBeenCalledOnce();
+    await nextFrame();
+    await nextFrame();
+    expect(mocks.app.render).toHaveBeenCalledOnce();
+    expect(frames).toHaveLength(1);
+
+    // Data from the game worker draws in the frame that applies it.
+    await endpoint.syncMapData({ colors: new Uint32Array([7]) });
+    await nextFrame();
+    expect(mocks.app.render).toHaveBeenCalledTimes(2);
+
+    writer.enqueueResize({ width: 1280, height: 720, scaleFactor: 2 }, 1);
+    await nextFrame();
+    await nextFrame();
+    expect(mocks.app.render).toHaveBeenCalledTimes(3);
+
+    // A hidden map draws nothing, and draws again once it shows.
+    writer.enqueueVisibility(true, 2);
+    await nextFrame();
+    writer.enqueueVisibility(false, 3);
+    await nextFrame();
+    await nextFrame();
+    expect(mocks.app.render).toHaveBeenCalledTimes(4);
+  });
+
   it("keeps drawing after failed frames and logs the failure once", async () => {
-    await openMap();
+    const { endpoint } = await openMap();
+    await endpoint.syncMapData({ colors: new Uint32Array([7]) });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const lost = new Error("surface lost");
     mocks.app.render.mockImplementationOnce(() => {
@@ -189,6 +230,8 @@ describe("EU5 map frame loop", () => {
     await nextFrame();
     const renders = mocks.app.render.mock.calls.length;
 
+    // The failed frame is still due, and draws once the map recovers.
+    await nextFrame();
     await nextFrame();
     expect(mocks.app.render).toHaveBeenCalledTimes(renders + 1);
     expect(frames).toHaveLength(1);
