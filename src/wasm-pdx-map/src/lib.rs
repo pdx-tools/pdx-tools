@@ -1,9 +1,9 @@
 use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint,
-    LogicalSize, MouseButton, OwnerBorderColor, PanTarget, PhysicalSize, QueuedWorkFuture,
-    R16Palette, RenderError, ScreenshotRenderer, StripPlan, SurfaceMapRenderer, ViewportBounds,
-    ViewportInsets, World, WorldLength, WorldPoint, WorldRect, WorldSize, default_clock,
+    LogicalSize, MouseButton, PanTarget, PhysicalSize, QueuedWorkFuture, R16Palette, RenderError,
+    ScreenshotRenderer, StripPlan, SurfaceMapRenderer, ViewportBounds, ViewportInsets, World,
+    WorldLength, WorldPoint, WorldRect, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -513,17 +513,6 @@ impl PdxScreenshotRenderer {
     #[wasm_bindgen]
     pub fn set_location_borders(&mut self, enabled: bool) {
         self.renderer.set_location_borders(enabled);
-    }
-
-    /// Draw owner borders from the fill, for colors that show a value. The
-    /// renderer shares the colors of its map, so it must follow that map.
-    #[wasm_bindgen]
-    pub fn set_owner_borders_from_fill(&mut self, from_fill: bool) {
-        self.renderer.set_owner_border_color(if from_fill {
-            OwnerBorderColor::Fill
-        } else {
-            OwnerBorderColor::Owner
-        });
     }
 
     /// Render a rectangle of the world to the screenshot surface, scaled to

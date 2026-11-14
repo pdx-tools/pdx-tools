@@ -133,8 +133,8 @@ impl LocationData {
     }
 
     /// The colors that decide the political borders. A political border is
-    /// drawn where two neighbors have different border colors. The border
-    /// line is this color, darkened. The value does not change the fill.
+    /// drawn where two neighbors have different border colors. The line
+    /// takes the primary color, so this value only tells owners apart.
     pub fn border_colors(&self) -> &[GpuColor] {
         bytemuck::cast_slice(self.sub_array::<1>())
     }

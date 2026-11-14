@@ -19,7 +19,7 @@ pub mod layers;
 #[cfg(feature = "render")]
 mod renderer;
 
-pub use color::{GpuColor, OwnerBorderColor};
+pub use color::GpuColor;
 pub use loc_arrays::*;
 pub use pixel::{R16, R16Palette, R16SecondaryMap, Rgb};
 pub use units::*;

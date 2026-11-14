@@ -50,8 +50,7 @@ struct ShadeUniforms {
     // texture, per axis
     guard_band_x: u32,
     guard_band_y: u32,
-    // Non-zero: an owner border is the fill, darker, and not the owner color
-    owner_border_from_fill: u32,
+    _pad0: u32,
 }
 
 @group(0) @binding(0) var resolved_texture: texture_2d<u32>;
@@ -89,6 +88,9 @@ const DIMMED_LAND_FLOOR = 0.28;
 const DIMMED_LAND_RANGE = 0.14;
 const DIMMED_CHROMA = 0.32;
 const DIMMED_WATER_SCALE = 0.53;
+// A bright sea, such as a market color, stops below the land band, with
+// room for the shallows
+const DIMMED_WATER_CEILING = 0.24;
 // Edges out of the selection are weaker, so the quiet land does not have
 // the strongest lines on the map
 const DIMMED_EDGE_SCALE = 0.5;
@@ -178,7 +180,8 @@ fn lighten(c: vec3<f32>, delta: f32) -> vec3<f32> {
 // The dimmed form of a color in Oklab
 fn dim_lab(lab: vec3<f32>, is_water: bool) -> vec3<f32> {
     if (is_water) {
-        return lab * DIMMED_WATER_SCALE;
+        let water = lab * DIMMED_WATER_SCALE;
+        return vec3<f32>(min(water.x, DIMMED_WATER_CEILING), water.yz);
     }
     return vec3<f32>(DIMMED_LAND_FLOOR + lab.x * DIMMED_LAND_RANGE, lab.yz * DIMMED_CHROMA);
 }
@@ -493,15 +496,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             rgb = shift_lightness(rgb, -location_edge);
         }
     } else if (around.owner <= owner_r) {
-        // The line is the fill or the owner color, with the same selection
-        // effect as the fill
-        let delta = OWNER_BORDER_DARKEN * edge_strength;
-        if (uniforms.owner_border_from_fill != 0u) {
-            rgb = contrast_line(rgb, delta);
-        } else {
-            let owner = selection_color(unpack_color(center_border_color), is_dimmed, is_softened, false);
-            rgb = shift_lightness(owner, -delta);
-        }
+        // The line is the primary color without stripes or hover. On a
+        // political map that is the owner color, and on a map of values it
+        // is the value.
+        let base = selection_color(unpack_color(primary_color), is_dimmed, is_softened, false);
+        rgb = contrast_line(base, OWNER_BORDER_DARKEN * edge_strength);
     } else {
         if (min(around.owner, around.coast) <= owner_r + glow_r) {
             rgb = lighten(rgb, rim);

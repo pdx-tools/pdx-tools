@@ -11,12 +11,6 @@ const mocks = vi.hoisted(() => {
   return {
     frame,
     expose: vi.fn(),
-    recorder: {
-      set_location_borders: vi.fn(),
-      set_owner_borders_from_fill: vi.fn(),
-      render_world_rect: vi.fn(),
-      free: vi.fn(),
-    },
     app: {
       get_zoom: vi.fn(() => 1),
       world_size: vi.fn(() => [1000, 500]),
@@ -28,8 +22,6 @@ const mocks = vi.hoisted(() => {
       sync_grouping_table: vi.fn(),
       sync_color_array: vi.fn(change),
       sync_flag_array: vi.fn(change),
-      set_owner_borders_from_fill: vi.fn(),
-      create_screenshot_renderer: vi.fn(() => mocks.recorder),
       on_key_down: vi.fn(),
       on_key_up: vi.fn(),
       on_cursor_move: vi.fn(),
@@ -58,9 +50,6 @@ vi.mock("../../../../wasm/wasm_eu5_map", () => ({
   location_borders_at_zoom: vi.fn(),
 }));
 vi.mock("@/lib/log", () => ({ log: vi.fn() }));
-vi.mock("@pdx.tools/timelapse/encoder", () => ({
-  TimelapseEncoder: { create: async () => ({ addFrame: async () => 0, abort: async () => {} }) },
-}));
 vi.mock("comlink", () => ({ proxy: (value: unknown) => value, expose: mocks.expose }));
 
 let frames: FrameRequestCallback[];
@@ -113,11 +102,7 @@ async function openMap() {
   );
   await module.initialize({} as MessagePort, "info");
   const endpoint = mocks.expose.mock.calls[0][0] as Eu5MapEndpoint;
-  await endpoint.syncSave({
-    locations: new Uint32Array([1]),
-    groupingTable: new Uint32Array([1]),
-    ownerBordersFromFill: false,
-  });
+  await endpoint.syncSave({ locations: new Uint32Array([1]), groupingTable: new Uint32Array([1]) });
   await nextFrame();
   return { writer, engine, endpoint };
 }
@@ -206,7 +191,7 @@ describe("EU5 map frame loop", () => {
     expect(frames).toHaveLength(1);
 
     // Data from the game worker draws in the frame that applies it.
-    await endpoint.syncMapData({ colors: new Uint32Array([7]), ownerBordersFromFill: false });
+    await endpoint.syncMapData({ colors: new Uint32Array([7]) });
     await nextFrame();
     expect(mocks.app.render).toHaveBeenCalledTimes(2);
 
@@ -237,7 +222,7 @@ describe("EU5 map frame loop", () => {
 
   it("keeps drawing after failed frames and logs the failure once", async () => {
     const { endpoint } = await openMap();
-    await endpoint.syncMapData({ colors: new Uint32Array([7]), ownerBordersFromFill: false });
+    await endpoint.syncMapData({ colors: new Uint32Array([7]) });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const lost = new Error("surface lost");
     mocks.app.render.mockImplementationOnce(() => {
@@ -266,7 +251,6 @@ describe("EU5 map overlay", () => {
     colors: new Uint32Array([10 + token]),
     flags: new Uint32Array([20 + token]),
     groups: new Uint32Array([30 + token]),
-    ownerBordersFromFill: true,
   });
 
   it("refuses a frame older than the newest frame or clear", async () => {
@@ -290,24 +274,18 @@ describe("EU5 map overlay", () => {
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_flag_array).toHaveBeenLastCalledWith(overlay(1).flags);
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(overlay(1).groups);
-    expect(mocks.app.set_owner_borders_from_fill).toHaveBeenLastCalledWith(true);
 
     // The save changes below the overlay, as when its selection is restored.
     const colors = new Uint32Array([7]);
-    await endpoint.syncMapData({ colors, ownerBordersFromFill: false });
+    await endpoint.syncMapData({ colors });
     await endpoint.syncGroupingTable(new Uint32Array([8]));
     await nextFrame();
     expect(mocks.app.sync_color_array).toHaveBeenCalledTimes(1);
 
     // A new save under the overlay gets its locations, and the overlay stays on top.
     const locations = new Uint32Array([9]);
-    await endpoint.syncSave({
-      locations,
-      groupingTable: new Uint32Array([6]),
-      ownerBordersFromFill: false,
-    });
+    await endpoint.syncSave({ locations, groupingTable: new Uint32Array([6]) });
     await nextFrame();
-    expect(mocks.app.set_owner_borders_from_fill).toHaveBeenLastCalledWith(true);
     expect(mocks.app.sync_location_array).toHaveBeenLastCalledWith(locations);
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(overlay(1).groups);
@@ -318,29 +296,6 @@ describe("EU5 map overlay", () => {
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(new Uint32Array([6]));
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_color_array).toHaveBeenCalledTimes(2);
-    expect(mocks.app.set_owner_borders_from_fill).toHaveBeenLastCalledWith(false);
-  });
-});
-
-describe("EU5 map recording", () => {
-  it("draws owner borders in the style of the colors of each frame", async () => {
-    vi.stubGlobal("OffscreenCanvas", class {});
-    const { engine, endpoint } = await openMap();
-    await endpoint.syncMapData({ ownerBordersFromFill: true });
-    await engine.beginTimelapseRecording({
-      framing: "view",
-      output: { width: 1280, height: 720 },
-      colors: {} as never,
-      fonts: {} as never,
-    });
-    const date = { year: 1444, month: 11, day: 11 };
-    await engine.recordTimelapseFrame(date);
-    expect(mocks.recorder.set_owner_borders_from_fill).toHaveBeenLastCalledWith(true);
-
-    // A step back in time forces the political map, with owner colors.
-    await endpoint.syncMapData({ colors: new Uint32Array([7]), ownerBordersFromFill: false });
-    await engine.recordTimelapseFrame(date);
-    expect(mocks.recorder.set_owner_borders_from_fill).toHaveBeenLastCalledWith(false);
   });
 });
 
@@ -370,7 +325,7 @@ describe("EU5 map box selection", () => {
     // The game worker sends the new flags before its commit settles. The
     // highlight clears in the frame that applies them, after them.
     const flags = new Uint32Array([5]);
-    await endpoint.syncMapData({ flags, ownerBordersFromFill: false });
+    await endpoint.syncMapData({ flags });
     applied[1]();
     await settle();
     expect(mocks.app.clear_committed_box_highlight).not.toHaveBeenCalled();

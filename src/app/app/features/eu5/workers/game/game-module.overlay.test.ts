@@ -80,12 +80,10 @@ beforeEach(() => {
     location_color_data: buffer,
     location_flag_data: buffer,
     grouping_table: () => new Uint32Array(),
-    owner_borders_from_fill: () => false,
     paint_map_projection: vi.fn(() => ({
       colors: new Uint32Array([1]),
       flags: new Uint32Array([2]),
       groups: new Uint32Array([3]),
-      owner_borders_from_fill: true,
       change: { gradient, colorsChanged: true, flagsChanged: true },
       free: vi.fn(),
     })),
@@ -153,7 +151,6 @@ it("paints a snapshot into the overlay and leaves the buffers of the save alone"
     colors: new Uint32Array([1]),
     flags: new Uint32Array([2]),
     groups: new Uint32Array([3]),
-    ownerBordersFromFill: true,
   });
   expect(mocks.map.syncMapData).not.toHaveBeenCalled();
   expect(mocks.map.syncGroupingTable).not.toHaveBeenCalled();

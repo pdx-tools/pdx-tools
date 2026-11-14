@@ -4,8 +4,8 @@
 
 use pdx_map::{
     GpuColor, GpuContext, HeadlessMapRenderer, HemisphereLength, HemisphereSize, LocationArrays,
-    LocationFlags, LocationId, OwnerBorderColor, PhysicalSize, R16, Rect, ViewportBounds,
-    WorldPoint, WorldRect, WorldRows, WorldSize,
+    LocationFlags, LocationId, PhysicalSize, R16, Rect, ViewportBounds, WorldPoint, WorldRect,
+    WorldRows, WorldSize,
 };
 
 const HEMI_W: u32 = 32;
@@ -171,14 +171,14 @@ fn location_border_zoomed_out(fill: [u8; 3]) -> [u8; 3] {
     shift_lightness(fill, -0.07 * 0.65)
 }
 
-/// Owner border: the owner color darkened a lot
-fn owner_border(owner: [u8; 3]) -> [u8; 3] {
-    shift_lightness(owner, -0.28)
+/// Owner border: the fill darkened a lot
+fn owner_border(fill: [u8; 3]) -> [u8; 3] {
+    shift_lightness(fill, -0.28)
 }
 
 /// Owner border at half zoom, where the darkening eases to 0.8
-fn owner_border_zoomed_out(owner: [u8; 3]) -> [u8; 3] {
-    shift_lightness(owner, -0.28 * 0.8)
+fn owner_border_zoomed_out(fill: [u8; 3]) -> [u8; 3] {
+    shift_lightness(fill, -0.28 * 0.8)
 }
 
 /// The light band inside an owner border or along a coast
@@ -453,8 +453,9 @@ fn borders_continue_across_tile_seams() {
         east.assert_px(1, 12, GREEN, "green fill");
         // Yellow strip: x 30..32 of the east tile. The owner border is one
         // pixel in from green on the left, and the light band reaches across
-        // the wrap from red on the right. Green shares red's owner.
-        east.assert_px(29, 12, owner_border(RED), "owner border on green");
+        // the wrap from red on the right. Green shares red's owner, and its
+        // line takes its own fill.
+        east.assert_px(29, 12, owner_border(GREEN), "owner border on green");
         east.assert_px(30, 12, owner_border(YELLOW), "yellow owner border");
         east.assert_px(31, 12, glow(YELLOW), "yellow glow across wrap");
     }
@@ -618,21 +619,15 @@ fn focused_outline_looks_past_the_owner_edge() {
 fn selection_dims_softens_and_shades_owner_borders() {
     // Red land is out of the selection, green land is the selection around
     // the focused blue block. Red and green share the red owner, so the
-    // owner border of green shows whether a line takes the owner color or
-    // the fill.
+    // owner border of green shows that a line takes the fill, not the
+    // border color.
     let mut flags = [LocationFlags::empty(); LOCATIONS];
     flags[0] = LocationFlags::DIMMED;
     flags[1] = LocationFlags::SOFTENED;
     flags[2] = LocationFlags::FOCUSED;
     // A green so dark that a darker line would not show
     let dark_green = [10, 30, 10];
-    let cases = [
-        (OwnerBorderColor::Owner, GREEN),
-        (OwnerBorderColor::Fill, GREEN),
-        (OwnerBorderColor::Fill, dark_green),
-    ];
-
-    for (border_color, green) in cases {
+    for green in [GREEN, dark_green] {
         let mut arrays = location_arrays(flags);
         let colors = palette();
         let [r, g, b] = green;
@@ -643,7 +638,6 @@ fn selection_dims_softens_and_shades_owner_borders() {
             let mut renderer = headless(&hemisphere(0), &hemisphere(HEMI_W), &arrays).await?;
             renderer.set_interaction_mask(LocationFlags::INTERACTION);
             renderer.set_location_borders(false);
-            renderer.set_owner_border_color(border_color);
             let bounds = ViewportBounds {
                 rect: full_world(),
                 zoom_level: 1.0,
@@ -668,13 +662,41 @@ fn selection_dims_softens_and_shades_owner_borders() {
             shift_lightness(dimmed(RED), -0.14),
             "dimmed owner border",
         );
-        let line = match border_color {
-            OwnerBorderColor::Owner => owner_border(softened(RED)),
-            OwnerBorderColor::Fill if green == GREEN => owner_border(softened(GREEN)),
-            OwnerBorderColor::Fill => shift_lightness(softened(green), 0.28),
+        let line = if green == GREEN {
+            owner_border(softened(GREEN))
+        } else {
+            shift_lightness(softened(green), 0.28)
         };
         frame.assert_px(61, 15, line, "softened owner border");
     }
+}
+
+#[test]
+fn dimmed_sea_stays_below_dimmed_land() {
+    // The yellow strip is a bright sea, as a market can paint it
+    let mut flags = [LocationFlags::DIMMED; LOCATIONS];
+    flags[3] = LocationFlags::DIMMED.union(LocationFlags::WATER);
+    let arrays = location_arrays(flags);
+    let frame = frame_or_skip!(async {
+        let mut renderer = headless(&hemisphere(0), &hemisphere(HEMI_W), &arrays).await?;
+        renderer.set_interaction_mask(LocationFlags::INTERACTION);
+        let bounds = ViewportBounds {
+            rect: full_world(),
+            zoom_level: 1.0,
+        };
+        let surface = PhysicalSize::new(HEMI_W * 2, HEMI_H);
+        let buffer = renderer.capture_viewport(bounds, surface).await.unwrap();
+        let rgba: Vec<u8> = buffer.rows().flat_map(|r| r.iter().copied()).collect();
+        buffer.finish();
+        Some(Frame {
+            width: surface.width,
+            rgba,
+        })
+    });
+
+    let [land, ..] = to_oklab(frame.px(20, 15));
+    let [sea, ..] = to_oklab(frame.px(63, 15));
+    assert!(sea < land, "sea L {sea} is not below land L {land}");
 }
 
 #[test]

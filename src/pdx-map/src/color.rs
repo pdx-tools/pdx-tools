@@ -156,17 +156,6 @@ impl std::fmt::LowerHex for GpuColor {
     }
 }
 
-/// The color of the line where two owners meet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum OwnerBorderColor {
-    /// The owner color, darker. For a map whose fill is the owner color.
-    #[default]
-    Owner,
-    /// The fill, darker. For a map whose fill is a value, where an owner
-    /// color does not agree with the fill.
-    Fill,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
