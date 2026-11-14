@@ -730,13 +730,17 @@ fn apply_workspace(
         .renderer_mut()
         .update_locations(workspace.location_arrays());
 
-    match workspace.opening_view() {
-        eu5app::OpeningView::Capital { color_id } => {
-            let center = world.center_of(pdx_map::R16::new(color_id.value()));
-            let center_world = WorldPoint::new(center.x as f32, center.y as f32);
-            input_controller.center_on(center_world);
+    let capital = match workspace.opening_view() {
+        eu5app::OpeningView::Capital { color_id } => world
+            .build_spatial_index()
+            .point_of(pdx_map::R16::new(color_id.value())),
+        eu5app::OpeningView::World => None,
+    };
+    match capital {
+        Some(center) => {
+            input_controller.center_on(WorldPoint::new(center.x as f32, center.y as f32))
         }
-        eu5app::OpeningView::World => input_controller.fit_map(),
+        None => input_controller.fit_map(),
     }
 
     // Transfer viewport to render controller

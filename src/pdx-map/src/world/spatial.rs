@@ -1,4 +1,5 @@
-use crate::{R16, World, WorldPoint};
+use super::pixel_under;
+use crate::{R16, World, WorldPoint, WorldSize};
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,15 +49,36 @@ impl Display for Aabb {
 // time.
 const TILE_SIZE: u16 = 64;
 
-#[derive(Debug, Clone, Copy)]
-struct Span {
-    y: u16,
-    x_start: u16,
-    x_end: u16,
+/// A world coordinate as the index stores it. Sixteen bits keep the runs
+/// small, so the index only takes a world whose size fits.
+type StoredCoord = u16;
+
+/// A world coordinate narrowed for storage, or `None` when it does not fit.
+fn to_stored(value: u32) -> Option<StoredCoord> {
+    StoredCoord::try_from(value).ok()
 }
 
+/// A stored coordinate widened back to a world coordinate.
+fn from_stored(value: StoredCoord) -> u32 {
+    u32::from(value)
+}
+
+/// One horizontal run of a location's pixels, from `x_start` to `x_end`
+/// inclusive.
+#[derive(Debug, Clone, Copy)]
+struct Span {
+    y: StoredCoord,
+    x_start: StoredCoord,
+    x_end: StoredCoord,
+}
+
+/// Where every location lies on the map, built from a [`World`]: the
+/// locations that touch each tile, and every horizontal run of each
+/// location's pixels. The runs cover every pixel, so the index answers what is
+/// at a point without the world.
 #[derive(Debug)]
 pub struct SpatialIndex {
+    size: WorldSize<u32>,
     tiles_wide: u16,
     tiles_tall: u16,
     tile_offsets: Vec<u32>,
@@ -66,14 +88,22 @@ pub struct SpatialIndex {
 }
 
 impl SpatialIndex {
+    /// # Panics
+    ///
+    /// When the world is wider or taller than the index's 16-bit coordinates
+    /// hold (65,535).
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(name = "pdx-map.spatial-index.build", skip_all, level = "info")
     )]
     pub fn from_world(world: &World) -> Self {
-        let hemisphere_width = world.west().size().width as u16;
-        let world_width = hemisphere_width * 2;
-        let world_height = world.size().height as u16;
+        let size = world.size();
+        let (Some(world_width), Some(world_height)) =
+            (to_stored(size.width), to_stored(size.height))
+        else {
+            panic!("a {size} world does not fit the spatial index's 16-bit coordinates");
+        };
+        let hemisphere_width = world_width / 2;
         let tiles_wide = world_width.div_ceil(TILE_SIZE);
         let tiles_tall = world_height.div_ceil(TILE_SIZE);
         let tile_count = tiles_wide as usize * tiles_tall as usize;
@@ -84,17 +114,22 @@ impl SpatialIndex {
 
         // Pass 1: count every tile touched by each horizontal run and count
         // the exact per-location row spans.
-        walk_runs(world, |run_id, start_x, end_x, y| {
-            let li = run_id.value() as usize;
-            span_counts[li] += 1;
-            let ty = y / TILE_SIZE;
-            let tx_start = start_x / TILE_SIZE;
-            let tx_end = end_x / TILE_SIZE;
-            let row_base = ty as usize * tiles_wide as usize;
-            for tx in tx_start..=tx_end {
-                counts[row_base + tx as usize] += 1;
-            }
-        });
+        walk_runs(
+            world,
+            hemisphere_width,
+            world_height,
+            |run_id, start_x, end_x, y| {
+                let li = run_id.value() as usize;
+                span_counts[li] += 1;
+                let ty = y / TILE_SIZE;
+                let tx_start = start_x / TILE_SIZE;
+                let tx_end = end_x / TILE_SIZE;
+                let row_base = ty as usize * tiles_wide as usize;
+                for tx in tx_start..=tx_end {
+                    counts[row_base + tx as usize] += 1;
+                }
+            },
+        );
 
         // Per-location span storage is also CSR encoded. The offset slice lets
         // query_exact() jump directly to one candidate location's row spans.
@@ -131,26 +166,31 @@ impl SpatialIndex {
         // Pass 2: fill each tile's provisional slice and each location's exact
         // spans. A location can appear multiple times in the same tile when it
         // has several runs there.
-        walk_runs(world, |run_id, start_x, end_x, y| {
-            let li = run_id.value() as usize;
-            let span_slot = &mut span_cursors[li];
-            spans[*span_slot as usize] = Span {
-                y,
-                x_start: start_x,
-                x_end: end_x,
-            };
-            *span_slot += 1;
+        walk_runs(
+            world,
+            hemisphere_width,
+            world_height,
+            |run_id, start_x, end_x, y| {
+                let li = run_id.value() as usize;
+                let span_slot = &mut span_cursors[li];
+                spans[*span_slot as usize] = Span {
+                    y,
+                    x_start: start_x,
+                    x_end: end_x,
+                };
+                *span_slot += 1;
 
-            let ty = y / TILE_SIZE;
-            let tx_start = start_x / TILE_SIZE;
-            let tx_end = end_x / TILE_SIZE;
-            let row_base = ty as usize * tiles_wide as usize;
-            for tx in tx_start..=tx_end {
-                let slot = &mut cursors[row_base + tx as usize];
-                entries[*slot as usize] = run_id;
-                *slot += 1;
-            }
-        });
+                let ty = y / TILE_SIZE;
+                let tx_start = start_x / TILE_SIZE;
+                let tx_end = end_x / TILE_SIZE;
+                let row_base = ty as usize * tiles_wide as usize;
+                for tx in tx_start..=tx_end {
+                    let slot = &mut cursors[row_base + tx as usize];
+                    entries[*slot as usize] = run_id;
+                    *slot += 1;
+                }
+            },
+        );
 
         #[cfg(debug_assertions)]
         assert_spans_sorted(&span_offsets, &spans);
@@ -194,6 +234,7 @@ impl SpatialIndex {
         }
 
         Self {
+            size,
             tiles_wide,
             tiles_tall,
             tile_offsets,
@@ -224,10 +265,7 @@ impl SpatialIndex {
                 let bit_mask = 1u64 << bit;
                 word &= !bit_mask;
 
-                let loc = word_idx * 64 + bit;
-                let lo = self.span_offsets[loc] as usize;
-                let hi = self.span_offsets[loc + 1] as usize;
-                let spans = &self.spans[lo..hi];
+                let spans = self.spans_of(R16::new((word_idx * 64 + bit) as u16));
                 if !rects.iter().any(|r| spans_intersect_rect(spans, *r)) {
                     out.words[word_idx] &= !bit_mask;
                 }
@@ -259,14 +297,55 @@ impl SpatialIndex {
         }
     }
 
-    /// A pixel near the middle of `loc`: the middle of its middle run. The pixel
-    /// belongs to `loc`, also when `loc` wraps around the map.
-    pub fn point_of(&self, loc: R16) -> WorldPoint<u16> {
+    /// The location at `point`, with the same wrap and clamp as
+    /// [`World::at`].
+    pub fn location_at(&self, point: WorldPoint<f32>) -> R16 {
+        let pixel = pixel_under(point, self.size);
+        let stored = |value| to_stored(value).expect("a pixel of the world fits");
+        let (x, y) = (stored(pixel.x), stored(pixel.y));
+        let tile = (y / TILE_SIZE) as usize * self.tiles_wide as usize + (x / TILE_SIZE) as usize;
+        let lo = self.tile_offsets[tile] as usize;
+        let hi = self.tile_offsets[tile + 1] as usize;
+        let ranges = &self.tile_ranges[lo..hi];
+
+        // A tile with one location needs no search.
+        if let [(start, end)] = ranges
+            && start == end
+        {
+            return *start;
+        }
+
+        ranges
+            .iter()
+            .flat_map(|(start, end)| start.value()..=end.value())
+            .map(R16::new)
+            .find(|&loc| spans_contain(self.spans_of(loc), x, y))
+            .expect("every pixel belongs to a location in its tile")
+    }
+
+    /// The pixel that stands for the middle of `loc`: the middle of its middle
+    /// run, with runs in row order. It belongs to `loc`, also when `loc` wraps
+    /// around the map. `None` when `loc` is not on the map.
+    pub fn point_of(&self, loc: R16) -> Option<WorldPoint<u32>> {
+        let spans = self.spans_of(loc);
+        let span = spans.get(spans.len() / 2)?;
+        let x = span.x_start + (span.x_end - span.x_start) / 2;
+        Some(WorldPoint::new(from_stored(x), from_stored(span.y)))
+    }
+
+    /// The [`point_of`](Self::point_of) every location, indexed by location.
+    pub fn points(&self) -> impl ExactSizeIterator<Item = Option<WorldPoint<u32>>> + '_ {
+        (0..self.len()).map(|loc| self.point_of(R16::new(loc as u16)))
+    }
+
+    /// The runs of `loc`, sorted by `(y, x_start)`. Empty when `loc` is not
+    /// on the map.
+    fn spans_of(&self, loc: R16) -> &[Span] {
         let idx = loc.value() as usize;
-        let lo = self.span_offsets[idx] as usize;
-        let hi = self.span_offsets[idx + 1] as usize;
-        let span = self.spans[(lo + hi) / 2];
-        WorldPoint::new(span.x_start + (span.x_end - span.x_start) / 2, span.y)
+        match (self.span_offsets.get(idx), self.span_offsets.get(idx + 1)) {
+            (Some(&lo), Some(&hi)) => &self.spans[lo as usize..hi as usize],
+            _ => &[],
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -278,24 +357,40 @@ impl SpatialIndex {
     }
 }
 
-fn walk_runs<F: FnMut(R16, u16, u16, u16)>(world: &World, mut visit: F) {
+fn walk_runs<F: FnMut(R16, StoredCoord, StoredCoord, StoredCoord)>(
+    world: &World,
+    hemisphere_width: StoredCoord,
+    height: StoredCoord,
+    mut visit: F,
+) {
     // This exposes each maximal horizontal R16 run in full-world row-major
     // order: west half, then east half, for each row.
-    let hemisphere_width = world.west().size().width as u16;
-
-    for (row, (west, east)) in world.west().rows().zip(world.east().rows()).enumerate() {
-        let y = row as u16;
+    for (y, (west, east)) in (0..height).zip(world.west().rows().zip(world.east().rows())) {
         walk_row_runs(west, 0, y, &mut visit);
         walk_row_runs(east, hemisphere_width, y, &mut visit);
     }
 }
 
-fn walk_row_runs<F: FnMut(R16, u16, u16, u16)>(row: &[R16], mut x: u16, y: u16, visit: &mut F) {
+fn walk_row_runs<F: FnMut(R16, StoredCoord, StoredCoord, StoredCoord)>(
+    row: &[R16],
+    mut x: StoredCoord,
+    y: StoredCoord,
+    visit: &mut F,
+) {
     for group in row.chunk_by(|a, b| a == b) {
-        let end = x + group.len() as u16 - 1;
-        visit(group[0], x, end, y);
-        x += group.len() as u16;
+        // A run is at most a hemisphere wide, which fits.
+        let len = group.len() as StoredCoord;
+        visit(group[0], x, x + len - 1, y);
+        x += len;
     }
+}
+
+/// Whether one of `spans`, sorted by `(y, x_start)`, covers pixel `(x, y)`.
+fn spans_contain(spans: &[Span], x: StoredCoord, y: StoredCoord) -> bool {
+    let idx = spans.partition_point(|span| (span.y, span.x_end) < (y, x));
+    spans
+        .get(idx)
+        .is_some_and(|span| span.y == y && span.x_start <= x)
 }
 
 fn spans_intersect_rect(spans: &[Span], rect: Aabb) -> bool {
@@ -487,12 +582,49 @@ mod tests {
         .build()
     }
 
+    /// Small worlds with a location that wraps around the map, one across
+    /// the hemisphere seam, one with a hole, single pixels at tile and
+    /// hemisphere corners, stripes of many locations in a tile, an id that is
+    /// not on the map (8), and a world smaller than a tile.
+    fn sample_worlds() -> Vec<World> {
+        let (width, height) = (160, 70);
+        let mut grid = vec![1; width * height];
+        for y in 0..height {
+            for x in 0..width {
+                let id = match (x, y) {
+                    (0..5 | 155.., 0..10) => 0,
+                    (70..90, 20..40) => 2,
+                    (20..30, 40..50) => 4,
+                    (10..50, 30..) => 3,
+                    (100..140, 50..60) => 9 + ((x / 3 + y) % 4) as u16,
+                    _ => continue,
+                };
+                grid[y * width + x] = id;
+            }
+        }
+        for (x, y, id) in [
+            (79, 0, 5),
+            (80, 69, 6),
+            (159, 69, 7),
+            (63, 63, 13),
+            (64, 64, 14),
+        ] {
+            grid[y * width + x] = id;
+        }
+
+        vec![
+            world_from_grid(grid, width as u16),
+            world_from_halves(vec![0, 1, 2, 3], vec![4, 5, 6, 7], 2),
+        ]
+    }
+
     #[test]
     fn test_aabb_size() {
         use std::mem::size_of;
 
         assert_eq!(size_of::<Aabb>(), 8);
         assert_eq!(size_of::<WorldPoint<u16>>(), 4);
+        assert_eq!(size_of::<Span>(), 6);
     }
 
     #[test]
@@ -531,21 +663,9 @@ mod tests {
 
         assert_eq!(index.len(), 8);
 
-        assert_eq!(index.point_of(R16::new(0)), WorldPoint::new(0, 0));
-        assert_eq!(index.point_of(R16::new(1)), WorldPoint::new(1, 0));
-        assert_eq!(index.point_of(R16::new(4)), WorldPoint::new(2, 0));
-    }
-
-    #[test]
-    fn point_of_returns_a_pixel_belonging_to_the_location() {
-        let world = world_from_halves(vec![0, 0, 1, 1], vec![2, 2, 3, 3], 2);
-        let index = world.build_spatial_index();
-
-        let point = index.point_of(R16::new(0));
-        assert_eq!(
-            world.at(WorldPoint::new(point.x as f32, point.y as f32)),
-            R16::new(0)
-        );
+        assert_eq!(index.point_of(R16::new(0)), Some(WorldPoint::new(0, 0)));
+        assert_eq!(index.point_of(R16::new(1)), Some(WorldPoint::new(1, 0)));
+        assert_eq!(index.point_of(R16::new(4)), Some(WorldPoint::new(2, 0)));
     }
 
     #[test]
@@ -554,7 +674,7 @@ mod tests {
         let row = [[0; 8], [1; 8]].concat();
         let world = world_from_grid(row.repeat(3), 16);
         let index = world.build_spatial_index();
-        assert_eq!(index.point_of(R16::new(0)), WorldPoint::new(3, 1));
+        assert_eq!(index.point_of(R16::new(0)), Some(WorldPoint::new(3, 1)));
     }
 
     #[test]
@@ -591,23 +711,6 @@ mod tests {
         let results = coarse(&index, mid);
 
         assert!(!results.contains(&R16::new(0)));
-    }
-
-    #[test]
-    fn point_of_handles_wrapping_location() {
-        let width = TILE_SIZE * 4;
-        let height = TILE_SIZE;
-        let mut grid = vec![1; width as usize * height as usize];
-        grid[0] = 0;
-        grid[width as usize - 1] = 0;
-        let world = world_from_grid(grid, width);
-        let index = SpatialIndex::from_world(&world);
-
-        let point = index.point_of(R16::new(0));
-        assert_eq!(
-            world.at(WorldPoint::new(point.x as f32, point.y as f32)),
-            R16::new(0)
-        );
     }
 
     #[test]
@@ -870,5 +973,54 @@ mod tests {
 
         assert!(!bitset.contains(first));
         assert_eq!(bitset.count(), 0);
+    }
+
+    #[test]
+    fn index_takes_worlds_up_to_u16_size() {
+        let tallest = world_from_halves(vec![0; 65535], vec![1; 65535], 1);
+        assert_eq!(tallest.build_spatial_index().len(), 2);
+        let widest = world_from_halves(vec![0; 32767], vec![1; 32767], 32767);
+        assert_eq!(widest.build_spatial_index().len(), 2);
+
+        let too_wide = world_from_halves(vec![0; 32768], vec![1; 32768], 32768);
+        let built = std::panic::catch_unwind(|| too_wide.build_spatial_index());
+        assert!(built.is_err());
+    }
+
+    #[test]
+    fn location_at_agrees_with_world_at() {
+        for world in sample_worlds() {
+            let index = world.build_spatial_index();
+            let size = world.size();
+            let (width, height) = (size.width as i32, size.height as i32);
+            for y in -3..height + 3 {
+                for x in -width - 3..2 * width + 3 {
+                    for offset in [0.0, 0.5, 0.999] {
+                        let point = WorldPoint::new(x as f32 + offset, y as f32 + offset);
+                        assert_eq!(index.location_at(point), world.at(point), "at {point}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn point_of_belongs_to_the_location() {
+        for world in sample_worlds() {
+            let index = world.build_spatial_index();
+            let mut on_map = LocationBitset::new();
+            for &loc in world.rows().flatten() {
+                on_map.set(loc);
+            }
+
+            for (loc, point) in index.points().enumerate() {
+                let loc = R16::new(loc as u16);
+                assert_eq!(point.is_some(), on_map.contains(loc), "{loc:?}");
+                if let Some(point) = point {
+                    let point = WorldPoint::new(point.x as f32, point.y as f32);
+                    assert_eq!(world.at(point), loc, "{loc:?} at {point}");
+                }
+            }
+        }
     }
 }

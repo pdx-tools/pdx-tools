@@ -60,10 +60,11 @@ struct Hemispheres {
 #[derive(Clone)]
 struct PatchMap {
     hemispheres: Hemispheres,
-    /// The [`World::centers`] of the patch. The hemisphere arrays are
-    /// dropped before the save is parsed, so the point of every location is
-    /// kept, not only the capital's.
-    centers: Arc<[Option<WorldPoint<u32>>]>,
+    /// The [`pdx_map::SpatialIndex::point_of`] every location, where the live
+    /// map opens on it. The hemisphere arrays and the index are dropped
+    /// before the save is parsed, so the point of every location is kept,
+    /// not only the capital's.
+    points: Arc<[Option<WorldPoint<u32>>]>,
 }
 
 /// The map data for one patch, with the hemisphere textures uploaded to the
@@ -94,7 +95,7 @@ fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError>
             west: gpu.create_texture(world.west().as_slice(), size.physical(), "EU5 West Texture"),
             east: gpu.create_texture(world.east().as_slice(), size.physical(), "EU5 East Texture"),
         },
-        centers: Arc::from(world.centers()),
+        points: world.build_spatial_index().points().collect(),
     };
     *cached = Some((slot, map.clone()));
     Ok(map)
@@ -131,7 +132,7 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
     // decode the map is not needed at the same time as the parse memory.
     let PatchMap {
         hemispheres,
-        centers,
+        points,
     } = patch_map(gpu, slot)?;
     let mut save = parser
         .parse()
@@ -142,10 +143,9 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
     workspace.set_map_mode(MapMode::Political);
     let date = workspace.gamestate().metadata.date.date_fmt().to_string();
     let capital = match workspace.opening_view() {
-        OpeningView::Capital { color_id } => centers
-            .get(usize::from(color_id.value()))
-            .copied()
-            .flatten(),
+        OpeningView::Capital { color_id } => {
+            points.get(usize::from(color_id.value())).copied().flatten()
+        }
         OpeningView::World => None,
     };
     Ok(PreparedSave {

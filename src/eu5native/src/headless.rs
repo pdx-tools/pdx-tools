@@ -45,13 +45,16 @@ fn calculate_viewport_bounds(
     let hemisphere = eu5app::hemisphere_size();
 
     // Center on the player's capital, or on the world center
-    let (capital_x, capital_y) = match map_app.opening_view() {
-        OpeningView::Capital { color_id } => {
-            let center = world.center_of(pdx_map::R16::new(color_id.value()));
-            (center.x as u16, center.y as u16)
-        }
-        OpeningView::World => (hemisphere.width as u16, hemisphere.height as u16 / 2),
+    let capital = match map_app.opening_view() {
+        OpeningView::Capital { color_id } => world
+            .build_spatial_index()
+            .point_of(pdx_map::R16::new(color_id.value())),
+        OpeningView::World => None,
     };
+    let (capital_x, capital_y) = capital.map_or(
+        (hemisphere.width as u16, hemisphere.height as u16 / 2),
+        |center| (center.x as u16, center.y as u16),
+    );
 
     // Center horizontally with proper wraparound handling
     let x_centered = capital_x as i32 - (width / 2) as i32;

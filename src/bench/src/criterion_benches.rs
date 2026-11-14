@@ -9,5 +9,5 @@ criterion_group!(
     map::criterion::map_from_rgb8_benchmark,
     map::criterion::map_aabb_index_benchmark,
     map::criterion::map_adjacency_benchmark,
-    map::criterion::map_center_of_benchmark
+    map::criterion::map_location_at_benchmark
 );
