@@ -5,7 +5,6 @@ import init, {
   Eu5WasmMapRenderer,
   Eu5WasmMapBundle,
   location_borders_at_zoom,
-  seamless_strip_plan,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
 import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm_eu5_map";
@@ -758,37 +757,33 @@ export const createMapEngine = async (
     ): Promise<Blob> => {
       applyPendingSync();
 
-      const [worldWidth, worldHeight] = app.world_size();
-      const scale = fullResolution ? 1 : 0.5;
-      const output = { width: worldWidth * scale, height: worldHeight * scale };
-
-      const compositeCanvas = new OffscreenCanvas(output.width, output.height);
-      const ctx = compositeCanvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context for composite canvas");
-      }
-
-      // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
-      let overlayInfo: OverlayCanvasInfo | null = null;
-      if (overlayData) {
-        overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
-      }
-
       // The world renders in strips, so borders continue across the seams
-      const plan = seamless_strip_plan(worldWidth);
-      const screenshotCanvas = new OffscreenCanvas(plan.renderWidth, worldHeight);
-
-      // Create independent screenshot renderer
-      const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
+      const shot = app.create_world_screenshot();
       try {
-        for (const strip of plan.strips) {
-          screenshotRenderer.render_world_rect(strip.x, 0, plan.renderWidth, worldHeight);
+        const scale = fullResolution ? 1 : 0.5;
+        const output = { width: shot.width() * scale, height: shot.height() * scale };
+
+        const compositeCanvas = new OffscreenCanvas(output.width, output.height);
+        const ctx = compositeCanvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context for composite canvas");
+        }
+
+        // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
+        let overlayInfo: OverlayCanvasInfo | null = null;
+        if (overlayData) {
+          overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
+        }
+
+        const canvas = shot.canvas();
+        for (let i = 0; i < shot.strip_count(); i++) {
+          const strip = shot.render_strip(i);
           ctx.drawImage(
-            screenshotCanvas,
+            canvas,
             0,
             0,
             strip.width,
-            worldHeight,
+            shot.height(),
             strip.x * scale,
             0,
             strip.width * scale,
@@ -804,7 +799,7 @@ export const createMapEngine = async (
         // Convert composite canvas to PNG blob and return
         return await compositeCanvas.convertToBlob({ type: "image/png" });
       } finally {
-        screenshotRenderer.free();
+        shot.free();
       }
     },
 

@@ -1,9 +1,4 @@
-import init, {
-  PdxCanvasSurface,
-  PdxMapImage,
-  PdxMapRenderer,
-  seamless_strip_plan,
-} from "../wasm/wasm_pdx_map";
+import init, { PdxCanvasSurface, PdxMapImage, PdxMapRenderer } from "../wasm/wasm_pdx_map";
 import type { CanvasDisplay } from "../wasm/wasm_pdx_map";
 import wasmPath from "../wasm/wasm_pdx_map_bg.wasm?url";
 import { proxy } from "comlink";
@@ -22,9 +17,7 @@ let appTask = new Promise<PdxMapRenderer>((res, rej) => {
 const pressedKeys = new Set<string>();
 
 // Process uploaded map image into textures
-async function processMapImage(
-  imageFile: File,
-): Promise<{ image: PdxMapImage; tileWidth: number; tileHeight: number }> {
+async function processMapImage(imageFile: File): Promise<{ image: PdxMapImage }> {
   // Create image bitmap
   const imageBitmap = await createImageBitmap(imageFile);
   const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height);
@@ -38,8 +31,6 @@ async function processMapImage(
       imageBitmap.width,
       imageBitmap.height,
     ),
-    tileWidth: imageBitmap.width / 2,
-    tileHeight: imageBitmap.height,
   };
 }
 
@@ -67,7 +58,7 @@ export const createMapEngine = async ({
 
   // Process the uploaded map image and upload textures
   console.log("Processing map image...");
-  const { tileWidth, tileHeight, image: indexedImage } = await processMapImage(mapImageFile);
+  const { image: indexedImage } = await processMapImage(mapImageFile);
 
   // Upload textures with their dimensions
   const westView = canvasInit.upload_west_texture(indexedImage);
@@ -174,42 +165,36 @@ export const createMapEngine = async ({
     },
 
     generateWorldScreenshot: async (): Promise<Blob> => {
-      // Create composite canvas with full map dimensions (2:1 aspect ratio)
-      const fullWidth = tileWidth * 2;
-      const fullHeight = tileHeight;
-      const compositeCanvas = new OffscreenCanvas(fullWidth, fullHeight);
-      const ctx = compositeCanvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context for composite canvas");
-      }
-
       // The world renders in strips, so borders continue across the seams
-      const plan = seamless_strip_plan(fullWidth);
-      const screenshotCanvas = new OffscreenCanvas(plan.renderWidth, fullHeight);
-
-      // Create independent screenshot renderer
-      const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
+      const shot = app.create_world_screenshot();
       try {
-        for (const strip of plan.strips) {
-          screenshotRenderer.render_world_rect(strip.x, 0, plan.renderWidth, fullHeight);
+        const compositeCanvas = new OffscreenCanvas(shot.width(), shot.height());
+        const ctx = compositeCanvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context for composite canvas");
+        }
+
+        const canvas = shot.canvas();
+        for (let i = 0; i < shot.strip_count(); i++) {
+          const strip = shot.render_strip(i);
           ctx.drawImage(
-            screenshotCanvas,
+            canvas,
             0,
             0,
             strip.width,
-            fullHeight,
+            shot.height(),
             strip.x,
             0,
             strip.width,
-            fullHeight,
+            shot.height(),
           );
         }
-      } finally {
-        screenshotRenderer.free();
-      }
 
-      // Convert to PNG blob
-      return await compositeCanvas.convertToBlob({ type: "image/png" });
+        // Convert to PNG blob
+        return await compositeCanvas.convertToBlob({ type: "image/png" });
+      } finally {
+        shot.free();
+      }
     },
   });
 };

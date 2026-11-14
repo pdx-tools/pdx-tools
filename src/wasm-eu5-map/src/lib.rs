@@ -20,9 +20,9 @@ mod live_map;
 
 // Re-export common types from wasm-pdxmap
 pub use wasm_pdx_map::{
-    CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, WasmGpuColor,
-    WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture, WasmViewportInsets,
-    create_screenshot_renderer_for_app, get_surface_target, seamless_strip_plan,
+    CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, PdxWorldScreenshot,
+    WasmGpuColor, WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture,
+    WasmViewportInsets, create_screenshot_renderer_for_app, get_surface_target,
 };
 
 #[wasm_bindgen]
@@ -380,6 +380,13 @@ impl Eu5WasmMapRenderer {
         self.map
             .create_screenshot_renderer(canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
+    }
+
+    /// Start a screenshot of the whole world
+    #[wasm_bindgen]
+    pub fn create_world_screenshot(&self) -> Result<PdxWorldScreenshot, JsError> {
+        let world = self.map.hemisphere_size().world();
+        PdxWorldScreenshot::new(world, |canvas| self.map.create_screenshot_renderer(canvas))
     }
 
     /// Synchronize a location array from JS to Rust

@@ -2,8 +2,8 @@ use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint,
     LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
-    QueuedWorkFuture, R16Palette, RenderError, SurfaceMapRenderer, ViewportInsets, World,
-    WorldLength, WorldPoint, WorldSize, default_clock,
+    QueuedWorkFuture, R16Palette, RenderError, StripPlan, SurfaceMapRenderer, ViewportInsets,
+    World, WorldLength, WorldPoint, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -394,6 +394,15 @@ impl PdxMapRenderer {
         create_screenshot_renderer_for_app(&self.controller, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
     }
+
+    /// Start a screenshot of the whole world
+    #[wasm_bindgen]
+    pub fn create_world_screenshot(&self) -> Result<PdxWorldScreenshot, JsError> {
+        let world = self.controller.hemisphere_size().world();
+        PdxWorldScreenshot::new(world, |canvas| {
+            create_screenshot_renderer_for_app(&self.controller, canvas)
+        })
+    }
 }
 
 impl PdxMapRenderer {
@@ -569,8 +578,7 @@ impl PdxScreenshotRenderer {
     /// asked for: the zoom comes from the width the surface has to show, so a
     /// rectangle of the same aspect as the surface lands edge to edge. This is
     /// what a recording needs, because the output size must not follow the
-    /// window the player happens to have open, and what a world screenshot
-    /// renders each strip of its [`seamless_strip_plan`] with.
+    /// window the player happens to have open.
     #[wasm_bindgen]
     pub fn render_world_rect(
         &mut self,
@@ -594,40 +602,86 @@ impl PdxScreenshotRenderer {
     }
 }
 
-/// One vertical strip of a wide image, in image pixels.
+/// Where a rendered strip goes in the world screenshot, in pixels.
 #[derive(Copy, Clone, Debug, Serialize, tsify::Tsify)]
-pub struct WasmStrip {
+pub struct ScreenshotStrip {
     pub x: u32,
     pub width: u32,
 }
 
-/// How to render an image too wide for one surface, so that borders
-/// continue across the seams. Each strip renders on a surface
-/// `renderWidth` wide, of which it keeps the first `width` columns.
-#[derive(Clone, Debug, Serialize, tsify::Tsify)]
-#[serde(rename_all = "camelCase")]
-pub struct WasmStripPlan {
-    pub render_width: u32,
-    pub strips: Vec<WasmStrip>,
+/// A screenshot of the whole world at one pixel per world pixel, rendered
+/// strip by strip on a canvas of its own, so borders continue across the
+/// seams. After rendering a strip, draw the first `width` columns of the
+/// canvas at `x` of the screenshot.
+#[wasm_bindgen]
+pub struct PdxWorldScreenshot {
+    renderer: PdxScreenshotRenderer,
+    canvas: OffscreenCanvas,
+    plan: StripPlan,
+    world: WorldSize<u32>,
 }
 
-/// Plan the strips to render an image `width` pixels wide in.
+impl PdxWorldScreenshot {
+    /// Make the canvas the plan needs and a renderer for it.
+    pub fn new(
+        world: WorldSize<u32>,
+        create_renderer: impl FnOnce(OffscreenCanvas) -> Result<PdxScreenshotRenderer, RenderError>,
+    ) -> Result<Self, JsError> {
+        let plan = StripPlan::new(world.width);
+        let canvas = OffscreenCanvas::new(plan.render_width(), world.height)
+            .map_err(|_| JsError::new("Failed to create the screenshot canvas"))?;
+        let renderer = create_renderer(canvas.clone())
+            .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))?;
+        Ok(Self {
+            renderer,
+            canvas,
+            plan,
+            world,
+        })
+    }
+}
+
 #[wasm_bindgen]
-pub fn seamless_strip_plan(width: u32) -> Result<Ts<WasmStripPlan>, JsError> {
-    let plan = pdx_map::StripPlan::new(width);
-    let strips = plan
-        .strips()
-        .iter()
-        .map(|strip| WasmStrip {
+impl PdxWorldScreenshot {
+    /// The canvas each strip renders on
+    #[wasm_bindgen]
+    pub fn canvas(&self) -> OffscreenCanvas {
+        self.canvas.clone()
+    }
+
+    /// Width of the screenshot, in pixels
+    #[wasm_bindgen]
+    pub fn width(&self) -> u32 {
+        self.world.width
+    }
+
+    /// Height of the screenshot and of the canvas, in pixels
+    #[wasm_bindgen]
+    pub fn height(&self) -> u32 {
+        self.world.height
+    }
+
+    #[wasm_bindgen]
+    pub fn strip_count(&self) -> usize {
+        self.plan.strips().len()
+    }
+
+    /// Render a strip to the canvas and say where it goes.
+    #[wasm_bindgen]
+    pub fn render_strip(&mut self, index: usize) -> Result<Ts<ScreenshotStrip>, JsError> {
+        let strip = *self
+            .plan
+            .strips()
+            .get(index)
+            .ok_or_else(|| JsError::new("screenshot strip out of range"))?;
+        self.renderer
+            .render_world_rect(strip.x, 0, self.plan.render_width(), self.world.height)?;
+        let strip = ScreenshotStrip {
             x: strip.x,
             width: strip.width,
-        })
-        .collect();
-    let plan = WasmStripPlan {
-        render_width: plan.render_width(),
-        strips,
-    };
-    plan.into_ts().map_err(JsError::from)
+        };
+        strip.into_ts().map_err(JsError::from)
+    }
 }
 
 /// Shared helper to create a screenshot renderer for any MapApp<SurfaceMapRenderer>
