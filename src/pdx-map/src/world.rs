@@ -16,9 +16,9 @@ use std::sync::OnceLock;
 /// map is too large to fit into a single texture (16384x8192), so it is split
 /// into two 8192x8192 textures.
 ///
-/// And for the sake of not needing to transform 134 million pixels into a
-/// different data layout, we can leverage the same data on the CPU side for
-/// queries.
+/// The CPU side reads the same layout. A consumer that only needs to know
+/// which location is at a point, or where a location is, can build a
+/// [`SpatialIndex`] and drop the world, as the index is much smaller.
 #[derive(Debug)]
 pub struct World {
     west: Hemisphere<R16>,
@@ -139,132 +139,15 @@ impl World {
 
     /// Returns the R16 location index at the given world coordinates
     pub fn at(&self, point: WorldPoint<f32>) -> R16 {
-        let hemisphere_size = self.west().size();
-        let world_size = hemisphere_size.world();
-        assert!(
-            hemisphere_size.height > 0,
-            "world height must be greater than 0"
-        );
-
-        let x = point.x.floor() as i32;
-        let y = point.y.floor() as i32;
-        let y = y.clamp(0, world_size.height as i32 - 1) as usize;
-        let world_width = world_size.width as i32;
-        let wrapped_x = x.rem_euclid(world_width);
-
-        let hemisphere_width = hemisphere_size.width as i32;
-        let (data, col) = if wrapped_x < hemisphere_width {
-            (self.west.as_slice(), wrapped_x as usize)
+        let pixel = pixel_under(point, self.size());
+        let hemisphere_width = self.west.size().width;
+        let (data, col) = if pixel.x < hemisphere_width {
+            (self.west.as_slice(), pixel.x)
         } else {
-            (
-                self.east.as_slice(),
-                (wrapped_x - hemisphere_width) as usize,
-            )
+            (self.east.as_slice(), pixel.x - hemisphere_width)
         };
 
-        let offset = y * hemisphere_size.width as usize + col;
-        data[offset]
-    }
-
-    /// Return the first pixel for the location in row-major order as an
-    /// approximation for a location's center.
-    ///
-    /// The algorithm is a dumb scan that is written to be auto-vectorized (but
-    /// fails to accomplish this goal). Since there may be 30k locations, each
-    /// location is a small fraction of the total map. Based on location
-    /// density, it will most likely be in the northern hemisphere so we weave
-    /// the east and west hemisphere rows.
-    ///
-    /// In earlier architectures this function would rely on preprocessed
-    /// location's center as part of the game data payload but philosophically
-    /// it is nice to have the map textures be the single source of truth.
-    ///
-    /// We could do a linear scan over the entire image, but that's 134 million
-    /// pixels to scan on Wasm for EU5, which takes upwards of 100ms. It does
-    /// have the nice property of being input independent
-    ///
-    /// Alternatively, once we find one pixel of the location we could do a
-    /// scan-fill to find all connected pixels for this location (faster than a
-    /// DFS), and then exit. This will speed-up the algorithm to complete in
-    /// 25ms on Wasm. I don't love the allocation and complication necessary to
-    /// manage the bitset. It's still makes "center_of" a heuristic as
-    /// disjointed regions won't be accounted for.
-    ///
-    /// In the end, this function takes around 15ms on wasm for EU5.
-    pub fn center_of(&self, loc: R16) -> WorldPoint<u32> {
-        fn process_row(row_data: &[R16], loc: R16) -> Option<usize> {
-            const LANES: usize = 16;
-
-            let (chunks, remainder) = row_data.as_chunks::<LANES>();
-
-            for (chunk_idx, chunk) in chunks.iter().enumerate() {
-                let has_match = chunk
-                    .iter()
-                    .map(|&tile| (tile == loc) as u16)
-                    .fold(0, |acc, x| acc | x);
-
-                if has_match == 0 {
-                    continue;
-                }
-
-                let base_col = chunk_idx * LANES;
-                if let Some(idx) = chunk.iter().position(|&tile| tile == loc) {
-                    return Some(base_col + idx);
-                }
-            }
-
-            let base_col = chunks.len() * LANES;
-            if let Some(i) = remainder.iter().position(|&r16| r16 == loc) {
-                return Some(base_col + i);
-            }
-
-            None
-        }
-
-        let hemisphere_width = self.west().size().width as usize;
-        let data = self.west.rows().enumerate().zip(self.east.rows());
-
-        for ((y, west_row), east_row) in data {
-            if let Some(x) = process_row(west_row, loc) {
-                return WorldPoint::new(x as u32, y as u32);
-            }
-
-            if let Some(x) = process_row(east_row, loc) {
-                return WorldPoint::new((hemisphere_width + x) as u32, y as u32);
-            }
-        }
-
-        WorldPoint::new(0, 0)
-    }
-
-    /// The [`Self::center_of`] point of every location, indexed by location.
-    /// A location that is not on the map has no point.
-    ///
-    /// This is one scan of every pixel, in the same order as
-    /// [`Self::center_of`]. Use it when a caller cannot keep the world in
-    /// memory until it knows which location it needs.
-    ///
-    /// A pixel that continues the run of the previous pixel in its row
-    /// cannot be the first pixel of its location, so the scan does not look
-    /// it up. Runs are long, so most pixels are only one comparison.
-    pub fn centers(&self) -> Vec<Option<WorldPoint<u32>>> {
-        let mut centers = Vec::new();
-        for (y, row) in self.rows().enumerate() {
-            let mut previous = None;
-            for (x, &loc) in row.enumerate() {
-                if previous == Some(loc) {
-                    continue;
-                }
-                previous = Some(loc);
-
-                let idx = usize::from(loc.value());
-                if idx >= centers.len() {
-                    centers.resize(idx + 1, None);
-                }
-                centers[idx].get_or_insert(WorldPoint::new(x as u32, y as u32));
-            }
-        }
-        centers
+        data[pixel.y as usize * hemisphere_width as usize + col as usize]
     }
 
     pub fn build_spatial_index(&self) -> SpatialIndex {
@@ -274,6 +157,15 @@ impl World {
     pub fn build_topology_index(&self) -> TopologyIndex {
         TopologyIndex::from_world(self)
     }
+}
+
+/// The pixel under `point` in a world of `size`: x wraps around the world
+/// and y is clamped to it.
+pub(crate) fn pixel_under(point: WorldPoint<f32>, size: WorldSize<u32>) -> WorldPoint<u32> {
+    assert!(size.height > 0, "world height must be greater than 0");
+    let x = (point.x.floor() as i32).rem_euclid(size.width as i32);
+    let y = (point.y.floor() as i32).clamp(0, size.height as i32 - 1);
+    WorldPoint::new(x as u32, y as u32)
 }
 
 #[cfg(test)]
@@ -320,39 +212,6 @@ mod tests {
         assert_eq!(world.at(WorldPoint::new(4.0, 0.0)), R16::new(10));
         assert_eq!(world.at(WorldPoint::new(0.0, -100.0)), R16::new(10));
         assert_eq!(world.at(WorldPoint::new(0.0, 100.0)), R16::new(12));
-    }
-
-    #[test]
-    fn world_centers_match_center_of() {
-        let world = world_from_halves(vec![0, 1, 4, 5, 9, 1], vec![2, 3, 6, 7, 3, 9], 3);
-        let centers = world.centers();
-
-        assert_eq!(centers.len(), 10);
-        assert_eq!(centers[8], None);
-        for loc in [0, 1, 2, 3, 4, 5, 6, 7, 9] {
-            assert_eq!(centers[loc], Some(world.center_of(R16::new(loc as u16))));
-        }
-    }
-
-    #[test]
-    fn world_centers_skip_runs() {
-        // Runs within a hemisphere row, and a run of 2 and of 3 that crosses
-        // from the west hemisphere into the east.
-        let world = world_from_halves(vec![1, 1, 2, 0, 3, 3], vec![2, 2, 1, 3, 4, 4], 3);
-        let centers = world.centers();
-
-        assert_eq!(centers.len(), 5);
-        for (loc, &center) in centers.iter().enumerate() {
-            assert_eq!(center, Some(world.center_of(R16::new(loc as u16))));
-        }
-    }
-
-    #[test]
-    fn world_center_of_returns_first_pixel() {
-        let world = world_from_halves(vec![0, 1, 4, 5], vec![2, 3, 6, 7], 2);
-
-        assert_eq!(world.center_of(R16::new(0)), WorldPoint::new(0, 0));
-        assert_eq!(world.center_of(R16::new(7)), WorldPoint::new(3, 1));
     }
 
     #[test]
@@ -426,62 +285,5 @@ mod tests {
 
         assert_eq!(world.at(WorldPoint::new(0.0, -5.0)), R16::new(1));
         assert_eq!(world.at(WorldPoint::new(0.0, 100.0)), R16::new(1));
-    }
-
-    #[test]
-    fn test_center_of_single_pixel() {
-        let world = world_from_halves(vec![0, 1, 4, 5], vec![2, 3, 6, 7], 2);
-
-        assert_eq!(world.center_of(R16::new(0)), WorldPoint::new(0, 0));
-        assert_eq!(world.center_of(R16::new(1)), WorldPoint::new(1, 0));
-        assert_eq!(world.center_of(R16::new(2)), WorldPoint::new(2, 0));
-        assert_eq!(world.center_of(R16::new(5)), WorldPoint::new(1, 1));
-        assert_eq!(world.center_of(R16::new(7)), WorldPoint::new(3, 1));
-    }
-
-    #[test]
-    fn test_center_of_multi_pixel_horizontal() {
-        let world = world_from_halves(vec![0, 0], vec![1, 1], 2);
-
-        assert_eq!(world.center_of(R16::new(0)), WorldPoint::new(0, 0));
-        assert_eq!(world.center_of(R16::new(1)), WorldPoint::new(2, 0));
-    }
-
-    #[test]
-    fn test_center_of_multi_pixel_vertical() {
-        let world = world_from_halves(vec![0, 0], vec![1, 1], 1);
-
-        assert_eq!(world.center_of(R16::new(0)), WorldPoint::new(0, 0));
-        assert_eq!(world.center_of(R16::new(1)), WorldPoint::new(1, 0));
-    }
-
-    #[test]
-    fn test_center_of_region() {
-        let world = world_from_halves(
-            vec![0, 0, 0, 5, 0, 5, 0, 0],
-            vec![1, 1, 5, 1, 5, 1, 1, 1],
-            2,
-        );
-
-        assert_eq!(world.center_of(R16::new(5)), WorldPoint::new(1, 1));
-    }
-
-    #[test]
-    fn test_center_of_spanning_hemispheres() {
-        let world = world_from_halves(vec![0, 1], vec![1, 0], 2);
-
-        assert_eq!(world.center_of(R16::new(0)), WorldPoint::new(0, 0));
-        assert_eq!(world.center_of(R16::new(1)), WorldPoint::new(1, 0));
-    }
-
-    #[test]
-    fn test_center_of_large_region() {
-        let world = world_from_halves(
-            vec![9, 9, 9, 9, 9, 9, 9, 9],
-            vec![0, 1, 2, 3, 4, 5, 6, 7],
-            2,
-        );
-
-        assert_eq!(world.center_of(R16::new(9)), WorldPoint::new(0, 0));
     }
 }

@@ -95,7 +95,8 @@ pub fn location_borders_at_zoom(zoom: f32) -> bool {
 pub struct Eu5WasmMapRenderer {
     map: LiveMap,
     input: InteractionController,
-    world: World,
+    /// Which location is at a point and where each location is. The world
+    /// it was built from is not kept.
     spatial_index: SpatialIndex,
     spatial_scratch: LocationBitset,
     location_arrays: LocationArrays,
@@ -132,8 +133,9 @@ impl Eu5WasmMapRenderer {
         );
 
         let map_size = renderer.hemisphere_size().world();
-        let world = texture_data.into_world(renderer.hemisphere_size().width_length());
-        let spatial_index = world.build_spatial_index();
+        let spatial_index = texture_data
+            .into_world(renderer.hemisphere_size().width_length())
+            .build_spatial_index();
         let map = LiveMap::new(MapViewController::new(renderer));
 
         // Initialize input controller with map size
@@ -142,7 +144,6 @@ impl Eu5WasmMapRenderer {
         let mut app = Eu5WasmMapRenderer {
             map,
             input,
-            world,
             spatial_index,
             spatial_scratch: LocationBitset::new(),
             location_arrays: LocationArrays::new(),
@@ -281,7 +282,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn pick_location(&mut self) -> u16 {
         let world_coords = self.input.world_position();
-        self.world.at(world_coords).value()
+        self.spatial_index.location_at(world_coords).value()
     }
 
     #[wasm_bindgen]
@@ -467,41 +468,44 @@ impl Eu5WasmMapRenderer {
     /// Open the map on the view the save calls for.
     #[wasm_bindgen]
     pub fn open_view(&mut self, view: Ts<OpeningView>) -> Result<(), JsError> {
-        match view.to_rust()? {
-            OpeningView::Capital { color_id } => self.center_at_color_id(color_id.value()),
-            OpeningView::World => {
-                self.input.fit_map();
-                self.apply_viewport();
-            }
+        let capital = match view.to_rust()? {
+            OpeningView::Capital { color_id } => self.location_point(color_id.value()),
+            OpeningView::World => None,
+        };
+        match capital {
+            Some(point) => self.input.center_on(point),
+            None => self.input.fit_map(),
         }
+        self.apply_viewport();
         Ok(())
     }
 
     /// Center the viewport at a location by its color ID (R16 texture index).
+    /// A location that is not on the map leaves the view as it is.
     #[wasm_bindgen]
     pub fn center_at_color_id(&mut self, color_id: u16) {
-        let r16 = R16::new(color_id);
-        let center = self.world.center_of(r16);
-
-        // Convert u32 world coordinates to f32 for viewport
-        let world = WorldPoint::new(center.x as f32, center.y as f32);
-        self.input.center_on(world);
+        let Some(point) = self.location_point(color_id) else {
+            return;
+        };
+        self.input.center_on(point);
         self.apply_viewport();
     }
 
     /// Show the location with `color_id` (R16 texture index) in the region that
     /// the insets do not cover. From a far view, also zoom in so that the location
     /// is large enough to see. The target is a pixel of the location, so a
-    /// location that wraps around the map has a real target.
+    /// location that wraps around the map has a real target. A location that
+    /// is not on the map leaves the view as it is.
     #[wasm_bindgen]
     pub fn jump_to_color_id(
         &mut self,
         color_id: u16,
         insets: Ts<WasmViewportInsets>,
     ) -> Result<(), JsError> {
-        let point = self.spatial_index.point_of(R16::new(color_id));
-        let target = WorldPoint::new(point.x as f32, point.y as f32);
         let insets: ViewportInsets = insets.to_rust()?.into();
+        let Some(target) = self.location_point(color_id) else {
+            return Ok(());
+        };
         self.input.jump_to(target, insets, JUMP_ZOOM);
         self.apply_viewport();
         Ok(())
@@ -520,6 +524,13 @@ impl Eu5WasmMapRenderer {
 }
 
 impl Eu5WasmMapRenderer {
+    /// The middle of the location with `color_id`, where the map opens on it
+    /// or jumps to it.
+    fn location_point(&self, color_id: u16) -> Option<WorldPoint<f32>> {
+        let point = self.spatial_index.point_of(R16::new(color_id))?;
+        Some(WorldPoint::new(f32::from(point.x), f32::from(point.y)))
+    }
+
     /// Send the input viewport to the map, and show location borders only at
     /// zoom levels where they are legible. Call this after any change to the
     /// input viewport.
