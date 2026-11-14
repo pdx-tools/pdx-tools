@@ -682,10 +682,7 @@ export const createMapEngine = async (
   const rafRender = async () => {
     try {
       await drawFrame();
-      if (frameFailing) {
-        frameFailing = false;
-        log("EU5 map frames recovered");
-      }
+      frameFailing = false;
     } catch (error) {
       if (!frameFailing) {
         frameFailing = true;
@@ -718,12 +715,11 @@ export const createMapEngine = async (
         Math.abs(newDimensions.scaleFactor - prevDimensions.scaleFactor);
 
       if (diff >= 4) {
+        prevDimensions = { ...newDimensions };
         // Firefox also needs to wait for queued work before resizing
         // otherwise it will freeze up
         await app.queued_work().wait();
         app.resize(newDimensions.width, newDimensions.height, newDimensions.scaleFactor);
-        // Only after the resize, so a failed one is tried again next frame.
-        prevDimensions = { ...newDimensions };
       }
 
       newDimensions = null;

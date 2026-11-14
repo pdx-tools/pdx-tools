@@ -379,11 +379,9 @@ export class SharedCanvasInputReader {
     let tail = Atomics.load(this.controls, SharedCanvasAtomicIndex.Tail);
 
     while (tail !== Atomics.load(this.controls, SharedCanvasAtomicIndex.Head)) {
-      const event = this.decodeSlot(tail);
+      consume(this.decodeSlot(tail));
       tail = (tail + 1) % this.config.capacity;
-      // Release the slot first, so an event that throws is not read again.
       Atomics.store(this.controls, SharedCanvasAtomicIndex.Tail, tail);
-      consume(event);
     }
   }
 
