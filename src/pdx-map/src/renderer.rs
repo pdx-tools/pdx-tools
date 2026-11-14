@@ -1,16 +1,19 @@
 use bytemuck::{Pod, Zeroable};
-use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use wgpu::SurfaceTarget;
 
 use crate::error::{RenderError, RenderErrorKind, SurfaceError};
+use crate::frame_tracker::FrameTracker;
 use crate::image::{StitchedImage, StripPlan};
 use crate::{
     GpuLocationIdx, HemisphereSize, LocationArrays, LocationFlags, PhysicalSize, R16,
     ViewportBounds, WorldPoint, WorldRect, WorldSize,
 };
 
-/// A drawable layer that can be composed into the main map render pass
+/// A drawable layer that can be composed into the main map render pass.
+///
+/// A layer shows the same picture for the same view and render target: a
+/// surface renderer draws a new frame only when its own state changes.
 pub trait RenderLayer: Send + Sync {
     /// Called when the render target is resized so layers can recreate GPU state
     fn resize(&mut self, _config: &wgpu::SurfaceConfiguration, _device: &wgpu::Device) {}
@@ -19,9 +22,9 @@ pub trait RenderLayer: Send + Sync {
     fn update(&mut self, _queue: &wgpu::Queue) {}
 
     /// Record draw commands for this layer
-    fn draw<'a>(
-        &'a self,
-        pass: &mut wgpu::RenderPass<'a>,
+    fn draw(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
         viewport: &ViewportBounds,
         size: PhysicalSize<u32>,
     );
@@ -85,8 +88,8 @@ impl MapTexture {
 }
 
 /// Rendering configuration - constants and user-configurable options
-#[derive(Debug, Clone)]
-pub struct RenderConfig {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct RenderConfig {
     hemisphere: HemisphereSize<u32>,
 
     pub enable_location_borders: bool,
@@ -502,8 +505,8 @@ impl<'a> GpuSurfaceContextRef<'a> {
 }
 
 /// GPU resource container - owns textures and storage buffers for map data
-#[derive(Debug)]
-pub struct MapResources {
+#[derive(Debug, Clone)]
+pub(crate) struct MapResources {
     // Textures
     west_texture: MapTexture,
     east_texture: MapTexture,
@@ -516,21 +519,7 @@ pub struct MapResources {
 
     // Incremented when a buffer is reallocated so renderers rebuild their
     // bind groups
-    generation: Cell<u64>,
-}
-
-impl Clone for MapResources {
-    fn clone(&self) -> Self {
-        Self {
-            west_texture: self.west_texture.clone(),
-            east_texture: self.east_texture.clone(),
-            primary_colors: self.primary_colors.clone(),
-            border_colors: self.border_colors.clone(),
-            secondary_colors: self.secondary_colors.clone(),
-            states: self.states.clone(),
-            generation: Cell::new(0),
-        }
-    }
+    generation: u64,
 }
 
 impl MapResources {
@@ -548,7 +537,7 @@ impl MapResources {
             border_colors,
             secondary_colors,
             states,
-            generation: Cell::new(0),
+            generation: 0,
         }
     }
 
@@ -605,7 +594,7 @@ impl MapResources {
             self.border_colors = border_colors;
             self.secondary_colors = secondary_colors;
             self.states = states;
-            self.generation.set(self.generation.get() + 1);
+            self.generation += 1;
         }
     }
 
@@ -874,16 +863,17 @@ struct FrameBindGroups {
 }
 
 /// GPU handles a frame needs to record the resolve and shade passes
-pub struct MapFrame {
+pub(crate) struct MapFrame {
     resolved_view: wgpu::TextureView,
     resolve_bind_group: wgpu::BindGroup,
     shade_bind_group: wgpu::BindGroup,
+    shade_pipeline: wgpu::RenderPipeline,
 }
 
 /// Records the resolve and shade passes. Owns the per-renderer state: the
 /// uniform buffers, the resolved target, and a pipeline cache for the shade
 /// pass keyed by output format.
-pub struct MapRenderer {
+pub(crate) struct MapRenderer {
     // Need device for creating pipelines and bind groups
     device: wgpu::Device,
 
@@ -892,11 +882,11 @@ pub struct MapRenderer {
     resolve_uniforms: wgpu::Buffer,
     shade_uniforms: wgpu::Buffer,
 
-    resolved: RefCell<Option<ResolvedTarget>>,
-    frame_bind_groups: RefCell<Option<FrameBindGroups>>,
+    resolved: Option<ResolvedTarget>,
+    frame_bind_groups: Option<FrameBindGroups>,
 
     // Shade pipeline cache: TextureFormat -> RenderPipeline
-    shade_pipelines: RefCell<HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>>,
+    shade_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
 
     // Rendering configuration
     config: RenderConfig,
@@ -916,7 +906,7 @@ impl MapRenderer {
         Self::with_pipelines(
             &renderer.device,
             renderer.pipelines.clone(),
-            renderer.config.clone(),
+            renderer.config,
         )
     }
 
@@ -930,9 +920,9 @@ impl MapRenderer {
             pipelines,
             resolve_uniforms: uniform_buffer::<ResolveUniforms>(device, "Resolve Uniform Buffer"),
             shade_uniforms: uniform_buffer::<ShadeUniforms>(device, "Shade Uniform Buffer"),
-            resolved: RefCell::new(None),
-            frame_bind_groups: RefCell::new(None),
-            shade_pipelines: RefCell::new(HashMap::new()),
+            resolved: None,
+            frame_bind_groups: None,
+            shade_pipelines: HashMap::new(),
             config,
         }
     }
@@ -944,14 +934,15 @@ impl MapRenderer {
 
     /// Upload the frame uniforms and return the handles the passes need.
     ///
-    /// `size` is the physical size of the output. The resolved target is
-    /// recreated when it differs.
+    /// `size` is the physical size and `format` the texture format of the
+    /// output. The resolved target is recreated when the size differs.
     pub fn prepare_frame(
-        &self,
+        &mut self,
         queue: &wgpu::Queue,
         resources: &MapResources,
         bounds: ViewportBounds,
         size: PhysicalSize<u32>,
+        format: wgpu::TextureFormat,
     ) -> MapFrame {
         let hemisphere = self.config.hemisphere_size();
         let band = GuardBand::around(size);
@@ -989,32 +980,31 @@ impl MapRenderer {
             resolved_view,
             resolve_bind_group: bind_groups.0,
             shade_bind_group: bind_groups.1,
+            shade_pipeline: self.shade_pipeline_for_format(format),
         }
     }
 
-    fn ensure_resolved_target(&self, size: PhysicalSize<u32>) -> wgpu::TextureView {
-        let mut resolved = self.resolved.borrow_mut();
-        match resolved.as_ref() {
+    fn ensure_resolved_target(&mut self, size: PhysicalSize<u32>) -> wgpu::TextureView {
+        match &self.resolved {
             Some(target) if target.size == size => target.view.clone(),
             _ => {
                 let target = ResolvedTarget::new(&self.device, size);
                 let view = target.view.clone();
-                *resolved = Some(target);
+                self.resolved = Some(target);
                 // The shade bind group holds the old view
-                self.frame_bind_groups.replace(None);
+                self.frame_bind_groups = None;
                 view
             }
         }
     }
 
     fn ensure_bind_groups(
-        &self,
+        &mut self,
         resources: &MapResources,
         resolved_view: &wgpu::TextureView,
     ) -> (wgpu::BindGroup, wgpu::BindGroup) {
-        let generation = resources.generation.get();
-        let mut cache = self.frame_bind_groups.borrow_mut();
-        if let Some(groups) = cache.as_ref()
+        let generation = resources.generation;
+        if let Some(groups) = &self.frame_bind_groups
             && groups.resources_generation == generation
         {
             // wgpu objects are essentially Arcs, so cloning handles is cheap.
@@ -1071,7 +1061,7 @@ impl MapRenderer {
             ],
         });
 
-        *cache = Some(FrameBindGroups {
+        self.frame_bind_groups = Some(FrameBindGroups {
             resources_generation: generation,
             resolve: resolve.clone(),
             shade: shade.clone(),
@@ -1107,22 +1097,15 @@ impl MapRenderer {
     }
 
     /// Record the shade pass into an existing render pass
-    pub fn draw<'a>(
-        &'a self,
-        pass: &mut wgpu::RenderPass<'a>,
-        format: wgpu::TextureFormat,
-        frame: &'a MapFrame,
-    ) {
-        let pipeline = self.shade_pipeline_for_format(format);
-        pass.set_pipeline(&pipeline);
+    pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, frame: &MapFrame) {
+        pass.set_pipeline(&frame.shade_pipeline);
         pass.set_bind_group(0, &frame.shade_bind_group, &[]);
         pass.draw(0..3, 0..1); // Full-screen triangle
     }
 
     /// Get or create a shade pipeline for the given output format
-    fn shade_pipeline_for_format(&self, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
-        let mut cache = self.shade_pipelines.borrow_mut();
-        cache
+    fn shade_pipeline_for_format(&mut self, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
+        self.shade_pipelines
             .entry(format)
             .or_insert_with(|| {
                 fullscreen_pipeline(
@@ -1147,7 +1130,7 @@ fn uniform_buffer<T>(device: &wgpu::Device, label: &str) -> wgpu::Buffer {
 }
 
 /// Shared scene state for both onscreen and headless rendering
-pub struct MapScene {
+pub(crate) struct MapScene {
     base_renderer: MapRenderer,
     resources: MapResources,
     layers: Vec<LayerEntry>,
@@ -1177,22 +1160,34 @@ impl MapScene {
         id
     }
 
-    /// Toggle visibility (Zero cost compared to adding/removing)
-    pub fn set_layer_visible(&mut self, id: LayerId, visible: bool) {
-        if let Some(entry) = self.layers.iter_mut().find(|e| e.id == id) {
-            entry.visible = visible;
-        }
+    /// Whether a layer is drawn, to toggle at no cost compared to adding or
+    /// removing it
+    pub fn layer_visible_mut(&mut self, id: LayerId) -> Option<&mut bool> {
+        let entry = self.layers.iter_mut().find(|e| e.id == id)?;
+        Some(&mut entry.visible)
     }
 
-    pub fn draw<'a>(
-        &'a self,
-        pass: &mut wgpu::RenderPass<'a>,
-        frame: &'a MapFrame,
+    /// Upload the frame uniforms and return the handles the passes need
+    pub fn prepare_frame(
+        &mut self,
+        queue: &wgpu::Queue,
+        bounds: ViewportBounds,
+        size: PhysicalSize<u32>,
         format: wgpu::TextureFormat,
+    ) -> MapFrame {
+        self.base_renderer
+            .prepare_frame(queue, &self.resources, bounds, size, format)
+    }
+
+    /// Record the shade pass and the visible layers
+    pub fn draw(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        frame: &MapFrame,
         viewport: &ViewportBounds,
         size: PhysicalSize<u32>,
     ) {
-        self.base_renderer.draw(pass, format, frame);
+        self.base_renderer.draw(pass, frame);
 
         for entry in &self.layers {
             if entry.visible {
@@ -1232,20 +1227,24 @@ impl MapScene {
         self.base_renderer.hemisphere_size()
     }
 
+    pub fn config(&self) -> &RenderConfig {
+        &self.base_renderer.config
+    }
+
+    pub fn config_mut(&mut self) -> &mut RenderConfig {
+        &mut self.base_renderer.config
+    }
+
+    pub fn device(&self) -> &wgpu::Device {
+        &self.base_renderer.device
+    }
+
     pub fn resources(&self) -> &MapResources {
         &self.resources
     }
 
-    pub fn resources_mut(&mut self) -> &mut MapResources {
-        &mut self.resources
-    }
-
     pub fn renderer(&self) -> &MapRenderer {
         &self.base_renderer
-    }
-
-    pub fn renderer_mut(&mut self) -> &mut MapRenderer {
-        &mut self.base_renderer
     }
 }
 
@@ -1285,11 +1284,15 @@ impl ColorIdReadback {
     }
 }
 
+/// Draws the map on a window or canvas surface, and knows whether the
+/// surface still shows the current picture. Every change to what it draws
+/// goes through its methods, which make a frame due.
 pub struct SurfaceMapRenderer {
     scene: MapScene,
     surface: wgpu::Surface<'static>,
     surface_config: wgpu::SurfaceConfiguration,
     gpu: GpuContext,
+    frame: FrameTracker,
 }
 
 impl SurfaceMapRenderer {
@@ -1322,14 +1325,36 @@ impl SurfaceMapRenderer {
             surface: components.surface,
             surface_config,
             gpu: components.core,
+            frame: FrameTracker::new(),
         }
     }
 
+    /// Whether a frame of `bounds` would change what the surface shows:
+    /// something drawn has changed since the last frame, or the view is
+    /// not the one it drew.
+    pub fn frame_due(&self, bounds: ViewportBounds) -> bool {
+        self.frame.is_due(bounds)
+    }
+
+    /// Make the next frame due even if nothing has changed, as for a
+    /// surface that may have lost its picture.
+    pub fn request_frame(&mut self) {
+        self.frame.invalidate();
+    }
+
+    /// Draw `bounds`, whether or not a frame is due. A failed frame stays
+    /// due.
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(name = "pdx-map.render", skip(self), level = "trace", fields(%bounds))
     )]
     pub fn render(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
+        self.draw_frame(bounds)?;
+        self.frame.drawn(bounds);
+        Ok(())
+    }
+
+    fn draw_frame(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t)
             | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
@@ -1365,20 +1390,16 @@ impl SurfaceMapRenderer {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let device = &self.scene.renderer().device;
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Map Render Encoder"),
-        });
+        let mut encoder =
+            self.scene
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Map Render Encoder"),
+                });
 
         let queue = &self.gpu.gpu.queue;
         self.scene.update_layers(queue);
-
-        let frame = {
-            let renderer = self.scene.renderer();
-            let resources = self.scene.resources();
-            renderer.prepare_frame(queue, resources, bounds, size)
-        };
-
+        let frame = self.scene.prepare_frame(queue, bounds, size, format);
         self.scene.renderer().resolve(&mut encoder, &frame);
 
         {
@@ -1399,17 +1420,25 @@ impl SurfaceMapRenderer {
                 multiview_mask: None,
             });
 
-            self.scene.draw(&mut pass, &frame, format, &bounds, size);
+            self.scene.draw(&mut pass, &frame, &bounds, size);
         }
 
-        self.queue().submit(Some(encoder.finish()));
-        self.queue().present(output);
+        queue.submit(Some(encoder.finish()));
+        queue.present(output);
 
         Ok(())
     }
 
-    pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) {
-        self.scene.add_layer(layer, &self.surface_config);
+    /// Add a layer drawn over the map, visible until hidden
+    pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) -> LayerId {
+        self.frame.invalidate();
+        self.scene.add_layer(layer, &self.surface_config)
+    }
+
+    pub fn set_layer_visible(&mut self, id: LayerId, visible: bool) {
+        if let Some(shown) = self.scene.layer_visible_mut(id) {
+            self.frame.update(shown, visible);
+        }
     }
 
     pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
@@ -1417,28 +1446,21 @@ impl SurfaceMapRenderer {
     }
 
     pub fn update_locations(&mut self, arrays: &LocationArrays) {
-        let queue = &self.gpu.gpu.queue;
-        self.scene.update_locations(queue, arrays);
+        self.scene.update_locations(&self.gpu.gpu.queue, arrays);
+        self.frame.invalidate();
     }
 
     pub fn update_colors(&mut self, arrays: &LocationArrays) {
-        let queue = &self.gpu.gpu.queue;
-        self.scene.update_colors(queue, arrays);
+        self.scene.update_colors(&self.gpu.gpu.queue, arrays);
+        self.frame.invalidate();
     }
 
     pub fn update_flags(&mut self, arrays: &LocationArrays) {
-        let queue = &self.gpu.gpu.queue;
-        self.scene.update_flags(queue, arrays);
+        self.scene.update_flags(&self.gpu.gpu.queue, arrays);
+        self.frame.invalidate();
     }
 
-    pub fn resources(&self) -> &MapResources {
-        self.scene.resources()
-    }
-
-    pub fn queue(&self) -> &wgpu::Queue {
-        &self.gpu.gpu.queue
-    }
-
+    /// Reconfigure the surface. This clears it, so a frame is always due.
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(name = "pdx-map.surface.resize", skip(self), level = "debug")
@@ -1447,28 +1469,28 @@ impl SurfaceMapRenderer {
         self.surface_config.width = size.width;
         self.surface_config.height = size.height;
         self.surface
-            .configure(&self.scene.renderer().device, &self.surface_config);
+            .configure(self.scene.device(), &self.surface_config);
         self.scene.resize_layers(&self.surface_config);
-    }
-
-    pub fn location_borders(&self) -> bool {
-        self.scene.renderer().config.enable_location_borders
+        self.frame.invalidate();
     }
 
     pub fn set_location_borders(&mut self, enabled: bool) {
-        self.scene.renderer_mut().config.enable_location_borders = enabled;
-    }
-
-    pub fn owner_borders(&self) -> bool {
-        self.scene.renderer().config.enable_owner_borders
+        self.change_config(|config| config.enable_location_borders = enabled);
     }
 
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.scene.renderer_mut().config.enable_owner_borders = enabled;
+        self.change_config(|config| config.enable_owner_borders = enabled);
     }
 
     pub fn set_interaction_mask(&mut self, mask: LocationFlags) {
-        self.scene.renderer_mut().config.set_interaction_mask(mask);
+        self.change_config(|config| config.set_interaction_mask(mask));
+    }
+
+    /// Change the render settings, and make a frame due if they differ
+    fn change_config(&mut self, change: impl FnOnce(&mut RenderConfig)) {
+        let mut config = *self.scene.config();
+        change(&mut config);
+        self.frame.update(self.scene.config_mut(), config);
     }
 
     /// Get location ID at world coordinates using direct input texture sampling
@@ -1503,24 +1525,17 @@ impl SurfaceMapRenderer {
 
         // Read single pixel from input texture (contains raw color ID)
         let buffer_size = 256u32;
-        let pixel_staging_buffer =
-            self.scene
-                .renderer()
-                .device
-                .create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("Single Pixel Staging Buffer"),
-                    size: buffer_size as u64,
-                    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
+        let device = self.scene.device();
+        let pixel_staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Single Pixel Staging Buffer"),
+            size: buffer_size as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
-        let mut encoder =
-            self.scene
-                .renderer()
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Single Pixel Readback Encoder"),
-                });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Single Pixel Readback Encoder"),
+        });
 
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
@@ -1575,27 +1590,52 @@ impl SurfaceMapRenderer {
 
     /// Create an independent screenshot renderer that shares GPU resources but
     /// operates with a separate surface
-    #[cfg(feature = "render")]
     pub fn create_screenshot_renderer(
         &self,
         screenshot_target: SurfaceTarget<'static>,
         size: PhysicalSize<u32>,
-    ) -> Result<Self, RenderError> {
+    ) -> Result<ScreenshotRenderer, RenderError> {
         let surface = self.gpu.create_surface(screenshot_target)?;
         let surface_config = self.gpu.surface_config_for_surface(&surface, size);
-        surface.configure(&self.scene.renderer().device, &surface_config);
+        surface.configure(self.scene.device(), &surface_config);
 
         let mut renderer = MapRenderer::from_existing(self.scene.renderer());
         renderer.config.disable_interactions();
         let resources = self.scene.resources().clone();
         let scene = MapScene::new(renderer, resources);
 
-        Ok(Self {
+        let renderer = Self {
             scene,
             surface,
             surface_config,
             gpu: self.gpu.clone(),
-        })
+            frame: FrameTracker::new(),
+        };
+        Ok(ScreenshotRenderer { renderer })
+    }
+
+    fn queue(&self) -> &wgpu::Queue {
+        &self.gpu.gpu.queue
+    }
+}
+
+/// Draws on a surface of its own from the location data of the renderer
+/// that made it. It cannot change that data, so every change goes through
+/// the original renderer and makes a frame due there.
+pub struct ScreenshotRenderer {
+    renderer: SurfaceMapRenderer,
+}
+
+impl ScreenshotRenderer {
+    /// Show or hide the borders between locations. The renderer starts with
+    /// the settings of the one that made it.
+    pub fn set_location_borders(&mut self, enabled: bool) {
+        self.renderer.set_location_borders(enabled);
+    }
+
+    /// Draw `bounds` to the screenshot surface
+    pub fn render(&mut self, bounds: ViewportBounds) -> Result<(), RenderError> {
+        self.renderer.render(bounds)
     }
 }
 
@@ -1655,7 +1695,7 @@ impl HeadlessMapRenderer {
         );
         let resources = MapResources::new(&gpu, west_texture, east_texture);
         let mut scene = MapScene::new(renderer, resources);
-        scene.renderer_mut().config.disable_interactions();
+        scene.config_mut().disable_interactions();
         Ok(HeadlessMapRenderer {
             gpu,
             scene,
@@ -1790,23 +1830,24 @@ impl HeadlessMapRenderer {
             .as_ref()
             .is_none_or(|b| b.size() != buffer_size)
         {
-            self.staging_buffer = Some(self.scene.renderer().device.create_buffer(
-                &wgpu::BufferDescriptor {
+            self.staging_buffer =
+                Some(self.scene.device().create_buffer(&wgpu::BufferDescriptor {
                     label: Some("Viewport Staging Buffer"),
                     size: buffer_size,
                     usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
-                },
-            ));
+                }));
         }
 
         let staging_buffer = self.staging_buffer.as_ref().unwrap();
         let target = self.target.as_ref().expect("render target to be created");
 
-        let device = &self.scene.renderer().device;
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Offscreen Render Encoder"),
-        });
+        let mut encoder =
+            self.scene
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Offscreen Render Encoder"),
+                });
 
         let render_view = target.create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -1816,11 +1857,9 @@ impl HeadlessMapRenderer {
         }
 
         let size = PhysicalSize::new(texture_width, texture_height);
-        let frame = {
-            let renderer = self.scene.renderer();
-            let resources = self.scene.resources();
-            renderer.prepare_frame(queue, resources, render_bounds, size)
-        };
+        let frame = self
+            .scene
+            .prepare_frame(queue, render_bounds, size, HEADLESS_FORMAT);
 
         self.scene.renderer().resolve(&mut encoder, &frame);
 
@@ -1843,12 +1882,9 @@ impl HeadlessMapRenderer {
             });
 
             if draw_layers {
-                let scene = &self.scene;
-                scene.draw(&mut pass, &frame, HEADLESS_FORMAT, &render_bounds, size);
+                self.scene.draw(&mut pass, &frame, &render_bounds, size);
             } else {
-                self.scene
-                    .renderer()
-                    .draw(&mut pass, HEADLESS_FORMAT, &frame);
+                self.scene.renderer().draw(&mut pass, &frame);
             }
         }
 
@@ -1874,7 +1910,7 @@ impl HeadlessMapRenderer {
             },
         );
 
-        self.queue().submit(Some(encoder.finish()));
+        queue.submit(Some(encoder.finish()));
 
         // Read back results
         let buffer_slice = staging_buffer.slice(..buffer_size);
@@ -1883,7 +1919,7 @@ impl HeadlessMapRenderer {
             let _ = sender.send(result);
         });
 
-        self.scene.renderer().device.poll(wgpu::PollType::Wait {
+        self.scene.device().poll(wgpu::PollType::Wait {
             submission_index: None,
             timeout: None,
         })?;
@@ -1900,11 +1936,11 @@ impl HeadlessMapRenderer {
     }
 
     pub fn set_location_borders(&mut self, enabled: bool) {
-        self.scene.renderer_mut().config.enable_location_borders = enabled;
+        self.scene.config_mut().enable_location_borders = enabled;
     }
 
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.scene.renderer_mut().config.enable_owner_borders = enabled;
+        self.scene.config_mut().enable_owner_borders = enabled;
     }
 
     pub fn add_layer(&mut self, layer: impl RenderLayer + 'static) -> LayerId {
@@ -1912,7 +1948,9 @@ impl HeadlessMapRenderer {
     }
 
     pub fn set_layer_visible(&mut self, id: LayerId, visible: bool) {
-        self.scene.set_layer_visible(id, visible);
+        if let Some(shown) = self.scene.layer_visible_mut(id) {
+            *shown = visible;
+        }
     }
 
     pub fn update_locations(&mut self, arrays: &LocationArrays) {
@@ -1931,15 +1969,7 @@ impl HeadlessMapRenderer {
     }
 
     pub fn set_interaction_mask(&mut self, mask: LocationFlags) {
-        self.scene.renderer_mut().config.set_interaction_mask(mask);
-    }
-
-    pub fn resources(&self) -> &MapResources {
-        self.scene.resources()
-    }
-
-    pub fn queue(&self) -> &wgpu::Queue {
-        &self.gpu.gpu.queue
+        self.scene.config_mut().set_interaction_mask(mask);
     }
 }
 

@@ -3,12 +3,11 @@ use eu5app::{
     should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
-use live_map::LiveMap;
 use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
     InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
-    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PhysicalSize, R16,
-    SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
+    LogicalPoint, LogicalSize, MapTexture, MouseButton, PhysicalSize, R16, SpatialIndex,
+    SurfaceMapRenderer, ViewportBounds, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
     default_clock,
 };
 use std::time::Duration;
@@ -16,13 +15,12 @@ use tsify::Ts;
 use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
-mod live_map;
-
 // Re-export common types from wasm-pdxmap
+use wasm_pdx_map::create_screenshot_renderer;
 pub use wasm_pdx_map::{
     CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, PdxWorldScreenshot,
     WasmGpuColor, WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture,
-    WasmViewportInsets, create_screenshot_renderer_for_app, get_surface_target,
+    WasmViewportInsets, get_surface_target,
 };
 
 #[wasm_bindgen]
@@ -93,8 +91,10 @@ pub fn location_borders_at_zoom(zoom: f32) -> bool {
 
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
-    map: LiveMap,
+    map: SurfaceMapRenderer,
     input: InteractionController,
+    /// The view the map draws, written only by `apply_viewport`.
+    view: ViewportBounds,
     /// Which location is at a point and where each location is. The world
     /// it was built from is not kept.
     spatial_index: SpatialIndex,
@@ -136,13 +136,13 @@ impl Eu5WasmMapRenderer {
         let spatial_index = texture_data
             .into_world(renderer.hemisphere_size().width_length())
             .build_spatial_index();
-        let map = LiveMap::new(MapViewController::new(renderer));
 
         // Initialize input controller with map size
         let input = InteractionController::new(display.logical_size(), map_size);
 
         let mut app = Eu5WasmMapRenderer {
-            map,
+            map: renderer,
+            view: input.viewport_bounds(),
             input,
             spatial_index,
             spatial_scratch: LocationBitset::new(),
@@ -378,8 +378,7 @@ impl Eu5WasmMapRenderer {
         &self,
         canvas: OffscreenCanvas,
     ) -> Result<WasmScreenshotRenderer, JsError> {
-        self.map
-            .create_screenshot_renderer(canvas)
+        create_screenshot_renderer(&self.map, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
     }
 
@@ -387,7 +386,9 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn create_world_screenshot(&self) -> Result<PdxWorldScreenshot, JsError> {
         let world = self.map.hemisphere_size().world();
-        PdxWorldScreenshot::new(world, |canvas| self.map.create_screenshot_renderer(canvas))
+        PdxWorldScreenshot::new(world, |canvas| {
+            create_screenshot_renderer(&self.map, canvas)
+        })
     }
 
     /// Synchronize a location array from JS to Rust
@@ -431,7 +432,7 @@ impl Eu5WasmMapRenderer {
     /// Whether the picture has changed since the last frame was drawn.
     #[wasm_bindgen]
     pub fn frame_due(&self) -> bool {
-        self.map.frame_due()
+        self.map.frame_due(self.view)
     }
 
     /// Draw the next frame even if nothing has changed, as for a canvas that
@@ -445,7 +446,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn render(&mut self) -> Result<(), JsError> {
         self.map
-            .render()
+            .render(self.view)
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
 
@@ -531,14 +532,13 @@ impl Eu5WasmMapRenderer {
         Some(WorldPoint::new(point.x as f32, point.y as f32))
     }
 
-    /// Send the input viewport to the map, and show location borders only at
-    /// zoom levels where they are legible. Call this after any change to the
-    /// input viewport.
+    /// Take the input viewport as the view the map draws, and show location
+    /// borders only at zoom levels where they are legible. Call this after
+    /// any change to the input viewport.
     fn apply_viewport(&mut self) {
-        let bounds = self.input.viewport_bounds();
-        self.map.set_viewport_bounds(bounds);
+        self.view = self.input.viewport_bounds();
         self.map
-            .set_location_borders(should_highlight_individual_locations(bounds.zoom_level));
+            .set_location_borders(should_highlight_individual_locations(self.view.zoom_level));
     }
 
     fn fill_locations_in_rect(&mut self, start: LogicalPoint<f32>, end: LogicalPoint<f32>) {

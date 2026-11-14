@@ -1,9 +1,9 @@
 use pdx_map::{
     CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
     InteractionController, KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint,
-    LogicalSize, MapTexture, MapViewController, MouseButton, PanTarget, PhysicalSize,
-    QueuedWorkFuture, R16Palette, RenderError, StripPlan, SurfaceMapRenderer, ViewportInsets,
-    World, WorldLength, WorldPoint, WorldSize, default_clock,
+    LogicalSize, MapTexture, MouseButton, PanTarget, PhysicalSize, QueuedWorkFuture, R16Palette,
+    RenderError, ScreenshotRenderer, StripPlan, SurfaceMapRenderer, ViewportBounds, ViewportInsets,
+    World, WorldLength, WorldPoint, WorldRect, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -77,7 +77,7 @@ impl PdxCanvasSurface {
 
 #[wasm_bindgen]
 pub struct PdxMapRenderer {
-    controller: MapViewController,
+    map: SurfaceMapRenderer,
     interaction: InteractionController,
     location_arrays: LocationArrays,
     clock: Box<dyn Clock>,
@@ -109,14 +109,12 @@ impl PdxMapRenderer {
         location_arrays.set_secondary_colors(init_colors.as_slice());
         location_arrays.set_border_colors(init_colors.as_slice());
 
-        let controller = MapViewController::new(renderer);
-
         // Create input controller with map dimensions
         let map_size = image.world.size();
         let interaction = InteractionController::new(canvas_dims.logical_size(), map_size);
 
         let mut map_renderer = PdxMapRenderer {
-            controller,
+            map: renderer,
             interaction,
             location_arrays,
             clock: default_clock(),
@@ -129,17 +127,13 @@ impl PdxMapRenderer {
 
     #[wasm_bindgen]
     pub fn get_zoom(&self) -> f32 {
-        self.controller.get_zoom()
+        self.interaction.zoom_level()
     }
 
     /// Handle cursor movement - delegates to input controller (handles drag internally)
     #[wasm_bindgen]
     pub fn on_cursor_move(&mut self, x: f32, y: f32) {
         self.interaction.on_cursor_move(LogicalPoint::new(x, y));
-
-        // Transfer viewport bounds to render controller
-        let bounds = self.interaction.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Handle mouse button press/release
@@ -154,20 +148,12 @@ impl PdxMapRenderer {
         };
 
         self.interaction.on_mouse_button(mouse_button, pressed);
-
-        // Transfer viewport bounds
-        let bounds = self.interaction.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Handle scroll/zoom
     #[wasm_bindgen]
     pub fn on_scroll(&mut self, delta: f32) {
         self.interaction.on_scroll(delta);
-
-        // Transfer viewport bounds
-        let bounds = self.interaction.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Handle keyboard input for movement.
@@ -193,8 +179,6 @@ impl PdxMapRenderer {
         self.last_tick = Some(now);
 
         self.interaction.tick(delta);
-        let bounds = self.interaction.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Check if currently dragging
@@ -208,17 +192,11 @@ impl PdxMapRenderer {
     /// Width and height are physical pixels.
     #[wasm_bindgen]
     pub fn resize(&mut self, width: u32, height: u32, scale_factor: f32) {
-        // Update both controllers
         self.interaction.on_resize(LogicalSize::new(
             ((width as f32) / scale_factor) as u32,
             ((height as f32) / scale_factor) as u32,
         ));
-
-        // Transfer updated viewport bounds to render controller
-        let bounds = self.interaction.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
-
-        self.controller.resize(PhysicalSize::new(width, height));
+        self.map.resize(PhysicalSize::new(width, height));
     }
 
     /// Convert canvas coordinates to world coordinates
@@ -250,9 +228,7 @@ impl PdxMapRenderer {
             "Color data length must match initialized location arrays"
         );
         color_data.copy_to(destination);
-        self.controller
-            .renderer_mut()
-            .update_colors(&self.location_arrays);
+        self.map.update_colors(&self.location_arrays);
     }
 
     #[wasm_bindgen]
@@ -263,15 +239,13 @@ impl PdxMapRenderer {
             "Flag data length must match initialized location arrays"
         );
         state_flags.copy_to(self.location_arrays.flag_data_mut());
-        self.controller
-            .renderer_mut()
-            .update_flags(&self.location_arrays);
+        self.map.update_flags(&self.location_arrays);
     }
 
     #[wasm_bindgen]
     pub fn render(&mut self) -> Result<(), JsError> {
-        self.controller
-            .render()
+        self.map
+            .render(self.interaction.viewport_bounds())
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
 
@@ -282,7 +256,7 @@ impl PdxMapRenderer {
         y: i32,
     ) -> Result<WasmGpuLocationIdxReadback, JsError> {
         let readback = self
-            .controller
+            .map
             .create_color_id_readback_at(WorldPoint::new(x, y))
             .map_err(|e| JsError::new(&format!("unable to create readback: {e:?}")))?;
         Ok(WasmGpuLocationIdxReadback { readback })
@@ -331,10 +305,6 @@ impl PdxMapRenderer {
     pub fn center_at_world(&mut self, x: f32, y: f32) {
         let world = WorldPoint::new(x, y);
         self.interaction.center_on(world);
-
-        // Transfer viewport to render controller
-        let bounds = self.interaction.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
     }
 
     /// Pan to make a world point visible, respecting panel insets. Returns true if a pan was
@@ -375,13 +345,13 @@ impl PdxMapRenderer {
     /// Enable or disable owner border rendering
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.controller.renderer_mut().set_owner_borders(enabled);
+        self.map.set_owner_borders(enabled);
     }
 
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
         WasmQueuedWorkFuture {
-            future: self.controller.queued_work(),
+            future: self.map.queued_work(),
         }
     }
 
@@ -391,24 +361,23 @@ impl PdxMapRenderer {
         &self,
         canvas: OffscreenCanvas,
     ) -> Result<PdxScreenshotRenderer, JsError> {
-        create_screenshot_renderer_for_app(&self.controller, canvas)
+        create_screenshot_renderer(&self.map, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
     }
 
     /// Start a screenshot of the whole world
     #[wasm_bindgen]
     pub fn create_world_screenshot(&self) -> Result<PdxWorldScreenshot, JsError> {
-        let world = self.controller.hemisphere_size().world();
+        let world = self.map.hemisphere_size().world();
         PdxWorldScreenshot::new(world, |canvas| {
-            create_screenshot_renderer_for_app(&self.controller, canvas)
+            create_screenshot_renderer(&self.map, canvas)
         })
     }
 }
 
 impl PdxMapRenderer {
     fn upload_location_arrays(&mut self) {
-        let renderer = self.controller.renderer_mut();
-        renderer.update_locations(&self.location_arrays);
+        self.map.update_locations(&self.location_arrays);
     }
 }
 
@@ -553,7 +522,7 @@ pub struct PdxTexture {
 
 #[wasm_bindgen]
 pub struct PdxScreenshotRenderer {
-    map: MapViewController,
+    renderer: ScreenshotRenderer,
     /// Size of the surface this renderer draws to, in pixels. Kept so a
     /// caller can ask for a world rectangle and have the zoom derived from it.
     size: PhysicalSize<u32>,
@@ -568,7 +537,7 @@ impl PdxScreenshotRenderer {
     /// its own zoom, so it decides this for itself.
     #[wasm_bindgen]
     pub fn set_location_borders(&mut self, enabled: bool) {
-        self.map.renderer_mut().set_location_borders(enabled);
+        self.renderer.set_location_borders(enabled);
     }
 
     /// Render a rectangle of the world to the screenshot surface, scaled to
@@ -591,13 +560,12 @@ impl PdxScreenshotRenderer {
             return Err(JsError::new("world rectangle cannot be empty"));
         }
 
-        let mut bounds = self.map.viewport_bounds();
-        bounds.rect.origin = WorldPoint::new(x, y);
-        bounds.rect.size = WorldSize::new(width, height);
-        bounds.zoom_level = self.size.width as f32 / width as f32;
-        self.map.set_viewport_bounds(bounds);
-        self.map
-            .render()
+        let bounds = ViewportBounds {
+            rect: WorldRect::new(WorldPoint::new(x, y), WorldSize::new(width, height)),
+            zoom_level: self.size.width as f32 / width as f32,
+        };
+        self.renderer
+            .render(bounds)
             .map_err(|e| JsError::new(&format!("Failed to render world rectangle: {e}")))
     }
 }
@@ -684,18 +652,15 @@ impl PdxWorldScreenshot {
     }
 }
 
-/// Shared helper to create a screenshot renderer for any MapApp<SurfaceMapRenderer>
-pub fn create_screenshot_renderer_for_app(
-    app: &MapViewController,
+/// Create a screenshot renderer on `canvas` that draws from a map's buffers
+pub fn create_screenshot_renderer(
+    map: &SurfaceMapRenderer,
     canvas: OffscreenCanvas,
 ) -> Result<PdxScreenshotRenderer, RenderError> {
     let size = PhysicalSize::new(canvas.width(), canvas.height());
     let surface_target = get_surface_target(canvas);
-    let screenshot_renderer = app
-        .renderer()
-        .create_screenshot_renderer(surface_target, size)?;
-    let map = MapViewController::new(screenshot_renderer);
-    Ok(PdxScreenshotRenderer { map, size })
+    let renderer = map.create_screenshot_renderer(surface_target, size)?;
+    Ok(PdxScreenshotRenderer { renderer, size })
 }
 
 #[cfg(target_family = "wasm")]
