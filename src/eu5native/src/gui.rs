@@ -9,7 +9,7 @@ use eu5save::{BasicTokenResolver, Eu5File, models::Gamestate};
 use pdx_map::layers::DateLayer;
 use pdx_map::{
     Clock, GpuSurfaceContext, InteractionController, KeyboardKey, LogicalPoint, LogicalSize,
-    MapViewController, SurfaceMapRenderer, WorldPoint, default_clock,
+    SurfaceMapRenderer, WorldPoint, default_clock,
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio::runtime::Runtime;
@@ -300,7 +300,7 @@ pub fn run_gui(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         workspace_building: false,
         window: None,
         gpu: None,
-        controller: None,
+        renderer: None,
         input_controller: None,
         scale_factor: 1.0,
         clock: default_clock(),
@@ -359,7 +359,7 @@ struct App {
     workspace_building: bool,
     window: Option<Arc<Window>>,
     gpu: Option<GpuSurfaceContext>,
-    controller: Option<MapViewController>,
+    renderer: Option<SurfaceMapRenderer>,
     input_controller: Option<InteractionController>,
     scale_factor: f64,
     clock: Box<dyn Clock>,
@@ -368,7 +368,7 @@ struct App {
 
 impl App {
     fn try_initialize_renderer(&mut self) {
-        if self.controller.is_some() {
+        if self.renderer.is_some() {
             return;
         }
 
@@ -385,8 +385,8 @@ impl App {
             return;
         };
 
-        let (controller, input_controller) = init_renderer(&window, gpu, &texture_data);
-        self.controller = Some(controller);
+        let (renderer, input_controller) = init_renderer(&window, gpu, &texture_data);
+        self.renderer = Some(renderer);
         self.input_controller = Some(input_controller);
         window.request_redraw();
         self.try_apply_workspace();
@@ -421,7 +421,7 @@ impl App {
     }
 
     fn try_apply_workspace(&mut self) {
-        let Some(controller) = &mut self.controller else {
+        let Some(renderer) = &mut self.renderer else {
             return;
         };
 
@@ -438,7 +438,7 @@ impl App {
         };
 
         apply_workspace(
-            controller,
+            renderer,
             input_controller,
             &bundle.workspace,
             &texture_data.world,
@@ -522,7 +522,7 @@ impl ApplicationHandler<GuiUserEvent> for App {
 
         match event {
             WindowEvent::CloseRequested => {
-                self.controller = None;
+                self.renderer = None;
                 event_loop.exit();
                 return;
             }
@@ -532,7 +532,7 @@ impl ApplicationHandler<GuiUserEvent> for App {
             _ => {}
         }
 
-        let Some(controller) = &mut self.controller else {
+        let Some(renderer) = &mut self.renderer else {
             return;
         };
 
@@ -543,13 +543,10 @@ impl ApplicationHandler<GuiUserEvent> for App {
                 let logical_size =
                     LogicalSize::new(logical.width.round() as u32, logical.height.round() as u32);
 
-                // Update both controllers
                 if let Some(input) = &mut self.input_controller {
                     input.on_resize(logical_size);
-                    let bounds = input.viewport_bounds();
-                    controller.set_viewport_bounds(bounds);
                 }
-                controller.resize(logical_size.to_physical(scale_factor as f32));
+                renderer.resize(logical_size.to_physical(scale_factor as f32));
                 window.request_redraw();
             }
             WindowEvent::Resized(new_size) => {
@@ -561,13 +558,10 @@ impl ApplicationHandler<GuiUserEvent> for App {
                         logical.height.round() as u32,
                     );
 
-                    // Update both controllers
                     if let Some(input) = &mut self.input_controller {
                         input.on_resize(logical_size);
-                        let bounds = input.viewport_bounds();
-                        controller.set_viewport_bounds(bounds);
                     }
-                    controller.resize(logical_size.to_physical(scale as f32));
+                    renderer.resize(logical_size.to_physical(scale as f32));
                     window.request_redraw();
                 }
             }
@@ -579,12 +573,9 @@ impl ApplicationHandler<GuiUserEvent> for App {
                     self.last_tick = Some(now);
 
                     input.tick(delta);
-                    let bounds = input.viewport_bounds();
-                    controller.set_viewport_bounds(bounds);
-                }
-
-                if let Err(e) = controller.render() {
-                    error!("Render error: {e}");
+                    if let Err(e) = renderer.render(input.viewport_bounds()) {
+                        error!("Render error: {e}");
+                    }
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {
@@ -595,10 +586,6 @@ impl ApplicationHandler<GuiUserEvent> for App {
                 // UI thread: Update input controller (handles drag internally)
                 if let Some(input) = &mut self.input_controller {
                     input.on_cursor_move(LogicalPoint::new(x, y));
-
-                    // Transfer viewport to render controller
-                    let bounds = input.viewport_bounds();
-                    controller.set_viewport_bounds(bounds);
                     window.request_redraw();
                 }
             }
@@ -614,10 +601,6 @@ impl ApplicationHandler<GuiUserEvent> for App {
 
                     let pressed = state == ElementState::Pressed;
                     input.on_mouse_button(mouse_button, pressed);
-
-                    // Transfer viewport if it changed
-                    let bounds = input.viewport_bounds();
-                    controller.set_viewport_bounds(bounds);
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
@@ -646,16 +629,10 @@ impl ApplicationHandler<GuiUserEvent> for App {
 
                     input.on_scroll(scroll_lines); // Clamps, converts to zoom, and applies internally
 
-                    // Transfer viewport and update render state
-                    let bounds = input.viewport_bounds();
-                    controller.set_viewport_bounds(bounds);
-
-                    // Render-specific: Update location borders based on zoom
+                    // Show location borders only where they are legible
                     let show_location_borders =
-                        should_highlight_individual_locations(bounds.zoom_level);
-                    controller
-                        .renderer_mut()
-                        .set_location_borders(show_location_borders);
+                        should_highlight_individual_locations(input.zoom_level());
+                    renderer.set_location_borders(show_location_borders);
 
                     window.request_redraw();
                 }
@@ -678,7 +655,7 @@ fn init_renderer(
     window: &Window,
     gpu_ctx: GpuSurfaceContext,
     texture_data: &TextureData,
-) -> (MapViewController, InteractionController) {
+) -> (SurfaceMapRenderer, InteractionController) {
     let hemisphere = eu5app::hemisphere_size();
     let texture_size = hemisphere.physical();
 
@@ -698,12 +675,11 @@ fn init_renderer(
     let physical = logical.to_physical(scale_factor as f32);
 
     let renderer = SurfaceMapRenderer::new(gpu_ctx, west_texture, east_texture, physical);
-    let controller = MapViewController::new(renderer);
 
     // Create input controller with map dimensions
     let input_controller = InteractionController::new(logical, hemisphere.world());
 
-    (controller, input_controller)
+    (renderer, input_controller)
 }
 
 fn build_workspace(mut save: Eu5LoadedSave, game_data: GameData) -> Result<WorkspaceBundle> {
@@ -717,18 +693,14 @@ fn build_workspace(mut save: Eu5LoadedSave, game_data: GameData) -> Result<Works
 }
 
 fn apply_workspace(
-    controller: &mut MapViewController,
+    renderer: &mut SurfaceMapRenderer,
     input_controller: &mut InteractionController,
     workspace: &Eu5Workspace<'_>,
     world: &pdx_map::World,
 ) {
     let save_date = workspace.gamestate().metadata().date.date_fmt().to_string();
-    controller
-        .renderer_mut()
-        .add_layer(DateLayer::new(save_date, 4));
-    controller
-        .renderer_mut()
-        .update_locations(workspace.location_arrays());
+    renderer.add_layer(DateLayer::new(save_date, 4));
+    renderer.update_locations(workspace.location_arrays());
 
     let capital = match workspace.opening_view() {
         eu5app::OpeningView::Capital { color_id } => world
@@ -743,10 +715,7 @@ fn apply_workspace(
         None => input_controller.fit_map(),
     }
 
-    // Transfer viewport to render controller
-    let bounds = input_controller.viewport_bounds();
-    controller.set_viewport_bounds(bounds);
-    controller
-        .renderer_mut()
-        .set_location_borders(should_highlight_individual_locations(bounds.zoom_level));
+    renderer.set_location_borders(should_highlight_individual_locations(
+        input_controller.zoom_level(),
+    ));
 }

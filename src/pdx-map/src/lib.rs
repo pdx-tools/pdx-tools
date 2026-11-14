@@ -7,9 +7,9 @@ mod viewport;
 mod world;
 
 #[cfg(feature = "render")]
-mod controller;
-#[cfg(feature = "render")]
 mod error;
+#[cfg(feature = "render")]
+mod frame_tracker;
 #[cfg(feature = "render")]
 mod image;
 #[cfg(feature = "interaction")]
@@ -27,8 +27,6 @@ pub use viewport::{JumpZoom, MapViewport, PanTarget, ViewportBounds, ViewportIns
 pub use world::{Aabb, Hemisphere, LocationBitset, SpatialIndex, TopologyIndex, World};
 
 #[cfg(feature = "render")]
-pub use controller::MapViewController;
-#[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind, SurfaceError};
 #[cfg(feature = "render")]
 pub use image::{Strip, StripPlan};
@@ -36,9 +34,8 @@ pub use image::{Strip, StripPlan};
 pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, default_clock};
 #[cfg(feature = "render")]
 pub use renderer::{
-    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapFrame, MapRenderer,
-    MapResources, MapScene, MapTexture, QueuedWorkFuture, RenderConfig, RenderLayer,
-    SurfaceMapRenderer,
+    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, LayerId, MapTexture,
+    QueuedWorkFuture, RenderLayer, ScreenshotRenderer, SurfaceMapRenderer,
 };
 #[cfg(feature = "render")]
 pub use wgpu;
