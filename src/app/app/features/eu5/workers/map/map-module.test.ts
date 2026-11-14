@@ -60,6 +60,8 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  mocks.app.render.mockReset();
   mocks.app.canvas_to_world.mockImplementation(() => [100, 100]);
   mocks.app.pick_location.mockImplementation(() => 1);
   mocks.app.gpu_loc_to_app.mockImplementation(() => 1);
@@ -169,6 +171,29 @@ describe("EU5 map input lifecycle", () => {
     writer.enqueueKeyboard(key("KeyW"));
     await nextFrame();
     expect(mocks.app.on_key_down.mock.calls).toEqual([["KeyW"], ["KeyW"]]);
+  });
+});
+
+describe("EU5 map frame loop", () => {
+  it("keeps drawing after failed frames and logs the failure once", async () => {
+    await openMap();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const lost = new Error("surface lost");
+    mocks.app.render.mockImplementationOnce(() => {
+      throw lost;
+    });
+    mocks.app.render.mockImplementationOnce(() => {
+      throw lost;
+    });
+    await nextFrame();
+    await nextFrame();
+    const renders = mocks.app.render.mock.calls.length;
+
+    await nextFrame();
+    expect(mocks.app.render).toHaveBeenCalledTimes(renders + 1);
+    expect(frames).toHaveLength(1);
+    expect(consoleError).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalledWith(expect.any(String), lost);
   });
 });
 
