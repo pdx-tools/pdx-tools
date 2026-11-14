@@ -5,8 +5,8 @@ use eu5app::{
 };
 use pdx_map::layers::DateLayer;
 use pdx_map::{
-    GpuContext, HeadlessMapRenderer, Hemisphere, HemisphereLength, LocationArrays, MapTexture,
-    PhysicalSize, ViewportBounds, World, WorldPoint, WorldSize,
+    GpuContext, HeadlessMapRenderer, LocationArrays, PhysicalSize, ViewportBounds, WorldPoint,
+    WorldSize, WorldTextures,
 };
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -49,28 +49,21 @@ fn patch_slot(major: u32, minor: u32) -> Result<usize, ScreenshotError> {
         .unwrap_or(latest))
 }
 
-/// The hemisphere textures for one patch.
-#[derive(Clone)]
-struct Hemispheres {
-    west: MapTexture,
-    east: MapTexture,
-}
-
 /// The map data of one patch that a render needs.
 #[derive(Clone)]
 struct PatchMap {
-    hemispheres: Hemispheres,
-    /// The [`World::centers`] of the patch. The hemisphere arrays are
-    /// dropped before the save is parsed, so the point of every location is
-    /// kept, not only the capital's.
-    centers: Arc<[Option<WorldPoint<u32>>]>,
+    textures: WorldTextures,
+    /// The [`pdx_map::SpatialIndex::point_of`] every location, where the live
+    /// map opens on it. The index is dropped before the save is parsed, so
+    /// the point of every location is kept, not only the capital's.
+    points: Arc<[Option<WorldPoint<u32>>]>,
 }
 
 /// The map data for one patch, with the hemisphere textures uploaded to the
 /// GPU. The textures are ~256 MiB, and the software GPU keeps them in host
 /// memory, so only the map of the most recent patch stays in the cache. The
-/// decoded arrays are dropped after the upload. The lock is held for the
-/// whole load, so only one patch is decoded at a time.
+/// map is decoded a band of rows at a time, straight into the textures. The
+/// lock is held for the whole load, so only one patch is decoded at a time.
 fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError> {
     static CACHED: Mutex<Option<(usize, PatchMap)>> = Mutex::new(None);
 
@@ -84,17 +77,12 @@ fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError>
     // Release the textures of the previous patch before the new patch is
     // decoded. A render that is in progress keeps its own reference.
     *cached = None;
-    let mut map_bundle = OptimizedMapBundle::open(PATCH_ASSETS[slot].map)?;
-    let (west, east) = map_bundle.load_hemispheres()?;
-    let size = eu5app::hemisphere_size();
-    let width = HemisphereLength::new(size.width);
-    let world = World::builder(Hemisphere::new(west, width), Hemisphere::new(east, width)).build();
+    let map_bundle = OptimizedMapBundle::open(PATCH_ASSETS[slot].map)?;
+    let mut textures = gpu.world_texture_writer(eu5app::hemisphere_size());
+    let index = map_bundle.build_spatial_index(|rows| textures.write_rows(rows))?;
     let map = PatchMap {
-        hemispheres: Hemispheres {
-            west: gpu.create_texture(world.west().as_slice(), size.physical(), "EU5 West Texture"),
-            east: gpu.create_texture(world.east().as_slice(), size.physical(), "EU5 East Texture"),
-        },
-        centers: Arc::from(world.centers()),
+        textures: textures.finish(),
+        points: index.points().collect(),
     };
     *cached = Some((slot, map.clone()));
     Ok(map)
@@ -102,7 +90,7 @@ fn patch_map(gpu: &GpuContext, slot: usize) -> Result<PatchMap, ScreenshotError>
 
 /// A parsed save with the map data that [`render`] needs.
 pub struct PreparedSave {
-    hemispheres: Hemispheres,
+    textures: WorldTextures,
     locations: LocationArrays,
     date: String,
     capital: Option<WorldPoint<u32>>,
@@ -129,10 +117,7 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
 
     // Load the map before the gamestate is parsed, so that the memory to
     // decode the map is not needed at the same time as the parse memory.
-    let PatchMap {
-        hemispheres,
-        centers,
-    } = patch_map(gpu, slot)?;
+    let PatchMap { textures, points } = patch_map(gpu, slot)?;
     let mut save = parser
         .parse()
         .map_err(|error| ScreenshotError::Parse(error.to_string()))?;
@@ -142,14 +127,13 @@ pub fn prepare(gpu: &GpuContext, data: &[u8]) -> Result<PreparedSave, Screenshot
     workspace.set_map_mode(MapMode::Political);
     let date = workspace.gamestate().metadata.date.date_fmt().to_string();
     let capital = match workspace.opening_view() {
-        OpeningView::Capital { color_id } => centers
-            .get(usize::from(color_id.value()))
-            .copied()
-            .flatten(),
+        OpeningView::Capital { color_id } => {
+            points.get(usize::from(color_id.value())).copied().flatten()
+        }
         OpeningView::World => None,
     };
     Ok(PreparedSave {
-        hemispheres,
+        textures,
         locations: workspace.location_arrays().clone(),
         date,
         capital,
@@ -186,13 +170,7 @@ fn world_viewport() -> ViewportBounds {
 /// Render a prepared save to a WebP image. Returns the WebP-encoded bytes.
 #[tracing::instrument(name = "eu5.screenshot.render", skip_all)]
 pub async fn render(gpu: &GpuContext, save: PreparedSave) -> Result<Vec<u8>, ScreenshotError> {
-    let mut renderer = HeadlessMapRenderer::new(
-        gpu.clone(),
-        save.hemispheres.west,
-        save.hemispheres.east,
-        OUTPUT_SIZE.width,
-        OUTPUT_SIZE.height,
-    )?;
+    let mut renderer = HeadlessMapRenderer::new(gpu.clone(), save.textures)?;
     renderer.update_locations(&save.locations);
     renderer.add_layer(DateLayer::new(save.date, 2));
 
@@ -203,7 +181,7 @@ pub async fn render(gpu: &GpuContext, save: PreparedSave) -> Result<Vec<u8>, Scr
 
     let zoom = OUTPUT_SIZE.width as f32 / viewport.rect.size.width as f32;
     renderer.set_location_borders(should_highlight_individual_locations(zoom));
-    let capture = renderer.capture_viewport(viewport).await?;
+    let capture = renderer.capture_viewport(viewport, OUTPUT_SIZE).await?;
     let stride = OUTPUT_SIZE.width as usize * 4;
     let mut rgba = vec![0; OUTPUT_SIZE.area() as usize * 4];
     for (source, destination) in capture.rows().zip(rgba.chunks_exact_mut(stride)) {

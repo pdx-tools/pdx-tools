@@ -400,7 +400,7 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
       return await mapEngine.generateWorldScreenshot(fullResolution, overlayData);
     },
     setOwnerBorders: (enabled: boolean) => {
-      mapEngine.execCommands([{ kind: "setOwnerBorders", enabled }, { kind: "render" }]);
+      mapEngine.execCommands([{ kind: "setOwnerBorders", enabled }]);
     },
 
     startHoverTracking: () => mapEngine.startHoverTracking(),

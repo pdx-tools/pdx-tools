@@ -3,7 +3,6 @@ import { log } from "@/lib/log";
 import init, {
   Eu5CanvasSurface,
   Eu5WasmMapRenderer,
-  Eu5WasmMapBundle,
   location_borders_at_zoom,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
@@ -65,9 +64,7 @@ function wheelScrollLines(
   return -pixels / WHEEL_PIXELS_PER_LINE;
 }
 
-const initialized = (async () => {
-  await timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
-})();
+const initialized = timeAsync("Load EU5 Map Wasm module", () => init({ module_or_path: wasmPath }));
 
 let appResolve: (value: Eu5WasmMapRenderer | PromiseLike<Eu5WasmMapRenderer>) => void;
 let appReject: (reason?: any) => void;
@@ -104,7 +101,6 @@ let overlay: { colors: Uint32Array; flags: Uint32Array; groups: Uint32Array } | 
 let overlayDirty = false;
 /** The newest presentation token. An older frame or clear has no effect. */
 let presentationToken = 0;
-let renderOrQueue: () => void = () => {};
 
 /**
  * A recording in progress. The surface is its own, so the film's size and
@@ -147,7 +143,6 @@ async function presentOverlay(frame: OverlayFrame): Promise<boolean> {
   // The live buffers are kept, and go to the GPU when the overlay clears.
   newMapData = null;
   newGroupingTable = null;
-  renderOrQueue();
   return true;
 }
 
@@ -161,7 +156,6 @@ async function clearOverlay(token: number) {
   newLocations = live.locations;
   newMapData = { colors: live.colors, flags: live.flags };
   newGroupingTable = live.groups;
-  renderOrQueue();
 }
 
 const mapGameEndpoint = () => {
@@ -181,7 +175,6 @@ const mapGameEndpoint = () => {
       newLocations = locations;
       newGroupingTable = overlay ? null : groupingTable;
       newMapData = null;
-      renderOrQueue();
     },
 
     async syncGroupingTable(raw: Uint32Array) {
@@ -198,7 +191,6 @@ const mapGameEndpoint = () => {
         colors: data.colors ?? newMapData?.colors,
         flags: data.flags ?? newMapData?.flags,
       };
-      renderOrQueue();
     },
 
     presentOverlay,
@@ -262,7 +254,7 @@ export const createMapEngine = async (
     height: display.height,
     scaleFactor: display.scaleFactor,
   };
-  await initialized;
+  const wasm = await initialized;
   onProgress?.(5, "Preparing canvas");
 
   const canvasInit = await timeAsync("Canvas Initialization", () =>
@@ -271,25 +263,12 @@ export const createMapEngine = async (
   onProgress?.(5, "Loading map data");
 
   const bundle = await mapBundle.fetch();
-
-  const mapBundleWasm = Eu5WasmMapBundle.open(bundle);
-  const textureData = timeSync("Create Texture Data", () => mapBundleWasm.load_texture_data());
-
-  const westView = timeSync("Upload Texture Data (West)", () =>
-    canvasInit.upload_west_texture(textureData),
-  );
   onProgress?.(12, "Building map textures");
 
-  const eastView = timeSync("Upload Texture Data (East)", () =>
-    canvasInit.upload_east_texture(textureData),
-  );
-  onProgress?.(12, "Starting renderer");
-
   try {
-    const app = timeSync("Create Renderer", () =>
-      Eu5WasmMapRenderer.create(canvasInit, westView, eastView, textureData),
-    );
-    onProgress?.(6, "Rendering map");
+    const app = timeSync("Load Map", () => Eu5WasmMapRenderer.load(canvasInit, bundle));
+    log(`EU5 map wasm memory: ${formatInt(wasm.memory.buffer.byteLength / 2 ** 20)} MiB`);
+    onProgress?.(18, "Rendering map");
     appResolve(app);
   } catch (e) {
     appReject(e);
@@ -313,11 +292,6 @@ export const createMapEngine = async (
   let latestBoxCommitId = 0;
   let boxHighlightClearDue = false;
   let paused = false;
-
-  let _dirtyRender: boolean = false;
-  renderOrQueue = () => {
-    _dirtyRender = true;
-  };
 
   const startHoverTracking = () => {
     hoverTrackingActive = true;
@@ -449,7 +423,6 @@ export const createMapEngine = async (
     }
     lastKnownLocationId = null;
     emitCursor("default");
-    renderOrQueue();
   };
 
   const processInputEvent = (event: SharedCanvasDecodedEvent) => {
@@ -473,7 +446,6 @@ export const createMapEngine = async (
           } else {
             emitCursor(hasBoxSelectModifier(modifiers) ? "crosshair" : "default");
           }
-          renderOrQueue();
         } else if (action === SharedCanvasEventAction.Down) {
           app.on_cursor_move(x, y);
           lastCursorPosition = { x, y };
@@ -510,7 +482,6 @@ export const createMapEngine = async (
             }
             app.on_mouse_button(button >= 0 ? button : 0, true);
           }
-          renderOrQueue();
         } else if (action === SharedCanvasEventAction.Up) {
           const btn = button >= 0 ? button : 0;
           if (btn === 0 && boxDrag !== null) {
@@ -553,7 +524,6 @@ export const createMapEngine = async (
               // The selection shows at the next frame. Clear the highlight in
               // the same frame, so that the area does not go blank between them.
               boxHighlightClearDue = true;
-              renderOrQueue();
             });
             boxDrag = null;
             boxDragDirty = false;
@@ -577,7 +547,6 @@ export const createMapEngine = async (
             app.on_mouse_button(btn, false);
           }
           emitCursor(hasBoxSelectModifier(modifiers) ? "crosshair" : "default");
-          renderOrQueue();
         } else if (action === SharedCanvasEventAction.Leave) {
           cancelBoxSelect();
           app.on_mouse_button(0, false);
@@ -585,7 +554,6 @@ export const createMapEngine = async (
           lastCursorPosition = null;
           updateCursorWorldPosition(-1, -1);
           emitCursor("default");
-          renderOrQueue();
         }
         break;
       }
@@ -606,7 +574,6 @@ export const createMapEngine = async (
       case SharedCanvasEventType.Wheel: {
         app.on_scroll(wheelScrollLines(event));
         zoomChangeCallback?.(app.get_zoom());
-        renderOrQueue();
         break;
       }
       case SharedCanvasEventType.FocusChange: {
@@ -616,6 +583,8 @@ export const createMapEngine = async (
       case SharedCanvasEventType.Visibility: {
         paused = event.action === SharedCanvasEventAction.Hidden;
         if (paused) clearInput();
+        // A canvas can lose its picture while it is hidden.
+        else app.request_frame();
         break;
       }
       case SharedCanvasEventType.Resize: {
@@ -624,7 +593,6 @@ export const createMapEngine = async (
           height: event.height,
           scaleFactor: event.scaleFactor,
         };
-        renderOrQueue();
         break;
       }
       default:
@@ -632,10 +600,9 @@ export const createMapEngine = async (
     }
   };
 
-  // You would think that we should only render when dirty, but for some reason
-  // firefox trips over itself and the clear color bleeds through. So for now we
-  // just render every frame.
   let hasLocationInformation = false;
+  // Firefox stalls and tears the map unless every frame is drawn.
+  const drawsEveryFrame = navigator.userAgent.includes("Firefox");
 
   // Location and grouping data arrive from the game worker between frames
   // and reach the GPU here, at the next use: the top of the render loop, or
@@ -677,7 +644,23 @@ export const createMapEngine = async (
     }
   };
 
+  // A failed frame is logged once, not on every frame until it recovers.
+  let frameFailing = false;
   const rafRender = async () => {
+    try {
+      await drawFrame();
+      frameFailing = false;
+    } catch (error) {
+      if (!frameFailing) {
+        frameFailing = true;
+        console.error("EU5 map frame failed; retrying each frame:", error);
+      }
+    } finally {
+      requestAnimationFrame(rafRender);
+    }
+  };
+
+  const drawFrame = async () => {
     // Sync location data before draining events so that updateCursorWorldPosition
     // always has valid location arrays available when it calls gpu_loc_to_app.
     applyPendingSync();
@@ -685,7 +668,6 @@ export const createMapEngine = async (
     // Drain canvas_courier input events before ticking
     inputReader.drain(processInputEvent);
     if (paused) {
-      requestAnimationFrame(rafRender);
       return;
     }
     if (boxDrag !== null && boxDragDirty) {
@@ -716,10 +698,11 @@ export const createMapEngine = async (
     }
     publishViewport();
 
-    if (hasLocationInformation) {
+    // A frame is costly on a large canvas or without a GPU, so the map draws
+    // only when a change to its view, data or canvas has made one due.
+    if (hasLocationInformation && (drawsEveryFrame || app.frame_due())) {
       app.render();
     }
-    requestAnimationFrame(rafRender);
   };
   // Four integers read off the input state: cheap enough for every frame,
   // and the comparison keeps a resting map silent.
@@ -758,35 +741,39 @@ export const createMapEngine = async (
     ): Promise<Blob> => {
       applyPendingSync();
 
-      const output = fullResolution
-        ? { width: 16384, height: 8192 }
-        : { width: 8192, height: 4096 };
-
-      const compositeCanvas = new OffscreenCanvas(output.width, output.height);
-      const ctx = compositeCanvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context for composite canvas");
-      }
-
-      // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
-      let overlayInfo: OverlayCanvasInfo | null = null;
-      if (overlayData) {
-        overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
-      }
-
-      // Create dedicated screenshot canvas for independent screenshot renderer
-      const screenshotCanvas = new OffscreenCanvas(8192, 8192);
-
-      // Create independent screenshot renderer
-      const screenshotRenderer = app.create_screenshot_renderer(screenshotCanvas);
+      // The world renders in strips, so borders continue across the seams
+      const shot = app.create_world_screenshot();
       try {
-        // Render west tile using independent screenshot renderer
-        screenshotRenderer.render_west_tile();
-        ctx.drawImage(screenshotCanvas, 0, 0, output.width / 2, output.height);
+        const scale = fullResolution ? 1 : 0.5;
+        const output = { width: shot.width() * scale, height: shot.height() * scale };
 
-        // Render east tile using independent screenshot renderer
-        screenshotRenderer.render_east_tile();
-        ctx.drawImage(screenshotCanvas, output.width / 2, 0, output.width / 2, output.height);
+        const compositeCanvas = new OffscreenCanvas(output.width, output.height);
+        const ctx = compositeCanvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context for composite canvas");
+        }
+
+        // Create small overlay canvas if provided (minimal memory footprint ~3MB vs 512MB)
+        let overlayInfo: OverlayCanvasInfo | null = null;
+        if (overlayData) {
+          overlayInfo = createOverlayCanvas(overlayData, fullResolution, output.height);
+        }
+
+        const canvas = shot.canvas();
+        for (let i = 0; i < shot.strip_count(); i++) {
+          const strip = shot.render_strip(i);
+          ctx.drawImage(
+            canvas,
+            0,
+            0,
+            strip.width,
+            shot.height(),
+            strip.x * scale,
+            0,
+            strip.width * scale,
+            output.height,
+          );
+        }
 
         // Composite the small overlay canvas on top if provided
         if (overlayInfo) {
@@ -796,7 +783,7 @@ export const createMapEngine = async (
         // Convert composite canvas to PNG blob and return
         return await compositeCanvas.convertToBlob({ type: "image/png" });
       } finally {
-        screenshotRenderer.free();
+        shot.free();
       }
     },
 
@@ -896,10 +883,6 @@ export const createMapEngine = async (
     async execCommands(commands: MapCommand[]) {
       for (const command of commands) {
         switch (command.kind) {
-          case "render": {
-            renderOrQueue();
-            break;
-          }
           case "setOwnerBorders": {
             app.set_owner_borders(command.enabled);
             break;
@@ -947,7 +930,7 @@ export const createMapEngine = async (
   });
 };
 
-export type MapCommand = { kind: "setOwnerBorders"; enabled: boolean } | { kind: "render" };
+export type MapCommand = { kind: "setOwnerBorders"; enabled: boolean };
 
 /** A snapshot for the overlay, in the format of the live buffers. */
 export type OverlayFrame = {

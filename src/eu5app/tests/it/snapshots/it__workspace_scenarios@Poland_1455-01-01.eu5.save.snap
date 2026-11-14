@@ -254,7 +254,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
     "map_modes": {
       "building_levels": {
         "colors": 77,
-        "fingerprint": "0x78d7705002f8014c",
+        "dimmed": 28317,
+        "fingerprint": "0x664867cb5c30b6a4",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 4.129805323985784, max_value: 31.0, clip: Some(GradientClip { share: 0.015625, highest: 82.0 }) })",
         "top": [
@@ -265,7 +266,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "control": {
         "colors": 936,
-        "fingerprint": "0xb0fff4c4825064ab",
+        "dimmed": 28317,
+        "fingerprint": "0x734e58294cf7eff6",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, clip: None })",
         "top": [
@@ -276,7 +278,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "development": {
         "colors": 941,
-        "fingerprint": "0xcb7049215417f463",
+        "dimmed": 28317,
+        "fingerprint": "0xadb3c22b264cdf1f",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 11.481775, max_value: 22.96355, clip: Some(GradientClip { share: 0.01953125, highest: 29.21835 }) })",
         "top": [
@@ -287,7 +290,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "markets": {
         "colors": 12252,
-        "fingerprint": "0x7b2ca7084ee8c893",
+        "dimmed": 28317,
+        "fingerprint": "0x74bafc7eaaef3c15",
         "groups": "0xda44c75391d5a93f",
         "legend": "Qualitative",
         "top": [
@@ -298,7 +302,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "political": {
         "colors": 991,
-        "fingerprint": "0x7d77ccd48c67e2b3",
+        "dimmed": 28251,
+        "fingerprint": "0x6a868f31f0ab44d4",
         "groups": "0x2d64a1c56eccacb9",
         "legend": "Qualitative",
         "top": [
@@ -309,7 +314,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "population": {
         "colors": 936,
-        "fingerprint": "0x166ad434704b6c81",
+        "dimmed": 28317,
+        "fingerprint": "0x5735d531ddd1f61b",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5767.621892124857, max_value: 19631.0, clip: Some(GradientClip { share: 0.01953125, highest: 33505.0 }) })",
         "top": [
@@ -320,7 +326,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "population_growth": {
         "colors": 855,
-        "fingerprint": "0x040d9e5aea240824",
+        "dimmed": 28317,
+        "fingerprint": "0xd866dae866868d49",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.0034125, max_value: 0.006825, clip: Some(GradientClip { share: 0.05078125, highest: 0.02191133465902445 }) })",
         "top": [
@@ -331,7 +338,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "religion": {
         "colors": 252,
-        "fingerprint": "0xd58b404e50fa7c42",
+        "dimmed": 28263,
+        "fingerprint": "0x9af9d647dd31e6df",
         "groups": "0x0b3b897ddcffb44e",
         "legend": "Qualitative",
         "top": [
@@ -342,7 +350,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "rgo_level": {
         "colors": 27,
-        "fingerprint": "0x3623660d75988f61",
+        "dimmed": 28317,
+        "fingerprint": "0xe465b4094a8992ea",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 2.089454172900137, max_value: 10.0, clip: Some(GradientClip { share: 0.01171875, highest: 12.0 }) })",
         "top": [
@@ -353,7 +362,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "state_efficacy": {
         "colors": 942,
-        "fingerprint": "0x8b8351fde5eda0fc",
+        "dimmed": 28317,
+        "fingerprint": "0x9d4a16265d7a996d",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 4.135253205295728, max_value: 16.489755478, clip: Some(GradientClip { share: 0.01953125, highest: 28.00325 }) })",
         "top": [
@@ -364,7 +374,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "unrealized_tax_base": {
         "colors": 934,
-        "fingerprint": "0x87524cfdc677d1b1",
+        "dimmed": 28317,
+        "fingerprint": "0x4836b3815d01e7b6",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 0.9361504253760045, max_value: 5.501870000000002, clip: Some(GradientClip { share: 0.01953125, highest: 16.089890000000004 }) })",
         "top": [
@@ -375,7 +386,8 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       },
       "wealth": {
         "colors": 945,
-        "fingerprint": "0x58f0d493fd069ca9",
+        "dimmed": 28317,
+        "fingerprint": "0x594446abb6e31187",
         "groups": "0x50e18b21122559de",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 2.366418992904164, max_value: 14.54116, clip: Some(GradientClip { share: 0.01953125, highest: 40.93281 }) })",
         "top": [

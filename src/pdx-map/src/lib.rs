@@ -1,6 +1,5 @@
 mod color;
 mod hash;
-mod image;
 mod loc_arrays;
 mod pixel;
 mod units;
@@ -8,9 +7,11 @@ mod viewport;
 mod world;
 
 #[cfg(feature = "render")]
-mod controller;
-#[cfg(feature = "render")]
 mod error;
+#[cfg(feature = "render")]
+mod frame_tracker;
+#[cfg(feature = "render")]
+mod image;
 #[cfg(feature = "interaction")]
 mod interaction;
 #[cfg(feature = "date-layer")]
@@ -19,24 +20,26 @@ pub mod layers;
 mod renderer;
 
 pub use color::GpuColor;
-pub use image::StitchedImage;
 pub use loc_arrays::*;
 pub use pixel::{R16, R16Palette, R16SecondaryMap, Rgb};
 pub use units::*;
 pub use viewport::{JumpZoom, MapViewport, PanTarget, ViewportBounds, ViewportInsets};
-pub use world::{Aabb, Hemisphere, LocationBitset, SpatialIndex, TopologyIndex, World};
+pub use world::{
+    Aabb, Hemisphere, LocationBitset, SpatialIndex, SpatialIndexBuilder, TopologyIndex, World,
+    WorldRows,
+};
 
 #[cfg(feature = "render")]
-pub use controller::MapViewController;
-#[cfg(feature = "render")]
 pub use error::{RenderError, RenderErrorKind, SurfaceError};
+#[cfg(feature = "render")]
+pub use image::{Strip, StripPlan};
 #[cfg(feature = "interaction")]
 pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, default_clock};
 #[cfg(feature = "render")]
 pub use renderer::{
-    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, MapFrame, MapRenderer,
-    MapResources, MapScene, MapTexture, QueuedWorkFuture, RenderConfig, RenderLayer,
-    SurfaceMapRenderer,
+    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, LayerId, MapTexture,
+    QueuedWorkFuture, RenderLayer, ScreenshotRenderer, SurfaceMapRenderer, WorldTextureWriter,
+    WorldTextures,
 };
 #[cfg(feature = "render")]
 pub use wgpu;

@@ -32,11 +32,11 @@ struct ResolveUniforms {
     surface_width: u32,
     surface_height: u32,
 
-    // Guard band in physical pixels around the output
-    guard_band: u32,
+    // Guard band in physical pixels around the output, per axis
+    guard_band_x: u32,
+    guard_band_y: u32,
     _pad0: u32,
     _pad1: u32,
-    _pad2: u32,
 }
 
 @group(0) @binding(0) var west_input_texture: texture_2d<u32>;
@@ -67,23 +67,33 @@ fn id_at(global_x: i32, global_y: i32) -> u32 {
     }
 }
 
-// Location index for a fractional world coordinate. A scaling rule that
-// uses the sub-pixel position would replace the body of this function.
-fn resolve(world: vec2<f32>) -> u32 {
-    let c = vec2<i32>(floor(world));
-    return id_at(c.x, c.y);
+// Floor division for a positive divisor. Integer division rounds toward
+// zero, which would pull the negative offsets of the guard band in by one.
+fn floor_div(a: vec2<i32>, b: vec2<i32>) -> vec2<i32> {
+    let q = a / b;
+    let round_down = (a % b != vec2<i32>(0)) & (a < vec2<i32>(0));
+    return select(q, q - vec2<i32>(1), round_down);
+}
+
+// World pixel under the top-left corner of an output pixel. The math is in
+// integers, so at zoom 1 every output pixel lands on its own world pixel.
+// The view splits into whole surfaces and a remainder, so that no product
+// grows past the world coordinate it computes.
+fn world_pixel(output: vec2<i32>) -> vec2<i32> {
+    let surface = max(vec2<i32>(i32(uniforms.surface_width), i32(uniforms.surface_height)), vec2<i32>(1));
+    let view_origin = vec2<i32>(i32(uniforms.view_x), i32(uniforms.view_y));
+    let view_size = vec2<i32>(i32(uniforms.view_width), i32(uniforms.view_height));
+    let whole = view_size / surface;
+    let rest = view_size % surface;
+    return output * whole + floor_div(output * rest, surface) + view_origin;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) u32 {
-    let surface = vec2<f32>(f32(uniforms.surface_width), f32(uniforms.surface_height));
     // Fragment position relative to the output, which the guard band
     // shifts. Fragments in the band fall outside the output.
-    let output = floor(in.position.xy) - f32(uniforms.guard_band);
-
-    let view_origin = vec2<f32>(f32(uniforms.view_x), f32(uniforms.view_y));
-    let view_size = vec2<f32>(f32(uniforms.view_width), f32(uniforms.view_height));
-    let world = output / surface * view_size + view_origin;
-
-    return resolve(world);
+    let band = vec2<i32>(i32(uniforms.guard_band_x), i32(uniforms.guard_band_y));
+    let output = vec2<i32>(floor(in.position.xy)) - band;
+    let world = world_pixel(output);
+    return id_at(world.x, world.y);
 }

@@ -2,7 +2,16 @@ mod error;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod zstd_tee;
 
-pub use backend::{Decoder, Encoder};
+/// Reads the decompressed data of a zstd stream.
+///
+/// [`Decoder::with_window_log_max`] refuses a frame that needs more than
+/// `2^window_log_max` bytes of history, so the decoder's memory is bounded by
+/// the caller rather than by the frame header.
+///
+/// [`Decoder::get_ref`] is the reader of compressed data. The C backend can
+/// read it ahead of what it has decoded, so it is only exact at the end.
+pub use backend::Decoder;
+pub use backend::Encoder;
 pub use error::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -186,5 +195,19 @@ mod tests {
         let mut result = Vec::new();
         decoder.read_to_end(&mut result).unwrap();
         assert_eq!(result, LARGE_DATA);
+    }
+
+    #[test]
+    fn test_decoder_refuses_a_window_over_its_limit() {
+        let data = vec![7u8; 1 << 16];
+        let compressed = encode_all(&data, 3).unwrap();
+        Decoder::with_window_log_max(compressed.as_slice(), 10)
+            .and_then(|mut decoder| Ok(decoder.read_to_end(&mut Vec::new())?))
+            .unwrap_err();
+
+        let mut decoder = Decoder::with_window_log_max(compressed.as_slice(), 24).unwrap();
+        let mut result = Vec::new();
+        decoder.read_to_end(&mut result).unwrap();
+        assert_eq!(result, data);
     }
 }

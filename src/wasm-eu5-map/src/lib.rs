@@ -4,11 +4,10 @@ use eu5app::{
 };
 use eu5save::hash::FnvHashSet;
 use pdx_map::{
-    Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, Hemisphere, HemisphereLength,
-    InteractionController, KeyboardKey, LocationArrays, LocationBitset, LocationFlags,
-    LogicalPoint, LogicalSize, MapTexture, MapViewController, MouseButton, PhysicalSize, R16,
-    SpatialIndex, SurfaceMapRenderer, ViewportInsets, World, WorldPoint, WorldRect, WorldSize,
-    default_clock,
+    Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController,
+    KeyboardKey, LocationArrays, LocationBitset, LocationFlags, LogicalPoint, LogicalSize,
+    MouseButton, PhysicalSize, R16, SpatialIndex, SurfaceMapRenderer, ViewportBounds,
+    ViewportInsets, WorldPoint, WorldRect, WorldSize, default_clock,
 };
 use std::time::Duration;
 use tsify::Ts;
@@ -16,10 +15,11 @@ use wasm_bindgen::prelude::*;
 use web_sys::OffscreenCanvas;
 
 // Re-export common types from wasm-pdxmap
+use wasm_pdx_map::create_screenshot_renderer;
 pub use wasm_pdx_map::{
-    CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, WasmGpuColor,
-    WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture, WasmViewportInsets,
-    create_screenshot_renderer_for_app, get_surface_target,
+    CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, PdxWorldScreenshot,
+    WasmGpuColor, WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture,
+    WasmViewportInsets, get_surface_target,
 };
 
 #[wasm_bindgen]
@@ -52,32 +52,6 @@ impl Eu5CanvasSurface {
             display,
         })
     }
-
-    #[wasm_bindgen]
-    pub fn upload_west_texture(
-        &self,
-        data: &Eu5WasmTextureHemispheres,
-    ) -> Result<Eu5WasmTexture, JsError> {
-        let view = self.pipeline_components.create_texture(
-            &data.west,
-            eu5app::hemisphere_size().physical(),
-            "West Texture Input",
-        );
-        Ok(Eu5WasmTexture { data: view })
-    }
-
-    #[wasm_bindgen]
-    pub fn upload_east_texture(
-        &self,
-        data: &Eu5WasmTextureHemispheres,
-    ) -> Result<Eu5WasmTexture, JsError> {
-        let view = self.pipeline_components.create_texture(
-            &data.east,
-            eu5app::hemisphere_size().physical(),
-            "East Texture Input",
-        );
-        Ok(Eu5WasmTexture { data: view })
-    }
 }
 
 /// Whether the map at `zoom` draws the borders between locations. The same
@@ -90,9 +64,12 @@ pub fn location_borders_at_zoom(zoom: f32) -> bool {
 
 #[wasm_bindgen]
 pub struct Eu5WasmMapRenderer {
-    controller: MapViewController,
+    map: SurfaceMapRenderer,
     input: InteractionController,
-    world: World,
+    /// The view the map draws, written only by `apply_viewport`.
+    view: ViewportBounds,
+    /// Which location is at a point and where each location is. The world
+    /// it was built from is not kept.
     spatial_index: SpatialIndex,
     spatial_scratch: LocationBitset,
     location_arrays: LocationArrays,
@@ -113,38 +90,35 @@ impl std::fmt::Debug for Eu5WasmMapRenderer {
 
 #[wasm_bindgen]
 impl Eu5WasmMapRenderer {
+    /// Start the map from a map bundle. The bundle is read a band of rows
+    /// at a time into the GPU textures and the location index, so the whole
+    /// map is never in memory.
     #[wasm_bindgen]
-    pub fn create(
-        surface: Eu5CanvasSurface,
-        west_texture: Eu5WasmTexture,
-        east_texture: Eu5WasmTexture,
-        texture_data: Eu5WasmTextureHemispheres,
-    ) -> Result<Self, JsError> {
+    pub fn load(surface: Eu5CanvasSurface, map_bundle: &[u8]) -> Result<Self, JsError> {
+        let bundle = OptimizedMapBundle::open(map_bundle)
+            .map_err(|e| JsError::new(&format!("Failed to open map bundle: {e}")))?;
+        let mut textures = surface
+            .pipeline_components
+            .world_texture_writer(eu5app::hemisphere_size());
+        let spatial_index = bundle
+            .build_spatial_index(|rows| textures.write_rows(rows))
+            .map_err(|e| JsError::new(&format!("Failed to load map: {e}")))?;
+
         let display: CanvasDimensions = surface.display.into();
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
-            west_texture.data,
-            east_texture.data,
+            textures.finish(),
             display.physical_size(),
         );
-
         let map_size = renderer.hemisphere_size().world();
-        let world = texture_data.into_world(renderer.hemisphere_size().width_length());
-        let spatial_index = world.build_spatial_index();
-        let mut controller = MapViewController::new(renderer);
 
         // Initialize input controller with map size
         let input = InteractionController::new(display.logical_size(), map_size);
 
-        let show_location_borders = should_highlight_individual_locations(controller.get_zoom());
-        controller
-            .renderer_mut()
-            .set_location_borders(show_location_borders);
-
-        Ok(Eu5WasmMapRenderer {
-            controller,
+        let mut app = Eu5WasmMapRenderer {
+            map: renderer,
+            view: input.viewport_bounds(),
             input,
-            world,
             spatial_index,
             spatial_scratch: LocationBitset::new(),
             location_arrays: LocationArrays::new(),
@@ -153,7 +127,9 @@ impl Eu5WasmMapRenderer {
             grouping_table: GroupingTable::empty(),
             clock: default_clock(),
             last_tick: None,
-        })
+        };
+        app.apply_viewport();
+        Ok(app)
     }
 
     /// Get current raw zoom value
@@ -189,7 +165,7 @@ impl Eu5WasmMapRenderer {
     /// The size of the whole world in world units: `[width, height]`.
     #[wasm_bindgen]
     pub fn world_size(&self) -> Vec<u32> {
-        let size = self.controller.hemisphere_size().world();
+        let size = self.map.hemisphere_size().world();
         vec![size.width, size.height]
     }
 
@@ -281,7 +257,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn pick_location(&mut self) -> u16 {
         let world_coords = self.input.world_position();
-        self.world.at(world_coords).value()
+        self.spatial_index.location_at(world_coords).value()
     }
 
     #[wasm_bindgen]
@@ -294,9 +270,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn on_cursor_move(&mut self, x: f32, y: f32) {
         self.input.on_cursor_move(LogicalPoint::new(x, y));
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_viewport();
     }
 
     /// Handle mouse button press/release
@@ -314,9 +288,7 @@ impl Eu5WasmMapRenderer {
         };
 
         self.input.on_mouse_button(mouse_button, pressed);
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_viewport();
     }
 
     /// Handle scroll/zoom input
@@ -326,20 +298,7 @@ impl Eu5WasmMapRenderer {
     #[wasm_bindgen]
     pub fn on_scroll(&mut self, scroll_lines: f32) {
         self.input.on_scroll(scroll_lines);
-        self.apply_zoomed_viewport();
-    }
-
-    /// Send the input viewport to the renderer, and show location borders
-    /// only at zoom levels where they are legible. Call this after a change
-    /// to the zoom level.
-    fn apply_zoomed_viewport(&mut self) {
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
-
-        let show_borders = should_highlight_individual_locations(bounds.zoom_level);
-        self.controller
-            .renderer_mut()
-            .set_location_borders(show_borders);
+        self.apply_viewport();
     }
 
     /// Handle keyboard input for movement.
@@ -365,7 +324,7 @@ impl Eu5WasmMapRenderer {
         self.last_tick = Some(now);
 
         self.input.tick(delta);
-        self.apply_zoomed_viewport();
+        self.apply_viewport();
     }
 
     /// Check if currently dragging
@@ -384,11 +343,8 @@ impl Eu5WasmMapRenderer {
             ((height as f32) / scale_factor) as u32,
         ));
 
-        // Transfer updated viewport bounds to render controller
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
-
-        self.controller.resize(PhysicalSize::new(width, height));
+        self.apply_viewport();
+        self.map.resize(PhysicalSize::new(width, height));
     }
 
     /// Create a separate screenshot renderer that shares GPU resources but operates independently
@@ -397,8 +353,17 @@ impl Eu5WasmMapRenderer {
         &self,
         canvas: OffscreenCanvas,
     ) -> Result<WasmScreenshotRenderer, JsError> {
-        create_screenshot_renderer_for_app(&self.controller, canvas)
+        create_screenshot_renderer(&self.map, canvas)
             .map_err(|e| JsError::new(&format!("Failed to create screenshot renderer: {e}")))
+    }
+
+    /// Start a screenshot of the whole world
+    #[wasm_bindgen]
+    pub fn create_world_screenshot(&self) -> Result<PdxWorldScreenshot, JsError> {
+        let world = self.map.hemisphere_size().world();
+        PdxWorldScreenshot::new(world, |canvas| {
+            create_screenshot_renderer(&self.map, canvas)
+        })
     }
 
     /// Synchronize a location array from JS to Rust
@@ -412,7 +377,7 @@ impl Eu5WasmMapRenderer {
         }
 
         self.compose_preview();
-        self.upload_location_arrays();
+        self.map.update_locations(&self.location_arrays);
     }
 
     #[wasm_bindgen]
@@ -424,9 +389,7 @@ impl Eu5WasmMapRenderer {
             "Color data length must match initialized location arrays"
         );
         color_data.copy_to(destination);
-        self.controller
-            .renderer_mut()
-            .update_colors(&self.location_arrays);
+        self.map.update_colors(&self.location_arrays);
     }
 
     #[wasm_bindgen]
@@ -441,10 +404,24 @@ impl Eu5WasmMapRenderer {
         self.upload_preview();
     }
 
+    /// Whether the picture has changed since the last frame was drawn.
+    #[wasm_bindgen]
+    pub fn frame_due(&self) -> bool {
+        self.map.frame_due(self.view)
+    }
+
+    /// Draw the next frame even if nothing has changed, as for a canvas that
+    /// was hidden.
+    #[wasm_bindgen]
+    pub fn request_frame(&mut self) {
+        self.map.request_frame();
+    }
+
+    /// Draw the current picture. A failed frame stays due.
     #[wasm_bindgen]
     pub fn render(&mut self) -> Result<(), JsError> {
-        self.controller
-            .render()
+        self.map
+            .render(self.view)
             .map_err(|e| JsError::new(&format!("Failed to render: {e}")))
     }
 
@@ -453,9 +430,7 @@ impl Eu5WasmMapRenderer {
     pub fn center_at_world(&mut self, x: f32, y: f32) {
         let world = WorldPoint::new(x, y);
         self.input.center_on(world);
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        self.apply_viewport();
     }
 
     /// Restore a view in the world units returned by `viewport_world_rect`.
@@ -463,70 +438,82 @@ impl Eu5WasmMapRenderer {
     pub fn fit_world_rect(&mut self, x: u32, y: u32, width: u32, height: u32) {
         let rect = WorldRect::new(WorldPoint::new(x, y), WorldSize::new(width, height));
         self.input.fit(rect);
-        self.apply_zoomed_viewport();
+        self.apply_viewport();
     }
 
     /// Open the map on the view the save calls for.
     #[wasm_bindgen]
     pub fn open_view(&mut self, view: Ts<OpeningView>) -> Result<(), JsError> {
-        match view.to_rust()? {
-            OpeningView::Capital { color_id } => self.center_at_color_id(color_id.value()),
-            OpeningView::World => {
-                self.input.fit_map();
-                self.apply_zoomed_viewport();
-            }
+        let capital = match view.to_rust()? {
+            OpeningView::Capital { color_id } => self.location_point(color_id.value()),
+            OpeningView::World => None,
+        };
+        match capital {
+            Some(point) => self.input.center_on(point),
+            None => self.input.fit_map(),
         }
+        self.apply_viewport();
         Ok(())
     }
 
     /// Center the viewport at a location by its color ID (R16 texture index).
+    /// A location that is not on the map leaves the view as it is.
     #[wasm_bindgen]
     pub fn center_at_color_id(&mut self, color_id: u16) {
-        let r16 = R16::new(color_id);
-        let center = self.world.center_of(r16);
-
-        // Convert u32 world coordinates to f32 for viewport
-        let world = WorldPoint::new(center.x as f32, center.y as f32);
-        self.input.center_on(world);
-
-        let bounds = self.input.viewport_bounds();
-        self.controller.set_viewport_bounds(bounds);
+        let Some(point) = self.location_point(color_id) else {
+            return;
+        };
+        self.input.center_on(point);
+        self.apply_viewport();
     }
 
     /// Show the location with `color_id` (R16 texture index) in the region that
     /// the insets do not cover. From a far view, also zoom in so that the location
     /// is large enough to see. The target is a pixel of the location, so a
-    /// location that wraps around the map has a real target.
+    /// location that wraps around the map has a real target. A location that
+    /// is not on the map leaves the view as it is.
     #[wasm_bindgen]
     pub fn jump_to_color_id(
         &mut self,
         color_id: u16,
         insets: Ts<WasmViewportInsets>,
     ) -> Result<(), JsError> {
-        let point = self.spatial_index.point_of(R16::new(color_id));
-        let target = WorldPoint::new(point.x as f32, point.y as f32);
         let insets: ViewportInsets = insets.to_rust()?.into();
+        let Some(target) = self.location_point(color_id) else {
+            return Ok(());
+        };
         self.input.jump_to(target, insets, JUMP_ZOOM);
-        self.apply_zoomed_viewport();
+        self.apply_viewport();
         Ok(())
     }
 
     /// Enable or disable owner border rendering
     #[wasm_bindgen]
     pub fn set_owner_borders(&mut self, enabled: bool) {
-        self.controller.renderer_mut().set_owner_borders(enabled);
+        self.map.set_owner_borders(enabled);
     }
 
     #[wasm_bindgen]
     pub fn queued_work(&self) -> WasmQueuedWorkFuture {
-        WasmQueuedWorkFuture::from_queued_work_future(self.controller.queued_work())
+        WasmQueuedWorkFuture::from_queued_work_future(self.map.queued_work())
     }
 }
 
 impl Eu5WasmMapRenderer {
-    fn upload_location_arrays(&mut self) {
-        let renderer = self.controller.renderer_mut();
-        renderer.update_locations(&self.location_arrays);
+    /// The middle of the location with `color_id`, where the map opens on it
+    /// or jumps to it.
+    fn location_point(&self, color_id: u16) -> Option<WorldPoint<f32>> {
+        let point = self.spatial_index.point_of(R16::new(color_id))?;
+        Some(WorldPoint::new(point.x as f32, point.y as f32))
+    }
+
+    /// Take the input viewport as the view the map draws, and show location
+    /// borders only at zoom levels where they are legible. Call this after
+    /// any change to the input viewport.
+    fn apply_viewport(&mut self) {
+        self.view = self.input.viewport_bounds();
+        self.map
+            .set_location_borders(should_highlight_individual_locations(self.view.zoom_level));
     }
 
     fn fill_locations_in_rect(&mut self, start: LogicalPoint<f32>, end: LogicalPoint<f32>) {
@@ -606,76 +593,8 @@ impl Eu5WasmMapRenderer {
 
     fn upload_preview(&mut self) {
         self.compose_preview();
-        self.controller
-            .renderer_mut()
-            .update_flags(&self.location_arrays);
+        self.map.update_flags(&self.location_arrays);
     }
-}
-
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct Eu5WasmMapBundle {
-    textures: OptimizedMapBundle<Vec<u8>>,
-}
-
-#[wasm_bindgen]
-impl Eu5WasmMapBundle {
-    #[wasm_bindgen]
-    pub fn open(data: Vec<u8>) -> Result<Self, JsError> {
-        OptimizedMapBundle::open(data)
-            .map(|textures| Eu5WasmMapBundle { textures })
-            .map_err(|e| JsError::new(&format!("Failed to open map bundle: {e}")))
-    }
-
-    #[wasm_bindgen]
-    pub fn load_texture_data(mut self) -> Result<Eu5WasmTextureHemispheres, JsError> {
-        let (west_data, east_data) = self
-            .textures
-            .load_hemispheres()
-            .map_err(|e| JsError::new(&format!("Failed to load textures: {e}")))?;
-        let max_location_index = self
-            .textures
-            .load_max_location_index()
-            .map_err(|e| JsError::new(&format!("Failed to load world metadata: {e}")))?
-            .map(|idx| idx.value());
-
-        Ok(Eu5WasmTextureHemispheres {
-            west: west_data,
-            east: east_data,
-            max_location_index,
-        })
-    }
-}
-
-/// West and east hemisphere texture data.
-/// Passed directly to renderer construction.
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct Eu5WasmTextureHemispheres {
-    west: Vec<pdx_map::R16>,
-    east: Vec<pdx_map::R16>,
-    max_location_index: Option<u16>,
-}
-
-impl Eu5WasmTextureHemispheres {
-    fn into_world(self, hemisphere_width: HemisphereLength<u32>) -> World {
-        let west = Hemisphere::new(self.west, hemisphere_width);
-        let east = Hemisphere::new(self.east, hemisphere_width);
-        let mut world_builder = World::builder(west, east);
-
-        if let Some(max) = self.max_location_index.map(R16::new) {
-            // SAFETY: Metadata is produced by the trusted bundle compiler.
-            world_builder = unsafe { world_builder.with_max_location_index_unchecked(max) };
-        }
-
-        world_builder.build()
-    }
-}
-
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct Eu5WasmTexture {
-    data: MapTexture,
 }
 
 #[wasm_bindgen]

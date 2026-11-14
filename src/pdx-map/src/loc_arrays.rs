@@ -35,8 +35,10 @@ impl LocationFlags {
     pub const IMPASSABLE: Self = Self(1 << 6); // Bit 6: location is impassable terrain, which no one owns
     pub const UNOWNED: Self = Self(1 << 7); // Bit 7: location is land that no country owns
     pub const LAKE: Self = Self(1 << 8); // Bit 8: location is a lake, which has no coast
-    pub const INTERACTION: Self =
-        Self(Self::HIGHLIGHTED.0 | Self::FOCUSED.0 | Self::DIMMED.0 | Self::PREVIEW.0);
+    pub const SOFTENED: Self = Self(1 << 9); // Bit 9: location is selected, but another location has the focus
+    pub const INTERACTION: Self = Self(
+        Self::HIGHLIGHTED.0 | Self::FOCUSED.0 | Self::DIMMED.0 | Self::PREVIEW.0 | Self::SOFTENED.0,
+    );
 
     #[inline]
     pub const fn new() -> Self {
@@ -131,8 +133,8 @@ impl LocationData {
     }
 
     /// The colors that decide the political borders. A political border is
-    /// drawn where two neighbors have different border colors. The border
-    /// line is this color, darkened. The value does not change the fill.
+    /// drawn where two neighbors have different border colors. The line
+    /// takes the primary color, so this value only tells owners apart.
     pub fn border_colors(&self) -> &[GpuColor] {
         bytemuck::cast_slice(self.sub_array::<1>())
     }
@@ -645,6 +647,7 @@ mod tests {
                 | LocationFlags::HIGHLIGHTED.bits()
                 | LocationFlags::FOCUSED.bits()
                 | LocationFlags::PREVIEW.bits()
+                | LocationFlags::SOFTENED.bits()
         );
         assert!(!LocationFlags::INTERACTION.contains(LocationFlags::NO_LOCATION_BORDERS));
     }
