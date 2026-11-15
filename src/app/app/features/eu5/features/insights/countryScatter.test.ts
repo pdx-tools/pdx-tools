@@ -3,6 +3,7 @@ import type { CountryRef } from "@/wasm/wasm_eu5";
 import {
   dotLabelLayout,
   labelPlace,
+  linearExtent,
   logAxis,
   logDomain,
   logPosition,
@@ -84,6 +85,22 @@ describe("logTick", () => {
   });
 });
 
+describe("linearExtent", () => {
+  it("goes from zero to a round value over the largest", () => {
+    expect(linearExtent([1200, 4870, 3100])).toEqual({ min: 0, max: 6000 });
+    expect(linearExtent([0.4, 0.95])).toEqual({ min: 0, max: 1 });
+  });
+
+  it("starts at the smallest value under zero", () => {
+    expect(linearExtent([-30, 80])).toEqual({ min: -30, max: 100 });
+  });
+
+  it("accepts values with none above zero", () => {
+    expect(linearExtent([0, 0])).toEqual({ min: 0, max: 1 });
+    expect(linearExtent([-5])).toEqual({ min: -5, max: 0 });
+  });
+});
+
 describe("scatterDots", () => {
   it("names the five largest, and draws them over the rest", () => {
     const dots = dotsOf(seven());
@@ -120,6 +137,17 @@ describe("scatterDots", () => {
     const zero = dotsOf(rows).find((d) => d.point.country.country.key === 0);
     expect(zero?.value[0]).toBe(0.1);
     expect(zero?.point.x).toBe(0);
+  });
+
+  it("puts a dot at its own value on a linear axis", () => {
+    const rows = [
+      { country: country(0), x: 0, y: 1 },
+      { country: country(1), x: 5, y: 1 },
+    ];
+    const zero = scatterDots(rows, asPoint, {}, NO_MARKS).find(
+      (d) => d.point.country.country.key === 0,
+    );
+    expect(zero?.value).toEqual([0, 1]);
   });
 
   it("keeps the size of a dot that shows a value", () => {

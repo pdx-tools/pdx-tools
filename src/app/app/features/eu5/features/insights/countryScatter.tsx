@@ -18,6 +18,7 @@ import { formatTick } from "../../numberFormatting";
 import { useEu5HomeCountry } from "../../store";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { BOX_ZOOM_HINT, ResetZoom, SCATTER_GRID, SCATTER_ZOOM, useBoxZoom } from "./scatterZoom";
 
 /** Room after the largest value, so that its dot stays in the plot */
 const LOG_HEADROOM = 1.5;
@@ -115,6 +116,34 @@ export function LogFloorNote({
   );
 }
 
+/** The two ends of an axis */
+export interface AxisExtent {
+  min: number;
+  max: number;
+}
+
+/** Steps of a round end for a linear axis, in each decade */
+const ROUND_ENDS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
+/**
+ * The extent of a linear axis: from zero, or the smallest value under zero,
+ * to a round value over the largest, so that its dot stays in the plot.
+ */
+export function linearExtent(values: Iterable<number>): AxisExtent {
+  let smallest = 0;
+  let largest = 0;
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue;
+    smallest = Math.min(smallest, value);
+    largest = Math.max(largest, value);
+  }
+  const top = largest * 1.05;
+  if (!(top > 0)) return { min: smallest, max: smallest < 0 ? 0 : 1 };
+  const decade = 10 ** Math.floor(Math.log10(top));
+  const step = ROUND_ENDS.find((end) => end * decade >= top) ?? 10;
+  return { min: smallest, max: step * decade };
+}
+
 /** Where a country goes on a scatter */
 export interface CountryPoint {
   country: CountryRef;
@@ -174,7 +203,8 @@ function selectedTest(target: SelectionTargetData | null): (country: CountryRef)
 export function scatterDots<T>(
   rows: readonly T[],
   point: (row: T) => CountryPoint,
-  domain: { x: LogDomain; y?: LogDomain },
+  /** The log axes. An axis with no domain is linear. */
+  domain: { x?: LogDomain; y?: LogDomain },
   marks: ScatterMarks,
 ): ScatterDot<T>[] {
   const points = rows.map(point);
@@ -192,11 +222,12 @@ export function scatterDots<T>(
     const marked = key === marks.home || isSelected(p.country);
     const labeled = marked || largest.has(key);
     const colored = labeled || p.country.isPlayer;
+    const x = domain.x ? logPosition(p.x, domain.x) : p.x;
     const y = domain.y ? logPosition(p.y, domain.y) : p.y;
     return {
       row,
       point: p,
-      value: [logPosition(p.x, domain.x), y],
+      value: [x, y],
       symbolSize: p.symbolSize ?? (labeled ? LABELED_DOT : colored ? COLORED_DOT : NEUTRAL_DOT),
       colored,
       labeled,
@@ -309,18 +340,6 @@ function useScatterMarks(): ScatterMarks | undefined {
   );
 }
 
-const GRID = { left: 56, right: 24, top: 32, bottom: 44 };
-
-/**
- * Zoom with Ctrl and the wheel, so that the wheel alone scrolls the panel.
- */
-export const SCATTER_ZOOM = {
-  type: "inside",
-  xAxisIndex: 0,
-  yAxisIndex: 0,
-  zoomOnMouseWheel: "ctrl",
-} as const;
-
 export type SeriesOption = Exclude<NonNullable<EChartsOption["series"]>, readonly unknown[]>;
 type LabelLayoutParams = {
   dataIndex?: number;
@@ -359,10 +378,10 @@ export function dotLabelLayout<T>(
 
   const find = () => {
     const plot = {
-      x: GRID.left,
-      y: GRID.top,
-      width: chart.getWidth() - GRID.left - GRID.right,
-      height: chart.getHeight() - GRID.top - GRID.bottom,
+      x: SCATTER_GRID.left,
+      y: SCATTER_GRID.top,
+      width: chart.getWidth() - SCATTER_GRID.left - SCATTER_GRID.right,
+      height: chart.getHeight() - SCATTER_GRID.top - SCATTER_GRID.bottom,
     };
     const seats = seated.map(({ dot, index }) => {
       const pixel: unknown = chart.convertToPixel({ seriesIndex }, dot.value);
@@ -443,19 +462,21 @@ interface CountryScatterProps<T> {
   xName: string;
   yName: string;
   /**
-   * The y axis: a value axis with these settings, or "log" for the scale of
+   * The y axis: a value axis with these settings, or "x" for the scale of
    * the x axis, so that a diagonal stays a diagonal.
    */
-  yAxis?: ValueScale | "log";
-  /** What a country on the 0 edge has none of */
+  yAxis?: ValueScale | "x";
+  /** What a country on the 0 edge of a log axis has none of */
   zeroWhat: string;
-  /** Series under the dots, such as a reference line */
-  under?: (domain: LogDomain) => SeriesOption[];
+  /** Series under the dots, such as a reference line, from the extent of the x axis */
+  under?: (extent: AxisExtent) => SeriesOption[];
 }
 
 /**
- * A scatter of countries on a log x axis. A click on a dot selects its
- * country, and Shift, Ctrl or Cmd adds it.
+ * A scatter of countries. With no selection, the x axis is log, so that
+ * hundreds of small countries spread out. With a selection, it is linear,
+ * so that the gaps between the selected countries show as they are. A click
+ * on a dot selects its country, and Shift, Ctrl or Cmd adds it.
  */
 export function CountryScatter<T>({
   rows,
@@ -468,81 +489,87 @@ export function CountryScatter<T>({
   under,
 }: CountryScatterProps<T>) {
   const marks = useScatterMarks();
-  const logY = yAxis === "log";
+  const sameY = yAxis === "x";
+  const logX = marks?.target == null;
 
-  const { domain, dots, onEdge, negative } = useMemo(() => {
+  const { log, extent, dots, onEdge } = useMemo(() => {
     const points = rows.map(point);
-    const values = points.flatMap((p) => (logY ? [p.x, p.y] : [p.x]));
-    const domain = logDomain(values);
+    const values = points.flatMap((p) => (sameY ? [p.x, p.y] : [p.x]));
+    const log = logX ? logDomain(values) : null;
+    const extent = log ? { min: log.floor, max: log.ceiling } : linearExtent(values);
     const dots = scatterDots(
       rows,
       point,
-      { x: domain, y: logY ? domain : undefined },
+      { x: log ?? undefined, y: sameY ? (log ?? undefined) : undefined },
       marks ?? NO_MARKS,
     );
-    const onEdge = points.filter((p) => !(p.x > 0) || (logY && !(p.y > 0))).length;
-    return { domain, dots, onEdge, negative: domain.hasNegative };
-  }, [rows, point, logY, marks]);
+    const onEdge = log ? points.filter((p) => !(p.x > 0) || (sameY && !(p.y > 0))).length : 0;
+    return { log, extent, dots, onEdge };
+  }, [rows, point, sameY, logX, marks]);
 
-  const below = useMemo(() => under?.(domain) ?? [], [under, domain]);
+  const below = useMemo(() => under?.(extent) ?? [], [under, extent]);
   // The dots come after the series under them.
   const seriesIndex = below.length;
 
   // The labels need the chart to find where the dots are.
-  const option = useMemo(
-    () =>
-      (chart: echarts.ECharts): EChartsOption => ({
-        grid: GRID,
-        xAxis: { ...logAxis(domain), name: xName, nameLocation: "middle", nameGap: 28 },
-        yAxis:
-          yAxis === "log"
-            ? { ...logAxis(domain), ...yAxisName(yName) }
-            : {
-                type: "value",
-                min: yAxis.min,
-                max: yAxis.max,
-                // An undefined key would hide the theme's tick text.
-                ...(yAxis.formatter && { axisLabel: { formatter: yAxis.formatter } }),
-                ...yAxisName(yName),
-              },
-        // No filter on a zoom, so each dot keeps its index.
-        dataZoom: [{ ...SCATTER_ZOOM, filterMode: "none" }],
-        tooltip: {
-          ...chartTooltip,
-          trigger: "item",
-          formatter: (params) => {
-            if (Array.isArray(params) || params.seriesIndex !== seriesIndex) return "";
-            const dot = dots[params.dataIndex];
-            return dot ? tooltip(dot.row) : "";
+  const option = useMemo(() => {
+    const xScale = log
+      ? logAxis(log)
+      : {
+          type: "value" as const,
+          ...extent,
+          axisLabel: { hideOverlap: true, formatter: formatTick },
+        };
+    return (chart: echarts.ECharts): EChartsOption => ({
+      grid: SCATTER_GRID,
+      xAxis: { ...xScale, name: xName, nameLocation: "middle", nameGap: 28 },
+      yAxis: sameY
+        ? { ...xScale, ...yAxisName(yName) }
+        : {
+            type: "value",
+            min: yAxis.min,
+            max: yAxis.max,
+            // An undefined key would hide the theme's tick text.
+            ...(yAxis.formatter && { axisLabel: { formatter: yAxis.formatter } }),
+            ...yAxisName(yName),
           },
+      dataZoom: SCATTER_ZOOM,
+      tooltip: {
+        ...chartTooltip,
+        trigger: "item",
+        formatter: (params) => {
+          if (Array.isArray(params) || params.seriesIndex !== seriesIndex) return "";
+          const dot = dots[params.dataIndex];
+          return dot ? tooltip(dot.row) : "";
         },
-        series: [
-          ...below,
-          {
-            type: "scatter",
-            data: dots.map((dot) => ({
-              value: dot.value,
-              symbolSize: dot.symbolSize,
-              label: { show: dot.labeled },
-              itemStyle: dot.colored
-                ? { ...dotRim, color: dot.point.country.colorHex || neutralMark, opacity: 1 }
-                : undefined,
-            })),
-            itemStyle: { color: neutralMark, opacity: 0.4, borderWidth: 0 },
-            label: {
-              ...chartText,
-              ...labelHalo,
-              formatter: (params) => dots[params.dataIndex]?.point.country.country.name ?? "",
-            },
-            labelLine: { show: true, lineStyle: { color: chartInk.muted, width: 1 } },
-            labelLayout: dotLabelLayout(dots, chart, seriesIndex),
+      },
+      series: [
+        ...below,
+        {
+          type: "scatter",
+          data: dots.map((dot) => ({
+            value: dot.value,
+            symbolSize: dot.symbolSize,
+            label: { show: dot.labeled },
+            itemStyle: dot.colored
+              ? { ...dotRim, color: dot.point.country.colorHex || neutralMark, opacity: 1 }
+              : undefined,
+          })),
+          itemStyle: { color: neutralMark, opacity: 0.4, borderWidth: 0 },
+          label: {
+            ...chartText,
+            ...labelHalo,
+            formatter: (params) => dots[params.dataIndex]?.point.country.country.name ?? "",
           },
-        ],
-      }),
-    [domain, dots, below, seriesIndex, xName, yName, yAxis, tooltip],
-  );
+          labelLine: { show: true, lineStyle: { color: chartInk.muted, width: 1 } },
+          labelLayout: dotLabelLayout(dots, chart, seriesIndex),
+        },
+      ],
+    });
+  }, [log, extent, sameY, dots, below, seriesIndex, xName, yName, yAxis, tooltip]);
 
-  const handleInit = useEu5EntityChartClick({
+  const zoom = useBoxZoom(option);
+  const handleClick = useEu5EntityChartClick({
     kind: "country",
     getTarget: (params) => {
       const dot = params.seriesIndex === seriesIndex ? dots[params.dataIndex] : undefined;
@@ -563,19 +590,32 @@ export function CountryScatter<T>({
 
   return (
     <>
-      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
-      {unnamedPlayers ? (
-        <p className="mt-1 text-[12px] text-game-ink-500">
-          Players and named countries have their game color. Hover a dot to see its name.
-        </p>
+      <div className="relative">
+        <EChart
+          option={option}
+          style={{ height: "420px", width: "100%" }}
+          onInit={(chart) => {
+            handleClick(chart);
+            zoom.attach(chart);
+          }}
+        />
+        <ResetZoom zoom={zoom} />
+      </div>
+      <p className="mt-1 text-[12px] text-game-ink-500">
+        {unnamedPlayers
+          ? "Players and named countries have their game color. Hover a dot to see its name. "
+          : ""}
+        {BOX_ZOOM_HINT}
+      </p>
+      {log ? (
+        <LogFloorNote
+          count={onEdge}
+          noun={{ one: "country", many: "countries" }}
+          what={zeroWhat}
+          negative={log.hasNegative}
+          edge={sameY ? "edges" : "left edge"}
+        />
       ) : null}
-      <LogFloorNote
-        count={onEdge}
-        noun={{ one: "country", many: "countries" }}
-        what={zeroWhat}
-        negative={negative}
-        edge={logY ? "edges" : "left edge"}
-      />
     </>
   );
 }

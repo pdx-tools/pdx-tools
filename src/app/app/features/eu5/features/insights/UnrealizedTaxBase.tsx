@@ -25,7 +25,7 @@ import {
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { CountryScatter } from "./countryScatter";
-import type { CountryPoint, LogDomain, SeriesOption } from "./countryScatter";
+import type { AxisExtent, CountryPoint, SeriesOption } from "./countryScatter";
 import { SectionTitle } from "../../components";
 
 const BAR_CAP = 25;
@@ -261,13 +261,13 @@ function taxBaseTooltip(d: CountryUnrealizedTaxBase): string {
 }
 
 /** On this line, a country's tax base is all of its wealth */
-function fullRealization(domain: LogDomain): SeriesOption[] {
+function fullRealization({ min, max }: AxisExtent): SeriesOption[] {
   return [
     {
       type: "line",
       data: [
-        [domain.floor, domain.floor],
-        [domain.ceiling, domain.ceiling],
+        [min, min],
+        [max, max],
       ],
       lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
       symbol: "none",
@@ -285,7 +285,7 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
       tooltip={taxBaseTooltip}
       xName="Tax Base"
       yName="Total Wealth (ceiling)"
-      yAxis="log"
+      yAxis="x"
       zeroWhat="tax base or wealth"
       under={fullRealization}
     />
