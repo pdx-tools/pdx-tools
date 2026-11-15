@@ -1226,12 +1226,15 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         <ResetZoom zoom={zoom} />
       </div>
       <p className="mt-1 text-[12px] text-game-ink-500">Dot area: total taken. {BOX_ZOOM_HINT}</p>
-      <LogFloorNote
-        count={domain.onFloor}
-        noun={{ one: "market", many: "markets" }}
-        what="value"
-        negative={domain.hasNegative}
-      />
+      {/* A zoom can leave out the edge, so the note is only for the whole chart. */}
+      {zoom.zoomed ? null : (
+        <LogFloorNote
+          count={domain.onFloor}
+          noun={{ one: "market", many: "markets" }}
+          what="value"
+          negative={domain.hasNegative}
+        />
+      )}
     </>
   );
 }

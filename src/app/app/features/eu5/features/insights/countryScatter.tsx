@@ -622,7 +622,8 @@ export function CountryScatter<T>({
         <ResetZoom zoom={zoom} />
       </div>
       <p className="mt-1 text-[12px] text-game-ink-500">{key}</p>
-      {log ? (
+      {/* A zoom can leave out the edge, so the note is only for the whole chart. */}
+      {log && !zoom.zoomed ? (
         <LogFloorNote
           count={onEdge}
           noun={{ one: "country", many: "countries" }}
