@@ -392,11 +392,22 @@ fn sequential_maps_spread_their_land(ws: &mut Eu5Workspace) -> serde_json::Value
         let MapLegend::Quantitative(legend) = ws.set_map_mode(mode).legend else {
             continue;
         };
-        if let Some(clip) = legend.clip {
+        if let Some(clip) = legend.clip_above {
             assert_ne!(mode, MapMode::Control, "a share has a true top");
-            assert!(clip.highest > legend.max_value, "{mode:?}: {clip:?}");
+            assert!(clip.extreme > legend.max_value, "{mode:?}: {clip:?}");
             assert!(
                 clip.share > 0.0 && clip.share <= 0.051,
+                "{mode:?}: {clip:?}"
+            );
+        }
+        if let Some(clip) = legend.clip_below {
+            assert!(
+                !matches!(mode, MapMode::Control | MapMode::PopulationGrowth),
+                "{mode:?} has a true bottom"
+            );
+            assert!(clip.extreme < legend.min_value, "{mode:?}: {clip:?}");
+            assert!(
+                clip.share > 0.0 && clip.share <= 0.021,
                 "{mode:?}: {clip:?}"
             );
         }

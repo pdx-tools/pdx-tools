@@ -16,29 +16,36 @@ function tickKind(mode: MapMode) {
 }
 
 /**
- * The labels under the ramp, and a note on the land above the top of a
- * clipped scale. The top label of a clipped scale reads "N+", because the top
- * color also shows that land.
+ * The labels under the ramp, and a note on the land past each clipped end of
+ * the scale. A clipped bottom label reads "≤N" and a clipped top label reads
+ * "N+", because the end colors also show that land.
  */
 export function gradientKey(
   mode: MapMode,
   gradient: GradientConfig,
   ofSelection: boolean,
-): { ticks: string[]; note: string | null } {
+): { ticks: string[]; notes: string[] } {
   const kind = tickKind(mode);
   const unit = mode === "populationGrowth" ? "/yr" : "";
   const label = (tick: string) => (tick === "0" ? tick : `${tick}${unit}`);
-  const [min, mid, max] = formatScaleTicks(
-    [gradient.minValue, gradient.midValue, gradient.maxValue],
-    kind,
-  ).map(label);
-  const clip = gradient.clip;
-  if (!clip) return { ticks: [min, mid, max], note: null };
-  const [highest] = formatScaleTicks([clip.highest], kind).map(label);
+  const format = (values: number[]) => formatScaleTicks(values, kind).map(label);
+  const [min, mid, max] = format([gradient.minValue, gradient.midValue, gradient.maxValue]);
   const locations = ofSelection ? "selected locations" : "locations";
+  const { clipBelow, clipAbove } = gradient;
+  const notes: string[] = [];
+  if (clipBelow) {
+    const [lowest] = format([clipBelow.extreme]);
+    notes.push(`${formatPercent(clipBelow.share)} of ${locations} below ${min}, lowest ${lowest}`);
+  }
+  if (clipAbove) {
+    const [highest] = format([clipAbove.extreme]);
+    notes.push(
+      `${formatPercent(clipAbove.share)} of ${locations} above ${max}, highest ${highest}`,
+    );
+  }
   return {
-    ticks: [min, mid, `${max}+`],
-    note: `${formatPercent(clip.share)} of ${locations} above ${max}, highest ${highest}`,
+    ticks: [clipBelow ? `≤${min}` : min, mid, clipAbove ? `${max}+` : max],
+    notes,
   };
 }
 
@@ -51,7 +58,7 @@ type Props = {
 
 export function GradientLegend({ mode, gradient, ofSelection }: Props) {
   const paletteGradients = useEu5PaletteGradients();
-  const { ticks, note } = gradientKey(mode, gradient, ofSelection);
+  const { ticks, notes } = gradientKey(mode, gradient, ofSelection);
 
   return (
     <div className="flex flex-col gap-1 px-3.5 pb-2">
@@ -65,7 +72,11 @@ export function GradientLegend({ mode, gradient, ofSelection }: Props) {
         <span className="text-center">{ticks[1]}</span>
         <span className="text-right">{ticks[2]}</span>
       </div>
-      {note ? <p className="text-[12px] text-game-ink-500">{note}</p> : null}
+      {notes.map((note) => (
+        <p key={note} className="text-[12px] text-game-ink-500">
+          {note}
+        </p>
+      ))}
     </div>
   );
 }

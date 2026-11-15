@@ -26,17 +26,17 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       0.17
     ],
     "development": [
-      0.18,
-      0.27,
-      0.36,
-      0.11,
-      0.08
+      0.26,
+      0.29,
+      0.28,
+      0.09,
+      0.07
     ],
     "population": [
-      0.09,
-      0.17,
-      0.4,
-      0.21,
+      0.11,
+      0.19,
+      0.38,
+      0.2,
       0.13
     ],
     "population_growth": [
@@ -47,11 +47,11 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       0.36
     ],
     "rgo_level": [
-      0.15,
-      0.11,
+      0.2,
+      0.1,
       0.21,
       0.29,
-      0.25
+      0.2
     ],
     "state_efficacy": [
       0.19,
@@ -92,7 +92,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "colors": 175,
       "fingerprint": "0xa90dca23897e97fc",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 17.493669871632274, max_value: 171.0, clip: Some(GradientClip { share: 0.019982207623349072, highest: 473.0 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 17.493669871632274, max_value: 171.0, clip_below: None, clip_above: Some(GradientClip { share: 0.019982207623349072, extreme: 473.0 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -103,7 +103,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "colors": 940,
       "fingerprint": "0xf751e62120b6d97a",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, clip: None })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, clip_below: None, clip_above: None })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -111,10 +111,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "development": {
-      "colors": 918,
-      "fingerprint": "0x6cf6bd5a556f903e",
+      "colors": 931,
+      "fingerprint": "0x8522980a43b47942",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 27.47051, max_value: 54.94102, clip: Some(GradientClip { share: 0.019982207623349072, highest: 100.0 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 5.00322, mid_value: 29.97212, max_value: 54.94102, clip_below: Some(GradientClip { share: 0.019982207623349072, extreme: 0.72765 }), clip_above: Some(GradientClip { share: 0.019982207623349072, extreme: 100.0 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -144,10 +144,10 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "population": {
-      "colors": 939,
-      "fingerprint": "0xbc2dc8a7655371b7",
+      "colors": 945,
+      "fingerprint": "0x34c72c4614ebf653",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 21736.523382867123, max_value: 124491.0, clip: Some(GradientClip { share: 0.019982207623349072, highest: 570302.0 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 1465.0, mid_value: 23046.13353242869, max_value: 124491.0, clip_below: Some(GradientClip { share: 0.019982207623349072, extreme: 7.0 }), clip_above: Some(GradientClip { share: 0.019982207623349072, extreme: 570302.0 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -158,7 +158,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "colors": 854,
       "fingerprint": "0x5ec30c1ce562a826",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.0037162006008782072, max_value: 0.0074324012017564145, clip: Some(GradientClip { share: 0.050023951276260865, highest: 0.04459078080903105 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.0037162006008782072, max_value: 0.0074324012017564145, clip_below: None, clip_above: Some(GradientClip { share: 0.050023951276260865, extreme: 0.04459078080903105 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -177,21 +177,21 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       ]
     },
     "rgo_level": {
-      "colors": 28,
-      "fingerprint": "0xb6370211b444c579",
+      "colors": 27,
+      "fingerprint": "0xa2a2f462f00ebc1e",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.211102550927978, max_value: 24.0, clip: Some(GradientClip { share: 0.01635530007527544, highest: 41.0 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 1.0, mid_value: 6.0710678118654755, max_value: 24.0, clip_below: Some(GradientClip { share: 0.0028741531513036336, extreme: 0.0 }), clip_above: Some(GradientClip { share: 0.01635530007527544, extreme: 41.0 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
-        "#ff450a0a x2081"
+        "#ff040101 x2123"
       ]
     },
     "state_efficacy": {
       "colors": 939,
       "fingerprint": "0x7c2206c35fe2800f",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 9.59817889168961, max_value: 49.680171155000004, clip: Some(GradientClip { share: 0.019982207623349072, highest: 100.0 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 9.59817889168961, max_value: 49.680171155000004, clip_below: None, clip_above: Some(GradientClip { share: 0.019982207623349072, extreme: 100.0 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -202,7 +202,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "colors": 940,
       "fingerprint": "0xce2afef396fb4048",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.081958631151675, max_value: 37.70933000000001, clip: Some(GradientClip { share: 0.019982207623349072, highest: 200.36096 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.081958631151675, max_value: 37.70933000000001, clip_below: None, clip_above: Some(GradientClip { share: 0.019982207623349072, extreme: 200.36096 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -213,7 +213,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
       "colors": 932,
       "fingerprint": "0x85118afc99337f44",
       "groups": "0x5fb1d48ac20cf6f9",
-      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 14.640329547818359, max_value: 112.09644, clip: Some(GradientClip { share: 0.019982207623349072, highest: 441.48478 }) })",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 14.640329547818359, max_value: 112.09644, clip_below: None, clip_above: Some(GradientClip { share: 0.019982207623349072, extreme: 441.48478 }) })",
       "top": [
         "#ff808080 x6280",
         "#ff455e77 x5709",
@@ -257,7 +257,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         "dimmed": 28091,
         "fingerprint": "0x2b88ccd4d8b6f9d4",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 8.38308515906837, max_value: 48.0, clip: Some(GradientClip { share: 0.02074688796680498, highest: 184.0 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 8.38308515906837, max_value: 48.0, clip_below: None, clip_above: Some(GradientClip { share: 0.02074688796680498, extreme: 184.0 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -269,7 +269,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         "dimmed": 28091,
         "fingerprint": "0xd2f3c1545d053012",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, clip: None })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0, clip_below: None, clip_above: None })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -277,11 +277,11 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "development": {
-        "colors": 918,
+        "colors": 931,
         "dimmed": 28091,
-        "fingerprint": "0x145a0a3c1e013230",
+        "fingerprint": "0x6dbe39755f32ff12",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 15.2556, max_value: 30.5112, clip: Some(GradientClip { share: 0.02074688796680498, highest: 42.17784 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 3.73549, mid_value: 17.123345, max_value: 30.5112, clip_below: Some(GradientClip { share: 0.02074688796680498, extreme: 1.23312 }), clip_above: Some(GradientClip { share: 0.02074688796680498, extreme: 42.17784 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -313,11 +313,11 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "population": {
-        "colors": 937,
+        "colors": 945,
         "dimmed": 28091,
-        "fingerprint": "0x9c2f62dedd1333a9",
+        "fingerprint": "0x34c5d1307f2f15f6",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 9010.32083133954, max_value: 31942.0, clip: Some(GradientClip { share: 0.02074688796680498, highest: 60193.0 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 326.0, mid_value: 9272.136048501661, max_value: 31942.0, clip_below: Some(GradientClip { share: 0.02074688796680498, extreme: 7.0 }), clip_above: Some(GradientClip { share: 0.02074688796680498, extreme: 60193.0 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -329,7 +329,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         "dimmed": 28091,
         "fingerprint": "0xa335d1a62c56e0c3",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.003241486872887965, max_value: 0.00648297374577593, clip: Some(GradientClip { share: 0.04979253112033195, highest: 0.006737277189356755 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.003241486872887965, max_value: 0.00648297374577593, clip_below: None, clip_above: Some(GradientClip { share: 0.04979253112033195, extreme: 0.006737277189356755 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -349,15 +349,15 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         ]
       },
       "rgo_level": {
-        "colors": 40,
+        "colors": 38,
         "dimmed": 28091,
-        "fingerprint": "0xf898f69c270bf7eb",
+        "fingerprint": "0x0f0a960126e85e05",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 3.477225575051661, max_value: 13.0, clip: Some(GradientClip { share: 0.01867219917012448, highest: 17.0 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 1.0, mid_value: 4.291502622129181, max_value: 13.0, clip_below: None, clip_above: Some(GradientClip { share: 0.01867219917012448, extreme: 17.0 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
-          "#ff646464 x1971"
+          "#ff040101 x2123"
         ]
       },
       "state_efficacy": {
@@ -365,7 +365,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         "dimmed": 28091,
         "fingerprint": "0x6e2afd79417597f7",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.515702644534541, max_value: 21.0982484848, clip: Some(GradientClip { share: 0.02074688796680498, highest: 37.82076 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 5.515702644534541, max_value: 21.0982484848, clip_below: None, clip_above: Some(GradientClip { share: 0.02074688796680498, extreme: 37.82076 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -377,7 +377,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         "dimmed": 28091,
         "fingerprint": "0xf3cc3d30bc44bf25",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 2.6040402250940877, max_value: 12.440479999999999, clip: Some(GradientClip { share: 0.02074688796680498, highest: 45.07524 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 2.6040402250940877, max_value: 12.440479999999999, clip_below: None, clip_above: Some(GradientClip { share: 0.02074688796680498, extreme: 45.07524 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",
@@ -389,7 +389,7 @@ input_file: src/eu5app/tests/it/saves.d/SP_MLO_1617_04_01_166d38a1-bffb-4182-9e3
         "dimmed": 28091,
         "fingerprint": "0x296dea4c1d5541f6",
         "groups": "0x5fb1d48ac20cf6f9",
-        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 6.9215433863655065, max_value: 32.35355, clip: Some(GradientClip { share: 0.02074688796680498, highest: 113.56391 }) })",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 6.9215433863655065, max_value: 32.35355, clip_below: None, clip_above: Some(GradientClip { share: 0.02074688796680498, extreme: 113.56391 }) })",
         "top": [
           "#ff808080 x6280",
           "#ff455e77 x5709",

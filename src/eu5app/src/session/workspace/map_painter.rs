@@ -12,6 +12,11 @@ use pdx_map::{GpuColor, GpuLocationIdx, LocationArrays};
 /// The key shows the land above the top.
 const CLIP_PERCENTILE: f64 = 0.98;
 
+/// The bottom of a sequential map is this percentile of its land. Thus the
+/// bottom color is the lowest value that land commonly has, which may be above
+/// zero. The key shows the land below the bottom.
+const BOTTOM_PERCENTILE: f64 = 0.02;
+
 /// A pop of a few hundred people that records a single birth has an annual
 /// rate many times the median. More of such land is above the top of the
 /// growth map.
@@ -195,25 +200,34 @@ pub(crate) fn group(
     id.unwrap_or(u32::MAX)
 }
 
-enum Top {
+/// One end of a scale.
+enum End {
     Fixed(f64),
+    /// The value at this percentile of the land.
     Percentile(f64),
 }
 
 struct Gradient {
-    /// A log scale divides each value by a quarter of the median of the land
-    /// above zero. Thus the middle of the land is near the middle of the
-    /// gradient, and land far under the median is at the bottom.
+    /// A log scale divides the distance of each value above the bottom by a
+    /// quarter of the median of the land above zero. Thus the middle of the
+    /// land is near the middle of the gradient, and land far under the median
+    /// is at the bottom.
     scale: GradientScale,
-    top: Top,
+    bottom: End,
+    top: End,
 }
 
 impl Gradient {
     /// `softening` is used only by a log scale.
-    fn ramp(&self, max: f64, softening: f64) -> Ramp {
+    fn ramp(&self, fit: &Fit, softening: f64) -> Ramp {
+        let (min, max) = (fit.bottom, fit.top);
         match self.scale {
-            GradientScale::Linear => Ramp::Linear { max },
-            GradientScale::Log => Ramp::Log { max, softening },
+            GradientScale::Linear => Ramp::Linear { min, max },
+            GradientScale::Log => Ramp::Log {
+                min,
+                max,
+                softening,
+            },
         }
     }
 }
@@ -221,19 +235,23 @@ impl Gradient {
 fn gradient(mode: MapMode) -> Option<Gradient> {
     let clipped = |scale| Gradient {
         scale,
-        top: Top::Percentile(CLIP_PERCENTILE),
+        bottom: End::Percentile(BOTTOM_PERCENTILE),
+        top: End::Percentile(CLIP_PERCENTILE),
     };
     match mode {
         MapMode::Political | MapMode::Religion | MapMode::Markets => None,
-        // A share has a true top.
+        // A share has a true bottom and a true top.
         MapMode::Control => Some(Gradient {
             scale: GradientScale::Linear,
-            top: Top::Fixed(1.0),
+            bottom: End::Fixed(0.0),
+            top: End::Fixed(1.0),
         }),
         MapMode::Development => Some(clipped(GradientScale::Linear)),
+        // Land that does not grow is at the bottom.
         MapMode::PopulationGrowth => Some(Gradient {
             scale: GradientScale::Linear,
-            top: Top::Percentile(GROWTH_CLIP_PERCENTILE),
+            bottom: End::Fixed(0.0),
+            top: End::Percentile(GROWTH_CLIP_PERCENTILE),
         }),
         // Most land has little of these, and a few places have very much.
         MapMode::Population
@@ -256,27 +274,56 @@ fn quarter_median(values: &[f64]) -> f64 {
     *median / 4.0
 }
 
-/// The top of the scale for some land, and the land above it. The values
-/// change order.
-fn fit(values: &mut [f64], top: &Top) -> (f64, Option<GradientClip>) {
-    let percentile = match *top {
-        Top::Fixed(top) => return (top, None),
-        Top::Percentile(percentile) => percentile,
-    };
-    if values.is_empty() {
-        return (0.0, None);
-    }
+/// The ends of the scale for some land, and the land past each end.
+#[derive(Debug, PartialEq)]
+struct Fit {
+    bottom: f64,
+    top: f64,
+    below: Option<GradientClip>,
+    above: Option<GradientClip>,
+}
+
+/// The value at `percentile` of `values`, which change order.
+fn percentile_value(values: &mut [f64], percentile: f64) -> f64 {
     let at = ((values.len() - 1) as f64 * percentile).round() as usize;
-    let (_, top, above) = values.select_nth_unstable_by(at, f64::total_cmp);
+    *values.select_nth_unstable_by(at, f64::total_cmp).1
+}
+
+/// Fit the ends of `gradient` to `values`, which change order.
+fn fit(values: &mut [f64], gradient: &Gradient) -> Fit {
+    let mut end = |end: &End| match *end {
+        End::Fixed(value) => value,
+        End::Percentile(_) if values.is_empty() => 0.0,
+        End::Percentile(percentile) => percentile_value(values, percentile),
+    };
     // Land with no value above zero has no scale to show.
-    let top = top.max(0.0);
-    let highest = above.iter().copied().fold(top, f64::max);
-    let above = above.iter().filter(|v| **v > top).count();
-    let clip = (above > 0).then(|| GradientClip {
-        share: above as f64 / values.len() as f64,
-        highest,
-    });
-    (top, clip)
+    let top = end(&gradient.top).max(0.0);
+    // Land with one common value is at the top of a scale from zero.
+    let bottom = Some(end(&gradient.bottom))
+        .filter(|bottom| *bottom < top)
+        .unwrap_or(0.0);
+    let clip = |past: &dyn Fn(f64) -> bool, farther: fn(f64, f64) -> f64, end: f64| {
+        let count = values.iter().filter(|v| past(**v)).count();
+        (count > 0).then(|| GradientClip {
+            share: count as f64 / values.len() as f64,
+            extreme: values.iter().copied().fold(end, farther),
+        })
+    };
+    let (fixed_bottom, fixed_top) = (
+        matches!(gradient.bottom, End::Fixed(_)),
+        matches!(gradient.top, End::Fixed(_)),
+    );
+    Fit {
+        bottom,
+        top,
+        // A fixed end is the true end of the values.
+        below: (!fixed_bottom)
+            .then(|| clip(&|v| v < bottom, f64::min, bottom))
+            .flatten(),
+        above: (!fixed_top)
+            .then(|| clip(&|v| v > top, f64::max, top))
+            .flatten(),
+    }
 }
 
 fn mode_value(values: &(impl LocationValues + ?Sized), idx: LocationIdx, mode: MapMode) -> f64 {
@@ -396,11 +443,11 @@ pub(crate) fn paint(
                 GradientScale::Log => quarter_median(&land),
                 GradientScale::Linear => 1.0,
             };
-            let (top, clip) = fit(&mut land, &gradient.top);
-            let world = gradient.ramp(top, softening);
+            let world_fit = fit(&mut land, &gradient);
+            let world = gradient.ramp(&world_fit, softening);
             // Selected land has its own scale, with the same softening.
-            let (selected, clip) = match selection {
-                None => (world, clip),
+            let (selected, shown) = match selection {
+                None => (world, world_fit),
                 Some(selection) => {
                     let mut chosen: Vec<f64> = mode_values
                         .iter()
@@ -408,8 +455,8 @@ pub(crate) fn paint(
                         .filter(|(idx, _)| selection.contains(LocationIdx::new(*idx as u32)))
                         .filter_map(|(_, value)| *value)
                         .collect();
-                    let (top, clip) = fit(&mut chosen, &gradient.top);
-                    (gradient.ramp(top, softening), clip)
+                    let chosen_fit = fit(&mut chosen, &gradient);
+                    (gradient.ramp(&chosen_fit, softening), chosen_fit)
                 }
             };
             let primary = locations
@@ -430,7 +477,7 @@ pub(crate) fn paint(
             PaintedMap {
                 primary,
                 secondary: None,
-                legend: MapLegend::Quantitative(selected.legend(clip)),
+                legend: MapLegend::Quantitative(selected.legend(shown.below, shown.above)),
             }
         }
     }
@@ -440,26 +487,58 @@ pub(crate) fn paint(
 mod tests {
     use super::*;
 
-    #[test]
-    fn a_clip_counts_only_the_land_above_the_top() {
-        let mut values: Vec<f64> = (1..=100).map(f64::from).collect();
-        let (top, clip) = fit(&mut values, &Top::Percentile(0.98));
-        assert_eq!(top, 98.0);
-        let clip = clip.expect("two values above the top");
-        assert_eq!(clip.share, 0.02);
-        assert_eq!(clip.highest, 100.0);
+    fn clipped(bottom: f64) -> Gradient {
+        Gradient {
+            scale: GradientScale::Log,
+            bottom: End::Percentile(bottom),
+            top: End::Percentile(0.98),
+        }
+    }
 
-        // Land that ties with the top is not above it.
+    #[test]
+    fn a_clip_counts_only_the_land_past_an_end() {
+        let mut values: Vec<f64> = (0..=100).map(f64::from).collect();
+        let fit_all = fit(&mut values, &clipped(0.02));
+        assert_eq!((fit_all.bottom, fit_all.top), (2.0, 98.0));
+        let below = fit_all.below.expect("two values below the bottom");
+        assert_eq!((below.share, below.extreme), (2.0 / 101.0, 0.0));
+        let above = fit_all.above.expect("two values above the top");
+        assert_eq!((above.share, above.extreme), (2.0 / 101.0, 100.0));
+
+        // Land that ties with an end is not past it.
         let mut levels = vec![1.0; 50];
         levels.extend([5.0; 50]);
-        assert_eq!(fit(&mut levels, &Top::Percentile(0.98)), (5.0, None));
+        let tied = fit(&mut levels, &clipped(0.02));
+        assert_eq!((tied.bottom, tied.top), (1.0, 5.0));
+        assert_eq!((tied.below, tied.above), (None, None));
+
+        // A little land under a common lowest value is below the bottom.
+        let mut levels = vec![1.0; 99];
+        levels.extend([0.0, 3.0, 3.0, 9.0, 9.0]);
+        let fit_levels = fit(&mut levels, &clipped(0.02));
+        assert_eq!(fit_levels.bottom, 1.0);
+        assert_eq!(fit_levels.below.map(|clip| clip.extreme), Some(0.0));
+    }
+
+    #[test]
+    fn land_with_one_value_has_a_scale_from_zero() {
+        let one = fit(&mut [7.0, 7.0, 7.0], &clipped(0.02));
+        assert_eq!((one.bottom, one.top), (0.0, 7.0));
+        assert_eq!((one.below, one.above), (None, None));
     }
 
     #[test]
     fn land_without_values_has_a_scale_at_zero() {
-        assert_eq!(fit(&mut [], &Top::Percentile(0.98)), (0.0, None));
+        let empty = fit(&mut [], &clipped(0.02));
+        assert_eq!((empty.bottom, empty.top), (0.0, 0.0));
         let mut shrinking = [-0.02, -0.01, -0.03];
-        assert_eq!(fit(&mut shrinking, &Top::Percentile(0.98)).0, 0.0);
+        let growth = Gradient {
+            scale: GradientScale::Linear,
+            bottom: End::Fixed(0.0),
+            top: End::Percentile(0.95),
+        };
+        let shrunk = fit(&mut shrinking, &growth);
+        assert_eq!((shrunk.bottom, shrunk.top, shrunk.below), (0.0, 0.0, None));
         assert_eq!(quarter_median(&[0.0, -1.0]), 1.0);
         assert_eq!(quarter_median(&[0.0, 4.0, 8.0, 12.0]), 2.0);
     }

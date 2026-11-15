@@ -27,19 +27,23 @@ pub struct GradientConfig {
     pub min_value: f64,
     pub mid_value: f64,
     pub max_value: f64,
+    /// The land below the bottom of the scale. The bottom color also shows
+    /// this land.
+    pub clip_below: Option<GradientClip>,
     /// The land above the top of the scale. The top color also shows this land.
-    pub clip: Option<GradientClip>,
+    pub clip_above: Option<GradientClip>,
 }
 
-/// The land that a scale does not reach, because its top is a percentile.
+/// The land that a scale does not reach at one end, because the end is a
+/// percentile.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct GradientClip {
-    /// The share of the land above the top, from 0 to 1.
+    /// The share of the land past the end, from 0 to 1.
     pub share: f64,
-    /// The highest value of the land.
-    pub highest: f64,
+    /// The value of that land that is farthest from the scale.
+    pub extreme: f64,
 }
 
 /// The color at a place on the EU5 6-stop HSV gradient, from 0 to 1.
@@ -79,39 +83,48 @@ fn eu5_gradient_at(position: f64) -> GpuColor {
     GpuColor::from_rgb(r, g, b)
 }
 
-/// How a map puts a value on the gradient, from zero at the bottom to `max`
+/// How a map puts a value on the gradient, from `min` at the bottom to `max`
 /// at the top.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Ramp {
     Linear {
+        min: f64,
         max: f64,
     },
-    /// Values far above `softening` are spaced by their ratios, and values
-    /// far below it are spaced evenly and near the bottom.
+    /// Values far more than `softening` above `min` are spaced by their
+    /// ratios, and values nearer than that are spaced evenly and near the
+    /// bottom.
     Log {
+        min: f64,
         max: f64,
         softening: f64,
     },
 }
 
 impl Ramp {
+    fn min(&self) -> f64 {
+        match *self {
+            Ramp::Linear { min, .. } | Ramp::Log { min, .. } => min,
+        }
+    }
+
     fn max(&self) -> f64 {
         match *self {
-            Ramp::Linear { max } | Ramp::Log { max, .. } => max,
+            Ramp::Linear { max, .. } | Ramp::Log { max, .. } => max,
         }
     }
 
     /// The place of `value` on the gradient, from 0 to 1.
     fn position(&self, value: f64) -> f64 {
-        // With no top, all land above zero is above the top.
-        if self.max() <= 0.0 {
-            return if value > 0.0 { 1.0 } else { 0.0 };
+        let span = self.max() - self.min();
+        // With no room between the ends, all land above them is at the top.
+        if span <= 0.0 {
+            return if value > self.max() { 1.0 } else { 0.0 };
         }
+        let above = (value - self.min()).max(0.0);
         let at = match *self {
-            Ramp::Linear { max } => value / max,
-            Ramp::Log { max, softening } => {
-                (value.max(0.0) / softening).ln_1p() / (max / softening).ln_1p()
-            }
+            Ramp::Linear { .. } => above / span,
+            Ramp::Log { softening, .. } => (above / softening).ln_1p() / (span / softening).ln_1p(),
         };
         if at.is_finite() {
             at.clamp(0.0, 1.0)
@@ -125,9 +138,12 @@ impl Ramp {
     /// The log middle uses a square root, which gives the same answer on
     /// every platform. Logarithms and exponentials do not.
     fn middle(&self) -> f64 {
+        let span = self.max() - self.min();
         match *self {
-            Ramp::Linear { max } => max / 2.0,
-            Ramp::Log { max, softening } => max / ((1.0 + max / softening).sqrt() + 1.0),
+            Ramp::Linear { min, .. } => min + span / 2.0,
+            Ramp::Log { min, softening, .. } => {
+                min + span / ((1.0 + span / softening).sqrt() + 1.0)
+            }
         }
     }
 
@@ -137,17 +153,22 @@ impl Ramp {
 
     /// The legend of this ramp. Its middle value is at the middle of the
     /// gradient.
-    pub fn legend(&self, clip: Option<GradientClip>) -> GradientConfig {
+    pub fn legend(
+        &self,
+        clip_below: Option<GradientClip>,
+        clip_above: Option<GradientClip>,
+    ) -> GradientConfig {
         GradientConfig {
             scale: match self {
                 Ramp::Linear { .. } => GradientScale::Linear,
                 Ramp::Log { .. } => GradientScale::Log,
             },
             palette: GradientPalette::Eu5,
-            min_value: 0.0,
+            min_value: self.min(),
             mid_value: self.middle(),
             max_value: self.max(),
-            clip,
+            clip_below,
+            clip_above,
         }
     }
 }
@@ -202,23 +223,27 @@ mod tests {
 
     #[test]
     fn ramps_clamp_to_their_domain() {
-        let linear = Ramp::Linear { max: 1.0 };
+        let linear = Ramp::Linear { min: 0.0, max: 1.0 };
         assert_eq!(linear.color(-1.0), linear.color(0.0));
         assert_eq!(linear.color(2.0), linear.color(1.0));
         let log = Ramp::Log {
+            min: 1.0,
             max: 100.0,
             softening: 5.0,
         };
         assert_eq!(log.position(-3.0), 0.0);
+        assert_eq!(log.position(1.0), 0.0);
+        assert!(log.position(2.0) > 0.0);
         assert_eq!(log.position(250.0), 1.0);
     }
 
     #[test]
-    fn a_ramp_without_a_top_puts_land_above_zero_at_the_top() {
-        let linear = Ramp::Linear { max: 0.0 };
+    fn a_ramp_without_room_puts_land_above_it_at_the_top() {
+        let linear = Ramp::Linear { min: 0.0, max: 0.0 };
         assert_eq!(linear.color(0.0).rgb(), (4, 1, 1));
         assert_eq!(linear.color(10.0).rgb(), (0, 255, 240));
         let log = Ramp::Log {
+            min: 0.0,
             max: 0.0,
             softening: 1.0,
         };
@@ -228,18 +253,26 @@ mod tests {
 
     #[test]
     fn legend_middle_is_the_middle_of_the_gradient() {
-        let linear = Ramp::Linear { max: 10.0 }.legend(None);
+        let linear = Ramp::Linear {
+            min: 2.0,
+            max: 10.0,
+        }
+        .legend(None, None);
         assert_eq!(linear.palette, GradientPalette::Eu5);
-        assert_eq!(linear.min_value, 0.0);
-        assert_eq!(linear.mid_value, 5.0);
+        assert_eq!(linear.min_value, 2.0);
+        assert_eq!(linear.mid_value, 6.0);
         assert_eq!(linear.max_value, 10.0);
 
-        let log = Ramp::Log {
-            max: 99_000.0,
-            softening: 250.0,
-        };
-        let legend = log.legend(None);
-        assert_eq!(legend.scale, GradientScale::Log);
-        assert!((log.position(legend.mid_value) - 0.5).abs() < 1e-12);
+        for min in [0.0, 300.0] {
+            let log = Ramp::Log {
+                min,
+                max: 99_000.0,
+                softening: 250.0,
+            };
+            let legend = log.legend(None, None);
+            assert_eq!(legend.scale, GradientScale::Log);
+            assert_eq!(legend.min_value, min);
+            assert!((log.position(legend.mid_value) - 0.5).abs() < 1e-12);
+        }
     }
 }
