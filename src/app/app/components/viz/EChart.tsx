@@ -91,7 +91,8 @@ export type EChartsOption = ComposeOption<
 >;
 
 export interface EChartProps {
-  option: EChartsOption;
+  /** The option, or a function that makes it from the chart, for an option that reads the chart */
+  option: EChartsOption | ((chart: echarts.ECharts) => EChartsOption);
   style?: React.CSSProperties;
   onInit?: (chart: echarts.ECharts) => void;
   className?: string;
@@ -137,7 +138,8 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
     const chart = chartRef.current;
     if (!chart) return;
 
-    chart.setOption(option, { notMerge: true });
+    const resolved = typeof option === "function" ? option(chart) : option;
+    chart.setOption(resolved, { notMerge: true });
   }, [option, theme]);
 
   return (

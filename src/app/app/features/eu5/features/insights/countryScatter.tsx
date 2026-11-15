@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type * as echarts from "echarts/core";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
@@ -289,13 +289,24 @@ export function placeLabels(
   });
 }
 
-/** The countries that a scatter names first, from the save and the selection */
-function useScatterMarks(): ScatterMarks {
+/**
+ * The countries that a scatter names first, from the save and the selection.
+ * Undefined until the selection is known, so that the chart draws one time.
+ */
+function useScatterMarks(): ScatterMarks | undefined {
   const home = useEu5HomeCountry();
-  const { data: target } = useEu5SelectionTrigger<SelectionTargetData | null>((engine) =>
-    engine.queries.getSelectionTarget(),
+  const { data } = useEu5SelectionTrigger((engine) =>
+    engine.queries.getSelectionTarget().then((target) => ({ target })),
   );
-  return useMemo(() => ({ home, target: target ?? null }), [home, target]);
+  // A new selection that names the same countries keeps the chart as it is.
+  const key = data === undefined ? undefined : JSON.stringify(data.target);
+  return useMemo(
+    () =>
+      key === undefined
+        ? undefined
+        : { home, target: JSON.parse(key) as SelectionTargetData | null },
+    [home, key],
+  );
 }
 
 const GRID = { left: 56, right: 24, top: 32, bottom: 44 };
@@ -323,7 +334,7 @@ type LabelLayoutParams = {
  */
 export function dotLabelLayout<T>(
   dots: readonly ScatterDot<T>[],
-  chart: Pick<echarts.ECharts, "getWidth" | "getHeight" | "convertToPixel"> | null,
+  chart: Pick<echarts.ECharts, "getWidth" | "getHeight" | "convertToPixel">,
   seriesIndex: number,
 ) {
   // The colored dots, in the order that their labels take a place. A colored
@@ -347,7 +358,6 @@ export function dotLabelLayout<T>(
   let seen = new Set<number>();
 
   const find = () => {
-    if (!chart) return null;
     const plot = {
       x: GRID.left,
       y: GRID.top,
@@ -423,6 +433,7 @@ export interface ValueScale {
 }
 
 const DEFAULT_SCALE: ValueScale = {};
+const NO_MARKS: ScatterMarks = { home: null, target: null };
 
 interface CountryScatterProps<T> {
   rows: readonly T[];
@@ -457,15 +468,18 @@ export function CountryScatter<T>({
   under,
 }: CountryScatterProps<T>) {
   const marks = useScatterMarks();
-  // The labels need the chart to find where the dots are.
-  const [chart, setChart] = useState<echarts.ECharts | null>(null);
   const logY = yAxis === "log";
 
   const { domain, dots, onEdge, negative } = useMemo(() => {
     const points = rows.map(point);
     const values = points.flatMap((p) => (logY ? [p.x, p.y] : [p.x]));
     const domain = logDomain(values);
-    const dots = scatterDots(rows, point, { x: domain, y: logY ? domain : undefined }, marks);
+    const dots = scatterDots(
+      rows,
+      point,
+      { x: domain, y: logY ? domain : undefined },
+      marks ?? NO_MARKS,
+    );
     const onEdge = points.filter((p) => !(p.x > 0) || (logY && !(p.y > 0))).length;
     return { domain, dots, onEdge, negative: domain.hasNegative };
   }, [rows, point, logY, marks]);
@@ -474,56 +488,59 @@ export function CountryScatter<T>({
   // The dots come after the series under them.
   const seriesIndex = below.length;
 
-  const option = useMemo((): EChartsOption => {
-    return {
-      grid: GRID,
-      xAxis: { ...logAxis(domain), name: xName, nameLocation: "middle", nameGap: 28 },
-      yAxis:
-        yAxis === "log"
-          ? { ...logAxis(domain), ...yAxisName(yName) }
-          : {
-              type: "value",
-              min: yAxis.min,
-              max: yAxis.max,
-              // An undefined key would hide the theme's tick text.
-              ...(yAxis.formatter && { axisLabel: { formatter: yAxis.formatter } }),
-              ...yAxisName(yName),
-            },
-      // No filter on a zoom, so each dot keeps its index.
-      dataZoom: [{ ...SCATTER_ZOOM, filterMode: "none" }],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params) || params.seriesIndex !== seriesIndex) return "";
-          const dot = dots[params.dataIndex];
-          return dot ? tooltip(dot.row) : "";
-        },
-      },
-      series: [
-        ...below,
-        {
-          type: "scatter",
-          data: dots.map((dot) => ({
-            value: dot.value,
-            symbolSize: dot.symbolSize,
-            label: { show: dot.labeled },
-            itemStyle: dot.colored
-              ? { ...dotRim, color: dot.point.country.colorHex || neutralMark, opacity: 1 }
-              : undefined,
-          })),
-          itemStyle: { color: neutralMark, opacity: 0.4, borderWidth: 0 },
-          label: {
-            ...chartText,
-            ...labelHalo,
-            formatter: (params) => dots[params.dataIndex]?.point.country.country.name ?? "",
+  // The labels need the chart to find where the dots are.
+  const option = useMemo(
+    () =>
+      (chart: echarts.ECharts): EChartsOption => ({
+        grid: GRID,
+        xAxis: { ...logAxis(domain), name: xName, nameLocation: "middle", nameGap: 28 },
+        yAxis:
+          yAxis === "log"
+            ? { ...logAxis(domain), ...yAxisName(yName) }
+            : {
+                type: "value",
+                min: yAxis.min,
+                max: yAxis.max,
+                // An undefined key would hide the theme's tick text.
+                ...(yAxis.formatter && { axisLabel: { formatter: yAxis.formatter } }),
+                ...yAxisName(yName),
+              },
+        // No filter on a zoom, so each dot keeps its index.
+        dataZoom: [{ ...SCATTER_ZOOM, filterMode: "none" }],
+        tooltip: {
+          ...chartTooltip,
+          trigger: "item",
+          formatter: (params) => {
+            if (Array.isArray(params) || params.seriesIndex !== seriesIndex) return "";
+            const dot = dots[params.dataIndex];
+            return dot ? tooltip(dot.row) : "";
           },
-          labelLine: { show: true, lineStyle: { color: chartInk.muted, width: 1 } },
-          labelLayout: dotLabelLayout(dots, chart, seriesIndex),
         },
-      ],
-    };
-  }, [domain, dots, below, seriesIndex, chart, xName, yName, yAxis, tooltip]);
+        series: [
+          ...below,
+          {
+            type: "scatter",
+            data: dots.map((dot) => ({
+              value: dot.value,
+              symbolSize: dot.symbolSize,
+              label: { show: dot.labeled },
+              itemStyle: dot.colored
+                ? { ...dotRim, color: dot.point.country.colorHex || neutralMark, opacity: 1 }
+                : undefined,
+            })),
+            itemStyle: { color: neutralMark, opacity: 0.4, borderWidth: 0 },
+            label: {
+              ...chartText,
+              ...labelHalo,
+              formatter: (params) => dots[params.dataIndex]?.point.country.country.name ?? "",
+            },
+            labelLine: { show: true, lineStyle: { color: chartInk.muted, width: 1 } },
+            labelLayout: dotLabelLayout(dots, chart, seriesIndex),
+          },
+        ],
+      }),
+    [domain, dots, below, seriesIndex, xName, yName, yAxis, tooltip],
+  );
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
@@ -541,16 +558,12 @@ export function CountryScatter<T>({
 
   const unnamedPlayers = dots.some((dot) => dot.colored && !dot.labeled);
 
+  // The chart waits for the selection, so that it does not draw two times.
+  if (!marks) return <div style={{ height: "420px" }} />;
+
   return (
     <>
-      <EChart
-        option={option}
-        style={{ height: "420px", width: "100%" }}
-        onInit={(instance) => {
-          setChart(instance);
-          handleInit(instance);
-        }}
-      />
+      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
       {unnamedPlayers ? (
         <p className="mt-1 text-[12px] text-game-ink-500">
           Players and named countries have their game color. Hover a dot to see its name.
