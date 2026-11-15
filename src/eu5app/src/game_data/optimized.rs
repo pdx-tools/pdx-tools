@@ -216,7 +216,6 @@ where
         let zip = ZipArchive::from_slice(data).map_err(GameDataError::ZipAccess)?;
         let mut tiles_entry = None;
         let mut world_meta_entry = None;
-        let mut rows_entry = false;
 
         for entry in zip.entries() {
             let entry = entry.map_err(GameDataError::ZipAccess)?;
@@ -224,19 +223,12 @@ where
             match entry.file_path().as_bytes() {
                 b"locations.tiles" => tiles_entry = found,
                 b"world_meta.bin" => world_meta_entry = found,
-                b"locations-0.r16" => rows_entry = true,
                 _ => {}
             }
         }
 
         let tiles = tiles_entry.ok_or_else(|| {
-            GameDataError::MissingData(if rows_entry {
-                "map.zip stores the map as rows, the bundle format before tiles; \
-                 compile the bundles again with `mise run admin:assets:compile:all`"
-                    .to_string()
-            } else {
-                format!("{TILES_ENTRY} not found in bundle")
-            })
+            GameDataError::MissingData(format!("{TILES_ENTRY} not found in bundle"))
         })?;
 
         Ok(Self {
@@ -451,23 +443,6 @@ mod tests {
         let err = OptimizedMapBundle::open(zip).unwrap_err();
         match err {
             GameDataError::MissingData(msg) => assert!(msg.contains(TILES_ENTRY)),
-            other => panic!("expected MissingData, got {other:?}"),
-        }
-    }
-
-    /// A bundle from before tiles says how to make a new one
-    #[test]
-    fn map_bundle_explains_the_row_format() {
-        let rows = rle_frame(0, 2, 21);
-        let zip = test_map_zip(
-            &[
-                ("locations-0.r16", rows.clone(), 2),
-                ("locations-1.r16", rows, 2),
-            ],
-            None,
-        );
-        match OptimizedMapBundle::open(zip).unwrap_err() {
-            GameDataError::MissingData(msg) => assert!(msg.contains("compile:all"), "{msg}"),
             other => panic!("expected MissingData, got {other:?}"),
         }
     }
