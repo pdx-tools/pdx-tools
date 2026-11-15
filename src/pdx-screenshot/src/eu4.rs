@@ -4,7 +4,7 @@ mod save;
 mod viewport;
 
 pub use pdx_map::GpuContext;
-use pdx_map::{R16, WorldRows, WorldTiles};
+use pdx_map::{GpuWorldTiles, WorldTiles};
 use std::sync::OnceLock;
 
 #[derive(Debug, thiserror::Error)]
@@ -24,8 +24,8 @@ pub enum ScreenshotError {
 struct PatchScreenshotAssets {
     color_index: Vec<u16>,
     color_count: usize,
-    /// The map, encoded once per patch
-    tiles: WorldTiles,
+    /// The map of the patch, kept on the GPU
+    tiles: GpuWorldTiles,
 }
 
 /// Render an EU4 save file to a WebP image. Returns the WebP-encoded bytes.
@@ -33,7 +33,7 @@ pub async fn render(gpu: &GpuContext, data: &[u8]) -> Result<Vec<u8>, Screenshot
     let parsed = save::ParsedSave::parse(data)?;
     let minor_version = parsed.minor_version();
 
-    let patch_assets = load_patch_assets(minor_version)?;
+    let patch_assets = load_patch_assets(gpu, minor_version)?;
 
     let image_buffer = renderer::render_screenshot(
         parsed,
@@ -49,7 +49,10 @@ pub async fn render(gpu: &GpuContext, data: &[u8]) -> Result<Vec<u8>, Screenshot
     )?)
 }
 
+/// The assets of a patch, built on first use. The map stays on the GPU of
+/// the first call, so every call must pass the same `gpu`.
 fn load_patch_assets(
+    gpu: &GpuContext,
     minor_version: u16,
 ) -> Result<&'static PatchScreenshotAssets, ScreenshotError> {
     static PATCH_SLOTS: [OnceLock<PatchScreenshotAssets>; eu4game_data::LATEST_MINOR as usize + 1] =
@@ -59,10 +62,10 @@ fn load_patch_assets(
         .get(minor_version as usize)
         .ok_or(ScreenshotError::UnsupportedVersion(minor_version))?;
 
-    Ok(slot.get_or_init(|| build_patch_assets(minor_version)))
+    Ok(slot.get_or_init(|| build_patch_assets(gpu, minor_version)))
 }
 
-fn build_patch_assets(minor_version: u16) -> PatchScreenshotAssets {
+fn build_patch_assets(gpu: &GpuContext, minor_version: u16) -> PatchScreenshotAssets {
     let raw = eu4game_data::screenshot_assets(minor_version);
     let color_index = bytes_to_u16(raw.color_index);
     let color_count = color_index
@@ -72,32 +75,14 @@ fn build_patch_assets(minor_version: u16) -> PatchScreenshotAssets {
         .map(|x| x as usize + 1)
         .unwrap_or(0);
 
-    let west_r16 = decode_r16(raw.west_r16_zst, "west");
-    let east_r16 = decode_r16(raw.east_r16_zst, "east");
-    let expected_len = viewport::EU4_HEMISPHERE_SIZE.area() as usize;
-    assert!(
-        west_r16.len() == expected_len,
-        "embedded west R16 texture has {} pixels, expected {}",
-        west_r16.len(),
-        expected_len
-    );
-    assert!(
-        east_r16.len() == expected_len,
-        "embedded east R16 texture has {} pixels, expected {}",
-        east_r16.len(),
-        expected_len
-    );
-
-    let rows = WorldRows::new(
-        0,
-        &west_r16,
-        &east_r16,
-        viewport::EU4_HEMISPHERE_SIZE.width_length(),
-    );
+    let bytes = pdx_zstd::decode_all(raw.tiles_zst)
+        .unwrap_or_else(|e| panic!("failed to decode embedded EU4 map tiles: {e}"));
+    let tiles = WorldTiles::from_le_bytes(viewport::EU4_HEMISPHERE_SIZE, &bytes)
+        .unwrap_or_else(|e| panic!("embedded EU4 map tiles are invalid: {e}"));
     PatchScreenshotAssets {
         color_index,
         color_count,
-        tiles: WorldTiles::from_rows(rows),
+        tiles: gpu.upload_world_tiles(&tiles),
     }
 }
 
@@ -112,10 +97,4 @@ fn bytes_to_u16(bytes: &[u8]) -> Vec<u16> {
         .iter()
         .map(|c| u16::from_le_bytes([c[0], c[1]]))
         .collect()
-}
-
-fn decode_r16(data: &[u8], label: &str) -> Vec<R16> {
-    let bytes = pdx_zstd::decode_all(data)
-        .unwrap_or_else(|e| panic!("failed to decode embedded {label} R16 asset: {e}"));
-    bytemuck::cast_vec(bytes_to_u16(&bytes))
 }

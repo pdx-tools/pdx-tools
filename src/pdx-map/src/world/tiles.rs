@@ -3,7 +3,7 @@
 //! Each 16x16 tile lists the few locations it holds, its palette, and
 //! stores each pixel as an index into that list, with as few bits as the
 //! palette needs. Most tiles hold one or two locations, so the EU5 world
-//! takes about 13 MiB instead of the 256 MiB of 16 bits per pixel.
+//! takes about 11 MiB instead of the 256 MiB of 16 bits per pixel.
 //!
 //! The data is a list of u32 words. A table with one entry per tile comes
 //! first, row by row. An entry holds the word offset of the tile's block in
@@ -23,8 +23,8 @@ const TILE: usize = 16;
 /// Bit widths by their code in a table entry
 const WIDTHS: [u32; 6] = [0, 1, 2, 4, 8, 16];
 
-/// The location index of every pixel of a world, compressed into tiles. The
-/// map bundle stores it, and the GPU reads it as it is.
+/// The location index of every pixel of a world, compressed into tiles. Game
+/// assets store it, and the GPU reads it as it is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorldTiles {
     hemisphere: HemisphereSize<u32>,
@@ -75,6 +75,32 @@ impl WorldTiles {
             }
         }
         Ok(tiles)
+    }
+
+    /// Tiles from the bytes that [`WorldTiles::to_le_bytes`] wrote
+    pub fn from_le_bytes(
+        hemisphere: HemisphereSize<u32>,
+        bytes: &[u8],
+    ) -> Result<Self, InvalidTiles> {
+        let (words, rest) = bytes.as_chunks::<4>();
+        if !rest.is_empty() {
+            return Err(InvalidTiles(format!(
+                "{} bytes are not whole words",
+                bytes.len()
+            )));
+        }
+        Self::from_words(
+            hemisphere,
+            words.iter().map(|&word| u32::from_le_bytes(word)).collect(),
+        )
+    }
+
+    /// The words, little endian, as files store them
+    pub fn to_le_bytes(&self) -> Vec<u8> {
+        self.words
+            .iter()
+            .flat_map(|word| word.to_le_bytes())
+            .collect()
     }
 
     pub fn hemisphere_size(&self) -> HemisphereSize<u32> {
@@ -474,6 +500,8 @@ mod tests {
             );
             let words = WorldTiles::from_words(tiles.hemisphere_size(), tiles.words().to_vec());
             assert_eq!(words.as_ref(), Ok(&tiles));
+            let bytes = WorldTiles::from_le_bytes(tiles.hemisphere_size(), &tiles.to_le_bytes());
+            assert_eq!(bytes.as_ref(), Ok(&tiles));
         }
     }
 
@@ -486,6 +514,10 @@ mod tests {
         let tiles = WorldTiles::from_rows(rows);
         let size = tiles.hemisphere_size();
         let words = tiles.words().to_vec();
+
+        let mut bytes = tiles.to_le_bytes();
+        bytes.pop();
+        assert!(WorldTiles::from_le_bytes(size, &bytes).is_err());
 
         let short_table = words[..3].to_vec();
         assert!(WorldTiles::from_words(size, short_table).is_err());

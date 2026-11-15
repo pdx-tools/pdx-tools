@@ -126,9 +126,8 @@ pub async fn render_screenshot(
     } else {
         output_size
     };
-    let tiles = gpu.upload_world_tiles(&patch_assets.tiles);
-    let mut renderer =
-        HeadlessMapRenderer::new(gpu.clone(), tiles).map_err(ScreenshotError::CreateRenderer)?;
+    let mut renderer = HeadlessMapRenderer::new(gpu.clone(), patch_assets.tiles.clone())
+        .map_err(ScreenshotError::CreateRenderer)?;
 
     let date_scale = ((map_image_size.height / 400).max(1)) * 2;
 

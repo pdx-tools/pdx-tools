@@ -7,7 +7,6 @@ pub mod game_install;
 pub use error::GameDataError;
 pub use optimized::{
     BundleMap, OptimizedGameBundle, OptimizedLocalizationBundle, OptimizedMapBundle, TILES_ENTRY,
-    tiles_entry_bytes,
 };
 
 use eu5save::hash::FxHashMap;

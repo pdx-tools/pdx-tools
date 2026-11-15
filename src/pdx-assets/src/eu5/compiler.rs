@@ -8,7 +8,6 @@ use eu5app::game_data::{
     GoodsData, LocalizationsData, TILES_ENTRY,
     game_install::{GameFileSource, RawGameData},
     optimized::WorldMetadata,
-    tiles_entry_bytes,
 };
 use pdx_map::WorldTiles;
 use rawzip::CompressionMethod;
@@ -186,7 +185,7 @@ where
         )?;
 
         let tiles = WorldTiles::from_rows(textures.textures().world().as_rows());
-        let bytes = tiles_entry_bytes(&tiles);
+        let bytes = tiles.to_le_bytes();
         let (mut entry, config) = archive
             .new_file(TILES_ENTRY)
             .compression_method(CompressionMethod::ZSTD)
