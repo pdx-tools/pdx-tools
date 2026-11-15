@@ -6,8 +6,8 @@ use crate::error::{RenderError, RenderErrorKind, SurfaceError};
 use crate::frame_tracker::FrameTracker;
 use crate::image::{StitchedImage, StripPlan};
 use crate::{
-    GpuLocationIdx, HemisphereSize, LocationArrays, LocationFlags, PhysicalSize, R16,
-    ViewportBounds, WorldPoint, WorldRect, WorldRows, WorldSize,
+    HemisphereSize, LocationArrays, LocationFlags, PhysicalSize, R16, ViewportBounds, WorldPoint,
+    WorldRect, WorldRows, WorldSize,
 };
 
 /// A drawable layer that can be composed into the main map render pass.
@@ -776,10 +776,6 @@ impl MapResources {
             })
         })
     }
-
-    pub fn textures(&self) -> &WorldTextures {
-        &self.textures
-    }
 }
 
 /// Shader modules and bind group layouts for the resolve and shade passes.
@@ -1415,32 +1411,6 @@ impl QueuedWorkFuture {
     }
 }
 
-#[derive(Debug)]
-pub struct ColorIdReadback {
-    pixel_staging_buffer: wgpu::Buffer,
-    receiver: futures_channel::oneshot::Receiver<Result<(), wgpu::BufferAsyncError>>,
-}
-
-impl ColorIdReadback {
-    pub async fn read_id(self) -> GpuLocationIdx {
-        let _ = self.receiver.await;
-
-        let pixel_data = self
-            .pixel_staging_buffer
-            .slice(0..8)
-            .get_mapped_range()
-            .expect("buffer mapped successfully");
-        let mut result = [0u8; 2];
-        result.copy_from_slice(&pixel_data[0..2]);
-
-        drop(pixel_data);
-        self.pixel_staging_buffer.unmap();
-
-        let idx = u16::from_le_bytes(result);
-        GpuLocationIdx::new(idx)
-    }
-}
-
 /// Draws the map on a window or canvas surface, and knows whether the
 /// surface still shows the current picture. Every change to what it draws
 /// goes through its methods, which make a frame due.
@@ -1644,91 +1614,6 @@ impl SurfaceMapRenderer {
         let mut config = *self.scene.config();
         change(&mut config);
         self.frame.update(self.scene.config_mut(), config);
-    }
-
-    /// Get location ID at world coordinates using direct input texture sampling
-    /// This avoids viewport manipulation and provides fast cursor-to-location mapping
-    pub fn create_color_id_readback_at(
-        &self,
-        world_pos: WorldPoint<i32>,
-    ) -> Result<ColorIdReadback, RenderError> {
-        let global_x = world_pos.x;
-        let global_y = world_pos
-            .y
-            .clamp(0, (self.hemisphere_size().height - 1) as i32);
-
-        // Handle world wraparound (same logic as shader)
-        let world_width = self.hemisphere_size().world().width as i32;
-        let wrapped_x = ((global_x % world_width) + world_width) % world_width;
-
-        // Determine which texture and local coordinates
-        let (texture, local_x) = if wrapped_x < self.hemisphere_size().width as i32 {
-            // West texture
-            (
-                self.scene.resources().textures().west().texture(),
-                wrapped_x as u32,
-            )
-        } else {
-            // East texture
-            (
-                self.scene.resources().textures().east().texture(),
-                (wrapped_x - self.hemisphere_size().width as i32) as u32,
-            )
-        };
-
-        // Read single pixel from input texture (contains raw color ID)
-        let buffer_size = 256u32;
-        let device = self.scene.device();
-        let pixel_staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Single Pixel Staging Buffer"),
-            size: buffer_size as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Single Pixel Readback Encoder"),
-        });
-
-        encoder.copy_texture_to_buffer(
-            wgpu::TexelCopyTextureInfo {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: local_x,
-                    y: global_y as u32,
-                    z: 0,
-                },
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::TexelCopyBufferInfo {
-                buffer: &pixel_staging_buffer,
-                layout: wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(buffer_size),
-                    rows_per_image: Some(1),
-                },
-            },
-            wgpu::Extent3d {
-                width: 1,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-        );
-
-        self.queue().submit(Some(encoder.finish()));
-
-        let (sender, receiver) = futures_channel::oneshot::channel();
-        pixel_staging_buffer
-            .slice(..)
-            .map_async(wgpu::MapMode::Read, |result| {
-                let _ = sender.send(result);
-            });
-
-        Ok(ColorIdReadback {
-            receiver,
-            pixel_staging_buffer,
-        })
     }
 
     /// Queue work and return a future that completes when the GPU work is done

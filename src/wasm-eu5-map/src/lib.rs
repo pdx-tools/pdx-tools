@@ -18,8 +18,7 @@ use web_sys::OffscreenCanvas;
 use wasm_pdx_map::create_screenshot_renderer;
 pub use wasm_pdx_map::{
     CanvasDisplay, PdxScreenshotRenderer as WasmScreenshotRenderer, PdxWorldScreenshot,
-    WasmGpuColor, WasmGpuLocationIdx, WasmGpuLocationIdxReadback, WasmQueuedWorkFuture,
-    WasmViewportInsets, get_surface_target,
+    WasmGpuColor, WasmGpuLocationIdx, WasmQueuedWorkFuture, WasmViewportInsets, get_surface_target,
 };
 
 #[wasm_bindgen]

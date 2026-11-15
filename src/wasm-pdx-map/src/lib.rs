@@ -1,9 +1,9 @@
 use pdx_map::{
-    CanvasDimensions, Clock, ColorIdReadback, GpuColor, GpuLocationIdx, GpuSurfaceContext,
-    InteractionController, KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint,
-    LogicalSize, MouseButton, PanTarget, PhysicalSize, QueuedWorkFuture, R16Palette, RenderError,
-    ScreenshotRenderer, StripPlan, SurfaceMapRenderer, ViewportBounds, ViewportInsets, World,
-    WorldLength, WorldPoint, WorldRect, WorldSize, default_clock,
+    CanvasDimensions, Clock, GpuColor, GpuLocationIdx, GpuSurfaceContext, InteractionController,
+    KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MouseButton,
+    PanTarget, PhysicalSize, QueuedWorkFuture, R16Palette, RenderError, ScreenshotRenderer,
+    StripPlan, SurfaceMapRenderer, ViewportBounds, ViewportInsets, World, WorldLength, WorldPoint,
+    WorldRect, WorldSize, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -230,19 +230,6 @@ impl PdxMapRenderer {
     }
 
     #[wasm_bindgen]
-    pub fn create_location_color_id_readback(
-        &self,
-        x: i32,
-        y: i32,
-    ) -> Result<WasmGpuLocationIdxReadback, JsError> {
-        let readback = self
-            .map
-            .create_color_id_readback_at(WorldPoint::new(x, y))
-            .map_err(|e| JsError::new(&format!("unable to create readback: {e:?}")))?;
-        Ok(WasmGpuLocationIdxReadback { readback })
-    }
-
-    #[wasm_bindgen]
     pub fn lookup_location_id(&self, idx: &WasmGpuLocationIdx) -> u32 {
         self.location_arrays.get_location_id(idx.idx).value()
     }
@@ -400,27 +387,6 @@ impl WasmGpuColor {
     /// Get the inner GpuColor
     pub fn inner(&self) -> GpuColor {
         self.color
-    }
-}
-
-#[wasm_bindgen]
-pub struct WasmGpuLocationIdxReadback {
-    pub(crate) readback: ColorIdReadback,
-}
-
-#[wasm_bindgen]
-impl WasmGpuLocationIdxReadback {
-    #[wasm_bindgen]
-    pub async fn read_id(self) -> WasmGpuLocationIdx {
-        let idx = self.readback.read_id().await;
-        WasmGpuLocationIdx::from_gpu_location_idx(idx)
-    }
-}
-
-impl WasmGpuLocationIdxReadback {
-    /// Create a new WasmColorIdReadback from a ColorIdReadback
-    pub fn from_color_id_readback(readback: ColorIdReadback) -> Self {
-        Self { readback }
     }
 }
 
