@@ -8,6 +8,7 @@ describe("linearZoom", () => {
   });
 
   it("keeps the ends of a box too small to round", () => {
+    expect(linearZoom(0, Number.MIN_VALUE)).toEqual({ min: 0, max: Number.MIN_VALUE });
     expect(linearZoom(1.0000000000001, 1.0000000000002)).toEqual({
       min: 1.0000000000001,
       max: 1.0000000000002,
@@ -24,6 +25,7 @@ describe("logZoom", () => {
   it("ends on 1, 2 or 5 times a power of 10", () => {
     expect(logZoom(66.5, 3780)).toEqual({ min: 50, max: 5000 });
     expect(logZoom(100, 1000)).toEqual({ min: 100, max: 1000 });
+    expect(logZoom(10, 10.000000005)).toEqual({ min: 10, max: 10.000000005 });
   });
 });
 
@@ -46,6 +48,8 @@ describe("zoomedAxes", () => {
     const floored = { ...log, min: 10 };
     const axes = zoomedAxes({ x: floored, y: value }, { x: [10, 190], y: [0, 40] });
     expect(axes.x.type).toBe("log");
+    // The rounded end would reach the floor.
+    expect(zoomedAxes({ x: floored, y: value }, { x: [10.1, 190], y: [0, 40] }).x.type).toBe("log");
   });
 
   it("keeps two log axes on one kind of scale", () => {

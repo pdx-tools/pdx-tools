@@ -29,9 +29,10 @@ export function linearZoom(lo: number, hi: number): { min: number; max: number }
   const slack = range / 10;
   const top = 10 ** Math.ceil(Math.log10(range));
   // A step at or under the slack always fits, so four decades are enough.
-  for (let decade = top; range > 0 && decade >= top / 1e4; decade /= 10) {
+  for (let i = 0; i <= 4 && top > 0 && Number.isFinite(top); i++) {
     for (const m of [5, 2.5, 2, 1]) {
-      const step = m * decade;
+      const step = (m * top) / 10 ** i;
+      if (!(step > 0)) continue;
       const min = tidy(Math.floor(lo / step) * step);
       const max = tidy(Math.ceil(hi / step) * step);
       const fits = min <= lo && lo - min <= slack && hi <= max && max - hi <= slack;
@@ -47,10 +48,10 @@ export function logZoom(lo: number, hi: number): { min: number; max: number } {
   const decade = (v: number) => 10 ** Math.floor(Math.log10(v));
   const down = decade(lo);
   const up = decade(hi);
-  return {
-    min: tidy(([5, 2, 1].find((m) => m * down <= lo * (1 + 1e-9)) ?? 1) * down),
-    max: tidy(([1, 2, 5, 10].find((m) => m * up >= hi * (1 - 1e-9)) ?? 10) * up),
-  };
+  const min = tidy(([5, 2, 1].find((m) => m * down <= lo * (1 + 1e-9)) ?? 1) * down);
+  const max = tidy(([1, 2, 5, 10].find((m) => m * up >= hi * (1 - 1e-9)) ?? 10) * up);
+  // A box too small to round keeps its own ends.
+  return min < max && min <= lo && hi <= max ? { min, max } : { min: lo, max: hi };
 }
 
 interface AxisOption {
@@ -74,7 +75,8 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
   // stays log, because a linear axis would show them at the floor's value.
   const staysLog = (axis: AxisOption, [lo, hi]: [number, number]) =>
     axis.type === "log" &&
-    (hi / lo >= LOG_ZOOM_RATIO || (typeof axis.min === "number" && lo <= axis.min * (1 + 1e-9)));
+    (hi / lo >= LOG_ZOOM_RATIO ||
+      (typeof axis.min === "number" && linearZoom(lo, hi).min <= axis.min * (1 + 1e-9)));
   let logX = staysLog(axes.x, range.x);
   let logY = staysLog(axes.y, range.y);
   if (axes.x.type === "log" && axes.y.type === "log") logX = logY = logX || logY;
