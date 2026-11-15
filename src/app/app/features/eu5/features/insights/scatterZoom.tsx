@@ -84,12 +84,17 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
   axes: { x: X; y: Y },
   range: { x: [number, number]; y: [number, number] },
 ): { x: X; y: Y } {
+  // Tick text has three digits, so a linear zoom spans at least 5% of its values.
+  const linearEnds = (lo: number, hi: number) => {
+    const extra = Math.max(0, 0.05 * Math.max(Math.abs(lo), Math.abs(hi)) - (hi - lo)) / 2;
+    return linearZoom(lo - extra, hi + extra);
+  };
   // A log axis has values at 0 or under on its floor. A box with the floor
   // stays log, because a linear axis would show them at the floor's value.
   const staysLog = (axis: AxisOption, [lo, hi]: [number, number]) =>
     axis.type === "log" &&
     (hi / lo >= LOG_ZOOM_RATIO ||
-      (typeof axis.min === "number" && linearZoom(lo, hi).min <= axis.min * (1 + 1e-9)));
+      (typeof axis.min === "number" && linearEnds(lo, hi).min <= axis.min * (1 + 1e-9)));
   let logX = staysLog(axes.x, range.x);
   let logY = staysLog(axes.y, range.y);
   if (axes.x.type === "log" && axes.y.type === "log") logX = logY = logX || logY;
@@ -105,10 +110,7 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
     const name = axis.name?.endsWith(LOG_SUFFIX)
       ? axis.name.slice(0, -LOG_SUFFIX.length)
       : axis.name;
-    // Tick text has three digits, so a zoom spans at least 5% of its values.
-    const extra = Math.max(0, 0.05 * Math.max(Math.abs(lo), Math.abs(hi)) - (hi - lo)) / 2;
-    const ends = linearZoom(lo - extra, hi + extra);
-    return { ...axis, type: "value", name, ...ends, axisLabel: label };
+    return { ...axis, type: "value", name, ...linearEnds(lo, hi), axisLabel: label };
   };
   return { x: zoom(axes.x, range.x, logX), y: zoom(axes.y, range.y, logY) };
 }

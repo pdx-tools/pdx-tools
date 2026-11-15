@@ -59,6 +59,10 @@ describe("zoomedAxes", () => {
     expect(
       zoomedAxes({ x: floored, y: value }, { x: [9.999999999, 190], y: [0, 40] }).x,
     ).toMatchObject({ min: 10 });
+    // The widened end would reach the floor.
+    expect(
+      zoomedAxes({ x: { ...log, min: 100 }, y: value }, { x: [101, 103], y: [0, 40] }).x.type,
+    ).toBe("log");
     // The rounded end would reach the floor.
     expect(zoomedAxes({ x: floored, y: value }, { x: [10.1, 190], y: [0, 40] }).x.type).toBe("log");
   });
