@@ -55,9 +55,9 @@ export function logDomain(values: Iterable<number>): LogDomain {
 
 /** The largest power of 10 at or under a value above zero */
 function powerAtOrUnder(value: number): number {
-  const power = 10 ** Math.floor(Math.log10(value));
+  const exponent = Math.floor(Math.log10(value));
   // log10 of a value just under a power of 10 can round up to it.
-  return power > value ? power / 10 : power;
+  return 10 ** exponent > value ? 10 ** (exponent - 1) : 10 ** exponent;
 }
 
 function underFloor(value: number, floor: number): boolean {
