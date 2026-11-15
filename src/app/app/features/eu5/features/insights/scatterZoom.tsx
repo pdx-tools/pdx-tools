@@ -111,25 +111,13 @@ export function useBoxZoom(option: unknown) {
       setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
     };
 
-    // A listener of a chart that is gone removes itself. The element stays
-    // for the next chart after a change of theme.
+    // The element stays for the next chart after a change of theme, so the
+    // listeners go with this chart.
     const listeners = new AbortController();
     const on = <K extends keyof HTMLElementEventMap>(
       type: K,
       handler: (ev: HTMLElementEventMap[K]) => void,
-    ) =>
-      dom.addEventListener(
-        type,
-        (ev) => {
-          if (chart.isDisposed()) {
-            stop();
-            listeners.abort();
-            return;
-          }
-          handler(ev);
-        },
-        { signal: listeners.signal },
-      );
+    ) => dom.addEventListener(type, handler, { signal: listeners.signal });
 
     on("pointerdown", (ev) => {
       if (drag || !ev.isPrimary || ev.button !== 0) return;
@@ -182,7 +170,16 @@ export function useBoxZoom(option: unknown) {
       if (drag?.pointerId === ev.pointerId) stop();
     };
     on("pointercancel", cancel);
-    on("lostpointercapture", cancel);
+    // Only the capture of the chart: a pen also loses its first capture, on
+    // the canvas, when the chart takes the pointer.
+    on("lostpointercapture", (ev) => {
+      if (ev.target === dom) cancel(ev);
+    });
+
+    return () => {
+      stop();
+      listeners.abort();
+    };
   };
 
   const reset = () => {

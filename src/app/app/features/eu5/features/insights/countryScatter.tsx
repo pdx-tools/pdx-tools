@@ -596,7 +596,7 @@ export function CountryScatter<T>({
           style={{ height: "420px", width: "100%" }}
           onInit={(chart) => {
             handleClick(chart);
-            zoom.attach(chart);
+            return zoom.attach(chart);
           }}
         />
         <ResetZoom zoom={zoom} />

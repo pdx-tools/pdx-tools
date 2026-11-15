@@ -94,7 +94,8 @@ export interface EChartProps {
   /** The option, or a function that makes it from the chart, for an option that reads the chart */
   option: EChartsOption | ((chart: echarts.ECharts) => EChartsOption);
   style?: React.CSSProperties;
-  onInit?: (chart: echarts.ECharts) => void;
+  /** Called for each new chart. A function that it gives back runs before the chart goes. */
+  onInit?: (chart: echarts.ECharts) => void | (() => void);
   className?: string;
 }
 
@@ -105,16 +106,14 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
   const theme = chartTheme(useGameTheme()?.theme);
-  const onInitEvent = useEffectEvent((chart: echarts.ECharts) => {
-    onInit?.(chart);
-  });
+  const onInitEvent = useEffectEvent((chart: echarts.ECharts) => onInit?.(chart));
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const chart = echarts.init(containerRef.current, theme);
     chartRef.current = chart;
-    onInitEvent(chart);
+    const cleanup = onInitEvent(chart);
 
     let rafId: ReturnType<typeof requestAnimationFrame> | undefined;
     const resizeObserver = new ResizeObserver(() => {
@@ -129,6 +128,7 @@ export const EChart = memo(function EChart({ option, style, onInit, className }:
     return () => {
       if (rafId != null) cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
+      cleanup?.();
       chart.dispose();
       chartRef.current = null;
     };
