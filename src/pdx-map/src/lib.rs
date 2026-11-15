@@ -25,8 +25,8 @@ pub use pixel::{R16, R16Palette, R16SecondaryMap, Rgb};
 pub use units::*;
 pub use viewport::{JumpZoom, MapViewport, PanTarget, ViewportBounds, ViewportInsets};
 pub use world::{
-    Aabb, Hemisphere, LocationBitset, SpatialIndex, SpatialIndexBuilder, TopologyIndex, World,
-    WorldRows,
+    Aabb, Hemisphere, InvalidTiles, LocationBitset, SpatialIndex, SpatialIndexBuilder,
+    TopologyIndex, World, WorldRows, WorldTiles,
 };
 
 #[cfg(feature = "render")]
@@ -37,8 +37,8 @@ pub use image::{Strip, StripPlan};
 pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, default_clock};
 #[cfg(feature = "render")]
 pub use renderer::{
-    GpuContext, GpuSurfaceContext, HeadlessMapRenderer, LayerId, MapTexture, QueuedWorkFuture,
-    RenderLayer, ScreenshotRenderer, SurfaceMapRenderer, WorldTextureWriter, WorldTextures,
+    GpuContext, GpuSurfaceContext, GpuWorldTiles, HeadlessMapRenderer, LayerId, QueuedWorkFuture,
+    RenderLayer, ScreenshotRenderer, SurfaceMapRenderer,
 };
 #[cfg(feature = "render")]
 pub use wgpu;

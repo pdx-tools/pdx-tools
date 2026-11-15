@@ -3,7 +3,7 @@ use pdx_map::{
     KeyboardKey, Length, LocationArrays, LocationFlags, LogicalPoint, LogicalSize, MouseButton,
     PanTarget, PhysicalSize, QueuedWorkFuture, R16Palette, RenderError, ScreenshotRenderer,
     StripPlan, SurfaceMapRenderer, ViewportBounds, ViewportInsets, World, WorldLength, WorldPoint,
-    WorldRect, WorldSize, default_clock,
+    WorldRect, WorldSize, WorldTiles, default_clock,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -74,12 +74,12 @@ impl PdxMapRenderer {
     ) -> Result<Self, JsError> {
         let canvas_dims: CanvasDimensions = display.to_rust()?.into();
 
-        let textures = surface
+        let tiles = surface
             .pipeline_components
-            .create_world_textures(image.world.as_rows());
+            .upload_world_tiles(&WorldTiles::from_rows(image.world.as_rows()));
         let renderer = SurfaceMapRenderer::new(
             surface.pipeline_components,
-            textures,
+            tiles,
             canvas_dims.physical_size(),
         );
 

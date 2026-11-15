@@ -5,7 +5,10 @@ pub mod optimized;
 pub mod game_install;
 
 pub use error::GameDataError;
-pub use optimized::{OptimizedGameBundle, OptimizedLocalizationBundle, OptimizedMapBundle};
+pub use optimized::{
+    BundleMap, OptimizedGameBundle, OptimizedLocalizationBundle, OptimizedMapBundle, TILES_ENTRY,
+    tiles_entry_bytes,
+};
 
 use eu5save::hash::FxHashMap;
 use pdx_map::{R16, TopologyIndex};

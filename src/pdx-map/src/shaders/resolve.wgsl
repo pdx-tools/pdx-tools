@@ -1,7 +1,8 @@
 // Resolve pass: find the location index under each output pixel.
 //
 // This pass owns all of the map geometry: the view rectangle, horizontal
-// wraparound, and the west/east hemisphere split. It writes one location
+// wraparound, and the tiles that the world's location indices are
+// compressed into. It writes one location
 // index per output pixel to an R16Uint target that the shade pass reads
 // with screen-space offsets. The target is larger than the output by a
 // guard band on each side, so the shade pass can read neighbors past the
@@ -39,8 +40,12 @@ struct ResolveUniforms {
     _pad1: u32,
 }
 
-@group(0) @binding(0) var west_input_texture: texture_2d<u32>;
-@group(0) @binding(1) var east_input_texture: texture_2d<u32>;
+// The world's location indices in 16x16 tiles: a table of tile entries,
+// then each tile's packed pixel indices and its palette. See
+// `world/tiles.rs`.
+@group(0) @binding(0) var<storage, read> world_tiles: array<u32>;
+
+const TILE = 16u;
 @group(0) @binding(2) var<uniform> uniforms: ResolveUniforms;
 
 // Wrap x coordinate to handle world wraparound
@@ -56,15 +61,21 @@ fn wrap_x_coordinate(x: i32) -> i32 {
 // Location index for a world pixel. X wraps around the world and y clamps
 // to the map, so a read is never out of bounds.
 fn id_at(global_x: i32, global_y: i32) -> u32 {
-    let wrapped_x = wrap_x_coordinate(global_x);
-    let clamped_y = clamp(global_y, 0, i32(uniforms.tile_height) - 1);
-    if (wrapped_x < i32(uniforms.tile_width)) {
-        let coord = vec2<i32>(wrapped_x, clamped_y);
-        return textureLoad(west_input_texture, coord, 0).r;
-    } else {
-        let coord = vec2<i32>(wrapped_x - i32(uniforms.tile_width), clamped_y);
-        return textureLoad(east_input_texture, coord, 0).r;
+    let x = u32(wrap_x_coordinate(global_x));
+    let y = u32(clamp(global_y, 0, i32(uniforms.tile_height) - 1));
+    let tiles_per_row = (uniforms.tile_width * 2u + TILE - 1u) / TILE;
+    let entry = world_tiles[(y / TILE) * tiles_per_row + x / TILE];
+    let block = entry >> 3u;
+    // Bit widths 0, 1, 2, 4, 8, 16 by code
+    let bits = (1u << (entry & 7u)) >> 1u;
+    let bit = ((y % TILE) * TILE + x % TILE) * bits;
+    let word = world_tiles[block + bit / 32u];
+    let index = (word >> (bit % 32u)) & ((1u << bits) - 1u);
+    if (bits == 16u) {
+        return index;
     }
+    let pair = world_tiles[block + 8u * bits + index / 2u];
+    return (pair >> ((index % 2u) * 16u)) & 0xFFFFu;
 }
 
 // Floor division for a positive divisor. Integer division rounds toward

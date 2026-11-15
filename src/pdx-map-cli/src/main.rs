@@ -237,13 +237,13 @@ async fn main_async(args: Args) -> anyhow::Result<()> {
     let start = Instant::now();
     let hemisphere_size = image_data.world.west().size();
     let world_size = hemisphere_size.world();
-    let textures = gpu.create_world_textures(image_data.world.as_rows());
+    let tiles = gpu.upload_world_tiles(&pdx_map::WorldTiles::from_rows(image_data.world.as_rows()));
     println!(
-        "Created GPU textures ({:.2}s)",
+        "Created world tiles ({:.2}s)",
         start.elapsed().as_secs_f64()
     );
     let start = Instant::now();
-    let mut renderer = pdx_map::HeadlessMapRenderer::new(gpu, textures)?;
+    let mut renderer = pdx_map::HeadlessMapRenderer::new(gpu, tiles)?;
     renderer.update_locations(&location_arrays);
     renderer.set_location_borders(!args.no_location_borders);
     renderer.set_owner_borders(!args.no_owner_borders);

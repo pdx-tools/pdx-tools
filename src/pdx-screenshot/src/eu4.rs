@@ -4,7 +4,7 @@ mod save;
 mod viewport;
 
 pub use pdx_map::GpuContext;
-use pdx_map::R16;
+use pdx_map::{R16, WorldRows, WorldTiles};
 use std::sync::OnceLock;
 
 #[derive(Debug, thiserror::Error)]
@@ -24,8 +24,8 @@ pub enum ScreenshotError {
 struct PatchScreenshotAssets {
     color_index: Vec<u16>,
     color_count: usize,
-    west_r16: Vec<R16>,
-    east_r16: Vec<R16>,
+    /// The map, encoded once per patch
+    tiles: WorldTiles,
 }
 
 /// Render an EU4 save file to a WebP image. Returns the WebP-encoded bytes.
@@ -88,11 +88,16 @@ fn build_patch_assets(minor_version: u16) -> PatchScreenshotAssets {
         expected_len
     );
 
+    let rows = WorldRows::new(
+        0,
+        &west_r16,
+        &east_r16,
+        viewport::EU4_HEMISPHERE_SIZE.width_length(),
+    );
     PatchScreenshotAssets {
         color_index,
         color_count,
-        west_r16,
-        east_r16,
+        tiles: WorldTiles::from_rows(rows),
     }
 }
 

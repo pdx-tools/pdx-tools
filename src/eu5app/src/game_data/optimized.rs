@@ -2,7 +2,7 @@ use crate::{
     GameLocation,
     game_data::{GameData, GameDataError, GoodsData, Localization, LocalizationsData},
 };
-use pdx_map::{R16, SpatialIndex, SpatialIndexBuilder, TopologyIndex, WorldRows};
+use pdx_map::{R16, SpatialIndex, TopologyIndex, WorldTiles};
 use rawzip::{ZipArchive, ZipSliceArchive};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -179,14 +179,33 @@ where
     }
 }
 
-/// Optimized map-domain bundle: hemisphere textures and world metadata.
-/// Consumed by the map worker.
+/// Optimized map-domain bundle: the world's location tiles and world
+/// metadata. Consumed by the map worker.
 #[derive(Debug)]
 pub struct OptimizedMapBundle<R: AsRef<[u8]>> {
     zip: ZipSliceArchive<R>,
-    west_texture: (u64, rawzip::ZipArchiveEntryWayfinder),
-    east_texture: (u64, rawzip::ZipArchiveEntryWayfinder),
+    tiles: (u64, rawzip::ZipArchiveEntryWayfinder),
     world_meta: Option<(u64, rawzip::ZipArchiveEntryWayfinder)>,
+}
+
+/// The map of a bundle: what the GPU draws, and what finds locations
+#[derive(Debug)]
+pub struct BundleMap {
+    pub tiles: WorldTiles,
+    pub index: SpatialIndex,
+}
+
+/// Name of the bundle entry that holds the [`WorldTiles`], as
+/// [`tiles_entry_bytes`] writes them
+pub const TILES_ENTRY: &str = "locations.tiles";
+
+/// The bytes of the tiles entry: the words of the tiles, little endian
+pub fn tiles_entry_bytes(tiles: &WorldTiles) -> Vec<u8> {
+    tiles
+        .words()
+        .iter()
+        .flat_map(|word| word.to_le_bytes())
+        .collect()
 }
 
 impl<R> OptimizedMapBundle<R>
@@ -195,37 +214,26 @@ where
 {
     pub fn open(data: R) -> Result<Self, GameDataError> {
         let zip = ZipArchive::from_slice(data).map_err(GameDataError::ZipAccess)?;
-        let mut west_texture_entry = None;
-        let mut east_texture_entry = None;
+        let mut tiles_entry = None;
         let mut world_meta_entry = None;
 
         for entry in zip.entries() {
             let entry = entry.map_err(GameDataError::ZipAccess)?;
+            let found = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
             match entry.file_path().as_bytes() {
-                b"locations-0.r16" => {
-                    west_texture_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
-                }
-                b"locations-1.r16" => {
-                    east_texture_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
-                }
-                b"world_meta.bin" => {
-                    world_meta_entry = Some((entry.uncompressed_size_hint(), entry.wayfinder()));
-                }
+                b"locations.tiles" => tiles_entry = found,
+                b"world_meta.bin" => world_meta_entry = found,
                 _ => {}
             }
         }
 
-        let west_texture = west_texture_entry.ok_or_else(|| {
-            GameDataError::MissingData("locations-0.r16 not found in bundle".to_string())
-        })?;
-        let east_texture = east_texture_entry.ok_or_else(|| {
-            GameDataError::MissingData("locations-1.r16 not found in bundle".to_string())
+        let tiles = tiles_entry.ok_or_else(|| {
+            GameDataError::MissingData(format!("{TILES_ENTRY} not found in bundle"))
         })?;
 
         Ok(Self {
             zip,
-            west_texture,
-            east_texture,
+            tiles,
             world_meta: world_meta_entry,
         })
     }
@@ -255,24 +263,15 @@ where
         Ok(Some(metadata.max_location()))
     }
 
-    /// Build the spatial index of the map, reading the map a band of rows at
-    /// a time so the whole map is never in memory. `on_rows` sees every row
-    /// of both hemispheres exactly once, top to bottom, as the index does,
-    /// for a caller that also wants the rows, such as to fill textures. The
-    /// index is checked against `world_meta.bin` when the bundle has one.
-    /// On an error, the rows seen so far are not the whole map.
-    #[tracing::instrument(name = "eu5.map_bundle.build_spatial_index", skip_all)]
-    pub fn build_spatial_index(
-        &self,
-        mut on_rows: impl FnMut(WorldRows<'_>),
-    ) -> Result<SpatialIndex, GameDataError> {
-        let mut index = SpatialIndexBuilder::new(crate::hemisphere_size());
-        self.for_each_band(|rows| {
-            index.push(rows);
-            on_rows(rows);
-        })?;
-
-        let index = index.finish();
+    /// The map: its tiles, and the spatial index built from them. Building
+    /// the index decodes every pixel, which checks the tiles, and the index
+    /// is checked against `world_meta.bin` when the bundle has one.
+    #[tracing::instrument(name = "eu5.map_bundle.load", skip_all)]
+    pub fn load(&self) -> Result<BundleMap, GameDataError> {
+        let tiles = self.load_tiles()?;
+        let index = tiles
+            .build_spatial_index()
+            .map_err(|error| GameDataError::InvalidMap(error.to_string()))?;
         if let Some(expected) = self.load_max_location_index()?
             && index.len() != usize::from(expected.value()) + 1
         {
@@ -282,7 +281,7 @@ where
                 index.len() - 1
             )));
         }
-        Ok(index)
+        Ok(BundleMap { tiles, index })
     }
 
     /// Load both hemispheres whole.
@@ -290,102 +289,63 @@ where
         let len = crate::hemisphere_size().area() as usize;
         let mut west = Vec::with_capacity(len);
         let mut east = Vec::with_capacity(len);
-        self.for_each_band(|rows| {
-            west.extend_from_slice(rows.west());
-            east.extend_from_slice(rows.east());
-        })?;
+        self.load_tiles()?
+            .for_each_band(|rows| {
+                west.extend_from_slice(rows.west());
+                east.extend_from_slice(rows.east());
+            })
+            .map_err(|error| GameDataError::InvalidMap(error.to_string()))?;
         Ok((west, east))
     }
 
-    /// Decode both hemispheres side by side, and give each band of rows to
-    /// `sink`, top to bottom. Each entry must hold exactly one hemisphere.
-    fn for_each_band(&self, mut sink: impl FnMut(WorldRows<'_>)) -> Result<(), GameDataError> {
-        let size = crate::hemisphere_size();
-        let width = size.width_length();
-        let mut west = self.hemisphere_reader(&self.west_texture, "locations-0.r16")?;
-        let mut east = self.hemisphere_reader(&self.east_texture, "locations-1.r16")?;
-
-        let band_len = MAP_BAND_ROWS as usize * width.value as usize;
-        let mut west_band = vec![R16::new(0); band_len];
-        let mut east_band = vec![R16::new(0); band_len];
-        let mut row = 0;
-        while row < size.height {
-            let rows = MAP_BAND_ROWS.min(size.height - row);
-            let len = rows as usize * width.value as usize;
-            west.read_rows(&mut west_band[..len])?;
-            east.read_rows(&mut east_band[..len])?;
-            sink(WorldRows::new(
-                row,
-                &west_band[..len],
-                &east_band[..len],
-                width,
-            ));
-            row += rows;
+    /// The tiles, with their table checked. The entry must hold exactly
+    /// the words its size gives, no larger than tiles of 16-bit pixels.
+    fn load_tiles(&self) -> Result<WorldTiles, GameDataError> {
+        let hemisphere = crate::hemisphere_size();
+        let (size, wayfinder) = self.tiles;
+        let tile_count = hemisphere.world().area().div_ceil(16 * 16) as u64;
+        // A table entry and 128 words of 16-bit pixels per tile
+        let largest = tile_count * (1 + 128) * 4;
+        if !size.is_multiple_of(4) || size > largest {
+            return Err(GameDataError::InvalidMap(format!(
+                "{TILES_ENTRY} is {size} bytes, which is not whole words or exceeds {largest}"
+            )));
         }
 
-        west.finish()?;
-        east.finish()
-    }
-
-    fn hemisphere_reader(
-        &self,
-        (_, wayfinder): &(u64, rawzip::ZipArchiveEntryWayfinder),
-        name: &'static str,
-    ) -> Result<HemisphereReader<'_>, GameDataError> {
         let entry = self
             .zip
-            .get_entry(*wayfinder)
+            .get_entry(wayfinder)
             .map_err(GameDataError::ZipAccess)?;
-        let decoder = pdx_zstd::Decoder::with_window_log_max(entry.data(), MAP_WINDOW_LOG_MAX)?;
-        Ok(HemisphereReader { decoder, name })
+        let mut decoder = pdx_zstd::Decoder::with_window_log_max(entry.data(), MAP_WINDOW_LOG_MAX)?;
+        let mut words = vec![0u32; (size / 4) as usize];
+        let io_error = |error: std::io::Error| match error.kind() {
+            std::io::ErrorKind::UnexpectedEof => GameDataError::InvalidMap(format!(
+                "{TILES_ENTRY} is smaller than its size of {size} bytes"
+            )),
+            _ => GameDataError::Io(error, TILES_ENTRY.to_string()),
+        };
+        decoder
+            .read_exact(bytemuck::cast_slice_mut(&mut words))
+            .map_err(io_error)?;
+        let more = decoder.read(&mut [0u8; 1]).map_err(io_error)?;
+        if more != 0 || !decoder.get_ref().is_empty() {
+            return Err(GameDataError::InvalidMap(format!(
+                "{TILES_ENTRY} is larger than its size of {size} bytes"
+            )));
+        }
+        for word in &mut words {
+            *word = u32::from_le(*word);
+        }
+
+        WorldTiles::from_words(hemisphere, words)
+            .map_err(|error| GameDataError::InvalidMap(error.to_string()))
     }
 }
-
-/// Rows of each hemisphere decoded at a time.
-const MAP_BAND_ROWS: u32 = 64;
 
 /// The most history, as a power of two, that a map entry may ask its decoder
 /// to keep. The bundles are written with much less; a frame that asks for
 /// more is refused rather than given that much memory.
 const MAP_WINDOW_LOG_MAX: u32 = 23;
-
-/// The decoded rows of one hemisphere entry.
-struct HemisphereReader<'a> {
-    decoder: pdx_zstd::Decoder<&'a [u8]>,
-    name: &'static str,
-}
-
-impl HemisphereReader<'_> {
-    /// Fill `rows` with the next rows.
-    fn read_rows(&mut self, rows: &mut [R16]) -> Result<(), GameDataError> {
-        self.decoder
-            .read_exact(bytemuck::cast_slice_mut(rows))
-            .map_err(|error| match error.kind() {
-                std::io::ErrorKind::UnexpectedEof => GameDataError::InvalidMap(format!(
-                    "{} is smaller than a {} hemisphere",
-                    self.name,
-                    crate::hemisphere_size()
-                )),
-                _ => GameDataError::Io(error, self.name.to_string()),
-            })
-    }
-
-    /// Check that nothing comes after the rows.
-    fn finish(mut self) -> Result<(), GameDataError> {
-        let read = self
-            .decoder
-            .read(&mut [0u8; 1])
-            .map_err(|error| GameDataError::Io(error, self.name.to_string()))?;
-        if read != 0 || !self.decoder.get_ref().is_empty() {
-            return Err(GameDataError::InvalidMap(format!(
-                "{} is larger than a {} hemisphere",
-                self.name,
-                crate::hemisphere_size()
-            )));
-        }
-        Ok(())
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -449,7 +409,7 @@ mod tests {
 
     #[test]
     fn game_bundle_rejects_map_zip() {
-        let zip = test_map_zip(Vec::new(), Vec::new(), Some(7));
+        let zip = test_map_zip(&[], Some(7));
         let err = OptimizedGameBundle::open(zip).unwrap_err();
         match err {
             GameDataError::MissingData(msg) => assert!(msg.contains("location_lookup.bin")),
@@ -482,35 +442,19 @@ mod tests {
         let zip = test_game_zip(GoodsData::default());
         let err = OptimizedMapBundle::open(zip).unwrap_err();
         match err {
-            GameDataError::MissingData(msg) => assert!(msg.contains("locations-0.r16")),
+            GameDataError::MissingData(msg) => assert!(msg.contains(TILES_ENTRY)),
             other => panic!("expected MissingData, got {other:?}"),
         }
     }
 
-    /// Bytes in a hemisphere entry.
-    const HEMISPHERE_BYTES: usize = 8192 * 8192 * 2;
-
     #[test]
-    fn map_bundle_reads_the_map_in_bands() {
-        // Every west byte is 0 and every east byte 1, so the east is
-        // location 0x0101 throughout.
+    fn map_bundle_reads_the_map() {
         let east_location = R16::new(0x0101);
-        let zip = test_map_zip(
-            rle_frame(0, HEMISPHERE_BYTES, 21),
-            rle_frame(1, HEMISPHERE_BYTES, 21),
-            Some(east_location.value()),
-        );
-        let bundle = OptimizedMapBundle::open(zip).unwrap();
+        let words = uniform_tiles(0, east_location.value());
+        let zip = test_map_zip(&[tiles_entry(&words)], Some(east_location.value()));
+        let BundleMap { tiles, index } = OptimizedMapBundle::open(zip).unwrap().load().unwrap();
 
-        let mut rows = 0;
-        let index = bundle
-            .build_spatial_index(|band| {
-                assert!(band.west().iter().all(|&loc| loc == R16::new(0)));
-                assert!(band.east().iter().all(|&loc| loc == east_location));
-                rows += band.height();
-            })
-            .unwrap();
-        assert_eq!(rows, 8192);
+        assert_eq!(tiles.words(), words);
         assert_eq!(index.len(), usize::from(east_location.value()) + 1);
         assert_eq!(
             index.point_of(R16::new(0)),
@@ -523,64 +467,89 @@ mod tests {
     }
 
     #[test]
-    fn map_bundle_rejects_a_map_of_the_wrong_size() {
-        let row = 8192 * 2;
-        let whole = || rle_frame(0, HEMISPHERE_BYTES, 21);
-        let corrupt = {
-            let mut frame = whole();
-            frame[6] = 0xff;
-            frame
-        };
+    fn map_bundle_rejects_a_broken_map() {
+        let words = uniform_tiles(0, 0);
+        let size = (words.len() * 4) as u64;
+        let frame = zstd_frame(&words);
+        let mut bad_code = words.clone();
+        bad_code[0] |= 7;
+
         let cases = [
             (
-                "west one row short",
-                rle_frame(0, HEMISPHERE_BYTES - row, 21),
-                whole(),
+                "one word short",
+                vec![tiles_entry(&words[..words.len() - 1])],
                 None,
             ),
             (
-                "east one row long",
-                whole(),
-                rle_frame(0, HEMISPHERE_BYTES + row, 21),
+                "shorter than its size",
+                vec![(TILES_ENTRY, frame.clone(), size + 4)],
                 None,
             ),
             (
-                "east one byte short",
-                whole(),
-                rle_frame(0, HEMISPHERE_BYTES - 1, 21),
-                None,
-            ),
-            ("east empty", whole(), Vec::new(), None),
-            (
-                "west has a second frame",
-                [whole(), rle_frame(0, 2, 21)].concat(),
-                whole(),
+                "longer than its size",
+                vec![(TILES_ENTRY, frame.clone(), size - 4)],
                 None,
             ),
             (
-                "east has trailing bytes",
-                whole(),
-                [whole(), vec![0]].concat(),
+                "not whole words",
+                vec![(TILES_ENTRY, frame.clone(), size - 1)],
                 None,
             ),
-            ("west corrupt", corrupt, whole(), None),
+            (
+                "a second frame",
+                vec![(
+                    TILES_ENTRY,
+                    [frame.clone(), rle_frame(0, 4, 21)].concat(),
+                    size,
+                )],
+                None,
+            ),
+            ("a bad bit width", vec![tiles_entry(&bad_code)], None),
             (
                 "window too large",
-                rle_frame(0, HEMISPHERE_BYTES, 27),
-                whole(),
+                vec![(TILES_ENTRY, rle_frame(0, size as usize, 27), size)],
                 None,
             ),
-            ("metadata disagrees", whole(), whole(), Some(7)),
+            ("metadata disagrees", vec![tiles_entry(&words)], Some(7)),
         ];
 
-        for (case, west, east, max_location) in cases {
-            let bundle = OptimizedMapBundle::open(test_map_zip(west, east, max_location)).unwrap();
-            assert!(bundle.build_spatial_index(|_| {}).is_err(), "{case}");
+        for (case, entries, max_location) in cases {
+            let bundle = OptimizedMapBundle::open(test_map_zip(&entries, max_location)).unwrap();
+            assert!(bundle.load().is_err(), "{case}");
         }
     }
 
-    /// A zstd frame of `len` bytes of `byte` in run-length blocks, so a
-    /// whole hemisphere takes a few KiB.
+    /// The tiles of a world whose west is location `west` and whose east is
+    /// location `east`, every tile one location
+    fn uniform_tiles(west: u16, east: u16) -> Vec<u32> {
+        let world = crate::hemisphere_size().world();
+        let tiles_wide = world.width / 16;
+        let count = tiles_wide * world.height / 16;
+        let table = (0..count).map(|tile| (count + tile) << 3);
+        let blocks = (0..count).map(|tile| {
+            u32::from(if tile % tiles_wide < tiles_wide / 2 {
+                west
+            } else {
+                east
+            })
+        });
+        table.chain(blocks).collect()
+    }
+
+    fn zstd_frame(words: &[u32]) -> Vec<u8> {
+        let bytes: Vec<u8> = words.iter().flat_map(|word| word.to_le_bytes()).collect();
+        let mut frame = Vec::new();
+        let mut encoder = pdx_zstd::Encoder::new(&mut frame, 1).unwrap();
+        encoder.write_all(&bytes).unwrap();
+        encoder.finish().unwrap();
+        frame
+    }
+
+    fn tiles_entry(words: &[u32]) -> (&'static str, Vec<u8>, u64) {
+        (TILES_ENTRY, zstd_frame(words), (words.len() * 4) as u64)
+    }
+
+    /// A zstd frame of `len` bytes of `byte` in run-length blocks
     fn rle_frame(byte: u8, len: usize, window_log: u8) -> Vec<u8> {
         const BLOCK: usize = 128 << 10;
         let mut frame = vec![0x28, 0xb5, 0x2f, 0xfd, 0, (window_log - 10) << 3];
@@ -628,20 +597,21 @@ mod tests {
         archive.finish().unwrap().into_inner()
     }
 
-    fn test_map_zip(west: Vec<u8>, east: Vec<u8>, max_location: Option<u16>) -> Vec<u8> {
+    /// A map bundle of zstd entries, each a name, a frame, and its
+    /// uncompressed size
+    fn test_map_zip(entries: &[(&str, Vec<u8>, u64)], max_location: Option<u16>) -> Vec<u8> {
         let output = Cursor::new(Vec::new());
         let mut archive = rawzip::ZipArchiveWriter::new(output);
 
-        for (filename, frame) in [("locations-0.r16", west), ("locations-1.r16", east)] {
+        for (filename, frame, size) in entries {
             let (mut entry, _) = archive
                 .new_file(filename)
                 .compression_method(CompressionMethod::ZSTD)
                 .start()
                 .unwrap();
-            entry.write_all(&frame).unwrap();
-            let size = HEMISPHERE_BYTES as u64;
+            entry.write_all(frame).unwrap();
             entry
-                .finish(rawzip::DataDescriptorOutput::new(0, size))
+                .finish(rawzip::DataDescriptorOutput::new(0, *size))
                 .unwrap();
         }
 

@@ -51,14 +51,6 @@ impl GameTextures {
     pub fn world(&self) -> Arc<World> {
         Arc::clone(&self.world)
     }
-
-    pub fn west_data(&self) -> &[R16] {
-        self.world.west().as_slice()
-    }
-
-    pub fn east_data(&self) -> &[R16] {
-        self.world.east().as_slice()
-    }
 }
 
 impl TextureProvider for GameTextures {

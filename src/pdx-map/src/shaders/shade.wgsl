@@ -155,26 +155,30 @@ fn oklab_to_srgb(lab: vec3<f32>) -> vec3<f32> {
     return linear_to_srgb(rgb);
 }
 
-// Shift the perceptual lightness of a color. A positive delta lightens.
-fn shift_lightness(c: vec3<f32>, delta: f32) -> vec3<f32> {
-    var lab = srgb_to_oklab(c);
-    lab.x = clamp(lab.x + delta, 0.0, 1.0);
-    return oklab_to_srgb(lab);
-}
+// How an edge changes the lightness of a color.
+//
+// A plain shift of lightness. A positive delta lightens.
+const TONE_SHIFT = 0u;
+// A rim or a band that lightens. A fill near white has no room to get
+// lighter, so the part of the delta that lightness cannot absorb is spent
+// on chroma instead: a cream fill takes a paler rim rather than none at
+// all. Fills with room take a plain lightness shift.
+const TONE_RIM = 1u;
+// A line on a fill: darker by the negative delta, or lighter when the fill
+// is too dark for a darker line to show
+const TONE_LINE = 2u;
 
-// Lighten a color for a rim or a band. A fill near white has no room to
-// get lighter, so the part of the delta that lightness cannot absorb is
-// spent on chroma instead: a cream fill takes a paler rim rather than
-// none at all. Fills with room take a plain lightness shift.
-fn lighten(c: vec3<f32>, delta: f32) -> vec3<f32> {
-    var lab = srgb_to_oklab(c);
+// Change the lightness of an Oklab color for an edge
+fn edge_tone(color: vec3<f32>, delta: f32, kind: u32) -> vec3<f32> {
+    var lab = color;
+    let flip = kind == TONE_LINE && lab.x < -delta;
     let headroom = max(1.0 - lab.x, 0.0);
     let shortfall = max(delta - headroom, 0.0);
-    lab.x = min(lab.x + delta, 1.0);
-    let chroma_scale = 1.0 - shortfall / delta;
+    let chroma_scale = select(1.0, 1.0 - shortfall / delta, kind == TONE_RIM);
+    lab.x = clamp(lab.x + select(delta, -delta, flip), 0.0, 1.0);
     lab.y *= chroma_scale;
     lab.z *= chroma_scale;
-    return oklab_to_srgb(lab);
+    return lab;
 }
 
 // The dimmed form of a color in Oklab
@@ -186,23 +190,17 @@ fn dim_lab(lab: vec3<f32>, is_water: bool) -> vec3<f32> {
     return vec3<f32>(DIMMED_LAND_FLOOR + lab.x * DIMMED_LAND_RANGE, lab.yz * DIMMED_CHROMA);
 }
 
-// Show the selection on a color: dim it out of the selection, or soften it
-// around a focused location
-fn selection_color(c: vec3<f32>, is_dimmed: bool, is_softened: bool, is_water: bool) -> vec3<f32> {
-    if (!is_dimmed && !is_softened) {
-        return c;
-    }
-    let lab = srgb_to_oklab(c);
+// Show the selection on an Oklab color of a location that is dimmed or
+// softened: dim it out of the selection, or soften it around a focused
+// location
+fn selection_lab(lab: vec3<f32>, is_dimmed: bool, is_water: bool) -> vec3<f32> {
     let dimmed = dim_lab(lab, is_water);
-    return oklab_to_srgb(select(mix(lab, dimmed, SOFTENED_SHARE), dimmed, is_dimmed));
+    return select(mix(lab, dimmed, SOFTENED_SHARE), dimmed, is_dimmed);
 }
 
-// A line on a fill: darker by `delta`, or lighter when the fill is too dark
-// for a darker line to show
-fn contrast_line(fill: vec3<f32>, delta: f32) -> vec3<f32> {
-    var lab = srgb_to_oklab(fill);
-    lab.x = clamp(lab.x + select(-delta, delta, lab.x < delta), 0.0, 1.0);
-    return oklab_to_srgb(lab);
+// Hover brightens a color
+fn highlight(c: vec3<f32>) -> vec3<f32> {
+    return min(c + vec3<f32>(0.25), vec3<f32>(1.0));
 }
 
 fn get_primary_color_by_index(location_idx: u32) -> u32 {
@@ -286,17 +284,60 @@ struct Surroundings {
     location_border: bool,
 }
 
+// The pixel whose surroundings a scan describes
+struct Center {
+    location_idx: u32,
+    primary_color: u32,
+    secondary_color: u32,
+    border_color: u32,
+    terrain: u32,
+    in_secondary_zone: bool,
+}
+
+// Add one neighbor at distance `d` to what lies around the center. A
+// neighbor of the same location adds nothing.
+fn visit_neighbor(
+    result: ptr<function, Surroundings>,
+    center: Center,
+    neighbor_location_idx: u32,
+    d: i32,
+    edge_reach: i32,
+    location_reach: i32,
+) {
+    let differs = neighbor_location_idx != center.location_idx;
+    if (!differs) {
+        return;
+    }
+    // In the secondary stripe zone, a neighbor with the same stripe color
+    // is not a location border
+    let same_stripe = center.in_secondary_zone
+        && get_secondary_color_by_index(neighbor_location_idx) == center.secondary_color;
+    (*result).location_border = (*result).location_border
+        || (differs && d <= location_reach && !same_stripe);
+
+    let edge = select(FAR, d, differs && d <= edge_reach);
+    let neighbor_terrain = terrain_class(get_state_flags_by_index(neighbor_location_idx));
+    let terrain_differs = neighbor_terrain != center.terrain;
+    let filled = (center.terrain == TERRAIN_IMPASSABLE || center.terrain == TERRAIN_LAKE)
+        && get_primary_color_by_index(neighbor_location_idx) == center.primary_color;
+    let coast = terrain_differs
+        && (neighbor_terrain == TERRAIN_WATER || center.terrain == TERRAIN_WATER);
+    let owner = center.terrain == TERRAIN_LAND && select(
+        get_border_color_by_index(neighbor_location_idx) != center.border_color,
+        neighbor_terrain == TERRAIN_UNOWNED,
+        terrain_differs,
+    );
+    (*result).terrain = min((*result).terrain, select(FAR, edge, terrain_differs && !filled));
+    (*result).coast = min((*result).coast, select(FAR, edge, coast));
+    (*result).owner = min((*result).owner, select(FAR, edge, owner));
+}
+
 // Scan the rings around `p`, out to `edge_r` for edges and to `location_r`
 // for a location border. A radius of 0 skips that search. Each texel is
 // read once for both.
 fn scan_surroundings(
     p: vec2<i32>,
-    center_location_idx: u32,
-    center_primary_color: u32,
-    center_secondary_color: u32,
-    center_border_color: u32,
-    center_terrain: u32,
-    in_secondary_zone: bool,
+    center: Center,
     edge_r: i32,
     location_r: i32,
 ) -> Surroundings {
@@ -307,68 +348,29 @@ fn scan_surroundings(
     var edge_reach = edge_r;
     var location_reach = location_r;
     for (var d = 1; d <= max(edge_reach, location_reach); d++) {
-        for (var dy = -d; dy <= d; dy++) {
-            let span = d - abs(dy);
-            // Only the two points on the ring for this row
-            for (var side = 0; side < 2; side++) {
-                let dx = select(-span, span, side == 1);
-                if (side == 1 && span == 0) {
-                    continue;
-                }
-                let neighbor_location_idx = resolved_id(p + vec2<i32>(dx, dy));
-                if (neighbor_location_idx == center_location_idx) {
-                    continue;
-                }
-
-                if (d <= location_reach) {
-                    // In the secondary stripe zone, a neighbor with the
-                    // same stripe color is not a location border
-                    let same_stripe = in_secondary_zone
-                        && get_secondary_color_by_index(neighbor_location_idx) == center_secondary_color;
-                    if (!same_stripe) {
-                        result.location_border = true;
-                        location_reach = 0;
-                    }
-                }
-
-                if (d > edge_reach) {
-                    continue;
-                }
-                let neighbor_terrain = terrain_class(get_state_flags_by_index(neighbor_location_idx));
-                if (neighbor_terrain != center_terrain) {
-                    let filled = (center_terrain == TERRAIN_IMPASSABLE || center_terrain == TERRAIN_LAKE)
-                        && get_primary_color_by_index(neighbor_location_idx) == center_primary_color;
-                    if (!filled) {
-                        result.terrain = min(result.terrain, d);
-                    }
-                    if (neighbor_terrain == TERRAIN_WATER || center_terrain == TERRAIN_WATER) {
-                        result.coast = min(result.coast, d);
-                    }
-                    if (center_terrain == TERRAIN_LAND && neighbor_terrain == TERRAIN_UNOWNED) {
-                        result.owner = min(result.owner, d);
-                    }
-                } else if (center_terrain == TERRAIN_LAND) {
-                    let neighbor_value = get_border_color_by_index(neighbor_location_idx);
-                    if (neighbor_value != center_border_color) {
-                        result.owner = min(result.owner, d);
-                    }
-                }
-            }
+        // Walk the ring from its right point, counterclockwise on screen,
+        // turning at each corner
+        var offset = vec2<i32>(d, 0);
+        var step = vec2<i32>(-1, 1);
+        for (var k = 0; k < 4 * d; k++) {
+            let neighbor = resolved_id(p + offset);
+            visit_neighbor(&result, center, neighbor, d, edge_reach, location_reach);
+            offset += step;
+            step = select(step, vec2<i32>(-step.y, step.x), offset.x == 0 || offset.y == 0);
         }
+        location_reach = select(location_reach, 0, result.location_border);
         // The edge search stops at the first ring that decides this
         // pixel's edge: the owner edge on land, the coast on water, and any
         // edge on a lake or on impassable terrain. A closer coast cannot
         // change a land pixel that already has its owner edge, because the
         // band takes the nearer of the two.
         var found = result.terrain <= d;
-        if (center_terrain == TERRAIN_LAND) {
+        if (center.terrain == TERRAIN_LAND) {
             found = result.owner <= d;
-        } else if (center_terrain == TERRAIN_WATER) {
+        } else if (center.terrain == TERRAIN_WATER) {
             found = result.coast <= d;
         }
-        if (found) {
-            edge_reach = 0;
-        }
+        edge_reach = select(edge_reach, 0, found);
     }
 
     return result;
@@ -420,7 +422,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let in_secondary_zone = has_stripes && stripe_blend > 0.5;
 
     let center_terrain = terrain_class(state_flags);
-    let center_border_color = get_border_color_by_index(location_idx);
     let owner_r = i32(uniforms.owner_border_radius);
     let glow_r = i32(uniforms.owner_glow_radius);
     // Unowned land draws no owner, coast or terrain edge of its own
@@ -429,36 +430,24 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let draws_location_borders = uniforms.enable_location_borders != 0u
         && (state_flags & STATE_NO_LOCATION_BORDERS) == 0u
         && (is_focused || center_terrain != TERRAIN_WATER);
-    let around = scan_surroundings(
-        screen,
+    let center = Center(
         location_idx,
         primary_color,
         secondary_color,
-        center_border_color,
+        get_border_color_by_index(location_idx),
         center_terrain,
         in_secondary_zone,
+    );
+    let around = scan_surroundings(
+        screen,
+        center,
         select(0, owner_r + glow_r, draws_edges),
         select(0, i32(uniforms.location_border_radius), draws_location_borders),
     );
 
-    var fill_color: vec4<f32>;
-    // Apply interaction effects after the domain fill is complete.
+    var fill_rgb = unpack_color(primary_color);
     if (has_stripes) {
-        fill_color = create_stripe_pattern(primary_color, secondary_color, stripe_blend);
-    } else {
-        let mapped_rgb = unpack_color(primary_color);
-        fill_color = vec4<f32>(mapped_rgb.r, mapped_rgb.g, mapped_rgb.b, 1.0);
-    }
-
-    let is_water = center_terrain == TERRAIN_WATER;
-    fill_color = vec4<f32>(selection_color(fill_color.rgb, is_dimmed, is_softened, is_water), 1.0);
-    if (is_highlighted) {
-        fill_color = vec4<f32>(
-            min(1.0, fill_color.r + 0.25),
-            min(1.0, fill_color.g + 0.25),
-            min(1.0, fill_color.b + 0.25),
-            1.0
-        );
+        fill_rgb = create_stripe_pattern(primary_color, secondary_color, stripe_blend).rgb;
     }
 
     // Edge treatment, outermost first. An owner border is a dark line on
@@ -471,46 +460,78 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // country's color has no such edge, only its location borders, so it
     // fades into the country with the rest of the grid.
     // Unowned land draws only its location borders: it is not a country.
+    //
+    // The branches only pick the edge. The color work comes after them, one
+    // trip through Oklab for each step that applies.
+    let is_water = center_terrain == TERRAIN_WATER;
+    // Focused border: bright white outline to distinguish the focused tile
+    let outline = is_focused && around.location_border;
+    let owner_line = !outline && center_terrain == TERRAIN_LAND && around.owner <= owner_r;
     let edge_scale = select(1.0, DIMMED_EDGE_SCALE, is_dimmed);
     let edge_strength = uniforms.edge_strength * edge_scale;
     let location_edge = LOCATION_BORDER_DARKEN * uniforms.location_edge_strength * edge_scale;
     let rim = OWNER_GLOW_LIGHTEN * edge_scale;
-    var rgb = fill_color.rgb;
-    if (is_focused && around.location_border) {
-        // Focused border: bright white outline to distinguish the focused tile
-        rgb = vec3<f32>(1.0, 1.0, 1.0);
-    } else if (center_terrain == TERRAIN_WATER) {
+    var tone = TONE_SHIFT;
+    var delta = 0.0;
+    var toned = false;
+    var rim_border = false;
+    if (is_water) {
         if (around.coast <= owner_r) {
-            rgb = shift_lightness(rgb, -COAST_DARKEN * edge_strength);
+            delta = -COAST_DARKEN * edge_strength;
+            toned = true;
         } else if (around.coast <= owner_r + glow_r) {
-            rgb = lighten(rgb, SHALLOWS_LIGHTEN * edge_scale);
+            tone = TONE_RIM;
+            delta = SHALLOWS_LIGHTEN * edge_scale;
+            toned = true;
         }
     } else if (center_terrain == TERRAIN_IMPASSABLE || center_terrain == TERRAIN_LAKE) {
         if (around.terrain <= owner_r) {
-            rgb = shift_lightness(rgb, -IMPASSABLE_EDGE_DARKEN * edge_strength);
+            delta = -IMPASSABLE_EDGE_DARKEN * edge_strength;
+            toned = true;
         } else if (around.location_border) {
-            rgb = shift_lightness(rgb, -location_edge);
+            delta = -location_edge;
+            toned = true;
         }
     } else if (center_terrain == TERRAIN_UNOWNED) {
         if (around.location_border) {
-            rgb = shift_lightness(rgb, -location_edge);
+            delta = -location_edge;
+            toned = true;
         }
-    } else if (around.owner <= owner_r) {
-        // The line is the primary color without stripes or hover. On a
-        // political map that is the owner color, and on a map of values it
-        // is the value.
-        let base = selection_color(unpack_color(primary_color), is_dimmed, is_softened, false);
-        rgb = contrast_line(base, OWNER_BORDER_DARKEN * edge_strength);
-    } else {
-        if (min(around.owner, around.coast) <= owner_r + glow_r) {
-            rgb = lighten(rgb, rim);
-        }
-        if (around.location_border) {
-            rgb = shift_lightness(rgb, -location_edge);
+    } else if (owner_line) {
+        tone = TONE_LINE;
+        delta = -(OWNER_BORDER_DARKEN * edge_strength);
+        toned = true;
+    } else if (min(around.owner, around.coast) <= owner_r + glow_r) {
+        tone = TONE_RIM;
+        delta = rim;
+        toned = true;
+        // A location border crosses the rim
+        rim_border = around.location_border;
+    } else if (around.location_border) {
+        delta = -location_edge;
+        toned = true;
+    }
+
+    // The owner line is the primary color without stripes or hover. On a
+    // political map that is the owner color, and on a map of values it is
+    // the value.
+    var rgb = select(fill_rgb, unpack_color(primary_color), owner_line);
+    let selected = is_dimmed || is_softened;
+    let hovered = is_highlighted && !owner_line;
+    rgb = select(rgb, highlight(rgb), hovered && !selected);
+
+    if (selected) {
+        rgb = oklab_to_srgb(selection_lab(srgb_to_oklab(rgb), is_dimmed, is_water));
+        if (hovered) {
+            rgb = highlight(rgb);
         }
     }
-    let output_color = vec4<f32>(rgb, fill_color.a);
-
-    // Return color directly to render target
-    return output_color;
+    if (toned) {
+        rgb = oklab_to_srgb(edge_tone(srgb_to_oklab(rgb), delta, tone));
+    }
+    if (rim_border) {
+        rgb = oklab_to_srgb(edge_tone(srgb_to_oklab(rgb), -location_edge, TONE_SHIFT));
+    }
+    rgb = select(rgb, vec3<f32>(1.0), outline);
+    return vec4<f32>(rgb, 1.0);
 }
