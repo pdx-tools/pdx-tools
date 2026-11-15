@@ -4,8 +4,17 @@ import type { EChartsOption } from "@/components/viz";
 import { chartInk, neutralFill } from "@/components/viz/echartsTheme";
 import { GameButton } from "../../components";
 
-/** The space around the plot of a scatter */
-export const SCATTER_GRID = { left: 56, right: 24, top: 32, bottom: 44 };
+/**
+ * The space around the plot of a scatter. The plot does not move for long
+ * tick text, because the box zoom and the labels find it by these numbers.
+ */
+export const SCATTER_GRID = {
+  left: 56,
+  right: 24,
+  top: 32,
+  bottom: 44,
+  outerBoundsMode: "none",
+} as const;
 
 /** A drag must be this many px wide and high to zoom */
 const MIN_BOX = 8;
