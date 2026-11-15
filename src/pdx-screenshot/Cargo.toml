@@ -9,7 +9,6 @@ workspace = true
 
 [features]
 eu4 = [
-    "dep:bytemuck",
     "dep:eu4game",
     "dep:eu4game-data",
     "dep:eu4save",
@@ -39,7 +38,6 @@ eu5 = [
 ]
 
 [dependencies]
-bytemuck = { workspace = true, optional = true }
 eu4game = { workspace = true, optional = true, default-features = false, features = ["embedded", "zstd_c"] }
 eu4game-data = { workspace = true, optional = true, default-features = false, features = ["embedded", "embedded-screenshot"] }
 eu4save = { workspace = true, optional = true, default-features = false, features = ["zstd_c"] }

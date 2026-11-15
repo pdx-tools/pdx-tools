@@ -9,7 +9,7 @@ use crate::eu4::data::{
 use anyhow::Context;
 use eu4save::{CountryTag, ProvinceId};
 use eu5save::hash::FnvBuildHasher;
-use pdx_map::R16;
+use pdx_map::{HemisphereLength, R16, WorldRows, WorldTiles};
 use pdx_zstd::zstd_tee::ZstdTee;
 use rawbmp::{Pixels, Rgb};
 use regex::Regex;
@@ -1136,13 +1136,13 @@ where
     }
     color_index_writer.flush()?;
 
-    generate_r16_province_textures(fs, &definitions, &map_dir)?;
+    generate_province_tiles(fs, &definitions, &map_dir)?;
 
     Ok(())
 }
 
-#[tracing::instrument(name = "eu4.generate_r16_province_textures", level = "info", skip_all)]
-fn generate_r16_province_textures<P>(
+#[tracing::instrument(name = "eu4.generate_province_tiles", level = "info", skip_all)]
+fn generate_province_tiles<P>(
     fs: &P,
     definitions: &[(&Rgb, &u16)],
     map_dir: &Path,
@@ -1169,7 +1169,11 @@ where
 
     let width = provinces_bmp.dib_header.width as usize;
     let height = provinces_bmp.dib_header.height as usize;
-    assert!(width.is_multiple_of(2), "provinces.bmp width must be even");
+    // The tiles do not record their size, and screenshots draw this one
+    anyhow::ensure!(
+        (width, height) == (5632, 2048),
+        "provinces.bmp is {width}x{height}, but screenshots expect 5632x2048"
+    );
     let split_width = width / 2;
 
     let mut west = vec![R16::new(0); split_width * height];
@@ -1201,16 +1205,13 @@ where
         }
     }
 
-    for (filename, data) in [
-        ("provinces-1.r16.zst", west.as_slice()),
-        ("provinces-2.r16.zst", east.as_slice()),
-    ] {
-        let mut file = BufWriter::new(std::fs::File::create(map_dir.join(filename))?);
-        let mut encoder = pdx_zstd::Encoder::new(&mut file, 7)?;
-        encoder.write_all(bytemuck::cast_slice(data))?;
-        encoder.finish()?;
-        file.flush()?;
-    }
+    let rows = WorldRows::new(0, &west, &east, HemisphereLength::new(split_width as u32));
+    let bytes = WorldTiles::from_rows(rows).to_le_bytes();
+    let mut file = BufWriter::new(std::fs::File::create(map_dir.join("provinces.tiles.zst"))?);
+    let mut encoder = pdx_zstd::Encoder::new(&mut file, 7)?;
+    encoder.write_all(&bytes)?;
+    encoder.finish()?;
+    file.flush()?;
 
     Ok(())
 }

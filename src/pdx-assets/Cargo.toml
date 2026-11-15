@@ -9,7 +9,6 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 attohttpc = { workspace = true }
-bytemuck = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 csv = { workspace = true }
 eu4-achievements = { workspace = true }

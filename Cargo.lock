@@ -2965,7 +2965,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "attohttpc",
- "bytemuck",
  "clap",
  "csv",
  "eu4-achievements",
@@ -3055,7 +3054,6 @@ dependencies = [
 name = "pdx-screenshot"
 version = "0.1.0"
 dependencies = [
- "bytemuck",
  "eu4game",
  "eu4game-data",
  "eu4save",

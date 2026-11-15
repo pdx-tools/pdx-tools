@@ -196,17 +196,8 @@ pub struct BundleMap {
 }
 
 /// Name of the bundle entry that holds the [`WorldTiles`], as
-/// [`tiles_entry_bytes`] writes them
+/// [`WorldTiles::to_le_bytes`] writes them
 pub const TILES_ENTRY: &str = "locations.tiles";
-
-/// The bytes of the tiles entry: the words of the tiles, little endian
-pub fn tiles_entry_bytes(tiles: &WorldTiles) -> Vec<u8> {
-    tiles
-        .words()
-        .iter()
-        .flat_map(|word| word.to_le_bytes())
-        .collect()
-}
 
 impl<R> OptimizedMapBundle<R>
 where
