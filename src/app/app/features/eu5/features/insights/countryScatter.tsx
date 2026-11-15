@@ -553,7 +553,7 @@ export function CountryScatter<T>({
       />
       {unnamedPlayers ? (
         <p className="mt-1 text-[12px] text-game-ink-500">
-          Colored dots are players. Hover a dot to see its name.
+          Players and named countries have their game color. Hover a dot to see its name.
         </p>
       ) : null}
       <LogFloorNote
