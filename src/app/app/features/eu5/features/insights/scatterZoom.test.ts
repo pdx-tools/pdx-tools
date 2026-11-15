@@ -26,6 +26,7 @@ describe("logZoom", () => {
     expect(logZoom(66.5, 3780)).toEqual({ min: 50, max: 5000 });
     expect(logZoom(100, 1000)).toEqual({ min: 100, max: 1000 });
     expect(logZoom(10, 10.000000005)).toEqual({ min: 10, max: 10.000000005 });
+    expect(logZoom(1e307, 1.1e308)).toEqual({ min: 1e307, max: 1.1e308 });
   });
 });
 

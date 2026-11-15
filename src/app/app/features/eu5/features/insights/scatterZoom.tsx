@@ -51,7 +51,8 @@ export function logZoom(lo: number, hi: number): { min: number; max: number } {
   const min = tidy(([5, 2, 1].find((m) => m * down <= lo * (1 + 1e-9)) ?? 1) * down);
   const max = tidy(([1, 2, 5, 10].find((m) => m * up >= hi * (1 - 1e-9)) ?? 10) * up);
   // A box too small to round keeps its own ends.
-  return min < max && min <= lo && hi <= max ? { min, max } : { min: lo, max: hi };
+  const holds = min > 0 && Number.isFinite(max) && min < max && min <= lo && hi <= max;
+  return holds ? { min, max } : { min: lo, max: hi };
 }
 
 interface AxisOption {
