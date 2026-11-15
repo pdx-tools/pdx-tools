@@ -46,11 +46,18 @@ export function logDomain(values: Iterable<number>): LogDomain {
   const positive = all.filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
   const low = positive[Math.floor(positive.length * UNDER_FLOOR)];
   const largest = positive.at(-1);
-  const floor = low === undefined ? 1 : 10 ** Math.floor(Math.log10(low));
+  const floor = low === undefined ? 1 : powerAtOrUnder(low);
   const onFloor = all.filter((v) => underFloor(v, floor)).length;
   // The axis spans one decade or more, so that it has two ticks.
   const ceiling = Math.max((largest ?? 0) * LOG_HEADROOM, floor * 10);
   return { floor, ceiling, onFloor };
+}
+
+/** The largest power of 10 at or under a value above zero */
+function powerAtOrUnder(value: number): number {
+  const power = 10 ** Math.floor(Math.log10(value));
+  // log10 of a value just under a power of 10 can round up to it.
+  return power > value ? power / 10 : power;
 }
 
 function underFloor(value: number, floor: number): boolean {

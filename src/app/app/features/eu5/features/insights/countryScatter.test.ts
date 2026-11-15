@@ -70,6 +70,11 @@ describe("logDomain", () => {
     expect(logDomain([0.3, ...values])).toMatchObject({ floor: 0.1, onFloor: 2 });
   });
 
+  it("keeps a value just under a power of 10 over the floor", () => {
+    const domain = logDomain([0.8 + 513.8 + 485.4, 2000]);
+    expect(domain).toMatchObject({ floor: 100, onFloor: 0 });
+  });
+
   it("spans one decade or more, so that the axis has two ticks", () => {
     const domain = logDomain([20, 50]);
     expect(domain).toMatchObject({ floor: 10, ceiling: 100 });
