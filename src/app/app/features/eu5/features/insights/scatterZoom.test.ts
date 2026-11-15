@@ -7,6 +7,13 @@ describe("linearZoom", () => {
     expect(linearZoom(22.7, 26.2)).toEqual({ min: 22.5, max: 26.5 });
   });
 
+  it("keeps the ends of a box too small to round", () => {
+    expect(linearZoom(1.0000000000001, 1.0000000000002)).toEqual({
+      min: 1.0000000000001,
+      max: 1.0000000000002,
+    });
+  });
+
   it("does not go down to 0 from a box above it", () => {
     expect(linearZoom(497, 6300).min).toBeGreaterThan(0);
     expect(linearZoom(0, 37)).toEqual({ min: 0, max: 40 });
@@ -33,6 +40,12 @@ describe("zoomedAxes", () => {
   it("keeps a wide zoom of a log axis log", () => {
     const axes = zoomedAxes({ x: log, y: value }, { x: [3, 4870], y: [0, 40] });
     expect(axes.x).toMatchObject({ type: "log", name: log.name, min: 2, max: 5000 });
+  });
+
+  it("keeps a log axis log when the box has its floor", () => {
+    const floored = { ...log, min: 10 };
+    const axes = zoomedAxes({ x: floored, y: value }, { x: [10, 190], y: [0, 40] });
+    expect(axes.x.type).toBe("log");
   });
 
   it("keeps two log axes on one kind of scale", () => {

@@ -25,16 +25,21 @@ const tidy = (value: number) => Number(value.toPrecision(12));
  * does not go down to 0, because the box left out the dots there.
  */
 export function linearZoom(lo: number, hi: number): { min: number; max: number } {
-  const range = Math.max(hi - lo, Number.MIN_VALUE);
+  const range = hi - lo;
   const slack = range / 10;
-  for (let decade = 10 ** Math.ceil(Math.log10(range)); ; decade /= 10) {
+  const top = 10 ** Math.ceil(Math.log10(range));
+  // A step at or under the slack always fits, so four decades are enough.
+  for (let decade = top; range > 0 && decade >= top / 1e4; decade /= 10) {
     for (const m of [5, 2.5, 2, 1]) {
       const step = m * decade;
       const min = tidy(Math.floor(lo / step) * step);
       const max = tidy(Math.ceil(hi / step) * step);
-      if (lo - min <= slack && max - hi <= slack && !(lo > 0 && min <= 0)) return { min, max };
+      const fits = min <= lo && lo - min <= slack && hi <= max && max - hi <= slack;
+      if (fits && min < max && !(lo > 0 && min <= 0)) return { min, max };
     }
   }
+  // A box too small to round keeps its own ends.
+  return { min: lo, max: hi };
 }
 
 /** The ends of a log axis zoomed to `lo`..`hi`: 1, 2 or 5 times a power of 10 */
@@ -51,21 +56,27 @@ export function logZoom(lo: number, hi: number): { min: number; max: number } {
 interface AxisOption {
   type?: string;
   name?: string;
+  min?: unknown;
   axisLabel?: object;
 }
 
 /**
  * The axes of a scatter zoomed to a box. A log axis stays log only when the
- * box spans a ratio of 30 or more. Two log axes, which share one scale,
- * both stay log or both become linear, so that a diagonal stays straight.
+ * box spans a ratio of 30 or more, or has the floor. Two log axes, which
+ * share one scale, both stay log or both become linear, so that a diagonal
+ * stays straight.
  */
 export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
   axes: { x: X; y: Y },
   range: { x: [number, number]; y: [number, number] },
 ): { x: X; y: Y } {
-  const wide = ([lo, hi]: [number, number]) => lo > 0 && hi / lo >= LOG_ZOOM_RATIO;
-  let logX = axes.x.type === "log" && wide(range.x);
-  let logY = axes.y.type === "log" && wide(range.y);
+  // A log axis has values at 0 or under on its floor. A box with the floor
+  // stays log, because a linear axis would show them at the floor's value.
+  const staysLog = (axis: AxisOption, [lo, hi]: [number, number]) =>
+    axis.type === "log" &&
+    (hi / lo >= LOG_ZOOM_RATIO || (typeof axis.min === "number" && lo <= axis.min * (1 + 1e-9)));
+  let logX = staysLog(axes.x, range.x);
+  let logY = staysLog(axes.y, range.y);
   if (axes.x.type === "log" && axes.y.type === "log") logX = logY = logX || logY;
 
   const zoom = <A extends AxisOption>(axis: A, [lo, hi]: [number, number], log: boolean): A => {
