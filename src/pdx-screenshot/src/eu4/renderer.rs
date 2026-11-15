@@ -6,8 +6,8 @@ use pdx_map::{
 use super::save::ParsedSave;
 use super::viewport;
 use super::{PatchScreenshotAssets, ScreenshotError};
+use pdx_map::WorldPoint;
 use pdx_map::layers::DateLayer;
-use pdx_map::{WorldPoint, WorldRows};
 
 /// Render a screenshot from parsed save data
 #[tracing::instrument(
@@ -126,14 +126,9 @@ pub async fn render_screenshot(
     } else {
         output_size
     };
-    let rows = WorldRows::new(
-        0,
-        &patch_assets.west_r16,
-        &patch_assets.east_r16,
-        viewport::EU4_HEMISPHERE_SIZE.width_length(),
-    );
-    let mut renderer = HeadlessMapRenderer::new(gpu.clone(), gpu.create_world_textures(rows))
-        .map_err(ScreenshotError::CreateRenderer)?;
+    let tiles = gpu.upload_world_tiles(&patch_assets.tiles);
+    let mut renderer =
+        HeadlessMapRenderer::new(gpu.clone(), tiles).map_err(ScreenshotError::CreateRenderer)?;
 
     let date_scale = ((map_image_size.height / 400).max(1)) * 2;
 

@@ -1,10 +1,12 @@
 mod hemisphere;
 mod ingest;
 mod spatial;
+mod tiles;
 mod topology;
 
 pub use hemisphere::Hemisphere;
 pub use spatial::{Aabb, LocationBitset, SpatialIndex, SpatialIndexBuilder};
+pub use tiles::{InvalidTiles, WorldTiles};
 pub use topology::TopologyIndex;
 
 use crate::{HemisphereLength, R16, R16Palette, WorldLength, WorldPoint, WorldSize};

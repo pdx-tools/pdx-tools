@@ -100,7 +100,8 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
 
     // Zero-copy: Arc::clone just increments ref count (no data duplication)
     let world = game_bundle.world();
-    let textures = pipeline_components.create_world_textures(world.as_rows());
+    let tiles =
+        pipeline_components.upload_world_tiles(&pdx_map::WorldTiles::from_rows(world.as_rows()));
 
     let map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
     let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();
@@ -125,7 +126,7 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
         map_app,
         &world,
         &pipeline_components,
-        textures,
+        tiles,
         save_date,
         width,
         height,
@@ -140,7 +141,7 @@ async fn render_viewport(
     mut map_app: Eu5Workspace<'_>,
     world: &World,
     pipeline_components: &'_ pdx_map::GpuContext,
-    textures: pdx_map::WorldTextures,
+    tiles: pdx_map::GpuWorldTiles,
     save_date: String,
     width: u32,
     height: u32,
@@ -154,7 +155,7 @@ async fn render_viewport(
         (0, 0) // Full world starts at origin
     };
 
-    let mut renderer = pdx_map::HeadlessMapRenderer::new(pipeline_components.clone(), textures)?;
+    let mut renderer = pdx_map::HeadlessMapRenderer::new(pipeline_components.clone(), tiles)?;
 
     map_app.set_map_mode(MapMode::Political);
     renderer.update_locations(map_app.location_arrays());

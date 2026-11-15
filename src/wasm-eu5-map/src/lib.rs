@@ -1,5 +1,6 @@
 use eu5app::{
-    GroupId, GroupingTable, JUMP_ZOOM, OpeningView, game_data::OptimizedMapBundle,
+    GroupId, GroupingTable, JUMP_ZOOM, OpeningView,
+    game_data::{BundleMap, OptimizedMapBundle},
     should_highlight_individual_locations,
 };
 use eu5save::hash::FnvHashSet;
@@ -89,26 +90,23 @@ impl std::fmt::Debug for Eu5WasmMapRenderer {
 
 #[wasm_bindgen]
 impl Eu5WasmMapRenderer {
-    /// Start the map from a map bundle. The bundle is read a band of rows
-    /// at a time into the GPU textures and the location index, so the whole
-    /// map is never in memory.
+    /// Start the map from a map bundle: its tiles go to the GPU, and the
+    /// location index is built from them.
     #[wasm_bindgen]
     pub fn load(surface: Eu5CanvasSurface, map_bundle: &[u8]) -> Result<Self, JsError> {
         let bundle = OptimizedMapBundle::open(map_bundle)
             .map_err(|e| JsError::new(&format!("Failed to open map bundle: {e}")))?;
-        let mut textures = surface
-            .pipeline_components
-            .world_texture_writer(eu5app::hemisphere_size());
-        let spatial_index = bundle
-            .build_spatial_index(|rows| textures.write_rows(rows))
+        let BundleMap {
+            tiles,
+            index: spatial_index,
+        } = bundle
+            .load()
             .map_err(|e| JsError::new(&format!("Failed to load map: {e}")))?;
+        let tiles = surface.pipeline_components.upload_world_tiles(&tiles);
 
         let display: CanvasDimensions = surface.display.into();
-        let renderer = SurfaceMapRenderer::new(
-            surface.pipeline_components,
-            textures.finish(),
-            display.physical_size(),
-        );
+        let renderer =
+            SurfaceMapRenderer::new(surface.pipeline_components, tiles, display.physical_size());
         let map_size = renderer.hemisphere_size().world();
 
         // Initialize input controller with map size
