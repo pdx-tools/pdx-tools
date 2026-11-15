@@ -252,6 +252,7 @@ export type SaveQueries = Pick<
   | "getControlInsight"
   | "getPoliticalWorldScoreboard"
   | "getPoliticalDefaultCountryAnchor"
+  | "getSelectionTarget"
   | "searchEntities"
   | "getCountryIdentity"
   | "findCountry"

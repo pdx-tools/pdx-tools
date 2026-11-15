@@ -120,6 +120,24 @@ export const chartText = {
 /** An outline in the surface colour, so that a label over a dot stays clear. */
 export const labelHalo = { textBorderColor: chartInk.surface, textBorderWidth: 2 } as const;
 
+/**
+ * The edge around a dot in a game color, the same as `--game-rim`. A dark
+ * color stays visible on the plot, and the color does not change.
+ */
+export const dotRim = { borderColor: "rgba(255, 255, 255, 0.42)", borderWidth: 1 } as const;
+
+let measureContext: CanvasRenderingContext2D | null | undefined;
+
+/** The width in px of a label in the chart text */
+export function chartTextWidth(text: string): number {
+  if (typeof document !== "undefined") {
+    measureContext ??= document.createElement("canvas").getContext("2d");
+  }
+  if (!measureContext) return text.length * chartText.fontSize * 0.6;
+  measureContext.font = `${chartText.fontSize}px ${chartText.fontFamily}`;
+  return measureContext.measureText(text).width;
+}
+
 /** The hairlines of a chart: a grid line at each tick, and the axis line. */
 const chartLine = { grid: "rgba(255,255,255,0.06)", axis: "rgba(255,255,255,0.1)" } as const;
 

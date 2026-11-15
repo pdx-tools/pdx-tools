@@ -1,7 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { chartInk, chartText, chartTooltip, neutralMark } from "@/components/viz/echartsTheme";
+import {
+  chartInk,
+  chartText,
+  chartTextWidth,
+  chartTooltip,
+  neutralMark,
+} from "@/components/viz/echartsTheme";
 import type { DistributionBucket, LocationDistribution } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import { formatExact, formatMetric, formatTick } from "../../numberFormatting";
@@ -15,18 +21,6 @@ const LABEL_ROW = 14;
 /** A bucket of one value, such as the zero bucket of a log ladder, is one number. */
 function formatBucket(b: DistributionBucket): string {
   return b.lo === b.hi ? formatExact(b.lo) : `${formatExact(b.lo)} to ${formatExact(b.hi)}`;
-}
-
-let measureContext: CanvasRenderingContext2D | null | undefined;
-
-/** The width in px of a label in the number text of a chart */
-function labelWidth(text: string): number {
-  if (typeof document !== "undefined") {
-    measureContext ??= document.createElement("canvas").getContext("2d");
-  }
-  if (!measureContext) return text.length * chartText.fontSize * 0.6;
-  measureContext.font = `${chartText.fontSize}px ${chartText.fontFamily}`;
-  return measureContext.measureText(text).width;
 }
 
 /** The width of the element that gets the ref, also after it changes */
@@ -64,8 +58,8 @@ export function LocationDistributionChart({ distribution, title }: Props) {
     p90: p90Align,
     stacked,
   } = histogramLabels({
-    median: { at: at(medianCoord), width: labelWidth(medianName) },
-    p90: { at: at(p90Coord), width: labelWidth(p90Name) },
+    median: { at: at(medianCoord), width: chartTextWidth(medianName) },
+    p90: { at: at(p90Coord), width: chartTextWidth(p90Name) },
     plotWidth: Math.max(0, chartWidth - GUTTER.left - GUTTER.right),
     gutter: GUTTER,
   });

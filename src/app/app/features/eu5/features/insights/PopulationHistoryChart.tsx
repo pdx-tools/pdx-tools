@@ -28,11 +28,9 @@ const HISTORY_TOP_COUNT = 10;
 export function PopulationHistoryChart({
   countries,
   scopeIsEmpty,
-  backLabel,
 }: {
   countries: PopulationHistorySeries[];
   scopeIsEmpty: boolean;
-  backLabel: string;
 }) {
   const saveDate = useEu5SaveDate();
 
@@ -107,7 +105,6 @@ export function PopulationHistoryChart({
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel,
     getTarget: (params) => {
       const c = params.seriesIndex != null ? filtered[params.seriesIndex] : null;
       return c

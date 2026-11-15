@@ -1,6 +1,5 @@
 import { useEffectEvent } from "react";
 import type * as echarts from "echarts/core";
-import type { EntityKind } from "@/wasm/wasm_eu5";
 import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
 import { useJumpToEntity } from "../../useJumpToEntity";
@@ -12,11 +11,17 @@ type EntityChartTarget = {
   label: string;
 };
 
-export function useEu5EntityChartClick(opts: {
-  kind: EntityKind;
-  backLabel: string;
-  getTarget: (params: echarts.ECElementEvent) => EntityChartTarget | null | undefined;
-}) {
+type GetTarget = (params: echarts.ECElementEvent) => EntityChartTarget | null | undefined;
+
+/**
+ * A click on a country selects it, as the map does: Shift, Ctrl or Cmd adds
+ * it, and Alt removes it. A click on a market opens its profile.
+ */
+export function useEu5EntityChartClick(
+  opts:
+    | { kind: "country"; getTarget: GetTarget }
+    | { kind: "market"; backLabel: string; getTarget: GetTarget },
+) {
   const nav = usePanelNav();
   const engine = useEu5Engine();
   const jumpToEntity = useJumpToEntity();
@@ -26,10 +31,20 @@ export function useEu5EntityChartClick(opts: {
     const target = opts.getTarget(params);
     if (target == null) return;
     const ev = params.event?.event as MouseEvent | undefined;
+    const kind = opts.kind === "country" ? "countries" : "markets";
 
     if (ev?.altKey) {
-      const kind = opts.kind === "country" ? "countries" : "markets";
       void engine.commands.changeSelection("remove", kind, [target.id]);
+      return;
+    }
+
+    if (opts.kind === "country") {
+      if (ev?.shiftKey || ev?.ctrlKey || ev?.metaKey) {
+        void engine.commands.changeSelection("add", kind, [target.id]);
+      } else {
+        void engine.commands.changeSelection("replace", kind, [target.id]);
+        jumpToEntity(target.anchorLocationIdx);
+      }
       return;
     }
 

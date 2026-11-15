@@ -14,6 +14,7 @@ import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
+  dotRim,
   chartInk,
   chartText,
   chartTooltip,
@@ -42,6 +43,7 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { logAxis, logDomain, logPosition, LogFloorNote } from "./countryScatter";
 import { useEu5SaveDate } from "../../store/eu5Store";
 import { EmptyNote, GameSegmented, SectionTitle, StatItem } from "../../components";
 
@@ -1126,26 +1128,18 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
   );
 
   const maxTaken = useMemo(() => Math.max(1, ...markets.map((m) => m.totalTaken)), [markets]);
+  const domain = useMemo(() => logDomain(markets.map((m) => m.marketValue)), [markets]);
 
   const option = useMemo((): EChartsOption => {
     return {
-      grid: { left: 56, right: 60, top: 32, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Market Value",
-        nameLocation: "middle",
-        nameGap: 40,
-        min: 0,
-      },
+      grid: { left: 56, right: 24, top: 32, bottom: 44 },
+      xAxis: { ...logAxis(domain), name: "Market Value", nameLocation: "middle", nameGap: 28 },
       yAxis: {
         type: "value",
         ...yAxisName("Shortage Pressure ($)"),
         min: 0,
       },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
-      ],
+      dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0 }],
       tooltip: {
         ...chartTooltip,
         trigger: "item",
@@ -1161,7 +1155,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
       series: [
         {
           type: "scatter",
-          data: markets.map((m) => [m.marketValue, m.shortagePressure]),
+          data: markets.map((m) => [logPosition(m.marketValue, domain), m.shortagePressure]),
           symbolSize: (_val, params) => {
             const d = markets[params.dataIndex];
             if (!d) return 6;
@@ -1169,12 +1163,14 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
             return Math.max(6, Math.min(36, scaled));
           },
           itemStyle: {
+            ...dotRim,
             color: (params) => {
               const d = markets[params.dataIndex];
               return d?.market.colorHex ?? seriesColor(0);
             },
             opacity: 0.75,
           },
+          labelLayout: { hideOverlap: true },
           label: {
             show: true,
             formatter: (params) => {
@@ -1192,7 +1188,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         },
       ],
     };
-  }, [markets, topMarkets, maxTaken]);
+  }, [markets, topMarkets, maxTaken, domain]);
 
   const handleInit = useEu5EntityChartClick({
     kind: "market",
@@ -1210,5 +1206,15 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
     },
   });
 
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
+  return (
+    <>
+      <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />
+      <LogFloorNote
+        count={domain.onFloor}
+        noun={{ one: "market", many: "markets" }}
+        what="value"
+        negative={domain.hasNegative}
+      />
+    </>
+  );
 }

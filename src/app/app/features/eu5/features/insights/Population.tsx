@@ -240,7 +240,6 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: "Population",
     getTarget: (params) => {
       const idx = params.dataIndex;
       const country = idx == null ? null : rows[idx];
