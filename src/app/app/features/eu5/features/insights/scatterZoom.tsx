@@ -7,8 +7,11 @@ import { GameButton } from "../../components";
 /** The space around the plot of a scatter */
 export const SCATTER_GRID = { left: 56, right: 24, top: 32, bottom: 44 };
 
-/** A drag must be this many px wide and high to zoom. A smaller one is a click. */
+/** A drag must be this many px wide and high to zoom */
 const MIN_BOX = 8;
+
+/** ECharts takes a move of this many px or less from the press as a click */
+const CLICK_SLOP = 4;
 
 /** A name of a log axis says so, because the shape of the dots depends on it. */
 const LOG_SUFFIX = ", log scale";
@@ -221,7 +224,7 @@ export function useBoxZoom(option: ScatterOption) {
         }
         const at = local(ev);
         if (!drag.end) {
-          if (Math.hypot(at[0] - drag.start[0], at[1] - drag.start[1]) < MIN_BOX / 2) return;
+          if (Math.hypot(at[0] - drag.start[0], at[1] - drag.start[1]) <= CLICK_SLOP) return;
           // A drag: the chart keeps the pointer until the release.
           dom.setPointerCapture(ev.pointerId);
           chart.dispatchAction({ type: "hideTip" });
