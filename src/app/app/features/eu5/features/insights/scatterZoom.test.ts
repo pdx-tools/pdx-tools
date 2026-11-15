@@ -40,6 +40,12 @@ describe("zoomedAxes", () => {
     expect(axes.y).toMatchObject({ type: "value", min: 10, max: 40 });
   });
 
+  it("zooms a linear axis no closer than its tick text can show", () => {
+    const axes = zoomedAxes({ x: value, y: value }, { x: [1_231_000, 1_233_000], y: [0, 40] });
+    const { min, max } = axes.x as unknown as { min: number; max: number };
+    expect(max - min).toBeGreaterThanOrEqual(0.05 * 1_233_000);
+  });
+
   it("keeps a wide zoom of a log axis log", () => {
     const axes = zoomedAxes({ x: log, y: value }, { x: [3, 4870], y: [0, 40] });
     expect(axes.x).toMatchObject({ type: "log", name: log.name, min: 2, max: 5000 });

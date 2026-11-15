@@ -105,7 +105,10 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
     const name = axis.name?.endsWith(LOG_SUFFIX)
       ? axis.name.slice(0, -LOG_SUFFIX.length)
       : axis.name;
-    return { ...axis, type: "value", name, ...linearZoom(lo, hi), axisLabel: label };
+    // Tick text has three digits, so a zoom spans at least 5% of its values.
+    const extra = Math.max(0, 0.05 * Math.max(Math.abs(lo), Math.abs(hi)) - (hi - lo)) / 2;
+    const ends = linearZoom(lo - extra, hi + extra);
+    return { ...axis, type: "value", name, ...ends, axisLabel: label };
   };
   return { x: zoom(axes.x, range.x, logX), y: zoom(axes.y, range.y, logY) };
 }
