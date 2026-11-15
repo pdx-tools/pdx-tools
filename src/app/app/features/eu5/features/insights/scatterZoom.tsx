@@ -81,15 +81,13 @@ export function useBoxZoom(option: unknown) {
 
     const noSelect = (ev: Event) => ev.preventDefault();
 
-    /** Ends the drag, and gives the box that it drew */
+    /** Ends the drag with no zoom */
     const stop = () => {
-      const drawn = drag?.end ? boxOf(drag.start, drag.end) : null;
       if (drag && dom.hasPointerCapture(drag.pointerId)) dom.releasePointerCapture(drag.pointerId);
       drag = null;
       if (box && !chart.isDisposed()) zr.remove(box);
       box = null;
       document.removeEventListener("selectstart", noSelect);
-      return drawn;
     };
 
     const zoomTo = (drawn: ReturnType<typeof boxOf>) => {
@@ -121,8 +119,13 @@ export function useBoxZoom(option: unknown) {
       target: HTMLElement | Document = dom,
     ) => target.addEventListener(type, handler as EventListener, { signal: listeners.signal });
 
+    // A new press, or a switch to another window, ends a drag whose release
+    // did not come, so that no other chart's drag takes its moves.
+    document.addEventListener("pointerdown", stop, { capture: true, signal: listeners.signal });
+    window.addEventListener("blur", stop, { signal: listeners.signal });
+
     on("pointerdown", (ev) => {
-      if (drag || !ev.isPrimary || ev.button !== 0) return;
+      if (!ev.isPrimary || ev.button !== 0) return;
       const at = local(ev);
       const plot = plotOf(chart);
       if (at[0] < plot.left || at[0] > plot.right || at[1] < plot.top || at[1] > plot.bottom) {
@@ -174,8 +177,10 @@ export function useBoxZoom(option: unknown) {
       "pointerup",
       (ev) => {
         if (drag?.pointerId !== ev.pointerId) return;
-        const drawn = stop();
-        if (drawn && drawn.width >= MIN_BOX && drawn.height >= MIN_BOX) zoomTo(drawn);
+        // The box goes to the release, which can come with no move before it.
+        const drawn = boxOf(drag.start, clamp(local(ev)));
+        stop();
+        if (drawn.width >= MIN_BOX && drawn.height >= MIN_BOX) zoomTo(drawn);
       },
       document,
     );
