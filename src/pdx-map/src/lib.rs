@@ -37,9 +37,8 @@ pub use image::{Strip, StripPlan};
 pub use interaction::{Clock, InteractionController, KeyboardKey, MouseButton, default_clock};
 #[cfg(feature = "render")]
 pub use renderer::{
-    ColorIdReadback, GpuContext, GpuSurfaceContext, HeadlessMapRenderer, LayerId, MapTexture,
-    QueuedWorkFuture, RenderLayer, ScreenshotRenderer, SurfaceMapRenderer, WorldTextureWriter,
-    WorldTextures,
+    GpuContext, GpuSurfaceContext, HeadlessMapRenderer, LayerId, MapTexture, QueuedWorkFuture,
+    RenderLayer, ScreenshotRenderer, SurfaceMapRenderer, WorldTextureWriter, WorldTextures,
 };
 #[cfg(feature = "render")]
 pub use wgpu;
