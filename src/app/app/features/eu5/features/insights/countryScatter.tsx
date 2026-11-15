@@ -300,6 +300,16 @@ function useScatterMarks(): ScatterMarks {
 
 const GRID = { left: 56, right: 24, top: 32, bottom: 44 };
 
+/**
+ * Zoom with Ctrl and the wheel, so that the wheel alone scrolls the panel.
+ */
+export const SCATTER_ZOOM = {
+  type: "inside",
+  xAxisIndex: 0,
+  yAxisIndex: 0,
+  zoomOnMouseWheel: "ctrl",
+} as const;
+
 export type SeriesOption = Exclude<NonNullable<EChartsOption["series"]>, readonly unknown[]>;
 type LabelLayoutParams = {
   dataIndex?: number;
@@ -332,7 +342,9 @@ function dotLabelLayout<T>(
       .filter(({ dot }) => dot.labeled)
       .map(({ dot, index }) => [index, chartTextWidth(dot.point.country.country.name)]),
   );
-  let layout: Map<number, { center: [number, number]; place: LabelRect | null }> | null = null;
+  let layout: Map<number, LabelRect | null> | null = null;
+  // The labels that this pass of the layout has seen.
+  let seen = new Set<number>();
 
   const find = () => {
     if (!chart) return null;
@@ -345,30 +357,28 @@ function dotLabelLayout<T>(
     const seats = seated.map(({ dot, index }) => {
       const pixel: unknown = chart.convertToPixel({ seriesIndex }, dot.value);
       const [x = NaN, y = NaN] = Array.isArray(pixel) ? (pixel as number[]) : [];
-      const center: [number, number] = [x, y];
       const half = dot.symbolSize / 2;
       const rect = { x: x - half, y: y - half, width: dot.symbolSize, height: dot.symbolSize };
       // A dot out of the plot after a zoom has no label.
       const shown = contains(plot, { x, y, width: 0, height: 0 });
-      return { index, center, rect, width: shown ? widths.get(index) : undefined };
+      return { index, rect, width: shown ? widths.get(index) : undefined };
     });
     const places = placeLabels(seats, plot);
-    return new Map(
-      seats.map((seat, i) => [seat.index, { center: seat.center, place: places[i]! }]),
-    );
+    return new Map(seats.map((seat, i) => [seat.index, places[i]!]));
   };
 
   return (params: LabelLayoutParams) => {
     const index = params.dataIndex ?? -1;
     const x = params.rect.x + params.rect.width / 2;
     const y = params.rect.y + params.rect.height / 2;
-    let seat = layout?.get(index);
-    // A dot that moved starts a new layout.
-    if (!seat || Math.hypot(seat.center[0] - x, seat.center[1] - y) > 0.5) {
+    // ECharts asks for each label in each pass, so a label seen before
+    // starts a new pass. A resize or a zoom can free space for any label.
+    if (!layout || seen.has(index)) {
       layout = find();
-      seat = layout?.get(index);
+      seen = new Set();
     }
-    const place = seat?.place;
+    seen.add(index);
+    const place = layout?.get(index);
     if (!place)
       return {
         fontSize: 0,
@@ -406,6 +416,8 @@ export interface ValueScale {
   formatter?: (value: number) => string;
 }
 
+const DEFAULT_SCALE: ValueScale = {};
+
 interface CountryScatterProps<T> {
   rows: readonly T[];
   point: (row: T) => CountryPoint;
@@ -434,7 +446,7 @@ export function CountryScatter<T>({
   tooltip,
   xName,
   yName,
-  yAxis = {},
+  yAxis = DEFAULT_SCALE,
   zeroWhat,
   under,
 }: CountryScatterProps<T>) {
@@ -472,7 +484,7 @@ export function CountryScatter<T>({
               ...yAxisName(yName),
             },
       // No filter on a zoom, so each dot keeps its index.
-      dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0, filterMode: "none" }],
+      dataZoom: [{ ...SCATTER_ZOOM, filterMode: "none" }],
       tooltip: {
         ...chartTooltip,
         trigger: "item",

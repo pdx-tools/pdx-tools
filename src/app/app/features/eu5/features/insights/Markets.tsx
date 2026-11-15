@@ -43,7 +43,7 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { logAxis, logDomain, logPosition, LogFloorNote } from "./countryScatter";
+import { logAxis, logDomain, logPosition, LogFloorNote, SCATTER_ZOOM } from "./countryScatter";
 import { useEu5SaveDate } from "../../store/eu5Store";
 import { EmptyNote, GameSegmented, SectionTitle, StatItem } from "../../components";
 
@@ -1139,7 +1139,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         ...yAxisName("Shortage Pressure ($)"),
         min: 0,
       },
-      dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0 }],
+      dataZoom: [SCATTER_ZOOM],
       tooltip: {
         ...chartTooltip,
         trigger: "item",
