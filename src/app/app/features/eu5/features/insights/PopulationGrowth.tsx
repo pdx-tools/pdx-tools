@@ -257,28 +257,31 @@ function GrowthScaleScatter({
           precision: 6,
           data: [{ yAxis: scopeRate }],
           lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-          label: {
-            ...chartText,
-            position: "insideStartTop",
-            formatter: `${scopeLabel} ${formatRate(scopeRate)}`,
-          },
+          // The note under the chart gives the value. A label on the line
+          // can be under the names of the dots.
+          label: { show: false },
         },
       },
     ],
-    [scopeRate, scopeLabel],
+    [scopeRate],
   );
 
   return (
-    <CountryScatter
-      rows={countries}
-      point={point}
-      tooltip={countryTooltip}
-      xName="Population"
-      yName="Growth / yr"
-      yAxis={GROWTH_SCALE}
-      zeroWhat="people"
-      under={under}
-    />
+    <>
+      <CountryScatter
+        rows={countries}
+        point={point}
+        tooltip={countryTooltip}
+        xName="Population"
+        yName="Growth / yr"
+        yAxis={GROWTH_SCALE}
+        zeroWhat="people"
+        under={under}
+      />
+      <p className="mt-1 text-[12px] text-game-ink-500">
+        Dashed line: {scopeLabel} {formatRate(scopeRate)}
+      </p>
+    </>
   );
 }
 

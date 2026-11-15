@@ -59,10 +59,17 @@ export function useBoxZoom(option: unknown) {
 
   const attach = (chart: echarts.ECharts) => {
     chartRef.current = chart;
+    // A new chart starts with no zoom, such as after a change of theme.
+    setZoomedFor(null);
     const zr = chart.getZr();
-    let start: Pixel | null = null;
-    let end: Pixel | null = null;
+    const dom = chart.getDom();
+    let drag: { pointerId: number; start: Pixel; end: Pixel | null } | null = null;
     let box: echarts.graphic.Rect | null = null;
+
+    const local = (ev: PointerEvent): Pixel => {
+      const rect = dom.getBoundingClientRect();
+      return [ev.clientX - rect.left, ev.clientY - rect.top];
+    };
 
     const clamp = ([x, y]: Pixel): Pixel => {
       const plot = plotOf(chart);
@@ -72,14 +79,20 @@ export function useBoxZoom(option: unknown) {
       ];
     };
 
-    const finish = () => {
-      if (box) zr.remove(box);
-      const drawn = start && end ? boxOf(start, end) : null;
-      box = null;
-      start = null;
-      end = null;
-      if (!drawn || drawn.width < MIN_BOX || drawn.height < MIN_BOX || chart.isDisposed()) return;
+    const noSelect = (ev: Event) => ev.preventDefault();
 
+    /** Ends the drag, and gives the box that it drew */
+    const stop = () => {
+      const drawn = drag?.end ? boxOf(drag.start, drag.end) : null;
+      if (drag && dom.hasPointerCapture(drag.pointerId)) dom.releasePointerCapture(drag.pointerId);
+      drag = null;
+      if (box && !chart.isDisposed()) zr.remove(box);
+      box = null;
+      document.removeEventListener("selectstart", noSelect);
+      return drawn;
+    };
+
+    const zoomTo = (drawn: ReturnType<typeof boxOf>) => {
       const corner = (pixel: Pixel) => chart.convertFromPixel({ gridIndex: 0 }, pixel) as number[];
       const [x0 = 0, y0 = 0] = corner([drawn.x, drawn.y + drawn.height]);
       const [x1 = 0, y1 = 0] = corner([drawn.x + drawn.width, drawn.y]);
@@ -93,29 +106,58 @@ export function useBoxZoom(option: unknown) {
       markZoomed();
 
       // The release of the drag is also a click, which must not select the dot under it.
-      const stop = (ev: MouseEvent) => ev.stopPropagation();
-      window.addEventListener("click", stop, { capture: true, once: true });
-      setTimeout(() => window.removeEventListener("click", stop, { capture: true }), 0);
+      const swallow = (ev: MouseEvent) => ev.stopPropagation();
+      window.addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
     };
 
-    zr.on("mousedown", (e) => {
-      const native = e.event as unknown as MouseEvent | undefined;
-      if (native && native.button !== 0) return;
-      const at: Pixel = [e.offsetX, e.offsetY];
+    // A listener of a chart that is gone removes itself. The element stays
+    // for the next chart after a change of theme.
+    const listeners = new AbortController();
+    const on = <K extends keyof HTMLElementEventMap>(
+      type: K,
+      handler: (ev: HTMLElementEventMap[K]) => void,
+    ) =>
+      dom.addEventListener(
+        type,
+        (ev) => {
+          if (chart.isDisposed()) {
+            stop();
+            listeners.abort();
+            return;
+          }
+          handler(ev);
+        },
+        { signal: listeners.signal },
+      );
+
+    on("pointerdown", (ev) => {
+      if (drag || !ev.isPrimary || ev.button !== 0) return;
+      const at = local(ev);
       const plot = plotOf(chart);
       if (at[0] < plot.left || at[0] > plot.right || at[1] < plot.top || at[1] > plot.bottom) {
         return;
       }
-      // No text selection on the page while the box is drawn.
-      native?.preventDefault();
-      start = at;
-      window.addEventListener("mouseup", finish, { once: true });
+      // No capture yet, so that a click stays on the dot under it.
+      drag = { pointerId: ev.pointerId, start: at, end: null };
     });
 
-    zr.on("mousemove", (e) => {
-      if (!start) return;
-      end = clamp([e.offsetX, e.offsetY]);
-      const shape = boxOf(start, end);
+    on("pointermove", (ev) => {
+      if (drag?.pointerId !== ev.pointerId) return;
+      // A release that did not come here ends the drag with no zoom.
+      if ((ev.buttons & 1) === 0) {
+        stop();
+        return;
+      }
+      const at = local(ev);
+      if (!drag.end) {
+        if (Math.hypot(at[0] - drag.start[0], at[1] - drag.start[1]) < MIN_BOX / 2) return;
+        // A drag: the box follows the pointer out of the chart, and the release comes here.
+        dom.setPointerCapture(ev.pointerId);
+        document.addEventListener("selectstart", noSelect);
+      }
+      drag.end = clamp(at);
+      const shape = boxOf(drag.start, drag.end);
       if (box) {
         box.setShape(shape);
       } else {
@@ -128,6 +170,19 @@ export function useBoxZoom(option: unknown) {
         zr.add(box);
       }
     });
+
+    on("pointerup", (ev) => {
+      if (drag?.pointerId !== ev.pointerId) return;
+      const drawn = stop();
+      if (drawn && drawn.width >= MIN_BOX && drawn.height >= MIN_BOX) zoomTo(drawn);
+    });
+
+    // A touch that scrolls the page cancels the box.
+    const cancel = (ev: PointerEvent) => {
+      if (drag?.pointerId === ev.pointerId) stop();
+    };
+    on("pointercancel", cancel);
+    on("lostpointercapture", cancel);
   };
 
   const reset = () => {
