@@ -321,9 +321,9 @@ type LabelLayoutParams = {
  * one label at a time, so the first ask of a layout finds all the places,
  * from the dots' positions on the chart. A label with no free place gives way.
  */
-function dotLabelLayout<T>(
+export function dotLabelLayout<T>(
   dots: readonly ScatterDot<T>[],
-  chart: echarts.ECharts | null,
+  chart: Pick<echarts.ECharts, "getWidth" | "getHeight" | "convertToPixel"> | null,
   seriesIndex: number,
 ) {
   // The colored dots, in the order that their labels take a place. A colored
@@ -342,7 +342,7 @@ function dotLabelLayout<T>(
       .filter(({ dot }) => dot.labeled)
       .map(({ dot, index }) => [index, chartTextWidth(dot.point.country.country.name)]),
   );
-  let layout: Map<number, LabelRect | null> | null = null;
+  let layout: Map<number, { center: [number, number]; place: LabelRect | null }> | null = null;
   // The labels that this pass of the layout has seen.
   let seen = new Set<number>();
 
@@ -361,24 +361,30 @@ function dotLabelLayout<T>(
       const rect = { x: x - half, y: y - half, width: dot.symbolSize, height: dot.symbolSize };
       // A dot out of the plot after a zoom has no label.
       const shown = contains(plot, { x, y, width: 0, height: 0 });
-      return { index, rect, width: shown ? widths.get(index) : undefined };
+      const center: [number, number] = [x, y];
+      return { index, center, rect, width: shown ? widths.get(index) : undefined };
     });
     const places = placeLabels(seats, plot);
-    return new Map(seats.map((seat, i) => [seat.index, places[i]!]));
+    return new Map(
+      seats.map((seat, i) => [seat.index, { center: seat.center, place: places[i]! }]),
+    );
   };
 
   return (params: LabelLayoutParams) => {
     const index = params.dataIndex ?? -1;
     const x = params.rect.x + params.rect.width / 2;
     const y = params.rect.y + params.rect.height / 2;
-    // ECharts asks for each label in each pass, so a label seen before
-    // starts a new pass. A resize or a zoom can free space for any label.
-    if (!layout || seen.has(index)) {
+    // ECharts asks for each shown label in each pass, so a label seen before
+    // starts a new pass. A dot that moved also starts one, because a pan can
+    // show only labels that the last pass did not see.
+    const center = layout?.get(index)?.center;
+    const moved = !center || Math.hypot(center[0] - x, center[1] - y) > 0.5;
+    if (!layout || seen.has(index) || moved) {
       layout = find();
       seen = new Set();
     }
     seen.add(index);
-    const place = layout?.get(index);
+    const place = layout?.get(index)?.place;
     if (!place)
       return {
         fontSize: 0,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CountryRef } from "@/wasm/wasm_eu5";
 import {
+  dotLabelLayout,
   labelPlace,
   logAxis,
   logDomain,
@@ -166,5 +167,28 @@ describe("labelPlace", () => {
     for (const { rect } of dots) {
       expect(overlap(first, rect) || overlap(second, rect)).toBe(false);
     }
+  });
+});
+
+describe("dotLabelLayout", () => {
+  it("gives a place to a label that a pan brings into the plot", () => {
+    const rows = [
+      { country: country(0), x: 10, y: 1 },
+      { country: country(1), x: 1000, y: 1 },
+    ];
+    const dots = dotsOf(rows);
+    // A zoom shows one country at a time; a pan swaps them.
+    let shown = 0;
+    const chart = {
+      getWidth: () => 600,
+      getHeight: () => 400,
+      convertToPixel: (_finder: unknown, value: unknown) =>
+        dots[shown]?.value === value ? [200, 200] : [-500, -500],
+    } as unknown as Parameters<typeof dotLabelLayout>[1];
+    const layout = dotLabelLayout(dots, chart, 0);
+    const ask = () => layout({ dataIndex: shown, rect: { x: 195, y: 195, width: 10, height: 10 } });
+    expect(ask()).not.toHaveProperty("fontSize");
+    shown = 1;
+    expect(ask()).not.toHaveProperty("fontSize");
   });
 });
