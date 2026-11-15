@@ -44,7 +44,7 @@ import {
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { logAxis, logDomain, logPosition, LogFloorNote } from "./countryScatter";
-import { BOX_ZOOM_HINT, ResetZoom, SCATTER_GRID, SCATTER_ZOOM, useBoxZoom } from "./scatterZoom";
+import { BOX_ZOOM_HINT, logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
 import { useEu5SaveDate } from "../../store/eu5Store";
 import { EmptyNote, GameSegmented, SectionTitle, StatItem } from "../../components";
 
@@ -1134,13 +1134,17 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
   const option = useMemo((): EChartsOption => {
     return {
       grid: SCATTER_GRID,
-      xAxis: { ...logAxis(domain), name: "Market Value", nameLocation: "middle", nameGap: 28 },
+      xAxis: {
+        ...logAxis(domain),
+        name: logName("Market Value"),
+        nameLocation: "middle",
+        nameGap: 28,
+      },
       yAxis: {
         type: "value",
         ...yAxisName("Shortage Pressure ($)"),
         min: 0,
       },
-      dataZoom: SCATTER_ZOOM,
       tooltip: {
         ...chartTooltip,
         trigger: "item",
@@ -1221,7 +1225,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         />
         <ResetZoom zoom={zoom} />
       </div>
-      <p className="mt-1 text-[12px] text-game-ink-500">{BOX_ZOOM_HINT}</p>
+      <p className="mt-1 text-[12px] text-game-ink-500">Dot area: total taken. {BOX_ZOOM_HINT}</p>
       <LogFloorNote
         count={domain.onFloor}
         noun={{ one: "market", many: "markets" }}

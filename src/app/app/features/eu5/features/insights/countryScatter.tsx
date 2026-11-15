@@ -18,7 +18,7 @@ import { formatTick } from "../../numberFormatting";
 import { useEu5HomeCountry } from "../../store";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { BOX_ZOOM_HINT, ResetZoom, SCATTER_GRID, SCATTER_ZOOM, useBoxZoom } from "./scatterZoom";
+import { BOX_ZOOM_HINT, logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
 
 /** Room after the largest value, so that its dot stays in the plot */
 const LOG_HEADROOM = 1.5;
@@ -234,8 +234,9 @@ export function scatterDots<T>(
       marked,
     };
   });
+  // In a layer, a large dot goes first, so that it does not cover a small one.
   const layer = (d: ScatterDot<T>) => (d.marked ? 3 : d.labeled ? 2 : d.colored ? 1 : 0);
-  return dots.sort((a, b) => layer(a) - layer(b));
+  return dots.sort((a, b) => layer(a) - layer(b) || b.symbolSize - a.symbolSize);
 }
 
 export interface LabelRect {
@@ -470,6 +471,8 @@ interface CountryScatterProps<T> {
   zeroWhat: string;
   /** Series under the dots, such as a reference line, from the extent of the x axis */
   under?: (extent: AxisExtent) => SeriesOption[];
+  /** What the size of a dot and a line show, such as "Dot area: births per year." */
+  legend?: string;
 }
 
 /**
@@ -487,6 +490,7 @@ export function CountryScatter<T>({
   yAxis = DEFAULT_SCALE,
   zeroWhat,
   under,
+  legend,
 }: CountryScatterProps<T>) {
   const marks = useScatterMarks();
   const sameY = yAxis === "x";
@@ -522,9 +526,14 @@ export function CountryScatter<T>({
         };
     return (chart: echarts.ECharts): EChartsOption => ({
       grid: SCATTER_GRID,
-      xAxis: { ...xScale, name: xName, nameLocation: "middle", nameGap: 28 },
+      xAxis: {
+        ...xScale,
+        name: log ? logName(xName) : xName,
+        nameLocation: "middle",
+        nameGap: 28,
+      },
       yAxis: sameY
-        ? { ...xScale, ...yAxisName(yName) }
+        ? { ...xScale, ...yAxisName(log ? logName(yName) : yName) }
         : {
             type: "value",
             min: yAxis.min,
@@ -533,7 +542,6 @@ export function CountryScatter<T>({
             ...(yAxis.formatter && { axisLabel: { formatter: yAxis.formatter } }),
             ...yAxisName(yName),
           },
-      dataZoom: SCATTER_ZOOM,
       tooltip: {
         ...chartTooltip,
         trigger: "item",
@@ -584,6 +592,18 @@ export function CountryScatter<T>({
   });
 
   const unnamedPlayers = dots.some((dot) => dot.colored && !dot.labeled);
+  const grey = dots.some((dot) => !dot.colored);
+  const key = [
+    unnamedPlayers
+      ? "Players and named countries have their game color. Hover a dot to see its name."
+      : grey
+        ? "Hover a grey dot to see its name."
+        : null,
+    legend,
+    BOX_ZOOM_HINT,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   // The chart waits for the selection, so that it does not draw two times.
   if (!marks) return <div style={{ height: "420px" }} />;
@@ -601,12 +621,7 @@ export function CountryScatter<T>({
         />
         <ResetZoom zoom={zoom} />
       </div>
-      <p className="mt-1 text-[12px] text-game-ink-500">
-        {unnamedPlayers
-          ? "Players and named countries have their game color. Hover a dot to see its name. "
-          : ""}
-        {BOX_ZOOM_HINT}
-      </p>
+      <p className="mt-1 text-[12px] text-game-ink-500">{key}</p>
       {log ? (
         <LogFloorNote
           count={onEdge}

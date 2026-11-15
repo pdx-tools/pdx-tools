@@ -278,6 +278,7 @@ function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }
       yName="Avg Control"
       yAxis={CONTROL_SCALE}
       zeroWhat="development"
+      legend="Dot size: development lost to low control."
     />
   );
 }

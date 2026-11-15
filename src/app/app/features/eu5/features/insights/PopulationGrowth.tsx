@@ -277,6 +277,7 @@ function GrowthScaleScatter({
         yAxis={GROWTH_SCALE}
         zeroWhat="people"
         under={under}
+        legend="Dot area: births per year."
       />
       <p className="mt-1 text-[12px] text-game-ink-500">
         Dashed line: {scopeLabel} {formatRate(scopeRate)}

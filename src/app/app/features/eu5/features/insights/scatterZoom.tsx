@@ -1,5 +1,6 @@
 import { useEffectEvent, useRef, useState } from "react";
 import * as echarts from "echarts/core";
+import type { EChartsOption } from "@/components/viz";
 import { chartInk, neutralFill } from "@/components/viz/echartsTheme";
 import { GameButton } from "../../components";
 
@@ -9,16 +10,74 @@ export const SCATTER_GRID = { left: 56, right: 24, top: 32, bottom: 44 };
 /** A drag must be this many px wide and high to zoom. A smaller one is a click. */
 const MIN_BOX = 8;
 
-// The zoom comes only from a box. A disabled zoom does not take the wheel
-// or a drag, so the wheel scrolls the panel. No filter, so each dot keeps
-// its index.
-const BOX_ONLY = { type: "inside", disabled: true, filterMode: "none" } as const;
+/** A name of a log axis says so, because the shape of the dots depends on it. */
+const LOG_SUFFIX = ", log scale";
+export const logName = (name: string) => `${name}${LOG_SUFFIX}`;
 
-/** The zoom of each axis of a scatter. `useBoxZoom` sets them. */
-export const SCATTER_ZOOM = [
-  { ...BOX_ONLY, id: "zoom-x", xAxisIndex: 0 },
-  { ...BOX_ONLY, id: "zoom-y", yAxisIndex: 0 },
-];
+/** A zoom of a log axis that spans less than this ratio is linear, so that it has ticks. */
+const LOG_ZOOM_RATIO = 30;
+
+const tidy = (value: number) => Number(value.toPrecision(12));
+
+/**
+ * The ends of a linear axis zoomed to `lo`..`hi`: the roundest values that
+ * add at most a tenth of the range at each end. A box that starts above 0
+ * does not go down to 0, because the box left out the dots there.
+ */
+export function linearZoom(lo: number, hi: number): { min: number; max: number } {
+  const range = Math.max(hi - lo, Number.MIN_VALUE);
+  const slack = range / 10;
+  for (let decade = 10 ** Math.ceil(Math.log10(range)); ; decade /= 10) {
+    for (const m of [5, 2.5, 2, 1]) {
+      const step = m * decade;
+      const min = tidy(Math.floor(lo / step) * step);
+      const max = tidy(Math.ceil(hi / step) * step);
+      if (lo - min <= slack && max - hi <= slack && !(lo > 0 && min <= 0)) return { min, max };
+    }
+  }
+}
+
+/** The ends of a log axis zoomed to `lo`..`hi`: 1, 2 or 5 times a power of 10 */
+export function logZoom(lo: number, hi: number): { min: number; max: number } {
+  const decade = (v: number) => 10 ** Math.floor(Math.log10(v));
+  const down = decade(lo);
+  const up = decade(hi);
+  return {
+    min: tidy(([5, 2, 1].find((m) => m * down <= lo * (1 + 1e-9)) ?? 1) * down),
+    max: tidy(([1, 2, 5, 10].find((m) => m * up >= hi * (1 - 1e-9)) ?? 10) * up),
+  };
+}
+
+interface AxisOption {
+  type?: string;
+  name?: string;
+  axisLabel?: object;
+}
+
+/**
+ * The axes of a scatter zoomed to a box. A log axis stays log only when the
+ * box spans a ratio of 30 or more. Two log axes, which share one scale,
+ * both stay log or both become linear, so that a diagonal stays straight.
+ */
+export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
+  axes: { x: X; y: Y },
+  range: { x: [number, number]; y: [number, number] },
+): { x: X; y: Y } {
+  const wide = ([lo, hi]: [number, number]) => lo > 0 && hi / lo >= LOG_ZOOM_RATIO;
+  let logX = axes.x.type === "log" && wide(range.x);
+  let logY = axes.y.type === "log" && wide(range.y);
+  if (axes.x.type === "log" && axes.y.type === "log") logX = logY = logX || logY;
+
+  const zoom = <A extends AxisOption>(axis: A, [lo, hi]: [number, number], log: boolean): A => {
+    const label = { ...axis.axisLabel, showMinLabel: true, showMaxLabel: true };
+    if (log) return { ...axis, ...logZoom(lo, hi), axisLabel: label };
+    const name = axis.name?.endsWith(LOG_SUFFIX)
+      ? axis.name.slice(0, -LOG_SUFFIX.length)
+      : axis.name;
+    return { ...axis, type: "value", name, ...linearZoom(lo, hi), axisLabel: label };
+  };
+  return { x: zoom(axes.x, range.x, logX), y: zoom(axes.y, range.y, logY) };
+}
 
 type Pixel = [number, number];
 
@@ -40,22 +99,31 @@ function boxOf(a: Pixel, b: Pixel) {
   };
 }
 
-function zoomAll(chart: echarts.ECharts, range: { start: number; end: number }) {
-  chart.dispatchAction({
-    type: "dataZoom",
-    batch: SCATTER_ZOOM.map(({ id }) => ({ dataZoomId: id, ...range })),
-  });
-}
+type ScatterOption = EChartsOption | ((chart: echarts.ECharts) => EChartsOption);
+
+const resolve = (option: ScatterOption, chart: echarts.ECharts) =>
+  typeof option === "function" ? option(chart) : option;
 
 /**
- * Drag a box over a scatter to zoom each axis to the box. `option` is the
- * option of the chart: a new option draws the chart again with no zoom.
+ * Drag a box over a scatter to zoom each axis to the box: the chart draws
+ * again with its option and new ends on the axes. `option` is the option of
+ * the chart, with one x axis and one y axis. A new option draws the chart
+ * again with no zoom.
  */
-export function useBoxZoom(option: unknown) {
+export function useBoxZoom(option: ScatterOption) {
   // The option that the zoom is for. In a box, because an option can be a function.
-  const [zoomedFor, setZoomedFor] = useState<{ option: unknown } | null>(null);
+  const [zoomedFor, setZoomedFor] = useState<{ option: ScatterOption } | null>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
-  const markZoomed = useEffectEvent(() => setZoomedFor({ option }));
+
+  const zoomChart = useEffectEvent(
+    (chart: echarts.ECharts, range: { x: [number, number]; y: [number, number] }) => {
+      const base = resolve(option, chart);
+      if (Array.isArray(base.xAxis) || Array.isArray(base.yAxis)) return;
+      const axes = zoomedAxes({ x: base.xAxis ?? {}, y: base.yAxis ?? {} }, range);
+      chart.setOption({ ...base, xAxis: axes.x, yAxis: axes.y }, { notMerge: true });
+      setZoomedFor({ option });
+    },
+  );
 
   const attach = (chart: echarts.ECharts) => {
     chartRef.current = chart;
@@ -94,14 +162,7 @@ export function useBoxZoom(option: unknown) {
       const corner = (pixel: Pixel) => chart.convertFromPixel({ gridIndex: 0 }, pixel) as number[];
       const [x0 = 0, y0 = 0] = corner([drawn.x, drawn.y + drawn.height]);
       const [x1 = 0, y1 = 0] = corner([drawn.x + drawn.width, drawn.y]);
-      chart.dispatchAction({
-        type: "dataZoom",
-        batch: [
-          { dataZoomId: "zoom-x", startValue: x0, endValue: x1 },
-          { dataZoomId: "zoom-y", startValue: y0, endValue: y1 },
-        ],
-      });
-      markZoomed();
+      zoomChart(chart, { x: [x0, x1], y: [y0, y1] });
 
       // The release of the drag is also a click, which must not select the dot under it.
       const swallow = (ev: MouseEvent) => ev.stopPropagation();
@@ -149,6 +210,7 @@ export function useBoxZoom(option: unknown) {
           if (Math.hypot(at[0] - drag.start[0], at[1] - drag.start[1]) < MIN_BOX / 2) return;
           // A drag: the chart keeps the pointer until the release.
           dom.setPointerCapture(ev.pointerId);
+          chart.dispatchAction({ type: "hideTip" });
           document.addEventListener("selectstart", noSelect);
         }
         drag.end = clamp(at);
@@ -204,7 +266,7 @@ export function useBoxZoom(option: unknown) {
 
   const reset = () => {
     const chart = chartRef.current;
-    if (chart && !chart.isDisposed()) zoomAll(chart, { start: 0, end: 100 });
+    if (chart && !chart.isDisposed()) chart.setOption(resolve(option, chart), { notMerge: true });
     setZoomedFor(null);
   };
 
