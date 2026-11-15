@@ -24,52 +24,48 @@ import { BOX_ZOOM_HINT, logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./s
 const LOG_HEADROOM = 1.5;
 
 export interface LogDomain {
-  /** The left end of the axis: a power of 10 at or under the smallest value above zero */
+  /** The left end of the axis: a power of 10 */
   floor: number;
   /** The right end of the axis */
   ceiling: number;
-  /** The number of values at zero or under. Each one is on the floor. */
+  /** The number of values under the floor, 0 and under included. Each one is on the floor. */
   onFloor: number;
-  /** Some values are under zero, so the floor's tick is not "0" */
-  hasNegative: boolean;
 }
 
+/** The share of values above zero that can be under the floor */
+const UNDER_FLOOR = 0.05;
+
 /**
- * The extent of a log axis. A log axis has no place for a value at zero or
- * under, and ECharts drops such a value with no message. So it goes on the
- * floor, one decade under the smallest value above zero, apart from them.
+ * The extent of a log axis. The floor is the power of 10 under all but the
+ * smallest 5% of the values above zero, so that a few small values do not
+ * add empty decades. A value under the floor goes on the floor. A log axis
+ * has no place for 0 or under, so those values go there too.
  */
 export function logDomain(values: Iterable<number>): LogDomain {
-  let smallest = Infinity;
-  let largest = 0;
-  let onFloor = 0;
-  let hasNegative = false;
-  for (const value of values) {
-    if (Number.isFinite(value) && value > 0) {
-      smallest = Math.min(smallest, value);
-      largest = Math.max(largest, value);
-    } else {
-      onFloor += 1;
-      hasNegative ||= value < 0;
-    }
-  }
-  const decade = largest > 0 ? Math.floor(Math.log10(smallest)) : 0;
-  const floor = 10 ** (onFloor > 0 ? decade - 1 : decade);
+  const all = [...values];
+  const positive = all.filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  const low = positive[Math.floor(positive.length * UNDER_FLOOR)];
+  const largest = positive.at(-1);
+  const floor = low === undefined ? 1 : 10 ** Math.floor(Math.log10(low));
+  const onFloor = all.filter((v) => underFloor(v, floor)).length;
   // The axis spans one decade or more, so that it has two ticks.
-  const ceiling = Math.max(largest * LOG_HEADROOM, floor * 10);
-  return { floor, ceiling, onFloor, hasNegative };
+  const ceiling = Math.max((largest ?? 0) * LOG_HEADROOM, floor * 10);
+  return { floor, ceiling, onFloor };
+}
+
+function underFloor(value: number, floor: number): boolean {
+  return !(Number.isFinite(value) && value >= floor);
 }
 
 /** The position of a value on a log axis */
 export function logPosition(value: number, domain: LogDomain): number {
-  return Number.isFinite(value) && value > 0 ? value : domain.floor;
+  return underFloor(value, domain.floor) ? domain.floor : value;
 }
 
 /** The text of a tick on a log axis */
 export function logTick(value: number, domain: LogDomain): string {
   const onFloor = domain.onFloor > 0 && Math.abs(value - domain.floor) <= domain.floor * 1e-6;
-  if (onFloor) return domain.hasNegative ? "≤0" : "0";
-  return formatTick(value);
+  return onFloor ? `≤${formatTick(value)}` : formatTick(value);
 }
 
 /** The scale of a log axis. The caller gives the name. */
@@ -88,30 +84,28 @@ export function logAxis(domain: LogDomain) {
 }
 
 /**
- * Says how many dots are on the 0 edge of a log axis, because the axis
- * has no other place for them.
+ * Says how many dots are on the floor of a log axis, because the axis has
+ * no other place for them.
  */
 export function LogFloorNote({
   count,
+  floor,
   noun,
   what,
-  negative = false,
   edge = "left edge",
 }: {
   count: number;
+  floor: number;
   noun: { one: string; many: string };
-  /** What a dot on the edge has none of */
+  /** What a dot on the floor has too little of */
   what: string;
-  /** Some of the values are under zero */
-  negative?: boolean;
   edge?: string;
 }) {
   if (count === 0) return null;
-  const has = negative ? `${what} at 0 or under` : `no ${what}`;
   return (
     <p className="mt-1 text-[12px] text-game-ink-500">
-      {formatInt(count)} {count === 1 ? noun.one : noun.many} with {has}{" "}
-      {count === 1 ? "is" : "are"} on the {edge}, at 0.
+      {formatInt(count)} {count === 1 ? noun.one : noun.many} with {what} under {formatTick(floor)}{" "}
+      {count === 1 ? "is" : "are"} on the {edge}.
     </p>
   );
 }
@@ -467,8 +461,8 @@ interface CountryScatterProps<T> {
    * the x axis, so that a diagonal stays a diagonal.
    */
   yAxis?: ValueScale | "x";
-  /** What a country on the 0 edge of a log axis has none of */
-  zeroWhat: string;
+  /** What a country on the floor of a log axis has too little of */
+  floorWhat: string;
   /** Series under the dots, such as a reference line, from the extent of the x axis */
   under?: (extent: AxisExtent) => SeriesOption[];
   /** What the size of a dot and a line show, such as "Dot area: births per year." */
@@ -488,7 +482,7 @@ export function CountryScatter<T>({
   xName,
   yName,
   yAxis = DEFAULT_SCALE,
-  zeroWhat,
+  floorWhat,
   under,
   legend,
 }: CountryScatterProps<T>) {
@@ -507,7 +501,8 @@ export function CountryScatter<T>({
       { x: log ?? undefined, y: sameY ? (log ?? undefined) : undefined },
       marks ?? NO_MARKS,
     );
-    const onEdge = log ? points.filter((p) => !(p.x > 0) || (sameY && !(p.y > 0))).length : 0;
+    const under = (v: number) => log != null && underFloor(v, log.floor);
+    const onEdge = points.filter((p) => under(p.x) || (sameY && under(p.y))).length;
     return { log, extent, dots, onEdge };
   }, [rows, point, sameY, logX, marks]);
 
@@ -626,9 +621,9 @@ export function CountryScatter<T>({
       {log && !zoom.zoomed ? (
         <LogFloorNote
           count={onEdge}
+          floor={log.floor}
           noun={{ one: "country", many: "countries" }}
-          what={zeroWhat}
-          negative={log.hasNegative}
+          what={floorWhat}
           edge={sameY ? "edges" : "left edge"}
         />
       ) : null}

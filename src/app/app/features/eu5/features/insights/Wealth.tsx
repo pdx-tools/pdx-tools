@@ -120,7 +120,7 @@ function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
       xName="Total Wealth"
       yName="Avg Wealth per Location"
       yAxis={FROM_ZERO}
-      zeroWhat="wealth"
+      floorWhat="wealth"
     />
   );
 }

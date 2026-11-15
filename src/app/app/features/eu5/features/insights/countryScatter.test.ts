@@ -50,13 +50,24 @@ describe("logDomain", () => {
     expect(domain.ceiling).toBeGreaterThan(25_600);
   });
 
-  it("puts zero and negative values one decade under the smallest value", () => {
+  it("puts zero and negative values on the floor", () => {
     const domain = logDomain([0, -2, 3, 40]);
-    expect(domain.floor).toBe(0.1);
+    expect(domain.floor).toBe(1);
     expect(domain.onFloor).toBe(2);
-    expect(logPosition(0, domain)).toBe(0.1);
-    expect(logPosition(-2, domain)).toBe(0.1);
+    expect(logPosition(0, domain)).toBe(1);
+    expect(logPosition(-2, domain)).toBe(1);
     expect(logPosition(3, domain)).toBe(3);
+  });
+
+  it("puts the smallest 5% of values on the floor, not under it", () => {
+    // 2 of 40 values are far under the others.
+    const values = [0.0007, 0.004, ...Array.from({ length: 38 }, (_, i) => 20 + i * 50)];
+    const domain = logDomain(values);
+    expect(domain.floor).toBe(10);
+    expect(domain.onFloor).toBe(2);
+    expect(logPosition(0.0007, domain)).toBe(10);
+    // Three small values are more than 5%, so the third sets the floor.
+    expect(logDomain([0.3, ...values])).toMatchObject({ floor: 0.1, onFloor: 2 });
   });
 
   it("spans one decade or more, so that the axis has two ticks", () => {
@@ -74,13 +85,12 @@ describe("logDomain", () => {
 });
 
 describe("logTick", () => {
-  it("names the floor by what it holds", () => {
-    expect(logTick(0.1, logDomain([0, 3]))).toBe("0");
-    expect(logTick(0.1, logDomain([-1, 3]))).toBe("≤0");
+  it("names the floor as an upper limit when values are under it", () => {
+    expect(logTick(1, logDomain([0, 3]))).toBe("≤1");
     expect(logTick(10_000, logDomain([0, 3]))).toBe("10K");
   });
 
-  it("gives a real value at the floor when no value is on it", () => {
+  it("gives a real value at the floor when no value is under it", () => {
     expect(logTick(1, logDomain([3]))).toBe("1");
   });
 });
@@ -135,7 +145,7 @@ describe("scatterDots", () => {
       { country: country(1), x: 5, y: 1 },
     ];
     const zero = dotsOf(rows).find((d) => d.point.country.country.key === 0);
-    expect(zero?.value[0]).toBe(0.1);
+    expect(zero?.value[0]).toBe(1);
     expect(zero?.point.x).toBe(0);
   });
 

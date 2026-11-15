@@ -113,7 +113,7 @@ function DevelopmentScatterChart({ countries }: { countries: CountryDevSummary[]
       tooltip={devTooltip}
       xName="Total Development"
       yName="Avg Dev per Location"
-      zeroWhat="development"
+      floorWhat="development"
     />
   );
 }

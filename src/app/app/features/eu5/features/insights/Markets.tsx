@@ -1230,9 +1230,9 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
       {zoom.zoomed ? null : (
         <LogFloorNote
           count={domain.onFloor}
+          floor={domain.floor}
           noun={{ one: "market", many: "markets" }}
           what="value"
-          negative={domain.hasNegative}
         />
       )}
     </>

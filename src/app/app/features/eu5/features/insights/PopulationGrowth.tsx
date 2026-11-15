@@ -275,7 +275,7 @@ function GrowthScaleScatter({
         xName="Population"
         yName="Growth / yr"
         yAxis={GROWTH_SCALE}
-        zeroWhat="people"
+        floorWhat="people"
         under={under}
         legend="Dot area: births per year."
       />
