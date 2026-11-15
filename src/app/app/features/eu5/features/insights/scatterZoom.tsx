@@ -112,12 +112,14 @@ export function useBoxZoom(option: unknown) {
     };
 
     // The element stays for the next chart after a change of theme, so the
-    // listeners go with this chart.
+    // listeners go with this chart. A drag can leave the chart before the
+    // chart takes the pointer, so its moves come from the document.
     const listeners = new AbortController();
     const on = <K extends keyof HTMLElementEventMap>(
       type: K,
       handler: (ev: HTMLElementEventMap[K]) => void,
-    ) => dom.addEventListener(type, handler, { signal: listeners.signal });
+      target: HTMLElement | Document = dom,
+    ) => target.addEventListener(type, handler as EventListener, { signal: listeners.signal });
 
     on("pointerdown", (ev) => {
       if (drag || !ev.isPrimary || ev.button !== 0) return;
@@ -130,46 +132,59 @@ export function useBoxZoom(option: unknown) {
       drag = { pointerId: ev.pointerId, start: at, end: null };
     });
 
-    on("pointermove", (ev) => {
-      if (drag?.pointerId !== ev.pointerId) return;
-      // A release that did not come here ends the drag with no zoom.
-      if ((ev.buttons & 1) === 0) {
-        stop();
-        return;
-      }
-      const at = local(ev);
-      if (!drag.end) {
-        if (Math.hypot(at[0] - drag.start[0], at[1] - drag.start[1]) < MIN_BOX / 2) return;
-        // A drag: the box follows the pointer out of the chart, and the release comes here.
-        dom.setPointerCapture(ev.pointerId);
-        document.addEventListener("selectstart", noSelect);
-      }
-      drag.end = clamp(at);
-      const shape = boxOf(drag.start, drag.end);
-      if (box) {
-        box.setShape(shape);
-      } else {
-        box = new echarts.graphic.Rect({
-          shape,
-          style: { fill: neutralFill, stroke: chartInk.secondary, lineWidth: 1, lineDash: [4, 3] },
-          silent: true,
-          z: 100,
-        });
-        zr.add(box);
-      }
-    });
+    on(
+      "pointermove",
+      (ev) => {
+        if (drag?.pointerId !== ev.pointerId) return;
+        // A release that did not come here ends the drag with no zoom.
+        if ((ev.buttons & 1) === 0) {
+          stop();
+          return;
+        }
+        const at = local(ev);
+        if (!drag.end) {
+          if (Math.hypot(at[0] - drag.start[0], at[1] - drag.start[1]) < MIN_BOX / 2) return;
+          // A drag: the chart keeps the pointer until the release.
+          dom.setPointerCapture(ev.pointerId);
+          document.addEventListener("selectstart", noSelect);
+        }
+        drag.end = clamp(at);
+        const shape = boxOf(drag.start, drag.end);
+        if (box) {
+          box.setShape(shape);
+        } else {
+          box = new echarts.graphic.Rect({
+            shape,
+            style: {
+              fill: neutralFill,
+              stroke: chartInk.secondary,
+              lineWidth: 1,
+              lineDash: [4, 3],
+            },
+            silent: true,
+            z: 100,
+          });
+          zr.add(box);
+        }
+      },
+      document,
+    );
 
-    on("pointerup", (ev) => {
-      if (drag?.pointerId !== ev.pointerId) return;
-      const drawn = stop();
-      if (drawn && drawn.width >= MIN_BOX && drawn.height >= MIN_BOX) zoomTo(drawn);
-    });
+    on(
+      "pointerup",
+      (ev) => {
+        if (drag?.pointerId !== ev.pointerId) return;
+        const drawn = stop();
+        if (drawn && drawn.width >= MIN_BOX && drawn.height >= MIN_BOX) zoomTo(drawn);
+      },
+      document,
+    );
 
     // A touch that scrolls the page cancels the box.
     const cancel = (ev: PointerEvent) => {
       if (drag?.pointerId === ev.pointerId) stop();
     };
-    on("pointercancel", cancel);
+    on("pointercancel", cancel, document);
     // Only the capture of the chart: a pen also loses its first capture, on
     // the canvas, when the chart takes the pointer.
     on("lostpointercapture", (ev) => {
