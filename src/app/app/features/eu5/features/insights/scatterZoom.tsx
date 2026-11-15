@@ -96,7 +96,12 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
 
   const zoom = <A extends AxisOption>(axis: A, [lo, hi]: [number, number], log: boolean): A => {
     const label = { ...axis.axisLabel, showMinLabel: true, showMaxLabel: true };
-    if (log) return { ...axis, ...logZoom(lo, hi), axisLabel: label };
+    if (log) {
+      // The floor holds the values at 0 or under, so the zoom does not go under it.
+      const floor = typeof axis.min === "number" ? axis.min : 0;
+      const ends = logZoom(Math.max(lo, floor), hi);
+      return { ...axis, min: Math.max(ends.min, floor), max: ends.max, axisLabel: label };
+    }
     const name = axis.name?.endsWith(LOG_SUFFIX)
       ? axis.name.slice(0, -LOG_SUFFIX.length)
       : axis.name;

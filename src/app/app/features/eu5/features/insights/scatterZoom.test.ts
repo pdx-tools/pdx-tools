@@ -48,7 +48,11 @@ describe("zoomedAxes", () => {
   it("keeps a log axis log when the box has its floor", () => {
     const floored = { ...log, min: 10 };
     const axes = zoomedAxes({ x: floored, y: value }, { x: [10, 190], y: [0, 40] });
-    expect(axes.x.type).toBe("log");
+    expect(axes.x).toMatchObject({ type: "log", min: 10 });
+    // A box from the left edge can come back a little under the floor.
+    expect(
+      zoomedAxes({ x: floored, y: value }, { x: [9.999999999, 190], y: [0, 40] }).x,
+    ).toMatchObject({ min: 10 });
     // The rounded end would reach the floor.
     expect(zoomedAxes({ x: floored, y: value }, { x: [10.1, 190], y: [0, 40] }).x.type).toBe("log");
   });
