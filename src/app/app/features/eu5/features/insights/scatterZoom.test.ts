@@ -2,9 +2,25 @@ import { describe, expect, it } from "vitest";
 import { linearZoom, logName, logZoom, zoomedAxes } from "./scatterZoom";
 
 describe("linearZoom", () => {
-  it("ends on round values just out of the box", () => {
-    expect(linearZoom(1640, 4870)).toEqual({ min: 1500, max: 5000 });
-    expect(linearZoom(22.7, 26.2)).toEqual({ min: 22.5, max: 26.5 });
+  it("ends on ticks of a round step", () => {
+    expect(linearZoom(1640, 4870)).toEqual({ min: 1500, max: 5000, interval: 500 });
+    expect(linearZoom(22.7, 26.2)).toEqual({ min: 22.5, max: 26.5, interval: 0.5 });
+    // 30 to 46 in steps of 3 put 45 and 46 next to each other.
+    expect(linearZoom(30.4, 46.2)).toEqual({ min: 30, max: 48, interval: 2 });
+  });
+
+  it("gives 4 to 10 steps", () => {
+    for (const [lo, hi] of [
+      [0, 37],
+      [0.012, 0.0391],
+      [1_231_000, 1_233_000],
+      [10, 41],
+      [-3.2, 7.9],
+    ] as const) {
+      const { min, max, interval = NaN } = linearZoom(lo, hi);
+      expect((max - min) / interval).toBeGreaterThanOrEqual(4);
+      expect((max - min) / interval).toBeLessThanOrEqual(11);
+    }
   });
 
   it("keeps the ends of a box too small to round", () => {
@@ -16,8 +32,9 @@ describe("linearZoom", () => {
   });
 
   it("does not go down to 0 from a box above it", () => {
-    expect(linearZoom(497, 6300).min).toBeGreaterThan(0);
-    expect(linearZoom(0, 37)).toEqual({ min: 0, max: 40 });
+    // The chart picks the ticks from 497, so the axis has no step.
+    expect(linearZoom(497, 6300)).toEqual({ min: 497, max: 7000 });
+    expect(linearZoom(0, 37)).toEqual({ min: 0, max: 40, interval: 5 });
   });
 });
 
@@ -36,8 +53,15 @@ describe("zoomedAxes", () => {
 
   it("makes a narrow zoom of a log axis linear, with its plain name", () => {
     const axes = zoomedAxes({ x: log, y: value }, { x: [497, 4870], y: [12.4, 37.5] });
-    expect(axes.x).toMatchObject({ type: "value", name: "Total Development", min: 250, max: 5000 });
-    expect(axes.y).toMatchObject({ type: "value", min: 10, max: 40 });
+    expect(axes.x).toMatchObject({
+      type: "value",
+      name: "Total Development",
+      min: 497,
+      max: 5000,
+      interval: undefined,
+      axisLabel: { showMinLabel: false, showMaxLabel: false },
+    });
+    expect(axes.y).toMatchObject({ type: "value", min: 10, max: 40, interval: 5 });
   });
 
   it("zooms a linear axis no closer than its tick text can show", () => {
@@ -59,12 +83,16 @@ describe("zoomedAxes", () => {
     expect(
       zoomedAxes({ x: floored, y: value }, { x: [9.999999999, 190], y: [0, 40] }).x,
     ).toMatchObject({ min: 10 });
-    // The widened end would reach the floor.
+    // The widened box starts under the floor.
     expect(
       zoomedAxes({ x: { ...log, min: 100 }, y: value }, { x: [101, 103], y: [0, 40] }).x.type,
     ).toBe("log");
-    // The rounded end would reach the floor.
+    // The box starts a tenth of its range or less over the floor.
     expect(zoomedAxes({ x: floored, y: value }, { x: [10.1, 190], y: [0, 40] }).x.type).toBe("log");
+    // A box far over the floor becomes linear.
+    expect(
+      zoomedAxes({ x: { ...log, min: 1 }, y: value }, { x: [497, 4870], y: [0, 40] }).x.type,
+    ).toBe("value");
   });
 
   it("keeps two log axes on one kind of scale", () => {

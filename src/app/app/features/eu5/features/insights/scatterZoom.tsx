@@ -31,28 +31,34 @@ const LOG_ZOOM_RATIO = 30;
 
 const tidy = (value: number) => Number(value.toPrecision(12));
 
+/** A zoomed linear axis: its ends and the step between its ticks */
+export interface LinearZoom {
+  min: number;
+  max: number;
+  /**
+   * With a step, both ends are ticks. With none, the chart picks the ticks
+   * from the min, and the ends have no text, so that it does not crowd a tick.
+   */
+  interval?: number;
+}
+
 /**
- * The ends of a linear axis zoomed to `lo`..`hi`: the roundest values that
- * add at most a tenth of the range at each end. A box that starts above 0
- * does not go down to 0, because the box left out the dots there.
+ * The axis of a linear zoom to `lo`..`hi`. The step is 1, 2 or 5 times a
+ * power of 10 and gives 4 ticks or more, and the ends go out to a step. A
+ * box that starts above 0 does not go down to 0, because the box left out
+ * the dots there. Then the axis starts at the box, with no step.
  */
-export function linearZoom(lo: number, hi: number): { min: number; max: number } {
+export function linearZoom(lo: number, hi: number): LinearZoom {
   const range = hi - lo;
-  const slack = range / 10;
-  const top = 10 ** Math.ceil(Math.log10(range));
-  // A step at or under the slack always fits, so four decades are enough.
-  for (let i = 0; i <= 4 && top > 0 && Number.isFinite(top); i++) {
-    for (const m of [5, 2.5, 2, 1]) {
-      const step = (m * top) / 10 ** i;
-      if (!(step > 0)) continue;
-      const min = tidy(Math.floor(lo / step) * step);
-      const max = tidy(Math.ceil(hi / step) * step);
-      const fits = min <= lo && lo - min <= slack && hi <= max && max - hi <= slack;
-      if (fits && min < max && !(lo > 0 && min <= 0)) return { min, max };
-    }
-  }
+  const decade = 10 ** Math.floor(Math.log10(range / 4));
+  if (!(range > 0) || !(decade > 0) || !Number.isFinite(decade)) return { min: lo, max: hi };
+  const interval = tidy(([5, 2, 1].find((m) => m * decade * 4 <= range) ?? 1) * decade);
+  const min = tidy(Math.floor(lo / interval) * interval);
+  const max = tidy(Math.ceil(hi / interval) * interval);
   // A box too small to round keeps its own ends.
-  return { min: lo, max: hi };
+  if (!(min <= lo && hi <= max && min < max)) return { min: lo, max: hi };
+  if (lo > 0 && min <= 0) return { min: lo, max };
+  return { min, max, interval };
 }
 
 /** The ends of a log axis zoomed to `lo`..`hi`: 1, 2 or 5 times a power of 10 */
@@ -85,16 +91,19 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
   range: { x: [number, number]; y: [number, number] },
 ): { x: X; y: Y } {
   // Tick text has three digits, so a linear zoom spans at least 5% of its values.
-  const linearEnds = (lo: number, hi: number) => {
+  const widen = (lo: number, hi: number): [number, number] => {
     const extra = Math.max(0, 0.05 * Math.max(Math.abs(lo), Math.abs(hi)) - (hi - lo)) / 2;
-    return linearZoom(lo - extra, hi + extra);
+    return [lo - extra, hi + extra];
   };
-  // A log axis has values at 0 or under on its floor. A box with the floor
-  // stays log, because a linear axis would show them at the floor's value.
-  const staysLog = (axis: AxisOption, [lo, hi]: [number, number]) =>
-    axis.type === "log" &&
-    (hi / lo >= LOG_ZOOM_RATIO ||
-      (typeof axis.min === "number" && linearEnds(lo, hi).min <= axis.min * (1 + 1e-9)));
+  // A log axis has values at 0 or under on its floor. A box that starts at
+  // the floor, or a tenth of its range over it, stays log, because a linear
+  // axis would show them at the floor's value.
+  const staysLog = (axis: AxisOption, [lo, hi]: [number, number]) => {
+    if (axis.type !== "log") return false;
+    if (hi / lo >= LOG_ZOOM_RATIO) return true;
+    const [min, max] = widen(lo, hi);
+    return typeof axis.min === "number" && min - axis.min <= (max - min) / 10;
+  };
   let logX = staysLog(axes.x, range.x);
   let logY = staysLog(axes.y, range.y);
   if (axes.x.type === "log" && axes.y.type === "log") logX = logY = logX || logY;
@@ -110,7 +119,17 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
     const name = axis.name?.endsWith(LOG_SUFFIX)
       ? axis.name.slice(0, -LOG_SUFFIX.length)
       : axis.name;
-    return { ...axis, type: "value", name, ...linearEnds(lo, hi), axisLabel: label };
+    const { min, max, interval } = linearZoom(...widen(lo, hi));
+    const ends = interval !== undefined;
+    return {
+      ...axis,
+      type: "value",
+      name,
+      min,
+      max,
+      interval,
+      axisLabel: { ...label, showMinLabel: ends, showMaxLabel: ends },
+    };
   };
   return { x: zoom(axes.x, range.x, logX), y: zoom(axes.y, range.y, logY) };
 }
