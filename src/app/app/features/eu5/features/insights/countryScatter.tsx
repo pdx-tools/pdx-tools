@@ -12,13 +12,12 @@ import {
   neutralMark,
   yAxisName,
 } from "@/components/viz/echartsTheme";
-import { formatInt } from "@/lib/format";
 import type { CountryRef, SelectionTargetData } from "@/wasm/wasm_eu5";
 import { formatTick } from "../../numberFormatting";
 import { useEu5HomeCountry } from "../../store";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { BOX_ZOOM_HINT, logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
+import { logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
 
 /** Room after the largest value, so that its dot stays in the plot */
 const LOG_HEADROOM = 1.5;
@@ -88,33 +87,6 @@ export function logAxis(domain: LogDomain) {
       formatter: (value: number) => logTick(value, domain),
     },
   };
-}
-
-/**
- * Says how many dots are on the floor of a log axis, because the axis has
- * no other place for them.
- */
-export function LogFloorNote({
-  count,
-  floor,
-  noun,
-  what,
-  edge = "left edge",
-}: {
-  count: number;
-  floor: number;
-  noun: { one: string; many: string };
-  /** What a dot on the floor has too little of */
-  what: string;
-  edge?: string;
-}) {
-  if (count === 0) return null;
-  return (
-    <p className="mt-1 text-[12px] text-game-ink-500">
-      {formatInt(count)} {count === 1 ? noun.one : noun.many} with {what} under {formatTick(floor)}{" "}
-      {count === 1 ? "is" : "are"} on the {edge}.
-    </p>
-  );
 }
 
 /** The two ends of an axis */
@@ -468,8 +440,6 @@ interface CountryScatterProps<T> {
    * the x axis, so that a diagonal stays a diagonal.
    */
   yAxis?: ValueScale | "x";
-  /** What a country on the floor of a log axis has too little of */
-  floorWhat: string;
   /** Series under the dots, such as a reference line, from the extent of the x axis */
   under?: (extent: AxisExtent) => SeriesOption[];
   /** What the size of a dot and a line show, such as "Dot area: births per year." */
@@ -489,7 +459,6 @@ export function CountryScatter<T>({
   xName,
   yName,
   yAxis = DEFAULT_SCALE,
-  floorWhat,
   under,
   legend,
 }: CountryScatterProps<T>) {
@@ -497,7 +466,7 @@ export function CountryScatter<T>({
   const sameY = yAxis === "x";
   const logX = marks?.target == null;
 
-  const { log, extent, dots, onEdge } = useMemo(() => {
+  const { log, extent, dots } = useMemo(() => {
     const points = rows.map(point);
     const values = points.flatMap((p) => (sameY ? [p.x, p.y] : [p.x]));
     const log = logX ? logDomain(values) : null;
@@ -508,9 +477,7 @@ export function CountryScatter<T>({
       { x: log ?? undefined, y: sameY ? (log ?? undefined) : undefined },
       marks ?? NO_MARKS,
     );
-    const under = (v: number) => log != null && underFloor(v, log.floor);
-    const onEdge = points.filter((p) => under(p.x) || (sameY && under(p.y))).length;
-    return { log, extent, dots, onEdge };
+    return { log, extent, dots };
   }, [rows, point, sameY, logX, marks]);
 
   const below = useMemo(() => under?.(extent) ?? [], [under, extent]);
@@ -593,20 +560,6 @@ export function CountryScatter<T>({
     },
   });
 
-  const unnamedPlayers = dots.some((dot) => dot.colored && !dot.labeled);
-  const grey = dots.some((dot) => !dot.colored);
-  const key = [
-    unnamedPlayers
-      ? "Players and named countries have their game color. Hover a dot to see its name."
-      : grey
-        ? "Hover a grey dot to see its name."
-        : null,
-    legend,
-    BOX_ZOOM_HINT,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   // The chart waits for the selection, so that it does not draw two times.
   if (!marks) return <div style={{ height: "420px" }} />;
 
@@ -623,17 +576,7 @@ export function CountryScatter<T>({
         />
         <ResetZoom zoom={zoom} />
       </div>
-      <p className="mt-1 text-[12px] text-game-ink-500">{key}</p>
-      {/* A zoom can leave out the edge, so the note is only for the whole chart. */}
-      {log && !zoom.zoomed ? (
-        <LogFloorNote
-          count={onEdge}
-          floor={log.floor}
-          noun={{ one: "country", many: "countries" }}
-          what={floorWhat}
-          edge={sameY ? "edges" : "left edge"}
-        />
-      ) : null}
+      {legend ? <p className="mt-1 text-[12px] text-game-ink-500">{legend}</p> : null}
     </>
   );
 }

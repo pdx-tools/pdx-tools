@@ -170,9 +170,14 @@ export function useBoxZoom(option: ScatterOption) {
     let drag: { pointerId: number; start: Pixel; end: Pixel | null } | null = null;
     let box: echarts.graphic.Rect | null = null;
 
-    const local = (ev: PointerEvent): Pixel => {
+    const local = (ev: MouseEvent): Pixel => {
       const rect = dom.getBoundingClientRect();
       return [ev.clientX - rect.left, ev.clientY - rect.top];
+    };
+
+    const inPlot = ([x, y]: Pixel) => {
+      const plot = plotOf(chart);
+      return x >= plot.left && x <= plot.right && y >= plot.top && y <= plot.bottom;
     };
 
     const clamp = ([x, y]: Pixel): Pixel => {
@@ -189,6 +194,7 @@ export function useBoxZoom(option: ScatterOption) {
     const stop = () => {
       if (drag && dom.hasPointerCapture(drag.pointerId)) dom.releasePointerCapture(drag.pointerId);
       drag = null;
+      dom.style.cursor = "";
       if (box && !chart.isDisposed()) zr.remove(box);
       box = null;
       document.removeEventListener("selectstart", noSelect);
@@ -224,12 +230,17 @@ export function useBoxZoom(option: ScatterOption) {
     on("pointerdown", (ev) => {
       if (!ev.isPrimary || ev.button !== 0) return;
       const at = local(ev);
-      const plot = plotOf(chart);
-      if (at[0] < plot.left || at[0] > plot.right || at[1] < plot.top || at[1] > plot.bottom) {
-        return;
-      }
+      if (!inPlot(at)) return;
       // No capture yet, so that a click stays on the dot under it.
       drag = { pointerId: ev.pointerId, start: at, end: null };
+    });
+
+    // A crosshair over the plot shows that a drag zooms. The chart sets the
+    // cursor on mousemove first, and a dot keeps its own.
+    const root = zr.painter.getViewportRoot();
+    on("mousemove", (ev) => {
+      if (root.style.cursor !== "default" || !inPlot(local(ev))) return;
+      zr.setCursorStyle("crosshair");
     });
 
     on(
@@ -246,6 +257,7 @@ export function useBoxZoom(option: ScatterOption) {
           if (Math.hypot(at[0] - drag.start[0], at[1] - drag.start[1]) <= CLICK_SLOP) return;
           // A drag: the chart keeps the pointer until the release.
           dom.setPointerCapture(ev.pointerId);
+          dom.style.cursor = "crosshair";
           chart.dispatchAction({ type: "hideTip" });
           document.addEventListener("selectstart", noSelect);
         }
@@ -308,9 +320,6 @@ export function useBoxZoom(option: ScatterOption) {
 
   return { attach, zoomed: zoomedFor?.option === option, reset };
 }
-
-/** The hint under a scatter that has a box zoom */
-export const BOX_ZOOM_HINT = "Drag over dots to zoom in.";
 
 /** A button over the top right of a zoomed scatter */
 export function ResetZoom({ zoom }: { zoom: ReturnType<typeof useBoxZoom> }) {

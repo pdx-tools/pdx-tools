@@ -286,7 +286,6 @@ function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnreal
       xName="Tax Base"
       yName="Total Wealth (ceiling)"
       yAxis="x"
-      floorWhat="tax base or wealth"
       under={fullRealization}
       legend="Dot area: locations. Dashed line: tax base = wealth."
     />

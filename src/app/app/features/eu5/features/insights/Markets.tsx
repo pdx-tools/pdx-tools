@@ -43,8 +43,8 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { logAxis, logDomain, logPosition, LogFloorNote } from "./countryScatter";
-import { BOX_ZOOM_HINT, logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
+import { logAxis, logDomain, logPosition } from "./countryScatter";
+import { logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
 import { useEu5SaveDate } from "../../store/eu5Store";
 import { EmptyNote, GameSegmented, SectionTitle, StatItem } from "../../components";
 
@@ -1225,16 +1225,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
         />
         <ResetZoom zoom={zoom} />
       </div>
-      <p className="mt-1 text-[12px] text-game-ink-500">Dot area: total taken. {BOX_ZOOM_HINT}</p>
-      {/* A zoom can leave out the edge, so the note is only for the whole chart. */}
-      {zoom.zoomed ? null : (
-        <LogFloorNote
-          count={domain.onFloor}
-          floor={domain.floor}
-          noun={{ one: "market", many: "markets" }}
-          what="value"
-        />
-      )}
+      <p className="mt-1 text-[12px] text-game-ink-500">Dot area: total taken.</p>
     </>
   );
 }

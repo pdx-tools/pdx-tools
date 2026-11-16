@@ -134,7 +134,6 @@ function StateEfficacyScatterChart({ countries }: { countries: CountryStateEffic
       xName="Total Effective Development"
       yName="Avg Effective Development per Location"
       yAxis={FROM_ZERO}
-      floorWhat="effective development"
     />
   );
 }
