@@ -89,6 +89,12 @@ describe("zoomedAxes", () => {
     ).toBe("log");
     // The box starts a tenth of its range or less over the floor.
     expect(zoomedAxes({ x: floored, y: value }, { x: [10.1, 190], y: [0, 40] }).x.type).toBe("log");
+    // A linear zoom over the floor does not round down to it.
+    expect(zoomedAxes({ x: floored, y: value }, { x: [13, 35], y: [0, 40] }).x).toMatchObject({
+      type: "value",
+      min: 13,
+      interval: undefined,
+    });
     // A box far over the floor becomes linear.
     expect(
       zoomedAxes({ x: { ...log, min: 1 }, y: value }, { x: [497, 4870], y: [0, 40] }).x.type,

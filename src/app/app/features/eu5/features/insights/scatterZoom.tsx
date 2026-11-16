@@ -45,10 +45,10 @@ export interface LinearZoom {
 /**
  * The axis of a linear zoom to `lo`..`hi`. The step is 1, 2 or 5 times a
  * power of 10 and gives 4 ticks or more, and the ends go out to a step. A
- * box that starts above 0 does not go down to 0, because the box left out
- * the dots there. Then the axis starts at the box, with no step.
+ * box that starts above the floor does not go down to it, because the box
+ * left out the dots there. Then the axis starts at the box, with no step.
  */
-export function linearZoom(lo: number, hi: number): LinearZoom {
+export function linearZoom(lo: number, hi: number, floor = 0): LinearZoom {
   const range = hi - lo;
   const decade = 10 ** Math.floor(Math.log10(range / 4));
   if (!(range > 0) || !(decade > 0) || !Number.isFinite(decade)) return { min: lo, max: hi };
@@ -57,7 +57,7 @@ export function linearZoom(lo: number, hi: number): LinearZoom {
   const max = tidy(Math.ceil(hi / interval) * interval);
   // A box too small to round keeps its own ends.
   if (!(min <= lo && hi <= max && min < max)) return { min: lo, max: hi };
-  if (lo > 0 && min <= 0) return { min: lo, max };
+  if (lo > floor && min <= floor) return { min: lo, max };
   return { min, max, interval };
 }
 
@@ -119,7 +119,9 @@ export function zoomedAxes<X extends AxisOption, Y extends AxisOption>(
     const name = axis.name?.endsWith(LOG_SUFFIX)
       ? axis.name.slice(0, -LOG_SUFFIX.length)
       : axis.name;
-    const { min, max, interval } = linearZoom(...widen(lo, hi));
+    // A log axis that becomes linear has its floor values at the floor.
+    const floor = axis.type === "log" && typeof axis.min === "number" ? axis.min : 0;
+    const { min, max, interval } = linearZoom(...widen(lo, hi), floor);
     const ends = interval !== undefined;
     return {
       ...axis,
