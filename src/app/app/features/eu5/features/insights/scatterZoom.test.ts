@@ -23,6 +23,19 @@ describe("linearZoom", () => {
     }
   });
 
+  it("does not add a step for a float error", () => {
+    expect(linearZoom(0.00007, 0.00009)).toEqual({
+      min: 0.00007,
+      max: 0.00009,
+      interval: 0.000005,
+    });
+    expect(linearZoom(-0.00009, -0.00007)).toEqual({
+      min: -0.00009,
+      max: -0.00007,
+      interval: 0.000005,
+    });
+  });
+
   it("keeps the ends of a box too small to round", () => {
     expect(linearZoom(0, Number.MIN_VALUE)).toEqual({ min: 0, max: Number.MIN_VALUE });
     expect(linearZoom(1.0000000000001, 1.0000000000002)).toEqual({

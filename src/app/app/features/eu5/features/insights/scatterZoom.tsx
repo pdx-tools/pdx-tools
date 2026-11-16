@@ -53,8 +53,13 @@ export function linearZoom(lo: number, hi: number, floor = 0): LinearZoom {
   const decade = 10 ** Math.floor(Math.log10(range / 4));
   if (!(range > 0) || !(decade > 0) || !Number.isFinite(decade)) return { min: lo, max: hi };
   const interval = tidy(([5, 2, 1].find((m) => m * decade * 4 <= range) ?? 1) * decade);
-  const min = tidy(Math.floor(lo / interval) * interval);
-  const max = tidy(Math.ceil(hi / interval) * interval);
+  // A division can miss a whole number by a float error, which adds a step.
+  const steps = (v: number) => {
+    const q = v / interval;
+    return Math.abs(q - Math.round(q)) < 1e-9 ? Math.round(q) : q;
+  };
+  const min = tidy(Math.floor(steps(lo)) * interval);
+  const max = tidy(Math.ceil(steps(hi)) * interval);
   // A box too small to round keeps its own ends.
   if (!(min <= lo && hi <= max && min < max)) return { min: lo, max: hi };
   if (lo > floor && min <= floor) return { min: lo, max };
