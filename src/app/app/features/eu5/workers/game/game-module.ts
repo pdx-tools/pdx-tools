@@ -21,6 +21,7 @@ import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
   SelectionKind,
   SelectionOp,
+  SelectionTargetData,
   MapMode,
   DisplayData,
   GradientConfig,
@@ -531,6 +532,7 @@ const loadSaveInner = async (
       return app.get_state_efficacy();
     },
 
+    getSelectionTarget: (): SelectionTargetData | null => app.selection_target() ?? null,
     getCarriedSelection: () => captureSelection(app, countryIndex),
     restoreCampaignView: async (carry: Eu5Carry) => {
       const restored = restoreCampaignView(app, countryIndex, carry);

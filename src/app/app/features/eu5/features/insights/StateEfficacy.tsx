@@ -1,6 +1,4 @@
 import { useMemo } from "react";
-import { EChart } from "@/components/viz";
-import type { EChartsOption } from "@/components/viz";
 import { GameButton } from "@/components/game/Button";
 import type {
   CountryStateEfficacy,
@@ -18,14 +16,6 @@ import { Figure } from "../../components/Figure";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartDataZoomSlider,
-  chartText,
-  chartTooltip,
-  seriesColor,
-  yAxisName,
-  labelHalo,
-} from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { useEu5Engine } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
@@ -37,7 +27,8 @@ import {
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { CountryScatter } from "./countryScatter";
+import type { CountryPoint } from "./countryScatter";
 
 function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }) {
   const engine = useEu5Engine();
@@ -116,106 +107,35 @@ export function StateEfficacyInsight() {
   );
 }
 
+const efficacyPoint = (c: CountryStateEfficacy): CountryPoint => ({
+  country: c.country,
+  x: c.totalEfficacy,
+  y: c.avgEfficacy,
+});
+
+function efficacyTooltip(c: CountryStateEfficacy): string {
+  return [
+    `<strong>${escapeEChartsHtml(c.country.country.name)}</strong> (${escapeEChartsHtml(c.country.tag)})`,
+    `Total Effective Development: ${formatExact(c.totalEfficacy)}`,
+    `Avg Effective Development per Location: ${formatExact(c.avgEfficacy)}`,
+    `Locations: ${formatInt(c.locationCount)}`,
+    `Population: ${formatInt(c.totalPopulation)}`,
+  ].join("<br/>");
+}
+
+const FROM_ZERO = { min: 0 };
+
 function StateEfficacyScatterChart({ countries }: { countries: CountryStateEfficacy[] }) {
-  const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
-    [countries],
+  return (
+    <CountryScatter
+      rows={countries}
+      point={efficacyPoint}
+      tooltip={efficacyTooltip}
+      xName="Total Effective Development"
+      yName="Avg Effective Development per Location"
+      yAxis={FROM_ZERO}
+    />
   );
-
-  const scatterData = useMemo(
-    () =>
-      countries.map((c) => ({
-        value: [c.totalEfficacy, c.avgEfficacy] as [number, number],
-        tag: c.country.tag,
-        name: c.country.country.name,
-        locationCount: c.locationCount,
-        totalEfficacy: c.totalEfficacy,
-        avgEfficacy: c.avgEfficacy,
-        totalPopulation: c.totalPopulation,
-        color: c.country.colorHex,
-        id: c.country.country.key,
-        anchorLocationIdx: c.country.anchorLocationIdx,
-      })),
-    [countries],
-  );
-
-  const option = useMemo((): EChartsOption => {
-    return {
-      grid: { left: 56, right: 60, top: 32, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Total Effective Development",
-        nameLocation: "middle",
-        nameGap: 40,
-        min: 0,
-      },
-      yAxis: {
-        type: "value",
-        ...yAxisName("Avg Effective Development per Location"),
-        min: 0,
-      },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
-      ],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const d = params.data as (typeof scatterData)[number];
-          return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Total Effective Development: ${formatExact(d.totalEfficacy)}`,
-            `Avg Effective Development per Location: ${formatExact(d.avgEfficacy)}`,
-            `Locations: ${formatInt(d.locationCount)}`,
-            `Population: ${formatInt(d.totalPopulation)}`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: 8,
-          itemStyle: {
-            color: (params) => {
-              if (Array.isArray(params)) return seriesColor(0);
-              const d = params.data as (typeof scatterData)[number];
-              return d.color || seriesColor(0);
-            },
-            opacity: 0.8,
-          },
-          label: {
-            show: true,
-            formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
-            },
-            ...chartText,
-            ...labelHalo,
-            position: "top",
-            distance: 4,
-          },
-        },
-      ],
-    };
-  }, [scatterData, topCountries, countries.length]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: BACK_LABEL,
-    getTarget: (params) => {
-      if (Array.isArray(params.data)) return null;
-      const country = params.data as (typeof scatterData)[number] | undefined;
-      return country
-        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
-        : null;
-    },
-  });
-
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }
 
 const BACK_LABEL = "Effective Development";

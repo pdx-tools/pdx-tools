@@ -19,16 +19,7 @@ import {
 } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartDataZoomSlider,
-  chartText,
-  chartTooltip,
-  markGap,
-  ordinalRamp,
-  seriesColor,
-  yAxisName,
-  labelHalo,
-} from "@/components/viz/echartsTheme";
+import { chartTooltip, markGap, ordinalRamp } from "@/components/viz/echartsTheme";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
@@ -39,8 +30,9 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { CountryScatter } from "./countryScatter";
+import type { CountryPoint } from "./countryScatter";
 
-const SCATTER_LABEL_CAP = 8;
 const BACK_LABEL = "Control";
 
 // The chart omits the engine's `perfect` band, so use four steps for four bars.
@@ -239,7 +231,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: BACK_LABEL,
     getTarget: (params) => {
       const country = params.data as (typeof rows)[number] | undefined;
       return country
@@ -254,118 +245,41 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
   );
 }
 
+function controlTooltip(c: CountryControlPoint): string {
+  return [
+    `<strong>${escapeEChartsHtml(c.country.country.name)}</strong> (${escapeEChartsHtml(c.country.tag)})`,
+    `Avg Control: ${formatPercent(c.weightedAvgControl)}`,
+    `Total Dev: ${formatExact(c.totalDevelopment)}`,
+    `Lost Dev: ${formatExact(c.lostDevelopment)}`,
+    `Locations: ${formatInt(c.locationCount)}`,
+  ].join("<br/>");
+}
+
+const CONTROL_SCALE = { min: 0, max: 1, formatter: formatPercentTick };
+
 function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }) {
-  const labelSet = useMemo(() => {
-    if (countries.length <= 10) return new Set(countries.map((c) => c.country.tag));
-    const sorted = [...countries].sort((a, b) => b.lostDevelopment - a.lostDevelopment);
-    return new Set(sorted.slice(0, SCATTER_LABEL_CAP).map((c) => c.country.tag));
+  // The size of a dot shows the development that the country loses.
+  const point = useMemo(() => {
+    const maxLost = Math.max(...countries.map((c) => c.lostDevelopment), 1);
+    return (c: CountryControlPoint): CountryPoint => ({
+      country: c.country,
+      x: c.totalDevelopment,
+      y: c.weightedAvgControl,
+      symbolSize: 6 + (c.lostDevelopment / maxLost) * 24,
+    });
   }, [countries]);
 
-  const scatterData = useMemo(
-    () =>
-      countries.map((c) => ({
-        value: [c.totalDevelopment, c.weightedAvgControl] as [number, number],
-        tag: c.country.tag,
-        name: c.country.country.name,
-        lostDevelopment: c.lostDevelopment,
-        totalDevelopment: c.totalDevelopment,
-        weightedAvgControl: c.weightedAvgControl,
-        locationCount: c.locationCount,
-        colorHex: c.country.colorHex,
-        id: c.country.country.key,
-        anchorLocationIdx: c.country.anchorLocationIdx,
-      })),
-    [countries],
+  return (
+    <CountryScatter
+      rows={countries}
+      point={point}
+      tooltip={controlTooltip}
+      xName="Total Development"
+      yName="Avg Control"
+      yAxis={CONTROL_SCALE}
+      legend="Dot size: development lost to low control."
+    />
   );
-
-  const maxLost = useMemo(
-    () => Math.max(...countries.map((c) => c.lostDevelopment), 1),
-    [countries],
-  );
-
-  const option = useMemo((): EChartsOption => {
-    return {
-      grid: { left: 56, right: 60, top: 32, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Total Development",
-        nameLocation: "middle",
-        nameGap: 40,
-        min: 0,
-      },
-      yAxis: {
-        type: "value",
-        ...yAxisName("Avg Control"),
-        axisLabel: { formatter: formatPercentTick },
-        min: 0,
-        max: 1,
-      },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
-      ],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const d = params.data as (typeof scatterData)[number];
-          return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Avg Control: ${formatPercent(d.weightedAvgControl)}`,
-            `Total Dev: ${formatExact(d.totalDevelopment)}`,
-            `Lost Dev: ${formatExact(d.lostDevelopment)}`,
-            `Locations: ${formatInt(d.locationCount)}`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: (_value: unknown, params: unknown) => {
-            const d = (params as { data: (typeof scatterData)[number] }).data;
-            const pct = d.lostDevelopment / maxLost;
-            return 6 + pct * 24;
-          },
-          itemStyle: {
-            color: (params) => {
-              if (Array.isArray(params)) return seriesColor(0);
-              const d = params.data as (typeof scatterData)[number];
-              return d.colorHex || seriesColor(0);
-            },
-            opacity: 0.8,
-          },
-          label: {
-            show: true,
-            formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return labelSet.has(d.tag) ? d.tag : "";
-            },
-            ...chartText,
-            ...labelHalo,
-            position: "top",
-            distance: 4,
-          },
-        },
-      ],
-    };
-  }, [scatterData, labelSet, maxLost]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: BACK_LABEL,
-    getTarget: (params) => {
-      if (Array.isArray(params.data)) return null;
-      const country = params.data as (typeof scatterData)[number] | undefined;
-      return country
-        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
-        : null;
-    },
-  });
-
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }
 
 const columnHelper = createColumnHelper<ControlTopLocation>();
