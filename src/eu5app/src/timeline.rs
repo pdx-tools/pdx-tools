@@ -102,7 +102,8 @@ impl TimelineIndex {
     /// owner differs from its current `owner` gets a final change on the save
     /// date, so the index at the save date agrees with the current state. The
     /// game omits an entry when a civil war swaps two country ids under one
-    /// tag, and this reconciliation covers that case.
+    /// tag, and this reconciliation covers that case. Undated history entries
+    /// are skipped because they cannot be placed on the timeline.
     pub fn from_save(
         locations: &Locations<'_>,
         renames: &[CountryRename<'_>],
@@ -114,7 +115,10 @@ impl TimelineIndex {
             let loc = entry.location();
             let mut prev = CountryId::default();
             for owned in loc.ownership_history {
-                let date = owned.date.start_of_day().min(save_date);
+                let Some(date) = owned.date else {
+                    continue;
+                };
+                let date = date.start_of_day().min(save_date);
                 entries.push((
                     date,
                     TimelineEvent::Owner(OwnerChange {
@@ -442,6 +446,28 @@ mod tests {
 
     fn owner(owners: &LocationIndexedVec<CountryId>, location: u32) -> u32 {
         owners[LocationIdx::new(location)].value()
+    }
+
+    #[test]
+    fn undated_ownership_preserves_the_dated_timeline_and_current_owner() {
+        use arena_serde::{Arena, ArenaDeserialize};
+        use jomini::TextDeserializer;
+
+        let arena = Arena::new();
+        let deserializer = TextDeserializer::from_utf8_slice(
+            br#"locations={ 1={ owner=5 ownership_history={
+                { date=1337.4.1 owner=4 tag="DAN" }
+                { owner=5 tag="SKE" }
+            } } }"#,
+        )
+        .unwrap();
+        let locations = Locations::deserialize_in_arena(&deserializer, &arena).unwrap();
+        let save_date = date("1340.1.1");
+        let index = TimelineIndex::from_save(&locations, &[], save_date);
+
+        assert_eq!(index.dates(), &[date("1337.4.1"), save_date]);
+        assert_eq!(owner(&index.owners_at(1, date("1339.1.1")), 0), 4);
+        assert_eq!(owner(&index.owners_at(1, save_date), 0), 5);
     }
 
     #[test]
