@@ -383,13 +383,15 @@ const NoteMarkers = memo(function NoteMarkers({
       <Tooltip.Trigger asChild>
         <button
           type="button"
-          onClick={() => setDate(note.date)}
-          disabled={locked}
+          onClick={() => {
+            if (!locked) setDate(note.date);
+          }}
+          aria-disabled={locked || undefined}
           aria-label={`${note.label}, ${formatLongDate(note.date)}`}
           className={cx(
             "absolute z-10 grid h-4 w-4 -translate-x-1/2 place-items-center rounded-[var(--radius-plate)]",
-            "text-game-ink-300 transition-colors duration-100 enabled:hover:text-game-accent-100",
-            "disabled:cursor-default",
+            "text-game-ink-300 transition-colors duration-100",
+            locked ? "cursor-default" : "hover:text-game-ink-100",
             focusRing,
           )}
           style={{ left: px(note.day), top: TRACK_Y - 8 }}

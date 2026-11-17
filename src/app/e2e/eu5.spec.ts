@@ -13,11 +13,20 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   // Go to the campaign start and back to the save date.
   await page.getByRole("button", { name: "Campaign start" }).click();
   await expect(saveDate).toHaveAttribute("aria-valuenow", "0");
+  const pastDate = await saveDate.getAttribute("aria-valuetext");
+  const wealthMode = page.getByRole("button", { name: "Wealth", exact: true });
+  await wealthMode.click();
+  await expect(saveDate).toHaveAttribute("aria-valuetext", "1617 Apr 1");
+  await expect(saveDate).toHaveAttribute("aria-disabled", "true");
+  await page.getByRole("button", { name: "Control", exact: true }).click();
+  await expect(saveDate).toHaveAttribute("aria-valuetext", "1617 Apr 1");
+  await page.getByRole("button", { name: "Political", exact: true }).click();
+  await expect(saveDate).toHaveAttribute("aria-valuetext", pastDate!);
   await page.getByRole("button", { name: "Save date", exact: true }).click();
   await expect(saveDate).toHaveAttribute("aria-valuetext", "1617 Apr 1");
 
   // A compact figure keeps its exact value on keyboard focus and on hover.
-  await page.getByRole("button", { name: "Wealth", exact: true }).click();
+  await wealthMode.click();
   await page.getByRole("button", { name: /^Open .* panel$/ }).click();
   const totalWealth = page.getByText("285.2K", { exact: true });
   const exactValue = page.getByRole("tooltip");
@@ -81,6 +90,27 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await page.getByRole("button", { name: "Tax Base Gap", exact: true }).click();
   await page.getByRole("button", { name: "Sort by Tax Gap" }).focus();
   await expect(page.getByRole("tooltip", { name: /^Tax Base Gap:/ })).toBeVisible();
+
+  await page.getByRole("button", { name: "Close panel" }).click();
+  await page.getByRole("button", { name: "Search countries or locations" }).click();
+  await page.getByPlaceholder("Search countries or locations...").fill("MAL");
+  await page.getByRole("option", { name: /MAL Mali/ }).click();
+  const peak = page
+    .getByRole("region", { name: "Campaign timeline" })
+    .getByRole("button", { name: /Mali.*Peak of/ });
+  await expect(peak).toBeVisible();
+  await expect(peak).toBeDisabled();
+  await peak.focus();
+  await expect(page.getByRole("tooltip")).toContainText("Peak of");
+  await page.getByRole("button", { name: "Political", exact: true }).click();
+  await expect(peak).toBeEnabled();
+  await saveDate.press("Home");
+  await expect(saveDate).toHaveAttribute("aria-valuenow", "0");
+  const peakDate = (await peak.getAttribute("aria-label"))!.split(", ").at(-1)!;
+  await peak.press("Enter");
+  await expect(saveDate).toHaveAttribute("aria-valuetext", peakDate);
+  await saveDate.press("End");
+  await expect(saveDate).toHaveAttribute("aria-valuetext", "1617 Apr 1");
 
   // The browser compresses the save before the upload.
   await page.getByRole("button", { name: "Share save" }).click();

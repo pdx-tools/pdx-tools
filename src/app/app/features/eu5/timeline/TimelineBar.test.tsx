@@ -3,10 +3,16 @@ import { beforeEach, expect, it, vi } from "vitest";
 import type { CampaignSave } from "@/features/campaign/types";
 import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import type { MapHistoryValue } from "../history/MapHistory";
+import type { LandHistory } from "@/wasm/wasm_eu5";
+import type { TimelineController } from "@/features/timeline/controller";
+import { landChapters } from "./landChapters";
 import type * as HistoryStore from "../history/store";
 
 const mocks = vi.hoisted(() => ({
   mode: "political",
+  engine: {},
+  selected: null as { key: number; name: string } | null,
+  data: undefined as { engine: object; countryKey: number; land: LandHistory } | undefined,
   pending: 0,
   inputKind: "file" as "file" | "server",
   saves: [] as CampaignSave[],
@@ -39,19 +45,40 @@ vi.mock("@/features/campaign/SaveMarks", () => ({
   },
 }));
 vi.mock("../store", () => ({
+  useEu5Engine: () => mocks.engine,
+  useEu5SelectionState: () => ({ timelineCountry: mocks.selected }),
   useEu5Input: () => ({ kind: mocks.inputKind }),
   useEu5MapMode: () => mocks.mode,
   useSetEu5TimelineBarHeight: () => vi.fn(),
 }));
 vi.mock("./useTimelineController", () => ({
-  useTimelineController: () => ({ timeline: { start: { year: 1337, month: 1, day: 1 } } }),
+  useTimelineController: () => ({
+    timeline: {
+      start: { year: 1337, month: 1, day: 1 },
+      end: { year: 1340, month: 4, day: 1 },
+      notes: [],
+    },
+  }),
 }));
 vi.mock("@/features/timeline/controller", () => ({ useTimelineKeyboard: vi.fn() }));
 vi.mock("@/features/timeline/TimelineTransport", () => ({
   TimelineTransport: () => <span>Transport</span>,
 }));
 vi.mock("@/features/timeline/TimelineReadout", () => ({ TimelineReadout: () => null }));
-vi.mock("@/features/timeline/TimelineScrubber", () => ({ TimelineScrubber: () => null }));
+vi.mock("../features/profiles/useEu5Trigger", () => ({
+  useEu5Trigger: () => ({ data: mocks.data }),
+}));
+vi.mock("@/features/timeline/TimelineScrubber", () => ({
+  TimelineScrubber: ({ controller }: { controller: TimelineController }) => (
+    <div data-locked={controller.locked}>
+      {controller.timeline.notes?.map((note) => (
+        <div key={note.key}>
+          {note.label} {note.date.year}/{note.date.month}/{note.date.day}
+        </div>
+      ))}
+    </div>
+  ),
+}));
 vi.mock("./TimelapseExport", () => ({ TimelapseExport: () => <span>Timelapse export</span> }));
 vi.mock("../useViewportInsets", () => ({ useViewportInsets: () => ({ left: 0, right: 0 }) }));
 
@@ -60,6 +87,8 @@ import { useHistory } from "../history/store";
 
 beforeEach(() => {
   mocks.mode = "political";
+  mocks.selected = null;
+  mocks.data = undefined;
   mocks.pending = 0;
   mocks.inputKind = "file";
   mocks.saves = [];
@@ -77,9 +106,40 @@ it("preserves political playback and exports without analysis", () => {
   expect(mocks.status).toBeUndefined();
 });
 
-it("does not expose a saved-date controller before activation", () => {
+it("keeps the ownership timeline locked in a mode without history", () => {
   mocks.mode = "control";
-  expect(renderToStaticMarkup(<TimelineBar />)).toBe("");
+  const html = renderToStaticMarkup(<TimelineBar />);
+  expect(html).toContain('data-locked="true"');
+  expect(html).toContain("Showing the save date");
+  expect(html).not.toContain("Timelapse export");
+});
+
+const land = {
+  points: [],
+  peak: { year: 1338, locations: 40 },
+  biggestGain: { year: 1338, change: 12 },
+  biggestLoss: { year: 1340, change: -1 },
+};
+
+it("groups beats by year", () => {
+  expect(landChapters(land)).toEqual([
+    { year: 1338, text: "Peak of 40 locations. Largest gain of 12 locations" },
+    { year: 1340, text: "Largest loss of 1 location" },
+  ]);
+  expect(landChapters({ ...land, biggestGain: undefined, biggestLoss: undefined })).toEqual([
+    { year: 1338, text: "Peak of 40 locations" },
+  ]);
+});
+
+it("uses year end and the save date and only shows results for the current country", () => {
+  mocks.selected = { key: 9, name: "Milan" };
+  mocks.data = { engine: mocks.engine, countryKey: 9, land };
+  const html = renderToStaticMarkup(<TimelineBar />);
+  expect(html).toContain("Milan. Peak of 40 locations. Largest gain of 12 locations 1338/12/31");
+  expect(html).toContain("Milan. Largest loss of 1 location 1340/4/1");
+
+  mocks.selected = { key: 10, name: "France" };
+  expect(renderToStaticMarkup(<TimelineBar />)).not.toContain("Peak of");
 });
 
 it("shows the timeline while analysis has no completed frames", () => {

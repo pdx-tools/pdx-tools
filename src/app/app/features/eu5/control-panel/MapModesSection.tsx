@@ -36,13 +36,14 @@ function ModeRow({ mode, live, locked }: { mode: ModeConfig; live: boolean; lock
   const note = locked
     ? "A timelapse recording is using the map. Map modes come back when it finishes."
     : resets
-      ? `Only borders have a history. ${mode.label} shows the save date, so choosing it returns the map there.`
+      ? `Only borders have a history. ${mode.label} shows the save date. Political mode brings you back to this date.`
       : null;
 
   return (
     <SidebarNav.Item
       active={isActive}
       disabled={locked}
+      aria-label={mode.label}
       aria-describedby={note !== null ? noteId : undefined}
       onClick={() => engine.trigger.selectMapMode(mode.value as MapMode)}
     >

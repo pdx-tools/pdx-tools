@@ -1172,7 +1172,7 @@ fn returning_countries_stay_one_country(
                     .presenter()
                     .timeline_country()
                     .map(|country| country.key.value()),
-                Some(country.value()),
+                (holders > 0).then_some(country.value()),
                 "{save_name}: {date:?} keeps one history for the selected country"
             );
             // With no land, there is nothing to select. Two ids with land count as two
@@ -1231,6 +1231,14 @@ fn returning_countries_stay_one_country(
                 ws.selection_state().selected_locations(),
                 &land,
                 "{save_name}: a step to {date:?} keeps the land when it changes id"
+            );
+            assert_eq!(
+                ws.localized(localization)
+                    .presenter()
+                    .timeline_country()
+                    .map(|country| country.key.value()),
+                Some(country.value()),
+                "{save_name}: a step to {date:?} keeps one history"
             );
             // A selection follows the country on dates when it has no land.
             if holders < 2 {

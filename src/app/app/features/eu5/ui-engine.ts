@@ -254,6 +254,8 @@ export class Eu5UIEngine implements AppEngine {
   private timelineInFlight = false;
   /** The date request in flight, so a recording can wait for it to settle. */
   private timelineRequest: Promise<void> | null = null;
+  private mapModeRequest: Promise<void> | null = null;
+  private returnDate: Eu5DateComponents | null = null;
   private playbackFrame: number | null = null;
   private rewindTimer: ReturnType<typeof setTimeout> | null = null;
   /** Set by `stopTimelapse`, read between frames of a recording. */
@@ -401,20 +403,36 @@ export class Eu5UIEngine implements AppEngine {
   }
 
   private async handleSelectMapMode(mode: MapMode): Promise<void> {
-    // A recording owns the map until it is done; a mode change mid-film would
-    // pull the date to the save and spoil what has been encoded.
-    if (this.isTimelapseRunning()) return;
+    const request = (this.mapModeRequest ?? Promise.resolve()).then(async () => {
+      if (this.destroyed || this.isTimelapseRunning()) return;
 
-    // A mode without a history pulls the map back to the save date.
-    if (!isTimelineLive(this._state) && !isHistoricalMapMode(mode)) {
-      this.handlePauseTimeline();
-    }
+      const historical = isHistoricalMapMode(mode);
+      if (!historical) this.handlePauseTimeline();
+      await this.timelineRequest;
+      if (this.destroyed || this.isTimelapseRunning()) return;
+
+      try {
+        if (historical && this.returnDate) {
+          const change = await this.gameInstance.setTimelineDate(this.returnDate);
+          this.returnDate = null;
+          this.applyTimelineChange(change);
+        } else {
+          const date = this._state.timelineMapDate;
+          const change = await this.gameInstance.setMapMode(mode);
+          if (!historical && !sameDate(date, this._state.timeline.end)) {
+            this.returnDate = date;
+          }
+          this.applyTimelineChange(change);
+        }
+      } catch (error) {
+        console.error("Failed to set map mode:", error);
+      }
+    });
+    this.mapModeRequest = request;
     try {
-      const change = await this.gameInstance.setMapMode(mode);
-      this.applyTimelineChange(change);
-    } catch (error) {
-      console.error("Failed to set map mode:", error);
-      this.updateState(() => ({ currentMapMode: mode }));
+      await request;
+    } finally {
+      if (this.mapModeRequest === request) this.mapModeRequest = null;
     }
   }
 
@@ -433,7 +451,14 @@ export class Eu5UIEngine implements AppEngine {
   private handleSetTimelineDate(date: Eu5DateComponents): void {
     const timeline = this._state.timeline;
     // Ignore window shortcuts while this engine awaits replacement.
-    if (this.destroyed || !timeline.available || this.isTimelapseRunning()) return;
+    if (
+      this.destroyed ||
+      this.mapModeRequest ||
+      !isHistoricalMapMode(this._state.currentMapMode) ||
+      !timeline.available ||
+      this.isTimelapseRunning()
+    )
+      return;
     const clamped = clampDate(date, timeline.start, timeline.end);
     if (sameDate(clamped, this._state.timelineDate) && !this.timelineInFlight) return;
     this.updateState((state) => ({
@@ -490,6 +515,8 @@ export class Eu5UIEngine implements AppEngine {
     const timeline = this._state.timeline;
     if (
       this.destroyed ||
+      this.mapModeRequest ||
+      !isHistoricalMapMode(this._state.currentMapMode) ||
       !timeline.available ||
       this.isTimelineRunning() ||
       this.isTimelapseRunning()
