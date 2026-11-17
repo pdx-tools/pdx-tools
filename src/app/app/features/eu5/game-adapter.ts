@@ -233,6 +233,7 @@ export type SaveQueries = Pick<
   SaveEngine,
   | "getStateEfficacy"
   | "getCountryProfile"
+  | "getLandHistory"
   | "getCountryPopulationProfile"
   | "getMarketProfile"
   | "getMarketGoodsProfile"

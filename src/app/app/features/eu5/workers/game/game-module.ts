@@ -28,6 +28,7 @@ import type {
   GradientPalette,
   StateEfficacyInsightData,
   SelectionSummaryData,
+  LandHistory,
   CountryPopulationProfile,
   CountryProfile,
   MarketProfile,
@@ -541,6 +542,9 @@ const loadSaveInner = async (
     },
     getCountryProfile: (countryIdx: number): CountryProfile | null => {
       return timeSync("Get country profile", () => app.get_country_profile(countryIdx) ?? null);
+    },
+    getLandHistory: (countryIdx: number): LandHistory | null => {
+      return app.get_land_history(countryIdx) ?? null;
     },
     getCountryPopulationProfile: (countryIdx: number): CountryPopulationProfile | null => {
       return app.get_country_population_profile(countryIdx) ?? null;

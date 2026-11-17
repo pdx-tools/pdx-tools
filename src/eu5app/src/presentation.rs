@@ -135,6 +135,12 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
             .map(|r| r.present(&self.ctx))
     }
 
+    pub fn timeline_country(&self) -> Option<Localized<UiCountryIdx>> {
+        self.workspace
+            .timeline_country()
+            .map(|idx| idx.present(&self.ctx))
+    }
+
     pub fn entity_header(&self) -> Option<EntityHeader> {
         self.workspace.entity_header().map(|r| r.present(&self.ctx))
     }

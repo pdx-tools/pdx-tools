@@ -13,7 +13,7 @@ use eu5app::{
 };
 use eu5save::hash::FnvHashSet;
 use eu5save::models::{CountryId, LocationIdx, MarketId};
-use eu5save::{Eu5File, JominiFileKind};
+use eu5save::{Eu5Date, Eu5File, JominiFileKind};
 use jomini::binary::TokenResolver;
 use jomini::common::PdsDate;
 
@@ -1095,6 +1095,66 @@ fn returning_countries_stay_one_country(
     let (mut one_id_dates, mut two_id_dates) = (0, 0);
     for (country, _, ids) in &returning {
         let country = *country;
+        let history = ws
+            .land_history(country)
+            .expect("returning country held land");
+        assert_eq!(
+            history.peak.locations,
+            history
+                .points
+                .iter()
+                .map(|point| point.locations)
+                .max()
+                .unwrap(),
+        );
+        let beat_years: BTreeSet<_> = [history.peak.year, summary.end.year()]
+            .into_iter()
+            .chain(
+                [history.biggest_gain, history.biggest_loss]
+                    .into_iter()
+                    .flatten()
+                    .flat_map(|change| [change.year - 1, change.year]),
+            )
+            .collect();
+        for year in beat_years {
+            let date = Eu5Date::parse(format!("{year}.12.31").as_str())
+                .unwrap()
+                .min(summary.end);
+            let from_save = ws
+                .gamestate()
+                .locations
+                .iter()
+                .filter(|entry| {
+                    let loc = entry.location();
+                    let owner = if date == summary.end {
+                        loc.owner
+                    } else {
+                        loc.ownership_history
+                            .iter()
+                            .rev()
+                            .find(|owned| owned.date.start_of_day() <= date)
+                            .map_or_else(CountryId::default, |owned| owned.owner)
+                    };
+                    ids.contains(&owner)
+                })
+                .count();
+            let point = history
+                .points
+                .iter()
+                .find(|point| point.year == year)
+                .unwrap();
+            assert_eq!(
+                point.locations as usize, from_save,
+                "{save_name}: ownership records in {year}"
+            );
+            ws.set_timeline_date(date);
+            assert_eq!(point.locations as usize, land_of_ids(ws, ids).0.len());
+        }
+        ws.set_map_mode(MapMode::Population);
+        ws.clear_selection();
+        assert_eq!(ws.land_history(country).as_ref(), Some(&history));
+        ws.change_selection(SelectionOp::Replace, SelectionSet::Countries(vec![country]));
+        assert_eq!(ws.land_history(country).as_ref(), Some(&history));
         let mut one_id_date = None;
         let mut no_land_date = None;
         for &date in &dates {
@@ -1106,6 +1166,14 @@ fn returning_countries_stay_one_country(
                 ws.selection_state().selected_locations(),
                 &land,
                 "{save_name}: {date:?} selects the land of each id"
+            );
+            assert_eq!(
+                ws.localized(localization)
+                    .presenter()
+                    .timeline_country()
+                    .map(|country| country.key.value()),
+                Some(country.value()),
+                "{save_name}: {date:?} keeps one history for the selected country"
             );
             // With no land, there is nothing to select. Two ids with land count as two
             // countries, so these dates have no profile.
