@@ -77,7 +77,7 @@ async function resolveFile(input: AnalyzeInput): Promise<ResolvedFile> {
   return { input, ref, lastModified: file.lastModified };
 }
 
-/** Open the latest selected save and retain its companion files for campaign navigation. */
+/** Register campaign files and return the newest candidate for an initial load. */
 async function publishFiles(inputs: AnalyzeInput[]): Promise<SaveGameInput | null> {
   // One unreadable file must not block the other selected files.
   const results = await Promise.allSettled(inputs.map(resolveFile));
@@ -107,10 +107,12 @@ async function publishFiles(inputs: AnalyzeInput[]): Promise<SaveGameInput | nul
   return localSaveInput(game, opened.ref);
 }
 
-export function useFilePublisher() {
+/** Drops and home-page selections open a save; sidebar additions only extend the campaign. */
+export function useFilePublisher({ openSave = true }: { openSave?: boolean } = {}) {
   const { fileInput } = useEngineActions();
   return async (input: AnalyzeInput | AnalyzeInput[]) => {
     const save = await publishFiles(Array.isArray(input) ? input : [input]);
-    if (save !== null) fileInput(save);
+    if (save === null || !openSave) return;
+    fileInput(save);
   };
 }

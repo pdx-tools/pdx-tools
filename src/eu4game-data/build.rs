@@ -54,11 +54,7 @@ fn main() {
         }
 
         if embed_screenshot {
-            for filename in [
-                "color-index.bin",
-                "provinces-1.r16.zst",
-                "provinces-2.r16.zst",
-            ] {
+            for filename in ["color-index.bin", "provinces.tiles.zst"] {
                 let p = Path::new("../../assets/game/eu4")
                     .join(&version)
                     .join("map")
@@ -111,8 +107,7 @@ fn main() {
         "#[derive(Debug)]\npub struct ScreenshotAssets {{"
     );
     let _ = writeln!(embedded_file, "    pub color_index: &'static [u8],");
-    let _ = writeln!(embedded_file, "    pub west_r16_zst: &'static [u8],");
-    let _ = writeln!(embedded_file, "    pub east_r16_zst: &'static [u8],");
+    let _ = writeln!(embedded_file, "    pub tiles_zst: &'static [u8],");
     let _ = writeln!(embedded_file, "}}");
     let _ = writeln!(embedded_file, r#"#[cfg(feature = "embedded-screenshot")]"#);
     let _ = writeln!(
@@ -122,7 +117,7 @@ fn main() {
     if versions.is_empty() {
         let _ = writeln!(
             embedded_file,
-            "let _ = minor_version;\nScreenshotAssets {{\n    color_index: &[],\n    west_r16_zst: &[],\n    east_r16_zst: &[],\n}}"
+            "let _ = minor_version;\nScreenshotAssets {{\n    color_index: &[],\n    tiles_zst: &[],\n}}"
         );
     } else {
         let _ = writeln!(embedded_file, "match minor_version {{");
@@ -145,12 +140,7 @@ fn main() {
             );
             let _ = writeln!(
                 embedded_file,
-                r#"    west_r16_zst: &include_bytes!(concat!(env!("OUT_DIR"), "/{}/provinces-1.r16.zst"))[..],"#,
-                rust_friendly_version
-            );
-            let _ = writeln!(
-                embedded_file,
-                r#"    east_r16_zst: &include_bytes!(concat!(env!("OUT_DIR"), "/{}/provinces-2.r16.zst"))[..],"#,
+                r#"    tiles_zst: &include_bytes!(concat!(env!("OUT_DIR"), "/{}/provinces.tiles.zst"))[..],"#,
                 rust_friendly_version
             );
             let _ = writeln!(embedded_file, "}},");

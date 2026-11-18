@@ -12,7 +12,6 @@ workspace = true
 default = ["zstd_rust"]
 zstd_c = ["dep:zstd"]
 zstd_rust = ["dep:ruzstd"]
-zstd_c_fat_lto = ["zstd_c", "zstd/fat-lto"]
 
 [dependencies]
 ruzstd = { optional = true, workspace = true }

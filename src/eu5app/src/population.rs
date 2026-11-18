@@ -1,10 +1,39 @@
 //! Population change rates derived from the save.
 
-use eu5save::models::{Gamestate, Location};
+use eu5save::models::{Country, Gamestate, Location};
+use jomini::common::PdsDate;
+use serde::{Deserialize, Serialize};
 
 /// People per unit of a pop's `size`. The save stores pop sizes in
 /// thousands; [`Gamestate::location_population`] applies the same scale.
 pub const POP_SIZE_SCALE: f64 = 1000.0;
+
+/// A country's population on the first day of each year, in people.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct PopulationHistory {
+    /// The year of the last sample.
+    pub last_year: i16,
+    /// One sample a year, oldest first.
+    pub people: Vec<f64>,
+}
+
+/// The yearly population record of a country. The save keeps it in thousands,
+/// as it keeps pop sizes. An older save does not write the year of the last
+/// sample, so it is the year of the save.
+pub fn population_history(gamestate: &Gamestate<'_>, country: &Country<'_>) -> PopulationHistory {
+    PopulationHistory {
+        last_year: country
+            .last_stat_year
+            .unwrap_or_else(|| gamestate.metadata().date.year()),
+        people: country
+            .historical_population
+            .iter()
+            .map(|value| value * POP_SIZE_SCALE)
+            .collect(),
+    }
+}
 
 /// The top of a pop's `literacy` range. The save stores literacy as a
 /// percentage, not as a fraction of 1.

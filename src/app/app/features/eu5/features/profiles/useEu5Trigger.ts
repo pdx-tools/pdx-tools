@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import type { OverviewData, OverviewKey } from "@/wasm/wasm_eu5";
+import { useInsightPreview } from "../../history/insightPreview";
+import { previewOverview } from "../../history/previewOverview";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DependencyList } from "react";
 import { isAbortError } from "@/lib/abortController";
 import { useEu5Engine, useEu5SelectionRevision } from "../../store";
 import type { AppEngine } from "../../ui-engine";
-import { useMapHistory } from "../../history/context";
-import { overviewQueries } from "../../history/overviewQueries";
 
 export function useEu5Trigger<T>(
   fetch: (engine: AppEngine) => Promise<T>,
@@ -39,17 +40,33 @@ export function useEu5Trigger<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, ...deps]);
 
-  return { data, error, loading: loading && data === undefined };
+  return { data, error, loading };
 }
 
 export function useEu5SelectionTrigger<T>(
-  fetch: (engine: Pick<AppEngine, "queries">) => Promise<T>,
+  fetch: (engine: AppEngine) => Promise<T>,
   deps: DependencyList = [],
 ): { data: T | undefined; error: Error | undefined; loading: boolean } {
   const selectionRevision = useEu5SelectionRevision();
-  const hash = useMapHistory()?.preview?.shown?.hash;
-  return useEu5Trigger(
-    (engine) => fetch({ queries: hash ? overviewQueries(engine.queries, hash) : engine.queries }),
-    [selectionRevision, hash, ...deps],
+  return useEu5Trigger(fetch, [selectionRevision, ...deps]);
+}
+
+/** Use the shown snapshot's chart results while the loaded save stays beneath the preview. */
+export function useEu5Overview<K extends OverviewKey>(
+  key: K,
+  fetch: (engine: AppEngine) => Promise<OverviewData[K]>,
+) {
+  const preview = useInsightPreview();
+  const selection = useEu5SelectionRevision();
+  const chart = useRef({});
+  const query = useEu5Trigger(
+    async (engine) => ({
+      id: preview?.id,
+      data: await (preview ? previewOverview(preview, key) : fetch(engine)),
+    }),
+    [key, preview?.id, preview?.campaignId, preview ? undefined : selection],
   );
+  const shown = query.data?.id;
+  useLayoutEffect(() => preview?.track(chart.current, shown), [preview, shown]);
+  return { data: query.data?.data, error: query.error, loading: query.loading };
 }

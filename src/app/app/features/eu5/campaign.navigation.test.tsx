@@ -9,21 +9,20 @@ import type { LocalSaveRegistry } from "@/features/campaign/localSaves";
 import type * as LocalSaves from "@/features/campaign/localSaves";
 import type { OverlayReply } from "./workers/game/game-module";
 import type { LocationClickChangeEvent } from "./workers/map/map-module";
-import type { MapMode, ActiveProfileIdentity } from "@/wasm/wasm_eu5";
+import type { MapMode } from "@/wasm/wasm_eu5";
 import type { Eu5Carry } from "./campaignCarry";
-import type { AnalysisEntity } from "./history/analysisTypes";
 
 const mocks = vi.hoisted(() => ({
   registry: null as LocalSaveRegistry | null,
   receive: vi.fn<(nav: CampaignNav | null) => void>(),
   step: vi.fn<(input: Eu5SaveInput) => Promise<void>>(),
-  present: vi.fn<(hash: string, mode: MapMode, token: number) => Promise<OverlayReply>>(),
+  present: vi.fn<(snapshotId: string, mode: MapMode, token: number) => Promise<OverlayReply>>(),
   stop: vi.fn(async () => {}),
   clear: vi.fn<(token: number) => Promise<void>>(async () => {}),
   gate: vi.fn<(onClick: ((event: LocationClickChangeEvent) => void) | null) => Promise<void>>(
     async () => {},
   ),
-  restore: vi.fn<(carry: Eu5Carry) => Promise<ActiveProfileIdentity[]>>(async () => []),
+  restore: vi.fn<(carry: Eu5Carry) => Promise<void>>(async () => {}),
   capture: vi.fn(async () => ({
     mapMode: "control" as const,
     selection: { kind: "country" as const, tag: "FRA", focusedLocation: null },
@@ -31,7 +30,6 @@ const mocks = vi.hoisted(() => ({
     insightPanel: { open: false, width: 640 },
   })),
   fileInput: vi.fn(),
-  resolve: vi.fn<(hash: string, entity: AnalysisEntity) => Promise<AnalysisEntity>>(),
 }));
 vi.mock("zustand", async (original) => ({
   ...(await original<typeof Zustand>()),
@@ -65,10 +63,7 @@ vi.mock("@/features/campaign/CampaignProvider", () => ({
   },
 }));
 vi.mock("./campaignCarry", () => ({ captureEu5Carry: mocks.capture }));
-vi.mock("./history/analysisClient", () => ({
-  connectAnalysisFrames: async () => () => {},
-  campaignAnalysis: () => ({ resolveEntity: mocks.resolve }),
-}));
+vi.mock("./history/analysisClient", () => ({ connectAnalysisFrames: async () => () => {} }));
 vi.mock("./store/eu5Session", () => ({
   activeEu5Store: () => store,
   subscribeEu5Session: () => () => {},
@@ -92,6 +87,7 @@ import { useHistory } from "./history/store";
 import {
   bindPreviewNavigation,
   cancelPreview,
+  inspectShownSnapshot,
   openPreview,
   previewSnapshot,
   setPreviewPlayback,
@@ -102,8 +98,8 @@ import type { PreviewEngine } from "./history/previewSession";
 import type { AppTriggers } from "./ui-engine";
 import { Eu5CampaignProvider } from "./campaign";
 
-const hashes = ["a", "b", "c", "current"];
-const files = hashes.map(
+const snapshotIds = ["a", "b", "c", "current"];
+const files = snapshotIds.map(
   (name, index) => new File([name], `${name}.eu5`, { lastModified: index + 1 }),
 );
 const engine: PreviewEngine & { trigger: Pick<AppTriggers, "restoreCampaignView"> } = {
@@ -128,17 +124,19 @@ let state: {
 };
 const store = { getState: () => state };
 
-const reply = (hash: string, accepted = true): OverlayReply => ({
+const reply = (snapshotId: string, accepted = true): OverlayReply => ({
   accepted,
   gradient: null,
   observation: {
-    hash,
+    id: snapshotId,
+    game: "eu5",
     campaignId: "campaign",
+    contentHash: snapshotId,
     date: "1360-01-01",
-    dateSort: 13600000 + 101 + hashes.indexOf(hash) * 10000,
-    version: "1.0",
+    dateSort: 13600000 + 101 + snapshotIds.indexOf(snapshotId) * 10000,
+    gameVersion: "1.0",
+    artifacts: ["observations", "map"],
     layoutKey: "layout",
-    fileName: `${hash}.eu5`,
     world: { locationCount: 1, countryCount: 1, totalPopulation: 1 },
   },
 });
@@ -180,15 +178,17 @@ beforeEach(async () => {
     insightPanelWidth: 640,
     setInsightPanelOpen: vi.fn(),
   };
-  mocks.present.mockImplementation(async (hash) => reply(hash));
-  mocks.resolve.mockReset().mockImplementation(async (_hash, entity) => ({ ...entity, id: 101 }));
+  mocks.present.mockImplementation(async (snapshotId) => reply(snapshotId));
   mocks.step.mockImplementation(async (input) => {
     if (input.kind !== "file") throw Error("Expected a local save");
     state = { ...state, input, saveInput: input };
   });
   useHistory.setState({
     sources: Object.fromEntries(
-      entries.map((entry, index) => [entry.id, { hash: hashes[index], version: files[index] }]),
+      entries.map((entry, index) => [
+        entry.id,
+        { snapshotId: snapshotIds[index], version: files[index] },
+      ]),
     ),
   });
 });
@@ -198,13 +198,13 @@ function navigation() {
   return mocks.receive.mock.calls.at(-1)![0]!;
 }
 
-const preview = (hash: string) => previewSnapshot(engine, "campaign", hash, "control");
+const preview = (snapshotId: string) => previewSnapshot(engine, "campaign", snapshotId, "control");
 const lastToken = (mock: { mock: { calls: unknown[][] } }) => mock.mock.calls.at(-1)!.at(-1);
 
 it("opens the save at the playhead and then shows that save", async () => {
   preview("a");
   await vi.waitFor(() =>
-    expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "a" } }),
+    expect(usePreviewSession.getState()).toMatchObject({ shown: { snapshotId: "a" } }),
   );
   expect(mocks.gate).toHaveBeenCalledExactlyOnceWith(expect.any(Function));
 
@@ -215,6 +215,27 @@ it("opens the save at the playhead and then shows that save", async () => {
   expect(mocks.clear).toHaveBeenCalledOnce();
   expect(lastToken(mocks.clear)).toBeGreaterThan(lastToken(mocks.present) as number);
   expect(mocks.gate).toHaveBeenLastCalledWith(null);
+});
+
+it("applies a chart selection only to the accepted snapshot it came from", async () => {
+  bindPreviewNavigation(navigation());
+  preview("a");
+  await vi.waitFor(() =>
+    expect(usePreviewSession.getState()).toMatchObject({ shown: { snapshotId: "a" } }),
+  );
+  const selection = { kind: "markets", op: "replace", id: 7 } as const;
+  inspectShownSnapshot("b", selection);
+  expect(opened()).toEqual([]);
+
+  setPreviewPlayback("control");
+  inspectShownSnapshot("a", selection);
+  await vi.waitFor(() => expect(usePreviewSession.getState().kind).toBe("live"));
+  expect(opened()).toEqual(["a.eu5"]);
+  expect(usePreviewPlayback.getState().mode).toBeNull();
+  expect(campaignTransitions.takeView("eu5", toPlaythroughId("campaign"))).toMatchObject({
+    inspection: { selection },
+    insightPanel: { open: true },
+  });
 });
 
 it("opens only the newest target and keeps it on the map while an older save loads", async () => {
@@ -238,7 +259,7 @@ it("opens only the newest target and keeps it on the map while an older save loa
 
   // A loaded under the overlay, but the overlay stayed on C until C was ready.
   expect(opened()).toEqual(["a.eu5", "c.eu5"]);
-  expect(mocks.present.mock.calls.map(([hash]) => hash)).toEqual(["a", "b", "c"]);
+  expect(mocks.present.mock.calls.map(([snapshotId]) => snapshotId)).toEqual(["a", "b", "c"]);
   expect(mocks.clear).toHaveBeenCalledOnce();
   expect(mocks.clear.mock.invocationCallOrder[0]).toBeGreaterThan(
     mocks.step.mock.invocationCallOrder[1],
@@ -252,7 +273,7 @@ it("keeps the overlay and reports the error when the save does not load", async 
   await openPreview(navigation());
   expect(usePreviewSession.getState()).toMatchObject({
     kind: "preview",
-    hash: "a",
+    snapshotId: "a",
     error: expect.stringContaining("Could not open this save"),
   });
   expect(mocks.clear).not.toHaveBeenCalled();
@@ -262,9 +283,6 @@ it("keeps the overlay and reports the error when the save does not load", async 
 it("opens the previewed save at once on a click and carries the click", async () => {
   bindPreviewNavigation(navigation());
   preview("b");
-  await vi.waitFor(() =>
-    expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "b" } }),
-  );
   const onClick = mocks.gate.mock.calls[0][0]!;
   const click = { kind: "update" as const, locationIdx: 42, modifiers: 0 };
   onClick(click);
@@ -275,72 +293,6 @@ it("opens the previewed save at once on a click and carries the click", async ()
     insightPanel: { open: true },
   });
   expect(state.setInsightPanelOpen).toHaveBeenCalledExactlyOnceWith(true);
-});
-
-it.each(["country", "market", "location"] as const)(
-  "inspects the displayed %s while the playhead's next frame is pending",
-  async (kind) => {
-    const nav = navigation();
-    preview("a");
-    await vi.waitFor(() =>
-      expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "a" } }),
-    );
-    const pending = Promise.withResolvers<OverlayReply>();
-    mocks.present.mockReturnValueOnce(pending.promise);
-    preview("b");
-    await vi.waitFor(() => expect(mocks.present).toHaveBeenCalledTimes(2));
-    expect(await openPreview(nav, { entity: { kind, id: 1 } })).toBe(true);
-    expect(mocks.resolve).toHaveBeenCalledExactlyOnceWith("a", { kind, id: 1 });
-    expect(opened()).toEqual(["a.eu5"]);
-    expect(campaignTransitions.takeView("eu5", toPlaythroughId("campaign"))).toMatchObject({
-      inspection: { entity: { kind, id: 101 } },
-    });
-    pending.resolve(reply("b"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(usePreviewSession.getState().kind).toBe("live");
-  },
-);
-
-it("does not navigate after entity resolution has been cancelled", async () => {
-  preview("a");
-  await vi.waitFor(() =>
-    expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "a" } }),
-  );
-  const pending = Promise.withResolvers<AnalysisEntity>();
-  mocks.resolve.mockReturnValueOnce(pending.promise);
-  const opening = openPreview(navigation(), { entity: { kind: "country", id: 1 } });
-  await vi.waitFor(() => expect(mocks.resolve).toHaveBeenCalledOnce());
-  cancelPreview();
-  pending.resolve({ kind: "country", id: 101 });
-  expect(await opening).toBe(false);
-  expect(mocks.step).not.toHaveBeenCalled();
-  expect(usePreviewSession.getState().kind).toBe("live");
-});
-
-it("retains the overlay and reports an entity-resolution failure", async () => {
-  preview("a");
-  await vi.waitFor(() =>
-    expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "a" } }),
-  );
-  mocks.resolve.mockRejectedValueOnce(new Error("Country is absent"));
-  await openPreview(navigation(), { entity: { kind: "country", id: 1 } });
-  expect(mocks.step).not.toHaveBeenCalled();
-  expect(usePreviewSession.getState()).toMatchObject({
-    kind: "preview",
-    hash: "a",
-    error: expect.stringContaining("Country is absent"),
-  });
-});
-
-it("does not inspect a frame before it has been accepted", async () => {
-  const pending = Promise.withResolvers<OverlayReply>();
-  mocks.present.mockReturnValueOnce(pending.promise);
-  preview("a");
-  await openPreview(navigation(), { entity: { kind: "country", id: 1 } });
-  expect(mocks.resolve).not.toHaveBeenCalled();
-  expect(mocks.step).not.toHaveBeenCalled();
-  cancelPreview();
-  pending.resolve(reply("a"));
 });
 
 it("ignores a late reply after the preview ends, and a reply older than the shown frame", async () => {
@@ -357,11 +309,14 @@ it("ignores a late reply after the preview ends, and a reply older than the show
   preview("a");
   preview("b");
   await vi.waitFor(() =>
-    expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "b" } }),
+    expect(usePreviewSession.getState()).toMatchObject({ shown: { snapshotId: "b" } }),
   );
   old.resolve(reply("a"));
   await new Promise((resolve) => setTimeout(resolve, 0));
-  expect(usePreviewSession.getState()).toMatchObject({ hash: "b", shown: { hash: "b" } });
+  expect(usePreviewSession.getState()).toMatchObject({
+    snapshotId: "b",
+    shown: { snapshotId: "b" },
+  });
 });
 
 it("ends the preview when the user opens another save", async () => {
@@ -408,11 +363,11 @@ it("does not show the failure of an older frame on a newer one", async () => {
   preview("a");
   preview("b");
   await vi.waitFor(() =>
-    expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "b" } }),
+    expect(usePreviewSession.getState()).toMatchObject({ shown: { snapshotId: "b" } }),
   );
   old.reject(new Error("Campaign frame request timed out"));
   await new Promise((resolve) => setTimeout(resolve, 0));
-  expect(usePreviewSession.getState()).toMatchObject({ hash: "b", error: null });
+  expect(usePreviewSession.getState()).toMatchObject({ snapshotId: "b", error: null });
 });
 
 it("stops playback when the user opens another save or clicks a snapshot", async () => {
@@ -420,9 +375,6 @@ it("stops playback when the user opens another save or clicks a snapshot", async
   bindPreviewNavigation(nav);
   setPreviewPlayback("control");
   preview("a");
-  await vi.waitFor(() =>
-    expect(usePreviewSession.getState()).toMatchObject({ shown: { hash: "a" } }),
-  );
   mocks.gate.mock.calls[0][0]!({ kind: "clear" });
   expect(usePreviewPlayback.getState().mode).toBeNull();
   await vi.waitFor(() => expect(usePreviewSession.getState().kind).toBe("live"));

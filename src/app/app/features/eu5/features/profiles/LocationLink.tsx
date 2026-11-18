@@ -1,8 +1,11 @@
 import type React from "react";
+import { inspectShownSnapshot } from "../../history/previewSession";
+import { useInsightPreview } from "../../history/insightPreview";
 import { cx } from "class-variance-authority";
 import { MapHoverButton } from "../../MapHoverButton";
 import { EntityName, entityLinkControl } from "../../components/EntityName";
-import { useAnalysisEntityNavigation } from "./useAnalysisEntityNavigation";
+import { usePanelNav, locationProfileEntry } from "./PanelNavContext";
+import { useJumpToEntity } from "../../useJumpToEntity";
 
 export type LocationTarget = { key: number; name: string };
 
@@ -20,11 +23,14 @@ export function LocationLink({
   className,
   ...props
 }: LocationLinkProps) {
-  const openEntity = useAnalysisEntityNavigation();
+  const preview = useInsightPreview();
+  const nav = usePanelNav();
+  const jumpToEntity = useJumpToEntity();
   const activate =
     onActivate ??
     ((target: LocationTarget) => {
-      void openEntity("location", target.key, target.name, target.key, backLabel);
+      nav.pushMany([locationProfileEntry(target.key, target.name)], backLabel);
+      jumpToEntity(target.key);
     });
 
   return (
@@ -32,7 +38,16 @@ export function LocationLink({
       {...props}
       target={{ kind: "location", locationIdx: location.key }}
       className={cx(entityLinkControl, "min-w-0 text-left", className)}
-      onClick={() => activate(location)}
+      onClick={() => {
+        if (preview) {
+          if (preview.canInspect())
+            inspectShownSnapshot(preview.id, {
+              kind: "locations",
+              id: location.key,
+              op: "replace",
+            });
+        } else activate(location);
+      }}
     >
       <EntityName className="block min-w-0 truncate">{location.name}</EntityName>
     </MapHoverButton>

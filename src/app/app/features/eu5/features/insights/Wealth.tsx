@@ -1,17 +1,9 @@
-import { useMemo } from "react";
-import { EChart } from "@/components/viz";
-import type { EChartsOption } from "@/components/viz";
 import type { CountryWealth } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact } from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartDataZoomSlider,
-  chartInk,
-  chartTooltip,
-  getEChartsTheme,
-  seriesColor,
-} from "@/components/viz/echartsTheme";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { WealthTopLocations } from "./WealthTopLocations";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
@@ -21,17 +13,12 @@ import {
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { SectionTitle } from "../../components";
-
-function formatPercent(value: number, digits = 0) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
-
-const formatWealthValue = (value: number) => formatFloat(value, 1);
+import { CountryScatter } from "./countryScatter";
+import type { CountryPoint } from "./countryScatter";
 
 function WealthScopeHeader() {
-  const { data, error, loading } = useEu5SelectionTrigger((engine) =>
+  const { data, error, loading } = useEu5Overview("wealthScope", (engine) =>
     engine.queries.getWealthScope(),
   );
 
@@ -42,10 +29,10 @@ function WealthScopeHeader() {
   // Wealth is heavy-tailed, so the ledger says what a typical location has
   // and how much sits in the few richest, not the mean nobody is near.
   return (
-    <InsightReadout figure={formatInt(Math.round(data.totalWealth))} unit="total wealth">
-      <ReadoutFigure value={formatFloat(data.medianWealth, 1)} label="median / location" />
+    <InsightReadout figure={<Figure value={data.totalWealth} />} unit="total wealth">
+      <ReadoutFigure value={<Figure value={data.medianWealth} />} label="median / location" />
       <ReadoutFigure
-        value={formatPercent(data.topDecileShare)}
+        value={<Figure value={data.topDecileShare} form="percent" />}
         label="in the top 10% of locations"
       />
     </InsightReadout>
@@ -53,7 +40,7 @@ function WealthScopeHeader() {
 }
 
 export function WealthInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getWealthInsight());
+  const insightQuery = useEu5Overview("wealth", (engine) => engine.queries.getWealthInsight());
 
   const countries = insightQuery.data?.countries ?? [];
 
@@ -85,7 +72,7 @@ export function WealthInsight() {
               <ConcentrationCurve
                 points={insightQuery.data.concentration}
                 metric="wealth"
-                formatValue={formatWealthValue}
+                formatValue={formatExact}
               />
             </section>
           )}
@@ -106,121 +93,33 @@ export function WealthInsight() {
   );
 }
 
+const wealthPoint = (c: CountryWealth): CountryPoint => ({
+  country: c.country,
+  x: c.totalWealth,
+  y: c.avgWealth,
+});
+
+function wealthTooltip(c: CountryWealth): string {
+  return [
+    `<strong>${escapeEChartsHtml(c.country.country.name)}</strong> (${escapeEChartsHtml(c.country.tag)})`,
+    `Total Wealth: ${formatExact(c.totalWealth)}`,
+    `Avg per Location: ${formatExact(c.avgWealth)}`,
+    `Locations: ${formatInt(c.locationCount)}`,
+    `Population: ${formatInt(c.totalPopulation)}`,
+  ].join("<br/>");
+}
+
+const FROM_ZERO = { min: 0 };
+
 function WealthScatterChart({ countries }: { countries: CountryWealth[] }) {
-  const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
-    [countries],
+  return (
+    <CountryScatter
+      rows={countries}
+      point={wealthPoint}
+      tooltip={wealthTooltip}
+      xName="Total Wealth"
+      yName="Avg Wealth per Location"
+      yAxis={FROM_ZERO}
+    />
   );
-
-  const scatterData = useMemo(
-    () =>
-      countries.map((c) => ({
-        value: [c.totalWealth, c.avgWealth] as [number, number],
-        tag: c.country.tag,
-        name: c.country.country.name,
-        locationCount: c.locationCount,
-        totalWealth: c.totalWealth,
-        avgWealth: c.avgWealth,
-        totalPopulation: c.totalPopulation,
-        color: c.country.colorHex,
-        id: c.country.country.key,
-        anchorLocationIdx: c.country.anchorLocationIdx,
-      })),
-    [countries],
-  );
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
-    return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Total Wealth",
-        nameLocation: "middle",
-        nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
-        min: 0,
-      },
-      yAxis: {
-        type: "value",
-        name: "Avg Wealth per Location",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
-        min: 0,
-      },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
-      ],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const d = params.data as (typeof scatterData)[number];
-          return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Total Wealth: ${formatFloat(d.totalWealth, 2)}`,
-            `Avg per Location: ${formatFloat(d.avgWealth, 2)}`,
-            `Locations: ${formatInt(d.locationCount)}`,
-            `Population: ${formatInt(d.totalPopulation)}`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: 8,
-          itemStyle: {
-            color: (params) => {
-              if (Array.isArray(params)) return seriesColor(0);
-              const d = params.data as (typeof scatterData)[number];
-              return d.color ?? seriesColor(0);
-            },
-            opacity: 0.8,
-          },
-          label: {
-            show: true,
-            formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
-            },
-            position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
-            distance: 4,
-          },
-        },
-      ],
-    };
-  }, [scatterData, topCountries, countries.length]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: "Wealth",
-    getTarget: (params) => {
-      if (Array.isArray(params.data)) return null;
-      const country = params.data as (typeof scatterData)[number] | undefined;
-      return country
-        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
-        : null;
-    },
-  });
-
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }

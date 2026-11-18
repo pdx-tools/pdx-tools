@@ -1,8 +1,10 @@
 import type React from "react";
+import { inspectShownSnapshot } from "../../history/previewSession";
+import { useInsightPreview } from "../../history/insightPreview";
 import { cx } from "class-variance-authority";
 import type { CountryRef, MarketRef } from "@/wasm/wasm_eu5";
-import { useAnalysisEntityNavigation } from "./useAnalysisEntityNavigation";
-import { useMapHistory } from "../../history/context";
+import { usePanelNav, entityProfileEntry } from "./PanelNavContext";
+import { useJumpToEntity } from "../../useJumpToEntity";
 import { useEu5Engine } from "../../store";
 import { useEu5MapHoverTarget } from "../../useEu5MapHoverTarget";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
@@ -14,19 +16,19 @@ const sizeClasses = {
   xs: {
     wrapper: "gap-[5px] h-[18px]",
     swatch: "w-[12px] h-[9px]",
-    tag: "text-[9.5px]",
-    name: "text-[11px]",
+    tag: "text-[12px]",
+    name: "text-[12px]",
   },
   sm: {
     wrapper: "gap-1.5 h-[22px]",
     swatch: "w-[14px] h-[10px]",
-    tag: "text-[10px]",
+    tag: "text-[12px]",
     name: "text-[12px]",
   },
   md: {
     wrapper: "gap-2 h-7",
     swatch: "w-[18px] h-3",
-    tag: "text-[10.5px]",
+    tag: "text-[12px]",
     name: "text-[13px]",
   },
 };
@@ -54,7 +56,7 @@ function EntitySwatch({
   return (
     <span
       className={cx(
-        "relative shrink-0 rounded-[1px] border border-black/30",
+        "relative shrink-0 rounded-[1px] border border-game-rim",
         isPlayer && "ring-2 ring-game-ink-100 ring-offset-1 ring-offset-game-page",
         className,
       )}
@@ -93,10 +95,12 @@ function LinkBody({
   children,
   ...rest
 }: LinkBodyProps) {
-  const openEntity = useAnalysisEntityNavigation();
-  const preview = useMapHistory()?.preview;
+  const preview = useInsightPreview();
+  const nav = usePanelNav();
+  const jumpToEntity = useJumpToEntity();
   const s = sizeClasses[size];
   const hoverProps = useEu5MapHoverTarget(hoverTarget);
+  const readOnly = rest.static;
   const nameClass = cx(
     "min-w-0 flex-[0_1_auto] overflow-hidden font-medium text-ellipsis whitespace-nowrap",
     s.name,
@@ -106,7 +110,7 @@ function LinkBody({
       {visual ?? <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />}
       {tag}
       {children ??
-        (rest.static ? (
+        (readOnly ? (
           <span className={cx(nameClass, "text-game-ink-100")}>{name}</span>
         ) : (
           <EntityName className={nameClass}>{name}</EntityName>
@@ -114,7 +118,7 @@ function LinkBody({
     </>
   );
 
-  if (rest.static) {
+  if (readOnly) {
     return (
       <span
         {...hoverProps}
@@ -130,12 +134,21 @@ function LinkBody({
       type="button"
       onClick={(event) => {
         event.stopPropagation();
-        if (event.altKey) {
-          if (preview) void openEntity(kind, id, name, anchorLocationIdx, backLabel, true);
-          else onAltActivate();
+        if (preview) {
+          if (preview.canInspect())
+            inspectShownSnapshot(preview.id, {
+              kind: kind === "country" ? "countries" : "markets",
+              id,
+              op: event.altKey ? "remove" : "replace",
+            });
           return;
         }
-        void openEntity(kind, id, name, anchorLocationIdx, backLabel);
+        if (event.altKey) {
+          onAltActivate();
+          return;
+        }
+        nav.pushMany([entityProfileEntry(kind, id, name)], backLabel);
+        jumpToEntity(anchorLocationIdx);
       }}
       {...hoverProps}
       className={cx(
@@ -187,14 +200,16 @@ export function CountryLink({ country, ...props }: SharedProps & { country: Coun
           colorHex={country.colorHex}
           size={flagSizeByLinkSize[props.size ?? "sm"]}
           className={cx(
-            "shrink-0 rounded-[1px] border border-black/30",
+            "shrink-0 rounded-[1px] border border-game-rim",
             country.isPlayer && "ring-2 ring-game-ink-100 ring-offset-1 ring-offset-game-page",
           )}
         />
       }
       tag={tag}
       name={country.country.name}
-      onAltActivate={() => void engine.commands.removeCountry(country.country.key)}
+      onAltActivate={() =>
+        void engine.commands.changeSelection("remove", "countries", [country.country.key])
+      }
     />
   );
 }
@@ -212,7 +227,9 @@ export function MarketLink({ market, ...props }: SharedProps & { market: MarketR
       colorHex={market.colorHex}
       isPlayer={false}
       name={market.market.name}
-      onAltActivate={() => void engine.commands.removeMarket(market.market.key)}
+      onAltActivate={() =>
+        void engine.commands.changeSelection("remove", "markets", [market.market.key])
+      }
     />
   );
 }

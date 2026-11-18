@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { analysisAdmission } from "@/features/campaign/analysis/admission";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
-import type { SnapshotMetadata as Snapshot } from "./types";
+import type { Eu5SnapshotDescriptor as Snapshot } from "./analysisTypes";
 import { isAnalysisPaused, useHistory } from "./store";
 
 const mocks = vi.hoisted(() => ({
-  importTimeline: vi.fn(),
+  importBatch: vi.fn(),
   getLocalSave: vi.fn(),
   setLocalSaveIdentity: vi.fn(),
 }));
-vi.mock("./importSnapshots", () => ({ importTimeline: mocks.importTimeline }));
+vi.mock("@/features/campaign/analysis/importScheduler", () => ({
+  importBatch: (files: File[], _parser: unknown, _sink: unknown, options: unknown) =>
+    mocks.importBatch(files, options),
+}));
+vi.mock("./analysisClient", () => ({ eu5Analysis: { claim: () => {} } }));
 vi.mock("@/features/campaign/localSaves", () => ({
   localSaveRegistry: { get: mocks.getLocalSave, recordIdentity: mocks.setLocalSaveIdentity },
   fileVersion: (file: File) => ({ size: file.size, lastModified: file.lastModified }),
@@ -33,43 +38,61 @@ const entry = (
   problem: null,
   batch: 1,
 });
-const observation = (hash = "eu5:abc", campaignId = "campaign") =>
+const observation = (id = "eu5:abc", campaignId = "campaign") =>
   ({
-    hash,
+    id,
     campaignId,
-    version: "1.0.0",
+    gameVersion: "1.0.0",
     date: "1360-01-01",
     dateSort: 13600101,
-
-    fileName: file.name,
   }) as Snapshot;
 let entries: LocalSaveEntry[];
+const done = () => ({
+  files: [],
+  outcomes: { accepted: 0, duplicate: 0, failed: 0, refused: 0, unprocessed: 0, cancelled: 0 },
+  failures: [] as { fileName: string; error: string }[],
+  memoryFull: null as string | null,
+});
 beforeEach(() => {
   vi.resetAllMocks();
   useHistory.setState({
     snapshots: [],
     sources: {},
+    failedSources: {},
     issues: [],
     progress: null,
     cancel: null,
-    analysisPaused: false,
     analysisPausedCampaigns: [],
   });
   entries = [entry("first")];
   mocks.getLocalSave.mockImplementation((id) => entries.find((item) => item.id === id));
-  mocks.importTimeline.mockResolvedValue({ errors: [] });
+  mocks.importBatch.mockResolvedValue(done());
 });
 
 describe("campaign analysis", () => {
+  it("says why the store refused saves and pauses the campaign", async () => {
+    mocks.importBatch.mockResolvedValue({
+      ...done(),
+      outcomes: { ...done().outcomes, refused: 1, unprocessed: 1 },
+      memoryFull: "Campaign analysis is full.",
+    });
+    await analyzeCampaign(entries, "campaign");
+    const state = useHistory.getState();
+    expect(state.issues).toContain(
+      "Campaign analysis is full. 2 saves were not analyzed. Clear the campaign analysis to analyze other saves.",
+    );
+    expect(isAnalysisPaused(state, "campaign")).toBe(true);
+  });
+
   it("attaches observations to campaign entries without owning navigation state", async () => {
-    mocks.importTimeline.mockImplementation(async (_files, options) => {
+    mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation();
-      options.onSnapshots([snapshot], [{ snapshot, file }]);
-      return { errors: [] };
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
+      return done();
     });
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().sources.first).toEqual({
-      hash: "eu5:abc",
+      snapshotId: "eu5:abc",
       version: { size: file.size, lastModified: 100 },
     });
     expect(useHistory.getState().snapshots).toHaveLength(1);
@@ -82,16 +105,28 @@ describe("campaign analysis", () => {
     expect(useHistory.getState()).not.toHaveProperty("files");
   });
 
-  it("excludes another campaign from charts and reports it to the user", async () => {
-    mocks.importTimeline.mockImplementation(async (_files, options) => {
-      const snapshot = observation("other", "different");
-      options.onSnapshots([snapshot], [{ snapshot, file }]);
-      return { errors: [] };
+  it("refuses a save of another campaign before the store keeps it, and reports it", async () => {
+    let reason: string | null = null;
+    mocks.importBatch.mockImplementation(async (_files, options) => {
+      reason = options.refuseOutput({ descriptor: observation("other", "different") }, file);
+      return { ...done(), failures: [{ fileName: file.name, error: reason }] };
     });
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().snapshots).toEqual([]);
+    expect(reason).toContain("another campaign");
     expect(useHistory.getState().issues[0]).toContain("another campaign");
     expect(mocks.setLocalSaveIdentity.mock.calls[0][1].playthroughId).toBe("different");
+  });
+
+  it("does not mark a save of another campaign as failed", async () => {
+    useHistory.setState({ failedSources: { first: { version: null, error: "old failure" } } });
+    mocks.importBatch.mockImplementation(async (_files, options) => {
+      const reason = options.refuseOutput({ descriptor: observation("other", "different") }, file);
+      options.onFileComplete({ status: "failed", file, error: reason });
+      return { ...done(), failures: [{ fileName: file.name, error: reason }] };
+    });
+    await analyzeCampaign(entries, "campaign");
+    expect(useHistory.getState().failedSources).toEqual({});
   });
 
   it("reports failed saves without blocking new files and keeps successful observations", async () => {
@@ -102,19 +137,18 @@ describe("campaign analysis", () => {
       { ...entry("bad", { kind: "file", file: bad }), name: bad.name },
     ];
     useHistory.setState({ analysisPausedCampaigns: ["other-campaign"] });
-    mocks.importTimeline.mockImplementation(async (_files, options) => {
+    mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation("good-observation");
-      options.onSnapshots([snapshot], [{ snapshot, file: good }]);
-      return { errors: [{ fileName: bad.name, error: "invalid date" }] };
+      options.onFileComplete({ status: "accepted", file: good, descriptor: snapshot });
+      return { ...done(), failures: [{ fileName: bad.name, error: "invalid date" }] };
     });
 
     await analyzeCampaign(entries, "campaign");
 
-    expect(useHistory.getState().analysisPaused).toBe(false);
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other-campaign"]);
     expect(isAnalysisPaused(useHistory.getState(), "campaign")).toBe(false);
-    expect(useHistory.getState().snapshots.map(({ hash }) => hash)).toEqual(["good-observation"]);
-    expect(useHistory.getState().sources.good.hash).toBe("good-observation");
+    expect(useHistory.getState().snapshots.map(({ id }) => id)).toEqual(["good-observation"]);
+    expect(useHistory.getState().sources.good.snapshotId).toBe("good-observation");
     expect(useHistory.getState().issues).toEqual(["bad.eu5: invalid date"]);
 
     const added = entry("added", {
@@ -122,9 +156,9 @@ describe("campaign analysis", () => {
       file: new File(["new save"], "added.eu5"),
     });
     entries.push(added);
-    mocks.importTimeline.mockResolvedValue({ errors: [] });
+    mocks.importBatch.mockResolvedValue(done());
     await analyzeCampaign([added], "campaign");
-    expect(mocks.importTimeline.mock.calls[1][0]).toEqual([added.ref.file]);
+    expect(mocks.importBatch.mock.calls[1][0]).toEqual([added.ref.file]);
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other-campaign"]);
   });
 
@@ -147,63 +181,58 @@ describe("campaign analysis", () => {
       }),
     ];
     useHistory.getState().add([observation("old")], {
-      handle: { hash: "old", version: { size: file.size, lastModified: 100 } },
+      handle: { snapshotId: "old", version: { size: file.size, lastModified: 100 } },
     });
-    mocks.importTimeline.mockImplementation(async (files, options) => {
+    mocks.importBatch.mockImplementation(async (files, options) => {
       expect(files).toEqual([newer]);
       const snapshot = { ...observation("new"), dateSort: 13600401 };
-      options.onSnapshots([snapshot], [{ snapshot, file: newer }]);
-      return { errors: [] };
+      options.onFileComplete({ status: "accepted", file: newer, descriptor: snapshot });
+      return done();
     });
     await analyzeCampaign(entries, "campaign");
     expect(getFile).toHaveBeenCalledOnce();
-    expect(useHistory.getState().sources.handle.hash).toBe("new");
-    expect(useHistory.getState().snapshots.map((s) => s.hash)).toEqual(["old", "new"]);
+    expect(useHistory.getState().sources.handle.snapshotId).toBe("new");
+    expect(useHistory.getState().snapshots.map((s) => s.id)).toEqual(["old", "new"]);
   });
 
   it("retains individual associations for duplicate byte-identical files", async () => {
     const duplicate = new File(["save"], "copy.eu5", { lastModified: 100 });
     entries = [entry("first"), entry("copy", { kind: "file", file: duplicate })];
-    mocks.importTimeline.mockImplementation(async (_files, options) => {
+    mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation();
-      options.onSnapshots(
-        [snapshot, snapshot],
-        [
-          { snapshot, file },
-          { snapshot, file: duplicate },
-        ],
-      );
-      return { errors: [] };
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
+      options.onFileComplete({ status: "accepted", file: duplicate, descriptor: snapshot });
+      return done();
     });
     await analyzeCampaign(entries, "campaign");
-    expect(useHistory.getState().sources.first.hash).toBe("eu5:abc");
-    expect(useHistory.getState().sources.copy.hash).toBe("eu5:abc");
+    expect(useHistory.getState().sources.first.snapshotId).toBe("eu5:abc");
+    expect(useHistory.getState().sources.copy.snapshotId).toBe("eu5:abc");
     expect(useHistory.getState().snapshots).toHaveLength(1);
   });
 
   it("preserves observations committed before or during cancellation", async () => {
-    mocks.importTimeline.mockImplementation(async (_files, options) => {
+    mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation();
-      options.onSnapshots([snapshot], [{ snapshot, file }]);
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
       useHistory.getState().cancel!();
       expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
       expect(options.signal.aborted).toBe(true);
-      options.onSnapshots([observation("late")], [{ snapshot: observation("late"), file }]);
-      throw new DOMException("Stopped", "AbortError");
+      options.onFileComplete({ status: "accepted", file, descriptor: observation("late") });
+      return done();
     });
     await analyzeCampaign(entries, "campaign");
-    expect(useHistory.getState().snapshots.map((s) => s.hash)).toEqual(["eu5:abc", "late"]);
+    expect(useHistory.getState().snapshots.map((s) => s.id)).toEqual(["eu5:abc", "late"]);
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
     expect(useHistory.getState().progress).toBeNull();
     expect(useHistory.getState().issues).toEqual([]);
   });
 
   it("does not attach results to an entry replaced while parsing", async () => {
-    mocks.importTimeline.mockImplementation(async (_files, options) => {
+    mocks.importBatch.mockImplementation(async (_files, options) => {
       entries = [entry("first", { kind: "file", file: new File(["replacement"], file.name) })];
       const snapshot = observation();
-      options.onSnapshots([snapshot], [{ snapshot, file }]);
-      return { errors: [{ fileName: "failed.eu5", error: "missing morale" }] };
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
+      return { ...done(), failures: [{ fileName: "failed.eu5", error: "missing morale" }] };
     });
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().sources).toEqual({});
@@ -212,11 +241,11 @@ describe("campaign analysis", () => {
   });
 
   it("does not overwrite metadata for a newer handle version read by navigation", async () => {
-    mocks.importTimeline.mockImplementation(async (_files, options) => {
+    mocks.importBatch.mockImplementation(async (_files, options) => {
       entries = [{ ...entry("first"), version: { size: 99, lastModified: 200 } }];
       const snapshot = observation();
-      options.onSnapshots([snapshot], [{ snapshot, file }]);
-      return { errors: [] };
+      options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
+      return done();
     });
     await analyzeCampaign(entries, "campaign");
     expect(mocks.setLocalSaveIdentity).not.toHaveBeenCalled();
@@ -231,12 +260,12 @@ describe("campaign analysis", () => {
       name: "missing.eu5",
     } as unknown as LocalSaveEntry["ref"];
     entries = [entry("first"), entry("missing", missing)];
-    mocks.importTimeline.mockImplementation(async (files, options) => {
+    mocks.importBatch.mockImplementation(async (files, options) => {
       expect(files).toEqual([file]);
       expect(useHistory.getState().progress?.total).toBe(2);
-      options.onProgress(1, 1, file.name);
+      options.onProgress({ completed: 1, total: 1, fileName: file.name, active: 1 });
       expect(useHistory.getState().progress).toMatchObject({ completed: 2, total: 2 });
-      return { errors: [] };
+      return done();
     });
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().issues).toContain("observer.eu5: Error: Missing file");
@@ -258,35 +287,99 @@ describe("campaign analysis", () => {
     expect(useHistory.getState().progress).toBeNull();
     expect(useHistory.getState().issues).toEqual([]);
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
-    expect(mocks.importTimeline).not.toHaveBeenCalled();
+    expect(mocks.importBatch).not.toHaveBeenCalled();
   });
 
   it("resumes the current campaign without resuming another paused campaign", async () => {
     useHistory.setState({ analysisPausedCampaigns: ["campaign", "other"] });
-    mocks.importTimeline.mockResolvedValue({ errors: [] });
+    mocks.importBatch.mockResolvedValue(done());
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other"]);
   });
 
   it("rejects concurrent runs before starting another importer", async () => {
-    useHistory.setState({ progress: { completed: 0, total: 1, startedAt: 0 } });
-    await expect(analyzeCampaign(entries, "campaign")).rejects.toThrow("already running");
-    expect(mocks.importTimeline).not.toHaveBeenCalled();
+    const lease = analysisAdmission().acquireImport();
+    try {
+      await expect(analyzeCampaign(entries, "campaign")).rejects.toThrow("already running");
+      expect(mocks.importBatch).not.toHaveBeenCalled();
+      expect(useHistory.getState().progress).toBeNull();
+    } finally {
+      lease.release();
+    }
+  });
+
+  it("releases the import lease after the batch, also after a failure", async () => {
+    mocks.importBatch.mockRejectedValueOnce(Error("broken"));
+    await analyzeCampaign(entries, "campaign");
+    analysisAdmission().acquireImport().release();
   });
 });
 
 it("identifies active saves by their file reference and clears the UI state on cancellation", async () => {
   const other = new File(["different save"], file.name, { lastModified: 200 });
   entries.push(entry("second", { kind: "file", file: other }));
-  mocks.importTimeline.mockImplementation(async (_files, options) => {
+  mocks.importBatch.mockImplementation(async (_files, options) => {
     options.onActiveFiles([file]);
     expect(useHistory.getState().analyzingEntryIds).toEqual(["first"]);
     options.onActiveFiles([file, other]);
     expect(useHistory.getState().analyzingEntryIds).toEqual(["first", "second"]);
     useHistory.getState().cancel!();
     options.onActiveFiles([other]);
-    throw new DOMException("Cancelled", "AbortError");
+    return done();
   });
   await analyzeCampaign(entries, "campaign");
   expect(useHistory.getState().analyzingEntryIds).toEqual([]);
+});
+
+it("tracks a parse failure by file identity and clears it on a successful retry", async () => {
+  mocks.importBatch.mockImplementation(async (_files, options) => {
+    options.onFileComplete({ status: "failed", file, error: "invalid save" });
+    return { ...done(), failures: [{ fileName: file.name, error: "invalid save" }] };
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources.first).toEqual({
+    version: { size: file.size, lastModified: 100 },
+    error: "invalid save",
+  });
+  mocks.importBatch.mockImplementation(async (_files, options) => {
+    options.onFileComplete({ status: "accepted", file, descriptor: observation() });
+    return done();
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources).toEqual({});
+});
+it("does not mark an entry replaced during a failed parse as failed", async () => {
+  mocks.importBatch.mockImplementation(async (_files, options) => {
+    entries = [entry("first", { kind: "file", file: new File(["replacement"], file.name) })];
+    options.onFileComplete({ status: "failed", file, error: "old file failed" });
+    return { ...done(), failures: [{ fileName: file.name, error: "old file failed" }] };
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources).toEqual({});
+});
+it("does not mark an aborted import as failed", async () => {
+  mocks.importBatch.mockImplementation(async () => {
+    useHistory.getState().cancel!();
+    throw new DOMException("Stopped", "AbortError");
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources).toEqual({});
+});
+it("marks only failed files, not refused or cancelled ones", async () => {
+  mocks.importBatch.mockImplementation(async (_files, options) => {
+    options.onFileComplete({ status: "refused", file });
+    options.onFileComplete({ status: "cancelled", file });
+    return done();
+  });
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources).toEqual({});
+});
+it("marks an entry whose file cannot be read as failed", async () => {
+  const handle = { getFile: () => Promise.reject(Error("file was moved")) };
+  entries = [entry("first", { kind: "handle", file: handle } as unknown as LocalSaveEntry["ref"])];
+  await analyzeCampaign(entries, "campaign");
+  expect(useHistory.getState().failedSources.first).toEqual({
+    version: null,
+    error: "Error: file was moved",
+  });
 });

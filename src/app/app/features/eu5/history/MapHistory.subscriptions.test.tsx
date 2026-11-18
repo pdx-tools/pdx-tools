@@ -10,8 +10,6 @@ import { CampaignAnalysisProvider } from "./CampaignAnalysisProvider";
 import { MapHistoryProvider } from "./MapHistory";
 import { useMapHistory } from "./context";
 
-import { useCurrentHistorySnapshot } from "./currentSnapshot";
-
 const feature = vi.hoisted(() => ({ enabled: false }));
 
 type State = ReturnType<Eu5Store["getState"]>;
@@ -27,7 +25,10 @@ vi.mock("zustand", async (original) => ({
   },
 }));
 vi.mock("@/features/account", () => ({ useIsDeveloper: () => feature.enabled }));
-vi.mock("@/features/campaign/CampaignProvider", () => ({ useCampaign: () => null }));
+vi.mock("@/features/campaign/CampaignProvider", () => ({
+  useCampaign: () => null,
+  useCampaignTimeline: () => null,
+}));
 vi.mock("./CampaignAnalysis", () => ({ CampaignAnalysis: () => null }));
 vi.mock("./analysisClient", () => ({
   campaignAnalysis: vi.fn(),
@@ -36,11 +37,13 @@ vi.mock("./analysisClient", () => ({
 vi.mock("./previewSession", () => ({
   usePreviewSession: () => ({ kind: "live" }),
   usePreviewPlayback: (select: (playback: { mode: null }) => unknown) => select({ mode: null }),
+  usePreviewRecording: (select: (recording: { date: null }) => unknown) => select({ date: null }),
+  recordSavedDates: vi.fn(),
   setPreviewPlayback: vi.fn(),
   bindPreviewNavigation: vi.fn(),
   cancelPreview: vi.fn(),
   connectFrames: vi.fn(),
-  loadedSnapshotHash: () => undefined,
+  loadedSnapshotId: () => undefined,
   openPreview: vi.fn(),
   previewSnapshot: vi.fn(),
   repaintPreview: vi.fn(),
@@ -92,10 +95,12 @@ function Preview() {
   return <span>{history ? (history.preview ? "preview" : "live") : "none"}</span>;
 }
 
-function render(store: Eu5Store, children: React.ReactNode = <Preview />) {
+function render(store: Eu5Store) {
   return renderToStaticMarkup(
     <Eu5Context.Provider value={store}>
-      <MapHistoryProvider>{children}</MapHistoryProvider>
+      <MapHistoryProvider>
+        <Preview />
+      </MapHistoryProvider>
     </Eu5Context.Provider>,
   );
 }
@@ -167,19 +172,4 @@ it("loads campaign history behind the developer flag without activating analysis
   await import("./MapHistory");
   await vi.waitFor(() => expect(page()).toBe("<span>live</span>"));
   expect(subscriptions.length).toBeGreaterThan(0);
-});
-
-it("keeps analytical snapshot queries stable for unrelated viewer updates", () => {
-  function Snapshot() {
-    useCurrentHistorySnapshot(undefined);
-    return null;
-  }
-  const store = historyStore();
-  render(store, <Snapshot />);
-  const before = store.getState();
-  const after: State = {
-    ...before,
-    appState: { ...before.appState, hoverDisplayData: { kind: "clear" }, cursorHint: "move" },
-  };
-  for (const select of subscriptions) expect(select(after)).toBe(select(before));
 });

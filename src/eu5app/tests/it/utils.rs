@@ -12,7 +12,7 @@ use eu5save::models::Gamestate;
 use eu5save::{BasicTokenResolver, Eu5File};
 use highway::HighwayHash;
 use jomini::binary::TokenResolver;
-use pdx_map::LocationArrays;
+use pdx_map::{LocationArrays, LocationFlags};
 
 pub use super::fixtures::request_file;
 
@@ -131,11 +131,21 @@ pub fn summarize_location_arrays(arrays: &LocationArrays) -> serde_json::Value {
 
     let hash = hash_location_arrays(arrays);
 
-    serde_json::json!({
+    let mut summary = serde_json::json!({
         "colors": counts.len(),
         "top": top,
         "fingerprint": &hash[..18],
-    })
+    });
+    // Only a map with a selection dims
+    let dimmed = buffers
+        .state_flags()
+        .iter()
+        .filter(|f| f.contains(LocationFlags::DIMMED))
+        .count();
+    if dimmed > 0 {
+        summary["dimmed"] = dimmed.into();
+    }
+    summary
 }
 
 /// Hash all four GPU color/flag buffers from `LocationArrays` into a single hex string.
@@ -166,14 +176,29 @@ pub fn hash_u32s(values: &[u32]) -> String {
 pub fn hash_projection(projection: &eu5app::map_projection::MapProjection) -> String {
     let mut hasher = highway::HighwayHasher::new(highway::Key::default());
     hasher.append(projection.layout_key.as_bytes());
-    hasher.append(bytemuck::cast_slice(&projection.location_ids));
-    hasher.append(bytemuck::cast_slice(&projection.fractions));
-    hasher.append(bytemuck::cast_slice(&projection.metrics));
+    for id in &projection.location_ids {
+        hasher.append(&id.value().to_le_bytes());
+    }
+    let data = projection.as_data();
+    for row in 0..projection.location_ids.len() {
+        for fraction in eu5app::map_projection::Fraction::ALL {
+            hasher.append(&data.fraction(fraction)[row].to_le_bytes());
+        }
+    }
+    for row in 0..projection.location_ids.len() {
+        for metric in eu5app::map_projection::Metric::ALL {
+            hasher.append(&data.metric(metric)[row].to_le_bytes());
+        }
+    }
     for values in [
         &projection.owners,
         &projection.controllers,
         &projection.religions,
         &projection.markets,
+    ] {
+        hasher.append(bytemuck::cast_slice(values));
+    }
+    for values in [
         &projection.countries,
         &projection.religion_colors,
         &projection.market_colors,

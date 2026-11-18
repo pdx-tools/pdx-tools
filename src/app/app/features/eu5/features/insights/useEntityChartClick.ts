@@ -1,10 +1,11 @@
 import { useEffectEvent } from "react";
+import { inspectShownSnapshot } from "../../history/previewSession";
+import { useInsightPreview } from "../../history/insightPreview";
 import type * as echarts from "echarts/core";
-import type { EntityKind } from "@/wasm/wasm_eu5";
-import { useAnalysisEntityNavigation } from "../profiles/useAnalysisEntityNavigation";
+import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
+import { useJumpToEntity } from "../../useJumpToEntity";
 import { useEu5MapHoverSource } from "../../useEu5MapHoverTarget";
-import { useMapHistory } from "../../history/context";
 
 type EntityChartTarget = {
   id: number;
@@ -12,43 +13,61 @@ type EntityChartTarget = {
   label: string;
 };
 
-export function useEu5EntityChartClick(opts: {
-  kind: EntityKind;
-  backLabel: string;
-  getTarget: (params: echarts.ECElementEvent) => EntityChartTarget | null | undefined;
-}) {
-  const openEntity = useAnalysisEntityNavigation();
+type GetTarget = (params: echarts.ECElementEvent) => EntityChartTarget | null | undefined;
+
+/**
+ * A click on a country selects it, as the map does: Shift, Ctrl or Cmd adds
+ * it, and Alt removes it. A click on a market opens its profile.
+ */
+export function useEu5EntityChartClick(
+  opts:
+    | { kind: "country"; getTarget: GetTarget }
+    | { kind: "market"; backLabel: string; getTarget: GetTarget },
+) {
+  const preview = useInsightPreview();
+  const nav = usePanelNav();
   const engine = useEu5Engine();
+  const jumpToEntity = useJumpToEntity();
   const hoverSource = useEu5MapHoverSource();
-  const preview = useMapHistory()?.preview;
 
   const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
     const target = opts.getTarget(params);
     if (target == null) return;
     const ev = params.event?.event as MouseEvent | undefined;
-
-    if (ev?.altKey) {
-      if (preview) {
-        void openEntity(
-          opts.kind,
-          target.id,
-          target.label,
-          target.anchorLocationIdx,
-          opts.backLabel,
-          true,
-        );
-        return;
+    const kind = opts.kind === "country" ? "countries" : "markets";
+    const add = opts.kind === "country" && (ev?.shiftKey || ev?.ctrlKey || ev?.metaKey);
+    if (preview) {
+      if (preview.canInspect()) {
+        inspectShownSnapshot(preview.id, {
+          kind,
+          id: target.id,
+          op: ev?.altKey ? "remove" : add ? "add" : "replace",
+        });
       }
-      void (opts.kind === "country"
-        ? engine.commands.removeCountry(target.id)
-        : engine.commands.removeMarket(target.id));
       return;
     }
 
-    void openEntity(opts.kind, target.id, target.label, target.anchorLocationIdx, opts.backLabel);
+    if (ev?.altKey) {
+      void engine.commands.changeSelection("remove", kind, [target.id]);
+      return;
+    }
+
+    if (opts.kind === "country") {
+      if (add) {
+        void engine.commands.changeSelection("add", kind, [target.id]);
+      } else {
+        void engine.commands.changeSelection("replace", kind, [target.id]);
+        jumpToEntity(target.anchorLocationIdx);
+      }
+      return;
+    }
+
+    nav.pushMany([entityProfileEntry(opts.kind, target.id, target.label)], opts.backLabel);
+    jumpToEntity(target.anchorLocationIdx);
   });
 
   const handleMouseover = useEffectEvent((params: echarts.ECElementEvent) => {
+    if (preview) return;
     const target = opts.getTarget(params);
     if (target == null) {
       hoverSource.clear();

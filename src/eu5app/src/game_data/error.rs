@@ -20,6 +20,9 @@ pub enum GameDataError {
     #[error("Missing required data: {0}")]
     MissingData(String),
 
+    #[error("Invalid map: {0}")]
+    InvalidMap(String),
+
     #[error("Failed to process location data: {0}")]
     LocationsError(String),
 

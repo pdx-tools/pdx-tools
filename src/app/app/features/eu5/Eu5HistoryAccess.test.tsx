@@ -11,10 +11,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/features/account", () => ({ useIsDeveloper: () => mocks.developer }));
 vi.mock("@/features/campaign/CampaignProvider", () => ({ useCampaign: () => ({ saves: [] }) }));
 vi.mock("./history/context", () => ({
-  useMapHistory: () => ({ enabled: false, controller: null, readyHashes: new Set() }),
+  useMapHistory: () => ({ enabled: false, controller: null, readyIds: new Set() }),
 }));
 vi.mock("./history/SaveHistory", () => ({ SaveHistory: mocks.historyPanel }));
-vi.mock("./history/useAnalysisHistory", () => ({ useAnalysisHistory: mocks.historyQuery }));
+vi.mock("./history/useHistoryObservations", () => ({ useHistoryObservations: mocks.historyQuery }));
 vi.mock("./history/currentSnapshot", () => ({ useCurrentHistorySnapshot: () => undefined }));
 vi.mock("./features/insights/Political", () => ({
   PoliticalInsight: () => <p>Current save overview</p>,
@@ -46,30 +46,14 @@ vi.mock("./history/store", async (original) => {
     ),
   };
 });
-vi.mock("./timeline/useTimelineController", () => ({
-  useTimelineController: () => ({ timeline: { start: { year: 1337, month: 1, day: 1 } } }),
-}));
-vi.mock("@/features/timeline/controller", () => ({ useTimelineKeyboard: vi.fn() }));
-vi.mock("@/features/campaign/SaveMarks", () => ({ useTimelineCampaign: () => null }));
-vi.mock("@/features/timeline/TimelineTransport", () => ({
-  TimelineTransport: () => <span>Political timeline controls</span>,
-}));
-vi.mock("@/features/timeline/TimelineReadout", () => ({ TimelineReadout: () => null }));
-vi.mock("@/features/timeline/TimelineScrubber", () => ({ TimelineScrubber: () => null }));
-vi.mock("./timeline/TimelapseExport", () => ({ TimelapseExport: () => null }));
-vi.mock("./useViewportInsets", () => ({
-  useViewportInsets: () => ({ left: 0, right: 0, top: 0, bottom: 0 }),
-}));
-
 import { useHistory } from "./history/store";
 import { Eu5InsightPanel } from "./Eu5InsightPanel";
-import { TimelineBar } from "./timeline/TimelineBar";
 
 beforeEach(() => {
   mocks.developer = false;
   mocks.historyPanel.mockClear();
   mocks.historyQuery.mockClear();
-  useHistory.setState({ panelOpen: false, viewedProfiles: [], snapshots: [] });
+  useHistory.setState({ panelOpen: false, snapshots: [] });
 });
 
 it.each([false, true])(
@@ -93,13 +77,3 @@ it("keeps campaign history accessible to developers", () => {
   expect(html).toContain("History content");
   expect(mocks.historyPanel).toHaveBeenCalled();
 });
-
-it.each([false, true])(
-  "gates the timeline history button without hiding political playback (developer: %s)",
-  (developer) => {
-    mocks.developer = developer;
-    const html = renderToStaticMarkup(<TimelineBar />);
-    expect(html).toContain("Political timeline controls");
-    expect(html.includes("Over time")).toBe(developer);
-  },
-);

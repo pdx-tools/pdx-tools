@@ -1,6 +1,7 @@
 import React from "react";
 import { cx } from "class-variance-authority";
 import { focusRingInset } from "@/components/game/focusRing";
+import { sectionLabel } from "@/components/game/SectionTitle";
 
 export const SidebarNav = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement>>(
   function SidebarNav({ className, ...props }, ref) {
@@ -23,9 +24,7 @@ const SidebarNavSection = React.forwardRef<HTMLDivElement, SidebarNavSectionProp
       <div ref={ref} className={cx("flex flex-col overflow-hidden", className)} {...props}>
         {label && (
           <div className="flex h-9 shrink-0 items-center px-3.5">
-            <h3 className="font-mono text-[9.5px] font-medium tracking-[0.28em] text-game-ink-500 uppercase">
-              {label}
-            </h3>
+            <h3 className={sectionLabel}>{label}</h3>
           </div>
         )}
         <div className="flex min-h-0 flex-col overflow-y-auto">{children}</div>
@@ -67,7 +66,7 @@ const SidebarNavItem = React.forwardRef<HTMLButtonElement, SidebarNavItemProps>(
         />
         <span className={cx("flex-1 truncate", active && "font-medium")}>{children}</span>
         {meta !== undefined && (
-          <span className="ml-2 shrink-0 font-game-num text-[10px] text-game-ink-500">{meta}</span>
+          <span className="ml-2 shrink-0 font-game-num text-[12px] text-game-ink-500">{meta}</span>
         )}
       </button>
     );

@@ -1,13 +1,12 @@
 import { expect, it } from "vitest";
 import { exportHistoryCsv, historySeriesValues } from "./exportHistoryCsv";
-import type { Snapshot } from "./types";
 
 const dates = ["1360-01-01", "1360-04-01"].map((date) => ({
   date,
   campaignId: "campaign",
-  version: "1.4",
-  hash: `eu5:${date}`,
-})) as Snapshot[];
+  gameVersion: "1.4",
+  contentHash: `hash-${date}`,
+}));
 
 it("exports the indexed values shown by the chart and labels their basis", () => {
   const csv = exportHistoryCsv(dates, [{ name: "Paris", raw: [2, 4] }], {

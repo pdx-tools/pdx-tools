@@ -320,7 +320,7 @@ const ScaleLayer = memo(function ScaleLayer({
                 x={x}
                 y={height - 2}
                 textAnchor="middle"
-                className="fill-game-ink-500 font-game-num text-[9.5px]"
+                className="fill-game-ink-500 font-game-num text-game-small"
               >
                 {tick.year}
               </text>

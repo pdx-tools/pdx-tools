@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "arena-serde"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "arena-serde-derive",
  "bumpalo",
@@ -187,7 +187,7 @@ dependencies = [
 [[package]]
 name = "arena-serde-derive"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -266,9 +266,9 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "aws-lc-rs"
-version = "1.17.1"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4342d8937fc7e5dd9b1c60292261c0670c882a2cd1719cfc11b1af41731e32ad"
+checksum = "048006790404103c488e6c5616b3e7e702a71292aadda08e8f7698a9e0d2eb53"
 dependencies = [
  "aws-lc-sys",
  "zeroize",
@@ -276,9 +276,9 @@ dependencies = [
 
 [[package]]
 name = "aws-lc-sys"
-version = "0.42.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d9ceb1da931507a12f4fccea479dccd00da1943e1b4ae72d8e502d707361444"
+checksum = "8bfbe32ac36b3c428696ce315464181bc4029d689fd58e3f2a4e58c252242f52"
 dependencies = [
  "cc",
  "cmake",
@@ -505,6 +505,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "campaign-analysis"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "js-sys",
+ "postcard",
+ "serde",
+ "tsify",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -575,7 +587,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "jomini",
  "serde",
@@ -1054,6 +1066,7 @@ version = "0.1.0"
 dependencies = [
  "attohttpc",
  "base64",
+ "campaign-analysis",
  "erased-serde",
  "eu4-achievements",
  "eu4game-data",
@@ -1063,11 +1076,14 @@ dependencies = [
  "pdx-zstd",
  "schemas",
  "serde",
+ "serde_json",
  "serde_path_to_error",
  "sha1_smol",
  "tempfile",
  "thiserror 2.0.18",
+ "tsify",
  "walkdir",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1077,7 +1093,7 @@ version = "0.1.0"
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "flate2",
  "jomini",
@@ -1100,6 +1116,7 @@ dependencies = [
  "base64",
  "bumpalo",
  "bytemuck",
+ "campaign-analysis",
  "eu5app",
  "eu5save",
  "highway",
@@ -1145,7 +1162,7 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "arena-serde",
  "bumpalo",
@@ -1592,7 +1609,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "jomini",
  "serde",
@@ -1854,7 +1871,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "jomini",
  "serde",
@@ -2948,7 +2965,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "attohttpc",
- "bytemuck",
  "clap",
  "csv",
  "eu4-achievements",
@@ -3038,7 +3054,6 @@ dependencies = [
 name = "pdx-screenshot"
 version = "0.1.0"
 dependencies = [
- "bytemuck",
  "eu4game",
  "eu4game-data",
  "eu4save",
@@ -3755,9 +3770,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.37"
+version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "758025cb5fccfd3bc2fd74708fd4682be41d99e5dff73c377c0646c6012c73a4"
+checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "aws-lc-rs",
  "once_cell",
@@ -3818,9 +3833,9 @@ checksum = "f87165f0995f63a9fbeea62b64d10b4d9d8e78ec6d7d51fb2125fda7bb36788f"
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.13"
+version = "0.103.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e"
+checksum = "4443b1b6d39d7c663139942cc4558262562d2c84123bb6282ef177009ca8b281"
 dependencies = [
  "aws-lc-rs",
  "ring",
@@ -4732,7 +4747,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vic3save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#f100a1d5ad49eab3d1b389d763eed5a6c7e9003b"
+source = "git+https://github.com/rakaly/jomini.git#8ca17c58640d432ef77b00d3dae32fc72196c106"
 dependencies = [
  "getrandom 0.3.4",
  "jomini",
@@ -4929,6 +4944,7 @@ dependencies = [
 name = "wasm-eu4"
 version = "0.1.0"
 dependencies = [
+ "campaign-analysis",
  "eu4game",
  "eu4save",
  "js-sys",
@@ -4946,6 +4962,7 @@ name = "wasm-eu5"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "campaign-analysis",
  "eu5app",
  "eu5save",
  "js-sys",

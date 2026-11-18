@@ -2,17 +2,18 @@ import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { chartTooltip, getEChartsTheme } from "@/components/viz/echartsTheme";
-import type { CountryRef } from "@/wasm/wasm_eu5";
+import { chartTooltip, yAxisName } from "@/components/viz/echartsTheme";
+import type { CountryRef, PopulationHistory } from "@/wasm/wasm_eu5";
 import { SectionTitle } from "../../components";
 import { useEu5SaveDate } from "../../store";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
-import { formatPeople } from "./populationFormatting";
+import { formatInt } from "@/lib/format";
+import { firstYear, pointLabel, pointsToSave, yearAxis, yearOfDate } from "./yearlySeries";
 
 export type PopulationHistorySeries = {
   country: CountryRef;
   totalPopulation: number;
-  historicalPopulation: number[];
+  historicalPopulation: PopulationHistory;
   greatPowerRank: number;
 };
 
@@ -27,16 +28,14 @@ const HISTORY_TOP_COUNT = 10;
 export function PopulationHistoryChart({
   countries,
   scopeIsEmpty,
-  backLabel,
 }: {
   countries: PopulationHistorySeries[];
   scopeIsEmpty: boolean;
-  backLabel: string;
 }) {
   const saveDate = useEu5SaveDate();
 
   const filtered = useMemo(() => {
-    const withHistory = countries.filter((c) => c.historicalPopulation.length >= 2);
+    const withHistory = countries.filter((c) => c.historicalPopulation.people.length >= 2);
     if (!scopeIsEmpty) {
       return [...withHistory]
         .sort((a, b) => b.totalPopulation - a.totalPopulation)
@@ -52,53 +51,36 @@ export function PopulationHistoryChart({
   }, [countries, scopeIsEmpty]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-    const baseYear = saveDate?.year ?? 0;
-
     const series = filtered.map((c) => {
-      const len = c.historicalPopulation.length;
       return {
         name: c.country.country.name,
         type: "line" as const,
-        smooth: true,
         showSymbol: false,
         color: c.country.colorHex,
         lineStyle: { color: c.country.colorHex, width: 2 },
         itemStyle: { color: c.country.colorHex },
-        data: c.historicalPopulation.flatMap((v, i) => (v === 0 ? [] : [[i - len + 1, v * 1000]])),
+        // A year of the record with no people has no point.
+        data: pointsToSave(c.historicalPopulation, saveDate, c.totalPopulation).filter(
+          ([, v], i, all) => v !== 0 || i === all.length - 1,
+        ),
       };
     });
 
-    const minX = filtered.reduce((min, c) => Math.min(min, 1 - c.historicalPopulation.length), 0);
+    const start = filtered.reduce(
+      (min, c) => Math.min(min, firstYear(c.historicalPopulation)),
+      saveDate.year,
+    );
 
     return {
       legend: {
         type: "scroll",
         bottom: 0,
-        textStyle: { color: labelColor, fontSize: 11 },
-        pageTextStyle: { color: labelColor },
       },
-      grid: { left: 60, right: 20, top: 16, bottom: 56 },
-      xAxis: {
-        type: "value",
-        min: minX,
-        max: 0,
-        axisLabel: {
-          color: tickColor,
-          formatter: (value: number) => String(baseYear + value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
-      },
+      grid: { left: 60, right: 20, top: 32, bottom: 56 },
+      xAxis: yearAxis(start, yearOfDate(saveDate)),
       yAxis: {
         type: "value",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatPeople(v) },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+        ...yAxisName("Population"),
       },
       tooltip: {
         ...chartTooltip,
@@ -107,12 +89,12 @@ export function PopulationHistoryChart({
           const arr = Array.isArray(params) ? params : [params];
           if (arr.length === 0) return "";
           const firstVal = arr[0]?.value;
-          const year = baseYear + Number(Array.isArray(firstVal) ? firstVal[0] : 0);
+          const year = pointLabel(Number(Array.isArray(firstVal) ? firstVal[0] : 0), saveDate);
           const lines = arr
             .filter((p) => Array.isArray(p.value))
             .map(
               (p) =>
-                `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(String(p.color))};margin-right:4px"></span>${escapeEChartsHtml(String(p.seriesName))}: ${formatPeople(Number((p.value as number[])[1]))}`,
+                `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${escapeEChartsHtml(String(p.color))};margin-right:4px"></span>${escapeEChartsHtml(String(p.seriesName))}: ${formatInt(Number((p.value as number[])[1]))}`,
             );
           return `<strong>${year}</strong><br/>${lines.join("<br/>")}`;
         },
@@ -123,7 +105,6 @@ export function PopulationHistoryChart({
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel,
     getTarget: (params) => {
       const c = params.seriesIndex != null ? filtered[params.seriesIndex] : null;
       return c

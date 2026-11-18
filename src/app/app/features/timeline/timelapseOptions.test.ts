@@ -6,6 +6,7 @@ import {
   formatCampaignSpan,
   formatDuration,
   formatFileSize,
+  savedDatePlan,
   timelapsePlan,
   timelapseYearsPerSecond,
 } from "@pdx.tools/timelapse";
@@ -87,5 +88,28 @@ describe("formatting", () => {
     expect(formatCampaignSpan(377 * 365)).toBe("377 years");
     expect(formatCampaignSpan(200)).toBe("1 year");
     expect(formatCampaignSpan(0)).toBe("1 year");
+  });
+});
+
+describe("savedDatePlan", () => {
+  it("holds each saved date for one second", () => {
+    const plan = savedDatePlan({ dates: 12, options: BASE });
+    expect(plan.seconds).toBe(12);
+    expect(plan.holds).toEqual(Array(12).fill(TIMELAPSE_FPS));
+  });
+
+  it("shares the target length between more saved dates than it has seconds", () => {
+    const plan = savedDatePlan({ dates: 45, options: BASE });
+    expect(plan.seconds).toBe(TIMELAPSE_SECONDS);
+    expect(plan.holds.reduce((sum, hold) => sum + hold, 0)).toBe(plan.frames);
+    expect(Math.min(...plan.holds)).toBe(Math.floor(plan.frames / 45));
+    expect(Math.max(...plan.holds)).toBe(Math.ceil(plan.frames / 45));
+  });
+
+  it("gives a date no frames when there are more dates than frames", () => {
+    const plan = savedDatePlan({ dates: 1000, options: BASE });
+    expect(plan.frames).toBe(TIMELAPSE_SECONDS * TIMELAPSE_FPS);
+    expect(plan.holds.reduce((sum, hold) => sum + hold, 0)).toBe(plan.frames);
+    expect(plan.holds).toContain(0);
   });
 });

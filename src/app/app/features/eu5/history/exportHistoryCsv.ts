@@ -1,4 +1,4 @@
-import type { Snapshot } from "./types";
+import type { HistoryObservation } from "./observations";
 
 /** Apply the displayed index while preserving missing and non-finite observations as gaps. */
 export function historySeriesValues(
@@ -18,7 +18,7 @@ export function historySeriesValues(
 }
 
 export function exportHistoryCsv(
-  dates: Snapshot[],
+  dates: Pick<HistoryObservation, "date" | "campaignId" | "gameVersion" | "contentHash">[],
   series: { name: string; raw: (number | null | undefined)[] }[],
   options: { metric: string; good: string; indexed: boolean },
 ): string {
@@ -44,13 +44,13 @@ export function exportHistoryCsv(
       rows.push([
         date.date,
         date.campaignId,
-        date.version,
+        date.gameVersion,
         line.name,
         options.good,
         options.metric,
         options.indexed ? "first_observation_100" : "raw",
         line.values[index] == null ? "" : String(line.values[index]),
-        date.hash,
+        date.contentHash,
       ]),
     ),
   );

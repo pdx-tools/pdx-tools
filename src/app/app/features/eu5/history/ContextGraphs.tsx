@@ -1,12 +1,8 @@
-import { exportHistoryCsv } from "./exportHistoryCsv";
-import { countryObservation, marketObservation } from "./observations";
 import { useMemo } from "react";
-import type { EChartsOption } from "@/components/viz";
-import { HistoryPlot } from "./HistoryPlot";
-import { chartTooltip, getEChartsTheme, seriesColors } from "@/components/viz/echartsTheme";
 import type { CountryObservation, MapMode } from "@/wasm/wasm_eu5";
-import { formatCompact } from "@/lib/format";
-import type { Snapshot } from "./types";
+import { HistoryChart } from "./HistoryChart";
+import { countryObservation } from "./observations";
+import type { HistoryObservation } from "./observations";
 
 type Metric = { label: string; unit: string; value: (c: CountryObservation) => number | null };
 const ratio = (n: number, d: number) => (d > 0 ? (100 * n) / d : null);
@@ -98,119 +94,25 @@ const metrics: Record<MapMode, Metric[]> = {
 };
 const human = (s: string) => s.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-function aggregate(snapshot: Snapshot, key: string): CountryObservation | null {
-  return countryObservation(snapshot, key) ?? null;
-}
-
-type Line = { name: string; values: (number | null)[] };
-function HistoryChart({
-  title,
-  unit,
-  dates,
-  lines,
-  selectedHash,
-}: {
-  title: string;
-  unit: string;
-  dates: Snapshot[];
-  lines: Line[];
-  selectedHash?: string | null;
-}) {
-  const option = useMemo((): EChartsOption => {
-    const theme = getEChartsTheme();
-
-    return {
-      useUTC: true,
-      animation: false,
-      color: [...seriesColors],
-      textStyle: { color: theme.labelColor, fontFamily: theme.numFamily },
-      tooltip: { ...chartTooltip, trigger: "axis", confine: true },
-      legend: { type: "scroll", top: 4, textStyle: { color: theme.labelColor } },
-      grid: { left: 65, right: 22, top: 40, bottom: 40 },
-      xAxis: {
-        type: "time",
-        axisLabel: { color: theme.tickColor, formatter: "{yyyy}-{MM}", hideOverlap: true },
-        axisLine: { lineStyle: { color: theme.axisColor } },
-      },
-      yAxis: {
-        type: "value",
-        scale: true,
-        axisLabel: { color: theme.tickColor, formatter: (v: number) => formatCompact(v, 1) },
-        splitLine: { lineStyle: { color: theme.gridLineColor } },
-      },
-      series: lines.map((line, i) => ({
-        id: `history/${title}/${line.name}`,
-        name: line.name,
-        type: "line" as const,
-        data: line.values.map((v, j) => [dates[j].date, v]),
-        showSymbol: true,
-        symbolSize: 4,
-        connectNulls: false,
-        lineStyle: { width: 2 },
-        itemStyle: { color: seriesColors[i % seriesColors.length] },
-      })),
-    };
-  }, [title, dates, lines]);
-  const selected = dates.findIndex((s) => s.hash === selectedHash);
-  const values = useMemo(
-    () => lines.map((line) => line.values[selected] ?? null),
-    [lines, selected],
-  );
-  const exportCsv = () => {
-    const csv = exportHistoryCsv(
-      dates,
-      lines.map((line) => ({ name: line.name, raw: line.values })),
-      { metric: title, good: "", indexed: false },
-    );
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `eu5-${title.replaceAll(" ", "-")}.csv`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-  return (
-    <section className="mb-4 rounded-(--radius-panel) border border-game-line-strong bg-game-panel-2 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-game-ink-200 font-game-ui text-sm font-semibold">{title}</h3>
-        <button className="text-xs text-game-ink-500 hover:text-game-ink-100" onClick={exportCsv}>
-          Export CSV
-        </button>
-      </div>
-      <p className="mt-1 font-game-num text-[11px] text-game-ink-500">{unit}</p>
-      <HistoryPlot
-        option={option}
-        date={dates[selected]?.date}
-        values={values}
-        height={240}
-        top={40}
-        bottom={40}
-        left={65}
-        right={22}
-      />
-    </section>
-  );
-}
-
 export function ContextGraphs({
   dates,
   mode,
-  country = "world",
+  countryId,
   countryName,
-  selectedHash,
-  good,
-  centers,
+  selectedId,
 }: {
-  dates: Snapshot[];
+  dates: HistoryObservation[];
   mode: MapMode;
-  country?: string;
+  countryId?: number;
   countryName?: string;
-  selectedHash?: string | null;
-  good?: string;
-  centers?: string[];
+  selectedId?: string;
 }) {
-  const observations = useMemo(() => dates.map((s) => aggregate(s, country)), [dates, country]);
-  const label = country === "world" ? "World · owned locations" : (countryName ?? country);
+  const observations = useMemo(
+    () => dates.map((date) => countryObservation(date, countryId)),
+    [dates, countryId],
+  );
+  const label =
+    countryId === undefined ? "World · owned locations" : (countryName ?? String(countryId));
   const graphs = useMemo(() => {
     const result = metrics[mode].map((m) => ({
       title: m.label,
@@ -218,7 +120,7 @@ export function ContextGraphs({
       lines: [
         {
           name: label,
-          values: observations.map((c) => (c ? m.value(c) : null)),
+          raw: observations.map((c) => (c ? m.value(c) : null)),
         },
       ],
     }));
@@ -235,7 +137,7 @@ export function ContextGraphs({
       observations.forEach(
         (c) =>
           c &&
-          [...c[breakdown].entries()].forEach(([k, v]) => totals.set(k, (totals.get(k) ?? 0) + v)),
+          Object.entries(c[breakdown]).forEach(([k, v]) => totals.set(k, (totals.get(k) ?? 0) + v)),
       );
       const names = [...totals]
         .sort((a, b) => b[1] - a[1])
@@ -243,7 +145,7 @@ export function ContextGraphs({
         .map(([name]) => name);
       const lines = names.map((name) => ({
         name: human(name),
-        values: observations.map((c) => (c ? (c[breakdown].get(name) ?? 0) : null)),
+        raw: observations.map((c) => (c ? (c[breakdown][name] ?? 0) : null)),
       }));
       result.push({
         title:
@@ -264,39 +166,22 @@ export function ContextGraphs({
           unit: "% of population",
           lines: names.map((name) => ({
             name: human(name),
-            values: observations.map((c) =>
-              c ? ratio(c.religions.get(name) ?? 0, c.population) : null,
-            ),
+            raw: observations.map((c) => (c ? ratio(c.religions[name] ?? 0, c.population) : null)),
           })),
         });
     }
-    if (mode === "political" && country !== "world")
+    if (mode === "political" && countryId !== undefined)
       result.push({
         title: "Great power rank",
         unit: "Lower rank is higher · absent ranks remain gaps",
-        lines: [{ name: label, values: observations.map((c) => c?.greatPowerRank ?? null) }],
+        lines: [{ name: label, raw: observations.map((c) => c?.greatPowerRank ?? null) }],
       });
-    if (mode === "markets" && good && centers?.length) {
-      for (const metric of ["supply", "demand", "stockpile"] as const)
-        result.push({
-          title: `${human(good)} · ${human(metric)}`,
-          unit: "Saved market units",
-          lines: centers.map((center) => ({
-            name: human(dates.find((s) => s.marketLabels[center])?.marketLabels[center] ?? center),
-            values: dates.map((s) => marketObservation(s, Number(center), good)?.[metric] ?? null),
-          })),
-        });
-    }
     return result;
-  }, [observations, mode, country, label, dates, good, centers]);
+  }, [observations, mode, countryId, label]);
   return (
-    <div aria-label={`${mode} evolution for ${label}`}>
-      <p className="mb-3 text-xs text-game-ink-500">
-        {label} · {dates.length} saved dates. Lines connect observations; between date movement is
-        visual only.
-      </p>
+    <div className="flex flex-col gap-3" aria-label={`${mode} history for ${label}`}>
       {graphs.map((graph) => (
-        <HistoryChart key={graph.title} {...graph} dates={dates} selectedHash={selectedHash} />
+        <HistoryChart key={graph.title} {...graph} dates={dates} selectedId={selectedId} />
       ))}
       {dates.length < 2 && (
         <p className="text-xs text-game-ink-500">Add another save to show change over time.</p>

@@ -11,18 +11,19 @@ import type {
   PopulationTypeProfileRow,
   ScopedCountryPopulation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatFixed, formatPercent, formatPercentTick } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { popRankColors } from "../../gameColors";
 import {
   chartInk,
+  chartText,
   chartTooltip,
   divergingPoles,
-  getEChartsTheme,
   markGap,
-  seriesColor,
+  neutralMark,
 } from "@/components/viz/echartsTheme";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 import {
@@ -34,7 +35,7 @@ import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { ConcentrationCurve } from "./ConcentrationCurve";
 import { PopulationReadout, PopulationReadoutSkeleton } from "./PopulationReadout";
 import { MOST_POPULOUS_CAP } from "./populationConstants";
-import { countryGrowthLines, formatPeople } from "./populationFormatting";
+import { countryGrowthLines } from "./populationFormatting";
 
 const BACK_LABEL = "Population";
 // Settlement ranks keep the game's own colours: this is an ordered set, but
@@ -42,17 +43,15 @@ const BACK_LABEL = "Population";
 const RANK_COLORS = popRankColors;
 const RANK_LABELS = ["Rural", "Town", "City", "Megalopolis"] as const;
 
-function formatPercent(value: number, digits = 1) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
-
 function PopulationScopeHeader({ data }: { data?: PopulationScopeSummary }) {
   if (!data) return <PopulationReadoutSkeleton />;
   return <PopulationReadout mode="population" figures={data} />;
 }
 
 export function PopulationInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getPopulationInsight());
+  const insightQuery = useEu5Overview("population", (engine) =>
+    engine.queries.getPopulationInsight(),
+  );
 
   const countries = insightQuery.data?.countries ?? [];
   const rankTotals = insightQuery.data?.rankTotals ?? [];
@@ -182,8 +181,6 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: rows,
@@ -192,19 +189,11 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
       grid: { left: 110, right: 24, top: 10, bottom: 28 },
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatPeople(value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -253,7 +242,6 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: "Population",
     getTarget: (params) => {
       const idx = params.dataIndex;
       const country = idx == null ? null : rows[idx];
@@ -284,8 +272,6 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
   const total = row.rural + row.town + row.city + row.megalopolis;
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: [row],
@@ -302,12 +288,6 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
       xAxis: {
         type: "value",
         max: total || 1,
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatInt(value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
         splitLine: { show: false },
       },
       yAxis: {
@@ -394,7 +374,7 @@ function PopulationTopLocations({ locations }: { locations: PopulationTopLocatio
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("rank", {
@@ -463,8 +443,6 @@ export function PopulationTypeProfile({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     if (isEmpty) {
       return {
         dataset: { source: data, dimensions: ["label", "share"] },
@@ -473,21 +451,12 @@ export function PopulationTypeProfile({
           type: "value",
           min: 0,
           max: 1,
-          axisLabel: {
-            color: tickColor,
-            fontSize: 10,
-            formatter: (v: number) => formatPercent(v, 0),
-          },
-          axisLine: { lineStyle: { color: axisColor } },
-          splitLine: {
-            lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-          },
+          axisLabel: { formatter: formatPercentTick },
         },
         yAxis: {
           type: "category",
           inverse: true,
-          axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
-          axisLine: { lineStyle: { color: axisColor } },
+          axisLabel: { width: 66 },
         },
         tooltip: {
           ...chartTooltip,
@@ -501,7 +470,7 @@ export function PopulationTypeProfile({
             if (!d) return "";
             return [
               `<strong>${escapeEChartsHtml(d.label)}</strong>`,
-              `Population: ${formatPeople(d.population)}`,
+              `Population: ${formatInt(d.population)}`,
               `Share: ${formatPercent(d.share)}`,
               `Avg Satisfaction: ${formatPercent(d.avgSatisfaction)}`,
               `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
@@ -512,7 +481,9 @@ export function PopulationTypeProfile({
           {
             type: "bar",
             encode: { x: "share", y: "label" },
-            itemStyle: { color: seriesColor(0) },
+            itemStyle: { color: neutralMark },
+            // A thin bar, so that a long list of a bright neutral is not a block.
+            barMaxWidth: 10,
           },
         ],
       };
@@ -526,25 +497,15 @@ export function PopulationTypeProfile({
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
       },
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (v: number) => formatPercent(v, 1),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
+        axisLabel: { formatter: formatPercentTick },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 66 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 66 },
       },
       tooltip: {
         ...chartTooltip,
@@ -558,9 +519,9 @@ export function PopulationTypeProfile({
           if (!d) return "";
           return [
             `<strong>${escapeEChartsHtml(d.label)}</strong>`,
-            `Selected pop: ${formatPeople(d.population)} (${formatPercent(d.share)})`,
+            `Selected pop: ${formatInt(d.population)} (${formatPercent(d.share)})`,
             `World share: ${formatPercent(d.baselineShare)}`,
-            `Difference: ${formatPercent(d.shareDelta, 1)}`,
+            `Difference: ${formatPercent(d.shareDelta)}`,
             `Avg Satisfaction: ${formatPercent(d.avgSatisfaction)}`,
             `Avg Literacy: ${formatPercent(d.avgLiteracy)}`,
           ].join("<br/>");
@@ -693,8 +654,7 @@ function buildSankeyOption(rows: LocationPopRow[]): EChartsOption {
         nodeAlign: "left",
         label: {
           formatter: (params: unknown) => (params as { name: string }).name.replace(/^[rc]:/, ""),
-          color: chartInk.primary,
-          fontSize: 11,
+          ...chartText,
           backgroundColor: chartTooltip.backgroundColor,
           padding: [2, 5],
           borderRadius: 3,

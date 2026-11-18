@@ -98,23 +98,34 @@ pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> [u8; 3] {
     ]
 }
 
-/// Parse an inline Paradox color tag body, e.g. `rgb { 1 0 1 }` or
-/// `hsv360 { 42 85 72 }`, returning sRGB. `tag` is the keyword and `body` the
-/// whitespace-separated values inside the braces.
-pub fn parse_tagged_color(tag: &str, body: &str) -> Option<[u8; 3]> {
-    let nums: Vec<f32> = body
-        .split_whitespace()
-        .filter_map(|s| s.parse::<f32>().ok())
-        .collect();
-    let (a, b, c) = (
-        nums.first().copied().unwrap_or(0.0),
-        nums.get(1).copied().unwrap_or(0.0),
-        nums.get(2).copied().unwrap_or(0.0),
-    );
+/// Parse an inline Paradox tagged color, e.g. `rgb { 1 0 1 }` or
+/// `hsv360 { 42 85 72 }`, returning sRGB. `tag` is the keyword (any case) and
+/// `values` the values inside the braces.
+pub fn parse_tagged_color<S: AsRef<str>>(
+    tag: &str,
+    values: impl IntoIterator<Item = S>,
+) -> Option<[u8; 3]> {
+    let mut values = values.into_iter();
+    if tag.eq_ignore_ascii_case("hex") {
+        return hex_to_rgb(values.next()?.as_ref());
+    }
+    let tag = ["rgb", "hsv", "hsv360"]
+        .into_iter()
+        .find(|t| tag.eq_ignore_ascii_case(t))?;
+
+    let mut nums = [0.0f32; 3];
+    // Values <= 1 across the board are treated as unit floats (for `rgb`).
+    let mut unit = true;
+    let parsed = values.filter_map(|s| s.as_ref().parse::<f32>().ok());
+    for (i, v) in parsed.enumerate() {
+        if let Some(num) = nums.get_mut(i) {
+            *num = v;
+        }
+        unit &= v <= 1.0;
+    }
+    let [a, b, c] = nums;
     match tag {
         "rgb" => {
-            // Values <= 1 across the board are treated as unit floats.
-            let unit = nums.iter().all(|&v| v <= 1.0);
             let d = if unit { 255.0 } else { 1.0 };
             Some([
                 (a * d).clamp(0.0, 255.0).round() as u8,
@@ -123,15 +134,12 @@ pub fn parse_tagged_color(tag: &str, body: &str) -> Option<[u8; 3]> {
             ])
         }
         "hsv" => Some(hsv_to_rgb(a * 360.0, b, c)),
-        "hsv360" => Some(hsv_to_rgb(a, b / 100.0, c / 100.0)),
-        "hex" => hex_to_rgb(body.trim()),
-        _ => None,
+        _ => Some(hsv_to_rgb(a, b / 100.0, c / 100.0)),
     }
 }
 
-/// Decode a `#rrggbb` (or bare `rrggbb`) hex string to sRGB.
-fn hex_to_rgb(value: &str) -> Option<[u8; 3]> {
-    let hex = value.trim_start_matches('#');
+/// Decode a bare `rrggbb` hex string to sRGB.
+fn hex_to_rgb(hex: &str) -> Option<[u8; 3]> {
     let n = u32::from_str_radix(hex, 16).ok()?;
     Some([
         ((n >> 16) & 0xFF) as u8,
@@ -147,50 +155,28 @@ pub type NamedColors = HashMap<String, [u8; 3]>;
 /// The five color slots (`color1`..`color5`) that a sub/emblem can reference.
 pub const COLOR_SLOTS: [&str; 5] = ["color1", "color2", "color3", "color4", "color5"];
 
-/// Resolve a color slot string to sRGB.
-///
-/// The value is either a `#rrggbb` literal (inline colors are pre-resolved to
-/// hex during preprocessing) or a named color. Color *references* (`color1`..)
-/// are resolved earlier during model parsing and never reach here. Returns
-/// `None` for unknown names so the caller can substitute the missing color.
-pub fn resolve_named(value: &str, named: &NamedColors) -> Option<[u8; 3]> {
-    if value.starts_with('#') {
-        return hex_to_rgb(value);
-    }
-    named.get(value).copied()
-}
-
-/// Resolve a color slot value (a named color or `#rrggbb` literal) to an opaque
-/// [`FColor`], substituting `missing` for unknown names.
-pub fn resolve_color(value: &str, named: &NamedColors, missing: FColor) -> FColor {
-    resolve_named(value, named)
-        .map(FColor::opaque)
-        .unwrap_or(missing)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn parses_supported_color_tags() {
-        assert_eq!(parse_tagged_color("rgb", "1 0.5 0"), Some([255, 128, 0]));
-        assert_eq!(parse_tagged_color("rgb", "12 34 56"), Some([12, 34, 56]));
-        assert_eq!(parse_tagged_color("hex", "#0c2238"), Some([12, 34, 56]));
         assert_eq!(
-            parse_tagged_color("hsv360", "120 100 50"),
+            parse_tagged_color("rgb", ["1", "0.5", "0"]),
+            Some([255, 128, 0])
+        );
+        assert_eq!(
+            parse_tagged_color("rgb", ["12", "34", "56"]),
+            Some([12, 34, 56])
+        );
+        assert_eq!(parse_tagged_color("hex", ["0c2238"]), Some([12, 34, 56]));
+        assert_eq!(parse_tagged_color("HEX", ["0c2238"]), Some([12, 34, 56]));
+        assert_eq!(parse_tagged_color("hex", ["#0c2238"]), None);
+        assert_eq!(parse_tagged_color("LIST", ["1", "2"]), None);
+        assert_eq!(
+            parse_tagged_color("hsv360", ["120", "100", "50"]),
             Some([0, 128, 0])
         );
-    }
-
-    #[test]
-    fn resolves_hex_and_named_colors() {
-        let mut named = NamedColors::default();
-        named.insert("cloth_red".to_string(), [180, 20, 30]);
-
-        assert_eq!(resolve_named("#abcdef", &named), Some([171, 205, 239]));
-        assert_eq!(resolve_named("cloth_red", &named), Some([180, 20, 30]));
-        assert_eq!(resolve_named("missing", &named), None);
     }
 
     #[test]

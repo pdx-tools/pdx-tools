@@ -223,8 +223,8 @@ export function eu4GetCountriesMana(filter: CountryMatcher) {
   return wasm.save.get_countries_mana(filter);
 }
 
-export function eu4GetProvinces() {
-  return wasm.save.get_provinces();
+export function eu4GetProvinces(filter: CountryMatcher) {
+  return wasm.save.get_provinces(filter);
 }
 
 export function eu4GetHealth(filter: CountryMatcher): HealthData {

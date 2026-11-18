@@ -5,10 +5,11 @@ use crate::images::{
 use crate::{FileProvider, ImageProcessor};
 use anyhow::Result;
 use eu5app::game_data::{
-    GoodsData, LocalizationsData,
+    GoodsData, LocalizationsData, TILES_ENTRY,
     game_install::{GameFileSource, RawGameData},
     optimized::WorldMetadata,
 };
+use pdx_map::WorldTiles;
 use rawzip::CompressionMethod;
 use serde::Serialize;
 use std::io::Write;
@@ -168,7 +169,8 @@ where
         archive.finish()?
     };
 
-    // Map part: hemisphere textures and world metadata consumed by the map worker.
+    // Map part: the world's location tiles and metadata, consumed by the map
+    // worker.
     let map_path = version_dir.join("map.zip");
     {
         let output = std::fs::File::create(&map_path)?;
@@ -182,21 +184,18 @@ where
             WorldMetadata::new(max_location_index),
         )?;
 
-        for (filename, data) in [
-            ("locations-0.r16", textures.textures().west_data()),
-            ("locations-1.r16", textures.textures().east_data()),
-        ] {
-            let (mut entry, config) = archive
-                .new_file(filename)
-                .compression_method(CompressionMethod::ZSTD)
-                .start()?;
-            let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
-            let mut writer = config.wrap(encoder);
-            writer.write_all(bytemuck::cast_slice(data))?;
-            let (encoder, out) = writer.finish()?;
-            encoder.finish()?;
-            entry.finish(out)?;
-        }
+        let tiles = WorldTiles::from_rows(textures.textures().world().as_rows());
+        let bytes = tiles.to_le_bytes();
+        let (mut entry, config) = archive
+            .new_file(TILES_ENTRY)
+            .compression_method(CompressionMethod::ZSTD)
+            .start()?;
+        let encoder = pdx_zstd::Encoder::new(&mut entry, 7)?;
+        let mut writer = config.wrap(encoder);
+        writer.write_all(&bytes)?;
+        let (encoder, out) = writer.finish()?;
+        encoder.finish()?;
+        entry.finish(out)?;
 
         archive.finish()?
     };

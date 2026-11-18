@@ -6,26 +6,27 @@ import { sectionLabel } from "@/components/game/SectionTitle";
 import { daysBetween, formatLongDate } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
 import type { SaveLaneGeometry, TimelineCampaign } from "@/features/timeline/TimelineScrubber";
-import { useCampaign } from "./CampaignProvider";
+import { useCampaignTimeline } from "./CampaignProvider";
 import type { CampaignNav } from "./useCampaignNav";
 import { saveLabel } from "./saveText";
 import { SaveList } from "./SaveList";
 import type { CampaignSave } from "./types";
+import { saveAnalysisPresentation } from "./saveAnalysisPresentation";
+import { SaveAnalysisGlyph } from "./SaveAnalysisGlyph";
+import type { SaveAnalysisStatus } from "./saveAnalysisPresentation";
 
 /** Marks closer than this, in px, share one mark. */
 const MIN_GAP_PX = 10;
 
 const MARK_WIDTH = 14;
 
-export type SaveAnalysisStatus = "ready" | "analyzing" | "pending";
 type Cluster = {
   x: number;
   saves: readonly CampaignSave[];
-  analyzed?: number;
-  analysisStatus?: SaveAnalysisStatus;
-  analysisLabel?: string;
+  analysis?: { status: SaveAnalysisStatus; label: string };
 };
-type AnalysisStatus = (save: CampaignSave) => SaveAnalysisStatus;
+/** Undefined keeps unsupported sources as ordinary navigation bookmarks. */
+type AnalysisStatus = (save: CampaignSave) => SaveAnalysisStatus | undefined;
 
 function clusterSaves(
   saves: readonly CampaignSave[],
@@ -52,12 +53,45 @@ function clusterSaves(
   });
 }
 
+/** A mixed cluster stays active while any save is being analyzed. */
+function summarizeAnalysis(saves: readonly CampaignSave[], statusOf: AnalysisStatus) {
+  const counts = { ready: 0, analyzing: 0, pending: 0, failed: 0 };
+  let supported = 0;
+  for (const save of saves) {
+    const status = statusOf(save);
+    if (status === undefined) continue;
+    counts[status]++;
+    supported++;
+  }
+  if (supported === 0) return undefined;
+  const status: SaveAnalysisStatus =
+    counts.failed > 0
+      ? "failed"
+      : counts.ready === supported
+        ? "ready"
+        : counts.analyzing > 0
+          ? "analyzing"
+          : "pending";
+  const label =
+    supported === 1
+      ? saveAnalysisPresentation[status].description
+      : [
+          counts.ready && `${counts.ready} analyzed`,
+          counts.analyzing && `${counts.analyzing} analyzing`,
+          counts.pending && `${counts.pending} waiting`,
+          counts.failed && `${counts.failed} failed`,
+        ]
+          .filter(Boolean)
+          .join(", ");
+  return { status, label };
+}
+
 /** Extend the timeline to the latest campaign save. */
 export function useTimelineCampaign(
   start: DateComponents | undefined,
   analysisStatus?: AnalysisStatus,
 ): TimelineCampaign | undefined {
-  const nav = useCampaign();
+  const nav = useCampaignTimeline();
   if (
     nav === null ||
     start === undefined ||
@@ -86,33 +120,10 @@ function SaveMarks({
   geometry: SaveLaneGeometry;
   analysisStatus?: AnalysisStatus;
 }) {
-  const clusters: Cluster[] = clusterSaves(nav.saves, start, geometry.px).map((cluster) => {
-    if (!analysisStatus) return cluster;
-    const statuses = cluster.saves.map(analysisStatus);
-    const analyzed = statuses.filter((status) => status === "ready").length;
-    const analyzing = statuses.filter((status) => status === "analyzing").length;
-    const waiting = statuses.length - analyzed - analyzing;
-    const status = analyzed === statuses.length ? "ready" : analyzing > 0 ? "analyzing" : "pending";
-    return {
-      ...cluster,
-      analyzed,
-      analysisStatus: status,
-      analysisLabel:
-        statuses.length === 1
-          ? status === "ready"
-            ? "Analysis ready"
-            : status === "analyzing"
-              ? "Analyzing save"
-              : "Waiting for analysis"
-          : [
-              analyzed && `${analyzed} analyzed`,
-              analyzing && `${analyzing} analyzing`,
-              waiting && `${waiting} waiting`,
-            ]
-              .filter(Boolean)
-              .join(", "),
-    };
-  });
+  const clusters = clusterSaves(nav.saves, start, geometry.px).map((cluster) => ({
+    ...cluster,
+    analysis: analysisStatus && summarizeAnalysis(cluster.saves, analysisStatus),
+  }));
   const ribbonTop = geometry.top + 2;
 
   return (
@@ -132,11 +143,9 @@ function SaveMarks({
             y2={ribbonTop}
             strokeWidth={1}
             className={
-              cluster.analyzed === cluster.saves.length
-                ? "stroke-emerald-400/60"
-                : cluster.saves.some((x) => x.isOpen)
-                  ? "stroke-game-accent-300/60"
-                  : "stroke-game-ink-500/40"
+              cluster.saves.some((x) => x.isOpen)
+                ? "stroke-game-accent-300/60"
+                : "stroke-game-ink-500/40"
             }
           />
         ))}
@@ -155,7 +164,7 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
   const isOpen = saves.some((x) => x.isOpen);
   const opening = saves.some((x) => x.key === nav.opening);
   const problem = saves.every((x) => x.problem !== null && x.problem.kind !== "moved");
-  const { analysisLabel } = cluster;
+  const analysisLabel = cluster.analysis?.label;
   const label =
     saves.length === 1
       ? saveLabel(saves[0])
@@ -169,9 +178,10 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
           aria-label={[isOpen ? `${label}, open now` : label, analysisLabel]
             .filter(Boolean)
             .join(", ")}
+          aria-current={isOpen ? "date" : undefined}
           aria-busy={opening || undefined}
           title={analysisLabel}
-          data-analysis={cluster.analysisStatus}
+          data-analysis={cluster.analysis?.status}
           className={cx(
             "group absolute z-10 grid -translate-x-1/2 cursor-pointer place-items-start justify-center rounded-[var(--radius-plate)]",
             focusRing,
@@ -184,35 +194,33 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
                 d="M3.5 -1.5 H10.5 V9.5 L7 7 L3.5 9.5 Z"
                 className={cx(
                   "transition-colors duration-100",
-                  cluster.analyzed != null
-                    ? cluster.analyzed > 0
-                      ? "fill-emerald-600"
-                      : "fill-game-ink-700"
-                    : isOpen
-                      ? "fill-game-accent-500"
-                      : "fill-game-ink-700 group-hover:fill-game-ink-500",
+                  isOpen
+                    ? "fill-game-accent-500"
+                    : "fill-game-ink-700 group-hover:fill-game-ink-500",
                 )}
               />
             )}
-            <path
-              d="M1 0.5 H8 V12 L4.5 9.5 L1 12 Z"
-              strokeWidth={1}
-              className={cx(
-                "transition-colors duration-100",
-                cluster.analyzed != null
-                  ? cluster.analyzed === saves.length
-                    ? "fill-emerald-400 stroke-emerald-300"
-                    : cluster.analysisStatus === "analyzing"
-                      ? "fill-amber-400 stroke-amber-300"
-                      : "fill-game-ink-700 stroke-game-ink-500 group-hover:stroke-game-ink-100"
-                  : isOpen || opening
+            {cluster.analysis ? (
+              <SaveAnalysisGlyph
+                status={cluster.analysis.status}
+                selected={isOpen || opening}
+                opening={opening}
+              />
+            ) : (
+              <path
+                d="M1 0.5 H8 V12 L4.5 9.5 L1 12 Z"
+                strokeWidth={1}
+                className={cx(
+                  "transition-colors duration-100",
+                  isOpen || opening
                     ? "fill-game-accent-300 stroke-game-accent-300"
                     : problem
                       ? "fill-transparent stroke-game-ink-500 group-hover:stroke-game-ink-100"
                       : "fill-game-ink-300 stroke-game-ink-300 group-hover:fill-game-ink-100 group-hover:stroke-game-ink-100",
-                opening && "motion-safe:animate-pulse",
-              )}
-            />
+                  opening && "motion-safe:animate-pulse",
+                )}
+              />
+            )}
           </svg>
         </button>
       </Popover.Trigger>

@@ -1,8 +1,9 @@
 use crate::MapMode;
 use crate::timeline::OwnerChange;
 use eu5save::hash::FnvHashSet;
-use eu5save::models::{CountryId, LocationIdx, MarketId, RealCountryId};
+use eu5save::models::{CountryId, CountryIdx, LocationIdx, MarketId, RealCountryId};
 use pdx_map::GpuLocationIdx;
+use serde::{Deserialize, Serialize};
 
 /// Result of [`SelectionAdapter::resolve_click`].
 #[derive(Debug, Clone)]
@@ -67,6 +68,33 @@ impl<T: LocationData> LocationData for &T {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionPreset {
     Players,
+}
+
+/// How a change uses its set: in place of the selection, added to it, or
+/// taken out of it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub enum SelectionOp {
+    Replace,
+    Add,
+    Remove,
+}
+
+/// Whole entities or single locations. A country includes the land of the
+/// ids it had before.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectionSet {
+    Countries(Vec<CountryIdx>),
+    Markets(Vec<MarketId>),
+    Locations(Vec<LocationIdx>),
+}
+
+/// The selection in a form that a replace selects again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectionTarget {
+    Players,
+    Set(SelectionSet),
 }
 
 /// Tracks the set of currently selected [`LocationIdx`] values.
@@ -204,9 +232,25 @@ impl SelectionState {
         self.emptiness_changed(was_empty);
     }
 
+    /// Follow these countries too. A new one drops the preset, because the
+    /// set is then not the set of the preset.
+    pub fn follow_all(&mut self, countries: impl IntoIterator<Item = RealCountryId>) {
+        let was_empty = self.is_empty();
+        let before = self.followed.len();
+        self.followed.extend(countries);
+        if self.followed.len() != before {
+            self.preset = None;
+        }
+        self.emptiness_changed(was_empty);
+    }
+
+    /// Stop following a country. This drops the preset, because the set is
+    /// then not the set of the preset.
     pub fn unfollow(&mut self, country: RealCountryId) {
         let was_empty = self.is_empty();
-        self.followed.remove(&country);
+        if self.followed.remove(&country) {
+            self.preset = None;
+        }
         self.emptiness_changed(was_empty);
     }
 
@@ -230,6 +274,7 @@ impl SelectionState {
                 .is_some_and(|owner| followed.contains(&owner))
         };
         let mut changed = false;
+        let mut kept_focus = false;
         for change in changes {
             let idx = change.location;
             if is_followed(change.to) {
@@ -239,8 +284,13 @@ impl SelectionState {
             } else if is_followed(change.from) && self.focused_location != Some(idx) {
                 changed |= self.locations.remove(&idx);
             } else {
+                kept_focus |= is_followed(change.from);
                 changed |= self.locations.contains(&idx);
             }
+        }
+        // The focus stays, so the set is not the set of the preset.
+        if kept_focus {
+            self.preset = None;
         }
 
         if changed {
@@ -411,22 +461,6 @@ impl<D: LocationData> SelectionAdapter<D> {
             MapMode::Markets => self.resolve_all_by_market(),
             _ => self.resolve_all_by_owner(),
         }
-    }
-
-    pub fn resolve_by_country_id(&self, owner: RealCountryId) -> FnvHashSet<LocationIdx> {
-        self.data
-            .iter_locations()
-            .filter(|(_, info)| info.owner == Some(owner))
-            .map(|(idx, _)| idx)
-            .collect()
-    }
-
-    pub fn resolve_by_market_id(&self, market: MarketId) -> FnvHashSet<LocationIdx> {
-        self.data
-            .iter_locations()
-            .filter(|(_, info)| info.market == Some(market))
-            .map(|(idx, _)| idx)
-            .collect()
     }
 
     pub fn resolve_by_owner(&self, clicked_idx: LocationIdx) -> FnvHashSet<LocationIdx> {
@@ -608,7 +642,8 @@ mod tests {
     #[test]
     fn follow_owners_moves_followed_land() {
         let mut state = SelectionState::new();
-        state.replace([loc(0), loc(1), loc(2), loc(4)].into_iter().collect());
+        let locations = [loc(0), loc(1), loc(2), loc(4)].into_iter().collect();
+        state.replace_with_preset(locations, SelectionPreset::Players);
         state.set_followed([real_country(1)].into_iter().collect());
         state.set_focus(loc(1));
 
@@ -623,6 +658,27 @@ mod tests {
         let expected: FnvHashSet<_> = [loc(1), loc(2), loc(3), loc(4)].into_iter().collect();
         assert_eq!(state.selected_locations(), &expected, "the focus stays");
         assert_eq!(state.focused_location(), Some(loc(1)));
+        assert_eq!(state.preset(), None, "the set is not the preset's set");
+    }
+
+    #[test]
+    fn only_a_change_to_the_followed_countries_drops_the_preset() {
+        let mut state = SelectionState::new();
+        state.replace_with_preset([loc(0)].into_iter().collect(), SelectionPreset::Players);
+        state.set_followed([real_country(1)].into_iter().collect());
+        state.follow_all([real_country(1)]);
+        assert_eq!(state.preset(), Some(SelectionPreset::Players));
+
+        // A country with no land changes no location, but it changes the set.
+        state.follow_all([real_country(2)]);
+        assert_eq!(state.preset(), None);
+
+        state.replace_with_preset([loc(0)].into_iter().collect(), SelectionPreset::Players);
+        state.set_followed([real_country(1)].into_iter().collect());
+        state.unfollow(real_country(2));
+        assert_eq!(state.preset(), Some(SelectionPreset::Players));
+        state.unfollow(real_country(1));
+        assert_eq!(state.preset(), None);
     }
 
     #[test]

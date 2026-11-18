@@ -1,22 +1,24 @@
-import { useAnalysisHistory } from "./history/useAnalysisHistory";
-import { useMapHistory } from "./history/context";
+import { GameButton } from "@/components/game/Button";
+import { ContextGraphs } from "./history/ContextGraphs";
+import { SaveHistory } from "./history/SaveHistory";
+import { useCurrentHistorySnapshot } from "./history/currentSnapshot";
+import { useHistoryObservations } from "./history/useHistoryObservations";
+import { InsightPreviewContext, useInsightPreviewValue } from "./history/insightPreview";
 import { useHistory } from "./history/store";
 import { useIsCampaignAnalysisEnabled } from "./history/useIsCampaignAnalysisEnabled";
-import { ContextGraphs } from "./history/ContextGraphs";
-import { useCurrentHistorySnapshot } from "./history/currentSnapshot";
-import { SaveHistory } from "./history/SaveHistory";
-import { GameButton } from "@/components/game/Button";
+import { useMapHistory } from "./history/context";
 import type React from "react";
 import { useCallback, useState } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
-import { formatCompact, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { Figure } from "./components/Figure";
 import { Eu5Flag } from "./components/flags/Eu5Flag";
 import { formatLongDate } from "@/features/timeline/date";
 import {
   useEu5MapMode,
-  useEu5SaveDate,
   useEu5PlaythroughId,
+  useEu5SaveDate,
   useEu5SelectionState,
   useEu5TimelineLive,
   useEu5World,
@@ -45,12 +47,11 @@ type Eu5InsightPanelProps = {
 };
 
 export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
-  const projection = useMapHistory();
-  const preview = projection?.preview;
-  const featureEnabled = useIsCampaignAnalysisEnabled();
-  const historyOpen = useHistory((state) => featureEnabled && state.panelOpen);
-  const setHistoryOpen = useHistory((state) => state.showPanel);
-  const currentMapMode = useEu5MapMode();
+  const preview = useMapHistory()?.preview;
+  const campaignId = useEu5PlaythroughId();
+  const allowed = useIsCampaignAnalysisEnabled() && !!campaignId;
+  const historyOpen = useHistory((state) => allowed && state.panelOpen);
+  const showHistory = useHistory((state) => state.showPanel);
   const setInsightPanelWidth = useSetEu5InsightPanelWidth();
   const handleWidthChange = useCallback(
     (width: number) => setInsightPanelWidth(width),
@@ -77,13 +78,9 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
           <ResizablePanel.CloseButton className={btnCx} />
           <div className="min-w-0 flex-1">
             {historyOpen ? (
-              <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
-                Campaign history
-              </span>
+              "Campaign history"
             ) : preview ? (
-              <span className="font-game-ui text-sm font-semibold text-game-ink-300">
-                Campaign overview
-              </span>
+              "Campaign overview"
             ) : (
               <InsightPanelTitle />
             )}
@@ -94,137 +91,143 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
         <ResizablePanel.Content>
           {open && (
             <>
-              {featureEnabled && (
-                <div className="flex gap-2 border-b border-game-line p-2">
+              {allowed && (
+                <div className="flex gap-2 border-b border-game-line p-2" aria-label="Insight view">
                   <GameButton
                     variant={historyOpen ? "ghost" : "default"}
-                    onClick={() => {
-                      setHistoryOpen(false);
-                    }}
+                    aria-pressed={!historyOpen}
+                    onClick={() => showHistory(false)}
                   >
                     Current save
                   </GameButton>
                   <GameButton
                     variant={historyOpen ? "default" : "ghost"}
-                    onClick={() => setHistoryOpen(true)}
+                    aria-pressed={historyOpen}
+                    onClick={() => showHistory(true)}
                   >
                     Over time
                   </GameButton>
                 </div>
               )}
-              {!historyOpen && (
+              {historyOpen ? (
+                <FocusedHistory key={campaignId} />
+              ) : (
                 <>
-                  <PanelContentInner />
-                  {featureEnabled && <InlineHistory />}
+                  <PanelContentInner key={preview ? "preview" : "live"} />
+                  {allowed && <InlineHistory />}
                 </>
               )}
             </>
           )}
-          {open && historyOpen ? <PanelSaveHistory visible mapMode={currentMapMode} /> : null}
         </ResizablePanel.Content>
       </ResizablePanel.Root>
     </PanelNavProvider>
   );
 }
 
-function useHistoryContext(
-  mapMode: React.ComponentProps<typeof SaveHistory>["mapMode"],
-  enabled = true,
-) {
-  const nav = usePanelNav();
+function useHistoryFocus(requested: boolean) {
+  const mapMode = useEu5MapMode();
   const selection = useEu5SelectionState();
+  const nav = usePanelNav();
   const preview = useMapHistory()?.preview;
-  const identity = preview ? undefined : (nav.top?.profile ?? selection?.activeProfile);
-  const kind = identity?.kind;
-  const key =
-    identity?.kind === "country"
-      ? identity.country.key
-      : identity?.kind === "market"
-        ? identity.market.key
-        : null;
-  const { data: focus } = useEu5Trigger(
-    async (engine) => {
-      if (!enabled || key == null) return null;
+  const active = preview ? null : (nav.top?.profile ?? selection?.activeProfile);
+  const kind = active?.kind;
+  const country = active?.kind === "country" ? active.country : undefined;
+  const market = active?.kind === "market" ? active.market : undefined;
+  const key = country?.key ?? market?.key;
+  const { data, error } = useEu5Trigger(
+    async ({ queries }) => {
+      if (!requested || key === undefined) return null;
       if (kind === "country") {
-        const [profile, country] = await Promise.all([
-          engine.queries.getCountryProfile(key),
-          engine.queries.getCountryIdentity(key),
-        ]);
-        return profile && country ? { tag: `id:${country.id}`, name: profile.header.name } : null;
+        const identity = await queries.getCountryIdentity(key);
+        return { kind, key, id: identity?.id };
       }
       if (kind === "market") {
-        const profile = await engine.queries.getMarketProfile(key);
-        return profile ? { center: profile.centerId, name: profile.header.name } : null;
+        const profile = await queries.getMarketProfile(key);
+        return { kind, key, id: profile?.centerId };
       }
       return null;
     },
-    [kind, key, enabled],
+    [key, kind, requested],
   );
+  const focus = data && data.kind === kind && data.key === key ? data : null;
+  const id = focus?.id;
   const tab = nav.profileTabs.country;
   const mode =
-    kind === "country" && tab === "religion"
-      ? "religion"
-      : kind === "country" && tab === "population"
-        ? "population"
-        : kind === "country" && tab === "diplomacy"
-          ? "political"
-          : kind === "market"
-            ? "markets"
+    kind === "market"
+      ? "markets"
+      : kind === "country" && tab === "religion"
+        ? "religion"
+        : kind === "country" && tab === "population"
+          ? "population"
+          : kind === "country" && tab === "diplomacy"
+            ? "political"
             : mapMode;
-  return { mode, focus };
+  return {
+    mode,
+    countryId: kind === "country" ? id : undefined,
+    marketCenter: kind === "market" ? id : undefined,
+    name: id === undefined ? undefined : (country?.name ?? market?.name),
+    pending: requested && key !== undefined && !focus && !error,
+  };
 }
 
-function PanelSaveHistory(props: React.ComponentProps<typeof SaveHistory>) {
-  const campaignId = useEu5PlaythroughId();
-  const { mode, focus } = useHistoryContext(props.mapMode, props.visible);
+function FocusedHistory() {
+  const focus = useHistoryFocus(true);
+  if (focus.pending)
+    return (
+      <p role="status" className="p-4 text-xs">
+        Loading history…
+      </p>
+    );
   return (
     <SaveHistory
-      key={campaignId}
-      {...props}
-      mapMode={mode}
-      focusTag={focus && "tag" in focus ? focus.tag : undefined}
-      focusName={focus?.name}
-      focusMarketCenter={focus && "center" in focus ? focus.center : undefined}
+      mode={focus.mode}
+      focusCountryId={focus.countryId}
+      focusMarketCenter={focus.marketCenter}
+      focusName={focus.name}
     />
   );
 }
 
 function InlineHistory() {
   const [expanded, setExpanded] = useState(false);
-  const mode = useEu5MapMode();
-  const { mode: contextMode, focus } = useHistoryContext(mode, expanded);
-  const { data: version } = useEu5Trigger((engine) => engine.queries.getSaveVersion(), []);
-  const selected = useCurrentHistorySnapshot(version);
-  const selectedHash = selected?.hash;
-  const observedCount = useHistory(
-    (s) => s.snapshots.filter((row) => row.campaignId === selected?.campaignId).length,
+  const focus = useHistoryFocus(expanded);
+  const current = useCurrentHistorySnapshot();
+  const showPanel = useHistory((state) => state.showPanel);
+  const { dates, error, loading } = useHistoryObservations(
+    current?.campaignId ?? null,
+    { countryId: focus.countryId },
+    expanded && !focus.pending && focus.mode !== "markets",
   );
-  const showPanel = useHistory((s) => s.showPanel);
-  const { dates } = useAnalysisHistory(
-    {
-      campaignId: selected?.campaignId ?? "",
-      country: focus && "tag" in focus ? focus.tag : "world",
-    },
-    expanded && contextMode !== "markets",
-  );
-  if (!selected || contextMode === "markets") return null;
+  if (!current || focus.mode === "markets") return null;
   return (
     <details
-      className="mx-4 my-3 rounded-(--radius-panel) border border-game-line-strong bg-game-panel p-3"
+      className="mx-4 my-3 rounded-panel border border-game-line p-3"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <summary className="cursor-pointer font-game-ui text-xs text-game-ink-300">
-        {focus?.name ?? MAP_MODE_TITLES[mode]} · evolution over {observedCount} saved dates
+      <summary className="cursor-pointer text-xs text-game-ink-300">
+        {focus.name ?? MAP_MODE_TITLES[focus.mode]} over time
       </summary>
       {expanded && (
-        <div className="mt-3">
-          <ContextGraphs
-            dates={dates}
-            mode={contextMode ?? mode}
-            country={focus && "tag" in focus ? focus.tag : "world"}
-            countryName={focus?.name}
-            selectedHash={selectedHash}
-          />
+        <div className="mt-3 flex flex-col gap-2">
+          {error ? (
+            <p role="alert" className="text-xs">
+              {error}
+            </p>
+          ) : loading || focus.pending ? (
+            <p role="status" className="text-xs">
+              Loading history…
+            </p>
+          ) : (
+            <ContextGraphs
+              dates={dates}
+              mode={focus.mode}
+              countryId={focus.countryId}
+              countryName={focus.name}
+              selectedId={current.id}
+            />
+          )}
           <GameButton variant="ghost" onClick={() => showPanel(true)}>
             Open history controls
           </GameButton>
@@ -242,8 +245,20 @@ function PanelContentInner() {
   const timelineLive = useEu5TimelineLive();
   const saveDate = useEu5SaveDate();
   const preview = useMapHistory()?.preview;
+  const snapshot = useHistory((state) =>
+    state.snapshots.find(
+      (row) => row.id === preview?.shown?.snapshotId && row.artifacts.includes("charts"),
+    ),
+  );
+  const previewValue = useInsightPreviewValue(snapshot?.campaignId, snapshot?.id);
   const activeProfile = preview ? null : selectionState?.activeProfile;
 
+  if (preview && !snapshot)
+    return (
+      <p className="p-4 text-sm text-game-ink-500">
+        Charts become available when playback pauses and this save has loaded.
+      </p>
+    );
   let content: React.ReactNode;
 
   if (!preview && top?.kind === "focus") {
@@ -297,12 +312,17 @@ function PanelContentInner() {
   // One wrapper on every date, so a step across the save date keeps the panel.
   // The status stays mounted, so it is announced when the note appears.
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       <div role="status">
+        {preview && (
+          <p className="border-b border-game-line px-4 py-2 text-xs text-game-ink-500">
+            Selecting an entity opens the save shown on the map.
+          </p>
+        )}
         {!preview &&
           !timelineLive && (
             // Only borders have a history in the save.
-            <p className="flex min-h-7 items-center border-b border-game-line px-4 font-game-ui text-[11px] leading-[1.4] text-game-ink-500">
+            <p className="flex min-h-7 items-center border-b border-game-line px-4 font-game-ui text-[12px] leading-[1.4] text-game-ink-500">
               <span>
                 Values are from the save date,{" "}
                 <span className="font-game-num text-game-ink-300 tabular-nums">
@@ -312,7 +332,9 @@ function PanelContentInner() {
             </p>
           )}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col">{body}</div>
+      <InsightPreviewContext.Provider value={previewValue}>
+        <div className="flex min-h-0 flex-1 flex-col">{body}</div>
+      </InsightPreviewContext.Provider>
     </div>
   );
 }
@@ -373,11 +395,8 @@ function InsightPanelTitle() {
  * on the map does.
  */
 function InsightScopeLine() {
-  const liveSelection = useEu5SelectionState();
-  const liveWorld = useEu5World();
-  const preview = useMapHistory()?.preview;
-  const selection = preview ? null : liveSelection;
-  const world = preview?.shown?.world ?? liveWorld;
+  const selection = useEu5SelectionState();
+  const world = useEu5World();
 
   const parts: string[] = [];
   if (selection == null || selection.isEmpty) {
@@ -393,7 +412,7 @@ function InsightScopeLine() {
   }
 
   return (
-    <span className="truncate font-game-num text-[10.5px] text-game-ink-500 tabular-nums">
+    <span className="truncate font-game-num text-[12px] text-game-ink-500 tabular-nums">
       {parts.join(" \u00b7 ")}
     </span>
   );
@@ -454,7 +473,7 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
     return (
       <span className="inline-flex max-w-full min-w-0 items-center gap-2">
         <span
-          className="h-3.5 w-3.5 shrink-0 rounded-[1px] border border-black/25"
+          className="h-3.5 w-3.5 shrink-0 rounded-[1px] border border-game-rim"
           style={{ backgroundColor: header.colorHex }}
         />
         <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
@@ -471,11 +490,11 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
         colorHex={header.colorHex}
         size="xl"
         alt={`${header.name} flag`}
-        className="shrink-0 rounded-[2px] border border-black/30"
+        className="shrink-0 rounded-[2px] border border-game-rim"
       />
       <span className="flex min-w-0 flex-col gap-1">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[10px] tracking-[0.06em] text-game-ink-500">
+          <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[12px] tracking-[0.04em] text-game-ink-500">
             {header.tag}
           </span>
           <span className="truncate font-game-ui text-base font-semibold text-game-ink-100">
@@ -483,11 +502,17 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
           </span>
         </span>
         <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <HeadlineStat label="Locations" value={formatInt(header.headline.locationCount)} />
-          <HeadlineStat label="Development" value={formatInt(header.headline.totalDevelopment)} />
+          <HeadlineStat
+            label="Locations"
+            value={<Figure value={header.headline.locationCount} form="count" />}
+          />
+          <HeadlineStat
+            label="Development"
+            value={<Figure value={header.headline.totalDevelopment} />}
+          />
           <HeadlineStat
             label="Population"
-            value={formatCompact(header.headline.totalPopulation, 1)}
+            value={<Figure value={header.headline.totalPopulation} form="count" />}
           />
         </span>
       </span>
@@ -495,13 +520,13 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
   );
 }
 
-function HeadlineStat({ label, value }: { label: string; value: string }) {
+function HeadlineStat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <span className="flex items-baseline gap-1">
       <span className="font-game-num text-[13px] font-medium text-game-ink-100 tabular-nums">
         {value}
       </span>
-      <span className="text-[10px] tracking-[0.06em] text-game-ink-500 uppercase">{label}</span>
+      <span className="text-game-label text-game-ink-500 uppercase">{label}</span>
     </span>
   );
 }

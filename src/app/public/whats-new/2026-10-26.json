@@ -1,0 +1,10 @@
+{
+  "sections": {
+    "improvements": [
+      "Optimize the amount of JavaScript loaded on the home page"
+    ],
+    "fixes": [
+      "Fix EU4 AEIOU achievement detection for the patch 1.37 Austrian mission trees"
+    ]
+  }
+}

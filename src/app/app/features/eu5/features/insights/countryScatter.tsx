@@ -1,0 +1,590 @@
+import { useMemo } from "react";
+import type * as echarts from "echarts/core";
+import { EChart } from "@/components/viz";
+import type { EChartsOption } from "@/components/viz";
+import {
+  chartInk,
+  chartText,
+  chartTextWidth,
+  chartTooltip,
+  dotRim,
+  labelHalo,
+  neutralMark,
+  yAxisName,
+} from "@/components/viz/echartsTheme";
+import type { CountryRef, SelectionTargetData } from "@/wasm/wasm_eu5";
+import { formatTick } from "../../numberFormatting";
+import { useEu5HomeCountry } from "../../store";
+import { useInsightPreview } from "../../history/insightPreview";
+import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
+
+/** Room after the largest value, so that its dot stays in the plot */
+const LOG_HEADROOM = 1.5;
+
+export interface LogDomain {
+  /** The left end of the axis: a power of 10 */
+  floor: number;
+  /** The right end of the axis */
+  ceiling: number;
+  /** The number of values under the floor, 0 and under included. Each one is on the floor. */
+  onFloor: number;
+}
+
+/** The share of values above zero that can be under the floor */
+const UNDER_FLOOR = 0.05;
+
+/**
+ * The extent of a log axis. The floor is the power of 10 under all but the
+ * smallest 5% of the values above zero, so that a few small values do not
+ * add empty decades. A value under the floor goes on the floor. A log axis
+ * has no place for 0 or under, so those values go there too.
+ */
+export function logDomain(values: Iterable<number>): LogDomain {
+  const all = [...values];
+  const positive = all.filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  const low = positive[Math.floor(positive.length * UNDER_FLOOR)];
+  const largest = positive.at(-1);
+  const floor = low === undefined ? 1 : powerAtOrUnder(low);
+  const onFloor = all.filter((v) => underFloor(v, floor)).length;
+  // The axis spans one decade or more, so that it has two ticks.
+  const ceiling = Math.max((largest ?? 0) * LOG_HEADROOM, floor * 10);
+  return { floor, ceiling, onFloor };
+}
+
+/** The largest power of 10 at or under a value above zero */
+function powerAtOrUnder(value: number): number {
+  const exponent = Math.floor(Math.log10(value));
+  // log10 of a value just under a power of 10 can round up to it.
+  return 10 ** exponent > value ? 10 ** (exponent - 1) : 10 ** exponent;
+}
+
+function underFloor(value: number, floor: number): boolean {
+  return !(Number.isFinite(value) && value >= floor);
+}
+
+/** The position of a value on a log axis */
+export function logPosition(value: number, domain: LogDomain): number {
+  return underFloor(value, domain.floor) ? domain.floor : value;
+}
+
+/** The text of a tick on a log axis */
+export function logTick(value: number, domain: LogDomain): string {
+  const onFloor = domain.onFloor > 0 && Math.abs(value - domain.floor) <= domain.floor * 1e-6;
+  return onFloor ? `≤${formatTick(value)}` : formatTick(value);
+}
+
+/** The scale of a log axis. The caller gives the name. */
+export function logAxis(domain: LogDomain) {
+  return {
+    type: "log" as const,
+    min: domain.floor,
+    max: domain.ceiling,
+    axisLabel: {
+      hideOverlap: true,
+      // A ceiling that is not a power of 10 has no tick.
+      showMaxLabel: Number.isInteger(Math.log10(domain.ceiling)),
+      formatter: (value: number) => logTick(value, domain),
+    },
+  };
+}
+
+/** The two ends of an axis */
+export interface AxisExtent {
+  min: number;
+  max: number;
+}
+
+/** Steps of a round end for a linear axis, in each decade */
+const ROUND_ENDS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
+/**
+ * The extent of a linear axis: from zero, or the smallest value under zero,
+ * to a round value over the largest, so that its dot stays in the plot.
+ */
+export function linearExtent(values: Iterable<number>): AxisExtent {
+  let smallest = 0;
+  let largest = 0;
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue;
+    smallest = Math.min(smallest, value);
+    largest = Math.max(largest, value);
+  }
+  const top = largest * 1.05;
+  if (!(top > 0)) return { min: smallest, max: smallest < 0 ? 0 : 1 };
+  const decade = 10 ** Math.floor(Math.log10(top));
+  const step = ROUND_ENDS.find((end) => end * decade >= top) ?? 10;
+  return { min: smallest, max: step * decade };
+}
+
+/** Where a country goes on a scatter */
+export interface CountryPoint {
+  country: CountryRef;
+  x: number;
+  y: number;
+  /** The size in px of a dot whose area shows a third value */
+  symbolSize?: number;
+}
+
+/** The countries that a scatter names first */
+export interface ScatterMarks {
+  /** The player's country in a save with one player */
+  home: number | null;
+  /** The selection: the Players preset, or the countries that it names */
+  target: SelectionTargetData | null;
+}
+
+/** The largest countries that have a label on a scatter, by the x value */
+const TOP_LABELS = 5;
+
+const NEUTRAL_DOT = 7;
+const COLORED_DOT = 8;
+const LABELED_DOT = 10;
+
+export interface ScatterDot<T> {
+  row: T;
+  point: CountryPoint;
+  value: [number, number];
+  symbolSize: number;
+  /** In its game color, with a rim: a player or a dot with a label */
+  colored: boolean;
+  labeled: boolean;
+  /** The home country or a selected country: its label goes first */
+  marked: boolean;
+}
+
+function selectedTest(target: SelectionTargetData | null): (country: CountryRef) => boolean {
+  switch (target?.kind) {
+    case "players":
+      return (country) => country.isPlayer;
+    case "countries": {
+      const ids = new Set(target.ids);
+      return (country) => ids.has(country.country.key);
+    }
+    default:
+      return () => false;
+  }
+}
+
+/**
+ * The dots of a scatter of countries, in the order to draw them. Most dots
+ * are a muted grey, because a hue on hundreds of dots shows no pattern. The
+ * players have their game color. The home country, the selected countries
+ * and the five largest also have a label. With two players or more, the five
+ * largest are players. The dots with a label come last, so they are on top.
+ */
+export function scatterDots<T>(
+  rows: readonly T[],
+  point: (row: T) => CountryPoint,
+  /** The log axes. An axis with no domain is linear. */
+  domain: { x?: LogDomain; y?: LogDomain },
+  marks: ScatterMarks,
+): ScatterDot<T>[] {
+  const points = rows.map(point);
+  const players = points.filter((p) => p.country.isPlayer);
+  const largest = new Set(
+    [...(players.length > 1 ? players : points)]
+      .sort((a, b) => b.x - a.x)
+      .slice(0, TOP_LABELS)
+      .map((p) => p.country.country.key),
+  );
+  const isSelected = selectedTest(marks.target);
+  const dots = rows.map((row, i): ScatterDot<T> => {
+    const p = points[i]!;
+    const key = p.country.country.key;
+    const marked = key === marks.home || isSelected(p.country);
+    const labeled = marked || largest.has(key);
+    const colored = labeled || p.country.isPlayer;
+    const x = domain.x ? logPosition(p.x, domain.x) : p.x;
+    const y = domain.y ? logPosition(p.y, domain.y) : p.y;
+    return {
+      row,
+      point: p,
+      value: [x, y],
+      symbolSize: p.symbolSize ?? (labeled ? LABELED_DOT : colored ? COLORED_DOT : NEUTRAL_DOT),
+      colored,
+      labeled,
+      marked,
+    };
+  });
+  // In a layer, a large dot goes first, so that it does not cover a small one.
+  const layer = (d: ScatterDot<T>) => (d.marked ? 3 : d.labeled ? 2 : d.colored ? 1 : 0);
+  return dots.sort((a, b) => layer(a) - layer(b) || b.symbolSize - a.symbolSize);
+}
+
+export interface LabelRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Labels keep this much space between them on a line */
+const LABEL_SPACE = 3;
+const LABEL_GAP = 4;
+const LABEL_HEIGHT = 14;
+/** The distances of the far places, which have a line to the dot */
+const LEADER_RADII = [28, 52];
+
+const overlaps = (a: LabelRect, b: LabelRect) =>
+  a.x < b.x + b.width + LABEL_SPACE &&
+  b.x < a.x + a.width + LABEL_SPACE &&
+  a.y < b.y + b.height &&
+  b.y < a.y + a.height;
+
+const contains = (outer: LabelRect, rect: LabelRect) =>
+  rect.x >= outer.x &&
+  rect.y >= outer.y &&
+  rect.x + rect.width <= outer.x + outer.width &&
+  rect.y + rect.height <= outer.y + outer.height;
+
+/**
+ * Where a label goes around its dot: the first place that is in the plot and
+ * overlaps nothing in `placed`, or null when no place is free. Near the right
+ * end of the plot, a label reads back into the plot. The far places come last.
+ */
+export function labelPlace(
+  dot: LabelRect,
+  width: number,
+  placed: readonly LabelRect[],
+  plot: LabelRect,
+): LabelRect | null {
+  const height = LABEL_HEIGHT;
+  const cx = dot.x + dot.width / 2;
+  const cy = dot.y + dot.height / 2;
+  const middle = cy - height / 2;
+  const right = { x: dot.x + dot.width + LABEL_GAP, y: middle, width, height };
+  const left = { x: dot.x - LABEL_GAP - width, y: middle, width, height };
+  const above = { x: cx - width / 2, y: dot.y - LABEL_GAP - height, width, height };
+  const below = { x: cx - width / 2, y: dot.y + dot.height + LABEL_GAP, width, height };
+  const late = cx > plot.x + plot.width * 0.7;
+  const near = late ? [left, above, below, right] : [right, above, below, left];
+  const far = LEADER_RADII.flatMap((radius) =>
+    [-0.8, 0.8, -0.3, 0.3, Math.PI - 0.8, Math.PI + 0.8, Math.PI - 0.3, Math.PI + 0.3].map(
+      (angle) => ({
+        x: cx + Math.cos(angle) * radius - (Math.cos(angle) < 0 ? width : 0),
+        y: cy + Math.sin(angle) * radius - height / 2,
+        width,
+        height,
+      }),
+    ),
+  );
+  return (
+    [...near, ...far].find(
+      (rect) => contains(plot, rect) && !placed.some((other) => overlaps(rect, other)),
+    ) ?? null
+  );
+}
+
+/**
+ * The places of the labels. Each dot is in `dots`, and a dot with a label
+ * width has a label. The labels take their place in the order of `dots`,
+ * and no label covers a dot of the list.
+ */
+export function placeLabels(
+  dots: readonly { rect: LabelRect; width?: number }[],
+  plot: LabelRect,
+): (LabelRect | null)[] {
+  const placed = dots.map((d) => d.rect);
+  return dots.map((d) => {
+    if (d.width === undefined) return null;
+    const place = labelPlace(d.rect, d.width, placed, plot);
+    if (place) placed.push(place);
+    return place;
+  });
+}
+
+/**
+ * The countries that a scatter names first, from the save and the selection.
+ * Undefined until the selection is known, so that the chart draws one time.
+ */
+function useScatterMarks(): ScatterMarks | undefined {
+  const home = useEu5HomeCountry();
+  const previewing = useInsightPreview() !== null;
+  const { data } = useEu5SelectionTrigger(
+    (engine) =>
+      previewing
+        ? Promise.resolve({ target: null })
+        : engine.queries.getSelectionTarget().then((target) => ({ target })),
+    [previewing],
+  );
+  // A new selection that names the same countries keeps the chart as it is.
+  const key = data === undefined ? undefined : JSON.stringify(data.target);
+  return useMemo(
+    () =>
+      previewing
+        ? NO_MARKS
+        : key === undefined
+          ? undefined
+          : { home, target: JSON.parse(key) as SelectionTargetData | null },
+    [home, key, previewing],
+  );
+}
+
+export type SeriesOption = Exclude<NonNullable<EChartsOption["series"]>, readonly unknown[]>;
+type LabelLayoutParams = {
+  dataIndex?: number;
+  rect: { x: number; y: number; width: number; height: number };
+};
+
+/**
+ * Gives each label a place when ECharts lays out the labels. ECharts asks for
+ * one label at a time, so the first ask of a layout finds all the places,
+ * from the dots' positions on the chart. A label with no free place gives way.
+ */
+export function dotLabelLayout<T>(
+  dots: readonly ScatterDot<T>[],
+  chart: Pick<echarts.ECharts, "getWidth" | "getHeight" | "convertToPixel">,
+  seriesIndex: number,
+) {
+  // The colored dots, in the order that their labels take a place. A colored
+  // dot with no label keeps the labels off it.
+  const seated = dots
+    .map((dot, index) => ({ dot, index }))
+    .filter(({ dot }) => dot.colored)
+    .sort(
+      (a, b) =>
+        Number(b.dot.labeled) - Number(a.dot.labeled) ||
+        Number(b.dot.marked) - Number(a.dot.marked) ||
+        b.dot.point.x - a.dot.point.x,
+    );
+  const widths = new Map(
+    seated
+      .filter(({ dot }) => dot.labeled)
+      .map(({ dot, index }) => [index, chartTextWidth(dot.point.country.country.name)]),
+  );
+  let layout: Map<number, { center: [number, number]; place: LabelRect | null }> | null = null;
+  // The labels that this pass of the layout has seen.
+  let seen = new Set<number>();
+
+  const find = () => {
+    const plot = {
+      x: SCATTER_GRID.left,
+      y: SCATTER_GRID.top,
+      width: chart.getWidth() - SCATTER_GRID.left - SCATTER_GRID.right,
+      height: chart.getHeight() - SCATTER_GRID.top - SCATTER_GRID.bottom,
+    };
+    const seats = seated.map(({ dot, index }) => {
+      const pixel: unknown = chart.convertToPixel({ seriesIndex }, dot.value);
+      const [x = NaN, y = NaN] = Array.isArray(pixel) ? (pixel as number[]) : [];
+      const half = dot.symbolSize / 2;
+      const rect = { x: x - half, y: y - half, width: dot.symbolSize, height: dot.symbolSize };
+      // A dot out of the plot after a zoom has no label.
+      const shown = contains(plot, { x, y, width: 0, height: 0 });
+      const center: [number, number] = [x, y];
+      return { index, center, rect, width: shown ? widths.get(index) : undefined };
+    });
+    const places = placeLabels(seats, plot);
+    return new Map(
+      seats.map((seat, i) => [seat.index, { center: seat.center, place: places[i]! }]),
+    );
+  };
+
+  return (params: LabelLayoutParams) => {
+    const index = params.dataIndex ?? -1;
+    const x = params.rect.x + params.rect.width / 2;
+    const y = params.rect.y + params.rect.height / 2;
+    // ECharts asks for each shown label in each pass, so a label seen before
+    // starts a new pass. A dot that moved also starts one, because a pan can
+    // show only labels that the last pass did not see.
+    const center = layout?.get(index)?.center;
+    const moved = !center || Math.hypot(center[0] - x, center[1] - y) > 0.5;
+    if (!layout || seen.has(index) || moved) {
+      layout = find();
+      seen = new Set();
+    }
+    seen.add(index);
+    const place = layout?.get(index)?.place;
+    if (!place)
+      return {
+        fontSize: 0,
+        labelLinePoints: [
+          [x, y],
+          [x, y],
+        ],
+      };
+    const anchorX = place.x + place.width / 2 < x ? place.x + place.width : place.x;
+    const anchorY = place.y + place.height / 2;
+    const far = Math.hypot(anchorX - x, anchorY - y) > LEADER_RADII[0]! - 4;
+    return {
+      x: place.x,
+      y: place.y,
+      align: "left" as const,
+      verticalAlign: "top" as const,
+      // A label away from its dot has a line to it.
+      labelLinePoints: far
+        ? [
+            [x, y],
+            [anchorX, anchorY],
+          ]
+        : [
+            [x, y],
+            [x, y],
+          ],
+    };
+  };
+}
+
+/** The scale of a value axis */
+export interface ValueScale {
+  min?: number;
+  max?: number;
+  formatter?: (value: number) => string;
+}
+
+const DEFAULT_SCALE: ValueScale = {};
+const NO_MARKS: ScatterMarks = { home: null, target: null };
+
+interface CountryScatterProps<T> {
+  rows: readonly T[];
+  point: (row: T) => CountryPoint;
+  /** The tooltip of a dot, in HTML */
+  tooltip: (row: T) => string;
+  xName: string;
+  yName: string;
+  /**
+   * The y axis: a value axis with these settings, or "x" for the scale of
+   * the x axis, so that a diagonal stays a diagonal.
+   */
+  yAxis?: ValueScale | "x";
+  /** Series under the dots, such as a reference line, from the extent of the x axis */
+  under?: (extent: AxisExtent) => SeriesOption[];
+  /** What the size of a dot and a line show, such as "Dot area: births per year." */
+  legend?: string;
+}
+
+/**
+ * A scatter of countries. With no selection, the x axis is log, so that
+ * hundreds of small countries spread out. With a selection, it is linear,
+ * so that the gaps between the selected countries show as they are. A click
+ * on a dot selects its country, and Shift, Ctrl or Cmd adds it.
+ */
+export function CountryScatter<T>({
+  rows,
+  point,
+  tooltip,
+  xName,
+  yName,
+  yAxis = DEFAULT_SCALE,
+  under,
+  legend,
+}: CountryScatterProps<T>) {
+  const marks = useScatterMarks();
+  const sameY = yAxis === "x";
+  const logX = marks?.target == null;
+
+  const { log, extent, dots } = useMemo(() => {
+    const points = rows.map(point);
+    const values = points.flatMap((p) => (sameY ? [p.x, p.y] : [p.x]));
+    const log = logX ? logDomain(values) : null;
+    const extent = log ? { min: log.floor, max: log.ceiling } : linearExtent(values);
+    const dots = scatterDots(
+      rows,
+      point,
+      { x: log ?? undefined, y: sameY ? (log ?? undefined) : undefined },
+      marks ?? NO_MARKS,
+    );
+    return { log, extent, dots };
+  }, [rows, point, sameY, logX, marks]);
+
+  const below = useMemo(() => under?.(extent) ?? [], [under, extent]);
+  // The dots come after the series under them.
+  const seriesIndex = below.length;
+
+  // The labels need the chart to find where the dots are.
+  const option = useMemo(() => {
+    const xScale = log
+      ? logAxis(log)
+      : {
+          type: "value" as const,
+          ...extent,
+          axisLabel: { hideOverlap: true, formatter: formatTick },
+        };
+    return (chart: echarts.ECharts): EChartsOption => ({
+      grid: SCATTER_GRID,
+      xAxis: {
+        ...xScale,
+        name: log ? logName(xName) : xName,
+        nameLocation: "middle",
+        nameGap: 28,
+      },
+      yAxis: sameY
+        ? { ...xScale, ...yAxisName(log ? logName(yName) : yName) }
+        : {
+            type: "value",
+            min: yAxis.min,
+            max: yAxis.max,
+            // An undefined key would hide the theme's tick text.
+            ...(yAxis.formatter && { axisLabel: { formatter: yAxis.formatter } }),
+            ...yAxisName(yName),
+          },
+      tooltip: {
+        ...chartTooltip,
+        trigger: "item",
+        formatter: (params) => {
+          if (Array.isArray(params) || params.seriesIndex !== seriesIndex) return "";
+          const dot = dots[params.dataIndex];
+          return dot ? tooltip(dot.row) : "";
+        },
+      },
+      series: [
+        ...below,
+        {
+          type: "scatter",
+          data: dots.map((dot) => ({
+            value: dot.value,
+            symbolSize: dot.symbolSize,
+            label: { show: dot.labeled },
+            itemStyle: dot.colored
+              ? { ...dotRim, color: dot.point.country.colorHex || neutralMark, opacity: 1 }
+              : undefined,
+          })),
+          itemStyle: { color: neutralMark, opacity: 0.4, borderWidth: 0 },
+          label: {
+            ...chartText,
+            ...labelHalo,
+            formatter: (params) => dots[params.dataIndex]?.point.country.country.name ?? "",
+          },
+          labelLine: { show: true, lineStyle: { color: chartInk.muted, width: 1 } },
+          labelLayout: dotLabelLayout(dots, chart, seriesIndex),
+        },
+      ],
+    });
+  }, [log, extent, sameY, dots, below, seriesIndex, xName, yName, yAxis, tooltip]);
+
+  const zoom = useBoxZoom(option);
+  const handleClick = useEu5EntityChartClick({
+    kind: "country",
+    getTarget: (params) => {
+      const dot = params.seriesIndex === seriesIndex ? dots[params.dataIndex] : undefined;
+      if (!dot) return null;
+      const { country } = dot.point;
+      return {
+        id: country.country.key,
+        anchorLocationIdx: country.anchorLocationIdx,
+        label: country.country.name,
+      };
+    },
+  });
+
+  // The chart waits for the selection, so that it does not draw two times.
+  if (!marks) return <div style={{ height: "420px" }} />;
+
+  return (
+    <>
+      <div className="relative">
+        <EChart
+          option={option}
+          style={{ height: "420px", width: "100%" }}
+          onInit={(chart) => {
+            handleClick(chart);
+            return zoom.attach(chart);
+          }}
+        />
+        <ResetZoom zoom={zoom} />
+      </div>
+      {legend ? <p className="mt-1 text-[12px] text-game-ink-500">{legend}</p> : null}
+    </>
+  );
+}

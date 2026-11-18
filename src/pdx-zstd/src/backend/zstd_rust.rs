@@ -50,8 +50,8 @@ pub fn decode_to(input: &[u8], dst: &mut [u8]) -> Result<()> {
 }
 
 pub struct Decoder<R: Read> {
-    inner: Cursor<Vec<u8>>,
-    _phantom: std::marker::PhantomData<R>,
+    // Boxed, as the frame decoder's state is large to keep inline.
+    inner: Box<ruzstd::decoding::StreamingDecoder<R, ruzstd::decoding::FrameDecoder>>,
 }
 
 impl<R: Read> std::fmt::Debug for Decoder<R> {
@@ -61,21 +61,26 @@ impl<R: Read> std::fmt::Debug for Decoder<R> {
 }
 
 impl<R: Read> Decoder<R> {
-    pub fn new(mut reader: R) -> Result<Self> {
-        // Read all compressed data from the reader
-        let mut compressed = Vec::new();
-        reader.read_to_end(&mut compressed)?;
-
-        // Decompress the data
-        let cursor = Cursor::new(compressed);
-        let mut decoder = ruzstd::decoding::StreamingDecoder::new(cursor)
+    pub fn new(reader: R) -> Result<Self> {
+        let inner = ruzstd::decoding::StreamingDecoder::new(reader)
             .map_err(|e| Error::Zstd(Box::new(e)))?;
-        let mut decompressed = Vec::new();
-        decoder.read_to_end(&mut decompressed)?;
-
         Ok(Self {
-            inner: Cursor::new(decompressed),
-            _phantom: std::marker::PhantomData,
+            inner: Box::new(inner),
+        })
+    }
+
+    pub fn get_ref(&self) -> &R {
+        self.inner.get_ref()
+    }
+
+    pub fn with_window_log_max(reader: R, window_log_max: u32) -> Result<Self> {
+        let inner = ruzstd::decoding::StreamingDecoder::new_with_max_window_size(
+            reader,
+            1u64 << window_log_max,
+        )
+        .map_err(|e| Error::Zstd(Box::new(e)))?;
+        Ok(Self {
+            inner: Box::new(inner),
         })
     }
 }

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type {
@@ -6,17 +6,17 @@ import type {
   PopulationGrowthScopeSummary,
   PopulationGrowthTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import {
+  formatExactCount,
+  formatFixed,
+  formatPercentTick,
+  formatRate,
+} from "../../numberFormatting";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartInk,
-  chartTooltip,
-  getEChartsTheme,
-  seriesColor,
-} from "@/components/viz/echartsTheme";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { chartInk, chartText, chartTooltip, neutralMark } from "@/components/viz/echartsTheme";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -26,23 +26,14 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { CountryScatter } from "./countryScatter";
+import type { CountryPoint, SeriesOption } from "./countryScatter";
 import { PopulationReadout, PopulationReadoutSkeleton } from "./PopulationReadout";
 import { PopulationHistoryChart } from "./PopulationHistoryChart";
 import { MOST_POPULOUS_CAP } from "./populationConstants";
-import { countryGrowthLines, formatRate } from "./populationFormatting";
+import { countryGrowthLines } from "./populationFormatting";
 
 const BACK_LABEL = "Population Growth";
-// Scatter labels: the powers that add the most people, and the fastest
-// growers among countries at least as populous as the scope's median.
-const SCATTER_LABEL_CAP = 8;
-const SCATTER_FAST_LABEL_CAP = 6;
-
-/** Ticks on a log axis land on powers of ten, so no decimals. */
-function formatLogTick(value: number): string {
-  if (value >= 1_000_000) return `${formatInt(value / 1_000_000)}M`;
-  if (value >= 1_000) return `${formatInt(value / 1_000)}K`;
-  return formatInt(value);
-}
 
 function countryTooltip(c: CountryPopulationGrowth): string {
   return [
@@ -57,7 +48,7 @@ function PopulationGrowthScopeHeader({ data }: { data?: PopulationGrowthScopeSum
 }
 
 export function PopulationGrowthInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) =>
+  const insightQuery = useEu5Overview("populationGrowth", (engine) =>
     engine.queries.getPopulationGrowthInsight(),
   );
 
@@ -100,7 +91,7 @@ export function PopulationGrowthInsight() {
             <section>
               <LocationDistributionChart
                 distribution={data.distribution}
-                title="Growth rate (%/yr) across locations"
+                title="Locations by growth rate (%/yr)"
               />
             </section>
           )}
@@ -116,7 +107,6 @@ export function PopulationGrowthInsight() {
             <PopulationHistoryChart
               countries={countries}
               scopeIsEmpty={data?.scope.isEmpty ?? true}
-              backLabel={BACK_LABEL}
             />
           )}
 
@@ -164,27 +154,18 @@ function GrowthRateBars({
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: { source: rows, dimensions: ["name", "ratePercent"] },
       grid: { left: 110, right: 24, top: 22, bottom: 28 },
       xAxis: {
         type: "value",
         min: 0,
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => `${formatFloat(value, 1)}%`,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
+        axisLabel: { formatter: (value: number) => formatPercentTick(value / 100) },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -202,16 +183,18 @@ function GrowthRateBars({
         {
           type: "bar",
           encode: { x: "ratePercent", y: "name" },
-          itemStyle: { color: seriesColor(0) },
+          itemStyle: { color: neutralMark },
+          // A thin bar, so that a long list of a bright neutral is not a block.
+          barMaxWidth: 10,
           markLine: {
             symbol: "none",
             silent: true,
             animation: false,
             data: [{ xAxis: scopeRate * 100 }],
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
+            // A bright line, so that it shows over the grey bars.
+            lineStyle: { type: "dashed", color: chartInk.secondary, width: 1 },
             label: {
-              color: tickColor,
-              fontSize: 10,
+              ...chartText,
               position: "start",
               formatter: `${scopeLabel} ${formatRate(scopeRate)}`,
             },
@@ -223,7 +206,6 @@ function GrowthRateBars({
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: BACK_LABEL,
     getTarget: (params) => {
       const idx = params.dataIndex;
       const country = idx == null ? null : rows[idx];
@@ -239,6 +221,8 @@ function GrowthRateBars({
   );
 }
 
+const GROWTH_SCALE = { formatter: formatPercentTick };
+
 function GrowthScaleScatter({
   countries,
   scopeRate,
@@ -248,146 +232,57 @@ function GrowthScaleScatter({
   scopeRate: number;
   scopeLabel: string;
 }) {
-  const labelSet = useMemo(() => {
-    if (countries.length <= 10) return new Set(countries.map((c) => c.country.tag));
-    // `countries` arrives sorted by births per year.
-    const most = countries.slice(0, SCATTER_LABEL_CAP).map((c) => c.country.tag);
-    const populations = countries.map((c) => c.totalPopulation).sort((a, b) => a - b);
-    const median = populations[Math.floor(populations.length / 2)] ?? 0;
-    const fastest = countries
-      .filter((c) => c.totalPopulation >= median)
-      .sort((a, b) => b.growthRate - a.growthRate)
-      .slice(0, SCATTER_FAST_LABEL_CAP)
-      .map((c) => c.country.tag);
-    return new Set([...most, ...fastest]);
+  // The area of a dot shows the births per year.
+  const point = useMemo(() => {
+    const maxBirths = Math.max(...countries.map((c) => c.birthsPerYear), 1);
+    return (c: CountryPopulationGrowth): CountryPoint => ({
+      country: c.country,
+      x: c.totalPopulation,
+      y: c.growthRate,
+      symbolSize: 4 + Math.sqrt(c.birthsPerYear / maxBirths) * 26,
+    });
   }, [countries]);
 
-  // Only the labelled powers can be told apart by colour, so the rest keep
-  // their game colour but fade into a density field, drawn first so the
-  // labelled marks sit on top.
-  const scatterData = useMemo(
-    () =>
-      countries
-        .map((c) => {
-          const labelled = labelSet.has(c.country.tag);
-          return {
-            value: [c.totalPopulation, c.growthRate * 100] as [number, number],
-            tag: c.country.tag,
-            name: c.country.country.name,
-            id: c.country.country.key,
-            anchorLocationIdx: c.country.anchorLocationIdx,
-            country: c,
-            labelled,
-            itemStyle: {
-              color: c.country.colorHex || seriesColor(0),
-              opacity: labelled ? 0.95 : 0.35,
-            },
-          };
-        })
-        .sort((a, b) => Number(a.labelled) - Number(b.labelled)),
-    [countries, labelSet],
+  const under = useCallback(
+    (): SeriesOption[] => [
+      {
+        type: "line",
+        data: [],
+        silent: true,
+        markLine: {
+          symbol: "none",
+          silent: true,
+          animation: false,
+          // The rate is a ratio, so it needs more than the 2 decimals of the default.
+          precision: 6,
+          data: [{ yAxis: scopeRate }],
+          lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
+          // The note under the chart gives the value. A label on the line
+          // can be under the names of the dots.
+          label: { show: false },
+        },
+      },
+    ],
+    [scopeRate],
   );
 
-  const maxBirths = useMemo(
-    () => Math.max(...countries.map((c) => c.birthsPerYear), 1),
-    [countries],
+  return (
+    <>
+      <CountryScatter
+        rows={countries}
+        point={point}
+        tooltip={countryTooltip}
+        xName="Population"
+        yName="Growth / yr"
+        yAxis={GROWTH_SCALE}
+        under={under}
+        legend="Dot area: births per year."
+      />
+      <p className="mt-1 text-[12px] text-game-ink-500">
+        Dashed line: {scopeLabel} {formatRate(scopeRate)}
+      </p>
+    </>
   );
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
-    return {
-      grid: { left: 64, right: 60, top: 20, bottom: 52 },
-      xAxis: {
-        type: "log",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          hideOverlap: true,
-          formatter: formatLogTick,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
-      },
-      yAxis: {
-        type: "value",
-        name: "Growth / yr",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => `${formatFloat(v, 1)}%` },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
-        min: 0,
-      },
-      dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0 }],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const d = params.data as (typeof scatterData)[number];
-          return countryTooltip(d.country);
-        },
-      },
-      series: [
-        {
-          type: "scatter",
-          data: scatterData,
-          // Area encodes births per year, so the radius grows with the root.
-          symbolSize: (_value: unknown, params: unknown) => {
-            const d = (params as { data: (typeof scatterData)[number] }).data;
-            return 4 + Math.sqrt(d.country.birthsPerYear / maxBirths) * 26;
-          },
-          color: seriesColor(0),
-          label: {
-            show: true,
-            formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return labelSet.has(d.tag) ? d.tag : "";
-            },
-            position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
-            distance: 4,
-          },
-          labelLayout: { hideOverlap: true },
-          markLine: {
-            symbol: "none",
-            silent: true,
-            animation: false,
-            data: [{ yAxis: scopeRate * 100 }],
-            lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-            label: {
-              color: tickColor,
-              fontSize: 10,
-              position: "insideStartTop",
-              formatter: `${scopeLabel} ${formatRate(scopeRate)}`,
-            },
-          },
-        },
-      ],
-    };
-  }, [scatterData, labelSet, maxBirths, scopeRate, scopeLabel]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: BACK_LABEL,
-    getTarget: (params) => {
-      if (Array.isArray(params.data)) return null;
-      const country = params.data as (typeof scatterData)[number] | undefined;
-      return country
-        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
-        : null;
-    },
-  });
-
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }
 
 const columnHelper = createColumnHelper<PopulationGrowthTopLocation>();
@@ -412,16 +307,23 @@ function PopulationGrowthTopLocations({ locations }: { locations: PopulationGrow
       }),
       columnHelper.accessor("birthsPerYear", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Births / yr", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Births / yr",
+          variant: "num",
+          exact: formatExactCount,
+        }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>
-            {formatInt(Math.round(info.getValue()))}
-          </Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("growthRate", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Growth / yr", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Growth / yr",
+          variant: "num",
+          // The rate already shows all the digits that a full value has.
+          exact: () => undefined,
+        }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatRate(info.getValue())}</Eu5DataTable.NumericCell>
         ),
@@ -430,7 +332,7 @@ function PopulationGrowthTopLocations({ locations }: { locations: PopulationGrow
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

@@ -1,23 +1,30 @@
-import { useMapHistory } from "../history/context";
-import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { cx } from "class-variance-authority";
 import { useCampaign } from "@/features/campaign/CampaignProvider";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
 import type { CampaignSave } from "@/features/campaign/types";
+import { SaveAnalysisGlyph } from "@/features/campaign/SaveAnalysisGlyph";
+import { saveAnalysisPresentation } from "@/features/campaign/saveAnalysisPresentation";
+import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import { useHistory } from "../history/store";
+import { useMapHistory } from "../history/context";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { cx } from "class-variance-authority";
 import { GameButton } from "@/components/game/Button";
-import { TimelapseExport } from "./TimelapseExport";
+import { focusRing } from "@/components/game/focusRing";
+import { SavedDateExport, TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
 import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
 import { useTimelineCampaign } from "@/features/campaign/SaveMarks";
-import type { SaveAnalysisStatus } from "@/features/campaign/SaveMarks";
 import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import type { TimelineController } from "@/features/timeline/controller";
 import { useTimelineController } from "./useTimelineController";
-import { useEu5MapMode, useSetEu5TimelineBarHeight, useSetEu5InsightPanelOpen } from "../store";
+import {
+  useEu5Input,
+  useEu5MapMode,
+  useSetEu5TimelineBarHeight,
+  useSetEu5InsightPanelOpen,
+} from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";
 import styles from "./TimelineBar.module.css";
@@ -41,20 +48,28 @@ function usePresence(open: boolean) {
 /**
  * The campaign timeline as a bar along the bottom of the map. The track gets
  * the full map width, which is what a long campaign needs for a precise drag.
- * Political mode uses ownership history. Other modes use the same control
- * to seek and play through saved observations.
+ * Political mode retains ownership history; other modes seek observed save dates
+ * from the same compact analytical timeline.
  */
 export function TimelineBar() {
-  const featureEnabled = useIsCampaignAnalysisEnabled();
+  const navigation = useCampaign();
+  const pendingDates = navigation?.pending ?? 0;
+  const input = useEu5Input();
+  const hasLocalSaves =
+    input.kind !== "server" ||
+    navigation?.saves.some((save) => save.source.kind === "local" && save.source.entryId);
   const ownership = useTimelineController();
-  const control = useMapHistory();
-  const controller = control?.controller ?? ownership;
+  const history = useMapHistory();
+  const mapMode = useEu5MapMode();
+  const controller = history?.controller ?? (isHistoricalMapMode(mapMode) ? ownership : null);
   const sources = useHistory((state) => state.sources);
+  const failedSources = useHistory((state) => state.failedSources);
   const analyzingEntryIds = useHistory((state) => state.analyzingEntryIds);
-  const savedDates = control?.controller != null;
   const analysisStatus = useCallback(
-    (save: CampaignSave): SaveAnalysisStatus => {
-      if (save.source.kind !== "local" || !save.source.entryId) return "pending";
+    (save: CampaignSave): SaveAnalysisStatus | undefined => {
+      if (save.source.kind !== "local" || !save.source.entryId) return undefined;
+      // Analysis never includes a save of another campaign, so it never waits for one.
+      if (save.membership === "different") return undefined;
       const source = sources[save.source.entryId];
       const entry = localSaveRegistry.get(save.source.entryId);
       const version = entry?.ref.kind === "file" ? entry.ref.file : entry?.version;
@@ -62,119 +77,125 @@ export function TimelineBar() {
         !!source &&
         !!version &&
         sameFileVersion(version, source.version) &&
-        !!control?.readyHashes.has(source.hash)
+        !!history?.readyIds.has(source.snapshotId)
       )
         return "ready";
-      return analyzingEntryIds.includes(save.source.entryId) ? "analyzing" : "pending";
+      if (analyzingEntryIds.includes(save.source.entryId)) return "analyzing";
+      const failure = failedSources[save.source.entryId];
+      if (entry?.problem && entry.problem.kind !== "moved") return "failed";
+      if (
+        failure &&
+        (failure.version === null || (!!version && sameFileVersion(version, failure.version)))
+      )
+        return "failed";
+      return "pending";
     },
-    [sources, control?.readyHashes, analyzingEntryIds],
+    [sources, history?.readyIds, analyzingEntryIds, failedSources],
   );
   const campaign = useTimelineCampaign(
     controller?.timeline.start,
-    control?.enabled ? analysisStatus : undefined,
+    history?.enabled ? analysisStatus : undefined,
   );
-  const mapMode = useEu5MapMode();
-  const insets = useViewportInsets();
-  const saveNavigation = useCampaign();
-  const setPanelOpen = useSetEu5InsightPanelOpen();
   const speed = useHistory((state) => state.playbackSpeed);
-  useTimelineKeyboard(savedDates || isHistoricalMapMode(mapMode) ? controller : null);
-
-  const open = controller !== null && (savedDates || isHistoricalMapMode(mapMode));
+  const showHistory = useHistory((state) => state.showPanel);
+  const openInsights = useSetEu5InsightPanelOpen();
+  const insets = useViewportInsets();
+  useTimelineKeyboard(controller);
+  const open = controller !== null;
   const presence = usePresence(open);
   const barRef = useRef<HTMLDivElement>(null);
   useReportedHeight(barRef, open, presence.mounted);
-
-  if (controller === null || !presence.mounted) return null;
-
+  if (!presence.mounted || !controller) return null;
   return (
     <div
       ref={barRef}
       data-state={presence.state}
       onAnimationEnd={presence.onAnimationEnd}
       className={cx(styles.bar, "@container pointer-events-auto absolute z-20 font-game-ui")}
-      style={{
-        left: insets.left + GUTTER_PX,
-        right: insets.right + GUTTER_PX,
-        bottom: GUTTER_PX,
-      }}
+      style={{ left: insets.left + GUTTER_PX, right: insets.right + GUTTER_PX, bottom: GUTTER_PX }}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-game-line-strong bg-game-overlay py-2 pr-2 pl-2.5 shadow-xl backdrop-blur-md">
         <TimelineTransport controller={controller} />
-
         <TimelineReadout controller={controller} className="shrink-0" />
-
-        {/* A narrow bar gives the track its own full row on top. */}
         <div className="min-w-0 flex-1 basis-64 @max-xl:order-first @max-xl:basis-full">
           <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
-
-        {savedDates ? (
-          <select
-            aria-label="Saved-date playback speed"
-            className="rounded-control border border-game-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300"
-            value={speed}
-            onChange={(event) => useHistory.getState().setPlaybackSpeed(Number(event.target.value))}
-          >
-            {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
-              <option key={value} value={value}>
-                {value}×
-              </option>
-            ))}
-          </select>
+        {history?.controller ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <select
+              aria-label="Saved-date playback speed"
+              value={speed}
+              className={cx(
+                "rounded-control border border-game-control-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300",
+                focusRing,
+              )}
+              onChange={(event) =>
+                useHistory.getState().setPlaybackSpeed(Number(event.target.value))
+              }
+            >
+              {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
+                <option key={value} value={value}>
+                  {value}×
+                </option>
+              ))}
+            </select>
+            {history.frames > 0 && <SavedDateExport controller={controller} history={history} />}
+          </div>
         ) : (
           <TimelapseExport controller={controller} />
         )}
-        {featureEnabled && saveNavigation && (
+        {history?.enabled && history.frames > 0 && (
           <GameButton
             variant="ghost"
             onClick={() => {
-              useHistory.getState().showPanel(true);
-              setPanelOpen(true);
+              showHistory(true);
+              openInsights(true);
             }}
           >
             Over time
           </GameButton>
         )}
-        {control?.enabled && (
+        {history?.enabled && hasLocalSaves && (
           <span
-            className="flex flex-col gap-0.5 text-[10px] leading-tight text-game-ink-500"
+            className="flex flex-col gap-0.5 text-[12px] leading-tight text-game-ink-500"
             aria-label="Save analysis status"
           >
-            <span>
-              <span
-                aria-hidden
-                className="mr-1 inline-block size-1.5 rounded-full bg-emerald-400"
-              />
-              Analyzed
-            </span>
-            <span>
-              <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-amber-400" />
-              Analyzing
-            </span>
-            <span>
-              <span
-                aria-hidden
-                className="mr-1 inline-block size-1.5 rounded-full bg-game-ink-700"
-              />
-              Waiting
-            </span>
+            {Object.entries(saveAnalysisPresentation).map(([status, { label }]) => (
+              <span key={status}>
+                <svg
+                  aria-hidden
+                  viewBox="0 0 10 13"
+                  className="mr-1 inline-block h-3 w-2.5 overflow-visible"
+                >
+                  <SaveAnalysisGlyph status={status as SaveAnalysisStatus} />
+                </svg>
+                {label}
+              </span>
+            ))}
           </span>
         )}
       </div>
-
-      <TimelineAnnouncer controller={controller} />
-      {control?.error && (
+      {pendingDates > 0 && (
+        <div
+          role="status"
+          className="mt-1 rounded-panel bg-game-panel px-3 py-2 text-xs text-game-ink-300"
+        >
+          Reading save dates… {pendingDates} remaining. New bookmarks will appear when reading
+          finishes.
+        </div>
+      )}
+      {history?.error && (
         <div
           role="status"
           className="mt-1 flex items-center gap-2 rounded-panel bg-game-panel px-3 py-2 text-xs text-game-ink-300"
         >
-          <span>{control.error}</span>
-          <button className="underline" onClick={control.retry}>
+          <span>{history.error}</span>
+          <button className="underline" onClick={history.retry}>
             Retry loading
           </button>
         </div>
       )}
+      <TimelineAnnouncer controller={controller} />
     </div>
   );
 }
@@ -211,12 +232,13 @@ function useReportedHeight(
       setHeight(0);
       return;
     }
-    // ResizeObserver provides the border box after layout. Reading offsetHeight in
-    // this effect forced a synchronous layout on every save's new store.
-    const observer = new ResizeObserver(([entry]) => {
-      setHeight(Math.round(entry.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight));
-    });
-    observer.observe(el, { box: "border-box" });
-    return () => observer.disconnect();
+    const report = () => setHeight(el.offsetHeight);
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      setHeight(0);
+    };
   }, [barRef, mounted, open, setHeight]);
 }

@@ -366,8 +366,20 @@ export class MapPlayground {
     const cursorX = e.clientX - rect.left;
     const cursorY = e.clientY - rect.top;
 
-    // Convert wheel delta to scroll lines (positive = zoom in, negative = zoom out)
-    const scrollLines = e.deltaY > 0 ? -1.0 : 1.0;
+    // Convert the wheel delta to scroll lines (positive = zoom in). Use the
+    // magnitude of the delta, because a trackpad sends many small events.
+    // One mouse-wheel notch is approximately 120 pixels. A trackpad pinch
+    // on macOS gives ctrlKey and small deltas, so multiply them.
+    let pixels = e.deltaY;
+    if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      pixels *= 40;
+    } else if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+      pixels *= 800;
+    }
+    if (e.ctrlKey) {
+      pixels *= 10;
+    }
+    const scrollLines = -pixels / 120;
 
     // Update cursor position first, then scroll
     await this.mapEngine.onCursorMove(cursorX, cursorY);

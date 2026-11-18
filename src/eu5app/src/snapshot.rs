@@ -1,8 +1,8 @@
 use eu5save::models::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct MarketObservation {
@@ -16,9 +16,10 @@ pub struct MarketObservation {
     pub stockpile: Option<f64>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", tsify(hashmap_as_object))]
 pub struct CountryObservation {
     pub country_id: u32,
     pub tag: String,
@@ -43,18 +44,10 @@ pub struct CountryObservation {
     pub market_centers: Vec<u32>,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[derive(Debug)]
 pub struct SaveSnapshot {
-    pub date: String,
-    pub date_sort: i32,
-    pub campaign_id: String,
-    pub version: String,
     pub markets: Vec<MarketObservation>,
     pub countries: Vec<CountryObservation>,
-    pub population: f64,
-    pub development: f64,
 }
 
 fn finite(value: f64) -> Option<f64> {
@@ -74,7 +67,6 @@ fn add_named(totals: &mut BTreeMap<String, f64>, key: &str, value: f64) {
 /// Copy compact observations out of one parsed save; the arena can then be freed.
 pub fn extract(game: &Gamestate<'_>) -> SaveSnapshot {
     let meta = game.metadata();
-    let date = crate::Eu5DateComponents::from(meta.date);
     let location_names: BTreeMap<_, _> = meta
         .compatibility
         .locations_iter()
@@ -119,7 +111,7 @@ pub fn extract(game: &Gamestate<'_>) -> SaveSnapshot {
                 country_id: owner.id().value(),
                 tag: tag.to_owned(),
                 income: data
-                    .map(|d| d.estimated_monthly_income_trade_and_tax)
+                    .and_then(|d| d.estimated_monthly_income_trade_and_tax)
                     .and_then(finite)
                     .unwrap_or(0.0),
                 great_power_rank: data
@@ -190,29 +182,8 @@ pub fn extract(game: &Gamestate<'_>) -> SaveSnapshot {
             add_named(&mut total.buildings, building.kind.to_str(), levels);
         }
     }
-    let population = totals.values().map(|x| x.population).sum();
-    let development = totals.values().map(|x| x.development).sum();
     SaveSnapshot {
-        date: format!("{:04}-{:02}-{:02}", date.year, date.month, date.day),
-        date_sort: i32::from(date.year) * 10000 + i32::from(date.month) * 100 + i32::from(date.day),
-        campaign_id: meta.playthrough_id.to_str().to_owned(),
-        version: format!(
-            "{}.{}.{}",
-            meta.version.major, meta.version.minor, meta.version.patch
-        ),
         markets,
         countries: totals.into_values().collect(),
-        population,
-        development,
     }
-}
-
-/// UI country indices are one-based. Preserve the empty zero slot when
-/// translating an overview's country index back to a stable save identity.
-pub fn country_ids_by_index(game: &Gamestate<'_>) -> Vec<u32> {
-    let mut ids = vec![0; game.countries.len() + 1];
-    for entry in game.countries.iter() {
-        ids[entry.idx().value() as usize] = entry.id().value();
-    }
-    ids
 }

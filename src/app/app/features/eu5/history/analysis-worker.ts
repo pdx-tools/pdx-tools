@@ -1,30 +1,12 @@
-import type { OverviewData } from "@/wasm/wasm_eu5";
 import { expose } from "comlink";
-import { CampaignAnalysisStore } from "./analysisStore";
-import { serveMapFrames } from "./framePort";
-import type { SaveAnalysis, HistoryQuery, AnalysisEntity } from "./analysisTypes";
-const store = new CampaignAnalysisStore();
-const readers = new Map<string, () => void>();
+import { frameServer } from "@/features/campaign/analysis/framePort";
+import { sessionApi } from "@/features/campaign/analysis/session";
+import init, { Eu5AnalysisStore } from "@/wasm/wasm_eu5";
+import wasmUrl from "@/wasm/wasm_eu5_bg.wasm?url";
+
+const store = init({ module_or_path: wasmUrl }).then(() => new Eu5AnalysisStore());
 export const analysisApi = {
-  append: (save: SaveAnalysis) => store.append(save),
-  connectFrames: (id: string, port: MessagePort) => {
-    readers.get(id)?.();
-    readers.set(
-      id,
-      serveMapFrames(port, (hash) => store.mapFrame(hash)),
-    );
-  },
-  disconnectFrames: (id: string) => {
-    readers.get(id)?.();
-    readers.delete(id);
-  },
-  queryOverview: <K extends keyof OverviewData>(hash: string, key: K) =>
-    store.queryOverview(hash, key),
-  queryHistory: (query: HistoryQuery) => store.queryHistory(query),
-  marketCenters: (campaignId: string, country: string) => store.marketCenters(campaignId, country),
-  resolveEntity: (hash: string, entity: AnalysisEntity) => store.resolveEntity(hash, entity),
-  exportObservations: (campaignId: string) => store.exportObservations(campaignId),
-  clearCampaign: (campaignId?: string) => store.clearCampaign(campaignId),
-  memoryBytes: () => store.memoryBytes(),
+  ...sessionApi(store),
+  ...frameServer(async (id) => (await store).map_frame(id)),
 };
 expose(analysisApi);
