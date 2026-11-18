@@ -511,6 +511,7 @@ mod tests {
                             market_id: 1,
                             good: "wheat".into(),
                             price: Some(3.0),
+                            total_taken: Some(25.0),
                             supply: None,
                             demand: None,
                             stockpile: None,
@@ -521,6 +522,7 @@ mod tests {
                             market_id: 2,
                             good: "wheat".into(),
                             price: None,
+                            total_taken: None,
                             supply: None,
                             demand: None,
                             stockpile: None,
@@ -551,6 +553,7 @@ mod tests {
         );
         assert_eq!(history[0].markets.len(), 1);
         assert_eq!(history[0].markets[0].price, Some(3.0));
+        assert_eq!(history[0].markets[0].total_taken, Some(25.0));
         assert_eq!(analytics::market_centers(&view, 7), [42]);
         let catalog = analytics::catalog(&view);
         assert_eq!(catalog.country_names.len(), 2);
