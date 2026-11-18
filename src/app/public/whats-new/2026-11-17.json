@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "improvements": [
+      "EU5: the map loads faster, uses less graphics memory, and renders faster",
+      "EU5: selected countries and locations stand out more clearly on the map",
+      "EU5: drag a box to zoom in on country and market scatter plots"
+    ],
+    "fixes": [
+      "EU4 and EU5: fixed borders in screenshots across internal seams",
+      "EU5: saves with undated location ownership entries now load"
+    ]
+  }
+}
