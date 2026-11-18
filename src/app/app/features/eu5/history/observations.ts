@@ -1,5 +1,7 @@
 import type { AnalyticsObservation, MarketObservation } from "@/wasm/wasm_eu5";
 
+export const worldHistoryLabel = "World · owned locations";
+
 export type HistoryObservation = AnalyticsObservation & {
   campaignId: string;
   contentHash: string;

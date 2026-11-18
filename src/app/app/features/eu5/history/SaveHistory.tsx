@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
 import { GameButton } from "@/components/game/Button";
-import { focusRing } from "@/components/game/focusRing";
-import { cx } from "class-variance-authority";
 import { downloadData } from "@/lib/downloadData";
 import type { MapMode } from "@/wasm/wasm_eu5";
 import { GoodSelect } from "../components/GoodSelect";
 import { GameSelect } from "../components/Select";
 import { useEu5PlaythroughId } from "../store";
 import { ContextGraphs } from "./ContextGraphs";
+import { CountryPicker } from "./CountryPicker";
 import { HistoryChart } from "./HistoryChart";
 import { MarketPicker } from "./MarketPicker";
 import { eu5Analysis } from "./analysisClient";
@@ -27,10 +26,6 @@ const marketMetrics = {
 type MarketMetric = keyof typeof marketMetrics;
 const catalogQuery = { kind: "analyticsCatalog" } as const;
 const marketMetricKeys = Object.keys(marketMetrics) as MarketMetric[];
-const selectClass = cx(
-  "mt-1 block w-full rounded-control border border-game-control-line bg-game-panel px-2 py-1.5 text-xs text-game-ink-100",
-  focusRing,
-);
 const labelFor = (key: string) =>
   key
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -76,7 +71,8 @@ export function SaveHistory({
     () => [...(catalog.result?.countryNames ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [catalog.result],
   );
-  const countryId = !marketMode ? (focusCountryId ?? country) : undefined;
+  const selectedCountry = countries.find((item) => item.countryId === country);
+  const countryId = !marketMode ? (focusCountryId ?? selectedCountry?.countryId) : undefined;
   const countryName = focusName ?? countries.find((item) => item.countryId === countryId)?.name;
   const restrictToCountry =
     marketMode && focusCountryId !== undefined && focusMarketCenter === undefined;
@@ -266,23 +262,7 @@ export function SaveHistory({
               </label>
             </div>
           ) : focusCountryId === undefined ? (
-            <label className="text-xs text-game-ink-300">
-              Country
-              <select
-                className={selectClass}
-                value={country ?? ""}
-                onChange={(event) =>
-                  setCountry(event.target.value === "" ? undefined : Number(event.target.value))
-                }
-              >
-                <option value="">World · owned locations</option>
-                {countries.map(({ countryId, name }) => (
-                  <option key={countryId} value={countryId}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <CountryPicker countries={countries} selected={selectedCountry} onChange={setCountry} />
           ) : null}
         </>
       )}

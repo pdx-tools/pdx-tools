@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { CountryObservation, MapMode } from "@/wasm/wasm_eu5";
 import { HistoryChart } from "./HistoryChart";
-import { countryObservation } from "./observations";
+import { countryObservation, worldHistoryLabel } from "./observations";
 import type { HistoryObservation } from "./observations";
 
 type Metric = { label: string; unit: string; value: (c: CountryObservation) => number | null };
@@ -111,8 +111,7 @@ export function ContextGraphs({
     () => dates.map((date) => countryObservation(date, countryId)),
     [dates, countryId],
   );
-  const label =
-    countryId === undefined ? "World · owned locations" : (countryName ?? String(countryId));
+  const label = countryId === undefined ? worldHistoryLabel : (countryName ?? String(countryId));
   const graphs = useMemo(() => {
     const result = metrics[mode].map((m) => ({
       title: m.label,
