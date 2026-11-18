@@ -1,33 +1,35 @@
-import { create } from "zustand";
 import type { FileVersion } from "@/features/campaign/types";
+import { create } from "zustand";
+import { compareDescriptors } from "@/features/campaign/analysis/descriptor";
+import type { SourceAssociation } from "@/features/campaign/analysis/descriptor";
 import type { ImportProgressState } from "./importTiming";
-import type { SnapshotMetadata } from "./types";
+import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 
-export type SourceObservation = { hash: string; version: FileVersion };
 type HistoryState = {
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
-  snapshots: SnapshotMetadata[];
-  sources: Record<string, SourceObservation>;
+  snapshots: Eu5SnapshotDescriptor[];
+  sources: Record<string, SourceAssociation>;
   analyzingEntryIds: readonly string[];
+  failedSources: Record<string, { version: FileVersion | null; error: string }>;
   analysisEnabledCampaigns: readonly string[];
   enableAnalysis: (campaignId: string) => void;
-  analysisPaused: boolean;
+  /** The campaigns that do not start imports until the player resumes them. */
   analysisPausedCampaigns: string[];
+  pauseAnalysis: (campaignId: string) => void;
   progress: ImportProgressState | null;
   issues: string[];
   cancel: (() => void) | null;
-  add: (snapshots: SnapshotMetadata[], sources?: Record<string, SourceObservation>) => void;
+  add: (snapshots: Eu5SnapshotDescriptor[], sources?: Record<string, SourceAssociation>) => void;
+  /** Remove the snapshots and the source associations to them. */
+  removeSnapshots: () => void;
 };
 
 export function isAnalysisPaused(
-  state: Pick<HistoryState, "analysisPaused" | "analysisPausedCampaigns">,
+  state: Pick<HistoryState, "analysisPausedCampaigns">,
   playthroughId: string | null | undefined,
 ) {
-  return (
-    state.analysisPaused ||
-    (!!playthroughId && state.analysisPausedCampaigns.includes(playthroughId))
-  );
+  return !!playthroughId && state.analysisPausedCampaigns.includes(playthroughId);
 }
 
 /** Historical data only. Campaign navigation owns files and the active save. */
@@ -37,27 +39,34 @@ export const useHistory = create<HistoryState>()((set) => ({
   snapshots: [],
   sources: {},
   analyzingEntryIds: [],
+  failedSources: {},
   analysisEnabledCampaigns: [],
   enableAnalysis: (campaignId) =>
     set((state) => ({
       analysisEnabledCampaigns: [...new Set([...state.analysisEnabledCampaigns, campaignId])],
-      analysisPaused: false,
       analysisPausedCampaigns: state.analysisPausedCampaigns.filter((id) => id !== campaignId),
     })),
-  analysisPaused: false,
   analysisPausedCampaigns: [],
+  pauseAnalysis: (campaignId) =>
+    set((state) =>
+      state.analysisPausedCampaigns.includes(campaignId)
+        ? state
+        : { analysisPausedCampaigns: [...state.analysisPausedCampaigns, campaignId] },
+    ),
   progress: null,
   issues: [],
   cancel: null,
   add: (snapshots, sources = {}) =>
     set((state) => {
-      const byHash = new Map(state.snapshots.map((snapshot) => [snapshot.hash, snapshot]));
-      for (const snapshot of snapshots) byHash.set(snapshot.hash, snapshot);
+      const byId = new Map(state.snapshots.map((snapshot) => [snapshot.id, snapshot]));
+      for (const snapshot of snapshots) byId.set(snapshot.id, snapshot);
+      const failedSources = { ...state.failedSources };
+      for (const id of Object.keys(sources)) delete failedSources[id];
       return {
-        snapshots: [...byHash.values()].sort(
-          (a, b) => a.dateSort - b.dateSort || a.hash.localeCompare(b.hash),
-        ),
+        failedSources,
+        snapshots: [...byId.values()].sort(compareDescriptors),
         sources: { ...state.sources, ...sources },
       };
     }),
+  removeSnapshots: () => set({ snapshots: [], sources: {} }),
 }));

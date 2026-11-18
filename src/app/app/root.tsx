@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  isRouteErrorResponse,
   useLoaderData,
   useRouteError,
 } from "react-router";
@@ -85,6 +86,20 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export const ErrorBoundary = () => {
   const error = useRouteError();
+
+  // A request for a page that does not exist is not a crash. Do not report it.
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <ErrorDisplay
+          title="Page not found"
+          message={<p>The link may be wrong, or the page was removed.</p>}
+          error={null}
+        />
+      </div>
+    );
+  }
+
   const eventId = captureException(error) ?? null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">

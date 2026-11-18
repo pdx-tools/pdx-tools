@@ -10,12 +10,12 @@ import type { SearchResult } from "./ui-engine";
  * that number.
  */
 export type SearchSelection =
-  | { kind: "country"; countryIdx: number; panTo: number }
-  | { kind: "location"; locationIdx: number; panTo: number };
+  | { kind: "country"; countryIdx: number; jumpTo: number }
+  | { kind: "location"; locationIdx: number; jumpTo: number };
 
 export function resolveSearchSelection(result: SearchResult): SearchSelection {
   if (result.kind === "country") {
-    return { kind: "country", countryIdx: result.id, panTo: result.locationIdx };
+    return { kind: "country", countryIdx: result.id, jumpTo: result.locationIdx };
   }
-  return { kind: "location", locationIdx: result.locationIdx, panTo: result.locationIdx };
+  return { kind: "location", locationIdx: result.locationIdx, jumpTo: result.locationIdx };
 }

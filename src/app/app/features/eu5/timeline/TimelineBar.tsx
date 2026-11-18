@@ -1,8 +1,16 @@
+import { useCampaign } from "@/features/campaign/CampaignProvider";
+import { localSaveRegistry } from "@/features/campaign/localSaves";
+import { sameFileVersion } from "@/features/campaign/types";
+import type { CampaignSave } from "@/features/campaign/types";
+import { SaveAnalysisGlyph } from "@/features/campaign/SaveAnalysisGlyph";
+import { saveAnalysisPresentation } from "@/features/campaign/saveAnalysisPresentation";
+import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import { useHistory } from "../history/store";
 import { useMapHistory } from "../history/context";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
-import { TimelapseExport } from "./TimelapseExport";
+import { focusRing } from "@/components/game/focusRing";
+import { SavedDateExport, TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
 import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
 import { useTimelineCampaign } from "@/features/campaign/SaveMarks";
@@ -10,7 +18,7 @@ import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import type { TimelineController } from "@/features/timeline/controller";
 import { useTimelineController } from "./useTimelineController";
-import { useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
+import { useEu5Input, useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";
 import styles from "./TimelineBar.module.css";
@@ -38,11 +46,50 @@ function usePresence(open: boolean) {
  * from the same compact analytical timeline.
  */
 export function TimelineBar() {
+  const navigation = useCampaign();
+  const pendingDates = navigation?.pending ?? 0;
+  const input = useEu5Input();
+  const hasLocalSaves =
+    input.kind !== "server" ||
+    navigation?.saves.some((save) => save.source.kind === "local" && save.source.entryId);
   const ownership = useTimelineController();
   const history = useMapHistory();
   const mapMode = useEu5MapMode();
   const controller = history?.controller ?? (isHistoricalMapMode(mapMode) ? ownership : null);
-  const campaign = useTimelineCampaign(controller?.timeline.start);
+  const sources = useHistory((state) => state.sources);
+  const failedSources = useHistory((state) => state.failedSources);
+  const analyzingEntryIds = useHistory((state) => state.analyzingEntryIds);
+  const analysisStatus = useCallback(
+    (save: CampaignSave): SaveAnalysisStatus | undefined => {
+      if (save.source.kind !== "local" || !save.source.entryId) return undefined;
+      // Analysis never includes a save of another campaign, so it never waits for one.
+      if (save.membership === "different") return undefined;
+      const source = sources[save.source.entryId];
+      const entry = localSaveRegistry.get(save.source.entryId);
+      const version = entry?.ref.kind === "file" ? entry.ref.file : entry?.version;
+      if (
+        !!source &&
+        !!version &&
+        sameFileVersion(version, source.version) &&
+        !!history?.readyIds.has(source.snapshotId)
+      )
+        return "ready";
+      if (analyzingEntryIds.includes(save.source.entryId)) return "analyzing";
+      const failure = failedSources[save.source.entryId];
+      if (entry?.problem && entry.problem.kind !== "moved") return "failed";
+      if (
+        failure &&
+        (failure.version === null || (!!version && sameFileVersion(version, failure.version)))
+      )
+        return "failed";
+      return "pending";
+    },
+    [sources, history?.readyIds, analyzingEntryIds, failedSources],
+  );
+  const campaign = useTimelineCampaign(
+    controller?.timeline.start,
+    history?.enabled ? analysisStatus : undefined,
+  );
   const speed = useHistory((state) => state.playbackSpeed);
   const insets = useViewportInsets();
   useTimelineKeyboard(controller);
@@ -66,22 +113,58 @@ export function TimelineBar() {
           <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
         {history?.controller ? (
-          <select
-            aria-label="Saved-date playback speed"
-            value={speed}
-            className="rounded-control border border-game-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300"
-            onChange={(event) => useHistory.getState().setPlaybackSpeed(Number(event.target.value))}
-          >
-            {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
-              <option key={value} value={value}>
-                {value}×
-              </option>
-            ))}
-          </select>
+          <div className="flex shrink-0 items-center gap-2">
+            <select
+              aria-label="Saved-date playback speed"
+              value={speed}
+              className={cx(
+                "rounded-control border border-game-control-line bg-game-panel px-1.5 py-1 font-game-num text-xs text-game-ink-300",
+                focusRing,
+              )}
+              onChange={(event) =>
+                useHistory.getState().setPlaybackSpeed(Number(event.target.value))
+              }
+            >
+              {[0.25, 0.5, 1, 2, 4, 8].map((value) => (
+                <option key={value} value={value}>
+                  {value}×
+                </option>
+              ))}
+            </select>
+            {history.frames > 0 && <SavedDateExport controller={controller} history={history} />}
+          </div>
         ) : (
           <TimelapseExport controller={controller} />
         )}
+        {history?.enabled && hasLocalSaves && (
+          <span
+            className="flex flex-col gap-0.5 text-[12px] leading-tight text-game-ink-500"
+            aria-label="Save analysis status"
+          >
+            {Object.entries(saveAnalysisPresentation).map(([status, { label }]) => (
+              <span key={status}>
+                <svg
+                  aria-hidden
+                  viewBox="0 0 10 13"
+                  className="mr-1 inline-block h-3 w-2.5 overflow-visible"
+                >
+                  <SaveAnalysisGlyph status={status as SaveAnalysisStatus} />
+                </svg>
+                {label}
+              </span>
+            ))}
+          </span>
+        )}
       </div>
+      {pendingDates > 0 && (
+        <div
+          role="status"
+          className="mt-1 rounded-panel bg-game-panel px-3 py-2 text-xs text-game-ink-300"
+        >
+          Reading save dates… {pendingDates} remaining. New bookmarks will appear when reading
+          finishes.
+        </div>
+      )}
       {history?.error && (
         <div
           role="status"

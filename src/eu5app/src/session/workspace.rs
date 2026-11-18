@@ -11,8 +11,8 @@ use crate::entity_profile::market::workspace::{
     MarketGoodEntry, MarketGoodsSection, MarketMemberCountry, MarketProfile,
 };
 use crate::entity_profile::{
-    CountryMetrics, CountryOverviewRanks, CountryOverviewSection, DiplomacySubjectType,
-    EntityHeaderKindSource, EntityKind, HeadlineStats,
+    CountryMetrics, CountryOverviewRanks, CountryOverviewSection, CountryOverviewTies,
+    DiplomacySubjectType, EntityHeaderKindSource, EntityKind, HeadlineStats,
 };
 use crate::game_data::GameData;
 use crate::hover::workspace::{
@@ -75,6 +75,7 @@ pub struct Eu5Workspace<'bump> {
     overlord_of: CountryIndexedVecOwned<Option<CountryIdx>>,
     location_terrain: LocationIndexedVec<Terrain>,
     location_building_levels: OnceLock<LocationIndexedVec<f64>>,
+    map_colors: OnceLock<map_render::MapColors>,
     fill_components: terrain_fill::FillComponents,
     /// The political fill of surrounded terrain on the timeline date: the
     /// location whose color each lake or impassable location shows.
@@ -143,12 +144,6 @@ pub struct MapChange {
     pub legend: crate::gradient::MapLegend,
 }
 
-enum SelectionSetOperation {
-    Add,
-    Remove,
-    Replace,
-}
-
 fn market_good_breakdown_entries<T: std::fmt::Display>(
     entries: &[(T, f64)],
 ) -> Vec<GoodBreakdownEntry> {
@@ -200,6 +195,7 @@ mod selection_ops;
 mod terrain_fill;
 mod timeline;
 
+pub(crate) use self::map_render::MapColors;
 pub use self::opening_view::OpeningView;
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
 
@@ -275,6 +271,7 @@ impl<'bump> Eu5Workspace<'bump> {
             overlord_of,
             location_terrain,
             location_building_levels: OnceLock::new(),
+            map_colors: OnceLock::new(),
             fill_components,
             fill_donors,
             religion_fill_donors: OnceLock::new(),
@@ -376,28 +373,40 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|owner| (owner, true))
             .collect();
         let mut landed = FnvHashSet::default();
+        let mut partly_selected = FxHashSet::default();
         for (idx, info) in self.iter_locations() {
             let Some(owner) = info.owner else {
                 continue;
             };
             landed.insert(owner);
-            if let Some(all_in) = covered.get_mut(&owner)
-                && !selection.contains(idx)
-            {
-                *all_in = false;
+            if !selection.contains(idx) {
+                if let Some(all_in) = covered.get_mut(&owner) {
+                    *all_in = false;
+                }
+                partly_selected.extend(self.live_country_of(owner.country_id()));
             }
         }
 
+        let all_in: FnvHashSet<_> = covered
+            .into_iter()
+            .filter_map(|(owner, all_in)| all_in.then_some(owner))
+            .collect();
+        // An id of a country with no land on this date follows only while all land of
+        // the country is selected. Then the land stays selected when it changes id.
         let landless = selection
             .followed()
             .iter()
-            .copied()
-            .filter(|country| !landed.contains(country));
-        let followed = covered
-            .into_iter()
-            .filter_map(|(owner, all_in)| all_in.then_some(owner))
-            .chain(landless)
-            .collect();
+            .chain(&all_in)
+            .filter_map(|owner| self.live_country_of(owner.country_id()))
+            .flat_map(|live| self.lineage_ids(live))
+            .filter_map(|id| id.real_id())
+            .chain(selection.followed().iter().copied())
+            .filter(|id| !landed.contains(id))
+            .filter(|id| {
+                let live = self.live_country_of(id.country_id());
+                !live.is_some_and(|live| partly_selected.contains(&live))
+            });
+        let followed = all_in.iter().copied().chain(landless).collect();
         self.selection_state.set_followed(followed);
     }
 

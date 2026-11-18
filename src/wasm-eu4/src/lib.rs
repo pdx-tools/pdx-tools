@@ -39,6 +39,7 @@ where
     value.map(into_ts).transpose()
 }
 
+mod analysis;
 mod log;
 mod models;
 mod savefile;
@@ -202,8 +203,11 @@ impl SaveFile {
         into_ts(self.0.save_info())
     }
 
-    pub fn get_provinces(&self) -> Result<Ts<ProvinceList>, JsError> {
-        into_ts(self.0.get_provinces().into())
+    pub fn get_provinces(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+    ) -> Result<Ts<ProvinceList>, JsError> {
+        into_ts(self.0.get_provinces(payload.to_rust()?).into())
     }
 
     pub fn get_health(&self, payload: Ts<TagFilterPayloadRaw>) -> Result<Ts<HealthData>, JsError> {

@@ -1,7 +1,7 @@
-import type { MapObservation } from "../../history/analysisTypes";
+import type { Eu5Snapshot, Eu5SnapshotDescriptor } from "../../history/analysisTypes";
 import { LatestRequest } from "../../history/latestRequest";
-import { MapFrameReader } from "../../history/framePort";
-import { campaignIdentities, clickChange, restoreCampaignView } from "./restoreCampaignView";
+import { FrameReader } from "@/features/campaign/analysis/framePort";
+import { captureSelection, clickChange, restoreCampaignView } from "./restoreCampaignView";
 import type { Eu5Carry } from "../../campaignCarry";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu5MapHoverTarget } from "../../useEu5MapHoverTarget";
@@ -19,7 +19,9 @@ import { findCarriedCountry } from "../../carriedCountry";
 import type { CountryIdentity } from "../../carriedCountry";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
 import type {
-  ActiveProfileIdentity,
+  SelectionKind,
+  SelectionOp,
+  SelectionTargetData,
   MapMode,
   DisplayData,
   GradientConfig,
@@ -148,7 +150,7 @@ export type OverlayReply = {
   /** False when the map refused the frame because a newer token came first. */
   accepted: boolean;
   gradient: GradientConfig | null;
-  observation: MapObservation;
+  observation: Eu5SnapshotDescriptor;
 };
 
 function closeSave() {
@@ -376,23 +378,19 @@ const loadSaveInner = async (
     },
 
     boxSelect: (event) => {
-      let change: MapChangeData;
-      switch (event.operation) {
-        case "add":
-          change = app.apply_resolved_box_selection(event.locationIdxs, true);
-          break;
-        case "remove":
-          change = app.apply_resolved_box_selection(event.locationIdxs, false);
-          break;
-        case "replace":
-          change = app.replace_selection_with_locations(event.locationIdxs);
-          break;
+      const change = app.change_selection(event.operation, "locations", event.locationIdxs);
+      // The map keeps the area highlight until these flags show. They include
+      // the hover, so that the highlight does not go off for a frame.
+      app.clear_highlights();
+      if (event.hoverLocationIdx !== null) {
+        app.handle_location_hover(event.hoverLocationIdx);
+        hoverDisplayCallback?.(app.get_hover_data(event.hoverLocationIdx));
       }
       return afterMutation(change);
     },
   };
 
-  let frameSource: { id: string; reader: MapFrameReader } | undefined;
+  let frameSource: { id: string; reader: FrameReader<Eu5Snapshot> } | undefined;
   const opened: OpenSave = {
     events: held ? null : events,
     close: () => {
@@ -404,38 +402,21 @@ const loadSaveInner = async (
   openSave = opened;
 
   // Paint a snapshot into the overlay. The buffers of this save do not change.
-  const overlays = new LatestRequest<{ hash: string; mode: MapMode; token: number }, OverlayReply>(
-    async ({ hash, mode, token }, current) => {
-      if (!frameSource) throw Error("Campaign frame connection is not ready");
-      const frame = await frameSource.reader.read(hash);
-      if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
-      const paint = app.paint_map_projection(
-        mode,
-        frame.layoutKey,
-        frame.locationIds,
-        frame.fractions,
-        frame.metrics,
-        frame.owners,
-        frame.controllers,
-        frame.religions,
-        frame.markets,
-        frame.countries,
-        frame.religionColors,
-        frame.marketColors,
-      );
-      const { colors, flags, groups, change } = paint;
-      paint.free();
-      const accepted = await map.presentOverlay(
-        transfer({ token, colors, flags, groups }, [colors.buffer, flags.buffer, groups.buffer]),
-      );
-      const { campaignId, date, dateSort, version, layoutKey, fileName, world } = frame;
-      return {
-        accepted,
-        gradient: change.gradient ?? null,
-        observation: { hash, campaignId, date, dateSort, version, layoutKey, fileName, world },
-      };
-    },
-  );
+  const overlays = new LatestRequest<
+    { snapshotId: string; mode: MapMode; token: number },
+    OverlayReply
+  >(async ({ snapshotId, mode, token }, current) => {
+    if (!frameSource) throw Error("Campaign frame connection is not ready");
+    const { descriptor, data } = await frameSource.reader.read(snapshotId);
+    if (!current() || openSave !== opened) throw new DOMException("Date changed", "AbortError");
+    const paint = app.paint_map_projection(mode, data);
+    const { colors, flags, groups, change } = paint;
+    paint.free();
+    const accepted = await map.presentOverlay(
+      transfer({ token, colors, flags, groups }, [colors.buffer, flags.buffer, groups.buffer]),
+    );
+    return { accepted, gradient: change.gradient ?? null, observation: descriptor };
+  });
   return proxy({
     show: async (): Promise<void> => {
       if (!held || openSave !== opened) return;
@@ -450,11 +431,11 @@ const loadSaveInner = async (
     connectMapFrames: (id: string, port: MessagePort | null) => {
       if (!port && frameSource?.id !== id) return;
       frameSource?.reader.close();
-      frameSource = port ? { id, reader: new MapFrameReader(port) } : undefined;
+      frameSource = port ? { id, reader: new FrameReader<Eu5Snapshot>(port) } : undefined;
     },
     stopOverlay: () => overlays.stop(),
-    presentOverlay: (hash: string, mode: MapMode, token: number) =>
-      overlays.request({ hash, mode, token }),
+    presentOverlay: (snapshotId: string, mode: MapMode, token: number) =>
+      overlays.request({ snapshotId, mode, token }),
     setMapMode: async (mode: MapMode): Promise<TimelineChange> => {
       const change = app.set_map_mode(mode);
       await syncAll(change);
@@ -520,12 +501,8 @@ const loadSaveInner = async (
     ) => {
       selectionCallback = callback;
     },
-    selectCountry: (countryIdx: number) => afterMutation(app.select_country(countryIdx)),
-    addCountry: (countryIdx: number) => afterMutation(app.add_country(countryIdx)),
-    removeCountry: (countryIdx: number) => afterMutation(app.remove_country(countryIdx)),
-    selectMarket: (marketId: number) => afterMutation(app.select_market(marketId)),
-    addMarket: (marketId: number) => afterMutation(app.add_market(marketId)),
-    removeMarket: (marketId: number) => afterMutation(app.remove_market(marketId)),
+    changeSelection: (op: SelectionOp, kind: SelectionKind, ids: number[]) =>
+      afterMutation(app.change_selection(op, kind, Uint32Array.from(ids))),
     setFocusedLocation: (locationIdx: number) =>
       afterMutation(app.set_focused_location(locationIdx)),
     clearFocus: () => afterMutation(app.clear_focus()),
@@ -555,8 +532,8 @@ const loadSaveInner = async (
       return app.get_state_efficacy();
     },
 
-    getCampaignIdentities: (profiles: ActiveProfileIdentity[]) =>
-      campaignIdentities(app, countryIndex, profiles),
+    getSelectionTarget: (): SelectionTargetData | null => app.selection_target() ?? null,
+    getCarriedSelection: () => captureSelection(app, countryIndex),
     restoreCampaignView: async (carry: Eu5Carry) => {
       const restored = restoreCampaignView(app, countryIndex, carry);
       await syncAll(restored.change);

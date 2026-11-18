@@ -25,7 +25,10 @@ vi.mock("zustand", async (original) => ({
   },
 }));
 vi.mock("@/features/account", () => ({ useIsDeveloper: () => feature.enabled }));
-vi.mock("@/features/campaign/CampaignProvider", () => ({ useCampaign: () => null }));
+vi.mock("@/features/campaign/CampaignProvider", () => ({
+  useCampaign: () => null,
+  useCampaignTimeline: () => null,
+}));
 vi.mock("./CampaignAnalysis", () => ({ CampaignAnalysis: () => null }));
 vi.mock("./analysisClient", () => ({
   campaignAnalysis: vi.fn(),
@@ -34,11 +37,13 @@ vi.mock("./analysisClient", () => ({
 vi.mock("./previewSession", () => ({
   usePreviewSession: () => ({ kind: "live" }),
   usePreviewPlayback: (select: (playback: { mode: null }) => unknown) => select({ mode: null }),
+  usePreviewRecording: (select: (recording: { date: null }) => unknown) => select({ date: null }),
+  recordSavedDates: vi.fn(),
   setPreviewPlayback: vi.fn(),
   bindPreviewNavigation: vi.fn(),
   cancelPreview: vi.fn(),
   connectFrames: vi.fn(),
-  loadedSnapshotHash: () => undefined,
+  loadedSnapshotId: () => undefined,
   openPreview: vi.fn(),
   previewSnapshot: vi.fn(),
   repaintPreview: vi.fn(),

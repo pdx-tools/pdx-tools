@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cx } from "class-variance-authority";
+import { sectionLabel } from "@/components/game/SectionTitle";
 import { SavePreviewUnderlay } from "@/components/SavePreviewUnderlay";
 import type { Eu5LoadingState } from "./store";
 import styles from "./Eu5Loading.module.css";
@@ -64,7 +65,8 @@ function Eu5LoadingContent({ loading, filename, done, preview }: Eu5LoadingProps
           role="status"
           aria-live="polite"
           className={cx(
-            "mt-3 h-3.5 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase",
+            "mt-3 h-3.5",
+            sectionLabel,
             "transition-opacity duration-300 ease-out motion-reduce:transition-none",
             slow ? "opacity-100" : "opacity-0",
           )}
@@ -78,7 +80,7 @@ function Eu5LoadingContent({ loading, filename, done, preview }: Eu5LoadingProps
           aria-valuenow={Math.round(percent)}
           aria-valuemin={0}
           aria-valuemax={100}
-          className="mt-1.5 h-1 w-full overflow-hidden rounded-[1px] border border-game-line bg-game-panel-2"
+          className="mt-1.5 h-1 w-full overflow-hidden rounded-[1px] bg-game-track"
         >
           <div
             className="h-full rounded-[1px] bg-game-accent-300 transition-[width] duration-200 ease-out motion-reduce:transition-none"
@@ -86,7 +88,7 @@ function Eu5LoadingContent({ loading, filename, done, preview }: Eu5LoadingProps
           />
         </div>
 
-        <p className="mt-3 text-[11px] leading-[1.4] text-game-ink-500">
+        <p className="mt-3 text-[12px] leading-[1.4] text-game-ink-500">
           {preview
             ? "Downloading, then parsing in your browser."
             : "Parsing locally in your browser."}

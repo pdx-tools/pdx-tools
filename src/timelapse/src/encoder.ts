@@ -108,9 +108,11 @@ export class TimelapseEncoder {
 
   /**
    * Compose and encode one frame from `surface`, the recording surface as
-   * rendered for `date`. Returns how long that took, for the timing summary.
+   * rendered for `date`. The film holds it for `repeat` frames: a still is
+   * encoded again for each of them, so the film keeps one frame rate from
+   * start to end. Returns how long that took, for the timing summary.
    */
-  async addFrame(surface: OffscreenCanvas, date: DateComponents): Promise<number> {
+  async addFrame(surface: OffscreenCanvas, date: DateComponents, repeat = 1): Promise<number> {
     this.throwIfFailed();
 
     const start = performance.now();
@@ -129,27 +131,31 @@ export class TimelapseEncoder {
     });
 
     const duration = 1_000_000 / TIMELAPSE_FPS; // microseconds
-    const frame = new VideoFrame(ctx.canvas, {
-      timestamp: this.timestamp,
-      duration,
-    });
-
-    this.encoder.encode(frame, {
-      keyFrame: this.frameCount % KEY_FRAME_INTERVAL === 0,
-    });
-    frame.close();
-
-    this.frameCount += 1;
-    this.timestamp += duration;
-
-    // Let the encoder catch up rather than holding every frame in memory.
-    while (this.encoder.encodeQueueSize > QUEUE_DEPTH) {
-      await new Promise<void>((resolve) => {
-        this.wake = resolve;
-        this.encoder.addEventListener("dequeue", () => resolve(), { once: true });
+    for (let i = 0; i < repeat; i += 1) {
+      // An abort closes the encoder while a still is held.
+      if (this.encoder.state === "closed") break;
+      const frame = new VideoFrame(ctx.canvas, {
+        timestamp: this.timestamp,
+        duration,
       });
-      this.wake = null;
-      this.throwIfFailed();
+
+      this.encoder.encode(frame, {
+        keyFrame: this.frameCount % KEY_FRAME_INTERVAL === 0,
+      });
+      frame.close();
+
+      this.frameCount += 1;
+      this.timestamp += duration;
+
+      // Let the encoder catch up rather than holding every frame in memory.
+      while (this.encoder.encodeQueueSize > QUEUE_DEPTH) {
+        await new Promise<void>((resolve) => {
+          this.wake = resolve;
+          this.encoder.addEventListener("dequeue", () => resolve(), { once: true });
+        });
+        this.wake = null;
+        this.throwIfFailed();
+      }
     }
     return performance.now() - start;
   }

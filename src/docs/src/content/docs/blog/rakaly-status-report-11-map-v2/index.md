@@ -5,7 +5,7 @@ image: ./map-2.0.jpg
 authors: [comagoosie]
 description: "Sorry for the radio silence for the past 3 months -- we've been busy. A lot of effort went into this and I wanted to make sure this would pan out before breaking the news:
 
-We have a new map 🎉! The new map is faster, more intuitive, more realistic, and exposes more map modes. We're really excited to show it off."
+  We have a new map 🎉! The new map is faster, more intuitive, more realistic, and exposes more map modes. We're really excited to show it off."
 ---
 
 ![](map-2.0.jpg)

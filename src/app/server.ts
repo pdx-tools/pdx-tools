@@ -1,6 +1,7 @@
 import { createRequestHandler, RouterContextProvider } from "react-router";
 import * as Sentry from "@sentry/cloudflare";
 import { cloudflareContext } from "./app/server-lib/cloudflare-context";
+import { log, requestLogFields } from "./app/server-lib/logging";
 
 export { PreviewSaves } from "./app/server-lib/preview-saves";
 
@@ -11,6 +12,12 @@ const requestHandler = createRequestHandler(
 
 export const app = {
   async fetch(request: Request, env: CloudflareWorkerEnv, ctx: ExecutionContext) {
+    // Crawlers still ask for asset paths of the old Next.js site. A 410 tells
+    // them that these files are gone permanently.
+    if (new URL(request.url).pathname.startsWith("/_next/")) {
+      return new Response(null, { status: 410 });
+    }
+
     try {
       const context = new RouterContextProvider();
       context.set(cloudflareContext, {
@@ -21,7 +28,7 @@ export const app = {
       });
       return await requestHandler(request, context);
     } catch (error) {
-      console.log(error);
+      log.exception(error, { ...requestLogFields(request), msg: "unhandled worker error" });
       return new Response("An unexpected error occurred", { status: 500 });
     }
   },

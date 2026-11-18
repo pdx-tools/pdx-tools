@@ -1,4 +1,5 @@
 import {
+  columnFacetingFeature,
   columnFilteringFeature,
   columnOrderingFeature,
   columnPinningFeature,
@@ -7,8 +8,14 @@ import {
   createFilteredRowModel,
   createPaginatedRowModel,
   createSortedRowModel,
+  constructFilterFn,
   createColumnHelper as createTanstackColumnHelper,
+  createFacetedMinMaxValues,
+  createFacetedRowModel,
+  createFacetedUniqueValues,
   filterFn_arrIncludes,
+  filterFn_inNumberRange,
+  filterFn_includesString,
   globalFilteringFeature,
   rowPaginationFeature,
   rowSelectionFeature,
@@ -38,8 +45,27 @@ import type {
   TableOptions,
 } from "@tanstack/react-table";
 
+/**
+ * The value of a checklist filter. "except" keeps all values except the listed
+ * values, so a new value is kept. "only" keeps only the listed values, so a new
+ * value is removed.
+ */
+export type ChecklistFilter = { mode: "except" | "only"; values: unknown[] };
+
+/** A column with this filter gets a checklist of its values in the header. */
+export const filterFn_checklist = constructFilterFn({
+  filter: (dataValue, filter: { only: boolean; values: Set<unknown> }) =>
+    filter.values.has(dataValue) === filter.only,
+  resolveFilterValue: (val: ChecklistFilter) => ({
+    only: val.mode === "only",
+    values: new Set(val.values),
+  }),
+  autoRemove: (val?: ChecklistFilter) => !val || (val.mode === "except" && val.values.length === 0),
+});
+
 export const appTableFeatures = createTableFeatures({
   columnFilteringFeature,
+  columnFacetingFeature,
   columnOrderingFeature,
   columnPinningFeature,
   columnSizingFeature,
@@ -51,7 +77,15 @@ export const appTableFeatures = createTableFeatures({
   filteredRowModel: createFilteredRowModel(),
   paginatedRowModel: createPaginatedRowModel(),
   sortedRowModel: createSortedRowModel(),
-  filterFns: { arrIncludes: filterFn_arrIncludes },
+  facetedRowModel: createFacetedRowModel(),
+  facetedUniqueValues: createFacetedUniqueValues(),
+  facetedMinMaxValues: createFacetedMinMaxValues(),
+  filterFns: {
+    arrIncludes: filterFn_arrIncludes,
+    checklist: filterFn_checklist,
+    includesString: filterFn_includesString,
+    inNumberRange: filterFn_inNumberRange,
+  },
   sortFns: {
     alphanumeric: sortFn_alphanumeric,
     basic: sortFn_basic,

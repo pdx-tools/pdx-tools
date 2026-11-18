@@ -36,7 +36,7 @@ export function GradientLegend({ mode, gradient }: Props) {
         className="h-1.5 w-full rounded-full"
         style={{ background: paletteGradients[gradient.palette] }}
       />
-      <div className="flex justify-between font-mono text-[10px] text-game-ink-500">
+      <div className="flex justify-between font-game-num text-[12px] text-game-ink-500">
         <span>{formatValue(mode, gradient.minValue)}</span>
         <span>{formatValue(mode, gradient.midValue)}</span>
         <span>{formatValue(mode, gradient.maxValue)}</span>

@@ -2,14 +2,16 @@ import { useMemo } from "react";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import type { CountryUnrealizedTaxBase } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatExact, formatMetric, formatPercent } from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import {
   chartDataZoomSlider,
   chartInk,
+  chartText,
   chartTooltip,
-  getEChartsTheme,
-  seriesColor,
+  neutralMark,
 } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
@@ -22,13 +24,11 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { CountryScatter } from "./countryScatter";
+import type { AxisExtent, CountryPoint, SeriesOption } from "./countryScatter";
 import { SectionTitle } from "../../components";
 
 const BAR_CAP = 25;
-
-function formatPercent(value: number, digits = 0) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
 
 function UnrealizedTaxBaseScopeHeader() {
   const { data, error, loading } = useEu5SelectionTrigger((engine) =>
@@ -42,13 +42,17 @@ function UnrealizedTaxBaseScopeHeader() {
   // The gap is a to-do list, not a distribution: the ledger says how much of
   // the wealth it is and whether a few locations hold most of it.
   return (
-    <InsightReadout figure={formatInt(Math.round(data.unrealizedTaxBase))} unit="tax base gap">
+    <InsightReadout figure={<Figure value={data.unrealizedTaxBase} />} unit="tax base gap">
       <ReadoutFigure
-        value={formatPercent(data.unrealizedRatio, 1)}
-        label={`of ${formatInt(Math.round(data.totalWealth))} wealth`}
+        value={<Figure value={data.unrealizedRatio} form="percent" />}
+        label={
+          <>
+            of <Figure value={data.totalWealth} /> wealth
+          </>
+        }
       />
       <ReadoutFigure
-        value={formatPercent(data.topDecileShare)}
+        value={<Figure value={data.topDecileShare} form="percent" />}
         label="in the top 10% of locations"
       />
     </InsightReadout>
@@ -90,7 +94,7 @@ export function UnrealizedTaxBaseInsight() {
 
           {countries.length >= 10 && (
             <section>
-              <SectionTitle>Realization Distribution</SectionTitle>
+              <SectionTitle>Countries by tax realization</SectionTitle>
               <RealizationHistogram countries={countries} />
             </section>
           )}
@@ -117,15 +121,13 @@ export function UnrealizedTaxBaseInsight() {
   );
 }
 
-type ScatterDatum = [x: number, y: number];
-
 function countryTooltip(d: CountryUnrealizedTaxBase): string {
   return [
     `<strong>${escapeEChartsHtml(d.country.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
-    `Tax Base: ${formatFloat(d.totalTaxBase, 2)}`,
-    `Wealth: ${formatFloat(d.totalWealth, 2)}`,
-    `Tax Base Gap: ${formatFloat(d.unrealizedTaxBase, 2)}`,
-    `Realization: ${formatFloat(d.realizationRatio * 100, 1)}%`,
+    `Tax Base: ${formatExact(d.totalTaxBase)}`,
+    `Wealth: ${formatExact(d.totalWealth)}`,
+    `Tax Base Gap: ${formatExact(d.unrealizedTaxBase)}`,
+    `Realization: ${formatPercent(d.realizationRatio)}`,
     `Locations: ${formatInt(d.locationCount)}`,
     `Population: ${formatInt(d.totalPopulation)}`,
   ].join("<br/>");
@@ -141,13 +143,12 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
   const hasGap = sorted.some((d) => d.unrealizedTaxBase !== 0);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, labelColor, tickColor } = getEChartsTheme();
     const showZoom = sorted.length > BAR_CAP;
 
     return {
       grid: {
         left: 60,
-        right: 70,
+        right: 56,
         top: 10,
         bottom: 38,
       },
@@ -156,19 +157,12 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
         name: "Tax Base Gap",
         nameLocation: "middle",
         nameGap: 26,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, fontSize: 10 },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
       },
       yAxis: {
         type: "category",
         inverse: true,
         data: sorted.map((d) => d.country.tag),
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 44 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 44 },
       },
       ...(showZoom
         ? {
@@ -200,17 +194,15 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
           type: "bar",
           data: sorted.map((d) => ({ ...d, value: d.unrealizedTaxBase })),
           // `wealth - tax base` is a non-negative magnitude.
-          color: seriesColor(0),
+          color: neutralMark,
+          // A thin bar, so that a long list of a bright neutral is not a block.
+          barMaxWidth: 10,
           label: {
+            ...chartText,
             show: true,
             position: "right",
-            formatter: (params) => {
-              const d = params.data as CountryUnrealizedTaxBase & { value: number };
-              return `${formatFloat(d.realizationRatio * 100, 1)}%`;
-            },
-            fontSize: 10,
-            fontWeight: 600,
-            color: chartInk.primary,
+            // The bar's own value. The tooltip gives the realization.
+            formatter: (params) => formatMetric((params.data as { value: number }).value),
           },
         },
       ],
@@ -219,7 +211,6 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: "Tax Base Gap",
     getTarget: (params) => {
       const dataIndex = params.dataIndex;
       const x = dataIndex == null ? null : sorted[dataIndex];
@@ -254,145 +245,55 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
   );
 }
 
-function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnrealizedTaxBase[] }) {
-  const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
-    [countries],
-  );
+function taxBasePoint(c: CountryUnrealizedTaxBase): CountryPoint {
+  return {
+    country: c.country,
+    x: c.totalTaxBase,
+    y: c.totalWealth,
+    symbolSize: Math.max(6, Math.min(28, Math.sqrt(c.locationCount))),
+  };
+}
 
-  const scatterData = useMemo(
-    (): ScatterDatum[] => countries.map((c) => [c.totalTaxBase, c.totalWealth]),
-    [countries],
-  );
+function taxBaseTooltip(d: CountryUnrealizedTaxBase): string {
+  return [
+    `<strong>${escapeEChartsHtml(d.country.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
+    `Tax Base: ${formatExact(d.totalTaxBase)}`,
+    `Wealth: ${formatExact(d.totalWealth)}`,
+    `Tax Base Gap: ${formatExact(d.unrealizedTaxBase)}`,
+    `Realization: ${formatPercent(d.realizationRatio)}`,
+    `Locations: ${formatInt(d.locationCount)}`,
+    `Population: ${formatInt(d.totalPopulation)}`,
+  ].join("<br/>");
+}
 
-  const diagonalMax = useMemo(() => {
-    const maxVal = Math.max(...countries.map((c) => Math.max(c.totalTaxBase, c.totalWealth)));
-    return maxVal > 0 ? maxVal : 1;
-  }, [countries]);
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
-    return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Tax Base",
-        nameLocation: "middle",
-        nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
-        min: 0,
-      },
-      yAxis: {
-        type: "value",
-        name: "Total Wealth (ceiling)",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
-        min: 0,
-      },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
+/** On this line, a country's tax base is all of its wealth */
+function fullRealization({ min, max }: AxisExtent): SeriesOption[] {
+  return [
+    {
+      type: "line",
+      data: [
+        [min, min],
+        [max, max],
       ],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const dataIndex = params.dataIndex;
-          if (dataIndex == null) return "";
-          const d = countries[dataIndex];
-          if (!d) return "";
-          return [
-            `<strong>${escapeEChartsHtml(d.country.country.name)}</strong> (${escapeEChartsHtml(d.country.tag)})`,
-            `Tax Base: ${formatFloat(d.totalTaxBase, 2)}`,
-            `Wealth: ${formatFloat(d.totalWealth, 2)}`,
-            `Tax Base Gap: ${formatFloat(d.unrealizedTaxBase, 2)}`,
-            `Realization: ${formatFloat(d.realizationRatio * 100, 1)}%`,
-            `Locations: ${formatInt(d.locationCount)}`,
-            `Population: ${formatInt(d.totalPopulation)}`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          // y = x diagonal: countries on this line have tax base ≈ wealth
-          type: "line",
-          data: [
-            [0, 0],
-            [diagonalMax, diagonalMax],
-          ],
-          lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
-          symbol: "none",
-          silent: true,
-          tooltip: { show: false },
-        },
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: (_val, params) => {
-            const d = countries[params.dataIndex];
-            return d ? Math.max(6, Math.min(28, Math.sqrt(d.locationCount))) : 6;
-          },
-          itemStyle: {
-            color: (params) => {
-              const d = countries[params.dataIndex];
-              return d?.country.colorHex ?? seriesColor(0);
-            },
-            opacity: 0.8,
-          },
-          label: {
-            show: true,
-            formatter: (params) => {
-              const d = countries[params.dataIndex];
-              return d && (topCountries.has(d.country.tag) || countries.length <= 5)
-                ? d.country.tag
-                : "";
-            },
-            position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
-            distance: 4,
-          },
-        },
-      ],
-    };
-  }, [scatterData, topCountries, countries, diagonalMax]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: "Tax Base Gap",
-    getTarget: (params) => {
-      const dataIndex = params.dataIndex;
-      const countryRef = dataIndex == null ? null : countries[dataIndex]?.country;
-      return countryRef
-        ? {
-            id: countryRef.country.key,
-            anchorLocationIdx: countryRef.anchorLocationIdx,
-            label: countryRef.country.name,
-          }
-        : null;
+      lineStyle: { type: "dashed", color: chartInk.muted, width: 1 },
+      symbol: "none",
+      silent: true,
+      tooltip: { show: false },
     },
-  });
+  ];
+}
 
+function UnrealizedTaxBaseScatterChart({ countries }: { countries: CountryUnrealizedTaxBase[] }) {
   return (
-    <EChart
-      mergeUpdates
-      option={option}
-      style={{ height: "420px", width: "100%" }}
-      onInit={handleInit}
+    <CountryScatter
+      rows={countries}
+      point={taxBasePoint}
+      tooltip={taxBaseTooltip}
+      xName="Tax Base"
+      yName="Total Wealth (ceiling)"
+      yAxis="x"
+      under={fullRealization}
+      legend="Dot area: locations. Dashed line: tax base = wealth."
     />
   );
 }

@@ -9,17 +9,17 @@ import type {
   CountryControlBarSummary,
   CountryControlPoint,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
-import { escapeEChartsHtml } from "@/components/viz/EChart";
+import { formatInt } from "@/lib/format";
 import {
-  chartDataZoomSlider,
-  chartInk,
-  chartTooltip,
-  getEChartsTheme,
-  markGap,
-  ordinalRamp,
-  seriesColor,
-} from "@/components/viz/echartsTheme";
+  formatExact,
+  formatExactPercent,
+  formatFixed,
+  formatPercent,
+  formatPercentTick,
+} from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
+import { escapeEChartsHtml } from "@/components/viz/EChart";
+import { chartTooltip, markGap, ordinalRamp } from "@/components/viz/echartsTheme";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
@@ -30,8 +30,9 @@ import {
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { CountryScatter } from "./countryScatter";
+import type { CountryPoint } from "./countryScatter";
 
-const SCATTER_LABEL_CAP = 8;
 const BACK_LABEL = "Control";
 
 // The chart omits the engine's `perfect` band, so use four steps for four bars.
@@ -43,20 +44,19 @@ const CONTROL_BANDS = [
   { id: "great", label: "75-90%", color: BAND_COLORS[3]! },
 ] as const;
 
-function formatPercent(value: number, digits = 1) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
-
 function ControlScopeHeader({ data }: { data?: ControlScopeSummary }) {
   if (!data) return <InsightReadoutSkeleton />;
 
   // Control is a ratio, so it leads; the ledger says what it costs and how
   // much development sits in the weakly held bands.
   return (
-    <InsightReadout figure={formatPercent(data.weightedAvgControl)} unit="control">
-      <ReadoutFigure value={formatInt(Math.round(data.lostDevelopment))} label="development lost" />
+    <InsightReadout
+      figure={<Figure value={data.weightedAvgControl} form="percent" />}
+      unit="control"
+    >
+      <ReadoutFigure value={<Figure value={data.lostDevelopment} />} label="development lost" />
       <ReadoutFigure
-        value={formatPercent(data.weakControlDevelopmentShare, 0)}
+        value={<Figure value={data.weakControlDevelopmentShare} form="percent" />}
         label="of development under 50% control"
       />
     </InsightReadout>
@@ -124,9 +124,9 @@ function countryBarTooltip(country: BarRow): string {
   return [
     `<strong>${escapeEChartsHtml(country.name)}</strong> (${escapeEChartsHtml(country.tag)})`,
     `Avg Control: ${formatPercent(country.weightedAvgControl)}`,
-    `Total Dev: ${formatFloat(country.totalDevelopment, 1)}`,
-    `Effective Dev: ${formatFloat(country.effectiveDevelopment, 1)}`,
-    `Lost Dev: ${formatFloat(country.lostDevelopment, 1)}`,
+    `Total Dev: ${formatExact(country.totalDevelopment)}`,
+    `Effective Dev: ${formatExact(country.effectiveDevelopment)}`,
+    `Lost Dev: ${formatExact(country.lostDevelopment)}`,
     `Locations: ${formatInt(country.locationCount)}`,
   ]
     .filter(Boolean)
@@ -161,8 +161,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: rows,
@@ -170,7 +168,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
       },
       legend: {
         bottom: 0,
-        textStyle: { color: tickColor, fontSize: 10 },
         data: [
           { name: "Superficial (<25%)", itemStyle: { color: CONTROL_BANDS[0].color } },
           { name: "Functional (25-50%)", itemStyle: { color: CONTROL_BANDS[1].color } },
@@ -181,19 +178,11 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
       grid: { left: 110, right: 24, top: 10, bottom: 48 },
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatFloat(value, 0),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -242,7 +231,6 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 
   const handleInit = useEu5EntityChartClick({
     kind: "country",
-    backLabel: BACK_LABEL,
     getTarget: (params) => {
       const country = params.data as (typeof rows)[number] | undefined;
       return country
@@ -263,139 +251,39 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
   );
 }
 
+function controlTooltip(c: CountryControlPoint): string {
+  return [
+    `<strong>${escapeEChartsHtml(c.country.country.name)}</strong> (${escapeEChartsHtml(c.country.tag)})`,
+    `Avg Control: ${formatPercent(c.weightedAvgControl)}`,
+    `Total Dev: ${formatExact(c.totalDevelopment)}`,
+    `Lost Dev: ${formatExact(c.lostDevelopment)}`,
+    `Locations: ${formatInt(c.locationCount)}`,
+  ].join("<br/>");
+}
+
+const CONTROL_SCALE = { min: 0, max: 1, formatter: formatPercentTick };
+
 function ControlScaleScatter({ countries }: { countries: CountryControlPoint[] }) {
-  const labelSet = useMemo(() => {
-    if (countries.length <= 10) return new Set(countries.map((c) => c.country.tag));
-    const sorted = [...countries].sort((a, b) => b.lostDevelopment - a.lostDevelopment);
-    return new Set(sorted.slice(0, SCATTER_LABEL_CAP).map((c) => c.country.tag));
+  // The size of a dot shows the development that the country loses.
+  const point = useMemo(() => {
+    const maxLost = Math.max(...countries.map((c) => c.lostDevelopment), 1);
+    return (c: CountryControlPoint): CountryPoint => ({
+      country: c.country,
+      x: c.totalDevelopment,
+      y: c.weightedAvgControl,
+      symbolSize: 6 + (c.lostDevelopment / maxLost) * 24,
+    });
   }, [countries]);
 
-  const scatterData = useMemo(
-    () =>
-      countries.map((c) => ({
-        value: [c.totalDevelopment, c.weightedAvgControl] as [number, number],
-        tag: c.country.tag,
-        name: c.country.country.name,
-        lostDevelopment: c.lostDevelopment,
-        totalDevelopment: c.totalDevelopment,
-        weightedAvgControl: c.weightedAvgControl,
-        locationCount: c.locationCount,
-        colorHex: c.country.colorHex,
-        id: c.country.country.key,
-        anchorLocationIdx: c.country.anchorLocationIdx,
-      })),
-    [countries],
-  );
-
-  const maxLost = useMemo(
-    () => Math.max(...countries.map((c) => c.lostDevelopment), 1),
-    [countries],
-  );
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
-    return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Total Development",
-        nameLocation: "middle",
-        nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor, formatter: (v: number) => formatFloat(v, 0) },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
-        min: 0,
-      },
-      yAxis: {
-        type: "value",
-        name: "Avg Control",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: (v: number) => formatPercent(v, 0),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
-        min: 0,
-        max: 1,
-      },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
-      ],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const d = params.data as (typeof scatterData)[number];
-          return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Avg Control: ${formatPercent(d.weightedAvgControl)}`,
-            `Total Dev: ${formatFloat(d.totalDevelopment, 1)}`,
-            `Lost Dev: ${formatFloat(d.lostDevelopment, 1)}`,
-            `Locations: ${formatInt(d.locationCount)}`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: (_value: unknown, params: unknown) => {
-            const d = (params as { data: (typeof scatterData)[number] }).data;
-            const pct = d.lostDevelopment / maxLost;
-            return 6 + pct * 24;
-          },
-          itemStyle: {
-            color: (params) => {
-              if (Array.isArray(params)) return seriesColor(0);
-              const d = params.data as (typeof scatterData)[number];
-              return d.colorHex || seriesColor(0);
-            },
-            opacity: 0.8,
-          },
-          label: {
-            show: true,
-            formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return labelSet.has(d.tag) ? d.tag : "";
-            },
-            position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
-            distance: 4,
-          },
-        },
-      ],
-    };
-  }, [scatterData, labelSet, maxLost]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: BACK_LABEL,
-    getTarget: (params) => {
-      if (Array.isArray(params.data)) return null;
-      const country = params.data as (typeof scatterData)[number] | undefined;
-      return country
-        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
-        : null;
-    },
-  });
-
   return (
-    <EChart
-      mergeUpdates
-      gpuScatter
-      option={option}
-      style={{ height: "420px", width: "100%" }}
-      onInit={handleInit}
+    <CountryScatter
+      rows={countries}
+      point={point}
+      tooltip={controlTooltip}
+      xName="Total Development"
+      yName="Avg Control"
+      yAxis={CONTROL_SCALE}
+      legend="Dot size: development lost to low control."
     />
   );
 }
@@ -425,7 +313,11 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
       }),
       columnHelper.accessor("control", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Control",
+          variant: "num",
+          exact: formatExactPercent,
+        }),
         cell: (info) => (
           <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),
@@ -434,21 +326,21 @@ function ControlTopLocations({ locations }: { locations: ControlTopLocation[] })
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("lostDevelopment", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Lost Dev", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("population", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

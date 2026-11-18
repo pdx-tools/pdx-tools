@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useEu5SelectionState, useEu5Engine, useEu5Players } from "./store";
-import { usePanToEntity } from "./usePanToEntity";
+import { useJumpToEntity } from "./useJumpToEntity";
 import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon";
 import { Command as CommandPrimitive } from "cmdk";
 import { cx } from "class-variance-authority";
@@ -8,6 +8,7 @@ import type { SearchResult } from "./ui-engine";
 import styles from "./Eu5Toolbar.module.css";
 import { Eu5ShortcutPanel } from "./Eu5ShortcutPanel";
 import { focusRing } from "@/components/game/focusRing";
+import { Kbd } from "@/components/game/Kbd";
 import { resolveSearchSelection } from "./searchSelection";
 
 export function Eu5Toolbar() {
@@ -67,22 +68,22 @@ export function Eu5Toolbar() {
     return () => clearTimeout(timer);
   }, [engine, searchQuery]);
 
-  const panToEntity = usePanToEntity();
+  const jumpToEntity = useJumpToEntity();
 
   const handleSelect = useCallback(
     async (result: SearchResult) => {
       const selection = resolveSearchSelection(result);
       if (selection.kind === "country") {
-        await engine.commands.selectCountry(selection.countryIdx);
+        await engine.commands.changeSelection("replace", "countries", [selection.countryIdx]);
       } else {
         await engine.commands.setFocusedLocation(selection.locationIdx);
       }
-      panToEntity(selection.panTo);
+      jumpToEntity(selection.jumpTo);
       setSearchActive(false);
       setQuery("");
       setResults([]);
     },
-    [engine, panToEntity],
+    [engine, jumpToEntity],
   );
 
   const handleDismiss = useCallback(() => {
@@ -136,11 +137,7 @@ export function Eu5Toolbar() {
           aria-label="Search countries or locations"
         >
           <MagnifyingGlassIcon className="h-4 w-4" />
-          {!searchActive && (
-            <kbd className="rounded-plate border border-game-line px-1 py-px font-game-num text-[9.5px] text-game-ink-500">
-              /
-            </kbd>
-          )}
+          {!searchActive && <Kbd>/</Kbd>}
         </button>
 
         {/* Preset buttons + surrounding separators — hidden while search is open
@@ -155,7 +152,7 @@ export function Eu5Toolbar() {
                 "pointer-events-auto h-7 shrink-0 rounded-control px-3 font-game-ui text-[12.5px] font-medium whitespace-nowrap transition-colors",
                 focusRing,
                 selectionState?.preset === "players"
-                  ? "bg-game-accent-soft text-game-accent-100 shadow-[inset_0_-1px_0_var(--color-game-accent-300)]"
+                  ? "bg-game-accent-soft text-game-accent-100 shadow-[inset_0_-1px_0_var(--game-accent-300)]"
                   : "text-game-ink-300 hover:bg-game-panel-hover hover:text-game-ink-100",
               )}
             >
@@ -201,7 +198,7 @@ export function Eu5Toolbar() {
                             onSelect={() => void handleSelect(result)}
                             className="flex cursor-default items-center gap-2 rounded-plate px-2.5 py-2 text-[12.5px] text-game-ink-300 outline-none select-none aria-selected:bg-game-panel-hover aria-selected:text-game-ink-100"
                           >
-                            <span className="shrink-0 font-game-num text-[11px] text-game-ink-500">
+                            <span className="shrink-0 font-game-num text-[12px] text-game-ink-500">
                               {result.tag}
                             </span>
                             <span className="truncate">{result.name}</span>

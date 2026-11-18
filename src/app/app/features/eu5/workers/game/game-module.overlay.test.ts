@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { MapFrame } from "../../history/analysisTypes";
-import { serveMapFrames } from "../../history/framePort";
+import type { Eu5Snapshot } from "../../history/analysisTypes";
+import { serveFrames } from "@/features/campaign/analysis/framePort";
 import type { GradientConfig } from "@/wasm/wasm_eu5";
 import type { LocationClickChangeEvent, LocationHoverChangeEvent } from "../map/map-module";
 import type { BoxSelectCommitEvent } from "../../types/box-select";
@@ -52,25 +52,20 @@ const gradient: GradientConfig = {
 };
 const cleanup: (() => void)[] = [];
 
-const frame = (hash: string): MapFrame => ({
-  hash,
-  campaignId: "campaign",
-  date: "1360-01-01",
-  dateSort: 13600101,
-  version: "1.0",
-  layoutKey: "same",
-  fileName: `${hash}.eu5`,
-  world: { locationCount: 0, countryCount: 0, totalPopulation: 0 },
-  locationIds: new Uint32Array(),
-  fractions: new Uint16Array(),
-  metrics: new Float32Array(),
-  owners: new Uint32Array(),
-  controllers: new Uint32Array(),
-  religions: new Uint32Array(),
-  markets: new Uint32Array(),
-  countries: new Uint32Array(),
-  religionColors: new Uint32Array(),
-  marketColors: new Uint32Array(),
+const frame = (id: string): Eu5Snapshot => ({
+  descriptor: {
+    id,
+    game: "eu5",
+    campaignId: "campaign",
+    contentHash: id,
+    date: "1360-01-01",
+    dateSort: 13600101,
+    gameVersion: "1.0",
+    artifacts: ["observations", "map"],
+    layoutKey: "same",
+    world: { locationCount: 0, countryCount: 0, totalPopulation: 0 },
+  },
+  data: new Uint8Array([1, 2, 3]) as Eu5Snapshot["data"],
 });
 
 beforeEach(() => {
@@ -96,12 +91,9 @@ beforeEach(() => {
     clear_highlights: vi.fn(),
     handle_location_hover: vi.fn(),
     get_hover_data: vi.fn(),
-    select_entity: vi.fn(change),
-    add_entity: vi.fn(change),
-    remove_entity: vi.fn(change),
+    click: vi.fn(change),
     clear_focus_or_selection: vi.fn(change),
-    apply_resolved_box_selection: vi.fn(change),
-    replace_selection_with_locations: vi.fn(change),
+    change_selection: vi.fn(change),
   };
   mocks.map.syncSave.mockResolvedValue(undefined);
   mocks.map.syncMapData.mockResolvedValue(undefined);
@@ -127,7 +119,7 @@ async function open() {
   ))!;
   await save.show();
   const channel = new MessageChannel();
-  const stop = serveMapFrames(channel.port1, frame);
+  const stop = serveFrames(channel.port1, frame);
   save.connectMapFrames("test", channel.port2);
   cleanup.push(() => {
     save.connectMapFrames("test", null);
@@ -152,12 +144,8 @@ it("paints a snapshot into the overlay and leaves the buffers of the save alone"
 
   const reply = await save.presentOverlay("second", "control", 7);
 
-  expect(reply).toMatchObject({ accepted: true, gradient, observation: { hash: "second" } });
-  expect(mocks.app.paint_map_projection).toHaveBeenCalledWith(
-    "control",
-    "same",
-    ...Array.from({ length: 10 }, () => expect.anything()),
-  );
+  expect(reply).toMatchObject({ accepted: true, gradient, observation: { id: "second" } });
+  expect(mocks.app.paint_map_projection).toHaveBeenCalledWith("control", new Uint8Array([1, 2, 3]));
   expect(mocks.map.presentOverlay).toHaveBeenCalledExactlyOnceWith({
     token: 7,
     colors: new Uint32Array([1]),
@@ -189,12 +177,12 @@ it("keeps hover, click and box select away from the save during a preview", asyn
   input.click(click);
 
   expect(mocks.app.handle_location_hover).not.toHaveBeenCalled();
-  expect(mocks.app.replace_selection_with_locations).not.toHaveBeenCalled();
-  expect(mocks.app.select_entity).not.toHaveBeenCalled();
+  expect(mocks.app.change_selection).not.toHaveBeenCalled();
+  expect(mocks.app.click).not.toHaveBeenCalled();
   expect(onClick).toHaveBeenCalledExactlyOnceWith(click);
 
   module.setInputGate(null);
   input.click(click);
-  expect(mocks.app.select_entity).toHaveBeenCalledExactlyOnceWith(5);
+  expect(mocks.app.click).toHaveBeenCalledExactlyOnceWith("replace", 5);
   expect(onClick).toHaveBeenCalledOnce();
 });

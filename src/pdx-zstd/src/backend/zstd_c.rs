@@ -40,6 +40,18 @@ impl<R: Read> Decoder<R> {
         let decoder = zstd::Decoder::new(reader).map_err(|e| Error::Zstd(Box::new(e)))?;
         Ok(Self { inner: decoder })
     }
+
+    pub fn get_ref(&self) -> &R {
+        self.inner.get_ref().get_ref()
+    }
+
+    pub fn with_window_log_max(reader: R, window_log_max: u32) -> Result<Self> {
+        let mut decoder = zstd::Decoder::new(reader).map_err(|e| Error::Zstd(Box::new(e)))?;
+        decoder
+            .window_log_max(window_log_max)
+            .map_err(|e| Error::Zstd(Box::new(e)))?;
+        Ok(Self { inner: decoder })
+    }
 }
 
 impl<'a> Decoder<&'a [u8]> {

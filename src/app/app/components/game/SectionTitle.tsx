@@ -2,12 +2,11 @@ import React from "react";
 import { cx } from "class-variance-authority";
 
 /**
- * The Label step of the type scale: 10px IBM Plex Mono, medium, 0.14em
- * tracking, `ink-500`, uppercase. One string so every section label in the
- * Game world is the same label. `SectionTitle` and `StatItem` both set it.
+ * The Label step of the type scale: the number font, medium, `ink-500`,
+ * uppercase. Each game sets the size and tracking. One string so every
+ * section label in the Game world is the same label.
  */
-export const sectionLabel =
-  "font-game-num text-[10px] font-medium tracking-[0.14em] text-game-ink-500 uppercase";
+export const sectionLabel = "font-game-num text-game-label font-medium text-game-ink-500 uppercase";
 
 /**
  * SectionTitle — the uppercase heading above a chart or block inside an

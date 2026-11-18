@@ -1,48 +1,28 @@
 import { AnimatedValue } from "./AnimatedValue";
-import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { Tooltip } from "@/components/Tooltip";
+import { sectionLabel } from "@/components/game/SectionTitle";
+import { formatInt } from "@/lib/format";
+import { formatRank } from "../numberFormatting";
+import { RailFigureName } from "./ExactValue";
 
 /**
  * StatRail — the EU5 "dense rail" stat display (Design Spec §10).
  *
  * A single dense, sectioned rail of metrics for entity profiles. Each row
- * carries only the pieces it has: a fixed icon slot, a label, an optional bar
- * (bounded ratios only), the value, an optional rank ordinal, and an optional
+ * carries only the pieces it has: a fixed icon slot, a label, an optional mark
+ * of its place in the cohort, the value, an optional rank, and an optional
  * delta. The rail is narrow by default (one column) and reflows into 2 then 3
  * columns in wide containers via a container query — section headers always
  * span the full width and rows flow into as many columns as the container
  * affords, leaving ragged (never blank) tails.
  */
 
-function ordinalSuffix(n: number): string {
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 13) return "th";
-  switch (n % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-}
-
-/** Placeholder icon slot — reserved 16px square until the iconography pass ships. */
+/** An empty 16px slot that keeps the column for a row icon. Rows have no icons yet. */
 function IconSlot() {
-  return (
-    <span
-      aria-hidden="true"
-      className="size-4 shrink-0 rounded-plate border border-game-line opacity-70"
-      style={{
-        backgroundImage:
-          "repeating-linear-gradient(45deg, var(--color-game-line-strong) 0 2px, transparent 2px 5px)",
-        backgroundColor: "var(--color-game-panel-2)",
-      }}
-    />
-  );
+  return <span aria-hidden="true" className="size-4 shrink-0" />;
 }
 
 export interface StatRailRowProps {
@@ -52,15 +32,28 @@ export interface StatRailRowProps {
   denom?: ReactNode;
   /** Bounded ratio in [0, 1]. Omit for raw counts — the track stays empty. */
   bar?: number;
-  /** 1-based ordinal rank within the rail's cohort (rendered ordinal-only). */
+  /** 1-based rank within the rail's cohort, as "#293". */
   rank?: number;
+  /** How many countries share this rank, with this one */
+  tied?: number;
   /** Reserved for future use; not rendered today. */
   delta?: { value: string; dir: "up" | "down" | "flat" };
   icon?: ReactNode;
   tooltip?: ReactNode;
 }
 
-function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps) {
+function Rank({ rank, tied }: { rank: number | undefined; tied: number }) {
+  return (
+    <span
+      title={tied > 1 ? `${formatInt(tied)} countries share this rank` : undefined}
+      className="text-right font-game-num text-[12px] whitespace-nowrap text-game-ink-300 tabular-nums"
+    >
+      {rank !== undefined && formatRank(rank, tied)}
+    </span>
+  );
+}
+
+function Row({ label, value, denom, bar, rank, tied = 1, icon, tooltip }: StatRailRowProps) {
   const labelNode = (
     <span
       className={cx(
@@ -96,7 +89,7 @@ function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps
       {/* Bar track — only painted for bounded ratios. */}
       <span className="flex items-center">
         {bar !== undefined && (
-          <span className="relative h-1 w-full rounded-[1px] border border-game-line bg-game-panel-2">
+          <span className="relative h-1 w-full rounded-[1px] bg-game-track">
             <span
               className="absolute inset-y-0 left-0 rounded-[1px] bg-game-ink-500 transition-[width] duration-800 ease-in-out motion-reduce:transition-none"
               style={{ width: `${Math.max(0, Math.min(1, bar)) * 100}%` }}
@@ -106,7 +99,9 @@ function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps
       </span>
 
       <span className="text-right font-game-num text-[12px] text-game-ink-100 tabular-nums">
-        <AnimatedValue value={value} />
+        <RailFigureName.Provider value={label}>
+          <AnimatedValue value={value} />
+        </RailFigureName.Provider>
         {denom !== undefined && (
           <span className="text-game-ink-500">
             {" "}
@@ -115,25 +110,48 @@ function Row({ label, value, denom, bar, rank, icon, tooltip }: StatRailRowProps
         )}
       </span>
 
-      {/* Rank ordinal — this country's standing for the metric among all countries.
-          No `overflow-hidden` here: the superscript is raised above the line box
-          and would otherwise be clipped. */}
-      <span className="text-right font-game-num text-[10.5px] whitespace-nowrap text-game-ink-500">
-        {rank !== undefined && (
-          <>
-            {rank}
-            <sup className="text-[7.5px]">{ordinalSuffix(rank)}</sup>
-          </>
-        )}
-      </span>
+      {/* Rank — this country's standing for the metric among all countries. */}
+      <Rank rank={rank} tied={tied} />
     </div>
   );
 }
 
-function Section({ label }: { label: string }) {
+/** The band's label, and the names of the columns under it. */
+function ColumnHeads({ label, className }: { label?: string; className?: string }) {
   return (
-    <div className="col-span-full border-t border-b border-game-line bg-game-panel-2 px-3 pt-2 pb-1 font-game-num text-[10px] tracking-[0.14em] text-game-ink-500 uppercase first:border-t-0">
-      {label}
+    <div
+      aria-hidden={label === undefined || undefined}
+      className={cx(
+        "grid-cols-[16px_1fr_60px_76px_64px] items-center gap-x-1.5 px-3 pt-2 pb-1",
+        className,
+      )}
+    >
+      <span className="col-span-2">{label}</span>
+      <span />
+      <span className="text-right">Value</span>
+      <span className="text-right">Rank</span>
+    </div>
+  );
+}
+
+const sectionBand =
+  "col-span-full border-t border-b border-game-line bg-game-panel-2 first:border-t-0 " +
+  sectionLabel;
+
+/** A band over a group of rows. With `heads`, it names the columns of the rows under it. */
+function Section({ label, heads }: { label: string; heads?: boolean }) {
+  if (!heads) return <div className={cx(sectionBand, "px-3 pt-2 pb-1")}>{label}</div>;
+  return (
+    <div
+      className={cx(
+        sectionBand,
+        "@[720px]/sg:grid @[720px]/sg:grid-cols-2 @[720px]/sg:gap-x-px @[1040px]/sg:grid-cols-3",
+      )}
+    >
+      <ColumnHeads label={label} className="grid" />
+      {/* A wide rail has more than one column of rows, so each column gets its names. */}
+      <ColumnHeads className="hidden @[720px]/sg:grid" />
+      <ColumnHeads className="hidden @[1040px]/sg:grid" />
     </div>
   );
 }
@@ -151,7 +169,7 @@ export interface StatRailProps {
 }
 
 export function StatRail({ title, meta, cohort, narrow, expand, children }: StatRailProps) {
-  const metaText = [meta, cohort !== undefined ? `${cohort} countries` : undefined]
+  const metaText = [meta, cohort !== undefined ? `${formatInt(cohort)} countries` : undefined]
     .filter((part) => part !== undefined && part !== null && part !== "")
     .reduce<ReactNode[]>((acc, part, i) => {
       if (i > 0) acc.push(" · ");
@@ -159,19 +177,39 @@ export function StatRail({ title, meta, cohort, narrow, expand, children }: Stat
       return acc;
     }, []);
 
+  // The figures are one stop for Tab, and the arrow keys go from figure to figure.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const values = [...(ref.current?.querySelectorAll<HTMLElement>("[data-rail-value]") ?? [])];
+    if (values.length > 0 && values.every((value) => value.tabIndex !== 0)) {
+      values[0].tabIndex = 0;
+    }
+  });
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const values = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-rail-value]")];
+    const at = values.indexOf(document.activeElement as HTMLElement);
+    const next = values[at + (event.key === "ArrowDown" ? 1 : -1)];
+    if (at < 0 || !next) return;
+    event.preventDefault();
+    values[at].tabIndex = -1;
+    next.tabIndex = 0;
+    next.focus();
+  };
+
   return (
     <div
+      ref={ref}
+      onKeyDown={onKeyDown}
       className={cx(
         "@container/sg @container overflow-hidden rounded-(--radius-panel) border border-game-line-strong bg-game-panel",
         narrow && "max-w-[480px]",
       )}
     >
       <div className="flex items-center justify-between border-b border-game-line px-3 py-2">
-        <span className="font-game-num text-[11px] tracking-[0.14em] text-game-ink-500 uppercase">
-          {title}
-        </span>
+        <span className={sectionLabel}>{title}</span>
         {metaText.length > 0 && (
-          <span className="font-game-num text-[10.5px] text-game-ink-500">{metaText}</span>
+          <span className="font-game-num text-[12px] text-game-ink-500">{metaText}</span>
         )}
       </div>
 

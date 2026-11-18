@@ -56,6 +56,7 @@ export function CountryProfile({ countryIdx }: { countryIdx: number }) {
           <CountryPopulationTabContent
             countryIdx={countryIdx}
             locations={profile.locations.locations}
+            totalPopulation={profile.overview.totalPopulation}
             historicalPopulation={profile.overview.historicalPopulation}
           />
         </GameTabs.Content>

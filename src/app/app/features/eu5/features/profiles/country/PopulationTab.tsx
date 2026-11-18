@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ConcentrationPoint, LocationRow } from "@/wasm/wasm_eu5";
+import type { ConcentrationPoint, LocationRow, PopulationHistory } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import {
   PopulationSankey,
@@ -10,26 +10,10 @@ import { useEu5Trigger } from "../useEu5Trigger";
 import { ConcentrationCurve } from "../../insights/ConcentrationCurve";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import {
-  chartTooltip,
-  getEChartsTheme,
-  seriesColor,
-  seriesFill,
-} from "@/components/viz/echartsTheme";
+import { chartTooltip, neutralFill, neutralMark, yAxisName } from "@/components/viz/echartsTheme";
 import { useEu5SaveDate } from "../../../store/eu5Store";
 import { SectionTitle, Skeleton } from "../../../components";
-
-function formatCompact(value: number): string {
-  if (value >= 1_000_000) {
-    const v = value / 1_000_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    const v = value / 1_000;
-    return `${v % 1 === 0 ? formatInt(v) : v.toFixed(1)}K`;
-  }
-  return formatInt(Math.round(value));
-}
+import { pointLabel, pointsToSave, yearAxis, yearOfDate } from "../../insights/yearlySeries";
 
 function concentrationFromLocations(locations: LocationRow[]): ConcentrationPoint[] {
   const sorted = [...locations].sort(
@@ -50,46 +34,18 @@ function concentrationFromLocations(locations: LocationRow[]): ConcentrationPoin
   });
 }
 
-function PopulationHistoryChart({ series }: { series: number[] }) {
+function PopulationHistoryChart({ series, now }: { series: PopulationHistory; now: number }) {
   const saveDate = useEu5SaveDate();
 
-  const data = useMemo(
-    () => series.map((value, index) => [index - series.length + 1, value * 1000]),
-    [series],
-  );
+  const data = useMemo(() => pointsToSave(series, saveDate, now), [series, saveDate, now]);
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-    const baseYear = saveDate?.year ?? 0;
-
     return {
-      grid: { left: 60, right: 20, top: 16, bottom: 50 },
-      xAxis: {
-        type: "value",
-        min: data.length > 0 ? (data[0] as number[])[0] : 0,
-        max: 0,
-        nameLocation: "middle",
-        nameGap: 34,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: (value: number) => String(baseYear + value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.35 } },
-      },
+      grid: { left: 60, right: 20, top: 32, bottom: 50 },
+      xAxis: yearAxis(data[0]?.[0] ?? saveDate.year, yearOfDate(saveDate)),
       yAxis: {
         type: "value",
-        name: "Population",
-        nameLocation: "middle",
-        nameGap: 46,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: {
-          color: tickColor,
-          formatter: formatCompact,
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5 } },
+        ...yAxisName("Population"),
       },
       tooltip: {
         ...chartTooltip,
@@ -98,9 +54,8 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           const arr = Array.isArray(params) ? params : [params];
           const value = arr[0]?.value;
           if (!Array.isArray(value)) return "";
-          const year = baseYear + Number(value[0]);
-          const v = Number(value[1]);
-          return `<strong>${year}</strong><br/>Population: ${formatCompact(v)}`;
+          const label = pointLabel(Number(value[0]), saveDate);
+          return `<strong>${label}</strong><br/>Population: ${formatInt(Number(value[1]))}`;
         },
       },
       series: [
@@ -108,15 +63,14 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
           type: "line",
           data,
           symbol: "none",
-          smooth: true,
-          lineStyle: { color: seriesColor(0), width: 2 },
-          areaStyle: { color: seriesFill(0) },
+          lineStyle: { color: neutralMark, width: 2 },
+          areaStyle: { color: neutralFill },
         },
       ],
     };
   }, [data, saveDate]);
 
-  if (series.length < 2) return null;
+  if (series.people.length < 2) return null;
 
   return (
     <section>
@@ -129,11 +83,13 @@ function PopulationHistoryChart({ series }: { series: number[] }) {
 export function CountryPopulationTabContent({
   countryIdx,
   locations,
+  totalPopulation,
   historicalPopulation,
 }: {
   countryIdx: number;
   locations: LocationRow[];
-  historicalPopulation: number[];
+  totalPopulation: number;
+  historicalPopulation: PopulationHistory;
 }) {
   const { data, loading } = useEu5Trigger(
     (engine) => engine.queries.getCountryPopulationProfile(countryIdx),
@@ -150,7 +106,7 @@ export function CountryPopulationTabContent({
   const hasTypeProfile = typeProfile.some((row) => row.population > 0);
   const hasRanks = rankTotals.some((rank) => rank.population > 0);
   const showConcentration = locations.length >= 5 && concentration.length > 1;
-  const showHistory = historicalPopulation.length >= 2;
+  const showHistory = historicalPopulation.people.length >= 2;
 
   if (!data || (!hasTypeProfile && !hasRanks && !showConcentration && !showHistory)) {
     return (
@@ -162,7 +118,9 @@ export function CountryPopulationTabContent({
 
   return (
     <div className="flex flex-col gap-4">
-      {showHistory && <PopulationHistoryChart series={historicalPopulation} />}
+      {showHistory && (
+        <PopulationHistoryChart series={historicalPopulation} now={totalPopulation} />
+      )}
 
       {hasTypeProfile && (
         <section>

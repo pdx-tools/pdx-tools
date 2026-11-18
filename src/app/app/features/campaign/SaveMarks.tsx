@@ -6,18 +6,27 @@ import { sectionLabel } from "@/components/game/SectionTitle";
 import { daysBetween, formatLongDate } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
 import type { SaveLaneGeometry, TimelineCampaign } from "@/features/timeline/TimelineScrubber";
-import { useCampaign } from "./CampaignProvider";
+import { useCampaignTimeline } from "./CampaignProvider";
 import type { CampaignNav } from "./useCampaignNav";
 import { saveLabel } from "./saveText";
 import { SaveList } from "./SaveList";
 import type { CampaignSave } from "./types";
+import { saveAnalysisPresentation } from "./saveAnalysisPresentation";
+import { SaveAnalysisGlyph } from "./SaveAnalysisGlyph";
+import type { SaveAnalysisStatus } from "./saveAnalysisPresentation";
 
 /** Marks closer than this, in px, share one mark. */
 const MIN_GAP_PX = 10;
 
 const MARK_WIDTH = 14;
 
-type Cluster = { x: number; saves: readonly CampaignSave[] };
+type Cluster = {
+  x: number;
+  saves: readonly CampaignSave[];
+  analysis?: { status: SaveAnalysisStatus; label: string };
+};
+/** Undefined keeps unsupported sources as ordinary navigation bookmarks. */
+type AnalysisStatus = (save: CampaignSave) => SaveAnalysisStatus | undefined;
 
 function clusterSaves(
   saves: readonly CampaignSave[],
@@ -44,16 +53,58 @@ function clusterSaves(
   });
 }
 
+/** A mixed cluster stays active while any save is being analyzed. */
+function summarizeAnalysis(saves: readonly CampaignSave[], statusOf: AnalysisStatus) {
+  const counts = { ready: 0, analyzing: 0, pending: 0, failed: 0 };
+  let supported = 0;
+  for (const save of saves) {
+    const status = statusOf(save);
+    if (status === undefined) continue;
+    counts[status]++;
+    supported++;
+  }
+  if (supported === 0) return undefined;
+  const status: SaveAnalysisStatus =
+    counts.failed > 0
+      ? "failed"
+      : counts.ready === supported
+        ? "ready"
+        : counts.analyzing > 0
+          ? "analyzing"
+          : "pending";
+  const label =
+    supported === 1
+      ? saveAnalysisPresentation[status].description
+      : [
+          counts.ready && `${counts.ready} analyzed`,
+          counts.analyzing && `${counts.analyzing} analyzing`,
+          counts.pending && `${counts.pending} waiting`,
+          counts.failed && `${counts.failed} failed`,
+        ]
+          .filter(Boolean)
+          .join(", ");
+  return { status, label };
+}
+
 /** Extend the timeline to the latest campaign save. */
 export function useTimelineCampaign(
   start: DateComponents | undefined,
+  analysisStatus?: AnalysisStatus,
 ): TimelineCampaign | undefined {
-  const nav = useCampaign();
-  if (nav === null || start === undefined || nav.saves.length < 2) return undefined;
+  const nav = useCampaignTimeline();
+  if (
+    nav === null ||
+    start === undefined ||
+    !nav.saves.length ||
+    (nav.saves.length < 2 && !analysisStatus)
+  )
+    return undefined;
   const latest = nav.saves[nav.saves.length - 1];
   return {
     end: latest.date,
-    lane: (geometry) => <SaveMarks nav={nav} start={start} geometry={geometry} />,
+    lane: (geometry) => (
+      <SaveMarks nav={nav} start={start} geometry={geometry} analysisStatus={analysisStatus} />
+    ),
   };
 }
 
@@ -62,12 +113,17 @@ function SaveMarks({
   nav,
   start,
   geometry,
+  analysisStatus,
 }: {
   nav: CampaignNav;
   start: DateComponents;
   geometry: SaveLaneGeometry;
+  analysisStatus?: AnalysisStatus;
 }) {
-  const clusters = clusterSaves(nav.saves, start, geometry.px);
+  const clusters = clusterSaves(nav.saves, start, geometry.px).map((cluster) => ({
+    ...cluster,
+    analysis: analysisStatus && summarizeAnalysis(cluster.saves, analysisStatus),
+  }));
   const ribbonTop = geometry.top + 2;
 
   return (
@@ -108,6 +164,7 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
   const isOpen = saves.some((x) => x.isOpen);
   const opening = saves.some((x) => x.key === nav.opening);
   const problem = saves.every((x) => x.problem !== null && x.problem.kind !== "moved");
+  const analysisLabel = cluster.analysis?.label;
   const label =
     saves.length === 1
       ? saveLabel(saves[0])
@@ -118,8 +175,13 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
       <Popover.Trigger asChild>
         <button
           type="button"
-          aria-label={isOpen ? `${label}, open now` : label}
+          aria-label={[isOpen ? `${label}, open now` : label, analysisLabel]
+            .filter(Boolean)
+            .join(", ")}
+          aria-current={isOpen ? "date" : undefined}
           aria-busy={opening || undefined}
+          title={analysisLabel}
+          data-analysis={cluster.analysis?.status}
           className={cx(
             "group absolute z-10 grid -translate-x-1/2 cursor-pointer place-items-start justify-center rounded-[var(--radius-plate)]",
             focusRing,
@@ -138,19 +200,27 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
                 )}
               />
             )}
-            <path
-              d="M1 0.5 H8 V12 L4.5 9.5 L1 12 Z"
-              strokeWidth={1}
-              className={cx(
-                "transition-colors duration-100",
-                isOpen || opening
-                  ? "fill-game-accent-300 stroke-game-accent-300"
-                  : problem
-                    ? "fill-transparent stroke-game-ink-500 group-hover:stroke-game-ink-100"
-                    : "fill-game-ink-300 stroke-game-ink-300 group-hover:fill-game-ink-100 group-hover:stroke-game-ink-100",
-                opening && "motion-safe:animate-pulse",
-              )}
-            />
+            {cluster.analysis ? (
+              <SaveAnalysisGlyph
+                status={cluster.analysis.status}
+                selected={isOpen || opening}
+                opening={opening}
+              />
+            ) : (
+              <path
+                d="M1 0.5 H8 V12 L4.5 9.5 L1 12 Z"
+                strokeWidth={1}
+                className={cx(
+                  "transition-colors duration-100",
+                  isOpen || opening
+                    ? "fill-game-accent-300 stroke-game-accent-300"
+                    : problem
+                      ? "fill-transparent stroke-game-ink-500 group-hover:stroke-game-ink-100"
+                      : "fill-game-ink-300 stroke-game-ink-300 group-hover:fill-game-ink-100 group-hover:stroke-game-ink-100",
+                  opening && "motion-safe:animate-pulse",
+                )}
+              />
+            )}
           </svg>
         </button>
       </Popover.Trigger>
@@ -161,6 +231,7 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
         className="w-72 max-w-[calc(100vw-32px)] rounded-panel border border-game-line-strong bg-game-panel-2 font-game-ui shadow-xl"
       >
         {saves.length > 1 && <p className={cx("px-3 pt-3", sectionLabel)}>{saves.length} saves</p>}
+        {analysisLabel && <p className="px-3 pt-3 text-xs text-game-ink-300">{analysisLabel}</p>}
         <SaveList nav={nav} saves={saves} onOpen={() => setOpen(false)} />
       </Popover.Content>
     </Popover>

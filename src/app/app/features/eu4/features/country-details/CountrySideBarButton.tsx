@@ -29,6 +29,7 @@ import { CountryManaUsage } from "./CountryManaUsage";
 import { CountryReligions } from "./CountryReligions";
 import { CountryCultures } from "./CountryCultures";
 import { CountryStates } from "./CountryStates";
+import { CountryProvinces } from "./CountryProvinces";
 import { CountryBuildingCount } from "./CountryBuildingCount";
 import { CountryEstates } from "./CountryEstates";
 import { Tabs } from "@/components/Tabs";
@@ -152,7 +153,7 @@ const CountryDetailsContent = () => {
           emitEvent({ kind: "Country details tab change", section });
         }}
       >
-        <Tabs.List className="mt-3 w-full max-w-full overflow-x-auto border-0 px-4 shadow-md">
+        <Tabs.List className="mt-3 w-full max-w-full overflow-x-auto border-0 px-4 shadow-md [&>button]:px-2">
           <Tabs.Trigger value="General">General</Tabs.Trigger>
           <Tabs.Trigger value="History">History</Tabs.Trigger>
           <Tabs.Trigger value="Institution">Institution</Tabs.Trigger>
@@ -165,6 +166,7 @@ const CountryDetailsContent = () => {
           <Tabs.Trigger value="Religion">Religion</Tabs.Trigger>
           <Tabs.Trigger value="Culture">Culture</Tabs.Trigger>
           <Tabs.Trigger value="States">States</Tabs.Trigger>
+          <Tabs.Trigger value="Provinces">Provinces</Tabs.Trigger>
           <Tabs.Trigger value="Estates">Estates</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="General" className="flex-1 basis-0 px-4 py-6">
@@ -226,6 +228,9 @@ const CountryDetailsContent = () => {
         </Tabs.Content>
         <Tabs.Content value="States" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryStates details={country} />}
+        </Tabs.Content>
+        <Tabs.Content value="Provinces" className="flex-1 basis-0 px-4 py-6">
+          <CountryProvinces tag={selectedTag} />
         </Tabs.Content>
         <Tabs.Content value="Estates" className="flex-1 basis-0 px-4 py-6">
           {country && <CountryEstates details={country} />}

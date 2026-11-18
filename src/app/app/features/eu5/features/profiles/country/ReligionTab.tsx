@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatPercent } from "../../../numberFormatting";
 import type { CountryReligionSection, ReligionShare } from "@/wasm/wasm_eu5";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { chartInk, chartTooltip } from "@/components/viz/echartsTheme";
+import { chartTooltip } from "@/components/viz/echartsTheme";
 import { SectionTitle } from "../../../components";
 
 export function ReligionTabContent({ data }: { data: CountryReligionSection }) {
@@ -49,7 +50,6 @@ function ReligionStackedBars({ breakdown }: { breakdown: ReligionShare[] }) {
       },
       yAxis: {
         type: "category",
-        axisLabel: { color: chartInk.secondary, fontSize: 11 },
         axisLine: { show: false },
         axisTick: { show: false },
       },
@@ -71,7 +71,7 @@ function ReligionStackedBars({ breakdown }: { breakdown: ReligionShare[] }) {
               const [abs, pct] = isLocations
                 ? [row.locationCount, totalLocations > 0 ? row.locationCount / totalLocations : 0]
                 : [row.population, totalPopulation > 0 ? row.population / totalPopulation : 0];
-              return `${escapeEChartsHtml(row.religion.name)}: ${formatInt(abs)} (${formatFloat(pct * 100, 1)}%)`;
+              return `${escapeEChartsHtml(row.religion.name)}: ${formatInt(abs)} (${formatPercent(pct)})`;
             })
             .filter(Boolean)
             .join("<br/>");

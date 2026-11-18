@@ -4,7 +4,8 @@ import type React from "react";
 import { useCallback } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
-import { formatCompact, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { Figure } from "./components/Figure";
 import { Eu5Flag } from "./components/flags/Eu5Flag";
 import { formatLongDate } from "@/features/timeline/date";
 import {
@@ -148,7 +149,7 @@ function PanelContentInner() {
       <div role="status">
         {!timelineLive && (
           // Only borders have a history in the save.
-          <p className="flex min-h-7 items-center border-b border-game-line px-4 font-game-ui text-[11px] leading-[1.4] text-game-ink-500">
+          <p className="flex min-h-7 items-center border-b border-game-line px-4 font-game-ui text-[12px] leading-[1.4] text-game-ink-500">
             <span>
               Values are from the save date,{" "}
               <span className="font-game-num text-game-ink-300 tabular-nums">
@@ -236,7 +237,7 @@ function InsightScopeLine() {
   }
 
   return (
-    <span className="truncate font-game-num text-[10.5px] text-game-ink-500 tabular-nums">
+    <span className="truncate font-game-num text-[12px] text-game-ink-500 tabular-nums">
       {parts.join(" \u00b7 ")}
     </span>
   );
@@ -297,7 +298,7 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
     return (
       <span className="inline-flex max-w-full min-w-0 items-center gap-2">
         <span
-          className="h-3.5 w-3.5 shrink-0 rounded-[1px] border border-black/25"
+          className="h-3.5 w-3.5 shrink-0 rounded-[1px] border border-game-rim"
           style={{ backgroundColor: header.colorHex }}
         />
         <span className="truncate font-game-ui text-sm font-semibold text-game-ink-300">
@@ -314,11 +315,11 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
         colorHex={header.colorHex}
         size="xl"
         alt={`${header.name} flag`}
-        className="shrink-0 rounded-[2px] border border-black/30"
+        className="shrink-0 rounded-[2px] border border-game-rim"
       />
       <span className="flex min-w-0 flex-col gap-1">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[10px] tracking-[0.06em] text-game-ink-500">
+          <span className="shrink-0 rounded-[1px] border border-game-line-strong px-1 font-game-num text-[12px] tracking-[0.04em] text-game-ink-500">
             {header.tag}
           </span>
           <span className="truncate font-game-ui text-base font-semibold text-game-ink-100">
@@ -326,11 +327,17 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
           </span>
         </span>
         <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <HeadlineStat label="Locations" value={formatInt(header.headline.locationCount)} />
-          <HeadlineStat label="Development" value={formatInt(header.headline.totalDevelopment)} />
+          <HeadlineStat
+            label="Locations"
+            value={<Figure value={header.headline.locationCount} form="count" />}
+          />
+          <HeadlineStat
+            label="Development"
+            value={<Figure value={header.headline.totalDevelopment} />}
+          />
           <HeadlineStat
             label="Population"
-            value={formatCompact(header.headline.totalPopulation, 1)}
+            value={<Figure value={header.headline.totalPopulation} form="count" />}
           />
         </span>
       </span>
@@ -338,13 +345,13 @@ function EntityTitleContent({ header }: { header: EntityHeader }) {
   );
 }
 
-function HeadlineStat({ label, value }: { label: string; value: string }) {
+function HeadlineStat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <span className="flex items-baseline gap-1">
       <span className="font-game-num text-[13px] font-medium text-game-ink-100 tabular-nums">
         <AnimatedValue value={value} />
       </span>
-      <span className="text-[10px] tracking-[0.06em] text-game-ink-500 uppercase">{label}</span>
+      <span className="text-game-label text-game-ink-500 uppercase">{label}</span>
     </span>
   );
 }

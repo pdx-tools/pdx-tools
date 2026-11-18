@@ -2,7 +2,12 @@ import { useMemo } from "react";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable } from "../../components";
 import type { UnrealizedTaxBaseTopLocation } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import {
+  formatExactCount,
+  formatExactPercent,
+  formatFixed,
+  formatPercent,
+} from "../../numberFormatting";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 
@@ -29,43 +34,55 @@ export function UnrealizedTaxBaseTopLocations({
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Tax Base", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("wealth", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Wealth", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Wealth",
+          variant: "num",
+          exact: formatExactCount,
+        }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("unrealizedTaxBase", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Gap", variant: "num" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Tax Gap", variant: "num", term: "taxGap" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor((row) => (row.wealth > 0 ? row.taxBase / row.wealth : 0), {
         id: "realization",
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Realization", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Realization",
+          variant: "num",
+          exact: formatExactPercent,
+        }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{`${formatFloat(info.getValue() * 100, 1)}%`}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("development", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Dev", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("control", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Control",
+          variant: "num",
+          exact: formatExactPercent,
+        }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("owner", {
@@ -79,9 +96,9 @@ export function UnrealizedTaxBaseTopLocations({
       }),
       columnHelper.accessor("population", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
+        meta: Eu5DataTable.meta({ headerLabel: "Pop", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

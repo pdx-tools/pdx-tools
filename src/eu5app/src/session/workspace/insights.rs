@@ -288,7 +288,7 @@ impl<'bump> Eu5Workspace<'bump> {
                         total_state_efficacy: aggregate.total_state_efficacy,
                         active_state_capacity: aggregate.active_state_capacity,
                         total_population: aggregate.total_population,
-                        tax_trade_income: data.estimated_monthly_income_trade_and_tax,
+                        tax_trade_income: data.monthly_tax_and_trade_income(),
                     },
                 })
             })
@@ -1255,9 +1255,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 let data = self.gamestate.countries.index(cidx).data()?;
                 let historical_population =
                     if is_empty || Some(&agg.location_count) == total_country_locations.get(&cid) {
-                        data.historical_population.to_vec()
+                        crate::population::population_history(&self.gamestate, data)
                     } else {
-                        Vec::new()
+                        Default::default()
                     };
                 let great_power_rank = data.great_power_rank;
                 let country = self.country_ref_from_country_idx(cidx);
@@ -1515,9 +1515,9 @@ impl<'bump> Eu5Workspace<'bump> {
                 let historical_population = if is_empty
                     || Some(&agg.location_count) == total_country_locations.get(&country_id)
                 {
-                    data.historical_population.to_vec()
+                    crate::population::population_history(&self.gamestate, data)
                 } else {
-                    Vec::new()
+                    Default::default()
                 };
                 Some(CountryPopulationGrowth {
                     country: self.country_ref_from_country_idx(country_idx),
@@ -1939,9 +1939,16 @@ impl<'bump> Eu5Workspace<'bump> {
         });
         foreign_owner_vec.truncate(20);
 
-        // Build foreign owner cells for top 20 types x top 20 foreign owners
-        let top_type_kinds: FxHashSet<&str> =
-            types_with_keys.iter().take(20).map(|t| t.0).collect();
+        // Build foreign owner cells for the top 20 types x top 20 foreign owners.
+        // Rank the types by foreign levels, because most foreign levels are in
+        // types that are not in the top 20 by all levels, such as trade offices.
+        let mut foreign_types: Vec<(&str, f64)> = types_with_keys
+            .iter()
+            .filter(|t| t.1.foreign_levels > 0.0)
+            .map(|t| (t.0, t.1.foreign_levels))
+            .collect();
+        foreign_types.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let top_type_kinds: FxHashSet<&str> = foreign_types.iter().take(20).map(|t| t.0).collect();
         let top_owner_ids: FxHashSet<CountryId> = foreign_owner_vec
             .iter()
             .take(20)

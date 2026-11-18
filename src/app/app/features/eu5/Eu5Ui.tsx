@@ -12,9 +12,6 @@ import "@fontsource/public-sans/vietnamese-400.css";
 import "@fontsource/public-sans/vietnamese-500.css";
 import "@fontsource/public-sans/vietnamese-600.css";
 import "@fontsource/public-sans/vietnamese-700.css";
-import "@fontsource/ibm-plex-mono/latin-400.css";
-import "@fontsource/ibm-plex-mono/latin-500.css";
-import "@fontsource/ibm-plex-mono/latin-600.css";
 import { memo, useEffect, useRef } from "react";
 import { cx } from "class-variance-authority";
 import { focusRing } from "@/components/game/focusRing";
@@ -122,9 +119,7 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
         )}
       >
         <ChevronLeftIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate font-game-num text-[11px] tracking-[0.14em] uppercase">
-          {label}
-        </span>
+        <span className="truncate font-game-num text-game-label uppercase">{label}</span>
       </button>
     </div>
   );

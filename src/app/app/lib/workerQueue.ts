@@ -9,6 +9,13 @@ type Job = {
   cleanup: () => void;
 };
 
+/**
+ * True when a worker error event means the worker cannot continue. A worker
+ * that fails to load sends a plain error event. An uncaught exception sends an
+ * ErrorEvent with a message, and the worker continues.
+ */
+export const isWorkerFailure = (event: Event) => !(event as Partial<ErrorEvent>).message;
+
 export type WorkerQueueOptions = {
   /** Release idle workers to free their WASM memory. */
   idleMs: number;
@@ -52,10 +59,8 @@ export function createWorkerQueue<Api>(
     if (!worker) {
       const raw = start();
       const untrack = trackWorker(raw);
-      // A worker that fails to load sends a plain error event. An uncaught
-      // exception sends an ErrorEvent with a message, and the worker continues.
       const onError = (event: Event) => {
-        if ((event as Partial<ErrorEvent>).message) return;
+        if (!isWorkerFailure(event)) return;
         if (active) active.cancel(new Error("Worker failed", { cause: event }));
         else stopWorker();
       };

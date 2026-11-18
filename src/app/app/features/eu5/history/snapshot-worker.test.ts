@@ -8,15 +8,13 @@ vi.mock("@/wasm/wasm_eu5", () => ({
   ImportLoader: { open: mocks.open },
 }));
 import { parseImport } from "./snapshot-worker";
+const snapshot = { descriptor: { id: "eu5:checksum" }, data: new Uint8Array([1]) };
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(new Uint8Array([1]))));
   mocks.open.mockResolvedValue({ meta: mocks.meta, parse_import: mocks.parse, free: mocks.free });
   mocks.meta.mockReturnValue({ playthroughId: "campaign" });
-  mocks.parse.mockReturnValue({
-    observation: { hash: "checksum", campaignId: "campaign" },
-    projection: {},
-  });
+  mocks.parse.mockReturnValue(snapshot);
 });
 afterEach(() => vi.unstubAllGlobals());
 it("uses one full parser with no game or localization asset reads", async () => {
@@ -24,9 +22,8 @@ it("uses one full parser with no game or localization asset reads", async () => 
   const result = await parseImport(file);
   expect(mocks.open).toHaveBeenCalledExactlyOnceWith(file);
   expect(mocks.parse).toHaveBeenCalledExactlyOnceWith();
-  expect(result.observation).toMatchObject({ hash: "eu5:checksum", fileName: "test.eu5" });
+  expect(result).toBe(snapshot);
   expect(vi.mocked(fetch).mock.calls.every(([url]) => String(url).includes("eu5.bin"))).toBe(true);
-  expect(result).not.toHaveProperty("overviews");
 });
 it("reuses initialization and parses a later file after an ordinary parse failure", async () => {
   mocks.parse.mockImplementationOnce(() => {

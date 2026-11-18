@@ -75,7 +75,7 @@ impl Eu5GameInstall {
 
         let game_data = OptimizedGameBundle::open(&game_bytes)?.into_game_data()?;
         let localization = OptimizedLocalizationBundle::open(&loc_bytes)?.into_localization()?;
-        let mut map_bundle = OptimizedMapBundle::open(&map_bytes)?;
+        let map_bundle = OptimizedMapBundle::open(&map_bytes)?;
         let (west_data, east_data) = map_bundle.load_hemispheres()?;
         let max_location_index = map_bundle.load_max_location_index()?;
         let textures = GameTextures::new(west_data, east_data, max_location_index);

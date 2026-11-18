@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { GameTabs, Skeleton } from "../../../components";
-import { formatFloat } from "@/lib/format";
+import { formatFixed } from "../../../numberFormatting";
+import { Figure } from "../../../components/Figure";
 import type { MarketMemberCountry, MarketProfile as MarketProfileData } from "@/wasm/wasm_eu5";
 import { MarketProductionLocations } from "../../insights/MarketProductionLocations";
 import { CountryLink } from "../EntityLink";
@@ -67,7 +68,7 @@ export function MarketProfile({ marketId }: { marketId: number }) {
 function MarketHeaderStats({ profile }: { profile: MarketProfileData }) {
   return (
     <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-panel border border-game-line-strong">
-      <StatPlate label="Market Value" value={formatFloat(profile.marketValue, 1)} />
+      <StatPlate label="Market Value" value={<Figure value={profile.marketValue} />} />
       <StatPlate
         label="Owner Country"
         value={
@@ -153,14 +154,14 @@ function MarketMembers({
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Advantage", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       membersColumnHelper.accessor("tradeCapacity", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Capacity", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

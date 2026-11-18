@@ -1,0 +1,359 @@
+---
+source: src/eu5app/tests/it/main.rs
+expression: snapshot
+input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
+---
+{
+  "box_on_filled_terrain": true,
+  "great_powers": [
+    "FRA 379",
+    "ENG 387",
+    "POL 486"
+  ],
+  "largest_stability_tie": 13,
+  "location": [
+    {
+      "id": 1,
+      "name": "Stockholm",
+      "owner": {
+        "id": 3,
+        "name": "Sweden",
+        "tag": "SWE"
+      }
+    }
+  ],
+  "map_modes": {
+    "building_levels": {
+      "colors": 152,
+      "fingerprint": "0x751ff43f6ea5ead0",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 107.5, max_value: 215.0 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff060101 x2320"
+      ]
+    },
+    "control": {
+      "colors": 936,
+      "fingerprint": "0x5c1b676e5c9f5cb4",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "development": {
+      "colors": 653,
+      "fingerprint": "0xd0f63e38e6a76b48",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 30.61707, max_value: 61.23414 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "markets": {
+      "colors": 12252,
+      "fingerprint": "0xfa5f0487e102d62b",
+      "groups": "0xda44c75391d5a93f",
+      "legend": "Qualitative",
+      "top": [
+        "#ff140505 x5902",
+        "#ff455e77 x2575",
+        "#ff646464 x1818"
+      ]
+    },
+    "political": {
+      "colors": 991,
+      "fingerprint": "0x5ef4aa7d0b7149e2",
+      "groups": "0x2d64a1c56eccacb9",
+      "legend": "Qualitative",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5352",
+        "#ff646464 x1610"
+      ]
+    },
+    "population": {
+      "colors": 699,
+      "fingerprint": "0x11678d131571f8ca",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 21778.169373327608, max_value: 517845.0 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "population_growth": {
+      "colors": 854,
+      "fingerprint": "0x68d6bceb11e3c333",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.003369592714394131, max_value: 0.006739185428788262 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "religion": {
+      "colors": 252,
+      "fingerprint": "0x5c947bfda523f10f",
+      "groups": "0x0b3b897ddcffb44e",
+      "legend": "Qualitative",
+      "top": [
+        "#ff455e77 x5381",
+        "#ffb27f00 x3443",
+        "#ff159b61 x2518"
+      ]
+    },
+    "rgo_level": {
+      "colors": 27,
+      "fingerprint": "0xb18f62f73bc4268e",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 13.0, max_value: 26.0 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff140303 x4481"
+      ]
+    },
+    "state_efficacy": {
+      "colors": 617,
+      "fingerprint": "0xe0a9945f985103e4",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 30.61707, max_value: 61.23414 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff646464 x1971"
+      ]
+    },
+    "unrealized_tax_base": {
+      "colors": 284,
+      "fingerprint": "0xa7cf06309aa1d0f2",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 30.90962, max_value: 61.81924 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff040101 x2089"
+      ]
+    },
+    "wealth": {
+      "colors": 235,
+      "fingerprint": "0x75272e26f40f8704",
+      "groups": "0x50e18b21122559de",
+      "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 98.16727, max_value: 196.33454 })",
+      "top": [
+        "#ff808080 x7216",
+        "#ff455e77 x5709",
+        "#ff050101 x2248"
+      ]
+    }
+  },
+  "most_foreign_building": "banking_office 940",
+  "past_political": {
+    "colors": 1083,
+    "fingerprint": "0x3b890aba70402810",
+    "groups": "0xed2ec8845ac8763e",
+    "legend": "Qualitative",
+    "top": [
+      "#ff808080 x7299",
+      "#ff455e77 x5378",
+      "#ff646464 x1615"
+    ]
+  },
+  "projection": "0x862f443ac40db67a",
+  "returning_countries": {
+    "countries": [
+      {
+        "ids": [
+          33554944,
+          33555405
+        ],
+        "tag": "AAA43"
+      }
+    ],
+    "dead_id_checked": true,
+    "one_id_dates": 25,
+    "two_id_dates": 0
+  },
+  "save_version": "1.4.1",
+  "selected": {
+    "locations": "0xa8953e544c2f28be",
+    "map_modes": {
+      "building_levels": {
+        "colors": 163,
+        "dimmed": 28317,
+        "fingerprint": "0xf8a7d723a61c5258",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 41.0, max_value: 82.0 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff060101 x2288"
+        ]
+      },
+      "control": {
+        "colors": 936,
+        "dimmed": 28317,
+        "fingerprint": "0x734e58294cf7eff6",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff646464 x1971"
+        ]
+      },
+      "development": {
+        "colors": 662,
+        "dimmed": 28317,
+        "fingerprint": "0xe4743e94d5cd026a",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 14.609175, max_value: 29.21835 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff646464 x1971"
+        ]
+      },
+      "markets": {
+        "colors": 12252,
+        "dimmed": 28317,
+        "fingerprint": "0x74bafc7eaaef3c15",
+        "groups": "0xda44c75391d5a93f",
+        "legend": "Qualitative",
+        "top": [
+          "#ff140505 x5902",
+          "#ff455e77 x2575",
+          "#ff646464 x1818"
+        ]
+      },
+      "political": {
+        "colors": 991,
+        "dimmed": 28251,
+        "fingerprint": "0x6a868f31f0ab44d4",
+        "groups": "0x2d64a1c56eccacb9",
+        "legend": "Qualitative",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5352",
+          "#ff646464 x1610"
+        ]
+      },
+      "population": {
+        "colors": 703,
+        "dimmed": 28317,
+        "fingerprint": "0xb24848ac9441ffde",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 4874.095675080548, max_value: 33505.0 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff646464 x1971"
+        ]
+      },
+      "population_growth": {
+        "colors": 855,
+        "dimmed": 28317,
+        "fingerprint": "0xd866dae866868d49",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.0034125, max_value: 0.006825 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff646464 x1971"
+        ]
+      },
+      "religion": {
+        "colors": 252,
+        "dimmed": 28263,
+        "fingerprint": "0x9af9d647dd31e6df",
+        "groups": "0x0b3b897ddcffb44e",
+        "legend": "Qualitative",
+        "top": [
+          "#ff455e77 x5381",
+          "#ffb27f00 x3443",
+          "#ff159b61 x2518"
+        ]
+      },
+      "rgo_level": {
+        "colors": 37,
+        "dimmed": 28317,
+        "fingerprint": "0xff6857dfe691c455",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 6.0, max_value: 12.0 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff140303 x4329"
+        ]
+      },
+      "state_efficacy": {
+        "colors": 618,
+        "dimmed": 28317,
+        "fingerprint": "0xa0c627ec93db78f3",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 14.001625, max_value: 28.00325 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff646464 x1971"
+        ]
+      },
+      "unrealized_tax_base": {
+        "colors": 288,
+        "dimmed": 28317,
+        "fingerprint": "0x9c02c219fd56104f",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 8.044945000000002, max_value: 16.089890000000004 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff040101 x2059"
+        ]
+      },
+      "wealth": {
+        "colors": 246,
+        "dimmed": 28317,
+        "fingerprint": "0x7c7167b4f8bac66b",
+        "groups": "0x50e18b21122559de",
+        "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 20.466405, max_value: 40.93281 })",
+        "top": [
+          "#ff808080 x7216",
+          "#ff455e77 x5709",
+          "#ff050101 x2245"
+        ]
+      }
+    }
+  },
+  "selection_cases": {
+    "location_without_market": true,
+    "owned_location": true,
+    "owned_market_anchor": true
+  },
+  "selection_counts": {
+    "after_add": 378,
+    "after_remove": 122,
+    "after_select": 256
+  },
+  "selection_targets": {
+    "focus_on_unowned_land": true,
+    "players": false,
+    "remove_with_a_landless_country": true
+  },
+  "swatches": {
+    "blended_countries": 402,
+    "checked_markets": 139
+  },
+  "timeline": {
+    "available": true,
+    "change_dates": 3254
+  }
+}

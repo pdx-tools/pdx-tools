@@ -128,6 +128,11 @@ export const useEu5PlaythroughId = () => useEu5Store((x) => x.playthroughId);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5Players = () => useEu5Store((x) => x.players);
 export const useEu5Multiplayer = () => useEu5Store((x) => x.multiplayer);
+/** The player's country in a save with one player. Other saves have none. */
+export function useEu5HomeCountry(): number | null {
+  const players = useEu5Players();
+  return players.length === 1 ? players[0]!.countryIdx : null;
+}
 export const useEu5SelectionState = () => useEu5Store((x) => x.appState.selectionState);
 export const useEu5SelectionRevision = () => useEu5Store((x) => x.appState.selectionRevision);
 export const useEu5UserSelectionRevision = () =>

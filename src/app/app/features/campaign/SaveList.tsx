@@ -32,7 +32,7 @@ export function SaveList({
           <SaveRow key={save.key} nav={nav} save={save} onOpen={onOpen} />
         ))}
       </ul>
-      <p className="flex items-center gap-1 border-t border-game-line px-3 py-2 text-[11px] text-game-ink-500">
+      <p className="flex items-center gap-1 border-t border-game-line px-3 py-2 text-game-small text-game-ink-500">
         <Kbd>[</Kbd>
         <Kbd>]</Kbd>
         <span className="ml-0.5">previous and next save</span>
@@ -61,18 +61,20 @@ function SaveRow({
           {formatLongDate(save.date)}
         </p>
         <p className="mt-1 truncate text-[12px] leading-tight text-game-ink-300">{save.name}</p>
-        <p className="mt-0.5 text-[11px] leading-tight text-game-ink-500">{saveSourceText(save)}</p>
+        <p className="mt-0.5 text-game-small leading-tight text-game-ink-500">
+          {saveSourceText(save)}
+        </p>
         {save.problem !== null && (
-          <p className="mt-1.5 text-[11px] leading-[1.4] text-game-warn">
+          <p className="mt-1.5 text-game-small leading-[1.4] text-game-warn">
             {saveProblemText(save.problem)}
           </p>
         )}
         {save.membership === "different" && (
-          <p className="mt-1.5 text-[11px] leading-[1.4] text-game-warn">{otherCampaignText}</p>
+          <p className="mt-1.5 text-game-small leading-[1.4] text-game-warn">{otherCampaignText}</p>
         )}
       </div>
       {save.isOpen ? (
-        <span className="shrink-0 pt-0.5 font-game-num text-[10px] tracking-[0.14em] text-game-accent-300 uppercase">
+        <span className="shrink-0 pt-0.5 font-game-num text-game-label text-game-accent-300 uppercase">
           Open
         </span>
       ) : (
