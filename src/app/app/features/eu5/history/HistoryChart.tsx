@@ -7,7 +7,7 @@ import { HistoryPlot, historyDate, historyGrid } from "./HistoryPlot";
 import { exportHistoryCsv, historySeriesValues } from "./exportHistoryCsv";
 import type { HistoryObservation } from "./observations";
 
-export type HistoryLine = { name: string; raw: (number | null | undefined)[] };
+export type HistoryLine = { name: string; raw: (number | null | undefined)[]; dashed?: boolean };
 
 export function HistoryChart({
   title,
@@ -48,7 +48,7 @@ export function HistoryChart({
         data: values[i].map((value, j) => [historyDate(dates[j].date), value]),
         symbolSize: 5,
         connectNulls: false,
-        lineStyle: { width: 2 },
+        lineStyle: line.dashed ? { width: 3, type: "dashed" } : { width: 2 },
         itemStyle: { color: seriesColor(i) },
       })),
     }),

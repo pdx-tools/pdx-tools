@@ -4,13 +4,16 @@ import { focusRing } from "@/components/game/focusRing";
 import { cx } from "class-variance-authority";
 import { downloadData } from "@/lib/downloadData";
 import type { MapMode } from "@/wasm/wasm_eu5";
+import { GoodSelect } from "../components/GoodSelect";
+import { GameSelect } from "../components/Select";
 import { useEu5PlaythroughId } from "../store";
 import { ContextGraphs } from "./ContextGraphs";
 import { HistoryChart } from "./HistoryChart";
+import { MarketPicker } from "./MarketPicker";
 import { eu5Analysis } from "./analysisClient";
 import { useMapHistory } from "./context";
 import { useCurrentHistorySnapshot } from "./currentSnapshot";
-import { marketObservation } from "./observations";
+import { marketObservation, weightedMarketPrice } from "./observations";
 import { useHistory } from "./store";
 import { useCampaignQuery } from "./useCampaignQuery";
 import { useHistoryObservations } from "./useHistoryObservations";
@@ -54,6 +57,7 @@ export function SaveHistory({
   const [good, setGood] = useState("");
   const [markets, setMarkets] = useState<number[]>([]);
   const [metric, setMetric] = useState<MarketMetric>("price");
+  const [showCombinedPrice, setShowCombinedPrice] = useState(false);
   const [indexed, setIndexed] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -99,10 +103,13 @@ export function SaveHistory({
         .sort((a, b) => a.name.localeCompare(b.name)),
     [catalog.result, focusMarketCenter, restrictToCountry, centerQuery.result],
   );
-  const activeMarkets = useMemo(() => {
-    const chosen = marketChoices.filter((market) => markets.includes(market.center));
-    return chosen.length ? chosen : marketChoices.slice(0, 1);
-  }, [marketChoices, markets]);
+  const activeMarkets = useMemo(
+    () =>
+      marketChoices.length === 1
+        ? marketChoices
+        : marketChoices.filter(({ center }) => markets.includes(center)),
+    [marketChoices, markets],
+  );
   const { dates, error, loading } = useHistoryObservations(
     campaignId,
     { countryId, good: activeGood, centers: activeMarkets.map((market) => market.center) },
@@ -151,15 +158,21 @@ export function SaveHistory({
     }
   };
 
+  const marketObservations = useMemo(
+    () =>
+      activeMarkets.map(({ name, center }) => ({
+        name,
+        observations: dates.map((date) =>
+          activeGood === undefined ? undefined : marketObservation(date, center, activeGood),
+        ),
+      })),
+    [activeMarkets, activeGood, dates],
+  );
   const marketCharts = useMemo(() => {
     const lines = (key: MarketMetric) =>
-      activeMarkets.map((market) => ({
-        name: market.name,
-        raw: dates.map((date) =>
-          activeGood === undefined
-            ? null
-            : marketObservation(date, market.center, activeGood)?.[key],
-        ),
+      marketObservations.map(({ name, observations }) => ({
+        name,
+        raw: observations.map((observation) => observation?.[key]),
       }));
     return {
       price: lines("price"),
@@ -167,7 +180,21 @@ export function SaveHistory({
       demand: lines("demand"),
       stockpile: lines("stockpile"),
     };
-  }, [activeMarkets, activeGood, dates]);
+  }, [marketObservations]);
+  const canCombinePrice = metric === "price" && activeMarkets.length > 1;
+  const primaryLines = useMemo(() => {
+    if (!canCombinePrice || !showCombinedPrice) return marketCharts[metric];
+    return [
+      ...marketCharts.price,
+      {
+        name: "Combined price (volume weighted)",
+        dashed: true,
+        raw: dates.map((_, index) =>
+          weightedMarketPrice(marketObservations.map(({ observations }) => observations[index])),
+        ),
+      },
+    ];
+  }, [canCombinePrice, dates, marketCharts, marketObservations, metric, showCombinedPrice]);
   const errorMessage = catalog.error ?? centerQuery.error ?? error;
 
   return (
@@ -188,56 +215,47 @@ export function SaveHistory({
         <>
           {marketMode ? (
             <div className="grid grid-cols-2 gap-3 rounded-panel border border-game-line bg-game-panel-2 p-3">
-              <label className="text-xs text-game-ink-300">
-                Good
-                <select
-                  className={selectClass}
-                  value={activeGood ?? ""}
-                  onChange={(event) => setGood(event.target.value)}
-                >
-                  {goods?.map((key) => (
-                    <option key={key} value={key}>
-                      {labelFor(key)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs text-game-ink-300">
-                Metric
-                <select
-                  className={selectClass}
+              <div className="min-w-0 space-y-1 text-xs text-game-ink-300">
+                <div>Good</div>
+                <GoodSelect
+                  value={activeGood}
+                  onValueChange={setGood}
+                  goods={(goods ?? []).map((key) => ({ key, name: labelFor(key) }))}
+                />
+              </div>
+              <div className="min-w-0 space-y-1 text-xs text-game-ink-300">
+                <div>Metric</div>
+                <GameSelect
                   value={metric}
-                  onChange={(event) => setMetric(event.target.value as MarketMetric)}
+                  onValueChange={(value: MarketMetric) => setMetric(value)}
                 >
-                  {marketMetricKeys.map((key) => (
-                    <option key={key} value={key}>
-                      {marketMetrics[key]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="col-span-2 text-xs text-game-ink-300">
-                Markets (up to six)
-                <select
-                  multiple
-                  size={5}
-                  className={selectClass}
-                  value={activeMarkets.map((market) => String(market.center))}
-                  onChange={(event) =>
-                    setMarkets(
-                      Array.from(event.target.selectedOptions, (option) =>
-                        Number(option.value),
-                      ).slice(0, 6),
-                    )
-                  }
-                >
-                  {marketChoices.map(({ center, name }) => (
-                    <option key={center} value={center}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <GameSelect.Trigger aria-label="Metric">
+                    <GameSelect.Value />
+                  </GameSelect.Trigger>
+                  <GameSelect.Content>
+                    {marketMetricKeys.map((key) => (
+                      <GameSelect.Item key={key} value={key}>
+                        {marketMetrics[key]}
+                      </GameSelect.Item>
+                    ))}
+                  </GameSelect.Content>
+                </GameSelect>
+              </div>
+              <MarketPicker
+                choices={marketChoices}
+                selected={activeMarkets}
+                onChange={setMarkets}
+              />
+              {canCombinePrice && (
+                <label className="col-span-2 flex items-center gap-2 text-xs text-game-ink-300">
+                  <input
+                    type="checkbox"
+                    checked={showCombinedPrice}
+                    onChange={(event) => setShowCombinedPrice(event.target.checked)}
+                  />
+                  Show combined price weighted by trade volume
+                </label>
+              )}
               <label className="col-span-2 flex items-center gap-2 text-xs text-game-ink-300">
                 <input
                   type="checkbox"
@@ -279,7 +297,9 @@ export function SaveHistory({
       ) : !dates.length ? (
         <p className="text-xs text-game-ink-500">
           {marketMode && catalog.result && activeMarkets.length === 0
-            ? "No market observations match this selection."
+            ? marketChoices.length
+              ? "Select markets to view their history."
+              : "No markets are available for this selection."
             : mapHistory?.enabled
               ? "Add and analyze saves to see how this metric changes over time."
               : "Choose Analyze campaign in the left sidebar to see history here."}
@@ -292,7 +312,7 @@ export function SaveHistory({
                 title={`${labelFor(activeGood)} · ${marketMetrics[metric]}`}
                 unit={metric === "price" ? "Saved price" : "Saved market units"}
                 dates={dates}
-                lines={marketCharts[metric]}
+                lines={primaryLines}
                 selectedId={selected?.id}
                 good={activeGood}
                 metric={metric}
