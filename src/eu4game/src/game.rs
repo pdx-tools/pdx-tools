@@ -329,6 +329,17 @@ impl<'a> Game<'a> {
             .collect()
     }
 
+    pub fn province_region_lookup(&self) -> HashMap<ProvinceId, &'a str> {
+        let area_region: HashMap<_, _> = self
+            .regions()
+            .flat_map(|(region, areas)| areas.map(move |area| (area, region)))
+            .collect();
+        self.areas()
+            .flat_map(|(area, provs)| provs.map(move |p| (p, area)))
+            .filter_map(|(p, area)| area_region.get(area).map(|region| (p, *region)))
+            .collect()
+    }
+
     pub fn land_units(&self) -> impl Iterator<Item = LandUnit<'_>> {
         self.data.land_units().unwrap().iter().map(|x| LandUnit {
             name: x.name(),

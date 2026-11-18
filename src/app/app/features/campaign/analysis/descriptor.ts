@@ -1,29 +1,10 @@
 import type { DateComponents } from "@/features/timeline/date";
+import type { SnapshotDescriptor } from "@/wasm/wasm_eu5";
 import type { FileVersion } from "../types";
 
-/** The data that one save gives to campaign analysis. A game can add fields. */
-export type SnapshotDescriptor = {
-  /** Opaque. Use `snapshotId` to make it. */
-  id: string;
-  game: string;
-  /** The exact campaign identity from the full parse. */
-  campaignId: string;
-  contentHash: string;
-  /** The save date as `YYYY-MM-DD`. */
-  date: string;
-  /** The save date as `YYYYMMDD`, for sorting. */
-  dateSort: number;
-  gameVersion: string;
-  /** Identifies the payload schema and its calculations. */
-  extractorVersion: number;
-  /** The kinds of data in the payload, such as "observations" or "map". */
-  artifacts: readonly string[];
-};
-
-/** Equal content from the same extractor gives the same snapshot. */
-export function snapshotId(game: string, extractorVersion: number, contentHash: string) {
-  return `${game}:${extractorVersion}:${contentHash}`;
-}
+// Each game module generates the same shared analysis types from the
+// campaign-analysis crate.
+export type { SnapshotDescriptor };
 
 export function descriptorDate(descriptor: Pick<SnapshotDescriptor, "dateSort">): DateComponents {
   const { dateSort } = descriptor;

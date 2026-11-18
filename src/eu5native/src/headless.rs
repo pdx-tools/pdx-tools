@@ -2,12 +2,11 @@ use std::path::PathBuf;
 
 use crate::Args;
 use eu5app::{
-    Eu5SaveLoader, Eu5Workspace, MapMode, OpeningView,
-    game_data::{TextureProvider, game_install::Eu5GameInstall},
+    Eu5SaveLoader, Eu5Workspace, MapMode, OpeningView, game_data::game_install::Eu5GameInstall,
 };
 use eu5save::{BasicTokenResolver, Eu5File};
 use pdx_map::layers::DateLayer;
-use pdx_map::{PhysicalSize, StitchedImage, ViewportBounds, World, WorldSize};
+use pdx_map::{PhysicalSize, World, WorldPoint, WorldRect, WorldSize};
 use tracing::{info, info_span};
 
 /// Validate that width and height are both provided or both absent
@@ -20,9 +19,12 @@ fn validate_dimensions(
             if w == 0 || h == 0 {
                 return Err("Width and height must be greater than 0".into());
             }
-            let world_height = eu5app::hemisphere_size().world().height;
-            if h > world_height {
-                return Err(format!("Height {} exceeds world height {}", h, world_height).into());
+            let world = eu5app::hemisphere_size().world();
+            if w > world.width {
+                return Err(format!("Width {} exceeds world width {}", w, world.width).into());
+            }
+            if h > world.height {
+                return Err(format!("Height {} exceeds world height {}", h, world.height).into());
             }
             Ok(())
         }
@@ -42,13 +44,16 @@ fn calculate_viewport_bounds(
     let hemisphere = eu5app::hemisphere_size();
 
     // Center on the player's capital, or on the world center
-    let (capital_x, capital_y) = match map_app.opening_view() {
-        OpeningView::Capital { color_id } => {
-            let center = world.center_of(pdx_map::R16::new(color_id.value()));
-            (center.x as u16, center.y as u16)
-        }
-        OpeningView::World => (hemisphere.width as u16, hemisphere.height as u16 / 2),
+    let capital = match map_app.opening_view() {
+        OpeningView::Capital { color_id } => world
+            .build_spatial_index()
+            .point_of(pdx_map::R16::new(color_id.value())),
+        OpeningView::World => None,
     };
+    let (capital_x, capital_y) = capital.map_or(
+        (hemisphere.width as u16, hemisphere.height as u16 / 2),
+        |center| (center.x as u16, center.y as u16),
+    );
 
     // Center horizontally with proper wraparound handling
     let x_centered = capital_x as i32 - (width / 2) as i32;
@@ -93,17 +98,10 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
 
     let pipeline_components = pdx_map::GpuContext::new().await?;
 
-    let hemisphere = eu5app::hemisphere_size();
-    let size = hemisphere.physical();
-
-    // Access textures as slices directly from the bundle
-    let west_view =
-        pipeline_components.create_texture(game_bundle.west_texture(), size, "West Texture");
-    let east_view =
-        pipeline_components.create_texture(game_bundle.east_texture(), size, "East Texture");
-
     // Zero-copy: Arc::clone just increments ref count (no data duplication)
     let world = game_bundle.world();
+    let tiles =
+        pipeline_components.upload_world_tiles(&pdx_map::WorldTiles::from_rows(world.as_rows()));
 
     let map_app = Eu5Workspace::new(save.take_gamestate(), game_bundle.into_game_data())?;
     let save_date = map_app.gamestate().metadata().date.date_fmt().to_string();
@@ -128,8 +126,7 @@ async fn run_headless_async(args: Args) -> Result<(), Box<dyn std::error::Error>
         map_app,
         &world,
         &pipeline_components,
-        west_view,
-        east_view,
+        tiles,
         save_date,
         width,
         height,
@@ -144,8 +141,7 @@ async fn render_viewport(
     mut map_app: Eu5Workspace<'_>,
     world: &World,
     pipeline_components: &'_ pdx_map::GpuContext,
-    west_view: pdx_map::MapTexture,
-    east_view: pdx_map::MapTexture,
+    tiles: pdx_map::GpuWorldTiles,
     save_date: String,
     width: u32,
     height: u32,
@@ -159,76 +155,22 @@ async fn render_viewport(
         (0, 0) // Full world starts at origin
     };
 
-    let hemisphere = eu5app::hemisphere_size();
-    let viewport_width = if width > hemisphere.width {
-        width / 2
-    } else {
-        width
-    };
-
-    let mut viewport = ViewportBounds::new(WorldSize::new(viewport_width, height));
-    viewport.rect.origin.x = x_offset;
-    viewport.rect.origin.y = y_offset;
-
-    let mut renderer = pdx_map::HeadlessMapRenderer::new(
-        pipeline_components.clone(),
-        west_view,
-        east_view,
-        viewport.rect.size.width,
-        height,
-    )?;
+    let mut renderer = pdx_map::HeadlessMapRenderer::new(pipeline_components.clone(), tiles)?;
 
     map_app.set_map_mode(MapMode::Political);
     renderer.update_locations(map_app.location_arrays());
 
-    let text_scale = calculate_text_scale(height);
-    let date_layer = renderer.add_layer(DateLayer::new(save_date, text_scale));
+    let origin = WorldPoint::new(x_offset, y_offset);
+    let rect = WorldRect::new(origin, WorldSize::new(width, height));
+    let mut image_data = renderer.capture_world(rect).await?;
 
-    // For viewports wider than tile_width (8192), we need to stitch two renders together
-    let image_data = if width > hemisphere.width {
-        assert!(
-            width <= hemisphere.width * 2,
-            "viewport width exceeds maximum for stitching"
-        );
-
-        let mut stitched_data = StitchedImage::new(PhysicalSize::new(width, height));
-
-        // Render west half
-        let span = info_span!("readback_west");
-        let _enter = span.enter();
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-        stitched_data.write_west(viewport_data.rows());
-        viewport_data.finish();
-        drop(_enter);
-
-        // Hide date layer for east half (only show once)
-        renderer.set_layer_visible(date_layer, false);
-
-        // Render east half
-        let span = info_span!("readback_east");
-        let _enter = span.enter();
-        viewport.rect.origin.x += viewport.rect.size.width;
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-        stitched_data.write_east(viewport_data.rows());
-        viewport_data.finish();
-        stitched_data.into_inner()
-    } else {
-        let mut image_buffer = vec![0u8; (width * height * 4) as usize];
-
-        let span = info_span!("readback_viewport_data");
-        let _enter = span.enter();
-        let viewport_data = renderer.capture_viewport(viewport).await?;
-
-        for (src, dst) in viewport_data
-            .rows()
-            .zip(image_buffer.chunks_exact_mut(width as usize * 4))
-        {
-            dst.copy_from_slice(src);
-        }
-
-        viewport_data.finish();
-        image_buffer
-    };
+    let size = PhysicalSize::new(width, height);
+    DateLayer::write_over(
+        &save_date,
+        calculate_text_scale(height),
+        &mut image_data,
+        size,
+    );
 
     let span = info_span!("RgbaImage::from_raw");
     let _enter = span.enter();

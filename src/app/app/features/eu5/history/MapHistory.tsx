@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useState } from "react";
-import { useCampaign } from "@/features/campaign/CampaignProvider";
+import { useCampaign, useCampaignTimeline } from "@/features/campaign/CampaignProvider";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { addDays, addMonths, addYears, daysBetween } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
@@ -14,7 +14,7 @@ import {
   useEu5SaveDate,
 } from "../store";
 import { CampaignAnalysis } from "./CampaignAnalysis";
-import { campaignAnalysis } from "./analysisClient";
+import { eu5Analysis } from "./analysisClient";
 import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 import { MapHistoryContext } from "./context";
 import {
@@ -57,17 +57,29 @@ function useMapHistoryState() {
   );
   const saveDate = useEu5SaveDate();
   const campaign = useCampaign();
+  const timelineCampaign = useCampaignTimeline();
   const progress = useHistory((history) => history.progress);
   const imported = useHistory((history) => history.snapshots);
   const speed = useHistory((history) => history.playbackSpeed);
   const preview = usePreviewSession();
   const [layout, setLayout] = useState<{ engine: typeof engine; key: string } | null>(null);
+  const timelinePending = timelineCampaign?.pending ?? 0;
+  const timelineSaves = timelineCampaign?.saves;
+  const publishedDates = useMemo(
+    () =>
+      timelinePending
+        ? new Set(timelineSaves?.map(({ date }) => date.year * 10000 + date.month * 100 + date.day))
+        : null,
+    [timelinePending, timelineSaves],
+  );
   const frames = useMemo(
     () =>
       layout?.engine === engine && campaignId
-        ? publishedMapFrames(imported, campaignId, layout.key)
+        ? publishedMapFrames(imported, campaignId, layout.key).filter(
+            (frame) => !publishedDates || publishedDates.has(frame.dateSort),
+          )
         : EMPTY_FRAMES,
-    [layout, engine, campaignId, imported],
+    [layout, engine, campaignId, imported, publishedDates],
   );
   // Read again when the sources or the registry change.
   useHistory((history) => history.sources);
@@ -167,19 +179,11 @@ function useMapHistoryState() {
     setPlaying(false);
     cancelPreview();
     try {
-      await campaignAnalysis().clearCampaign(campaignId);
-      useHistory.setState((history) => {
-        const snapshots = history.snapshots.filter((row) => row.campaignId !== campaignId);
-        const ids = new Set(snapshots.map((row) => row.id));
-        return {
-          snapshots,
-          sources: Object.fromEntries(
-            Object.entries(history.sources).filter(([, source]) => ids.has(source.snapshotId)),
-          ),
-          issues: [],
-          analysisPausedCampaigns: [...new Set([...history.analysisPausedCampaigns, campaignId])],
-        };
-      });
+      await eu5Analysis.clear();
+      const history = useHistory.getState();
+      history.removeSnapshots();
+      history.pauseAnalysis(campaignId);
+      useHistory.setState({ issues: [] });
     } catch (failure) {
       setError(String(failure));
     }
@@ -199,8 +203,9 @@ function useMapHistoryState() {
     const { start, end } = mapTimelineBounds(
       saveDate,
       frames,
-      campaign?.saves.filter((save) => save.membership !== "different").map((save) => save.date) ??
-        [],
+      timelineCampaign?.saves
+        .filter((save) => save.membership !== "different")
+        .map((save) => save.date) ?? [],
     );
     const date = recordingDate ?? (selectedFrame ? mapFrameDate(selectedFrame) : saveDate);
     const setDate: TimelineController["setDate"] = (next) => {
@@ -256,17 +261,11 @@ function useMapHistoryState() {
   // The date and legend follow the frame that the map shows, not the request.
   // A recording shows its snapshots, with or without a preview.
   const previewView: {
-    shown: { date: DateComponents; gradient: GradientConfig | null; snapshotId?: string } | null;
+    shown: { date: DateComponents; gradient: GradientConfig | null } | null;
   } | null = recordingDate
     ? { shown: { date: recordingDate, gradient: recordingGradient } }
     : previewing
-      ? {
-          shown: shown && {
-            date: shown.date,
-            gradient: shown.gradient,
-            snapshotId: shown.snapshotId,
-          },
-        }
+      ? { shown: shown && { date: shown.date, gradient: shown.gradient } }
       : null;
   return {
     controller,

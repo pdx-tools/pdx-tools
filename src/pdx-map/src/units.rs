@@ -176,6 +176,15 @@ impl<Unit, T> Rect<Unit, T> {
     }
 }
 
+impl<Unit> Rect<Unit, f32> {
+    pub fn center(&self) -> Point<Unit, f32> {
+        Point::new(
+            self.origin.x + self.size.width / 2.0,
+            self.origin.y + self.size.height / 2.0,
+        )
+    }
+}
+
 impl<Unit, T: Display> Display for Rect<Unit, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}@{}", self.size, self.origin)

@@ -14,7 +14,7 @@ export function BoxSelectOverlay() {
         "pointer-events-none absolute border border-solid",
         rect.operation === "remove"
           ? "border-game-err bg-game-err/15 shadow-[0_0_0_1px_rgba(196,106,90,0.35)]"
-          : "border-game-accent-300 bg-game-accent-soft shadow-[0_0_0_1px_var(--color-game-accent-line)]",
+          : "border-game-accent-300 bg-game-accent-soft shadow-[0_0_0_1px_var(--game-accent-line)]",
       )}
       style={{
         left: rect.left,

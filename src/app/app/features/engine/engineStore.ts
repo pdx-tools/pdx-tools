@@ -17,7 +17,7 @@ export type DetectedDataType = SaveGameInput["kind"];
 
 export function extensionType(filename: string): DetectedDataType {
   const splits = filename.split(".");
-  const extension = splits[splits.length - 1];
+  const extension = splits[splits.length - 1].toLowerCase();
   switch (extension) {
     case "rome":
       return "imperator";

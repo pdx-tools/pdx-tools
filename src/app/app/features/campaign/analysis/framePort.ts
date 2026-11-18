@@ -4,14 +4,15 @@ type Request = { id: number; snapshotId: string };
 type Reply<F> = { id: number; frame?: F; error?: string; closed?: boolean };
 
 /**
- * Serve frames from the analysis worker to a game worker. Each reply sends a
- * copy, so the resident columns stay in the store. The game builds the frame.
+ * Serve frames from the analysis worker to a game worker. The lookup gives a
+ * new copy of the columns for each call, so the reply can transfer them. The
+ * game builds the frame.
  */
-export function serveFrames<F>(port: MessagePort, lookup: (snapshotId: string) => F) {
-  const receive = (event: MessageEvent<Request>) => {
+export function serveFrames<F>(port: MessagePort, lookup: (snapshotId: string) => F | Promise<F>) {
+  const receive = async (event: MessageEvent<Request>) => {
     const { id, snapshotId } = event.data;
     try {
-      const frame = structuredClone(lookup(snapshotId));
+      const frame = await lookup(snapshotId);
       port.postMessage({ id, frame } satisfies Reply<F>, collectBuffers(frame));
     } catch (error) {
       port.postMessage({ id, error: String(error) } satisfies Reply<F>);
@@ -27,7 +28,7 @@ export function serveFrames<F>(port: MessagePort, lookup: (snapshotId: string) =
 }
 
 /** The `FrameServer` methods of an analysis worker. */
-export function frameServer<F>(lookup: (snapshotId: string) => F) {
+export function frameServer<F>(lookup: (snapshotId: string) => F | Promise<F>) {
   const connections = new Map<string, () => void>();
   return {
     connectFrames: (id: string, port: MessagePort) => {

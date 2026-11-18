@@ -17,11 +17,11 @@ const entry = (id: string): LocalSaveEntry => ({
 it("finds new selected files without repeating attempted imports", () => {
   const a = entry("one"),
     b = entry("two");
-  const attempted = new Set([`campaign:${campaignAnalysisSourceKey(a)}`]);
+  const attempted = new Set([campaignAnalysisSourceKey(a)]);
   expect(pendingCampaignAnalysis([a, b], "campaign", attempted)).toEqual([b]);
   expect(pendingCampaignAnalysis([a, b, entry("three")], "campaign", attempted)).toHaveLength(2);
 });
-it("does not mix games or known campaigns and permits a previously unknown save in its own campaign", () => {
+it("does not mix games or known campaigns", () => {
   const a = entry("one");
   expect(
     pendingCampaignAnalysis(
@@ -41,12 +41,10 @@ it("does not mix games or known campaigns and permits a previously unknown save 
       new Set(),
     ),
   ).toEqual([a]);
-  const attempted = new Set([`other:${campaignAnalysisSourceKey(a)}`]);
-  expect(pendingCampaignAnalysis([a], "campaign", attempted)).toEqual([a]);
 });
 it("re-analyzes modified saves but not a metadata read of the same file version", () => {
   const a = entry("one");
-  const attempted = new Set([`campaign:${campaignAnalysisSourceKey(a)}`]);
+  const attempted = new Set([campaignAnalysisSourceKey(a)]);
   const same = { ...a, version: { size: 4, lastModified: 1 } };
   const changed = { ...a, version: { size: 5, lastModified: 2 } };
   expect(pendingCampaignAnalysis([same], "campaign", attempted)).toEqual([]);

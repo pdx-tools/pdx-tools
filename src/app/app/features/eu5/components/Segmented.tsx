@@ -8,7 +8,7 @@ import { focusRing } from "@/components/game/focusRing";
  * same data ("Value" / "Units").
  *
  * The frame is the default `GameButton` plate: 28px tall, `panel` ground,
- * `line` edge, `control` radius. Each option is a `Chip` inside it: the chosen
+ * `control-line` edge, `control` radius. Each option is a `Chip` inside it: the chosen
  * one is the committed chip (brass wash, brass hairline, `brass-100` text), the
  * rest are ghost text that step up the ladder on hover. Arrow keys move
  * between options; the ring comes from the shared `focusRing`.
@@ -39,7 +39,7 @@ const SegmentedRoot = React.forwardRef<
           if (next) onValueChange(next);
         }}
         className={cx(
-          "inline-flex h-7 w-fit items-center gap-0.5 rounded-[var(--radius-control)] border border-solid border-game-line bg-game-panel p-0.5",
+          "inline-flex h-7 w-fit items-center gap-0.5 rounded-[var(--radius-control)] border border-solid border-game-control-line bg-game-panel p-0.5",
           className,
         )}
         {...props}

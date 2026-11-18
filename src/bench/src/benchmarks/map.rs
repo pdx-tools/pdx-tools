@@ -111,8 +111,40 @@ fn adjacency_query(adjacency: &TopologyIndex) -> usize {
     sampled_neighbor_count(adjacency)
 }
 
-fn center_of(world: &World) -> WorldPoint<u32> {
-    world.center_of(R16::new(1000))
+#[derive(Debug)]
+pub struct LookupInput {
+    pub index: SpatialIndex,
+    pub points: Vec<WorldPoint<f32>>,
+}
+
+/// The index and a fixed spread of points across the world to look up.
+pub fn setup_lookup(asset_name: &str) -> LookupInput {
+    let world = setup_world(asset_name);
+    let size = world.size();
+    let mut state = 0x9E37_79B9_7F4A_7C15u64;
+    let points = (0..1000)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let x = (state % u64::from(size.width)) as f32 + 0.5;
+            let y = ((state >> 32) % u64::from(size.height)) as f32 + 0.5;
+            WorldPoint::new(x, y)
+        })
+        .collect();
+
+    LookupInput {
+        index: world.build_spatial_index(),
+        points,
+    }
+}
+
+fn location_at(input: &LookupInput) -> u64 {
+    input
+        .points
+        .iter()
+        .map(|&point| u64::from(input.index.location_at(point).value()))
+        .sum()
 }
 
 pub mod criterion {
@@ -161,11 +193,13 @@ pub mod criterion {
         group.finish();
     }
 
-    pub fn map_center_of_benchmark(c: &mut Criterion) {
-        let world = super::setup_world(super::PROVINCES_ASSET);
+    pub fn map_location_at_benchmark(c: &mut Criterion) {
+        let input = super::setup_lookup(super::PROVINCES_ASSET);
 
-        let mut group = c.benchmark_group("map/center_of");
-        group.bench_function("single", |b| b.iter(|| black_box(super::center_of(&world))));
+        let mut group = c.benchmark_group("map/location_at");
+        group.bench_function("1000_points", |b| {
+            b.iter(|| black_box(super::location_at(&input)))
+        });
         group.finish();
     }
 }
@@ -173,7 +207,7 @@ pub mod criterion {
 #[cfg(not(target_family = "wasm"))]
 pub mod gungraun {
     use gungraun::{library_benchmark, library_benchmark_group};
-    use pdx_map::{SpatialIndex, TopologyIndex, World, WorldPoint};
+    use pdx_map::{SpatialIndex, TopologyIndex, World};
 
     #[library_benchmark(setup = crate::benchmarks::map::setup_rgb_data)]
     #[bench::from_rgb8(crate::benchmarks::map::PROVINCES_ASSET)]
@@ -206,10 +240,10 @@ pub mod gungraun {
         crate::benchmarks::map::adjacency_query(&adjacency)
     }
 
-    #[library_benchmark(setup = crate::benchmarks::map::setup_world)]
-    #[bench::single(crate::benchmarks::map::PROVINCES_ASSET)]
-    fn center_of_benchmark(world: World) -> WorldPoint<u32> {
-        crate::benchmarks::map::center_of(&world)
+    #[library_benchmark(setup = crate::benchmarks::map::setup_lookup)]
+    #[bench::points(crate::benchmarks::map::PROVINCES_ASSET)]
+    fn location_at_benchmark(input: crate::benchmarks::map::LookupInput) -> u64 {
+        crate::benchmarks::map::location_at(&input)
     }
 
     library_benchmark_group!(
@@ -220,7 +254,7 @@ pub mod gungraun {
             aabb_index_query_benchmark,
             adjacency_build_benchmark,
             adjacency_query_benchmark,
-            center_of_benchmark,
+            location_at_benchmark,
         ]
     );
 }

@@ -16,7 +16,6 @@ crate-type = ["cdylib", "rlib"]
 default = ["zstd_rust"]
 zstd_c = ["pdx-save-codec/zstd_c"]
 zstd_rust = ["pdx-save-codec/zstd_rust"]
-zstd_c_fat_lto = ["pdx-save-codec/zstd_c_fat_lto"]
 
 [dependencies]
 js-sys = { workspace = true }

@@ -54,6 +54,8 @@ pub enum RenderErrorKind {
     DevicePoll(wgpu::PollError),
     /// Buffer range mapping failed
     MapRange(wgpu::MapRangeError),
+    /// A render target size is empty or exceeds the texture limit
+    TargetSize(crate::PhysicalSize<u32>),
 }
 
 impl fmt::Display for RenderError {
@@ -67,6 +69,13 @@ impl fmt::Display for RenderError {
             RenderErrorKind::OperationCanceled => write!(f, "Async operation was canceled"),
             RenderErrorKind::DevicePoll(e) => write!(f, "Device polling failed: {e}"),
             RenderErrorKind::MapRange(e) => write!(f, "Buffer range mapping failed: {e}"),
+            RenderErrorKind::TargetSize(size) => write!(
+                f,
+                "Render target {}x{} must be at least 1 and at most {} on each side",
+                size.width,
+                size.height,
+                crate::renderer::MAX_TEXTURE_DIMENSION
+            ),
         }
     }
 }
@@ -88,6 +97,7 @@ impl std::error::Error for RenderError {
             RenderErrorKind::OperationCanceled => None,
             RenderErrorKind::DevicePoll(e) => Some(e),
             RenderErrorKind::MapRange(e) => Some(e),
+            RenderErrorKind::TargetSize(_) => None,
         }
     }
 }

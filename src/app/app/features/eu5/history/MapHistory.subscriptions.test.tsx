@@ -25,7 +25,10 @@ vi.mock("zustand", async (original) => ({
   },
 }));
 vi.mock("@/features/account", () => ({ useIsDeveloper: () => feature.enabled }));
-vi.mock("@/features/campaign/CampaignProvider", () => ({ useCampaign: () => null }));
+vi.mock("@/features/campaign/CampaignProvider", () => ({
+  useCampaign: () => null,
+  useCampaignTimeline: () => null,
+}));
 vi.mock("./CampaignAnalysis", () => ({ CampaignAnalysis: () => null }));
 vi.mock("./analysisClient", () => ({
   campaignAnalysis: vi.fn(),

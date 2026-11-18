@@ -40,18 +40,18 @@
     "echarts": "6.1.0",
     "nanoid": "6.0.1",
     "postgres": "3.4.9",
-    "posthog-js": "1.430.3",
+    "posthog-js": "1.444.0",
     "posthog-node": "5.52.1",
     "radix-ui": "1.6.7",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "8.3.1",
     "sonner": "2.0.8",
-    "zod": "4.6.3",
+    "zod": "4.6.7",
     "zustand": "5.0.15"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.64.0",
+    "@cloudflare/vite-plugin": "1.66.0",
     "@playwright/test": "1.63.0",
     "@react-router/dev": "8.3.1",
     "@react-router/fs-routes": "8.3.1",
@@ -68,7 +68,7 @@
     "tailwindcss": "4.3.3",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "5.0.0",
+    "vitest": "5.0.5",
     "wrangler": "catalog:"
   },
   "browserslist": [

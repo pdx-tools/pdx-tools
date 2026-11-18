@@ -29,6 +29,7 @@ use eu5app::{
     UiCountryIdx,
 };
 use eu5app::{Eu5AnySaveLoader, Eu5LoadedSave};
+use eu5app::{SelectionOp, SelectionSet, SelectionTarget};
 use eu5save::models::Gamestate;
 use eu5save::{Eu5ErrorKind, Eu5Melt};
 use eu5save::{FailedResolveStrategy, MeltOptions};
@@ -77,6 +78,25 @@ pub enum MapMode {
     Religion,
     StateEfficacy,
     PopulationGrowth,
+}
+
+/// The kind of ids in a selection change.
+#[derive(Debug, Clone, Copy, tsify::Tsify, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SelectionKind {
+    Countries,
+    Markets,
+    Locations,
+}
+
+/// The selection in a form that a replace selects again.
+#[derive(Debug, Clone, tsify::Tsify, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum SelectionTargetData {
+    Players,
+    Countries { ids: Vec<u32> },
+    Markets { ids: Vec<u32> },
+    Locations { ids: Vec<u32> },
 }
 
 #[derive(Debug, Clone, tsify::Tsify, Serialize)]
@@ -139,7 +159,7 @@ impl From<Eu5MapMode> for MapMode {
     }
 }
 
-mod map_projection;
+mod analysis;
 mod tokens;
 pub use tokens::set_tokens;
 use wasm_pdx_core::blob::{BlobReader, read_blob_start};
@@ -167,15 +187,6 @@ impl From<Eu5TableCell> for TableCell {
 }
 
 pub use eu5app::gradient::{GradientConfig, GradientPalette, GradientScale};
-
-#[derive(Clone, Debug, Serialize, tsify::Tsify)]
-#[serde(rename_all = "camelCase")]
-#[tsify(hashmap_as_object)]
-pub struct SelectionChange {
-    center_color_id: Option<u32>,
-    #[serde(flatten)]
-    map: MapChangeData,
-}
 
 /// Which GPU buffers a map operation left stale, and the legend to show.
 #[derive(Clone, Debug, Serialize, tsify::Tsify)]
@@ -278,16 +289,6 @@ fn legend_to_gradient(legend: eu5app::gradient::MapLegend) -> Option<GradientCon
         eu5app::gradient::MapLegend::Qualitative => None,
         eu5app::gradient::MapLegend::Quantitative(c) => Some(c),
     }
-}
-
-fn selection_change_ts(
-    center: Option<eu5app::ColorIdx>,
-    change: MapChange,
-) -> Result<Ts<SelectionChange>, JsError> {
-    into_ts(SelectionChange {
-        center_color_id: center.map(|c| c.value() as u32),
-        map: change.into(),
-    })
 }
 
 fn map_change_ts(change: MapChange) -> Result<Ts<MapChangeData>, JsError> {
@@ -423,70 +424,62 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
     }
 }
 
-#[derive(Debug, Serialize, Tsify)]
-#[serde(rename_all = "camelCase")]
-pub struct SaveAnalysisImport {
-    pub extractor_version: u32,
-    pub snapshot: eu5app::snapshot::SaveSnapshot,
-    pub hash: String,
-    pub overviews: eu5app::analysis::OverviewData,
-    pub country_ids: Vec<u32>,
-    pub country_names: std::collections::BTreeMap<u32, String>,
-}
-
 fn analysis_result(
     mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>,
-    game_bundle: &Eu5WasmGameBundle,
-    localization: &Eu5WasmLocalizationBundle,
-) -> Result<JsValue, JsError> {
-    use eu5app::presentation::{LocalizationContext, Present};
-    let (snapshot, projection, overviews, country_ids, country_names) = {
+    bundles: Option<(&Eu5WasmGameBundle, &Eu5WasmLocalizationBundle)>,
+) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
+    let (projection, world, campaign_id, date, game_version, save, names, overviews) = {
         let game = loaded.take_gamestate();
-        if game.metadata().playthrough_id.to_str().is_empty() {
+        let meta = game.metadata();
+        if meta.playthrough_id.to_str().is_empty() {
             return Err(JsError::new("Save has no campaign ID"));
         }
-        let context =
-            LocalizationContext::new(&localization.localization, &game_bundle.game_data, &game);
-        let ids = eu5app::snapshot::country_ids_by_index(&game);
-        let snapshot = eu5app::snapshot::extract(&game);
-        let names = snapshot
-            .countries
-            .iter()
-            .filter_map(|country| {
-                let idx = game
-                    .countries
-                    .get(eu5save::models::CountryId::new(country.country_id))?;
-                Some((country.country_id, idx.present(&context).name))
-            })
-            .collect();
-        (
-            snapshot,
-            map_projection::into_js(
-                &eu5app::map_projection::extract(&game)
-                    .map_err(|e| JsError::new(&e.to_string()))?,
-            )?,
-            eu5app::analysis::extract_overviews(
-                &game,
-                &game_bundle.game_data,
-                &localization.localization,
+        let date = Eu5DateComponents::from(meta.date);
+        let projection =
+            eu5app::map_projection::extract(&game).map_err(|e| JsError::new(&e.to_string()))?;
+        let version = format!(
+            "{}.{}.{}",
+            meta.version.major, meta.version.minor, meta.version.patch
+        );
+        let world = eu5app::map_projection::world_summary(&game);
+        let campaign = meta.playthrough_id.to_str().to_owned();
+        let date = campaign_analysis::SaveDate {
+            year: i32::from(date.year),
+            month: date.month,
+            day: date.day,
+        };
+        let save = eu5app::snapshot::extract(&game);
+        let (names, overviews) = match bundles {
+            Some((game_bundle, localization)) => {
+                let workspace = eu5app::Eu5Workspace::new(game, Arc::clone(&game_bundle.game_data))
+                    .map_err(|error| JsError::new(&error.to_string()))?;
+                let (names, overviews) =
+                    eu5app::extract_analytics(&workspace, &localization.localization, &save);
+                (names, Some(overviews))
+            }
+            None => (
+                save.countries
+                    .iter()
+                    .map(|country| (country.country_id, country.tag.clone()))
+                    .collect(),
+                None,
             ),
-            ids,
-            names,
+        };
+        (
+            projection, world, campaign, date, version, save, names, overviews,
         )
     };
-    let hash = loaded.into_observer().finish();
-    let result: JsValue = into_ts(SaveAnalysisImport {
-        extractor_version: eu5app::map_projection::EXTRACTOR_VERSION,
-        snapshot,
-        hash,
-        overviews,
-        country_ids,
-        country_names,
-    })?
-    .into();
-    js_sys::Reflect::set(&result, &JsValue::from_str("projection"), &projection)
-        .map_err(|_| JsError::new("Could not create analytical map columns"))?;
-    Ok(result)
+    // The checksum is complete after the game state is released.
+    let source = campaign_analysis::SnapshotSource {
+        campaign_id,
+        content_hash: loaded.into_observer().finish(),
+        date,
+        game_version,
+    };
+    let observation =
+        eu5app::analysis::analytical_observation(projection, world, source, save, names, overviews)
+            .map_err(campaign_analysis::wasm::error)?;
+    analysis::AnalysisSnapshot::observation(&observation)
 }
 
 #[wasm_bindgen]
@@ -514,16 +507,29 @@ impl ImportLoader {
     pub fn meta(&self) -> Result<Ts<Eu5SaveMetadataHandle>, JsError> {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
-    pub fn parse_import(
+    pub fn parse_import(self) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
+        self.parse(None)
+    }
+
+    pub fn parse_import_with_charts(
         self,
         game: &Eu5WasmGameBundle,
         localization: &Eu5WasmLocalizationBundle,
-    ) -> Result<JsValue, JsError> {
+    ) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
+        self.parse(Some((game, localization)))
+    }
+}
+
+impl ImportLoader {
+    fn parse(
+        self,
+        bundles: Option<(&Eu5WasmGameBundle, &Eu5WasmLocalizationBundle)>,
+    ) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
         let loaded = self
             .parser
             .parse()
             .map_err(|e| JsError::new(&e.to_string()))?;
-        analysis_result(loaded, game, localization)
+        analysis_result(loaded, bundles)
     }
 }
 
@@ -888,77 +894,73 @@ impl Eu5App {
         self.app.highlight_market(market_id);
     }
 
-    /// Select the entity at the given location based on the current interaction mode.
+    /// Change the selection as a click at `location_idx` does.
     #[wasm_bindgen]
-    pub fn select_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
+    pub fn click(
+        &mut self,
+        op: Ts<SelectionOp>,
+        location_idx: u32,
+    ) -> Result<Ts<MapChangeData>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        map_change_ts(self.app.select_entity(idx))
+        map_change_ts(self.app.click(op.to_rust()?, idx))
     }
 
-    /// Add the entity at `location_idx` to the existing selection.
+    /// Change the selection by whole countries, whole markets or single locations.
     #[wasm_bindgen]
-    pub fn add_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let idx = eu5save::models::LocationIdx::new(location_idx);
-        map_change_ts(self.app.add_entity(idx))
-    }
-
-    /// Remove the entity at `location_idx` from the selection.
-    #[wasm_bindgen]
-    pub fn remove_entity(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let idx = eu5save::models::LocationIdx::new(location_idx);
-        map_change_ts(self.app.remove_entity(idx))
-    }
-
-    #[wasm_bindgen]
-    pub fn select_country(&mut self, country_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
-        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return selection_change_ts(None, self.app.no_map_change());
+    pub fn change_selection(
+        &mut self,
+        op: Ts<SelectionOp>,
+        kind: Ts<SelectionKind>,
+        ids: Vec<u32>,
+    ) -> Result<Ts<MapChangeData>, JsError> {
+        let set = match kind.to_rust()? {
+            SelectionKind::Countries => SelectionSet::Countries(
+                ids.into_iter()
+                    .filter_map(eu5save::models::CountryIdx::from_value)
+                    .collect(),
+            ),
+            SelectionKind::Markets => SelectionSet::Markets(
+                ids.into_iter()
+                    .map(eu5save::models::MarketId::new)
+                    .collect(),
+            ),
+            SelectionKind::Locations => SelectionSet::Locations(
+                ids.into_iter()
+                    .map(eu5save::models::LocationIdx::new)
+                    .collect(),
+            ),
         };
-        let (center, gradient) = self.app.select_country_by_idx(idx);
-        selection_change_ts(center, gradient)
+        map_change_ts(self.app.change_selection(op.to_rust()?, set))
     }
 
+    /// The selection in a form that a replace selects again. None for an
+    /// empty selection.
     #[wasm_bindgen]
-    pub fn add_country(&mut self, country_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return map_change_ts(self.app.no_map_change());
+    pub fn selection_target(&self) -> Result<Option<Ts<SelectionTargetData>>, JsError> {
+        let Some(target) = self.app().selection_target() else {
+            return Ok(None);
         };
-        map_change_ts(self.app.add_country_by_idx(idx))
-    }
-
-    #[wasm_bindgen]
-    pub fn remove_country(&mut self, country_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let Some(idx) = eu5save::models::CountryIdx::from_value(country_idx) else {
-            return map_change_ts(self.app.no_map_change());
+        let data = match target {
+            SelectionTarget::Players => SelectionTargetData::Players,
+            SelectionTarget::Set(SelectionSet::Countries(ids)) => SelectionTargetData::Countries {
+                ids: ids.into_iter().map(|idx| idx.value()).collect(),
+            },
+            SelectionTarget::Set(SelectionSet::Markets(ids)) => SelectionTargetData::Markets {
+                ids: ids.into_iter().map(|id| id.value()).collect(),
+            },
+            SelectionTarget::Set(SelectionSet::Locations(ids)) => SelectionTargetData::Locations {
+                ids: ids.into_iter().map(|idx| idx.value()).collect(),
+            },
         };
-        map_change_ts(self.app.remove_country_by_idx(idx))
+        into_ts(data).map(Some)
     }
 
+    /// The id of the location at the center of a market. It stays the same
+    /// across saves.
     #[wasm_bindgen]
-    pub fn select_market(&mut self, market_id: u32) -> Result<Ts<SelectionChange>, JsError> {
-        let id = eu5save::models::MarketId::new(market_id);
-        let (center, gradient) = self.app.select_market_by_id(id);
-        selection_change_ts(center, gradient)
-    }
-
-    /// Select the market at a location using the current save's market IDs.
-    #[wasm_bindgen]
-    pub fn select_market_at(&mut self, location_idx: u32) -> Result<Ts<SelectionChange>, JsError> {
-        let idx = eu5save::models::LocationIdx::new(location_idx);
-        let (center, gradient) = self.app.select_market_at(idx);
-        selection_change_ts(center, gradient)
-    }
-
-    #[wasm_bindgen]
-    pub fn add_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let id = eu5save::models::MarketId::new(market_id);
-        map_change_ts(self.app.add_market_by_id(id))
-    }
-
-    #[wasm_bindgen]
-    pub fn remove_market(&mut self, market_id: u32) -> Result<Ts<MapChangeData>, JsError> {
-        let id = eu5save::models::MarketId::new(market_id);
-        map_change_ts(self.app.remove_market_by_id(id))
+    pub fn market_center_id(&self, market_id: u32) -> Option<u32> {
+        let market = eu5save::models::MarketId::new(market_id);
+        self.app().market_center_id(market).map(|id| id.value())
     }
 
     /// Clear the current selection and focus.
@@ -973,10 +975,16 @@ impl Eu5App {
     pub fn set_focused_location(
         &mut self,
         location_idx: u32,
-    ) -> Result<Ts<SelectionChange>, JsError> {
+    ) -> Result<Ts<MapChangeData>, JsError> {
         let idx = eu5save::models::LocationIdx::new(location_idx);
-        let (center, gradient) = self.app.set_focused_location(idx);
-        selection_change_ts(center, gradient)
+        map_change_ts(self.app.set_focused_location(idx))
+    }
+
+    /// Focus `location_idx` when it is in the selection. Otherwise nothing changes.
+    #[wasm_bindgen]
+    pub fn focus_in_selection(&mut self, location_idx: u32) -> Result<Ts<MapChangeData>, JsError> {
+        let idx = eu5save::models::LocationIdx::new(location_idx);
+        map_change_ts(self.app.focus_in_selection(idx))
     }
 
     /// Clear the focused location.
@@ -1004,77 +1012,25 @@ impl Eu5App {
     }
 
     #[wasm_bindgen]
-    pub fn apply_resolved_box_selection(
-        &mut self,
-        location_idxs: js_sys::Uint32Array,
-        add: bool,
-    ) -> Result<Ts<MapChangeData>, JsError> {
-        let locations = location_idxs
-            .to_vec()
-            .into_iter()
-            .map(eu5save::models::LocationIdx::new);
-        let change = self.app.apply_resolved_box_selection(locations, add);
-        self.app.clear_highlights();
-        map_change_ts(change)
-    }
-
-    #[wasm_bindgen]
-    pub fn replace_selection_with_locations(
-        &mut self,
-        location_idxs: js_sys::Uint32Array,
-    ) -> Result<Ts<MapChangeData>, JsError> {
-        let locations = location_idxs
-            .to_vec()
-            .into_iter()
-            .map(eu5save::models::LocationIdx::new);
-        let change = self.app.replace_selection_with_locations(locations);
-        self.app.clear_highlights();
-        map_change_ts(change)
-    }
-
-    #[wasm_bindgen]
     pub fn map_projection_layout_key(&self) -> String {
         self.app().map_projection_layout_key().to_owned()
     }
 
-    /// Paint a snapshot frame for the map overlay. The buffers of the loaded
-    /// save do not change.
+    /// Paint a stored snapshot for the map overlay. The buffers of the
+    /// loaded save do not change.
     #[wasm_bindgen]
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "Typed WASM columns avoid deserializing and allocating per-location JS objects"
-    )]
     pub fn paint_map_projection(
         &self,
         mode: Ts<MapMode>,
-        key: &str,
-        ids: &[u32],
-        fractions: &[u16],
-        metrics: &[f32],
-        owners: &[u32],
-        controllers: &[u32],
-        religions: &[u32],
-        markets: &[u32],
-        countries: &[u32],
-        religion_colors: &[u32],
-        market_colors: &[u32],
+        #[wasm_bindgen(unchecked_param_type = "AnalysisSnapshotData")] data: &[u8],
     ) -> Result<ProjectionPaintData, JsError> {
-        let frame = eu5app::map_projection::MapProjectionData {
-            layout_key: key,
-            location_ids: ids,
-            fractions,
-            metrics,
-            owners,
-            controllers,
-            religions,
-            markets,
-            countries,
-            religion_colors,
-            market_colors,
-        };
+        let snapshot =
+            campaign_analysis::Observation::<eu5app::analysis::Eu5Analysis>::decode(data)
+                .map_err(|e| JsError::new(&e.to_string()))?;
+        let frame = eu5app::analysis::frame(&snapshot);
         let paint = self
             .app()
-            .paint_map_projection(frame, mode.to_rust()?.into())
+            .paint_validated_map_projection(frame, mode.to_rust()?.into())
             .map_err(|e| JsError::new(&e.to_string()))?;
         let flags: &[u32] = bytemuck::cast_slice(paint.arrays.buffers().state_flags());
         Ok(ProjectionPaintData {
@@ -1262,15 +1218,11 @@ impl Eu5App {
         )
     }
 
+    /// The market whose center is the location with this id.
     #[wasm_bindgen]
-    pub fn market_id_at_center(&self, center_id: u32) -> Option<u32> {
-        self.app()
-            .gamestate()
-            .market_manager
-            .database
-            .iter_with_id()
-            .find(|(_, m)| m.center.value() == center_id)
-            .map(|(id, _)| id.value())
+    pub fn market_at_center_id(&self, center_id: u32) -> Option<u32> {
+        let center = eu5save::models::LocationId::new(center_id);
+        self.app().market_at_center_id(center).map(|id| id.value())
     }
 
     /// Full market profile resolved from `market_id`, independent of current map mode.

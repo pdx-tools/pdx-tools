@@ -1,4 +1,4 @@
-import type { Eu5Carry, StableProfile } from "./campaignCarry";
+import type { CarriedSelection, Eu5Carry } from "./campaignCarry";
 import type { OverlayReply } from "./workers/game/game-module";
 import type { LocationClickChangeEvent } from "./workers/map/map-module";
 import type {
@@ -39,13 +39,7 @@ import type {
 import { eu5SaveFileUrl } from "./store/types";
 import type { Eu5ParsedSave, Eu5SaveData, Eu5SaveInput } from "./store/types";
 import { fetchOk } from "@/lib/fetch";
-import type {
-  ActiveProfileIdentity,
-  MapMode,
-  WorldSummary,
-  Eu5DateComponents,
-  Eu5PlayerData,
-} from "@/wasm/wasm_eu5";
+import type { MapMode, WorldSummary, Eu5DateComponents, Eu5PlayerData } from "@/wasm/wasm_eu5";
 import { log } from "@/lib/log";
 import { toPlaythroughId } from "@/features/campaign/types";
 import type { PlaythroughId } from "@/features/campaign/types";
@@ -192,7 +186,8 @@ export interface AppTriggers {
   clearOverlay(token: number): Promise<void>;
   /** Send map clicks to `onClick`, and ignore hover and box select. Null ends this. */
   setInputGate(onClick: ((event: LocationClickChangeEvent) => void) | null): Promise<void>;
-  getCampaignIdentities(profiles: ActiveProfileIdentity[]): Promise<(StableProfile | null)[]>;
+  /** The selection by values that the next save of the campaign can find. */
+  getCarriedSelection(): Promise<CarriedSelection | null>;
   restoreCampaignView(carry: Eu5Carry): Promise<void>;
   selectMapMode(mode: MapMode): Promise<void>;
   /**
@@ -221,7 +216,7 @@ export interface AppTriggers {
   stopTimelapse(): void;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
   toggleOwnerBorders(): Promise<void>;
-  panToLocation(
+  jumpToLocation(
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
   ): Promise<void>;
@@ -340,7 +335,7 @@ export class Eu5UIEngine implements AppEngine {
     stopOverlay: () => this.gameInstance.stopOverlay(),
     clearOverlay: (token) => this.gameInstance.clearOverlay(token),
     setInputGate: (onClick) => this.gameInstance.setInputGate(onClick),
-    getCampaignIdentities: (profiles) => this.gameInstance.getCampaignIdentities(profiles),
+    getCarriedSelection: () => this.gameInstance.getCarriedSelection(),
     restoreCampaignView: async (carry) => {
       const restored = await this.gameInstance.restoreCampaignView(carry);
       this.updateState((state) => ({
@@ -363,7 +358,7 @@ export class Eu5UIEngine implements AppEngine {
     stopTimelapse: () => this.handleStopTimelapse(),
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
-    panToLocation: (locationIdx, insets) => this.gameInstance.panToLocation(locationIdx, insets),
+    jumpToLocation: (locationIdx, insets) => this.gameInstance.jumpToLocation(locationIdx, insets),
     fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };
 

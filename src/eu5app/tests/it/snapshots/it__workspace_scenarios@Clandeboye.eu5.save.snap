@@ -4,6 +4,13 @@ expression: snapshot
 input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
 ---
 {
+  "box_on_filled_terrain": true,
+  "great_powers": [
+    "PUN 9776",
+    "--- 6667",
+    "TUR 19241"
+  ],
+  "largest_stability_tie": 1,
   "location": [
     {
       "id": 1,
@@ -63,7 +70,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "political": {
       "colors": 435,
       "fingerprint": "0x3493b568ee45bb28",
-      "groups": "0x5a2f4ba4c5aba582",
+      "groups": "0x618ac59bbd533a93",
       "legend": "Qualitative",
       "top": [
         "#ff455e77 x5082",
@@ -96,7 +103,7 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "religion": {
       "colors": 95,
       "fingerprint": "0x2966b950bca9c127",
-      "groups": "0x5a2f4ba4c5aba582",
+      "groups": "0xe97bc60578a06eb3",
       "legend": "Qualitative",
       "top": [
         "#ffb27f00 x9196",
@@ -149,15 +156,18 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       ]
     }
   },
+  "most_foreign_building": "trade_office 4108",
   "past_political": null,
-  "projection": "0xe218c24c5343afb4",
+  "projection": "0xb49cd287e8dbdbc6",
+  "returning_countries": null,
   "save_version": "1.0.4",
   "selected": {
     "locations": "0xb78b40bd8af7fc72",
     "map_modes": {
       "building_levels": {
         "colors": 328,
-        "fingerprint": "0x2e196d0b88f19d43",
+        "dimmed": 28312,
+        "fingerprint": "0x3c028181ce6cfecb",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 149.5, max_value: 299.0 })",
         "top": [
@@ -168,7 +178,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "control": {
         "colors": 934,
-        "fingerprint": "0x7fd0a212625ad99f",
+        "dimmed": 28312,
+        "fingerprint": "0xbe9a81e2e87a6b67",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.5, max_value: 1.0 })",
         "top": [
@@ -179,7 +190,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "development": {
         "colors": 889,
-        "fingerprint": "0x03c196b4d9d4889f",
+        "dimmed": 28312,
+        "fingerprint": "0x3559cc10b63613f9",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 42.57943, max_value: 85.15886 })",
         "top": [
@@ -190,7 +202,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "markets": {
         "colors": 16406,
-        "fingerprint": "0x6e8cb0a5af1abda2",
+        "dimmed": 28312,
+        "fingerprint": "0x6c7aa1ad66eaeaba",
         "groups": "0xa24a1582b4d75c29",
         "legend": "Qualitative",
         "top": [
@@ -201,8 +214,9 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "political": {
         "colors": 435,
-        "fingerprint": "0x70037e057c057435",
-        "groups": "0x5a2f4ba4c5aba582",
+        "dimmed": 28292,
+        "fingerprint": "0xb57cba3070db6344",
+        "groups": "0x618ac59bbd533a93",
         "legend": "Qualitative",
         "top": [
           "#ff455e77 x5082",
@@ -212,7 +226,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "population": {
         "colors": 827,
-        "fingerprint": "0x1bc89770ff3eaec6",
+        "dimmed": 28312,
+        "fingerprint": "0x237d90ae618778f2",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Log, palette: Eu5, min_value: 0.0, mid_value: 11821.505371835245, max_value: 163391.0 })",
         "top": [
@@ -223,7 +238,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "population_growth": {
         "colors": 830,
-        "fingerprint": "0x461a795b25d57ab6",
+        "dimmed": 28312,
+        "fingerprint": "0x5a787007dd6d64bd",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 0.002613302785136393, max_value: 0.005226605570272786 })",
         "top": [
@@ -234,8 +250,9 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "religion": {
         "colors": 95,
-        "fingerprint": "0x6cfd02f86a98dcbb",
-        "groups": "0x5a2f4ba4c5aba582",
+        "dimmed": 28292,
+        "fingerprint": "0x370f3d9c8618be26",
+        "groups": "0xe97bc60578a06eb3",
         "legend": "Qualitative",
         "top": [
           "#ffb27f00 x9196",
@@ -245,7 +262,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "rgo_level": {
         "colors": 91,
-        "fingerprint": "0x4dd646281de9d819",
+        "dimmed": 28312,
+        "fingerprint": "0xe14c421bdcc37ab2",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 13.5, max_value: 27.0 })",
         "top": [
@@ -256,7 +274,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "state_efficacy": {
         "colors": 870,
-        "fingerprint": "0xa45c1ecb7c638032",
+        "dimmed": 28312,
+        "fingerprint": "0x38cece0daac6f144",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 37.895692700000005, max_value: 75.79138540000001 })",
         "top": [
@@ -267,7 +286,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "unrealized_tax_base": {
         "colors": 162,
-        "fingerprint": "0x9d3815c9ca24a8d3",
+        "dimmed": 28312,
+        "fingerprint": "0x865797b8bf6b8fa2",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 133.440905, max_value: 266.88181 })",
         "top": [
@@ -278,7 +298,8 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
       },
       "wealth": {
         "colors": 237,
-        "fingerprint": "0x0680974d4cf5754c",
+        "dimmed": 28312,
+        "fingerprint": "0x7601748818e27317",
         "groups": "0x5a2f4ba4c5aba582",
         "legend": "Quantitative(GradientConfig { scale: Linear, palette: Eu5, min_value: 0.0, mid_value: 214.24222, max_value: 428.48444 })",
         "top": [
@@ -298,6 +319,15 @@ input_file: src/eu5app/tests/it/saves.d/Clandeboye.eu5.save
     "after_add": 395,
     "after_remove": 134,
     "after_select": 261
+  },
+  "selection_targets": {
+    "focus_on_unowned_land": false,
+    "players": true,
+    "remove_with_a_landless_country": true
+  },
+  "swatches": {
+    "blended_countries": 236,
+    "checked_markets": 237
   },
   "timeline": {
     "available": false,

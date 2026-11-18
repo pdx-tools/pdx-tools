@@ -4,6 +4,7 @@ members = [
   "src/api",
   "src/applib",
   "src/bench",
+  "src/campaign-analysis",
   "src/eu4-achievements",
   "src/eu4game",
   "src/eu4game-data",
@@ -43,6 +44,7 @@ axum = "0.8.8"
 base64 = "0.22"
 bumpalo = "3.20"
 bytemuck = { version = "1.25" }
+campaign-analysis = { path = "src/campaign-analysis" }
 ck3save = { git = "https://github.com/rakaly/jomini.git" }
 clap = "4.6"
 criterion = { version = "0.8", default-features = false }

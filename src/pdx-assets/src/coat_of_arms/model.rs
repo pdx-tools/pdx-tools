@@ -1,12 +1,13 @@
 //! Parse preprocessed coat of arms script into an owned model.
 //!
 //! Ported from pdx_unlimiter's `CoatOfArms`/`Emblem` model. Input text must have
-//! already been run through [`super::preprocess::preprocess`], so every value is
-//! a plain scalar, number array, or object (no `@` macros or tagged colors).
+//! already been run through [`super::preprocess::preprocess`], so no `@` macros
+//! remain. Inline tagged colors (`rgb { .. }`) are parsed here into
+//! [`Node::Color`].
 
 use std::collections::HashMap;
 
-use super::color::{COLOR_SLOTS, FColor, NamedColors, resolve_color, resolve_named};
+use super::color::{COLOR_SLOTS, FColor, NamedColors, parse_tagged_color};
 use super::preprocess::preprocess;
 use anyhow::{Context, Result, bail};
 
@@ -21,8 +22,8 @@ pub struct ColorEnv<'a> {
 
 /// Parse a game's `named_colors` coat of arms file into a name -> sRGB map.
 ///
-/// Accepts raw (un-preprocessed) file text; inline `hsv360`/`rgb`/`hex` colors
-/// are resolved during preprocessing to `#rrggbb` scalars.
+/// Accepts raw (un-preprocessed) file text. A value is an inline tagged color
+/// (`hsv360`/`hsv`/`rgb`/`hex`) or the name of a color defined earlier.
 pub fn parse_named_colors(raw: &str) -> Result<NamedColors> {
     let text = preprocess(raw)?;
     let mut colors = NamedColors::default();
@@ -32,7 +33,7 @@ pub fn parse_named_colors(raw: &str) -> Result<NamedColors> {
         }
         if let Node::Object(fields) = node {
             for (name, value) in fields {
-                if let Some(rgb) = value.as_str().and_then(|s| resolve_named(s, &colors)) {
+                if let Some(rgb) = color_value(&value, &colors) {
                     colors.insert(name, rgb);
                 }
             }
@@ -45,6 +46,9 @@ pub fn parse_named_colors(raw: &str) -> Result<NamedColors> {
 #[derive(Debug, Clone)]
 pub enum Node {
     Scalar(String),
+    /// An inline tagged value (`rgb { .. }`, `hsv360 { .. }`, ..) as sRGB.
+    /// `None` when the tag or its values are not a supported color.
+    Color(Option<[u8; 3]>),
     Array(Vec<Node>),
     Object(Vec<(String, Node)>),
 }
@@ -104,6 +108,9 @@ fn build_node<'data, 'tokens, E>(value: &jomini::text::ValueReader<'data, 'token
 where
     E: jomini::Encoding + Clone,
 {
+    if matches!(value.token(), jomini::TextToken::Header(_)) {
+        return Node::Color(read_tagged_color(value));
+    }
     if let Ok(scalar) = value.read_str() {
         return Node::Scalar(scalar.into_owned());
     }
@@ -124,6 +131,29 @@ where
         return Node::Array(items);
     }
     Node::Object(Vec::new())
+}
+
+/// Read a tagged value (`rgb { 255 0 0 }`) as a color. jomini gives a tagged
+/// value as a two-element array: the tag, then the array of values.
+fn read_tagged_color<'data, 'tokens, E>(
+    value: &jomini::text::ValueReader<'data, 'tokens, E>,
+) -> Option<[u8; 3]>
+where
+    E: jomini::Encoding + Clone,
+{
+    let tag = value.read_str().ok()?;
+    let body = value.read_array().ok()?.values().nth(1)?;
+    let values = body.read_array().ok()?;
+    parse_tagged_color(&tag, values.values().filter_map(|v| v.read_str().ok()))
+}
+
+/// Resolve a color value (an inline tagged color or a named color) to sRGB.
+fn color_value(node: &Node, named: &NamedColors) -> Option<[u8; 3]> {
+    match node {
+        Node::Color(rgb) => *rgb,
+        Node::Scalar(name) => named.get(name).copied(),
+        _ => None,
+    }
 }
 
 /// A fully resolved coat of arms: a list of layered subs.
@@ -347,14 +377,16 @@ impl Emblem {
     }
 }
 
-/// Resolve the literal color-slot values on `node` (a named color or `#hex`) to
-/// sRGB, leaving slots that are absent or reference another slot untouched.
+/// Resolve the literal color-slot values on `node` (a named color or an inline
+/// tagged color) to sRGB, leaving slots that are absent or reference another
+/// slot untouched. Unknown colors become `env.missing`.
 fn apply_color_literals(node: &Node, out: &mut [Option<FColor>], env: ColorEnv) {
     for (i, slot) in COLOR_SLOTS.iter().take(out.len()).enumerate() {
-        if let Some(value) = node.get(slot).and_then(Node::as_str)
-            && !COLOR_SLOTS.contains(&value)
+        if let Some(value) = node.get(slot)
+            && value.as_str().is_none_or(|s| !COLOR_SLOTS.contains(&s))
         {
-            out[i] = Some(resolve_color(value, env.named, env.missing));
+            let rgb = color_value(value, env.named);
+            out[i] = Some(rgb.map(FColor::opaque).unwrap_or(env.missing));
         }
     }
 }
@@ -498,7 +530,7 @@ mod tests {
             colors = {
                 red = rgb { 255 0 0 }
                 green = hsv360 { 120 100 50 }
-                blue = hex { #0000ff }
+                blue = hex { 0000ff }
             }
             "##,
         )
@@ -528,6 +560,32 @@ mod tests {
             .unwrap()
             .expect("AAA should resolve");
         assert_eq!(coa.subs[0].colors[0], Some(FColor::opaque([0, 255, 0])));
+    }
+
+    #[test]
+    fn resolve_inline_tagged_colors() {
+        let mut definitions = CoaDefinitions::new();
+        definitions
+            .add_file(
+                "X = { color1 = rgb { 255 0 0 } color2 = hsv360{ 120 100 50 } color3 = hex { 0000ff } color4 = hex { #0000ff\n} color5 = hex { zzz } }",
+            )
+            .unwrap();
+
+        // An invalid tagged color is not looked up as a color named `hex`.
+        let mut palette = test_palette();
+        palette.insert("hex".to_string(), [1, 2, 3]);
+        let coa = definitions
+            .resolve("X", &palette, MISSING)
+            .unwrap()
+            .expect("X should resolve");
+        let colors = &coa.subs[0].colors;
+        assert_eq!(colors[0], Some(FColor::opaque([255, 0, 0])));
+        assert_eq!(colors[1], Some(FColor::opaque([0, 128, 0])));
+        assert_eq!(colors[2], Some(FColor::opaque([0, 0, 255])));
+        // `#` starts a comment, so `hex { #0000ff }` has an empty body. jomini
+        // drops the empty `{ }` and gives the scalar `hex`.
+        assert_eq!(colors[3], Some(FColor::opaque([1, 2, 3])));
+        assert_eq!(colors[4], Some(MISSING));
     }
 
     #[test]

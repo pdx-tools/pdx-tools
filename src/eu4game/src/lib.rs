@@ -1,4 +1,5 @@
 pub mod achievements;
+pub mod analysis;
 mod errors;
 mod ext;
 pub mod game;

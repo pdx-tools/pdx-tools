@@ -1,23 +1,21 @@
 import { useMemo } from "react";
-import { EChart } from "@/components/viz";
-import type { EChartsOption } from "@/components/viz";
 import { GameButton } from "@/components/game/Button";
 import type {
   CountryStateEfficacy,
   StateEfficacyScopeSummary,
   StateEfficacyTopLocation,
 } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import {
+  formatExact,
+  formatExactPercent,
+  formatFixed,
+  formatPercent,
+} from "../../numberFormatting";
+import { Figure } from "../../components/Figure";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartDataZoomSlider,
-  chartInk,
-  chartTooltip,
-  getEChartsTheme,
-  seriesColor,
-} from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { useEu5Engine } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
@@ -29,7 +27,8 @@ import {
   Eu5InsightErrorState,
   Eu5InsightLoadingState,
 } from "../Eu5InsightState";
-import { useEu5EntityChartClick } from "./useEntityChartClick";
+import { CountryScatter } from "./countryScatter";
+import type { CountryPoint } from "./countryScatter";
 
 function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }) {
   const engine = useEu5Engine();
@@ -39,7 +38,7 @@ function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }
   // ledger says how much of the development survives the discount.
   return (
     <InsightReadout
-      figure={formatInt(Math.round(data.totalEfficacy))}
+      figure={<Figure value={data.totalEfficacy} />}
       unit="effective development"
       action={
         <GameButton
@@ -53,10 +52,14 @@ function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }
       }
     >
       <ReadoutFigure
-        value={`${formatFloat(data.realizationRatio * 100, 1)}%`}
-        label={`of ${formatInt(Math.round(data.totalDevelopment))} development`}
+        value={<Figure value={data.realizationRatio} form="percent" />}
+        label={
+          <>
+            of <Figure value={data.totalDevelopment} /> development
+          </>
+        }
       />
-      <ReadoutFigure value={formatFloat(data.medianEfficacy, 1)} label="median / location" />
+      <ReadoutFigure value={<Figure value={data.medianEfficacy} />} label="median / location" />
     </InsightReadout>
   );
 }
@@ -84,10 +87,7 @@ export function StateEfficacyInsight() {
 
           {insightQuery.data?.distribution && (
             <section>
-              <LocationDistributionChart
-                distribution={insightQuery.data.distribution}
-                title="Effective development distribution"
-              />
+              <LocationDistributionChart distribution={insightQuery.data.distribution} />
             </section>
           )}
 
@@ -107,123 +107,35 @@ export function StateEfficacyInsight() {
   );
 }
 
+const efficacyPoint = (c: CountryStateEfficacy): CountryPoint => ({
+  country: c.country,
+  x: c.totalEfficacy,
+  y: c.avgEfficacy,
+});
+
+function efficacyTooltip(c: CountryStateEfficacy): string {
+  return [
+    `<strong>${escapeEChartsHtml(c.country.country.name)}</strong> (${escapeEChartsHtml(c.country.tag)})`,
+    `Total Effective Development: ${formatExact(c.totalEfficacy)}`,
+    `Avg Effective Development per Location: ${formatExact(c.avgEfficacy)}`,
+    `Locations: ${formatInt(c.locationCount)}`,
+    `Population: ${formatInt(c.totalPopulation)}`,
+  ].join("<br/>");
+}
+
+const FROM_ZERO = { min: 0 };
+
 function StateEfficacyScatterChart({ countries }: { countries: CountryStateEfficacy[] }) {
-  const topCountries = useMemo(
-    () => new Set(countries.slice(0, 10).map((c) => c.country.tag)),
-    [countries],
+  return (
+    <CountryScatter
+      rows={countries}
+      point={efficacyPoint}
+      tooltip={efficacyTooltip}
+      xName="Total Effective Development"
+      yName="Avg Effective Development per Location"
+      yAxis={FROM_ZERO}
+    />
   );
-
-  const scatterData = useMemo(
-    () =>
-      countries.map((c) => ({
-        value: [c.totalEfficacy, c.avgEfficacy] as [number, number],
-        tag: c.country.tag,
-        name: c.country.country.name,
-        locationCount: c.locationCount,
-        totalEfficacy: c.totalEfficacy,
-        avgEfficacy: c.avgEfficacy,
-        totalPopulation: c.totalPopulation,
-        color: c.country.colorHex,
-        id: c.country.country.key,
-        anchorLocationIdx: c.country.anchorLocationIdx,
-      })),
-    [countries],
-  );
-
-  const option = useMemo((): EChartsOption => {
-    const { axisColor, labelColor, gridLineColor, tickColor } = getEChartsTheme();
-
-    return {
-      grid: { left: 80, right: 60, top: 20, bottom: 76 },
-      xAxis: {
-        type: "value",
-        name: "Total Effective Development",
-        nameLocation: "middle",
-        nameGap: 40,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
-        min: 0,
-      },
-      yAxis: {
-        type: "value",
-        name: "Avg Effective Development per Location",
-        nameLocation: "middle",
-        nameGap: 60,
-        nameTextStyle: { color: labelColor, fontSize: 11, fontWeight: 600 },
-        axisLabel: { color: tickColor },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: {
-          lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 },
-        },
-        min: 0,
-      },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, yAxisIndex: 0 },
-        { ...chartDataZoomSlider, type: "slider", xAxisIndex: 0, bottom: 0, height: 20 },
-      ],
-      tooltip: {
-        ...chartTooltip,
-        trigger: "item",
-        formatter: (params) => {
-          if (Array.isArray(params)) return "";
-          const d = params.data as (typeof scatterData)[number];
-          return [
-            `<strong>${escapeEChartsHtml(d.name)}</strong> (${escapeEChartsHtml(d.tag)})`,
-            `Total Effective Development: ${formatFloat(d.totalEfficacy, 1)}`,
-            `Avg Effective Development per Location: ${formatFloat(d.avgEfficacy, 2)}`,
-            `Locations: ${formatInt(d.locationCount)}`,
-            `Population: ${formatInt(d.totalPopulation)}`,
-          ].join("<br/>");
-        },
-      },
-      series: [
-        {
-          type: "scatter",
-          data: scatterData,
-          symbolSize: 8,
-          itemStyle: {
-            color: (params) => {
-              if (Array.isArray(params)) return seriesColor(0);
-              const d = params.data as (typeof scatterData)[number];
-              return d.color || seriesColor(0);
-            },
-            opacity: 0.8,
-          },
-          label: {
-            show: true,
-            formatter: (params) => {
-              if (Array.isArray(params)) return "";
-              const d = params.data as (typeof scatterData)[number];
-              return topCountries.has(d.tag) || countries.length <= 5 ? d.tag : "";
-            },
-            position: "top",
-            color: chartInk.primary,
-            fontSize: 10,
-            fontWeight: 600,
-            distance: 4,
-          },
-        },
-      ],
-    };
-  }, [scatterData, topCountries, countries.length]);
-
-  const handleInit = useEu5EntityChartClick({
-    kind: "country",
-    backLabel: BACK_LABEL,
-    getTarget: (params) => {
-      if (Array.isArray(params.data)) return null;
-      const country = params.data as (typeof scatterData)[number] | undefined;
-      return country
-        ? { id: country.id, anchorLocationIdx: country.anchorLocationIdx, label: country.name }
-        : null;
-    },
-  });
-
-  return <EChart option={option} style={{ height: "420px", width: "100%" }} onInit={handleInit} />;
 }
 
 const BACK_LABEL = "Effective Development";
@@ -243,23 +155,31 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
       }),
       columnHelper.accessor("stateEfficacy", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Effective Development", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Effective Development",
+          variant: "num",
+          term: "effectiveDevelopment",
+        }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("development", {
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Development", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 1)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 1)}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("control", {
         sortFn: "basic",
-        meta: Eu5DataTable.meta({ headerLabel: "Control", variant: "num" }),
+        meta: Eu5DataTable.meta({
+          headerLabel: "Control",
+          variant: "num",
+          exact: formatExactPercent,
+        }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatFloat(info.getValue(), 2)}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatPercent(info.getValue())}</Eu5DataTable.NumericCell>
         ),
       }),
       columnHelper.accessor("owner", {
@@ -275,7 +195,7 @@ function StateEfficacyTopLocations({ locations }: { locations: StateEfficacyTopL
         sortFn: "basic",
         meta: Eu5DataTable.meta({ headerLabel: "Population", variant: "num" }),
         cell: (info) => (
-          <Eu5DataTable.NumericCell>{formatInt(info.getValue())}</Eu5DataTable.NumericCell>
+          <Eu5DataTable.NumericCell>{formatFixed(info.getValue(), 0)}</Eu5DataTable.NumericCell>
         ),
       }),
     ],

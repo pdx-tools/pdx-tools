@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// The whole map, as the scope every insight falls back to when nothing is
 /// selected. Computed once per save.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct WorldSummary {
@@ -481,7 +481,7 @@ pub mod population {
             ranks: Vec<PopulationRankSegment>,
             growth_rate: f64,
             births_per_year: f64,
-            historical_population: Vec<f64>,
+            historical_population: crate::population::PopulationHistory,
             great_power_rank: i32,
         }
 
@@ -516,7 +516,7 @@ pub mod population_growth {
             births_per_year: f64,
             total_population: u32,
             location_count: u32,
-            historical_population: Vec<f64>,
+            historical_population: crate::population::PopulationHistory,
             great_power_rank: i32,
         }
 

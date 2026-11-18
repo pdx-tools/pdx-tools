@@ -351,12 +351,11 @@ static QUOTE_RE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new("\"
 
 pub fn parse_localization(data: &str) -> impl Iterator<Item = (&str, &str)> + '_ {
     data.lines().skip(1).filter_map(|line| {
-        let mut splits = line.split(':');
-        let key = splits.next()?.trim();
+        let (key, field2) = line.split_once(':')?;
+        let key = key.trim();
         if key.starts_with('#') || key.is_empty() {
             return None;
         }
-        let field2 = splits.next()?;
         let v = QUOTE_RE.captures(field2)?;
         Some((key, v.get(1)?.as_str()))
     })
@@ -464,6 +463,15 @@ trade_office = {
         assert!(!parsed.contains("artisan_tools"));
         assert!(!parsed.contains("merchant_capacity_from_building"));
         assert_eq!(parsed.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_localization_keeps_a_colon_in_the_text() {
+        let data = "l_english:\n adirondacks: \"Ratiron:tacks\"\n";
+        let parsed: FxHashMap<String, String> = parse_localization(data)
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        assert_eq!(parsed.get("adirondacks").unwrap(), "Ratiron:tacks");
     }
 
     #[test]

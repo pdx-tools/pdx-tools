@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useEu5InsightPanelOpen, useEu5InsightPanelWidth } from "./store";
+import { useEu5InsightPanelOpen, useEu5InsightPanelWidth, useEu5TimelineBarHeight } from "./store";
 
 // Panel geometry changes do NOT trigger auto-pan — see PRD §Viewport Behavior.
 // The visible-region check exists only for explicit selection actions.
@@ -15,14 +15,15 @@ export interface ViewportInsets {
 export function useViewportInsets(): ViewportInsets {
   const insightPanelOpen = useEu5InsightPanelOpen();
   const insightPanelWidth = useEu5InsightPanelWidth();
+  const timelineBarHeight = useEu5TimelineBarHeight();
 
   return useMemo(
     () => ({
       left: CONTROL_SIDEBAR_WIDTH,
       right: insightPanelOpen ? insightPanelWidth : 0,
       top: 0,
-      bottom: 0,
+      bottom: timelineBarHeight,
     }),
-    [insightPanelOpen, insightPanelWidth],
+    [insightPanelOpen, insightPanelWidth, timelineBarHeight],
   );
 }

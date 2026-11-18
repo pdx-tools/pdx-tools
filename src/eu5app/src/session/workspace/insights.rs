@@ -226,51 +226,7 @@ fn percentile_desc(sorted_desc: &[(LocationIdx, f64)], q: f64) -> f64 {
     sorted_desc[last - ascending_rank].1
 }
 
-use crate::map_measurements::location_building_levels;
-
-pub(crate) struct InsightContext<'a, 'bump> {
-    gamestate: &'a Gamestate<'bump>,
-    selection_state: &'a SelectionState,
-    pub(super) current_map_mode: MapMode,
-    game_data: &'a GameData,
-    building_levels: &'a OnceLock<LocationIndexedVec<f64>>,
-}
-impl<'a, 'bump> InsightContext<'a, 'bump> {
-    pub(crate) fn new(
-        gamestate: &'a Gamestate<'bump>,
-        selection_state: &'a SelectionState,
-        current_map_mode: MapMode,
-        game_data: &'a GameData,
-        building_levels: &'a OnceLock<LocationIndexedVec<f64>>,
-    ) -> Self {
-        Self {
-            gamestate,
-            selection_state,
-            current_map_mode,
-            game_data,
-            building_levels,
-        }
-    }
-    fn country_ref_from_country_idx(&self, country_idx: CountryIdx) -> CountryRefSource {
-        CountryRefSource { country_idx }
-    }
-    fn owner_country_ref_for_location(
-        &self,
-        loc: &eu5save::models::Location<'_>,
-    ) -> Option<CountryRefSource> {
-        let country_idx = self
-            .gamestate
-            .countries
-            .get(loc.owner.real_id()?.country_id())?;
-        Some(CountryRefSource { country_idx })
-    }
-    fn get_location_building_levels(&self) -> &LocationIndexedVec<f64> {
-        self.building_levels
-            .get_or_init(|| location_building_levels(self.gamestate))
-    }
-}
-
-impl<'a, 'bump> InsightContext<'a, 'bump> {
+impl<'bump> Eu5Workspace<'bump> {
     pub(crate) fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
         #[derive(Default)]
         struct PoliticalCountryAgg {
@@ -332,7 +288,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
                         total_state_efficacy: aggregate.total_state_efficacy,
                         active_state_capacity: aggregate.active_state_capacity,
                         total_population: aggregate.total_population,
-                        tax_trade_income: data.estimated_monthly_income_trade_and_tax,
+                        tax_trade_income: data.monthly_tax_and_trade_income(),
                     },
                 })
             })
@@ -498,39 +454,20 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
         metrics
     }
 
-    /// Returns a histogram distribution of per-location metric values for the
-    /// current map mode over the current selection (or all locations if empty).
-    pub(crate) fn selection_location_distribution(&self) -> LocationDistribution {
-        let metric_label = match self.current_map_mode {
-            MapMode::Control => "Control",
-            MapMode::Population => "Population",
-            MapMode::RgoLevel => "RGO Level",
-            MapMode::BuildingLevels => "Building Levels",
-            MapMode::Wealth | MapMode::Markets => "Wealth",
-            MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
-            MapMode::StateEfficacy => "Effective Development",
-            MapMode::PopulationGrowth => "Population Growth",
-            _ => "Development",
-        };
-
+    /// Returns a histogram over the selected locations, or all owned locations
+    /// when there is no selection. The caller supplies the chart's metric.
+    fn selection_location_distribution(
+        &self,
+        metric_label: &'static str,
+        measure: impl Fn(&eu5save::models::Location<'_>) -> f64,
+    ) -> LocationDistribution {
         let mut metrics: Vec<(LocationIdx, f64)> = Vec::new();
         let mut add_location = |idx: LocationIdx| {
             let loc = self.gamestate.locations.index(idx).location();
             if loc.owner.is_dummy() {
                 return;
             }
-            let value = match self.current_map_mode {
-                MapMode::Control => loc.control,
-                MapMode::Population => self.gamestate.location_population(loc),
-                MapMode::RgoLevel => loc.rgo_level,
-                MapMode::BuildingLevels => self.get_location_building_levels()[idx],
-                MapMode::Wealth | MapMode::Markets => loc.possible_tax,
-                MapMode::UnrealizedTaxBase => loc.possible_tax - loc.tax,
-                MapMode::StateEfficacy => loc.control * loc.development,
-                MapMode::PopulationGrowth => location_reproduction_rate(self.gamestate, loc),
-                _ => loc.development,
-            };
-            metrics.push((idx, value));
+            metrics.push((idx, measure(loc)));
         };
 
         if self.selection_state.is_empty() {
@@ -634,7 +571,8 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
             })
             .collect();
 
-        let distribution = self.selection_location_distribution();
+        let distribution =
+            self.selection_location_distribution("Development", |loc| loc.development);
         let location_count = all_locs.len() as u32;
 
         DevelopmentInsightData {
@@ -739,7 +677,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
             .collect();
 
         let concentration = concentration_curve(all_locs.iter().map(|(_, wealth, ..)| *wealth));
-        let distribution = self.selection_location_distribution();
+        let distribution = self.selection_location_distribution("Wealth", |loc| loc.possible_tax);
 
         WealthInsightData {
             countries,
@@ -847,7 +785,9 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
             })
             .collect();
 
-        let distribution = self.selection_location_distribution();
+        let distribution = self.selection_location_distribution("Unrealized Tax Base", |loc| {
+            loc.possible_tax - loc.tax
+        });
 
         UnrealizedTaxBaseInsightData {
             countries,
@@ -862,7 +802,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
     /// location sits inside the current location filter (or every market if the
     /// selection is empty). Production-opportunity rows only include locations
     /// in the current scope.
-    pub(crate) fn calculate_market_insight(&self) -> MarketInsightData<'a> {
+    pub(crate) fn calculate_market_insight(&self) -> MarketInsightData<'_> {
         use eu5save::models::LocationId;
 
         let is_empty_selection = self.selection_state.is_empty();
@@ -1035,7 +975,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
             }
         }
 
-        let mut goods: Vec<ScopedGoodSummary<'a>> = good_aggs
+        let mut goods: Vec<ScopedGoodSummary<'_>> = good_aggs
             .into_iter()
             .map(|(name, agg)| {
                 let weighted_price = if agg.price_weighted_denom > 0.0 {
@@ -1297,9 +1237,9 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
                 let data = self.gamestate.countries.index(cidx).data()?;
                 let historical_population =
                     if is_empty || Some(&agg.location_count) == total_country_locations.get(&cid) {
-                        data.historical_population.to_vec()
+                        crate::population::population_history(&self.gamestate, data)
                     } else {
-                        Vec::new()
+                        Default::default()
                     };
                 let great_power_rank = data.great_power_rank;
                 let country = self.country_ref_from_country_idx(cidx);
@@ -1482,7 +1422,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
 
     /// The whole map: owned locations, owning countries, and their people.
     pub fn world_summary(&self) -> WorldSummary {
-        crate::map_projection::world_summary(self.gamestate)
+        crate::map_projection::world_summary(&self.gamestate)
     }
 
     /// Owned locations per country over the whole map, used to tell a fully
@@ -1527,7 +1467,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
             };
 
             let births = location_yearly_births(loc);
-            let rate = location_reproduction_rate(self.gamestate, loc);
+            let rate = location_reproduction_rate(&self.gamestate, loc);
             let population = self.gamestate.location_population(loc) as u32;
             scoped.push((idx, rate, births, population));
 
@@ -1557,9 +1497,9 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
                 let historical_population = if is_empty
                     || Some(&agg.location_count) == total_country_locations.get(&country_id)
                 {
-                    data.historical_population.to_vec()
+                    crate::population::population_history(&self.gamestate, data)
                 } else {
-                    Vec::new()
+                    Default::default()
                 };
                 Some(CountryPopulationGrowth {
                     country: self.country_ref_from_country_idx(country_idx),
@@ -1812,7 +1752,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
         }
     }
 
-    pub(crate) fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData<'bump> {
+    pub(crate) fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData<'_> {
         use crate::presentation::BuildingKeyRef;
         use eu5save::models::CountryId;
 
@@ -1981,9 +1921,16 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
         });
         foreign_owner_vec.truncate(20);
 
-        // Build foreign owner cells for top 20 types x top 20 foreign owners
-        let top_type_kinds: FxHashSet<&str> =
-            types_with_keys.iter().take(20).map(|t| t.0).collect();
+        // Build foreign owner cells for the top 20 types x top 20 foreign owners.
+        // Rank the types by foreign levels, because most foreign levels are in
+        // types that are not in the top 20 by all levels, such as trade offices.
+        let mut foreign_types: Vec<(&str, f64)> = types_with_keys
+            .iter()
+            .filter(|t| t.1.foreign_levels > 0.0)
+            .map(|t| (t.0, t.1.foreign_levels))
+            .collect();
+        foreign_types.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let top_type_kinds: FxHashSet<&str> = foreign_types.iter().take(20).map(|t| t.0).collect();
         let top_owner_ids: FxHashSet<CountryId> = foreign_owner_vec
             .iter()
             .take(20)
@@ -2170,7 +2117,7 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
         }
     }
 
-    pub(crate) fn calculate_rgo_insight(&self) -> RgoInsightData<'bump> {
+    pub(crate) fn calculate_rgo_insight(&self) -> RgoInsightData<'_> {
         const TOP_LOCATIONS_CAP: usize = 50;
         const PROFILE_DELTA_CAP: usize = 20;
 
@@ -2577,66 +2524,6 @@ impl<'a, 'bump> InsightContext<'a, 'bump> {
             scatter_countries,
             top_locations,
         }
-    }
-}
-
-impl<'bump> Eu5Workspace<'bump> {
-    fn analysis_context(&self) -> InsightContext<'_, 'bump> {
-        InsightContext::new(
-            &self.gamestate,
-            &self.selection_state,
-            self.current_map_mode,
-            &self.game_data,
-            &self.location_building_levels,
-        )
-    }
-    pub(crate) fn calculate_political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
-        self.analysis_context()
-            .calculate_political_world_scoreboard()
-    }
-    pub(crate) fn calculate_state_efficacy_insight(&self) -> StateEfficacyInsightData {
-        self.analysis_context().calculate_state_efficacy_insight()
-    }
-    pub(crate) fn calculate_development_insight(&self) -> DevelopmentInsightData {
-        self.analysis_context().calculate_development_insight()
-    }
-    pub(crate) fn calculate_wealth_insight(&self) -> WealthInsightData {
-        self.analysis_context().calculate_wealth_insight()
-    }
-    pub(crate) fn calculate_unrealized_tax_base_insight(&self) -> UnrealizedTaxBaseInsightData {
-        self.analysis_context()
-            .calculate_unrealized_tax_base_insight()
-    }
-    pub(crate) fn calculate_market_insight(&self) -> MarketInsightData<'_> {
-        self.analysis_context().calculate_market_insight()
-    }
-    pub(crate) fn calculate_population_insight(&self) -> PopulationInsightData {
-        self.analysis_context().calculate_population_insight()
-    }
-    pub fn world_summary(&self) -> WorldSummary {
-        self.analysis_context().world_summary()
-    }
-    pub(crate) fn calculate_population_growth_insight(&self) -> PopulationGrowthInsightData {
-        self.analysis_context()
-            .calculate_population_growth_insight()
-    }
-    pub(crate) fn calculate_religion_insight(&self) -> ReligionInsightData {
-        self.analysis_context().calculate_religion_insight()
-    }
-    pub(crate) fn calculate_building_levels_insight(&self) -> BuildingLevelsInsightData<'_> {
-        self.analysis_context().calculate_building_levels_insight()
-    }
-    pub fn get_wealth_scope(&self) -> WealthScope {
-        self.analysis_context().get_wealth_scope()
-    }
-    pub fn get_unrealized_tax_base_scope(&self) -> UnrealizedTaxBaseScope {
-        self.analysis_context().get_unrealized_tax_base_scope()
-    }
-    pub(crate) fn calculate_rgo_insight(&self) -> RgoInsightData<'_> {
-        self.analysis_context().calculate_rgo_insight()
-    }
-    pub(crate) fn calculate_control_insight(&self) -> ControlInsightData {
-        self.analysis_context().calculate_control_insight()
     }
 }
 

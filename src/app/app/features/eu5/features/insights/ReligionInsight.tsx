@@ -4,15 +4,10 @@ import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { Eu5DataTable, SectionTitle } from "../../components";
 import type { ReligionRow, StateReligionRow } from "@/wasm/wasm_eu5";
-import { formatFloat, formatInt } from "@/lib/format";
+import { formatInt } from "@/lib/format";
+import { formatPercent } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import {
-  chartInk,
-  chartTooltip,
-  getEChartsTheme,
-  markGap,
-  seriesColor,
-} from "@/components/viz/echartsTheme";
+import { chartInk, chartTooltip, markGap, seriesColor } from "@/components/viz/echartsTheme";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import {
   Eu5InsightEmptyState,
@@ -22,10 +17,6 @@ import {
 import type * as echarts from "echarts/core";
 
 const STATE_RELIGION_CAP = 30;
-
-function formatPercent(value: number, digits = 1) {
-  return `${formatFloat(value * 100, digits)}%`;
-}
 
 export function ReligionInsight() {
   const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getReligionInsight());
@@ -123,8 +114,6 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
   );
 
   const option = useMemo((): EChartsOption => {
-    const { axisColor, gridLineColor, tickColor } = getEChartsTheme();
-
     return {
       dataset: {
         source: flatSource,
@@ -136,24 +125,15 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 14,
-        textStyle: { color: tickColor, fontSize: 10 },
       },
 
       xAxis: {
         type: "value",
-        axisLabel: {
-          color: tickColor,
-          fontSize: 10,
-          formatter: (value: number) => formatInt(value),
-        },
-        axisLine: { lineStyle: { color: axisColor } },
-        splitLine: { lineStyle: { type: "dashed", color: gridLineColor, opacity: 0.5, width: 1 } },
       },
       yAxis: {
         type: "category",
         inverse: true,
-        axisLabel: { color: tickColor, fontSize: 11, fontWeight: 600, width: 100 },
-        axisLine: { lineStyle: { color: axisColor } },
+        axisLabel: { width: 100 },
       },
       tooltip: {
         ...chartTooltip,
@@ -222,7 +202,7 @@ function CoverageBar({
         <div style={{ width: `${srPct * 100}%`, backgroundColor: colorHex }} />
         <div className="flex-1 bg-game-panel-hover" />
       </div>
-      <span className="text-[11px] text-game-ink-300">{formatPercent(srPct)} state religion</span>
+      <span className="text-[12px] text-game-ink-300">{formatPercent(srPct)} state religion</span>
     </div>
   );
 }
@@ -260,7 +240,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
                 {formatInt(r.stateCountryCount)}{" "}
                 {r.stateCountryCount === 1 ? "country" : "countries"}
               </span>
-              <span className="text-[11px] text-game-ink-300">
+              <span className="text-[12px] text-game-ink-300">
                 {formatInt(r.totalRuledPopulation)} ruled population
               </span>
             </div>
@@ -296,7 +276,7 @@ function ReligionTable({ religions }: { religions: ReligionRow[] }) {
           return (
             <div className="flex flex-col">
               <span>{formatInt(r.followerPopulation)}</span>
-              <span className="text-[11px] text-game-ink-300">
+              <span className="text-[12px] text-game-ink-300">
                 {formatInt(r.followersOutsideSameFaithStates)} outside same-faith states
               </span>
             </div>

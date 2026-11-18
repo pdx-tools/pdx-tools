@@ -111,7 +111,7 @@ function CampaignSectionContent({ nav, className }: { nav: CampaignNav; classNam
           Campaign
         </h2>
         {nav.openIndex >= 0 && nav.saves.length > 1 && (
-          <CampaignListButton nav={nav} className="-mr-1 px-1 text-[11px] text-game-ink-500">
+          <CampaignListButton nav={nav} className="-mr-1 px-1 text-game-small text-game-ink-500">
             Save {nav.openIndex + 1} of {nav.saves.length}
           </CampaignListButton>
         )}
@@ -137,7 +137,7 @@ function CampaignSectionContent({ nav, className }: { nav: CampaignNav; classNam
                 {direction === "previous" && (
                   <ChevronLeftIcon aria-hidden className="size-4 shrink-0" />
                 )}
-                <span className="truncate font-game-num text-[11.5px] tabular-nums">
+                <span className="truncate font-game-num text-game-small tabular-nums">
                   {busy ? "Opening" : save ? formatLongDate(save.date) : "None"}
                 </span>
                 {direction === "next" && (
@@ -150,13 +150,13 @@ function CampaignSectionContent({ nav, className }: { nav: CampaignNav; classNam
       )}
 
       {failedNote && (
-        <p role="status" className="mt-2 text-[11px] leading-[1.4] text-game-warn">
+        <p role="status" className="mt-2 text-game-small leading-[1.4] text-game-warn">
           {failedNote}
         </p>
       )}
 
       {notes.length > 0 && (
-        <ul className="mt-2 flex flex-col gap-0.5 text-[11px] leading-[1.4] text-game-ink-500">
+        <ul className="mt-2 flex flex-col gap-0.5 text-game-small leading-[1.4] text-game-ink-500">
           {notes.map((note) => (
             <li key={note}>{note}</li>
           ))}
@@ -216,7 +216,7 @@ function CampaignStepperContent({ nav }: { nav: CampaignNav }) {
           </span>
         );
       })}
-      <CampaignListButton nav={nav} className="px-1 text-[11px] text-game-ink-300">
+      <CampaignListButton nav={nav} className="px-1 text-game-small text-game-ink-300">
         {nav.openIndex + 1}/{nav.saves.length}
       </CampaignListButton>
     </div>

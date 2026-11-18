@@ -12,7 +12,6 @@ workspace = true
 default = ["zstd_rust"]
 zstd_c = ["pdx-zstd/zstd_c"]
 zstd_rust = ["pdx-zstd/zstd_rust"]
-zstd_c_fat_lto = ["pdx-zstd/zstd_c_fat_lto"]
 
 [dependencies]
 flate2 = { default-features = false, features = ["zlib-rs"], workspace = true }

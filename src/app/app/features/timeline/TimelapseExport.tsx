@@ -10,7 +10,7 @@ import { getErrorMessage } from "@/lib/getErrorMessage";
 import { captureException } from "@/lib/captureException";
 import { toast } from "@/lib/toast";
 import { GameButton } from "@/components/game/Button";
-import { SectionTitle } from "@/components/game/SectionTitle";
+import { SectionTitle, sectionLabel } from "@/components/game/SectionTitle";
 import { focusRing } from "@/components/game/focusRing";
 import type { TimelapseProgress, TimelapseStatus, TimelineController } from "./controller";
 import {
@@ -211,7 +211,7 @@ function Segmented<T extends string | number>({
           key={option.id}
           value={String(option.id)}
           className={cx(
-            "h-6 rounded-[3px] px-2 font-game-ui text-[11px] leading-none text-game-ink-500",
+            "h-6 rounded-[3px] px-2 font-game-ui text-game-small leading-none text-game-ink-500",
             "transition-colors duration-100 hover:text-game-ink-100",
             "data-[state=on]:bg-game-accent-500/15 data-[state=on]:text-game-accent-100",
             focusRing,
@@ -362,7 +362,7 @@ export function TimelapseExport({
             ) : (
               <>
                 <span>Stop the export</span>
-                <span className="ml-2 font-game-num text-[10px] text-game-ink-300 tabular-nums">
+                <span className="ml-2 font-game-num text-game-small text-game-ink-300 tabular-nums">
                   {percent}%
                 </span>
               </>
@@ -417,9 +417,7 @@ export function TimelapseExport({
         />
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <span className="font-game-num text-[9.5px] font-medium tracking-[0.2em] text-game-ink-500 uppercase">
-            Resolution
-          </span>
+          <span className={sectionLabel}>Resolution</span>
           <Segmented
             label="Resolution"
             value={options.quality}
@@ -442,7 +440,7 @@ export function TimelapseExport({
 
 function ExportFacts({ plan }: { plan: TimelapseExportPlan }) {
   return (
-    <p className="mt-3.5 flex items-baseline gap-1.5 border-t border-game-line pt-2.5 font-game-num text-[11px] text-game-ink-300 tabular-nums">
+    <p className="mt-3.5 flex items-baseline gap-1.5 border-t border-game-line pt-2.5 font-game-num text-game-small text-game-ink-300 tabular-nums">
       <span>{plan.span}</span>
       <span className="text-game-ink-700">·</span>
       <span className="text-game-ink-100">{formatDuration(plan.seconds)}</span>
