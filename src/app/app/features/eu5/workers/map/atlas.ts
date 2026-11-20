@@ -1,7 +1,6 @@
 /**
- * Names set on the land, as an atlas sets them: along the long axis of a
- * realm, with a size that follows its extent, upright, and the most
- * important name first. The functions are pure, so that tests can check them.
+ * Names set on the land as an atlas sets them: along a realm's long axis,
+ * sized by its extent, upright, and the most important name first.
  */
 
 export type WorldPoint = { x: number; y: number };
@@ -47,62 +46,51 @@ function quantile(values: Float64Array, q: number): number {
 
 /**
  * The shape of a realm from the middles of its locations, given as `[x, y]`
- * pairs. The world wraps, so x is read around the realm's own middle. The
- * outer 5% on each side go, so that a far colony does not stretch a name
- * across an ocean.
+ * pairs. Only the main body counts, and its outer 5% on each side go, so
+ * that land overseas does not pull the name into the sea.
  */
 export function realmShape(points: Float64Array, worldWidth: number): RealmShape | null {
-  const count = points.length / 2;
-  if (count === 0) return null;
+  if (points.length === 0) return null;
+  const main = largestBody(points, worldWidth);
+
+  // The world wraps, so x is read around the middle of the body.
   const turn = (2 * Math.PI) / worldWidth;
-  let sin = 0;
-  let cos = 0;
-  for (let i = 0; i < count; i++) {
+  let [sin, cos] = [0, 0];
+  for (const i of main) {
     sin += Math.sin(points[i * 2] * turn);
     cos += Math.cos(points[i * 2] * turn);
   }
-  const middle = ((Math.atan2(sin, cos) + 2 * Math.PI) % (2 * Math.PI)) / turn;
+  const middle = Math.atan2(sin, cos) / turn;
+  const count = main.length;
   const xs = new Float64Array(count);
   const ys = new Float64Array(count);
-  for (let i = 0; i < count; i++) {
-    let x = points[i * 2] - middle;
-    if (x > worldWidth / 2) x -= worldWidth;
-    if (x < -worldWidth / 2) x += worldWidth;
-    xs[i] = x;
-    ys[i] = points[i * 2 + 1];
+  for (let n = 0; n < count; n++) {
+    let x = points[main[n] * 2] - middle;
+    x -= Math.round(x / worldWidth) * worldWidth;
+    xs[n] = x;
+    ys[n] = points[main[n] * 2 + 1];
   }
 
-  const main = largestBody(xs, ys, worldWidth);
-  const mainXs = new Float64Array(main.length);
-  const mainYs = new Float64Array(main.length);
-  for (let n = 0; n < main.length; n++) {
-    mainXs[n] = xs[main[n]];
-    mainYs[n] = ys[main[n]];
-  }
-  const [xLow, xHigh] = [quantile(mainXs, 0.05), quantile(mainXs, 0.95)];
-  const [yLow, yHigh] = [quantile(mainYs, 0.05), quantile(mainYs, 0.95)];
-  const core = new Uint32Array(main.length);
+  const [sortedX, sortedY] = [xs.slice(), ys.slice()];
+  const [xLow, xHigh] = [quantile(sortedX, 0.05), quantile(sortedX, 0.95)];
+  const [yLow, yHigh] = [quantile(sortedY, 0.05), quantile(sortedY, 0.95)];
+  const core = new Uint32Array(count);
   let size = 0;
-  for (let n = 0; n < main.length; n++) {
-    const i = main[n];
-    if (xs[i] >= xLow && xs[i] <= xHigh && ys[i] >= yLow && ys[i] <= yHigh) core[size++] = i;
+  for (let n = 0; n < count; n++) {
+    if (xs[n] >= xLow && xs[n] <= xHigh && ys[n] >= yLow && ys[n] <= yHigh) core[size++] = n;
   }
-  const body = size > 0 ? core.subarray(0, size) : main;
+  const body = size > 0 ? core.subarray(0, size) : Uint32Array.from(xs.keys());
 
-  let meanX = 0;
-  let meanY = 0;
-  for (let n = 0; n < body.length; n++) {
-    meanX += xs[body[n]];
-    meanY += ys[body[n]];
+  let [meanX, meanY] = [0, 0];
+  for (const n of body) {
+    meanX += xs[n];
+    meanY += ys[n];
   }
   meanX /= body.length;
   meanY /= body.length;
-  let xx = 0;
-  let yy = 0;
-  let xy = 0;
-  for (let n = 0; n < body.length; n++) {
-    const dx = xs[body[n]] - meanX;
-    const dy = ys[body[n]] - meanY;
+  let [xx, yy, xy] = [0, 0, 0];
+  for (const n of body) {
+    const [dx, dy] = [xs[n] - meanX, ys[n] - meanY];
     xx += dx * dx;
     yy += dy * dy;
     xy += dx * dy;
@@ -113,9 +101,8 @@ export function realmShape(points: Float64Array, worldWidth: number): RealmShape
   // The name stands on the realm's own land, and not on a sea that the realm surrounds.
   let nearest = body[0];
   let nearestDistance = Infinity;
-  for (let n = 0; n < body.length; n++) {
-    const dx = xs[body[n]] - meanX;
-    const dy = ys[body[n]] - meanY;
+  for (const n of body) {
+    const [dx, dy] = [xs[n] - meanX, ys[n] - meanY];
     const along = dx * cosA + dy * sinA;
     const across = -dx * sinA + dy * cosA;
     alongLow = Math.min(alongLow, along);
@@ -124,7 +111,7 @@ export function realmShape(points: Float64Array, worldWidth: number): RealmShape
     acrossHigh = Math.max(acrossHigh, across);
     const distance = dx * dx + dy * dy;
     if (distance < nearestDistance) {
-      nearest = body[n];
+      nearest = n;
       nearestDistance = distance;
     }
   }
@@ -140,67 +127,65 @@ export function realmShape(points: Float64Array, worldWidth: number): RealmShape
   };
 }
 
-/** The world is this many cells wide, when locations are grouped by the land they lie near */
+/** Locations in neighboring cells of a grid this many cells wide are one body of land */
 const BODY_CELLS = 90;
-/** Room for every column of cells of unwrapped x, which is within half a world of zero */
-const BODY_COLUMNS = 128;
 
 /**
- * The indices of the largest group of locations that lie near each other. A
- * name belongs on the main body of a realm, so that land overseas does not
- * pull it into the sea.
+ * The indices of the largest group of locations that lie near each other.
+ * The grid wraps at the edge of the world, as the map does.
  */
-function largestBody(xs: Float64Array, ys: Float64Array, worldWidth: number): Uint32Array {
+function largestBody(points: Float64Array, worldWidth: number): Uint32Array {
+  const count = points.length / 2;
   const cell = worldWidth / BODY_CELLS;
-  const cellOf = new Int32Array(xs.length);
-  let rows = 1;
-  for (let i = 0; i < xs.length; i++) {
-    const row = Math.max(0, Math.floor(ys[i] / cell));
-    cellOf[i] = row * BODY_COLUMNS + Math.floor(xs[i] / cell) + BODY_COLUMNS / 2;
-    rows = Math.max(rows, row + 1);
+  // The grid has the rows of the realm only, so a small realm has a small grid.
+  let [top, bottom] = [Infinity, -Infinity];
+  for (let i = 0; i < count; i++) {
+    const row = Math.floor(points[i * 2 + 1] / cell);
+    top = Math.min(top, row);
+    bottom = Math.max(bottom, row);
   }
-  const counts = new Uint32Array(rows * BODY_COLUMNS);
-  for (let i = 0; i < cellOf.length; i++) counts[cellOf[i]] += 1;
+  const rows = bottom - top + 1;
+  const cellOf = new Int32Array(count);
+  for (let i = 0; i < count; i++) {
+    const column = ((Math.floor(points[i * 2] / cell) % BODY_CELLS) + BODY_CELLS) % BODY_CELLS;
+    cellOf[i] = (Math.floor(points[i * 2 + 1] / cell) - top) * BODY_CELLS + column;
+  }
+  const counts = new Uint32Array(rows * BODY_CELLS);
+  for (const at of cellOf) counts[at] += 1;
 
   // Each cell with land gets the number of its group. Zero is no group yet.
   const group = new Uint32Array(counts.length);
   const stack = new Int32Array(counts.length);
-  let groups = 0;
-  let best = 0;
-  let bestSize = 0;
-  for (let i = 0; i < cellOf.length; i++) {
-    const start = cellOf[i];
+  let [groups, best, bestSize] = [0, 0, 0];
+  for (const start of cellOf) {
     if (group[start] !== 0) continue;
     groups += 1;
     group[start] = groups;
     let size = 0;
-    let top = 0;
-    stack[top++] = start;
-    while (top > 0) {
-      const at = stack[--top];
+    let depth = 0;
+    stack[depth++] = start;
+    while (depth > 0) {
+      const at = stack[--depth];
       size += counts[at];
-      const row = Math.floor(at / BODY_COLUMNS);
-      const column = at % BODY_COLUMNS;
+      const row = Math.floor(at / BODY_CELLS);
+      const column = at % BODY_CELLS;
       for (let dy = -1; dy <= 1; dy++) {
+        const r = row + dy;
+        if (r < 0 || r >= rows) continue;
         for (let dx = -1; dx <= 1; dx++) {
-          const [r, c] = [row + dy, column + dx];
-          if (r < 0 || r >= rows || c < 0 || c >= BODY_COLUMNS) continue;
-          const next = r * BODY_COLUMNS + c;
+          const next = r * BODY_CELLS + ((column + dx + BODY_CELLS) % BODY_CELLS);
           if (counts[next] === 0 || group[next] !== 0) continue;
           group[next] = groups;
-          stack[top++] = next;
+          stack[depth++] = next;
         }
       }
     }
-    if (size > bestSize) {
-      best = groups;
-      bestSize = size;
-    }
+    if (size > bestSize) [best, bestSize] = [groups, size];
   }
 
   const body = new Uint32Array(bestSize);
   let next = 0;
-  for (let i = 0; i < cellOf.length; i++) {
+  for (let i = 0; i < count; i++) {
     if (group[cellOf[i]] === best) body[next++] = i;
   }
   return body;
@@ -238,21 +223,20 @@ export const CAPITAL_SPACING = 0.14;
 const MIN_SIZE = 11;
 const MAX_SIZE = 30;
 const CAPITALS_FROM = 18;
-/** A realm has this much of its long axis for its name */
+/** The share of a realm's long axis that its name can fill */
 const AXIS_SHARE = 0.86;
 /** A name leans only when its realm is clearly long, and never steeply */
 const MAX_LEAN = Math.PI / 5;
 const LONG_REALM = 1.5;
 /** The space that each name keeps around it, so that two names never touch */
 const NAME_GAP = 4;
-/** No name goes nearer than this to the edge of the frame */
 const FRAME_MARGIN = 4;
-/** A name with a leader line looks around its realm, out to this many pixels. */
+/** How far a name with a leader line looks for a place, in pixels */
 const FAR_REACH = 80;
-/** The size of a name that stands away from its land */
+/** The size of a name away from its land */
 const NOTE_SIZE = 12;
 /** The directions to look in, the nearest to reading order first */
-const DIRECTIONS: readonly [number, number][] = [
+const DIRECTIONS: readonly (readonly [number, number])[] = [
   [0, -1],
   [0, 1],
   [1, 0],
@@ -264,29 +248,41 @@ const DIRECTIONS: readonly [number, number][] = [
 ];
 
 /** The places that a name that must show tries, the nearest first */
-function noteOffsets(width: number, height: number, far: boolean): [number, number][] {
-  const tries: [number, number][] = [];
+function* noteOffsets(width: number, height: number, far: boolean): Generator<[number, number]> {
+  yield [0, 0];
   for (const reach of [1, 2]) {
-    for (const [x, y] of DIRECTIONS) tries.push([x * width * 0.6 * reach, y * height * reach]);
+    for (const [x, y] of DIRECTIONS) yield [x * width * 0.6 * reach, y * height * reach];
   }
-  if (far) {
-    for (const reach of [FAR_REACH / 2, FAR_REACH]) {
-      for (const [x, y] of DIRECTIONS) tries.push([x * reach, y * reach]);
-    }
+  if (!far) return;
+  for (const reach of [FAR_REACH / 2, FAR_REACH]) {
+    for (const [x, y] of DIRECTIONS) yield [x * reach, y * reach];
   }
-  return tries;
 }
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
 
 const touches = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 
-const boxOfRect = (rect: Rect): Box => ({
-  x0: rect.x,
-  y0: rect.y,
-  x1: rect.x + rect.width,
-  y1: rect.y + rect.height,
-});
+/** True if the segment from `a` to `b` crosses the box */
+function crosses(a: WorldPoint, b: WorldPoint, box: Box): boolean {
+  let [low, high] = [0, 1];
+  const [dx, dy] = [b.x - a.x, b.y - a.y];
+  for (const [delta, from, min, max] of [
+    [dx, a.x, box.x0, box.x1],
+    [dy, a.y, box.y0, box.y1],
+  ]) {
+    if (delta === 0) {
+      if (from < min || from > max) return false;
+      continue;
+    }
+    let [t0, t1] = [(min - from) / delta, (max - from) / delta];
+    if (t0 > t1) [t0, t1] = [t1, t0];
+    low = Math.max(low, t0);
+    high = Math.min(high, t1);
+    if (low > high) return false;
+  }
+  return true;
+}
 
 function textBox(x: number, y: number, width: number, height: number, angle: number): Box {
   const w = Math.abs(Math.cos(angle)) * width + Math.abs(Math.sin(angle)) * height;
@@ -297,6 +293,37 @@ function textBox(x: number, y: number, width: number, height: number, angle: num
     x1: x + w / 2 + NAME_GAP,
     y1: y + h / 2 + NAME_GAP / 2,
   };
+}
+
+/** The boxes of the placed names, by cell of the frame, so that a test reads only its neighbors */
+class BoxGrid {
+  private static readonly CELL = 64;
+  private readonly cells = new Map<number, Box[]>();
+
+  add(box: Box): void {
+    this.each(box, (key) => {
+      const boxes = this.cells.get(key);
+      if (boxes) boxes.push(box);
+      else this.cells.set(key, [box]);
+    });
+  }
+
+  touches(box: Box): boolean {
+    let found = false;
+    this.each(box, (key) => {
+      found ||= this.cells.get(key)?.some((other) => touches(box, other)) ?? false;
+    });
+    return found;
+  }
+
+  private each(box: Box, visit: (key: number) => void): void {
+    const cell = BoxGrid.CELL;
+    for (let row = Math.floor(box.y0 / cell); row <= Math.floor(box.y1 / cell); row++) {
+      for (let column = Math.floor(box.x0 / cell); column <= Math.floor(box.x1 / cell); column++) {
+        visit(row * 4096 + column);
+      }
+    }
+  }
 }
 
 /**
@@ -316,31 +343,29 @@ export function placeNames(
   covers: readonly Rect[],
   measure: MeasureText,
 ): PlacedName[] {
-  const scale = frame.width / view.width;
-  const covered = covers.map(boxOfRect);
+  const scaleX = frame.width / view.width;
+  const scaleY = frame.height / view.height;
+  const covered = covers.map((r) => ({ x0: r.x, y0: r.y, x1: r.x + r.width, y1: r.y + r.height }));
   const placed: PlacedName[] = [];
-  const boxes: Box[] = [];
+  const boxes = new BoxGrid();
   const inFrame = (box: Box) =>
     box.x0 >= FRAME_MARGIN &&
     box.x1 <= frame.width - FRAME_MARGIN &&
     box.y0 >= FRAME_MARGIN &&
     box.y1 <= frame.height - FRAME_MARGIN;
   const isFree = (box: Box) =>
-    inFrame(box) &&
-    !boxes.some((other) => touches(box, other)) &&
-    !covered.some((other) => touches(box, other));
+    inFrame(box) && !covered.some((other) => touches(box, other)) && !boxes.touches(box);
 
   for (const name of names) {
     const { shape } = name;
     const dx = (((shape.center.x - view.x) % worldWidth) + worldWidth) % worldWidth;
-    const x = dx * scale;
-    const y = (shape.center.y - view.y) * scale;
-    const point = { x0: x, y0: y, x1: x, y1: y };
+    const land = { x: dx * scaleX, y: (shape.center.y - view.y) * scaleY };
+    const point = { x0: land.x, y0: land.y, x1: land.x, y1: land.y };
     // A realm whose middle is out of view or under a panel has no name.
     if (!inFrame(point) || covered.some((other) => touches(point, other))) continue;
 
-    const majorPx = shape.major * scale;
-    const minorPx = shape.minor * scale;
+    const majorPx = shape.major * scaleX;
+    const minorPx = shape.minor * scaleX;
     const room = majorPx * AXIS_SHARE;
     const asCapitals = room / measure(name.text, true);
     const capitals = asCapitals >= CAPITALS_FROM && minorPx >= CAPITALS_FROM;
@@ -348,45 +373,38 @@ export function placeNames(
       ? Math.min(asCapitals, Math.max(minorPx * 0.7, CAPITALS_FROM))
       : room / measure(name.text, false);
     const size = Math.min(MAX_SIZE, fitted);
-    if (size < MIN_SIZE && !name.mustShow) continue;
-
-    const drawn = Math.max(MIN_SIZE, size);
-    const long = shape.major / shape.minor >= LONG_REALM && majorPx > 60;
-    // A name reads left to right, so a slope folds into the upright half.
-    let lean = shape.angle;
-    if (lean > Math.PI / 2) lean -= Math.PI;
-    if (lean < -Math.PI / 2) lean += Math.PI;
-    const angle = long ? Math.max(-MAX_LEAN, Math.min(MAX_LEAN, lean)) : 0;
-    const width = measure(name.text, capitals) * drawn;
-    const height = drawn * 1.15;
-    const onLand = textBox(x, y, width, height, angle);
-    if (size >= MIN_SIZE && isFree(onLand)) {
-      boxes.push(onLand);
-      placed.push({ text: name.text, x, y, size: drawn, angle, capitals });
-      continue;
+    if (size >= MIN_SIZE) {
+      const long = shape.major / shape.minor >= LONG_REALM && majorPx > 60;
+      // A name reads left to right, so a slope folds into the upright half.
+      const lean = shape.angle - Math.round(shape.angle / Math.PI) * Math.PI;
+      const angle = long ? Math.max(-MAX_LEAN, Math.min(MAX_LEAN, lean)) : 0;
+      const width = measure(name.text, capitals) * size;
+      const box = textBox(land.x, land.y, width, size * 1.15, angle);
+      if (isFree(box)) {
+        boxes.add(box);
+        placed.push({ text: name.text, x: land.x, y: land.y, size, angle, capitals });
+        continue;
+      }
     }
     if (!name.mustShow) continue;
 
     // Away from its land a name is a plain note, level and small, so that it does not read as land.
     const noteWidth = measure(name.text, false) * NOTE_SIZE;
     const noteHeight = NOTE_SIZE * 1.15;
-    for (const [ox, oy] of [
-      [0, 0] as const,
-      ...noteOffsets(noteWidth, noteHeight, name.leaderLine),
-    ]) {
-      const box = textBox(x + ox, y + oy, noteWidth, noteHeight, 0);
-      if (!isFree(box)) continue;
-      boxes.push(box);
+    for (const [ox, oy] of noteOffsets(noteWidth, noteHeight, name.leaderLine)) {
+      const at = { x: land.x + ox, y: land.y + oy };
+      const box = textBox(at.x, at.y, noteWidth, noteHeight, 0);
       // A name beside its land needs no line. One further off does.
       const far = Math.hypot(ox, oy) > Math.max(noteWidth / 2, noteHeight * 2);
+      if (!isFree(box) || (far && covered.some((cover) => crosses(land, at, cover)))) continue;
+      boxes.add(box);
       placed.push({
         text: name.text,
-        x: x + ox,
-        y: y + oy,
+        ...at,
         size: NOTE_SIZE,
         angle: 0,
         capitals: false,
-        ...(far ? { anchor: { x, y } } : {}),
+        ...(far && name.leaderLine ? { anchor: land } : {}),
       });
       break;
     }

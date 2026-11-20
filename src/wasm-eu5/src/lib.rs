@@ -1447,13 +1447,13 @@ pub struct Eu5MapNames(eu5app::map_names::MapNames);
 impl Eu5MapNames {
     #[wasm_bindgen]
     pub fn names(&self) -> Result<Vec<Ts<eu5app::map_names::MapName>>, JsError> {
-        vec_into_ts(self.0.names.clone())
+        vec_into_ts(self.0.names().to_vec())
     }
 
     /// The map color ids of the land of each name, in the order of the names.
     #[wasm_bindgen]
     pub fn locations(&self) -> Vec<u16> {
-        self.0.locations.clone()
+        self.0.locations().to_vec()
     }
 }
 

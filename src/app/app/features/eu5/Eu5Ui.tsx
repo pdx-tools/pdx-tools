@@ -199,7 +199,7 @@ const Eu5UiContent = ({
 
       {/* Canvas overlays */}
       <BoxSelectOverlay />
-      <MapNames host={host} />
+      <MapNames host={host} busy={busy} />
       {!preview ? <Eu5CursorTooltip cursorRef={cursorRef} /> : null}
       {!preview ? <Eu5SelectionPill /> : null}
       <TimelineBar />

@@ -5,8 +5,6 @@ use crate::selection::SelectionPreset;
 use eu5save::models::{CountryId, LocationIdx};
 use std::cmp::Reverse;
 
-/// With no selection, the map names this many realms with the most land, and each player.
-const MOST_REALMS: usize = 90;
 /// Great powers up to this rank always try to show their names.
 const MUST_SHOW_GREAT_POWERS: i32 = 10;
 /// A map of religions or markets always tries to show this many of the largest.
@@ -89,19 +87,18 @@ impl<'bump> Eu5Workspace<'bump> {
             .then(|| players.iter().next().copied())
             .flatten();
 
+        // With a selection, a realm is named for its land in the selection.
         let mut land = Vec::new();
         for entry in self.gamestate.locations.iter() {
             let idx = entry.idx();
+            if !selection.is_empty() && !selection.contains(idx) {
+                continue;
+            }
             let owner = self.owner_at_timeline_date(idx);
             if let Some(color) = self.center_at(idx).filter(|_| !owner.is_dummy()) {
                 land.push((owner, color.value()));
             }
         }
-        let selected: FxHashSet<CountryId> = selection
-            .selected_locations()
-            .iter()
-            .map(|&idx| self.owner_at_timeline_date(idx))
-            .collect();
 
         struct Realm {
             owner: CountryId,
@@ -137,12 +134,8 @@ impl<'bump> Eu5Workspace<'bump> {
                 let rank = great_power_rank(&realm);
                 let great_power = rank.is_some_and(|rank| rank <= MUST_SHOW_GREAT_POWERS);
                 let is_home = realm.live.is_some() && realm.live == home;
-                let wanted = if selection.is_empty() {
-                    by_land < MOST_REALMS || player || great_power
-                } else {
-                    selected.contains(&realm.owner) && (player || !players_only)
-                };
-                if !wanted {
+                // Each realm has a name, and it shows where its land has room for it.
+                if players_only && !player {
                     return None;
                 }
 

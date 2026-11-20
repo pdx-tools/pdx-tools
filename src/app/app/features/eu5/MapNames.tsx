@@ -25,9 +25,16 @@ export const mapCoverRef: RefCallback<HTMLElement> = (element) => {
  * The names on the map are drawn by the map worker. This tells it where the
  * panels are, and lets "N" show or hide the names.
  */
-export function MapNames({ host }: { host: CanvasCourierHost }) {
+export function MapNames({
+  host,
+  busy,
+}: {
+  host: CanvasCourierHost;
+  /** The next save of the campaign loads, and the engine of this save takes no input. */
+  busy: boolean;
+}) {
   useMapNameCovers(host);
-  useMapNamesKey();
+  useMapNamesKey(busy);
   return null;
 }
 
@@ -116,11 +123,12 @@ function useMapNameCovers(host: CanvasCourierHost) {
 }
 
 /** "N" shows or hides the names, from anywhere but a field. */
-function useMapNamesKey() {
+function useMapNamesKey(busy: boolean) {
   const engine = useEu5Engine();
   const visible = useEu5MapNamesVisible();
 
   useEffect(() => {
+    if (busy) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -131,5 +139,5 @@ function useMapNamesKey() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [engine, visible]);
+  }, [engine, visible, busy]);
 }

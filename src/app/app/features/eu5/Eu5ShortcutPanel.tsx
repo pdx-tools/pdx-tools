@@ -4,6 +4,7 @@ import { cx } from "class-variance-authority";
 import { Popover } from "@/components/Popover";
 import { focusRing } from "@/components/game/focusRing";
 import { sectionLabel } from "@/components/game/SectionTitle";
+import { mapCoverRef } from "./MapNames";
 import { Kbd } from "@/components/game/Kbd";
 
 interface Shortcut {
@@ -113,7 +114,7 @@ export function Eu5ShortcutPanel() {
         sideOffset={16}
         className="w-104 rounded-panel border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
       >
-        <div className="px-5 pt-4 pb-5">
+        <div ref={mapCoverRef} className="px-5 pt-4 pb-5">
           {SHORTCUT_GROUPS.map((group, groupIdx) => (
             <div key={group.label}>
               {groupIdx > 0 && <div className="my-3 h-px bg-game-line" />}

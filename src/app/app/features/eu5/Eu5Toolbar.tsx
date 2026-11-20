@@ -182,7 +182,7 @@ export function Eu5Toolbar() {
             />
 
             {showDropdown && (
-              <div className="absolute top-full right-0 left-0 mt-2">
+              <div ref={mapCoverRef} className="absolute top-full right-0 left-0 mt-2">
                 <div className="rounded-panel border border-game-line-strong bg-game-panel/95 shadow-2xl backdrop-blur-md">
                   <CommandPrimitive.List className="max-h-80 overflow-y-auto p-1.5">
                     <CommandPrimitive.Empty className="py-4 text-center text-xs text-game-ink-500">

@@ -52,6 +52,14 @@ describe("realmShape", () => {
     expect(shape?.center.y).toBeLessThan(150);
   });
 
+  it("keeps a body across the edge of the map whole, beside land overseas", () => {
+    const body = Array.from({ length: 21 }, (_, i) => ({ x: (990 + i) % WORLD, y: 100 + (i % 3) }));
+    const overseas = Array.from({ length: 20 }, (_, i) => ({ x: 500 + (i % 4), y: 300 + i }));
+    const shape = realmShape(flat([...body, ...overseas]), WORLD);
+    expect(Math.min(shape!.center.x, WORLD - shape!.center.x)).toBeLessThan(20);
+    expect(shape?.center.y).toBeLessThan(110);
+  });
+
   it("has no shape without points", () => {
     expect(realmShape(new Float64Array(), WORLD)).toBeNull();
   });
@@ -108,6 +116,18 @@ describe("placeNames", () => {
     );
     expect(placed.x).toBe(300);
   });
+
+  it("reads each axis of the view with its own scale", () => {
+    const [placed] = placeNames(
+      [name("Russia", large)],
+      { ...view, height: 400 },
+      WORLD,
+      frame,
+      [],
+      measure,
+    );
+    expect(placed.y).toBe(250);
+  });
 });
 
 describe("a name with a leader line", () => {
@@ -128,14 +148,29 @@ describe("a name with a leader line", () => {
     expect(placed.find((p) => p.text === "Small")?.anchor).toEqual({ x: 500, y: 250 });
   });
 
-  it("goes around a panel, with a line to its land", () => {
-    const covers = [
-      { x: 400, y: 200, width: 200, height: 45 },
-      { x: 400, y: 255, width: 200, height: 45 },
-    ];
-    const [placed] = place([name("Home", shape, { mustShow: true, leaderLine: true })], covers);
-    expect(placed.size).toBe(12);
-    expect(placed.anchor).toEqual({ x: 500, y: 250 });
+  it("never draws its line across a panel", () => {
+    const crowd = Array.from({ length: 12 }, (_, i) =>
+      name(
+        "Neighbour",
+        { ...shape, center: { x: 500 + ((i % 4) - 1.5) * 70, y: 250 + (i % 3) * 18 - 18 } },
+        { mustShow: true },
+      ),
+    );
+    // A thin panel across the way up, where the name would go without it.
+    const cover = { x: 480, y: 212, width: 40, height: 4 };
+    const placed = place(
+      [...crowd, name("Small", shape, { mustShow: true, leaderLine: true })],
+      [cover],
+    ).find((p) => p.text === "Small");
+    expect(placed?.anchor).toEqual({ x: 500, y: 250 });
+    const crossesCover = Array.from({ length: 101 }, (_, i) => i / 100).some((t) => {
+      const x = 500 + (placed!.x - 500) * t;
+      const y = 250 + (placed!.y - 250) * t;
+      return (
+        x >= cover.x && x <= cover.x + cover.width && y >= cover.y && y <= cover.y + cover.height
+      );
+    });
+    expect(crossesCover).toBe(false);
   });
 
   it("gives no line to a name on its land", () => {

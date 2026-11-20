@@ -334,12 +334,14 @@ const loadSaveInner = async (
     return map.syncMapData(transfer(data, buffers));
   };
   // The first sync had no names, because the save's text was not loaded yet.
-  void syncMapData({ names: mapNames(app) });
+  // A held save gets its names when it shows.
+  if (!held) void syncMapData({ names: mapNames(app) });
 
   const syncFlagData = () => syncMapData({ flags: cloneBuffer(app.location_flag_data()) });
 
   const syncChangedData = (change: MapChangeData) => {
-    if (!change.colorsChanged && !change.flagsChanged) {
+    // A held save shows nothing yet, and `show` sends all of it.
+    if (held || (!change.colorsChanged && !change.flagsChanged)) {
       return Promise.resolve();
     }
     // New colors or flags come with a new date, mode or selection, which

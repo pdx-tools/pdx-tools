@@ -63,12 +63,20 @@ pub struct MapName {
 /// The land of all names is in one list, so that it goes to the map as one buffer.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MapNames {
-    pub names: Vec<MapName>,
-    /// The map color ids of the land of each name, in the order of the names.
-    pub locations: Vec<u16>,
+    names: Vec<MapName>,
+    locations: Vec<u16>,
 }
 
 impl MapNames {
+    pub fn names(&self) -> &[MapName] {
+        &self.names
+    }
+
+    /// The map color ids of the land of each name, in the order of the names.
+    pub fn locations(&self) -> &[u16] {
+        &self.locations
+    }
+
     /// Each name with the map color ids of its land.
     pub fn lands(&self) -> impl Iterator<Item = (&MapName, &[u16])> {
         let mut rest = self.locations.as_slice();
@@ -86,6 +94,7 @@ impl Present for MapNamesSource {
     fn present(self, ctx: &LocalizationContext<'_, '_>) -> Self::Output {
         let mut out = MapNames::default();
         for name in self.names {
+            // The count and the land go in together, so that they always agree.
             out.names.push(MapName {
                 text: name.text.present(ctx),
                 must_show: name.must_show,
