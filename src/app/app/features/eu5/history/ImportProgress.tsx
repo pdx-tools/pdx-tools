@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import type { ImportProgressState } from "./importTiming";
-import { importProgressStats } from "./importTiming";
+import type { ImportProgressState } from "@/features/campaign/analysis/importTiming";
+import { importProgressStats } from "@/features/campaign/analysis/importTiming";
 
 function duration(seconds: number) {
   if (seconds < 60) return `${seconds}s`;
