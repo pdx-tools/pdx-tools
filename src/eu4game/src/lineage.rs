@@ -166,6 +166,9 @@ impl Lineage {
     /// and the country is not in it. A save on the day of a switch can be
     /// from before it, so on that day a holding that the switch ends or
     /// starts follows whether the save records a switch of its tag that day.
+    ///
+    /// Build the lineages from the switches of every save that this reads.
+    /// A save with a switch of a held tag that they lack is not resolved.
     pub fn held_in(&self, date: GameDate, recorded: &[TagSwitch]) -> Option<(usize, &HeldTag)> {
         let switched = |tag: CountryTag| {
             recorded
@@ -181,13 +184,18 @@ impl Lineage {
                 held.contains(date)
             }
         })?;
+        let during = |seg: &HeldTag, x: &TagSwitch| {
+            (x.from == seg.tag || x.to == seg.tag)
+                && seg.from.is_none_or(|from| from <= x.date)
+                && seg.until.is_none_or(|until| x.date <= until)
+                && x.date < date
+        };
+        // A switch that the lineages were not built from can be of another country.
         let on_branch = self.tags[..=index].iter().all(|seg| {
-            self.switches
-                .iter()
-                .filter(|x| x.from == seg.tag || x.to == seg.tag)
-                .filter(|x| seg.from.is_none_or(|from| from <= x.date))
-                .filter(|x| seg.until.is_none_or(|until| x.date <= until) && x.date < date)
-                .all(|x| recorded.contains(x))
+            let known = self.switches.iter().filter(|x| during(seg, x));
+            let seen = recorded.iter().filter(|x| during(seg, x));
+            known.clone().all(|x| recorded.contains(x))
+                && seen.clone().all(|x| self.switches.contains(x))
         });
         on_branch.then(|| (index, &self.tags[index]))
     }
@@ -554,6 +562,16 @@ mod tests {
             .filter_map(|x| Some((x.tags.len(), x.held_in(date(1451), &[])?.1.tag)))
             .collect();
         assert_eq!(held, [(2, tag("ALO")), (1, tag("NBI"))]);
+    }
+
+    #[test]
+    fn a_save_with_an_unknown_switch_is_not_resolved() {
+        // Built from a save without switches, then given a save after POL
+        // formed PLC and a new POL appeared.
+        let found = lineages([tag("POL")], &[], |_| true);
+        let later = [switch("POL", "PLC", 1519)];
+        assert_eq!(found[0].held_in(date(1500), &[]).map(|x| x.0), Some(0));
+        assert_eq!(found[0].held_in(date(1520), &later), None);
     }
 
     #[test]
