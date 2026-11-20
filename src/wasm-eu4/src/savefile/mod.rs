@@ -1044,6 +1044,18 @@ impl SaveFileImpl {
             .collect()
     }
 
+    /// The countries of a campaign chart: the tags of the filter, up to the
+    /// limit, and the tags that a switch recorded in this save joins to them.
+    pub fn chart_countries(
+        &self,
+        payload: TagFilterPayloadRaw,
+        limit: usize,
+    ) -> eu4game::analysis::ChartCountries {
+        let tags = self.filter_stored_tags(payload, limit);
+        let switches = eu4game::analysis::tag_switches(&self.nation_events);
+        eu4game::analysis::chart_countries(tags, &switches)
+    }
+
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
         struct CountryHealthDatum {
             tag: CountryTag,
@@ -1070,13 +1082,6 @@ impl SaveFileImpl {
         }
 
         impl CountryHealthDatum {
-            fn force_strength(&self) -> f32 {
-                self.armed_forces.infantry_units.strength
-                    + self.armed_forces.cavalry_units.strength
-                    + self.armed_forces.artillery_units.strength
-                    + self.armed_forces.mercenary_units.strength
-            }
-
             fn ships(&self) -> usize {
                 self.armed_forces.heavy_ship_units
                     + self.armed_forces.light_ship_units
@@ -1172,7 +1177,7 @@ impl SaveFileImpl {
 
         let max_force_strength = countries
             .iter()
-            .map(|x| x.force_strength())
+            .map(|x| x.armed_forces.army_size)
             .fold(0., f32::max);
 
         let max_max_manpower = countries
@@ -1228,7 +1233,7 @@ impl SaveFileImpl {
                 let tech_total = (country.technology.adm_tech
                     + country.technology.dip_tech
                     + country.technology.mil_tech) as f32;
-                let standard_regiments = country.force_strength();
+                let standard_regiments = country.armed_forces.army_size;
                 let ships = country.ships() as f32;
                 CountryHealth {
                     tag: country.tag,

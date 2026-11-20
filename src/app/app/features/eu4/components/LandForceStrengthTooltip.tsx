@@ -5,15 +5,7 @@ import { formatInt } from "@/lib/format";
 export const LandForceStrengthTooltip = ({ force }: { force: CountryArmedForces }) => {
   return (
     <Tooltip>
-      <Tooltip.Trigger>
-        {formatInt(
-          force.infantryUnits.strength +
-            force.cavalryUnits.strength +
-            force.artilleryUnits.strength +
-            force.mercenaryUnits.strength,
-        )}
-        K
-      </Tooltip.Trigger>
+      <Tooltip.Trigger>{formatInt(force.armySize)}K</Tooltip.Trigger>
       <Tooltip.Content className="flex flex-col p-2">
         <p>Infantry: {formatInt(force.infantryUnits.strength)}K</p>
         <p>Cavalry: {formatInt(force.cavalryUnits.strength)}K</p>

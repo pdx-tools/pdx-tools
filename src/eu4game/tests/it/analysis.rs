@@ -1,12 +1,14 @@
 use crate::utils;
 use campaign_analysis::{History, Observation, Query, Selection, Session, View};
 use eu4game::analysis::{
-    self, CountryDimension, CountryMetric, Eu4Analysis, Eu4Answer, Eu4Query, province_development,
+    self, CountryDimension, CountryMetric, Eu4Analysis, Eu4Answer, Eu4Query, army_size,
+    province_development,
 };
+use eu4game::game::Game;
 use eu4game::shared::Eu4Parser;
 use eu4save::ProvinceId;
 use eu4save::query::Query as SaveQuery;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 const SAVES: [(&str, &str, f64, f64); 3] = [
     ("ita2.eu4", "1528-07-01", 19311.0, 196.0),
@@ -63,11 +65,34 @@ fn observations_agree_with_the_parsed_save() {
         let row = observed.payload().country_offset(&player).unwrap();
         assert_eq!(
             observed.payload().province_development_by_country()[row],
-            player_development
+            Some(player_development)
         );
+        let country = query.country(&player).unwrap();
+        let columns = observed.payload().countries.columns();
         assert_eq!(
-            observed.payload().countries.columns().max_manpower.get(row),
-            Some(Some(query.country(&player).unwrap().max_manpower))
+            columns.max_manpower.get(row),
+            Some(Some(country.max_manpower))
+        );
+        assert_eq!(columns.army_size.get(row), Some(Some(army_size(country))));
+
+        // The viewer splits army size by the unit types of the game data. The
+        // total needs no game data: every regiment of these saves has a known
+        // type, so the split leaves none out.
+        let game = Game::new(&query.save().meta.savegame_version);
+        let land: HashSet<_> = game.land_units().map(|unit| unit.name).collect();
+        let regiments: Vec<_> = query
+            .save()
+            .game
+            .countries
+            .iter()
+            .flat_map(|(_, country)| &country.armies)
+            .filter(|army| army.mercenary_company.is_none())
+            .flat_map(|army| &army.regiments)
+            .collect();
+        assert!(regiments.len() > 1000, "{name}");
+        assert!(
+            regiments.iter().all(|x| land.contains(x._type.as_str())),
+            "{name}"
         );
 
         let mut italy_total = 0.0;

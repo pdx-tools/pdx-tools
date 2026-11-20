@@ -8,13 +8,41 @@ use campaign_analysis::{
     RegistryMemory, RowSelect, SaveDate, Series, SnapshotDescriptor, SnapshotSource, Table,
     TableError, TextRegistry, TextRow, Texts, View, check_length,
 };
-use eu4save::{CountryTag, PdsDate, ProvinceId, models::Province, query::Query};
+use eu4save::{
+    CountryTag, PdsDate, ProvinceId,
+    models::{Country, Province},
+    query::{NationEvents, Query},
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 
 /// The development of a province, as the province list of the viewer shows it.
 pub fn province_development(province: &Province) -> f32 {
     province.base_tax + province.base_production + province.base_manpower
+}
+
+/// The men in the land regiments of a country, in thousands, as the Health
+/// Heatmap totals its current force strength. Every regiment counts,
+/// mercenaries too, whatever its unit type.
+pub fn army_size(country: &Country) -> f32 {
+    country
+        .armies
+        .iter()
+        .flat_map(|army| &army.regiments)
+        .map(|regiment| regiment.strength)
+        .sum()
+}
+
+/// A tag that the game makes for a new country: a letter and two digits,
+/// such as a colonial nation (C00), a client state (K00), a trading company
+/// (T00) or a federation (F00). The game gives the tag to another country
+/// later, so one tag is not one country over a campaign. No tag of the
+/// game files has a digit.
+pub fn is_generated_tag(tag: &CountryTag) -> bool {
+    let [letter, first, second] = *tag.as_bytes() else {
+        return false;
+    };
+    letter.is_ascii_uppercase() && first.is_ascii_digit() && second.is_ascii_digit()
 }
 
 /// A row of the country table of the same snapshot, or no country.
@@ -51,8 +79,10 @@ campaign_analysis::columns!(rows ProvinceColumns, "provinces" { development, own
 pub struct CountryColumns {
     /// In thousands of men, as Country Details shows it.
     pub max_manpower: NullableColumn<f32>,
+    /// See [`army_size`].
+    pub army_size: NullableColumn<f32>,
 }
-campaign_analysis::columns!(rows CountryColumns, "countries" { max_manpower });
+campaign_analysis::columns!(rows CountryColumns, "countries" { max_manpower, army_size });
 
 /// A religion of a country. The religion is a row of the snapshot religions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -200,14 +230,15 @@ impl Eu4Payload {
             .sum()
     }
 
-    /// The development of the provinces that each country row owns. The
-    /// payload must be validated, as every stored snapshot is.
-    pub fn province_development_by_country(&self) -> Vec<f64> {
+    /// The development of the provinces that each country row owns, or
+    /// none for a country that owns no province. The payload must be
+    /// validated, as every stored snapshot is.
+    pub fn province_development_by_country(&self) -> Vec<Option<f64>> {
         let provinces = self.provinces.columns();
-        let mut totals = vec![0.0; self.countries.len()];
+        let mut totals = vec![None; self.countries.len()];
         for (development, owner) in provinces.development.iter().zip(&provinces.owner) {
             if let Some(row) = owner.get() {
-                totals[row] += f64::from(*development);
+                *totals[row].get_or_insert(0.0) += f64::from(*development);
             }
         }
         totals
@@ -247,10 +278,15 @@ pub fn extract(
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
+    let records: Vec<_> = tags.iter().map(|tag| query.country(tag)).collect();
     let countries = CountryColumns {
-        max_manpower: tags
+        max_manpower: records
             .iter()
-            .map(|tag| query.country(tag).map(|country| country.max_manpower))
+            .map(|country| country.map(|country| country.max_manpower))
+            .collect(),
+        army_size: records
+            .iter()
+            .map(|country| country.map(army_size))
             .collect(),
     };
 
@@ -359,11 +395,9 @@ impl Game for Eu4Analysis {
         if measurements
             .iter()
             .any(|column| column.iter().any(|x| !x.is_finite()))
-            || countries
-                .max_manpower
+            || [&countries.max_manpower, &countries.army_size]
                 .iter()
-                .flatten()
-                .any(|x| !x.is_finite())
+                .any(|column| column.iter().flatten().any(|x| !x.is_finite()))
         {
             return Err(PayloadError::NonFinite);
         }
@@ -442,6 +476,8 @@ pub enum CountryMetric {
     ProvinceDevelopment,
     /// In thousands of men, as Country Details shows it.
     MaxManpower,
+    /// See [`army_size`].
+    ArmySize,
 }
 
 /// How to split a country value.
@@ -461,8 +497,9 @@ campaign_analysis::queries! {
         /// The development of a fixed set of provinces on each date. If a
         /// snapshot does not have one of the provinces, its total is a gap.
         ProvinceDevelopment { #[serde(deserialize_with = "deserialize_provinces")] province_ids: Vec<ProvinceId> } => History = fixed_province_development,
-        /// One series for each country. A country that does not exist on a
-        /// date has a gap there.
+        /// One series for each country, in the order of the tags. A country
+        /// that owns no province on a date has a gap there. Generated tags
+        /// ([`is_generated_tag`]) have no series.
         CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<Series<CountryTag>> = country_series,
         /// One series for each part of a country value on the selected
         /// dates, by name. A part is zero on a date where the country exists
@@ -498,6 +535,7 @@ pub fn country_series(
 ) -> Vec<Series<CountryTag>> {
     let mut series: Vec<_> = tags
         .into_iter()
+        .filter(|tag| !is_generated_tag(tag))
         .map(|key| Series {
             key,
             values: Vec::with_capacity(view.snapshots().len()),
@@ -506,17 +544,18 @@ pub fn country_series(
     for snapshot in view.snapshots() {
         let payload = snapshot.payload();
         let columns = payload.countries.columns();
-        let development = (metric == CountryMetric::ProvinceDevelopment)
-            .then(|| payload.province_development_by_country());
+        let development = payload.province_development_by_country();
         for country in &mut series {
-            let value = payload
-                .country_offset(&country.key)
-                .and_then(|row| match metric {
-                    CountryMetric::ProvinceDevelopment => development.as_ref().map(|x| x[row]),
+            let value = payload.country_offset(&country.key).and_then(|row| {
+                let owned = development[row]?;
+                match metric {
+                    CountryMetric::ProvinceDevelopment => Some(owned),
                     CountryMetric::MaxManpower => {
                         columns.max_manpower.get(row).flatten().map(f64::from)
                     }
-                });
+                    CountryMetric::ArmySize => columns.army_size.get(row).flatten().map(f64::from),
+                }
+            });
             country.values.push(value);
         }
     }
@@ -578,6 +617,86 @@ fn religion_development(view: &View<'_, Eu4Analysis>, tag: CountryTag) -> Vec<Se
     series
 }
 
+/// A country that changed its tag on a date, as the nation events of a save
+/// record it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct TagSwitch {
+    pub from: CountryTag,
+    pub to: CountryTag,
+    /// `YYYY-MM-DD`
+    pub date: String,
+}
+
+/// The tag switches of the nation events of a save, in date order.
+pub fn tag_switches(events: &[NationEvents]) -> Vec<TagSwitch> {
+    let mut switches: Vec<_> = events
+        .iter()
+        .flat_map(|nation| {
+            let mut current = nation.initial;
+            nation.events.iter().filter_map(move |event| {
+                let (date, to) = event.as_tag_switch()?;
+                let from = std::mem::replace(&mut current, to);
+                Some((
+                    date,
+                    TagSwitch {
+                        from,
+                        to,
+                        date: date.iso_8601().to_string(),
+                    },
+                ))
+            })
+        })
+        .collect();
+    switches.sort_by_key(|(date, _)| *date);
+    switches.into_iter().map(|(_, switch)| switch).collect()
+}
+
+/// The countries of a campaign chart and the tag switches between them.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct ChartCountries {
+    /// Sorted and distinct.
+    pub tags: Vec<CountryTag>,
+    pub switches: Vec<TagSwitch>,
+}
+
+/// The chosen tags with each tag that a recorded switch joins to them, so a
+/// formed nation and the country that formed it show together. Generated
+/// tags are left out.
+pub fn chart_countries(
+    chosen: impl IntoIterator<Item = CountryTag>,
+    switches: &[TagSwitch],
+) -> ChartCountries {
+    let switches: Vec<_> = switches
+        .iter()
+        .filter(|x| !is_generated_tag(&x.from) && !is_generated_tag(&x.to))
+        .collect();
+    let mut tags: BTreeSet<_> = chosen
+        .into_iter()
+        .filter(|tag| !is_generated_tag(tag))
+        .collect();
+    loop {
+        let joined: Vec<_> = switches
+            .iter()
+            .filter(|x| tags.contains(&x.from) != tags.contains(&x.to))
+            .flat_map(|x| [x.from, x.to])
+            .collect();
+        if joined.is_empty() {
+            break;
+        }
+        tags.extend(joined);
+    }
+    ChartCountries {
+        switches: switches
+            .into_iter()
+            .filter(|x| tags.contains(&x.from))
+            .cloned()
+            .collect(),
+        tags: tags.into_iter().collect(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -590,8 +709,8 @@ mod tests {
         tag.parse().unwrap()
     }
 
-    /// Countries get their max manpower from the order of their tags. An
-    /// alive country may own no province.
+    /// Countries get their max manpower and army size from the order of
+    /// their tags. An alive country may own no province.
     fn payload(provinces: &[Spec], alive: &[&str]) -> Eu4Payload {
         let tags: Vec<_> = provinces
             .iter()
@@ -642,6 +761,7 @@ mod tests {
                 tags,
                 CountryColumns {
                     max_manpower: (1..=count).map(|i| Some(10.0 * i as f32)).collect(),
+                    army_size: (1..=count).map(|i| Some(i as f32)).collect(),
                 },
             )
             .unwrap(),
@@ -774,9 +894,9 @@ mod tests {
     #[test]
     fn a_country_series_reads_stored_values_and_derives_development() {
         let store = store();
-        let run = |metric| {
+        let run = |metric, tags: &[&str]| {
             let query = Eu4Query::CountrySeries {
-                tags: vec![tag("FRA"), tag("ENG"), tag("SWE")],
+                tags: tags.iter().copied().map(tag).collect(),
                 metric,
             };
             match answer(&store, query) {
@@ -784,24 +904,39 @@ mod tests {
                 other => panic!("{other:?}"),
             }
         };
+        // SWE is alive in 1600 but owns no province, so it has a gap there.
+        let tags = ["FRA", "ENG", "SWE"];
         assert_eq!(
-            run(CountryMetric::ProvinceDevelopment),
+            run(CountryMetric::ProvinceDevelopment, &tags),
             [
                 (tag("FRA"), vec![None, Some(31.0), Some(40.0)]),
                 (tag("ENG"), vec![Some(60.0), Some(12.0), None]),
-                (tag("SWE"), vec![None, None, Some(0.0)]),
+                (tag("SWE"), vec![None, None, None]),
             ]
         );
         assert_eq!(
-            run(CountryMetric::MaxManpower),
+            run(CountryMetric::MaxManpower, &tags),
             [
                 (tag("FRA"), vec![None, Some(20.0), Some(10.0)]),
                 (tag("ENG"), vec![Some(10.0), Some(10.0), None]),
-                (tag("SWE"), vec![None, None, Some(20.0)]),
+                (tag("SWE"), vec![None, None, None]),
             ]
         );
+        assert_eq!(
+            run(CountryMetric::ArmySize, &tags[..2]),
+            [
+                (tag("FRA"), vec![None, Some(2.0), Some(1.0)]),
+                (tag("ENG"), vec![Some(1.0), Some(1.0), None]),
+            ]
+        );
+        // A generated tag has no series.
+        assert_eq!(run(CountryMetric::ArmySize, &["C01", "ENG"]).len(), 1);
         let query: Eu4Query = serde_json::from_value(serde_json::json!({
             "kind": "countrySeries", "tags": ["ENG"], "metric": "maxManpower",
+        }))
+        .unwrap();
+        serde_json::from_value::<Eu4Query>(serde_json::json!({
+            "kind": "countrySeries", "tags": ["ENG"], "metric": "armySize",
         }))
         .unwrap();
         assert!(matches!(
@@ -907,6 +1042,7 @@ mod tests {
             vec![tag("ENG")],
             CountryColumns {
                 max_manpower: [None].into_iter().collect(),
+                army_size: [None].into_iter().collect(),
             },
         )
         .unwrap();
@@ -943,6 +1079,7 @@ mod tests {
             vec![tag("FRA"), tag("ENG")],
             CountryColumns {
                 max_manpower: [None, None].into_iter().collect(),
+                army_size: [None, None].into_iter().collect(),
             },
         )
         .unwrap();
@@ -999,7 +1136,8 @@ mod tests {
         manpower.countries = Table::sorted(
             manpower.countries.keys().to_vec(),
             CountryColumns {
-                max_manpower: [Some(f32::NAN), None].into_iter().collect(),
+                max_manpower: [None, None].into_iter().collect(),
+                army_size: [Some(f32::NAN), None].into_iter().collect(),
             },
         )
         .unwrap();
@@ -1084,5 +1222,35 @@ mod tests {
             let error = Eu4Payload::decode(&mut Decoder::new(&bytes)).unwrap_err();
             assert!(error.to_string().contains("nonnegative"), "{error}");
         }
+    }
+
+    #[test]
+    fn generated_tags_are_a_letter_and_two_digits() {
+        for generated in ["C00", "K12", "T99", "F01", "D05"] {
+            assert!(is_generated_tag(&tag(generated)), "{generated}");
+        }
+        for fixed in ["FRA", "TUR", "MEX", "---", "REB"] {
+            assert!(!is_generated_tag(&tag(fixed)), "{fixed}");
+        }
+    }
+
+    #[test]
+    fn a_chart_pairs_the_tags_of_recorded_switches() {
+        let switch = |from: &str, to: &str, date: &str| TagSwitch {
+            from: tag(from),
+            to: tag(to),
+            date: date.to_owned(),
+        };
+        let switches = [
+            switch("BRA", "PRU", "1525-01-01"),
+            switch("PRU", "GER", "1700-01-01"),
+            switch("C01", "MEX", "1650-01-01"),
+            switch("CAS", "SPA", "1500-01-01"),
+        ];
+        let chart = chart_countries([tag("GER"), tag("C02"), tag("ENG")], &switches);
+        assert_eq!(chart.tags, ["BRA", "ENG", "GER", "PRU"].map(tag));
+        assert_eq!(chart.switches, switches[..2]);
+        // A generated tag does not join a formed nation.
+        assert_eq!(chart_countries([tag("MEX")], &switches).tags, [tag("MEX")]);
     }
 }
