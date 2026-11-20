@@ -201,8 +201,8 @@ export class CanvasCourierTransport {
       this.resizeObserver.observe(surface.canvas, { box: "device-pixel-content-box" });
     } else {
       this.resizeObserver.observe(surface.canvas);
-      this.observeDevicePixelRatio(surface);
     }
+    this.observeDevicePixelRatio(surface);
 
     if (document.activeElement === surface.canvas) {
       this.inputQueue.writer.enqueueFocus(performance.now());
@@ -230,7 +230,17 @@ export class CanvasCourierTransport {
   }
 
   private syncSurfaceSize(surface: CanvasCourierDomSurface): void {
-    const nextSize = this.measureSurface(surface);
+    let nextSize = this.measureSurface(surface);
+    // A zoom can keep the size in device pixels. The observer's last size is
+    // exact, where the product of the CSS size and the ratio can be a pixel short.
+    const last = this.canvasSize;
+    if (SUPPORTS_DEVICE_PIXEL_CONTENT_BOX && last !== undefined) {
+      const bounds = surface.canvas.getBoundingClientRect();
+      nextSize = canvasPhysicalSize(bounds.width, bounds.height, nextSize.scaleFactor, {
+        inlineSize: last.width,
+        blockSize: last.height,
+      });
+    }
     this.canvasSize = nextSize;
     this.inputQueue.writer.enqueueResize(nextSize);
   }
@@ -242,8 +252,9 @@ export class CanvasCourierTransport {
     this.resizeObserver = undefined;
   }
 
-  // Safari doesn't support devicePixelContentBoxSize, so DPR changes don't fire
-  // the ResizeObserver. We use a matchMedia query to detect DPR changes instead.
+  // A DPR change can keep the size in device pixels, as a browser zoom can,
+  // and Safari has no devicePixelContentBoxSize. Then the ResizeObserver
+  // does not fire, so a matchMedia query reports the change.
   private observeDevicePixelRatio(surface: CanvasCourierDomSurface): void {
     const mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
     mediaQuery.addEventListener(

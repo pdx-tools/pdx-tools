@@ -11,9 +11,17 @@ const mocks = vi.hoisted(() => {
   return {
     frame,
     expose: vi.fn(),
+    names: {
+      setNames: vi.fn(),
+      setCovers: vi.fn(),
+      setVisible: vi.fn(),
+      resize: vi.fn(),
+      draw: vi.fn(),
+    },
     app: {
       get_zoom: vi.fn(() => 1),
       world_size: vi.fn(() => [1000, 500]),
+      location_points: vi.fn(() => [0, 0, 10, 10]),
       viewport_world_rect: vi.fn(() => [0, 0, 800, 400]),
       canvas_to_world: vi.fn(() => [100, 100]),
       pick_location: vi.fn(() => 1),
@@ -48,6 +56,11 @@ vi.mock("../../../../wasm/wasm_eu5_map", () => ({
   Eu5WasmMapRenderer: { load: () => mocks.app },
   setup_eu5_map_wasm: vi.fn(),
   location_borders_at_zoom: vi.fn(),
+}));
+vi.mock("./nameLayer", () => ({
+  MapNameLayer: vi.fn(function () {
+    return mocks.names;
+  }),
 }));
 vi.mock("@/lib/log", () => ({ log: vi.fn() }));
 vi.mock("comlink", () => ({ proxy: (value: unknown) => value, expose: mocks.expose }));
@@ -95,6 +108,7 @@ async function openMap() {
   const engine = await module.createMapEngine(
     {
       canvas: {} as OffscreenCanvas,
+      names: { canvas: {} as OffscreenCanvas, visible: true },
       display: { width: 960, height: 640, scaleFactor: 2 },
       inputConfig: config,
     },
@@ -209,6 +223,27 @@ describe("EU5 map frame loop", () => {
     expect(mocks.app.render).toHaveBeenCalledTimes(4);
   });
 
+  it("draws new names and a new view in the frame that draws the map", async () => {
+    const { endpoint } = await openMap();
+    const names = {
+      names: [{ text: "France", placement: "nearLand" as const, locationCount: 1 }],
+      locations: new Uint16Array([1]),
+    };
+    await endpoint.syncMapData({ colors: new Uint32Array([7]), names });
+    mocks.app.viewport_world_rect.mockImplementation(() => [50, 0, 800, 400]);
+    mocks.names.draw.mockClear();
+    const renders = mocks.app.render.mock.calls.length;
+    await nextFrame();
+
+    expect(mocks.names.setNames).toHaveBeenLastCalledWith(names);
+    expect(mocks.app.render).toHaveBeenCalledTimes(renders + 1);
+    expect(mocks.names.draw).toHaveBeenCalledOnce();
+    expect(mocks.names.draw).toHaveBeenCalledWith({ x: 50, y: 0, width: 800, height: 400 });
+    expect(mocks.app.render.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.names.draw.mock.invocationCallOrder[0],
+    );
+  });
+
   it("draws every frame in Firefox", async () => {
     vi.stubGlobal("navigator", {
       userAgent: "Mozilla/5.0 (rv:145.0) Gecko/20100101 Firefox/145.0",
@@ -267,10 +302,17 @@ describe("EU5 map overlay", () => {
 
   it("keeps the save under the overlay and shows it again when the overlay clears", async () => {
     const { engine, endpoint } = await openMap();
+    const names = {
+      names: [{ text: "France", placement: "nearLand" as const, locationCount: 1 }],
+      locations: new Uint16Array([1]),
+    };
+    await endpoint.syncMapData({ names });
     mocks.app.sync_location_array.mockClear();
     mocks.app.sync_grouping_table.mockClear();
     await endpoint.presentOverlay(overlay(1));
     await nextFrame();
+    // The names are of the loaded save, so the snapshot has none.
+    expect(mocks.names.setNames).toHaveBeenLastCalledWith(expect.objectContaining({ names: [] }));
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_flag_array).toHaveBeenLastCalledWith(overlay(1).flags);
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(overlay(1).groups);
@@ -284,7 +326,11 @@ describe("EU5 map overlay", () => {
 
     // A new save under the overlay gets its locations, and the overlay stays on top.
     const locations = new Uint32Array([9]);
-    await endpoint.syncSave({ locations, groupingTable: new Uint32Array([6]) });
+    const later = {
+      names: [{ text: "Burgundy", placement: "onLand" as const, locationCount: 1 }],
+      locations: new Uint16Array([1]),
+    };
+    await endpoint.syncSave({ locations, groupingTable: new Uint32Array([6]), names: later });
     await nextFrame();
     expect(mocks.app.sync_location_array).toHaveBeenLastCalledWith(locations);
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
@@ -296,6 +342,7 @@ describe("EU5 map overlay", () => {
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(new Uint32Array([6]));
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_color_array).toHaveBeenCalledTimes(2);
+    expect(mocks.names.setNames).toHaveBeenLastCalledWith(later);
   });
 });
 

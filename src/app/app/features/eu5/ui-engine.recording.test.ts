@@ -27,6 +27,7 @@ function recording() {
     onCursorHintUpdate: vi.fn(),
     onViewportChange: vi.fn(),
     startHoverTracking: vi.fn(),
+    showMapNames: vi.fn(),
     beginTimelapseRecording: vi.fn<GameInstance["beginTimelapseRecording"]>().mockResolvedValue({
       rect: { x: 0, y: 0, width: 1280, height: 720 },
       band: { width: 1280, height: 720 },

@@ -63,6 +63,7 @@ const carry: CampaignCarry = {
     viewport: null,
     selection: null,
     insightPanel: { open: false, width: 640 },
+    mapNames: true,
   },
 };
 const captureCarry: CampaignAdapter["captureCarry"] = () => carry;
@@ -233,6 +234,7 @@ describe("campaign navigation", () => {
         viewport: null,
         selection: null,
         insightPanel: { open: true, width: 640 },
+        mapNames: true,
         inspection: { click: { kind: "update", locationIdx: 42, modifiers: 1 } },
       },
     };

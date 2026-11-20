@@ -2,6 +2,7 @@ import { useMapHistory } from "./history/context";
 import type React from "react";
 import { useCallback } from "react";
 import { ResizablePanel } from "./components/ResizablePanel";
+import { mapCoverRef } from "./MapNames";
 import type { ActiveProfileIdentity, EntityHeader } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import { Figure } from "./components/Figure";
@@ -52,6 +53,7 @@ export function Eu5InsightPanel({ open, onClose }: Eu5InsightPanelProps) {
   return (
     <PanelNavProvider>
       <ResizablePanel.Root
+        ref={mapCoverRef}
         open={open}
         onClose={onClose}
         side="right"

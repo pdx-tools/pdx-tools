@@ -6,11 +6,12 @@ import { MapModesSection } from "./MapModesSection";
 import { RenderBar } from "./RenderBar";
 import { ShareRow } from "./ShareSave";
 import { ExportRow } from "./ExportRow";
+import { mapCoverRef } from "../MapNames";
 
 export const Eu5ControlPanel = () => {
   const preview = useMapHistory()?.preview;
   return (
-    <div className="pointer-events-auto absolute inset-y-0 left-0 z-30 w-[332px]">
+    <div ref={mapCoverRef} className="pointer-events-auto absolute inset-y-0 left-0 z-30 w-[332px]">
       <aside className="flex h-full w-full flex-col border-r border-game-line-strong bg-game-panel">
         <PanelHeader />
         <CampaignSection className="border-b border-game-line" />

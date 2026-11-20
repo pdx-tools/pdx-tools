@@ -9,6 +9,7 @@ pub mod map_projection;
 pub mod hover;
 pub mod insights;
 mod map;
+pub mod map_names;
 mod models;
 pub(crate) mod overlay;
 pub mod population;

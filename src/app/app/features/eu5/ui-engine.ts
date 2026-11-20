@@ -1,6 +1,7 @@
 import type { CarriedSelection, Eu5Carry } from "./campaignCarry";
 import type { OverlayReply } from "./workers/game/game-module";
 import type { LocationClickChangeEvent } from "./workers/map/map-module";
+import type { Rect } from "./workers/map/atlas";
 import type {
   BoxSelectOverlayRect,
   CursorHint,
@@ -125,6 +126,8 @@ export interface AppState {
   hoverDisplayData: DisplayData | null;
   isGeneratingScreenshot: boolean;
   ownerBordersEnabled: boolean;
+  /** The names of realms, religions or markets show on the map. */
+  mapNamesVisible: boolean;
   paletteGradients: PaletteGradients;
   mapModeGradient: GradientConfig | null;
   selectionState: SelectionSummaryData | null;
@@ -216,6 +219,9 @@ export interface AppTriggers {
   stopTimelapse(): void;
   generateScreenshot(fullResolution: boolean): Promise<Blob>;
   toggleOwnerBorders(): Promise<void>;
+  setMapNamesVisible(visible: boolean): void;
+  /** The parts of the map that panels cover, in CSS pixels. No name goes under them. */
+  coverMapNames(covers: Rect[]): void;
   jumpToLocation(
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
@@ -276,6 +282,7 @@ export class Eu5UIEngine implements AppEngine {
       hoverDisplayData: null,
       isGeneratingScreenshot: false,
       ownerBordersEnabled: true,
+      mapNamesVisible: true,
       paletteGradients,
       mapModeGradient: null,
       selectionState: null,
@@ -293,6 +300,9 @@ export class Eu5UIEngine implements AppEngine {
     };
 
     // Set up hover display data callback
+    // The map worker outlives a save, so it takes the names setting of each new one.
+    this.gameInstance.showMapNames(this._state.mapNamesVisible);
+
     this.gameInstance.onHoverDisplayUpdate((data) => {
       this.updateState(() => ({
         hoverDisplayData: data,
@@ -358,6 +368,13 @@ export class Eu5UIEngine implements AppEngine {
     stopTimelapse: () => this.handleStopTimelapse(),
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
+    setMapNamesVisible: (visible) => {
+      // The map worker can outlive this engine, and then it follows the next one.
+      if (this.destroyed) return;
+      this.gameInstance.showMapNames(visible);
+      this.updateState(() => ({ mapNamesVisible: visible }));
+    },
+    coverMapNames: (covers) => this.gameInstance.coverMapNames(covers),
     jumpToLocation: (locationIdx, insets) => this.gameInstance.jumpToLocation(locationIdx, insets),
     fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };

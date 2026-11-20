@@ -16,6 +16,14 @@ test("share a save, open its permalink, and delete it", async ({ page, visitor }
   await page.getByRole("button", { name: "Save date", exact: true }).click();
   await expect(saveDate).toHaveAttribute("aria-valuetext", "1617 Apr 1");
 
+  // "N" hides the names on the map, and the view toggle shows them again.
+  const names = page.getByRole("button", { name: "Names", exact: true });
+  await expect(names).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("n");
+  await expect(names).toHaveAttribute("aria-pressed", "false");
+  await names.click();
+  await expect(names).toHaveAttribute("aria-pressed", "true");
+
   // A compact figure keeps its exact value on keyboard focus and on hover.
   await page.getByRole("button", { name: "Wealth", exact: true }).click();
   await page.getByRole("button", { name: /^Open .* panel$/ }).click();

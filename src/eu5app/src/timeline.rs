@@ -364,7 +364,10 @@ impl<'bump> CountryIdentities<'bump> {
         date: Eu5Date,
     ) -> Option<CountryIdentity<'a>> {
         if let Some(renames) = self.renames.get(&country)
-            && let Some(rename) = renames.iter().find(|rename| rename.date > date)
+            // A rename counts from the start of its day, as the timeline index has it.
+            && let Some(rename) = renames
+                .iter()
+                .find(|rename| rename.date.start_of_day() > date)
         {
             return Some(CountryIdentity {
                 tag: rename.tag.as_str(),
