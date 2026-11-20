@@ -4,7 +4,6 @@ import { useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisQuery } from "@/features/campaign/analysis/useAnalysisQuery";
 import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
-import { saveSourceText } from "@/features/campaign/saveText";
 import { openCampaignSave } from "@/features/campaign/openSave";
 import { dayNumber, formatLongDate } from "@/features/timeline/date";
 import { eu4Analysis } from "@/features/eu4/analysis/analysisClient";
@@ -12,13 +11,13 @@ import { useEu4History } from "@/features/eu4/analysis/store";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import { useEu4Actions, useEu4Countries, useTagFilter } from "@/features/eu4/store";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
-import type { ChartCountries, CountryMetric } from "@/wasm/wasm_eu4";
+import type { ChartCountries, CountryMetric, CountryValue } from "@/wasm/wasm_eu4";
 import { BySaveChart } from "./BySaveChart";
 import type { AxisMark, BySavePoint, BySaveSeries } from "./BySaveChart";
 import { BySaveTable } from "./BySaveTable";
 import { bySaveFigures } from "./figures";
 import type { BySaveFigure, BySaveViz } from "./figures";
-import { alignColumns, bySaveCsv, countryRows } from "./model";
+import { alignColumns, amount, bySaveCsv, countryCount, countryRows, sourceText } from "./model";
 import type { BySaveData } from "./model";
 import { useEu4Campaign } from "./useEu4Campaign";
 import { selectSave, useBySaveView } from "./view";
@@ -37,14 +36,7 @@ const COUNTRY_LIMIT = 20;
 export function CampaignHistory({ viz }: { viz: BySaveViz }) {
   const campaign = useEu4Campaign();
   const { saves, enabled } = campaign;
-  if (saves.length < 2 && !enabled) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p>This is the only save of this campaign here.</p>
-        <AddSaves />
-      </div>
-    );
-  }
+  if (saves.length < 2 && !enabled) return <OnlySave />;
   if (!enabled) return <NotAnalyzed campaign={campaign} />;
   const figure = bySaveFigures[viz];
   return figure.metric ? (
@@ -54,7 +46,26 @@ export function CampaignHistory({ viz }: { viz: BySaveViz }) {
   );
 }
 
+/** A figure without data has no CSV, not the CSV of the chart before it. */
+function useNoCsv() {
+  const visualizationDispatch = useVisualizationDispatch();
+  useEffect(() => {
+    visualizationDispatch({ type: "update-csv-data", getCsvData: async () => toCsv([]) });
+  }, [visualizationDispatch]);
+}
+
+function OnlySave() {
+  useNoCsv();
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <p>This is the only save of this campaign here.</p>
+      <AddSaves />
+    </div>
+  );
+}
+
 function NotAnalyzed({ campaign }: { campaign: Eu4Campaign }) {
+  useNoCsv();
   return (
     <div className="flex flex-col items-start gap-3">
       <p>{countLine(campaign.saves)}</p>
@@ -76,8 +87,8 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 
 /** "14 saves, 1444 Nov 11 to 1650 Mar 3: 6 local files, 8 uploads to download." */
 function countLine(saves: readonly AnalysisSave[]) {
-  const first = saves[0]?.save.date;
-  const last = saves.at(-1)?.save.date;
+  const first = saves[0]?.date;
+  const last = saves.at(-1)?.date;
   const range = first && last ? `, ${formatLongDate(first)} to ${formatLongDate(last)}` : "";
   const uploads = saves.filter((x) => x.save.source.kind === "upload").length;
   const local = saves.length - uploads;
@@ -107,7 +118,10 @@ function WorldFigure({ campaign, figure }: { campaign: Eu4Campaign; figure: BySa
           key: "world",
           label: "All countries",
           color: "#64748b",
-          values: at.map((i) => values[i] ?? null),
+          values: at.map((i): CountryValue => {
+            const value = values[i];
+            return value === null || value === undefined ? "noRecord" : { value };
+          }),
           was: [],
         },
       ],
@@ -190,9 +204,9 @@ function BySaveView({
         key: row.key,
         label: row.label,
         color: row.color,
-        points: row.values.flatMap((value, i): BySavePoint[] => {
-          const { save } = data.columns[i];
-          return value === null ? [] : [{ saveKey: save.key, day: dayNumber(save.date), value }];
+        points: row.values.map(amount).flatMap((value, i): BySavePoint[] => {
+          const { save, date } = data.columns[i];
+          return value === null ? [] : [{ saveKey: save.key, day: dayNumber(date), value }];
         }),
       })),
     [data],
@@ -202,9 +216,9 @@ function BySaveView({
     (entry: BySaveSeries, point: BySavePoint) => {
       const column = byKey.get(point.saveKey);
       return [
-        `${entry.label}: ${figure.format(point.value)}`,
-        column ? formatLongDate(column.save.date) : "",
-        column ? `${column.save.name} · ${saveSourceText(column.save)}` : "",
+        `${entry.label}: ${figure.describe(point.value)}`,
+        column ? formatLongDate(column.date) : "",
+        column ? `${column.save.name} · ${sourceText(column.save)}` : "",
         column?.snapshot ? `Patch ${column.snapshot.gameVersion}` : "",
       ].filter(Boolean);
     },
@@ -231,7 +245,16 @@ function BySaveView({
     const save = saves[index];
     if (save && playthroughId) selectSave(playthroughId, save.save.key);
   };
-  const open = saves.find((x) => x.save.isOpen && byKey.has(x.save.key)) ?? null;
+  const open = campaign.open && byKey.has(campaign.open.save.key) ? campaign.open : null;
+  // The selection follows a step to another save, as the open marker does.
+  const openKey = saves.find((x) => x.save.isOpen)?.save.key ?? null;
+  useEffect(() => {
+    if (!playthroughId || !openKey) return;
+    const { lastOpen } = useBySaveView.getState();
+    if (lastOpen?.campaignId === playthroughId && lastOpen.saveKey !== openKey)
+      selectSave(playthroughId, openKey);
+    useBySaveView.setState({ lastOpen: { campaignId: playthroughId, saveKey: openKey } });
+  }, [playthroughId, openKey]);
   const [opening, setOpening] = useState(false);
   const openSelected = async () => {
     if (!nav || !selected || !playthroughId) return;
@@ -258,7 +281,7 @@ function BySaveView({
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
       {error && <p className="text-rose-700 dark:text-rose-300">{error}</p>}
-      {chart && <FewCountries count={data.rows.length} />}
+      {chart && <FewCountries count={countryCount(data.rows, chart)} />}
       {saves.length > 0 && (
         <div
           tabIndex={0}
@@ -273,12 +296,12 @@ function BySaveView({
           <BySaveChart
             series={series}
             marks={marks}
-            range={[saves[0].save.date, saves[saves.length - 1].save.date]}
+            range={[saves[0].date, saves[saves.length - 1].date]}
             axisName={figure.axis}
             describe={describe}
             endLabels={series.length <= 8}
-            selectedDay={selected ? dayNumber(selected.save.date) : null}
-            openDay={open ? dayNumber(open.save.date) : null}
+            selectedDay={selected ? dayNumber(selected.date) : null}
+            openDay={open ? dayNumber(open.date) : null}
             onSelect={(key) => select(saves.findIndex((x) => x.save.key === key))}
           />
         </div>
@@ -305,8 +328,8 @@ function BySaveView({
         selected && (
           <p aria-live="polite" className="flex flex-wrap items-center gap-3">
             <span>
-              {formatLongDate(selected.save.date)} · {selected.save.name} ·{" "}
-              {saveSourceText(selected.save)}: {axisMarks([selected])[0]?.reason}
+              {formatLongDate(selected.date)} · {selected.save.name} · {sourceText(selected.save)}:{" "}
+              {axisMarks([selected])[0]?.reason}
             </span>
             {openControl}
           </p>
@@ -350,7 +373,7 @@ function axisMarks(saves: readonly AnalysisSave[]): AxisMark[] {
         : x.status === "analyzing"
           ? `Analyzing ${x.save.name}`
           : `${x.save.name} waits for analysis`;
-    return [{ key: x.save.key, day: dayNumber(x.save.date), reason }];
+    return [{ key: x.save.key, day: dayNumber(x.date), reason }];
   });
 }
 
@@ -420,7 +443,7 @@ function AddSaves() {
   );
   return (
     <>
-      <Button disabled={busy} onClick={() => void chooseFiles()}>
+      <Button className="self-start" disabled={busy} onClick={() => void chooseFiles()}>
         Add saves
       </Button>
       <input {...fileInput} aria-label="Add campaign saves" className="sr-only" />

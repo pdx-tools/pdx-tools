@@ -1,5 +1,6 @@
-import type { ChartCountries, Series } from "@/wasm/wasm_eu4";
+import type { ChartCountries, CountryValue, CountryValues } from "@/wasm/wasm_eu4";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
+import type { CampaignSave } from "@/features/campaign/types";
 import { formatIsoDate, parseDate } from "@/features/timeline/date";
 
 /** A series of the chart and a row of the table. */
@@ -7,11 +8,25 @@ export type BySaveRow = {
   key: string;
   label: string;
   color: string;
-  /** The value in each column, or null where the series has none. */
-  values: (number | null)[];
+  /** The value in each column, or why there is none. */
+  values: CountryValue[];
   /** The tags that a recorded switch made this one, such as "was Brandenburg · BRA until 1525". */
   was: string[];
 };
+
+/**
+ * Where a save comes from. A local file is not called uploaded: an upload of
+ * the same date can hold another save.
+ */
+export function sourceText(save: CampaignSave): string {
+  if (save.source.kind === "local") return "Local file";
+  return save.source.userName ? `Upload by ${save.source.userName}` : "Upload";
+}
+
+/** The number of a value, or null where there is none. */
+export function amount(value: CountryValue): number | null {
+  return typeof value === "object" ? value.value : null;
+}
 
 /** The columns of the chart and the table: the snapshots of the campaign saves, in date order. */
 export type BySaveData = { columns: AnalysisSave[]; rows: BySaveRow[] };
@@ -50,12 +65,12 @@ export function alignColumns(
  * the later tag first, with the tags it was.
  */
 export function countryRows(
-  series: readonly Series<string>[],
+  series: readonly CountryValues[],
   at: readonly number[],
   chart: ChartCountries,
   countries: ReadonlyMap<string, CountryInfo>,
 ): BySaveRow[] {
-  const byTag = new Map(series.map((x) => [x.key, x]));
+  const byTag = new Map(series.map((x) => [x.tag, x]));
   const label = (tag: string) => countryLabel(tag, countries.get(tag));
   const was = new Map<string, string[]>();
   for (const { from, to, date } of chart.switches) {
@@ -78,9 +93,14 @@ export function countryRows(
     key: tag,
     label: label(tag),
     color: countries.get(tag)?.color ?? "#808080",
-    values: at.map((i) => byTag.get(tag)?.values[i] ?? null),
+    values: at.map((i) => byTag.get(tag)!.values[i]),
     was: was.get(tag) ?? [],
   }));
+}
+
+/** The countries of the rows, where tags that a switch joins count as one. */
+export function countryCount(rows: readonly BySaveRow[], chart: ChartCountries) {
+  return new Set(groups(rows, chart).values()).size;
 }
 
 /** The groups of rows that a switch joins, so a sort keeps them adjacent. */
@@ -108,7 +128,7 @@ export function sortRows(
   const group = groups(rows, chart);
   const best = new Map<number, number>();
   for (const row of rows) {
-    const value = row.values[column];
+    const value = amount(row.values[column]);
     const id = group.get(row.key)!;
     if (value !== null) best.set(id, Math.max(best.get(id) ?? -Infinity, value));
   }
@@ -121,7 +141,7 @@ export function sortRows(
 
 /** The earliest column where a row has a value. */
 export function earliestColumn(row: BySaveRow): number | null {
-  const index = row.values.findIndex((value) => value !== null);
+  const index = row.values.findIndex((value) => amount(value) !== null);
   return index < 0 ? null : index;
 }
 
@@ -129,14 +149,14 @@ export function earliestColumn(row: BySaveRow): number | null {
 export function bySaveCsv(data: BySaveData) {
   return data.rows.flatMap((row) =>
     data.columns.flatMap((column, i) => {
-      const value = row.values[i];
+      const value = amount(row.values[i]);
       return value === null
         ? []
         : [
             {
               country: row.key,
               name: row.label,
-              date: formatIsoDate(column.save.date),
+              date: formatIsoDate(column.date),
               save: column.save.name,
               value,
             },

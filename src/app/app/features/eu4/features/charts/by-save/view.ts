@@ -10,7 +10,9 @@ export const useBySaveView = create<{
   pinned: { campaignId: string; filter: string; countries: ChartCountries } | null;
   /** The key of the selected campaign save. */
   selected: { campaignId: string; saveKey: string } | null;
-}>()(() => ({ pinned: null, selected: null }));
+  /** The key of the open save when the chart last showed, to follow a step to another save. */
+  lastOpen: { campaignId: string; saveKey: string } | null;
+}>()(() => ({ pinned: null, selected: null, lastOpen: null }));
 
 export function selectSave(campaignId: string, saveKey: string) {
   useBySaveView.setState({ selected: { campaignId, saveKey } });

@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { formatLongDate } from "@/features/timeline/date";
 import type { ChartCountries } from "@/wasm/wasm_eu4";
-import { saveSourceText } from "@/features/campaign/saveText";
 import type { BySaveFigure } from "./figures";
-import { earliestColumn, sortRows } from "./model";
+import { amount, earliestColumn, sortRows, sourceText } from "./model";
 import type { BySaveData } from "./model";
 
 /** The value of each row at one save, beside its value at the row's earliest save. */
@@ -21,7 +20,7 @@ export function BySaveTable({
   /** Actions for the save of the column. */
   header?: React.ReactNode;
 }) {
-  const save = data.columns[column].save;
+  const { save, date } = data.columns[column];
   const rows = useMemo(() => sortRows(data.rows, column, chart), [data.rows, column, chart]);
   return (
     <section
@@ -31,7 +30,7 @@ export function BySaveTable({
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-medium">
-          {formatLongDate(save.date)} · {save.name} · {saveSourceText(save)}
+          {formatLongDate(date)} · {save.name} · {sourceText(save)}
         </span>
         {header}
       </div>
@@ -42,13 +41,14 @@ export function BySaveTable({
               <th className="py-1 pr-3 font-medium">Country</th>
               <th className="py-1 pr-3 font-medium">Earliest save</th>
               <th className="py-1 pr-3 text-right font-medium" />
-              <th className="py-1 text-right font-medium">{formatLongDate(save.date)}</th>
+              <th className="py-1 text-right font-medium">{formatLongDate(date)}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
               const earliest = earliestColumn(row);
               const value = row.values[column];
+              const first = earliest === null ? null : amount(row.values[earliest]);
               return (
                 <tr
                   key={row.key}
@@ -73,16 +73,18 @@ export function BySaveTable({
                     ))}
                   </td>
                   <td className="py-1 pr-3 whitespace-nowrap">
-                    {earliest === null ? "" : formatLongDate(data.columns[earliest].save.date)}
+                    {earliest === null ? "" : formatLongDate(data.columns[earliest].date)}
                   </td>
                   <td className="py-1 pr-3 text-right tabular-nums">
-                    {earliest === null ? "" : figure.format(row.values[earliest]!)}
+                    {first === null ? "" : figure.format(first)}
                   </td>
                   <td className="py-1 text-right tabular-nums">
-                    {value === null ? (
-                      <span className="text-gray-600 dark:text-gray-300">held no provinces</span>
+                    {typeof value === "object" ? (
+                      figure.format(value.value)
                     ) : (
-                      figure.format(value)
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {value === "noProvinces" ? "held no provinces" : "no record"}
+                      </span>
                     )}
                   </td>
                 </tr>

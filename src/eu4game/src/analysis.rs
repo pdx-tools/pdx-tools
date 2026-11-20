@@ -480,6 +480,26 @@ pub enum CountryMetric {
     ArmySize,
 }
 
+/// A country value in one snapshot.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub enum CountryValue {
+    Value(f64),
+    /// The country owns no province, so it has no value. Zero would claim one.
+    NoProvinces,
+    /// The country owns provinces, but the save has no record of it.
+    NoRecord,
+}
+
+/// The values of one country, aligned to the snapshot IDs of the reply.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct CountryValues {
+    pub tag: CountryTag,
+    pub values: Vec<CountryValue>,
+}
+
 /// How to split a country value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
@@ -497,10 +517,9 @@ campaign_analysis::queries! {
         /// The development of a fixed set of provinces on each date. If a
         /// snapshot does not have one of the provinces, its total is a gap.
         ProvinceDevelopment { #[serde(deserialize_with = "deserialize_provinces")] province_ids: Vec<ProvinceId> } => History = fixed_province_development,
-        /// One series for each country, in the order of the tags. A country
-        /// that owns no province on a date has a gap there. Generated tags
-        /// ([`is_generated_tag`]) have no series.
-        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<Series<CountryTag>> = country_series,
+        /// One history for each country, in the order of the tags. Generated
+        /// tags ([`is_generated_tag`]) have none.
+        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<CountryValues> = country_series,
         /// One series for each part of a country value on the selected
         /// dates, by name. A part is zero on a date where the country exists
         /// without it, and a gap where the country does not exist.
@@ -532,12 +551,12 @@ pub fn country_series(
     view: &View<'_, Eu4Analysis>,
     tags: Vec<CountryTag>,
     metric: CountryMetric,
-) -> Vec<Series<CountryTag>> {
+) -> Vec<CountryValues> {
     let mut series: Vec<_> = tags
         .into_iter()
         .filter(|tag| !is_generated_tag(tag))
-        .map(|key| Series {
-            key,
+        .map(|tag| CountryValues {
+            tag,
             values: Vec::with_capacity(view.snapshots().len()),
         })
         .collect();
@@ -546,16 +565,22 @@ pub fn country_series(
         let columns = payload.countries.columns();
         let development = payload.province_development_by_country();
         for country in &mut series {
-            let value = payload.country_offset(&country.key).and_then(|row| {
-                let owned = development[row]?;
-                match metric {
-                    CountryMetric::ProvinceDevelopment => Some(owned),
-                    CountryMetric::MaxManpower => {
-                        columns.max_manpower.get(row).flatten().map(f64::from)
-                    }
-                    CountryMetric::ArmySize => columns.army_size.get(row).flatten().map(f64::from),
+            let row = payload.country_offset(&country.tag);
+            let value = match row.and_then(|row| Some((row, development[row]?))) {
+                None => CountryValue::NoProvinces,
+                Some((row, owned)) => {
+                    let value = match metric {
+                        CountryMetric::ProvinceDevelopment => Some(owned),
+                        CountryMetric::MaxManpower => {
+                            columns.max_manpower.get(row).flatten().map(f64::from)
+                        }
+                        CountryMetric::ArmySize => {
+                            columns.army_size.get(row).flatten().map(f64::from)
+                        }
+                    };
+                    value.map_or(CountryValue::NoRecord, CountryValue::Value)
                 }
-            });
+            };
             country.values.push(value);
         }
     }
@@ -867,6 +892,10 @@ mod tests {
         series.into_iter().map(|s| (s.key, s.values)).collect()
     }
 
+    fn histories(series: Vec<CountryValues>) -> Vec<(CountryTag, Vec<CountryValue>)> {
+        series.into_iter().map(|s| (s.tag, s.values)).collect()
+    }
+
     #[test]
     fn sums_the_owned_provinces_in_date_order() {
         assert_eq!(
@@ -893,6 +922,7 @@ mod tests {
 
     #[test]
     fn a_country_series_reads_stored_values_and_derives_development() {
+        use CountryValue::{NoProvinces, Value};
         let store = store();
         let run = |metric, tags: &[&str]| {
             let query = Eu4Query::CountrySeries {
@@ -900,33 +930,33 @@ mod tests {
                 metric,
             };
             match answer(&store, query) {
-                Eu4Answer::CountrySeries(answer) => series(answer),
+                Eu4Answer::CountrySeries(answer) => histories(answer),
                 other => panic!("{other:?}"),
             }
         };
-        // SWE is alive in 1600 but owns no province, so it has a gap there.
+        // SWE is alive in 1600 but owns no province, so it has no value there.
         let tags = ["FRA", "ENG", "SWE"];
         assert_eq!(
             run(CountryMetric::ProvinceDevelopment, &tags),
             [
-                (tag("FRA"), vec![None, Some(31.0), Some(40.0)]),
-                (tag("ENG"), vec![Some(60.0), Some(12.0), None]),
-                (tag("SWE"), vec![None, None, None]),
+                (tag("FRA"), vec![NoProvinces, Value(31.0), Value(40.0)]),
+                (tag("ENG"), vec![Value(60.0), Value(12.0), NoProvinces]),
+                (tag("SWE"), vec![NoProvinces; 3]),
             ]
         );
         assert_eq!(
             run(CountryMetric::MaxManpower, &tags),
             [
-                (tag("FRA"), vec![None, Some(20.0), Some(10.0)]),
-                (tag("ENG"), vec![Some(10.0), Some(10.0), None]),
-                (tag("SWE"), vec![None, None, None]),
+                (tag("FRA"), vec![NoProvinces, Value(20.0), Value(10.0)]),
+                (tag("ENG"), vec![Value(10.0), Value(10.0), NoProvinces]),
+                (tag("SWE"), vec![NoProvinces; 3]),
             ]
         );
         assert_eq!(
             run(CountryMetric::ArmySize, &tags[..2]),
             [
-                (tag("FRA"), vec![None, Some(2.0), Some(1.0)]),
-                (tag("ENG"), vec![Some(1.0), Some(1.0), None]),
+                (tag("FRA"), vec![NoProvinces, Value(2.0), Value(1.0)]),
+                (tag("ENG"), vec![Value(1.0), Value(1.0), NoProvinces]),
             ]
         );
         // A generated tag has no series.
@@ -1065,13 +1095,17 @@ mod tests {
                 metric,
             },
         ) {
-            Eu4Answer::CountrySeries(answer) => series(answer),
+            Eu4Answer::CountrySeries(answer) => histories(answer),
             other => panic!("{other:?}"),
         };
-        assert_eq!(run(CountryMetric::MaxManpower), [(tag("ENG"), vec![None])]);
+        // ENG owns a province but has no record, which is not "no provinces".
+        assert_eq!(
+            run(CountryMetric::MaxManpower),
+            [(tag("ENG"), vec![CountryValue::NoRecord])]
+        );
         assert_eq!(
             run(CountryMetric::ProvinceDevelopment),
-            [(tag("ENG"), vec![Some(5.0)])]
+            [(tag("ENG"), vec![CountryValue::Value(5.0)])]
         );
 
         let mut unsorted = payload.clone();

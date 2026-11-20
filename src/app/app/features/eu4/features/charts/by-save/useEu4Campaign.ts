@@ -2,8 +2,9 @@ import { useMemo } from "react";
 import { useCampaignNavigation } from "@/features/campaign/CampaignProvider";
 import { isAnalysisPaused } from "@/features/campaign/analysis/analysisState";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
-import { useEu4Meta } from "@/features/eu4/store";
-import { analyzeEu4Campaign } from "@/features/eu4/analysis/analyzeCampaign";
+import { useEu4FileVersion, useEu4Meta } from "@/features/eu4/store";
+import { sameFileVersion } from "@/features/campaign/types";
+import { analyzeEu4Saves } from "@/features/eu4/analysis/analyzeSaves";
 import {
   analysisSaves,
   pendingEntries,
@@ -59,15 +60,28 @@ export function useEu4Campaign() {
   const analyze = () => {
     if (!playthroughId) return;
     const history = useEu4History.getState();
-    const uploads = pendingUploads(nav?.saves ?? [], history);
-    const local = pendingEntries(nav?.saves ?? [], history).slice(0, 1000 - uploads.length);
-    // The import starts before the campaign is enabled, so background analysis waits for it.
+    const listed = nav?.saves ?? [];
+    const uploads = pendingUploads(listed, history);
+    const local = pendingEntries(listed, history).slice(0, 1000 - uploads.length);
     if (local.length || uploads.length)
-      void analyzeEu4Campaign(local, playthroughId, uploads).catch((error) =>
+      void analyzeEu4Saves(listed, playthroughId, local, uploads).catch((error) =>
         useEu4History.setState({ issues: [String(error)] }),
       );
     history.enableAnalysis(playthroughId);
   };
+  // The marker needs the snapshot of the bytes that the viewer parsed.
+  const fileVersion = useEu4FileVersion();
+  const openSave = saves.find((x) => x.save.isOpen && x.snapshot) ?? null;
+  const source =
+    openSave?.save.source.kind === "local" && openSave.save.source.entryId
+      ? sources[openSave.save.source.entryId]
+      : null;
+  const open =
+    openSave &&
+    (openSave.save.source.kind === "upload" ||
+      (!!source && !!fileVersion && sameFileVersion(source.version, fileVersion)))
+      ? openSave
+      : null;
   const waitingUploads = saves.filter(
     (x) => x.save.source.kind === "upload" && x.status === "pending",
   ).length;
@@ -75,6 +89,8 @@ export function useEu4Campaign() {
     nav,
     playthroughId,
     saves,
+    /** The open save, when its snapshot is of the bytes that the viewer parsed. */
+    open,
     enabled,
     paused,
     progress,

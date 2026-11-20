@@ -1,8 +1,8 @@
 use crate::utils;
 use campaign_analysis::{History, Observation, Query, Selection, Session, View};
 use eu4game::analysis::{
-    self, CountryDimension, CountryMetric, Eu4Analysis, Eu4Answer, Eu4Query, army_size,
-    province_development,
+    self, CountryDimension, CountryMetric, CountryValue, Eu4Analysis, Eu4Answer, Eu4Query,
+    army_size, province_development,
 };
 use eu4game::game::Game;
 use eu4game::shared::Eu4Parser;
@@ -167,7 +167,11 @@ fn observations_agree_with_the_parsed_save() {
     };
     assert_eq!(
         development[0].values,
-        developments.iter().copied().map(Some).collect::<Vec<_>>()
+        developments
+            .iter()
+            .copied()
+            .map(CountryValue::Value)
+            .collect::<Vec<_>>()
     );
     let Eu4Answer::CountryBreakdown(religions) = (Eu4Query::CountryBreakdown {
         tag: player,
