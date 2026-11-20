@@ -64,6 +64,12 @@ pub struct TagSwitch {
     #[cfg_attr(feature = "tsify", tsify(type = "string"))]
     pub date: GameDate,
 }
+impl TagSwitch {
+    /// False for a recorded switch to the same tag, which changes nothing.
+    pub fn changes_tag(&self) -> bool {
+        self.from != self.to
+    }
+}
 
 /// The tag switches that a save records, from each country's history. Each
 /// country is read on its own: a released country that takes an earlier
@@ -108,6 +114,7 @@ fn country_switches(
         .iter()
         .zip(tos)
         .map(|(&(date, from), to)| TagSwitch { from, to, date })
+        .filter(TagSwitch::changes_tag)
         .collect()
 }
 
@@ -158,43 +165,33 @@ impl Lineage {
     }
 
     /// The tag that the country held in a save, with its index in `tags`, or
-    /// None when the country is not in the save. `date` is the save's date
-    /// and `recorded` the switches that the save records.
+    /// None when that cannot be told. `date` is the save's date and
+    /// `recorded` the switches that the save records.
     ///
-    /// A save records its own past switches. One that lacks a switch of a
-    /// tag while the country held it is on another branch of the campaign,
-    /// and the country is not in it. A save on the day of a switch can be
-    /// from before it, so on that day a holding that the switch ends or
-    /// starts follows whether the save records a switch of its tag that day.
-    ///
-    /// Build the lineages from the switches of every save that this reads.
-    /// A save with a switch of a held tag that they lack is not resolved.
+    /// - A tag whose holders cannot be told apart resolves no save.
+    /// - A save records its own past switches, up to and including its own
+    ///   day. One that lacks a switch of a tag while the country held it is on
+    ///   another branch of the campaign, or from before that switch on the
+    ///   day of it, and resolves to nothing.
+    /// - Build the lineages from the switches of every save that this reads:
+    ///   a save with a switch of a held tag that they lack is not resolved.
     pub fn held_in(&self, date: GameDate, recorded: &[TagSwitch]) -> Option<(usize, &HeldTag)> {
-        let switched = |tag: CountryTag| {
-            recorded
-                .iter()
-                .any(|x| x.date == date && (x.from == tag || x.to == tag))
-        };
-        let index = self.tags.iter().position(|held| {
-            if held.until == Some(date) {
-                !switched(held.tag)
-            } else if held.from == Some(date) {
-                held.contains(date) && switched(held.tag)
-            } else {
-                held.contains(date)
-            }
-        })?;
+        if self.kind == LineageKind::Ambiguous {
+            return None;
+        }
+        let index = self.tags.iter().position(|held| held.contains(date))?;
+        let touches = |tag: CountryTag, x: &TagSwitch| x.from == tag || x.to == tag;
+        let recorded: Vec<_> = recorded.iter().filter(|x| x.changes_tag()).collect();
         let during = |seg: &HeldTag, x: &TagSwitch| {
-            (x.from == seg.tag || x.to == seg.tag)
+            touches(seg.tag, x)
                 && seg.from.is_none_or(|from| from <= x.date)
                 && seg.until.is_none_or(|until| x.date <= until)
-                && x.date < date
+                && x.date <= date
         };
-        // A switch that the lineages were not built from can be of another country.
         let on_branch = self.tags[..=index].iter().all(|seg| {
             let known = self.switches.iter().filter(|x| during(seg, x));
             let seen = recorded.iter().filter(|x| during(seg, x));
-            known.clone().all(|x| recorded.contains(x))
+            known.clone().all(|x| recorded.contains(&x))
                 && seen.clone().all(|x| self.switches.contains(x))
         });
         on_branch.then(|| (index, &self.tags[index]))
@@ -229,7 +226,7 @@ pub fn lineages(
     tracked: impl Fn(&CountryTag) -> bool,
 ) -> Vec<Lineage> {
     // Saves of one campaign record the same switch, so each counts once.
-    let switches: BTreeSet<_> = switches.iter().filter(|x| x.from != x.to).collect();
+    let switches: BTreeSet<_> = switches.iter().filter(|x| x.changes_tag()).collect();
     let mut events = BTreeMap::<CountryTag, Vec<(GameDate, Event)>>::new();
     for switch in &switches {
         events
@@ -411,7 +408,7 @@ mod tests {
             .find(|x| x.kind == LineageKind::Country)
             .unwrap();
         assert_eq!(tag_in(nubia, 1450, &switches), Some(tag("ALO")));
-        assert_eq!(tag_in(nubia, 1451, &switches), Some(tag("NBI")));
+        assert_eq!(tag_in(nubia, 1452, &switches), Some(tag("NBI")));
         // NBI before the switch would be another country; it has no value
         // in a real campaign, and a chart drops a lineage without values.
         assert_eq!(found.len(), 2);
@@ -534,34 +531,46 @@ mod tests {
     }
 
     #[test]
-    fn a_save_on_the_day_of_a_switch_can_be_from_before_it() {
+    fn a_save_on_the_day_of_a_switch_needs_to_record_it() {
+        // ALO forms NBI in 1451, and a released ALO can appear that day.
         let switches = [switch("ALO", "NBI", 1451)];
-        let found = lineages([tag("NBI")], &switches, |_| true);
-        let nubia = found
+        let found = lineages([tag("ALO"), tag("NBI")], &switches, |_| true);
+        let nubia = found.iter().find(|x| x.tags.len() == 2).unwrap();
+        // Saved that day before the switch, or on another branch: nothing.
+        assert!(found.iter().all(|x| x.held_in(date(1451), &[]).is_none()));
+        // Saved that day after the switch: the new tag, and the released ALO.
+        assert_eq!(tag_in(nubia, 1451, &switches), Some(tag("NBI")));
+        let mut held: Vec<_> = found
             .iter()
-            .find(|x| x.kind == LineageKind::Country)
-            .unwrap();
-        let earlier = found
-            .iter()
-            .find(|x| x.kind == LineageKind::EarlierHolder)
-            .unwrap();
-        // Saved before the switch that day: still Alodia.
-        assert_eq!(tag_in(nubia, 1451, &[]), Some(tag("ALO")));
-        assert_eq!(nubia.held_in(date(1451), &[]).map(|x| x.0), Some(0));
+            .filter_map(|x| Some((x.tags.len(), x.held_in(date(1451), &switches)?.1.tag)))
+            .collect();
+        held.sort();
+        assert_eq!(held, [(1, tag("ALO")), (2, tag("NBI"))]);
         // A later save without the switch is on another branch.
         assert_eq!(nubia.held_in(date(1452), &[]), None);
-        // The NBI that existed before the switch is not in a save after it.
-        assert_eq!(earlier.held_in(date(1451), &switches), None);
-        assert_eq!(earlier.held_in(date(1451), &[]).map(|x| x.0), Some(0));
+    }
 
-        // ALO is released again after it formed NBI: a save from before the
-        // switch that day is Alodia's, not the released Alodia's.
-        let released = lineages([tag("ALO"), tag("NBI")], &switches, |_| true);
-        let held: Vec<_> = released
-            .iter()
-            .filter_map(|x| Some((x.tags.len(), x.held_in(date(1451), &[])?.1.tag)))
-            .collect();
-        assert_eq!(held, [(2, tag("ALO")), (1, tag("NBI"))]);
+    #[test]
+    fn a_recorded_switch_to_the_same_tag_changes_nothing() {
+        let found = lineages([tag("FRA")], &[switch("FRA", "FRA", 1500)], |_| true);
+        assert_eq!(found.len(), 1);
+        let same = [switch("FRA", "FRA", 1500)];
+        assert_eq!(tag_in(&found[0], 1500, &same), Some(tag("FRA")));
+        assert_eq!(tag_in(&found[0], 1600, &same), Some(tag("FRA")));
+        assert!(
+            country_switches(tag("FRA"), [(date(1500), tag("FRA"))].into_iter(), &[]).is_empty()
+        );
+    }
+
+    #[test]
+    fn a_tag_changed_twice_on_one_day_resolves_no_save() {
+        // The first B lives in 1500. Later A forms B, and that B forms C, on one day.
+        let switches = [switch("A00", "B00", 1600), switch("B00", "C00", 1600)];
+        let found = lineages([tag("B00")], &switches, |_| true);
+        let b = found.iter().find(|x| x.tags[0].tag == tag("B00")).unwrap();
+        assert_eq!(b.kind, LineageKind::Ambiguous);
+        assert_eq!(b.held_in(date(1500), &[]), None);
+        assert_eq!(b.held_in(date(1610), &switches), None);
     }
 
     #[test]

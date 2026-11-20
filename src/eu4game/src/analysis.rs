@@ -1,7 +1,7 @@
 //! Compact province and country observations of one save for campaign
 //! analysis.
 
-use crate::lineage::{GameDate, HeldTag, Lineage, TagSwitch, lineages, tag_switches};
+use crate::lineage::{GameDate, HeldTag, Lineage, LineageKind, TagSwitch, lineages, tag_switches};
 use crate::shared::playthrough_id;
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
@@ -619,7 +619,10 @@ pub fn country_series(
                 .collect::<Vec<_>>();
             LineageValues { lineage, values }
         })
-        .filter(|x| x.values.iter().any(Option::is_some))
+        // A tag whose holders cannot be told apart stays, so the chart can say so.
+        .filter(|x| {
+            x.lineage.kind == LineageKind::Ambiguous || x.values.iter().any(Option::is_some)
+        })
         .collect()
 }
 
@@ -703,7 +706,6 @@ pub fn chart_countries(chosen: impl IntoIterator<Item = CountryTag>) -> ChartCou
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lineage::LineageKind;
     use campaign_analysis::{Query, Selection, Session, Store};
 
     /// A province: its ID, development, owner and religion.
@@ -1419,8 +1421,34 @@ mod tests {
         assert_eq!(
             histories(answer),
             [
-                ("BYZ".into(), vec![cell("BYZ", 10.0), cell("BYZ", 20.0)]),
+                // Two countries took BYZ on one day: its values are not shown.
+                ("BYZ".into(), vec![None, None]),
                 ("ULM".into(), vec![cell("ULM", 3.0), None]),
+            ]
+        );
+
+        // The first BYZ lives in 1500. After it is gone, ULM forms BYZ and
+        // that BYZ forms ROM on one day. Neither BYZ gets the other's value.
+        let same_day = vec![
+            saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
+            saved(
+                "b",
+                1600,
+                &[p("BYZ", 20.0)],
+                vec![switch("ULM", "BYZ", 1600)],
+            ),
+            saved(
+                "c",
+                1610,
+                &[p("ROM", 30.0)],
+                vec![switch("ULM", "BYZ", 1600), switch("BYZ", "ROM", 1600)],
+            ),
+        ];
+        assert_eq!(
+            run(same_day, &["BYZ", "ULM", "ROM"]),
+            [
+                ("BYZ".into(), vec![None, None, None]),
+                ("ROM".into(), vec![None, None, cell("ROM", 30.0)]),
             ]
         );
 
