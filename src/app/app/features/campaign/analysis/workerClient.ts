@@ -72,7 +72,11 @@ export type AnalysisWorkerClient<S extends AnalysisStore> = {
   ) => Promise<StoreAppendReply<TypesOf<S>>>;
   /** Release all snapshots of the campaign and stop imports. */
   clear: () => Promise<void>;
-  /** Release these snapshots, such as a save that the campaign replaced with another of its date. */
+  /**
+   * Release these snapshots, such as a save that the campaign replaced with
+   * another of its date. Hold the import lease. Frame connections are not
+   * told, so EU5, which serves frames, does not call this.
+   */
   remove: (ids: string[]) => Promise<void>;
   /**
    * Keep only this campaign in the tab. Stop the workers of other games, and

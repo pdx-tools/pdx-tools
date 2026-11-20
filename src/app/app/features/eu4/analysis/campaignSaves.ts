@@ -9,7 +9,6 @@ import {
 } from "@/features/campaign/analysis/saveStatus";
 import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import { saveProblemText } from "@/features/campaign/saveText";
-import { sameFileVersion } from "@/features/campaign/types";
 import type { CampaignSave } from "@/features/campaign/types";
 import { dateSort, descriptorDate } from "@/features/campaign/analysis/descriptor";
 import type { DateComponents } from "@/features/timeline/date";
@@ -91,19 +90,6 @@ export function replacedSnapshots(
   return state.snapshots
     .filter((snapshot) => !bound.has(snapshot.id) && waiting.has(snapshot.dateSort))
     .map((snapshot) => snapshot.id);
-}
-
-/** True when analysis failed on this version of the entry. */
-export function failedInVersion(
-  entry: LocalSaveEntry,
-  failedSources: CampaignAnalysisState["failedSources"],
-) {
-  const failure = failedSources[entry.id];
-  const version = entry.version ?? (entry.ref.kind === "file" ? entry.ref.file : null);
-  return (
-    !!failure &&
-    (failure.version === null || (!!version && sameFileVersion(version, failure.version)))
-  );
 }
 
 /** The uploads of the candidates without a snapshot, except those that could not be read. */

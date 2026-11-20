@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Eu4Snapshot } from "@/features/eu4/analysis/analysisTypes";
-import { importEu4Campaign } from "@/features/eu4/analysis/importCampaign";
+import { eu4ParserAdapter } from "@/features/eu4/analysis/parserAdapter";
 import type { Eu5Snapshot } from "@/features/eu5/history/analysisTypes";
 import { eu5ParserAdapter } from "@/features/eu5/history/parserAdapter";
 import type { Eu4AnalysisStore } from "@/wasm/wasm_eu4";
@@ -8,6 +8,11 @@ import type { Eu5AnalysisStore } from "@/wasm/wasm_eu5";
 import { analysisAdmission, IMPORT_BUSY_ERROR } from "./admission";
 import type { SnapshotDescriptor } from "./descriptor";
 import { importBatch } from "./importScheduler";
+import { create } from "zustand";
+import type { LocalSaveEntry } from "@/features/campaign/localSaves";
+import { campaignAnalysisState } from "./analysisState";
+import type { CampaignAnalysisState } from "./analysisState";
+import { campaignAnalyzer } from "./analyzeCampaign";
 import { sessionApi } from "./session";
 import type { AnalysisStore } from "./session";
 import { createAnalysisWorker } from "./workerClient";
@@ -19,11 +24,6 @@ const mocks = vi.hoisted(() => ({
   parse: new Map<string, (file: File) => Promise<unknown>>(),
   sessions: new Map<string, unknown>(),
   eu4: null as AnalysisWorkerClient<Eu4AnalysisStore> | null,
-}));
-vi.mock("@/features/eu4/analysis/analysisClient", () => ({
-  get eu4Analysis() {
-    return mocks.eu4;
-  },
 }));
 vi.mock("comlink", () => ({
   wrap: (worker: { name: string }) => {
@@ -116,6 +116,24 @@ function clients() {
   return result;
 }
 
+/** Analyze EU4 files the way the EU4 chart does, into a new history. */
+async function analyzeEu4(names: string[], campaignId = "eu4-campaign") {
+  const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
+  const entries = names.map((name, i): LocalSaveEntry => ({
+    id: `${i}`,
+    game: "eu4",
+    name,
+    ref: { kind: "file", file: new File([name], name) },
+    identity: null,
+    version: null,
+    problem: null,
+    batch: 0,
+  }));
+  const analyze = campaignAnalyzer({ history, analysis: mocks.eu4!, parser: eu4ParserAdapter });
+  await analyze(entries, campaignId);
+  return history.getState();
+}
+
 beforeEach(() => {
   mocks.parse.clear();
   mocks.sessions.clear();
@@ -150,15 +168,12 @@ it("refuses an import of one game while an import of the other game runs", async
     lease,
     onFileComplete: () => {},
   });
-  await expect(
-    importEu4Campaign([new File(["save"], "a.eu4")], "eu4-campaign"),
-  ).rejects.toMatchObject({ name: IMPORT_BUSY_ERROR });
+  await expect(analyzeEu4(["a.eu4"])).rejects.toMatchObject({ name: IMPORT_BUSY_ERROR });
   resolve(eu5Save("a"));
   expect((await running).outcomes.accepted).toBe(1);
   lease.release();
 
-  const result = await importEu4Campaign([new File(["save"], "a.eu4")], "eu4-campaign");
-  expect(result.outcomes.accepted).toBe(1);
+  expect((await analyzeEu4(["a.eu4"])).snapshots).toHaveLength(1);
 });
 
 it("releases the session of the other game when an import starts", async () => {
@@ -179,7 +194,7 @@ it("releases the session of the other game when an import starts", async () => {
   const eu5Generation = eu5.generation();
 
   mocks.parse.set("eu4", async () => eu4Save("a"));
-  await importEu4Campaign([new File(["save"], "a.eu4")], "eu4-campaign");
+  await analyzeEu4(["a.eu4"]);
   // Only the EU4 session keeps data now.
   expect(eu5.generation()).toBeGreaterThan(eu5Generation);
   expect(admission.residentBytes()).toBe(1);
@@ -190,34 +205,7 @@ it("stores and publishes only saves from the requested campaign", async () => {
   mocks.parse.set("eu4", async (file) =>
     file.name === "other.eu4" ? eu4Save("other", "other-campaign") : eu4Save("accepted"),
   );
-  const onFileComplete = vi.fn();
-  const result = await importEu4Campaign(
-    [new File([""], "other.eu4"), new File([""], "accepted.eu4")],
-    "eu4-campaign",
-    { onFileComplete },
-  );
-  expect(result.files).toEqual(["failed", "accepted"]);
-  expect(result.failures).toEqual([
-    { fileName: "other.eu4", error: expect.stringContaining("another campaign") },
-  ]);
-  expect(onFileComplete).toHaveBeenCalledWith({
-    status: "accepted",
-    file: expect.objectContaining({ name: "accepted.eu4" }),
-    descriptor: expect.objectContaining({ campaignId: "eu4-campaign" }),
-  });
-});
-
-it("can import again after a consumer stops the import with an error", async () => {
-  clients();
-  mocks.parse.set("eu4", async () => eu4Save("a"));
-  await expect(
-    importEu4Campaign([new File([""], "a.eu4")], "eu4-campaign", {
-      onFileComplete: () => {
-        throw Error("consumer failed");
-      },
-    }),
-  ).rejects.toThrow("consumer failed");
-  mocks.parse.set("eu4", async () => eu4Save("b"));
-  const result = await importEu4Campaign([new File([""], "b.eu4")], "eu4-campaign");
-  expect(result.files).toEqual(["accepted"]);
+  const state = await analyzeEu4(["other.eu4", "accepted.eu4"]);
+  expect(state.snapshots.map((x) => x.id)).toEqual(["eu4:accepted"]);
+  expect(state.issues).toEqual([expect.stringContaining("another campaign")]);
 });

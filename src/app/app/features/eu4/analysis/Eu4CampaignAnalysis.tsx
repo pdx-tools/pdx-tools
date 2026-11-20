@@ -8,7 +8,8 @@ import {
 import { useEu4Meta } from "../store";
 import { eu4Analysis } from "./analysisClient";
 import { analyzeEu4Saves } from "./analyzeSaves";
-import { failedInVersion, pendingEntries } from "./campaignSaves";
+import { failedInVersion } from "@/features/campaign/analysis/saveStatus";
+import { pendingEntries } from "./campaignSaves";
 import { useEu4History } from "./store";
 
 /**
@@ -26,7 +27,7 @@ export function Eu4CampaignAnalysis() {
         .filter(
           (entry) =>
             !attempted.has(campaignAnalysisSourceKey(entry)) &&
-            !failedInVersion(entry, useEu4History.getState().failedSources),
+            !failedInVersion(entry, useEu4History.getState().failedSources[entry.id]),
         )
         .slice(0, 1000),
     [saves],

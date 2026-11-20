@@ -5,11 +5,12 @@ import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
 import { isAnalysisPaused } from "./analysisState";
 import type { AnalysisHistory, CampaignAnalysisState } from "./analysisState";
+import { entryVersion } from "./saveStatus";
 import type { SnapshotDescriptor } from "./descriptor";
 
 /** The entry and the file version that an analysis attempt read. */
 export const campaignAnalysisSourceKey = (entry: LocalSaveEntry) => {
-  const version = entry.version ?? (entry.ref.kind === "file" ? entry.ref.file : null);
+  const version = entryVersion(entry);
   return `${entry.id}:${version?.size}:${version?.lastModified}`;
 };
 
@@ -23,7 +24,7 @@ export function isEntryAnalyzed(
   stored: ReadonlySet<string>,
 ) {
   const source = sources[entry.id];
-  const version = entry.version ?? (entry.ref.kind === "file" ? entry.ref.file : null);
+  const version = entryVersion(entry);
   return (
     !!source &&
     !!version &&

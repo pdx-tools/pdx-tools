@@ -8,6 +8,7 @@ vi.mock("./importScheduler", () => ({
   importBatch: (files: File[], _parser: unknown, sink: unknown, options: unknown) =>
     mocks.importBatch(files, options, sink),
 }));
+import { analysisAdmission } from "./admission";
 import { campaignAnalysisState } from "./analysisState";
 import type { CampaignAnalysisState } from "./analysisState";
 import { campaignAnalyzer } from "./analyzeCampaign";
@@ -48,6 +49,7 @@ it("downloads uploads a few at a time and tells a failed download from a failed 
       generation: () => 1,
       signal: () => new AbortController().signal,
       append: vi.fn(),
+      remove: vi.fn(),
     },
     parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
     download,
@@ -89,6 +91,7 @@ it("stops downloads when the player stops the analysis", async () => {
       generation: () => 1,
       signal: () => new AbortController().signal,
       append: vi.fn(),
+      remove: vi.fn(),
     },
     parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
     download,
@@ -120,6 +123,7 @@ it("keeps uploads on the session that the import claimed", async () => {
       generation: () => generation,
       signal: () => session.signal,
       append: vi.fn(),
+      remove: vi.fn(),
     },
     parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
     download: async ({ saveId, name }) => {
@@ -142,9 +146,43 @@ it("keeps uploads on the session that the import claimed", async () => {
       generation: () => 3,
       signal: () => session.signal,
       append: vi.fn(),
+      remove: vi.fn(),
     },
     parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
     download,
   })([], "campaign", [{ saveId: "b", name: "b.eu4" }]);
   expect(download).not.toHaveBeenCalled();
+});
+
+it("releases replaced snapshots under the import lease", async () => {
+  const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
+  history.getState().add([descriptor("eu4:old")], {}, { up: "eu4:old" });
+  mocks.importBatch.mockReset().mockResolvedValue(done);
+  let busy = false;
+  const remove = vi.fn(async () => {
+    // Another import cannot start while this one releases snapshots.
+    busy = (() => {
+      try {
+        analysisAdmission().acquireImport().release();
+        return false;
+      } catch {
+        return true;
+      }
+    })();
+  });
+  await campaignAnalyzer({
+    history,
+    analysis: {
+      claim: () => {},
+      generation: () => 1,
+      signal: () => new AbortController().signal,
+      append: vi.fn(),
+      remove,
+    },
+    parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
+  })([], "campaign", [], ["eu4:old"]).catch(() => {});
+  expect(remove).toHaveBeenCalledWith(["eu4:old"]);
+  expect(busy).toBe(true);
+  expect(history.getState().snapshots).toEqual([]);
+  expect(history.getState().uploads).toEqual({});
 });

@@ -147,10 +147,15 @@ export function mergeCampaign({ open, uploads, entries, openEntry }: CampaignSav
 
   const saves = [...byDay.entries()].sort(([a], [b]) => a - b).map(([, save]) => save);
   const kept = new Set(saves.map((save) => save.key));
-  const leftOut = dropped.flatMap((save) =>
-    kept.has(save.key) || save.membership === "different"
+  // An upload beside a local file of its date is usually the same save, so
+  // only saves of one kind that share a date are left out by name.
+  const leftOut = dropped.flatMap((save) => {
+    const keptSave = byDay.get(dayNumber(save.date))!;
+    return kept.has(save.key) ||
+      save.membership === "different" ||
+      save.source.kind !== keptSave.source.kind
       ? []
-      : [{ save, kept: byDay.get(dayNumber(save.date))! }],
-  );
+      : [{ save, kept: keptSave }];
+  });
   return { saves, leftOut };
 }

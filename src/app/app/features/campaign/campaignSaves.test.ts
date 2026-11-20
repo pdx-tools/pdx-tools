@@ -76,11 +76,8 @@ describe("mergeCampaignSaves", () => {
       openEntry: undefined,
     });
     expect(saves.map((x) => x.key)).toEqual(["local:manual", "upload:c", "local:x"]);
-    expect(leftOut.map((x) => [x.save.key, x.kept.key])).toEqual([
-      ["upload:old", "local:manual"],
-      ["upload:b", "local:manual"],
-      ["local:auto", "local:manual"],
-    ]);
+    // An upload beside a local file of its date is not named.
+    expect(leftOut.map((x) => [x.save.key, x.kept.key])).toEqual([["local:auto", "local:manual"]]);
   });
 
   it("orders saves by date and marks the open upload", () => {

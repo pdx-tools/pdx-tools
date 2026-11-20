@@ -16,7 +16,10 @@ import type { ImportPhaseState } from "./importTiming";
 /** The parts of a game that analyze its campaign saves. */
 export type CampaignAnalyzer<Api, R, D extends SnapshotDescriptor> = {
   history: AnalysisHistory<D>;
-  analysis: AnalysisSink<R, D> & { claim: (campaignId: string) => void };
+  analysis: AnalysisSink<R, D> & {
+    claim: (campaignId: string) => void;
+    remove: (ids: string[]) => Promise<void>;
+  };
   parser: ParserAdapter<Api, R>;
   /**
    * Download an uploaded save from the endpoint that the viewer reads, as a
@@ -44,9 +47,11 @@ export function campaignAnalyzer<
     entries: LocalSaveEntry[],
     playthroughId: string,
     uploads: readonly CampaignUpload[] = [],
+    /** Snapshots to release first, such as those of a date whose save was replaced. */
+    replace: readonly string[] = [],
   ) {
     if (!playthroughId) throw Error("This save has no campaign identity.");
-    if (!entries.length && !uploads.length)
+    if (!entries.length && !uploads.length && !replace.length)
       throw Error("Add local saves to analyze this campaign.");
     if (entries.length + uploads.length > 1000)
       throw Error("Analyze at most 1000 saves at a time.");
@@ -150,7 +155,9 @@ export function campaignAnalyzer<
         issues.push(...result.failures.map(({ fileName, error }) => `${fileName}: ${error}`));
         if (result.memoryFull) {
           const refused = result.outcomes.refused + result.outcomes.unprocessed;
-          issues.push(`${result.memoryFull} ${refused} uploads were not analyzed.`);
+          issues.push(
+            `${result.memoryFull} ${refused === 1 ? "1 upload was" : `${refused} uploads were`} not analyzed.`,
+          );
           history.getState().pauseAnalysis(playthroughId);
           break;
         }
@@ -159,6 +166,11 @@ export function campaignAnalyzer<
     };
 
     try {
+      // The import lease is the right to change the stored snapshots.
+      if (replace.length) {
+        await analysis.remove([...replace]);
+        history.getState().forget(replace);
+      }
       const { sources, failures } = await readSources(entries, signal).catch((error) => {
         if (signal.aborted) return { sources: [], failures: [] };
         throw error;
