@@ -23,9 +23,14 @@ export function sourceText(save: CampaignSave): string {
   return save.source.userName ? `Upload by ${save.source.userName}` : "Upload";
 }
 
-/** The number of a value, or null where there is none. */
+/** The number of a value of the row's country, or null where there is none. */
 export function amount(value: CountryValue): number | null {
-  return typeof value === "object" ? value.value : null;
+  return typeof value === "object" && "value" in value ? value.value : null;
+}
+
+/** The number of another country that had the tag on that date. */
+export function otherAmount(value: CountryValue): number | null {
+  return typeof value === "object" && "otherCountry" in value ? value.otherCountry : null;
 }
 
 /** The columns of the chart and the table: the snapshots of the campaign saves, in date order. */
@@ -89,13 +94,18 @@ export function countryRows(
   );
   for (const tag of latest) visit(tag);
   for (const tag of chart.tags) visit(tag);
-  return order.map((tag) => ({
-    key: tag,
-    label: label(tag),
-    color: countries.get(tag)?.color ?? "#808080",
-    values: at.map((i) => byTag.get(tag)!.values[i]),
-    was: was.get(tag) ?? [],
-  }));
+  return (
+    order
+      .map((tag) => ({
+        key: tag,
+        label: label(tag),
+        color: countries.get(tag)?.color ?? "#808080",
+        values: at.map((i) => byTag.get(tag)!.values[i]),
+        was: was.get(tag) ?? [],
+      }))
+      // A tag with no value in any save has no row; its formed nation names it.
+      .filter((row) => row.values.some((x) => amount(x) !== null || otherAmount(x) !== null))
+  );
 }
 
 /** The countries of the rows, where tags that a switch joins count as one. */
@@ -145,22 +155,33 @@ export function earliestColumn(row: BySaveRow): number | null {
   return index < 0 ? null : index;
 }
 
-/** Each save's value of each row, one line per value. */
-export function bySaveCsv(data: BySaveData) {
-  return data.rows.flatMap((row) =>
+/** Each save's value of each row as CSV, one line per value, with the figure and its unit. */
+export function bySaveCsv(data: BySaveData, figure: { title: string; unit: string }) {
+  const header = ["figure", "unit", "country", "name", "date", "save", "value", "note"];
+  const lines = data.rows.flatMap((row) =>
     data.columns.flatMap((column, i) => {
-      const value = amount(row.values[i]);
-      return value === null
-        ? []
-        : [
-            {
-              country: row.key,
-              name: row.label,
-              date: formatIsoDate(column.date),
-              save: column.save.name,
-              value,
-            },
-          ];
+      const own = amount(row.values[i]);
+      const other = otherAmount(row.values[i]);
+      const value = own ?? other;
+      if (value === null) return [];
+      return [
+        [
+          figure.title,
+          figure.unit,
+          row.key,
+          row.label,
+          formatIsoDate(column.date),
+          column.save.name,
+          // Values are single precision in the save.
+          Number(value.toPrecision(7)),
+          other === null ? "" : "another country with this tag",
+        ],
+      ];
     }),
   );
+  const cell = (value: string | number) => {
+    const text = String(value);
+    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  };
+  return [header, ...lines].map((line) => `${line.map(cell).join(",")}\n`).join("");
 }

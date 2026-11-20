@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisQuery } from "@/features/campaign/analysis/useAnalysisQuery";
@@ -50,7 +51,7 @@ export function CampaignHistory({ viz }: { viz: BySaveViz }) {
 function useNoCsv() {
   const visualizationDispatch = useVisualizationDispatch();
   useEffect(() => {
-    visualizationDispatch({ type: "update-csv-data", getCsvData: async () => toCsv([]) });
+    visualizationDispatch({ type: "update-csv-data", getCsvData: async () => "" });
   }, [visualizationDispatch]);
 }
 
@@ -58,7 +59,7 @@ function OnlySave() {
   useNoCsv();
   return (
     <div className="flex flex-col items-start gap-3">
-      <p>This is the only save of this campaign here.</p>
+      <p>This is the only save of this campaign here. Add more to compare them.</p>
       <AddSaves />
     </div>
   );
@@ -141,7 +142,10 @@ function CountryFigure({
 }) {
   const chart = useChartCountries(campaign.playthroughId);
   const query = useMemo(
-    () => (chart ? { kind: "countrySeries" as const, tags: chart.tags, metric } : null),
+    () =>
+      chart
+        ? { kind: "countrySeries" as const, tags: chart.tags, switches: chart.switches, metric }
+        : null,
     [chart, metric],
   );
   const { result, snapshotIds, error } = useAnalysisQuery(
@@ -229,9 +233,9 @@ function BySaveView({
   useEffect(() => {
     visualizationDispatch({
       type: "update-csv-data",
-      getCsvData: async () => toCsv(bySaveCsv(data)),
+      getCsvData: async () => bySaveCsv(data, figure),
     });
-  }, [data, visualizationDispatch]);
+  }, [data, figure, visualizationDispatch]);
 
   // The latest save with dots is selected at first.
   const selectedKey = useBySaveView((state) =>
@@ -240,7 +244,7 @@ function BySaveView({
   const selectedAt = saves.findIndex((x) => x.save.key === selectedKey);
   const at = selectedAt >= 0 ? selectedAt : saves.findLastIndex((x) => byKey.has(x.save.key));
   const selected = at >= 0 ? saves[at] : null;
-  const column = selected ? data.columns.indexOf(byKey.get(selected.save.key)!) : -1;
+  const columnAt = selected ? data.columns.indexOf(byKey.get(selected.save.key)!) : -1;
   const select = (index: number) => {
     const save = saves[index];
     if (save && playthroughId) selectSave(playthroughId, save.save.key);
@@ -281,13 +285,24 @@ function BySaveView({
         {opening ? "Opening" : "Open save"}
       </Button>
     );
+  const steppers = (
+    <>
+      <Button disabled={at <= 0} onClick={() => select(at - 1)}>
+        Earlier save
+      </Button>
+      <Button disabled={at >= saves.length - 1} onClick={() => select(at + 1)}>
+        Later save
+      </Button>
+    </>
+  );
   return (
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
-      {error && <p className="text-rose-700 dark:text-rose-300">{error}</p>}
-      {chart && <FewCountries count={countryCount(data.rows, chart)} />}
+      <Alert.Error msg={error} />
+      {chart && <ChartCountriesNote chart={chart} rows={data.rows} />}
       {saves.length > 0 && (
         <div
+          role="group"
           tabIndex={0}
           aria-label="Campaign chart. Left and right arrows select an earlier or a later save."
           className="rounded-md focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:outline-none"
@@ -311,33 +326,16 @@ function BySaveView({
         </div>
       )}
       {selected && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={at <= 0} onClick={() => select(at - 1)}>
-            Earlier save
-          </Button>
-          <Button disabled={at >= saves.length - 1} onClick={() => select(at + 1)}>
-            Later save
-          </Button>
-        </div>
-      )}
-      {selected && column >= 0 ? (
         <BySaveTable
           data={data}
-          column={column}
+          selected={selected}
+          column={columnAt >= 0 ? columnAt : null}
+          reason={columnAt >= 0 ? null : (axisMarks([selected])[0]?.reason ?? "Reading this save")}
           figure={figure}
           chart={chart}
-          header={openControl}
+          openControl={openControl}
+          steppers={steppers}
         />
-      ) : (
-        selected && (
-          <p aria-live="polite" className="flex flex-wrap items-center gap-3">
-            <span>
-              {formatLongDate(selected.date)} · {selected.save.name} · {sourceText(selected.save)}:{" "}
-              {axisMarks([selected])[0]?.reason ?? "Reading this save"}
-            </span>
-            {openControl}
-          </p>
-        )
       )}
       {!campaign.open && (
         <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -349,21 +347,38 @@ function BySaveView({
   );
 }
 
-function FewCountries({ count }: { count: number }) {
+/** Says when the filter gives one country, and which chosen tags the chart leaves out. */
+function ChartCountriesNote({ chart, rows }: { chart: ChartCountries; rows: BySaveData["rows"] }) {
   const { updateTagFilter } = useEu4Actions();
-  if (count !== 1) return null;
+  const count = countryCount(rows, chart);
+  const shown = chart.leftOut.slice(0, 8).join(", ");
+  const more = chart.leftOut.length > 8 ? ` and ${chart.leftOut.length - 8} more` : "";
   return (
-    <p className="flex items-center gap-2 text-sm">
-      Only 1 country shown.
-      <Button
-        shape="none"
-        variant="ghost"
-        className="underline"
-        onClick={() => void updateTagFilter({ ai: "great" })}
-      >
-        + Greats
-      </Button>
-    </p>
+    <>
+      {count === 1 && (
+        <p className="flex items-center gap-2 text-sm">
+          Only 1 country shown.
+          <Button
+            shape="none"
+            variant="ghost"
+            className="underline"
+            aria-label="Add great powers"
+            onClick={() => void updateTagFilter({ ai: "great" })}
+          >
+            + Greats
+          </Button>
+        </p>
+      )}
+      {chart.leftOut.length > 0 && (
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Left out: {shown}
+          {more}. The game gives these tags to other countries later.
+        </p>
+      )}
+      {count === 0 && chart.leftOut.length === 0 && (
+        <p className="text-sm">No country of the filter has a value in these saves.</p>
+      )}
+    </>
   );
 }
 
@@ -373,7 +388,7 @@ function axisMarks(saves: readonly AnalysisSave[]): AxisMark[] {
     if (x.snapshot) return [];
     const reason =
       x.status === "failed"
-        ? `Could not read ${x.save.name}${x.error ? `: ${x.error}` : ""}`
+        ? `Could not ${x.retry ? "download" : "read"} ${x.save.name}${x.error ? `: ${x.error}` : ""}`
         : x.status === "analyzing"
           ? `Analyzing ${x.save.name}`
           : `${x.save.name} waits for analysis`;
@@ -381,44 +396,44 @@ function axisMarks(saves: readonly AnalysisSave[]): AxisMark[] {
   });
 }
 
-/** Shown only while analysis runs or stopped, or when a save failed or was left out. */
+/** Shown while analysis runs or stopped, or when a save failed or was left out. */
 function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
   const { saves, progress, paused, issues, waitingUploads, nav } = campaign;
   const done = saves.filter((x) => x.snapshot).length;
   const failed = saves.filter((x) => x.status === "failed");
   const leftOut = nav?.leftOut ?? [];
+  const action = progress ? (
+    <Button onClick={campaign.stop}>Stop</Button>
+  ) : paused ? (
+    <Button onClick={campaign.analyze}>Resume</Button>
+  ) : waitingUploads > 0 ? (
+    <Button onClick={campaign.analyze}>Analyze</Button>
+  ) : null;
   return (
-    <div role="status" className="flex flex-col gap-1 text-sm">
-      {progress ? (
-        <p className="flex items-center gap-3">
-          <span>
-            {progress.completed} of {progress.total} ·{" "}
-            {progress.downloading ? "downloading" : "reading"}
+    <div className="flex flex-col gap-2 text-sm">
+      {(progress || paused || waitingUploads > 0) && (
+        <div className="flex items-center gap-3">
+          <span role="status">
+            {progress
+              ? `${progress.completed} of ${progress.total} · ${progress.downloading ? "downloading" : "reading"}`
+              : paused
+                ? `${plural(done, "save", "saves")} of ${saves.length} analyzed.`
+                : `${plural(waitingUploads, "more upload", "more uploads")}.`}
           </span>
-          <Button onClick={campaign.stop}>Stop</Button>
-        </p>
-      ) : paused ? (
-        <p className="flex items-center gap-3">
-          <span>
-            {plural(done, "save", "saves")} of {saves.length} analyzed.
-          </span>
-          <Button onClick={campaign.analyze}>Resume</Button>
-        </p>
-      ) : waitingUploads > 0 ? (
-        <p className="flex items-center gap-3">
-          <span>{plural(waitingUploads, "more upload", "more uploads")}.</span>
-          <Button onClick={campaign.analyze}>Analyze</Button>
-        </p>
-      ) : null}
-      {failed.map((x) =>
-        x.retry ? (
-          <p key={x.save.key} className="flex items-center gap-3">
-            <span>Could not download {x.save.name}.</span>
-            {!progress && <Button onClick={campaign.analyze}>Retry</Button>}
-          </p>
-        ) : (
-          <p key={x.save.key}>Could not read {x.save.name}.</p>
-        ),
+          {action}
+        </div>
+      )}
+      {failed.length > 0 && (
+        <Alert variant="error">
+          <Alert.Description className="flex flex-col gap-1 px-3 py-2">
+            {failed.map((x) => (
+              <span key={x.save.key} className="flex items-center gap-3">
+                Could not {x.retry ? "download" : "read"} {x.save.name}.
+                {x.retry && !progress && <Button onClick={campaign.analyze}>Retry</Button>}
+              </span>
+            ))}
+          </Alert.Description>
+        </Alert>
       )}
       {leftOut.length > 0 && (
         <p>
@@ -427,9 +442,11 @@ function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
         </p>
       )}
       {nav?.truncated && <p>Shows the latest 200 uploads.</p>}
-      {issues.length > 0 && failed.length === 0 && !progress && (
+      {issues.length > 0 && !progress && (
         <details>
-          <summary className="cursor-pointer">{issues.length} analysis notices</summary>
+          <summary className="cursor-pointer">
+            {plural(issues.length, "analysis notice", "analysis notices")}
+          </summary>
           <ul className="mt-1 list-disc pl-5">
             {issues.map((issue, i) => (
               <li key={i}>{issue}</li>
@@ -450,18 +467,7 @@ function AddSaves() {
       <Button className="self-start" disabled={busy} onClick={() => void chooseFiles()}>
         Add saves
       </Button>
-      <input {...fileInput} aria-label="Add campaign saves" className="sr-only" />
+      <input {...fileInput} tabIndex={-1} aria-label="Add campaign saves" className="sr-only" />
     </>
   );
-}
-
-function toCsv(rows: ReturnType<typeof bySaveCsv>) {
-  const cell = (value: string | number) => {
-    const text = String(value);
-    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-  };
-  const header = ["country", "name", "date", "save", "value"] as const;
-  return [header.join(","), ...rows.map((row) => header.map((key) => cell(row[key])).join(","))]
-    .map((line) => `${line}\n`)
-    .join("");
 }

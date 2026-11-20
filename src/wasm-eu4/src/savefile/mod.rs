@@ -99,8 +99,24 @@ impl SaveFileImpl {
         payload: TagFilterPayloadRaw,
         limit: usize,
     ) -> HashSet<CountryTag> {
+        self.filter_stored_tags_where(payload, limit, |_| true)
+    }
+
+    /// The tags of the filter that `keep` accepts, at most `limit` of them.
+    fn filter_stored_tags_where(
+        &self,
+        payload: TagFilterPayloadRaw,
+        limit: usize,
+        keep: impl Fn(&CountryTag) -> bool + Copy,
+    ) -> HashSet<CountryTag> {
         let payload = TagFilterPayload::from(payload);
-        let tags = self.matching_tags(&payload);
+        let matching = |payload: &TagFilterPayload| -> HashSet<CountryTag> {
+            self.matching_tags(payload)
+                .into_iter()
+                .filter(keep)
+                .collect()
+        };
+        let tags = matching(&payload);
         if tags.len() > limit {
             let ai = if self.player_histories.len() == 1 {
                 AiTagsState::Great
@@ -108,8 +124,7 @@ impl SaveFileImpl {
                 AiTagsState::None
             };
 
-            let ntags: HashSet<CountryTag> =
-                self.matching_tags(&TagFilterPayload { ai, ..payload });
+            let ntags = matching(&TagFilterPayload { ai, ..payload });
 
             let inter: HashSet<CountryTag> = tags.intersection(&ntags).cloned().collect();
             if inter.is_empty() {
@@ -124,7 +139,7 @@ impl SaveFileImpl {
         } else if payload.ai == AiTagsState::Alive && self.player_histories.len() == 1 {
             // If there are fewer AI alive than the limit, we should consider
             // past greats to the AI that is alive
-            self.matching_tags(&TagFilterPayload {
+            matching(&TagFilterPayload {
                 ai: AiTagsState::Great,
                 ..payload
             })
@@ -1051,9 +1066,15 @@ impl SaveFileImpl {
         payload: TagFilterPayloadRaw,
         limit: usize,
     ) -> eu4game::analysis::ChartCountries {
-        let tags = self.filter_stored_tags(payload, limit);
+        use eu4game::analysis::is_generated_tag;
+        // The limit counts only the tags that the chart keeps.
+        let left_out = self
+            .matching_tags(&TagFilterPayload::from(payload.clone()))
+            .into_iter()
+            .filter(is_generated_tag);
+        let tags = self.filter_stored_tags_where(payload, limit, |tag| !is_generated_tag(tag));
         let switches = eu4game::analysis::tag_switches(&self.nation_events);
-        eu4game::analysis::chart_countries(tags, &switches)
+        eu4game::analysis::chart_countries(tags.into_iter().chain(left_out), &switches)
     }
 
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {

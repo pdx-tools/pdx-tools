@@ -160,6 +160,7 @@ fn observations_agree_with_the_parsed_save() {
     assert!(players.iter().all(|x| *x == player));
     let Eu4Answer::CountrySeries(development) = (Eu4Query::CountrySeries {
         tags: vec![player],
+        switches: Vec::new(),
         metric: CountryMetric::ProvinceDevelopment,
     })
     .answer(&view) else {

@@ -19,17 +19,21 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
       {viz !== "world-dev-by-save" && (
         <>
           <p>
-            The countries come from the filter and stay the same when you open another save. Change
-            the filter to pick them again. Names and colors are those of the open save.
+            The countries, and the formed nations among them, come from the save that was open when
+            you chose them, and they stay the same when you open another save. Change the filter to
+            choose them again. Names and colors are those of the open save.
           </p>
           <p>
-            A country that held no provinces in a save has no dot there. Colonial nations, client
-            states and other countries whose tag the game makes are left out, because the game gives
-            the tag to another country later.
+            A country that held no provinces in a save has no dot there. &quot;No record&quot; means
+            the country held provinces but the save keeps no record of it. Colonial nations, client
+            states, trading companies, federations and estate countries are left out and named,
+            because the game gives their tags to other countries later. Custom nations stay.
           </p>
           <p>
-            When the open save records that one country became another, the two are listed together.
-            Their values are not added up.
+            When that save records that one country became another, the two are listed together and
+            their values are not added up. A value from before the switch under the new tag, or from
+            after it under the old tag, belongs to another country with that tag: it has no dot, the
+            table marks it, and it is never the first value seen.
           </p>
         </>
       )}

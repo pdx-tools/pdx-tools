@@ -33,16 +33,19 @@ pub fn army_size(country: &Country) -> f32 {
         .sum()
 }
 
-/// A tag that the game makes for a new country: a letter and two digits,
-/// such as a colonial nation (C00), a client state (K00), a trading company
-/// (T00) or a federation (F00). The game gives the tag to another country
-/// later, so one tag is not one country over a campaign. No tag of the
-/// game files has a digit.
+/// A tag that the game makes for a new country and gives to another country
+/// later, so one tag is not one country over a campaign: a colonial nation
+/// (C00), an estate country (E00), a federation (F00), a client state (K00)
+/// or a trading company (T00). These are the letters of the
+/// `dynamic_countries` list that saves keep. A custom nation (D00) keeps its
+/// tag, so it stays.
 pub fn is_generated_tag(tag: &CountryTag) -> bool {
     let [letter, first, second] = *tag.as_bytes() else {
         return false;
     };
-    letter.is_ascii_uppercase() && first.is_ascii_digit() && second.is_ascii_digit()
+    matches!(letter, b'C' | b'E' | b'F' | b'K' | b'T')
+        && first.is_ascii_digit()
+        && second.is_ascii_digit()
 }
 
 /// A row of the country table of the same snapshot, or no country.
@@ -486,6 +489,9 @@ pub enum CountryMetric {
 #[serde(rename_all = "camelCase")]
 pub enum CountryValue {
     Value(f64),
+    /// The value of another country that had the tag on this date: before
+    /// the switch that gave the country its tag, or after it gave the tag up.
+    OtherCountry(f64),
     /// The country owns no province, so it has no value. Zero would claim one.
     NoProvinces,
     /// The country owns provinces, but the save has no record of it.
@@ -518,8 +524,9 @@ campaign_analysis::queries! {
         /// snapshot does not have one of the provinces, its total is a gap.
         ProvinceDevelopment { #[serde(deserialize_with = "deserialize_provinces")] province_ids: Vec<ProvinceId> } => History = fixed_province_development,
         /// One history for each country, in the order of the tags. Generated
-        /// tags ([`is_generated_tag`]) have none.
-        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<CountryValues> = country_series,
+        /// tags ([`is_generated_tag`]) have none. The switches tell which
+        /// dates a tag names another country.
+        CountrySeries { tags: Vec<CountryTag>, switches: Vec<TagSwitch>, metric: CountryMetric } => Vec<CountryValues> = country_series,
         /// One series for each part of a country value on the selected
         /// dates, by name. A part is zero on a date where the country exists
         /// without it, and a gap where the country does not exist.
@@ -550,6 +557,7 @@ pub fn fixed_province_development(
 pub fn country_series(
     view: &View<'_, Eu4Analysis>,
     tags: Vec<CountryTag>,
+    switches: Vec<TagSwitch>,
     metric: CountryMetric,
 ) -> Vec<CountryValues> {
     let mut series: Vec<_> = tags
@@ -560,11 +568,16 @@ pub fn country_series(
             values: Vec::with_capacity(view.snapshots().len()),
         })
         .collect();
+    let spans: Vec<_> = series
+        .iter()
+        .map(|country| TagSpan::of(country.tag, &switches))
+        .collect();
     for snapshot in view.snapshots() {
         let payload = snapshot.payload();
         let columns = payload.countries.columns();
         let development = payload.province_development_by_country();
-        for country in &mut series {
+        let date = snapshot.descriptor().date_sort;
+        for (country, span) in series.iter_mut().zip(&spans) {
             let row = payload.country_offset(&country.tag);
             let value = match row.and_then(|row| Some((row, development[row]?))) {
                 None => CountryValue::NoProvinces,
@@ -578,7 +591,11 @@ pub fn country_series(
                             columns.army_size.get(row).flatten().map(f64::from)
                         }
                     };
-                    value.map_or(CountryValue::NoRecord, CountryValue::Value)
+                    match value {
+                        None => CountryValue::NoRecord,
+                        Some(value) if span.contains(date) => CountryValue::Value(value),
+                        Some(value) => CountryValue::OtherCountry(value),
+                    }
                 }
             };
             country.values.push(value);
@@ -642,15 +659,77 @@ fn religion_development(view: &View<'_, Eu4Analysis>, tag: CountryTag) -> Vec<Se
     series
 }
 
+/// A game date, written `YYYY-MM-DD`. It orders like the `date_sort` of a
+/// snapshot descriptor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GameDate(i32);
+impl GameDate {
+    pub fn from_eu4(date: eu4save::Eu4Date) -> Self {
+        Self(i32::from(date.year()) * 10000 + i32::from(date.month()) * 100 + i32::from(date.day()))
+    }
+    /// The `date_sort` of a snapshot on this date.
+    pub fn date_sort(self) -> i32 {
+        self.0
+    }
+}
+impl serde::Serialize for GameDate {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let (year, month, day) = (self.0 / 10000, self.0 / 100 % 100, self.0 % 100);
+        serializer.collect_str(&format_args!("{year:04}-{month:02}-{day:02}"))
+    }
+}
+impl<'de> serde::Deserialize<'de> for GameDate {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        let parts: Vec<_> = text.split('-').map(str::parse::<i32>).collect();
+        match parts[..] {
+            [Ok(year), Ok(month), Ok(day)]
+                if (1..=12).contains(&month) && (1..=31).contains(&day) && year >= 0 =>
+            {
+                Ok(Self(year * 10000 + month * 100 + day))
+            }
+            _ => Err(serde::de::Error::custom("Expected a date as YYYY-MM-DD")),
+        }
+    }
+}
+
 /// A country that changed its tag on a date, as the nation events of a save
 /// record it.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct TagSwitch {
     pub from: CountryTag,
     pub to: CountryTag,
-    /// `YYYY-MM-DD`
-    pub date: String,
+    #[cfg_attr(feature = "tsify", tsify(type = "string"))]
+    pub date: GameDate,
+}
+
+/// The dates when a tag names the country of its chart row: from the latest
+/// switch into the tag to the next switch out of it. A tag without switches
+/// names one country on every date.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TagSpan {
+    from: Option<GameDate>,
+    until: Option<GameDate>,
+}
+impl TagSpan {
+    fn of(tag: CountryTag, switches: &[TagSwitch]) -> Self {
+        let from = switches
+            .iter()
+            .filter(|x| x.to == tag)
+            .map(|x| x.date)
+            .max();
+        let until = switches
+            .iter()
+            .filter(|x| x.from == tag && from.is_none_or(|from| x.date >= from))
+            .map(|x| x.date)
+            .min();
+        Self { from, until }
+    }
+    fn contains(self, date_sort: i32) -> bool {
+        self.from.is_none_or(|from| from.date_sort() <= date_sort)
+            && self.until.is_none_or(|until| date_sort < until.date_sort())
+    }
 }
 
 /// The tag switches of the nation events of a save, in date order.
@@ -667,7 +746,7 @@ pub fn tag_switches(events: &[NationEvents]) -> Vec<TagSwitch> {
                     TagSwitch {
                         from,
                         to,
-                        date: date.iso_8601().to_string(),
+                        date: GameDate::from_eu4(date),
                     },
                 ))
             })
@@ -680,27 +759,29 @@ pub fn tag_switches(events: &[NationEvents]) -> Vec<TagSwitch> {
 /// The countries of a campaign chart and the tag switches between them.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
 pub struct ChartCountries {
     /// Sorted and distinct.
     pub tags: Vec<CountryTag>,
     pub switches: Vec<TagSwitch>,
+    /// Generated tags that the filter chose, which the chart leaves out.
+    pub left_out: Vec<CountryTag>,
 }
 
 /// The chosen tags with each tag that a recorded switch joins to them, so a
 /// formed nation and the country that formed it show together. Generated
-/// tags are left out.
+/// tags are left out and listed.
 pub fn chart_countries(
     chosen: impl IntoIterator<Item = CountryTag>,
     switches: &[TagSwitch],
 ) -> ChartCountries {
+    let (left_out, chosen): (BTreeSet<_>, BTreeSet<_>) =
+        chosen.into_iter().partition(is_generated_tag);
     let switches: Vec<_> = switches
         .iter()
         .filter(|x| !is_generated_tag(&x.from) && !is_generated_tag(&x.to))
         .collect();
-    let mut tags: BTreeSet<_> = chosen
-        .into_iter()
-        .filter(|tag| !is_generated_tag(tag))
-        .collect();
+    let mut tags = chosen;
     loop {
         let joined: Vec<_> = switches
             .iter()
@@ -719,6 +800,7 @@ pub fn chart_countries(
             .cloned()
             .collect(),
         tags: tags.into_iter().collect(),
+        left_out: left_out.into_iter().collect(),
     }
 }
 
@@ -927,6 +1009,7 @@ mod tests {
         let run = |metric, tags: &[&str]| {
             let query = Eu4Query::CountrySeries {
                 tags: tags.iter().copied().map(tag).collect(),
+                switches: Vec::new(),
                 metric,
             };
             match answer(&store, query) {
@@ -962,11 +1045,12 @@ mod tests {
         // A generated tag has no series.
         assert_eq!(run(CountryMetric::ArmySize, &["C01", "ENG"]).len(), 1);
         let query: Eu4Query = serde_json::from_value(serde_json::json!({
-            "kind": "countrySeries", "tags": ["ENG"], "metric": "maxManpower",
+            "kind": "countrySeries", "tags": ["ENG"], "switches": [], "metric": "maxManpower",
         }))
         .unwrap();
         serde_json::from_value::<Eu4Query>(serde_json::json!({
             "kind": "countrySeries", "tags": ["ENG"], "metric": "armySize",
+            "switches": [{ "from": "ULM", "to": "BYZ", "date": "1550-01-01" }],
         }))
         .unwrap();
         assert!(matches!(
@@ -977,7 +1061,7 @@ mod tests {
             }
         ));
         serde_json::from_value::<Eu4Query>(serde_json::json!({
-            "kind": "countrySeries", "tags": ["ENGLAND"], "metric": "maxManpower",
+            "kind": "countrySeries", "tags": ["ENGLAND"], "switches": [], "metric": "maxManpower",
         }))
         .unwrap_err();
     }
@@ -1092,6 +1176,7 @@ mod tests {
             &store,
             Eu4Query::CountrySeries {
                 tags: vec![tag("ENG")],
+                switches: Vec::new(),
                 metric,
             },
         ) {
@@ -1259,11 +1344,12 @@ mod tests {
     }
 
     #[test]
-    fn generated_tags_are_a_letter_and_two_digits() {
-        for generated in ["C00", "K12", "T99", "F01", "D05"] {
+    fn generated_tags_are_the_reused_dynamic_tags() {
+        for generated in ["C00", "E01", "F01", "K12", "T99"] {
             assert!(is_generated_tag(&tag(generated)), "{generated}");
         }
-        for fixed in ["FRA", "TUR", "MEX", "---", "REB"] {
+        // A custom nation keeps its tag.
+        for fixed in ["FRA", "TUR", "MEX", "---", "REB", "D05", "Z01"] {
             assert!(!is_generated_tag(&tag(fixed)), "{fixed}");
         }
     }
@@ -1273,7 +1359,7 @@ mod tests {
         let switch = |from: &str, to: &str, date: &str| TagSwitch {
             from: tag(from),
             to: tag(to),
-            date: date.to_owned(),
+            date: serde_json::from_value(serde_json::json!(date)).unwrap(),
         };
         let switches = [
             switch("BRA", "PRU", "1525-01-01"),
@@ -1283,8 +1369,66 @@ mod tests {
         ];
         let chart = chart_countries([tag("GER"), tag("C02"), tag("ENG")], &switches);
         assert_eq!(chart.tags, ["BRA", "ENG", "GER", "PRU"].map(tag));
+        assert_eq!(chart.left_out, [tag("C02")]);
         assert_eq!(chart.switches, switches[..2]);
         // A generated tag does not join a formed nation.
         assert_eq!(chart_countries([tag("MEX")], &switches).tags, [tag("MEX")]);
+    }
+
+    #[test]
+    fn a_tag_names_another_country_outside_its_switches() {
+        use CountryValue::{NoProvinces, OtherCountry, Value};
+        // The first BYZ is annexed. ULM forms BYZ in 1550, and another ULM
+        // appears by 1600.
+        let mut store = Store::new();
+        for observation in [
+            observation(
+                "a",
+                (1444, 11, 11),
+                &[(1, 10.0, Some("BYZ"), None), (2, 3.0, Some("ULM"), None)],
+            ),
+            observation(
+                "b",
+                (1500, 1, 1),
+                &[(1, 10.0, Some("TUR"), None), (2, 4.0, Some("ULM"), None)],
+            ),
+            observation(
+                "c",
+                (1600, 1, 1),
+                &[(1, 20.0, Some("BYZ"), None), (2, 5.0, Some("ULM"), None)],
+            ),
+        ] {
+            store.append(observation, usize::MAX).unwrap();
+        }
+        let switches = vec![TagSwitch {
+            from: tag("ULM"),
+            to: tag("BYZ"),
+            date: GameDate(15500101),
+        }];
+        let Eu4Answer::CountrySeries(answer) = answer(
+            &store,
+            Eu4Query::CountrySeries {
+                tags: vec![tag("BYZ"), tag("ULM")],
+                switches,
+                metric: CountryMetric::ProvinceDevelopment,
+            },
+        ) else {
+            panic!("country series");
+        };
+        assert_eq!(
+            histories(answer),
+            [
+                (
+                    tag("BYZ"),
+                    vec![OtherCountry(10.0), NoProvinces, Value(20.0)]
+                ),
+                (tag("ULM"), vec![Value(3.0), Value(4.0), OtherCountry(5.0)]),
+            ]
+        );
+        assert_eq!(
+            serde_json::to_value(GameDate(15500101)).unwrap(),
+            serde_json::json!("1550-01-01")
+        );
+        serde_json::from_value::<GameDate>(serde_json::json!("1550-13-01")).unwrap_err();
     }
 }

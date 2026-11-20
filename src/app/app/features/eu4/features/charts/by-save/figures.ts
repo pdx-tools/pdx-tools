@@ -8,6 +8,7 @@ export type BySaveFigure = {
   title: string;
   /** The axis title, with the unit. */
   axis: string;
+  unit: string;
   /** The country metric, or none for the world total. */
   metric: CountryMetric | null;
   /** The value as the viewer shows it. */
@@ -24,6 +25,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
   "dev-by-save": {
     title: "Development by save",
     axis: "Development, points",
+    unit: "development points",
     metric: "provinceDevelopment",
     format: points,
     describe: (value) => `${points(value)} development`,
@@ -31,6 +33,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
   "army-by-save": {
     title: "Army size by save",
     axis: "Army size, thousands of men",
+    unit: "thousands of men",
     metric: "armySize",
     format: thousands,
     describe: (value) => `${thousands(value)} men`,
@@ -38,6 +41,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
   "manpower-by-save": {
     title: "Max manpower by save",
     axis: "Max manpower, thousands of men",
+    unit: "thousands of men",
     metric: "maxManpower",
     format: thousands,
     describe: (value) => `${thousands(value)} men`,
@@ -45,6 +49,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
   "world-dev-by-save": {
     title: "World development by save",
     axis: "Development, points",
+    unit: "development points",
     metric: null,
     format: points,
     describe: (value) => `${points(value)} development`,

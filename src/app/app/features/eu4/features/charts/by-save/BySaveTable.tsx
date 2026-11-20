@@ -1,60 +1,80 @@
 import { useMemo } from "react";
+import { cx } from "class-variance-authority";
 import { formatLongDate } from "@/features/timeline/date";
-import type { ChartCountries } from "@/wasm/wasm_eu4";
+import type { ChartCountries, CountryValue } from "@/wasm/wasm_eu4";
+import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import type { BySaveFigure } from "./figures";
-import { amount, earliestColumn, sortRows, sourceText } from "./model";
+import { amount, earliestColumn, otherAmount, sortRows, sourceText } from "./model";
 import type { BySaveData } from "./model";
 
-/** The value of each row at one save, beside its value at the row's earliest save. */
+const muted = "text-gray-600 dark:text-gray-300";
+
+/**
+ * The value of each row at the selected save, beside the value at the save
+ * where the row was first seen. The table is also the legend of the chart.
+ */
 export function BySaveTable({
   data,
+  selected,
   column,
+  reason,
   figure,
   chart,
-  header,
+  openControl,
+  steppers,
 }: {
   data: BySaveData;
-  column: number;
+  selected: AnalysisSave;
+  /** The column of the selected save, or null when it has no values. */
+  column: number | null;
+  /** Why the selected save has no values. */
+  reason: string | null;
   figure: BySaveFigure;
   chart: ChartCountries | null;
-  /** Actions for the save of the column. */
-  header?: React.ReactNode;
+  openControl: React.ReactNode;
+  steppers: React.ReactNode;
 }) {
-  const { save, date } = data.columns[column];
-  const rows = useMemo(() => sortRows(data.rows, column, chart), [data.rows, column, chart]);
+  const rows = useMemo(
+    () => (column === null ? data.rows : sortRows(data.rows, column, chart)),
+    [data.rows, column, chart],
+  );
+  const { save, date } = selected;
   return (
-    <section
-      aria-live="polite"
-      aria-label="Values at the selected save"
-      className="flex flex-col gap-2"
-    >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-medium">
+    <section aria-label="Values at the selected save" className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span aria-live="polite" aria-atomic className="font-medium">
           {formatLongDate(date)} · {save.name} · {sourceText(save)}
+          {reason && <span className={cx("block font-normal", muted)}>{reason}</span>}
         </span>
-        {header}
+        {openControl}
+        <span className="ml-auto flex gap-2">{steppers}</span>
       </div>
       <div className="max-h-72 overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-white text-left dark:bg-slate-900">
             <tr>
-              <th className="py-1 pr-3 font-medium">Country</th>
-              <th className="py-1 pr-3 font-medium">Earliest save</th>
-              <th className="py-1 pr-3 text-right font-medium" />
-              <th className="py-1 text-right font-medium">{formatLongDate(date)}</th>
+              <th scope="col" className="py-1 pr-3 font-medium">
+                Country
+              </th>
+              <th scope="col" colSpan={2} className="py-1 pr-3 font-medium">
+                First seen
+              </th>
+              <th scope="col" className="py-1 text-right font-medium">
+                {formatLongDate(date)}
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
-              const earliest = earliestColumn(row);
-              const value = row.values[column];
-              const first = earliest === null ? null : amount(row.values[earliest]);
+              const first = earliestColumn(row);
+              // The first value says nothing new when it is the selected one or a later one.
+              const repeat = first !== null && column !== null && first >= column;
               return (
                 <tr
                   key={row.key}
                   className="border-t border-gray-200 align-top dark:border-gray-700"
                 >
-                  <td className="py-1 pr-3">
+                  <th scope="row" className="py-1 pr-3 text-left font-normal">
                     <span className="flex items-center gap-2">
                       <span
                         aria-hidden
@@ -64,27 +84,22 @@ export function BySaveTable({
                       {row.label}
                     </span>
                     {row.was.map((line) => (
-                      <span
-                        key={line}
-                        className="block pl-5 text-xs text-gray-600 dark:text-gray-300"
-                      >
+                      <span key={line} className={cx("block pl-5 text-xs", muted)}>
                         {line}
                       </span>
                     ))}
+                  </th>
+                  <td className={cx("py-1 pr-3 whitespace-nowrap", repeat && muted)}>
+                    {first === null ? "" : formatLongDate(data.columns[first].date)}
                   </td>
-                  <td className="py-1 pr-3 whitespace-nowrap">
-                    {earliest === null ? "" : formatLongDate(data.columns[earliest].date)}
-                  </td>
-                  <td className="py-1 pr-3 text-right tabular-nums">
-                    {first === null ? "" : figure.format(first)}
+                  <td className={cx("py-1 pr-3 text-right tabular-nums", repeat && muted)}>
+                    {first === null ? "" : figure.format(amount(row.values[first])!)}
                   </td>
                   <td className="py-1 text-right tabular-nums">
-                    {typeof value === "object" ? (
-                      figure.format(value.value)
+                    {column === null ? (
+                      <span className={muted}>no value</span>
                     ) : (
-                      <span className="text-gray-600 dark:text-gray-300">
-                        {value === "noProvinces" ? "held no provinces" : "no record"}
-                      </span>
+                      <ValueCell value={row.values[column]} figure={figure} />
                     )}
                   </td>
                 </tr>
@@ -94,5 +109,20 @@ export function BySaveTable({
         </table>
       </div>
     </section>
+  );
+}
+
+function ValueCell({ value, figure }: { value: CountryValue; figure: BySaveFigure }) {
+  const own = amount(value);
+  if (own !== null) return figure.format(own);
+  const other = otherAmount(value);
+  return (
+    <span className={muted}>
+      {other !== null
+        ? `another country with this tag: ${figure.format(other)}`
+        : value === "noProvinces"
+          ? "held no provinces"
+          : "no record"}
+    </span>
   );
 }

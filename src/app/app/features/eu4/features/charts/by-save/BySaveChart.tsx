@@ -52,19 +52,33 @@ export function BySaveChart({
   const dark = isDarkMode();
   const option = useMemo((): EChartsOption => {
     const [first, last] = range.map(dayNumber);
-    const pad = Math.max(30, Math.round((last - first) * 0.02));
+    // Dots stay off the plot edges.
+    const pad = Math.max(30, Math.round((last - first) * 0.05));
     const ink = dark ? "#cbd5e1" : "#334155";
+    const rule = (
+      day: number,
+      label: string,
+      type: "solid" | "dashed",
+      position: "insideEndTop" | "insideStartTop",
+    ) => ({
+      xAxis: day,
+      lineStyle: { color: ink, type, width: type === "dashed" ? 2 : 1 },
+      label: { formatter: label, position, color: ink },
+    });
+    // One rule when the selected save is the open one; the open rule is dashed.
+    const rules =
+      selectedDay !== null && selectedDay === openDay
+        ? [rule(selectedDay, "Selected · Open now", "dashed", "insideEndTop")]
+        : [
+            ...(selectedDay === null
+              ? []
+              : [rule(selectedDay, "Selected", "solid", "insideStartTop")]),
+            ...(openDay === null ? [] : [rule(openDay, "Open now", "dashed", "insideEndTop")]),
+          ];
     return {
       animation: false,
-      grid: { left: 64, right: endLabels ? 96 : 24, top: 24, bottom: series.length > 1 ? 72 : 48 },
-      legend: {
-        show: series.length > 1,
-        type: "scroll",
-        bottom: 0,
-        data: series.map((entry) => entry.label),
-        textStyle: { color: ink },
-        pageTextStyle: { color: ink },
-      },
+      // The table under the chart is the legend: its swatches are these colors.
+      grid: { left: 64, right: endLabels ? 96 : 24, top: 24, bottom: 48 },
       tooltip: {
         trigger: "item",
         formatter: (params) => {
@@ -98,6 +112,8 @@ export function BySaveChart({
           name: entry.label,
           symbolSize: 8,
           itemStyle: {
+            // The game's color, unchanged.
+            opacity: 1,
             color: entry.color,
             borderColor: needsOutline(entry.color) ? ink : undefined,
             borderWidth: needsOutline(entry.color) ? 1 : 0,
@@ -116,8 +132,9 @@ export function BySaveChart({
           type: "scatter" as const,
           name: "Saves without a value",
           symbol: "triangle",
-          symbolSize: 7,
-          itemStyle: { color: "transparent", borderColor: ink, borderWidth: 1 },
+          symbolSize: 12,
+          z: 3,
+          itemStyle: { color: ink, opacity: 1 },
           data: marks.map((mark) => ({
             value: [mark.day, 0],
             saveKey: mark.key,
@@ -127,30 +144,7 @@ export function BySaveChart({
             silent: true,
             symbol: ["none", "none"],
             animation: false,
-            data: [
-              ...(selectedDay === null
-                ? []
-                : [
-                    {
-                      xAxis: selectedDay,
-                      lineStyle: { color: ink, type: "solid" as const, width: 1 },
-                      label: {
-                        formatter: "Selected",
-                        position: "insideEndTop" as const,
-                        color: ink,
-                      },
-                    },
-                  ]),
-              ...(openDay === null
-                ? []
-                : [
-                    {
-                      xAxis: openDay,
-                      lineStyle: { color: ink, type: "dashed" as const, width: 2 },
-                      label: { formatter: "Open now", position: "end" as const, color: ink },
-                    },
-                  ]),
-            ],
+            data: rules,
           },
         },
       ],
