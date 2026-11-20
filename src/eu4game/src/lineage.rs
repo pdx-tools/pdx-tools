@@ -79,6 +79,11 @@ pub struct TagSwitch {
     /// Which one this is of switches that one save records alike for
     /// different countries. Usually 0.
     pub copy: u8,
+    /// False when the save does not tell where the switch went for sure:
+    /// the country lists more earlier tags than it records switches, so the
+    /// destination of its last switch is a guess. Such a switch ends and
+    /// starts holdings but joins no tags.
+    pub joins: bool,
 }
 impl TagSwitch {
     /// The country that made the switch, as its history names it.
@@ -148,21 +153,26 @@ fn country_switches(
         .skip(1)
         .map(|(_, from)| *from)
         .chain(std::iter::once(latest));
+    // The last switch's destination is a guess when the country lists more
+    // earlier tags than it records switches.
+    let guessed = previous.len() > froms.len();
+    let last = froms.len().saturating_sub(1);
     // A switch to the same tag changes nothing, so it neither names the
     // country nor takes a place in its order.
     let changes: Vec<_> = froms
         .iter()
         .zip(tos)
-        .map(|(&(date, from), to)| (date, from, to))
-        .filter(|(_, from, to)| from != to)
+        .enumerate()
+        .map(|(at, (&(date, from), to))| (date, from, to, !(guessed && at == last)))
+        .filter(|(_, from, to, _)| from != to)
         .collect();
-    let Some(&(country_since, country, _)) = changes.first() else {
+    let Some(&(country_since, country, _, _)) = changes.first() else {
         return Vec::new();
     };
     changes
         .iter()
         .enumerate()
-        .map(|(order, &(date, from, to))| TagSwitch {
+        .map(|(order, &(date, from, to, joins))| TagSwitch {
             from,
             to,
             date,
@@ -170,6 +180,7 @@ fn country_switches(
             country_since,
             order: u16::try_from(order).unwrap_or(u16::MAX),
             copy: 0,
+            joins,
         })
         .collect()
 }
@@ -325,7 +336,8 @@ pub fn lineages(
         let Some(Event::Out(switch)) = segment.end else {
             return None;
         };
-        let linked = !segment.ambiguous && tracked(&switch.from) && tracked(&switch.to);
+        let linked =
+            !segment.ambiguous && switch.joins && tracked(&switch.from) && tracked(&switch.to);
         linked.then(|| starts.get(&switch).copied()).flatten()
     };
     let continued: BTreeSet<_> = (0..segments.len()).filter_map(next).collect();
@@ -396,6 +408,13 @@ fn segments_of(tag: CountryTag, events: &[Event]) -> Vec<Segment> {
     let mut start = None;
     for event in events {
         let date = event.switch().date;
+        // A holding that one country took and another left was held by both
+        // in turn, such as a country annexed and a later one released with
+        // the tag. Whose its values are cannot be told.
+        let mixed = matches!(
+            (start, event),
+            (Some(Event::Into(came)), Event::Out(went)) if came.maker() != went.maker()
+        );
         segments.push(Segment {
             held: HeldTag {
                 tag,
@@ -404,7 +423,7 @@ fn segments_of(tag: CountryTag, events: &[Event]) -> Vec<Segment> {
             },
             start,
             end: Some(event),
-            ambiguous: false,
+            ambiguous: mixed,
         });
         from = Some(date);
         start = Some(event);
@@ -442,6 +461,7 @@ mod tests {
             country_since: date(year),
             order: 0,
             copy: 0,
+            joins: true,
         }
     }
     /// The switches of one country in its order: `chain[i]` is (from, to, date_sort).
@@ -457,6 +477,7 @@ mod tests {
                 country_since: GameDate::from_date_sort(chain[0].2),
                 order: order as u16,
                 copy: 0,
+                joins: true,
             })
             .collect()
     }
@@ -505,7 +526,7 @@ mod tests {
         // in a real campaign, and a chart drops a lineage without values.
         assert_eq!(found.len(), 2);
 
-        let chain = [switch("BRA", "PRU", 1525), switch("PRU", "GER", 1700)];
+        let chain = history(&[("BRA", "PRU", 15250101), ("PRU", "GER", 17000101)]);
         assert_eq!(
             chains(&["BRA"], &chain),
             [
@@ -832,5 +853,34 @@ mod tests {
         );
         assert_eq!(plain, [switch("AAA", "BBB", 1500)]);
         assert_eq!(with_noop, plain);
+    }
+
+    #[test]
+    fn a_holding_taken_by_one_country_and_left_by_another_joins_nothing() {
+        // AAA forms BBB and is annexed; a released BBB forms CCC.
+        let switches = [switch("AAA", "BBB", 1500), switch("BBB", "CCC", 1550)];
+        let found = lineages([tag("AAA"), tag("BBB"), tag("CCC")], &switches, |_| true);
+        assert!(found.iter().all(|x| x.tags.len() == 1));
+        let mixed = found
+            .iter()
+            .find(|x| x.tags[0].tag == tag("BBB") && x.tags[0].from == Some(date(1500)))
+            .unwrap();
+        assert_eq!(mixed.kind, LineageKind::Ambiguous);
+        assert_eq!(mixed.held_in(date(1520), &switches), None);
+    }
+
+    #[test]
+    fn a_guessed_destination_joins_nothing() {
+        // SRH formed a tag in 1618; the save lists DLH as an earlier tag
+        // but records no switch to the country's tag now, JNP.
+        let switches = country_switches(
+            tag("JNP"),
+            [(date(1618), tag("SRH"))].into_iter(),
+            &[tag("SRH"), tag("DLH")],
+        );
+        assert_eq!(switches.len(), 1);
+        assert!(!switches[0].joins);
+        let found = lineages([tag("SRH"), tag("DLH")], &switches, |_| true);
+        assert!(found.iter().all(|x| x.tags.len() == 1));
     }
 }

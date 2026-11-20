@@ -1307,6 +1307,7 @@ mod tests {
             country_since: GameDate::from_date_sort(year * 10000 + 101),
             order: 0,
             copy: 0,
+            joins: true,
         };
         // A later switch of the country whose first switch is `first`.
         let then = |first: TagSwitch, order: u16, from: &str, to: &str, year: i32| TagSwitch {
@@ -1354,20 +1355,17 @@ mod tests {
             [("ALO>NBI".into(), vec![cell("ALO", 21.0), cell("NBI", 55.0)])]
         );
 
-        // A chain: BRA, then PRU, then GER. Each save records its past switches.
+        // A chain: BRA, then PRU, then GER, by one country. Each save records
+        // its past switches.
+        let formed = switch("BRA", "PRU", 1525);
         let chain = vec![
             saved("a", 1500, &[p("BRA", 10.0)], vec![]),
-            saved(
-                "b",
-                1600,
-                &[p("PRU", 20.0)],
-                vec![switch("BRA", "PRU", 1525)],
-            ),
+            saved("b", 1600, &[p("PRU", 20.0)], vec![formed]),
             saved(
                 "c",
                 1750,
                 &[p("GER", 30.0)],
-                vec![switch("BRA", "PRU", 1525), switch("PRU", "GER", 1700)],
+                vec![formed, then(formed, 1, "PRU", "GER", 1700)],
             ),
         ];
         assert_eq!(
@@ -1501,7 +1499,9 @@ mod tests {
 
         // Two branches where each holds a switch of the other's tags: in one
         // the first BYZ forms ROM in 1600, in the other ULM forms BYZ in 1550.
-        // The Rome save lacks Ulm's switch, so Rome is not put after Ulm.
+        // Together they show BYZ taken by ULM and left by the first BYZ: two
+        // countries held it in turn, so that holding has no values and joins
+        // nothing. Rome is its own row, never put after Ulm.
         let crossed = vec![
             saved("a", 1500, &[p("BYZ", 10.0), q("ULM", 3.0)], vec![]),
             saved(
@@ -1521,10 +1521,9 @@ mod tests {
             run(crossed, &["BYZ", "ULM", "ROM"]),
             [
                 ("BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
-                (
-                    "ULM>BYZ>ROM".into(),
-                    vec![cell("ULM", 3.0), cell("BYZ", 20.0), None]
-                ),
+                ("BYZ".into(), vec![None, None, None]),
+                ("ROM".into(), vec![None, None, cell("ROM", 30.0)]),
+                ("ULM".into(), vec![cell("ULM", 3.0), None, None]),
             ]
         );
 
