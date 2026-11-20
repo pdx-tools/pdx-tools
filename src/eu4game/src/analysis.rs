@@ -606,13 +606,15 @@ pub fn country_series(
                     let tag = lineage.tags[held].tag;
                     let payload = snapshot.payload();
                     // A save records its own past switches. One that lacks a
-                    // switch of a tag the country held by then is on another
-                    // branch of the campaign.
+                    // switch of a tag while the country held it is on another
+                    // branch of the campaign. A switch before the holding
+                    // belongs to an earlier holder of the tag.
                     let recorded = lineage.tags[..=held].iter().all(|seg| {
                         let end = seg.until.map_or(date, |until| until.min(date));
                         switches
                             .iter()
-                            .filter(|x| x.date <= end && (x.from == seg.tag || x.to == seg.tag))
+                            .filter(|x| seg.from.is_none_or(|from| from <= x.date) && x.date <= end)
+                            .filter(|x| x.from == seg.tag || x.to == seg.tag)
                             .all(|x| payload.switches.contains(x))
                     });
                     if !recorded {
@@ -1498,20 +1500,36 @@ mod tests {
 
         // A colonial nation forms BYZ after the first BYZ is gone. The
         // switch is not followed, but the two holders of BYZ stay apart.
+        // A later save of the same branch keeps the value, even when it no
+        // longer records a switch of the first BYZ.
         let colonial = vec![
-            saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
+            saved(
+                "a",
+                1500,
+                &[p("BYZ", 10.0)],
+                vec![switch("GRE", "BYZ", 1450)],
+            ),
             saved(
                 "b",
                 1720,
                 &[p("BYZ", 25.0)],
+                vec![switch("GRE", "BYZ", 1450), switch("C01", "BYZ", 1700)],
+            ),
+            saved(
+                "c",
+                1800,
+                &[p("BYZ", 40.0)],
                 vec![switch("C01", "BYZ", 1700)],
             ),
         ];
         assert_eq!(
             run(colonial, &["BYZ"]),
             [
-                ("BYZ".into(), vec![cell("BYZ", 10.0), None]),
-                ("BYZ".into(), vec![None, cell("BYZ", 25.0)]),
+                (
+                    "BYZ".into(),
+                    vec![None, cell("BYZ", 25.0), cell("BYZ", 40.0)]
+                ),
+                ("GRE>BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
             ]
         );
     }

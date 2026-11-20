@@ -399,4 +399,29 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn a_switch_not_followed_still_ends_a_holding() {
+        // A colonial nation forms BYZ: the two holders of BYZ stay apart and
+        // the colonial tag is in no lineage.
+        let switches = [switch("C01", "BYZ", 1700)];
+        let found = lineages([tag("BYZ")], &switches, |x| *x != tag("C01"));
+        let held: Vec<_> = found
+            .iter()
+            .map(|x| {
+                (
+                    x.tags.iter().map(|x| x.tag.to_string()).collect::<Vec<_>>(),
+                    x.kind,
+                )
+            })
+            .collect();
+        assert_eq!(
+            held,
+            [
+                (vec!["BYZ".to_owned()], LineageKind::EarlierHolder),
+                (vec!["BYZ".to_owned()], LineageKind::Country),
+            ]
+        );
+        assert_eq!(found[1].tags[0].from, Some(date(1700)));
+    }
 }
