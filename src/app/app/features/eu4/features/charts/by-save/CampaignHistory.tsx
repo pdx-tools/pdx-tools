@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
 import { useVisualizationDispatch } from "@/components/viz";
@@ -290,6 +290,11 @@ function BySaveView({
   // The file name of a save that changed after analysis read it.
   const [changed, setChanged] = useState<string | null>(null);
   const selectedSave = columns[selected];
+  // The open save and any step now, for a check that ends after a render.
+  const now = useRef({ openKey, stepping: nav?.opening ?? null });
+  useLayoutEffect(() => {
+    now.current = { openKey, stepping: nav?.opening ?? null };
+  });
   const openSelected = async () => {
     if (!nav || !selectedSave || !playthroughId) return;
     selectSave(playthroughId, selectedSave.save.key);
@@ -298,9 +303,15 @@ function BySaveView({
     try {
       // The dot is of the bytes that analysis read, so other bytes do not open as its save.
       const address = window.location.href;
+      const { openKey: before } = now.current;
       if (await campaign.fileChanged(selectedSave)) setChanged(selectedSave.save.name);
-      // The player can leave the page while the file is read.
-      else if (window.location.href === address) await openCampaignSave(nav, selectedSave.save);
+      // The player can leave the page or open another save while the file is read.
+      else if (
+        window.location.href === address &&
+        now.current.openKey === before &&
+        now.current.stepping === null
+      )
+        await openCampaignSave(nav, selectedSave.save);
     } finally {
       setOpening(false);
     }

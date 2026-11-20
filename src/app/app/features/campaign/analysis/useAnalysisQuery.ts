@@ -28,7 +28,9 @@ export function useAnalysisQuery<S extends AnalysisStore, Q extends QueryOf<S>>(
     [snapshots, campaignId],
   );
   const active = !!campaignId && !!query && dataset !== "";
-  const identity = active ? JSON.stringify([campaignId, query, selection]) : "";
+  // A change of selection is a change of the dataset: the last result stays until the new one.
+  const identity = active ? JSON.stringify([campaignId, query]) : "";
+  const selected = selection ? JSON.stringify(selection) : "";
   const [subscription] = useState(() => new AnalysisQuery<R>(client.generation));
   useSyncExternalStore(subscription.subscribe, subscription.snapshot, subscription.snapshot);
   useEffect(() => () => subscription.deactivate(), [subscription]);
@@ -39,12 +41,12 @@ export function useAnalysisQuery<S extends AnalysisStore, Q extends QueryOf<S>>(
     }
     subscription.update({
       identity,
-      dataset,
+      dataset: `${dataset}\n${selected}`,
       run: (identity, sequence) =>
         client.query({ campaignId, identity, sequence, query, selection }),
     });
     // An equal query keeps its identity, so it does not run again.
-  }, [subscription, identity, dataset, active, campaignId, query, selection, client]);
+  }, [subscription, identity, dataset, selected, active, campaignId, query, selection, client]);
   const state = subscription.current(identity);
   return { ...state, loading: active && state.result === null && state.error === null };
 }
