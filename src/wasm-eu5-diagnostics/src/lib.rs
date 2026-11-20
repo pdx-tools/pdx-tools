@@ -1,6 +1,6 @@
 use arena_serde::ArenaDeserialize;
 use eu5save::{Eu5BinaryDeserialization, ReaderAt, SaveResolver, models::Gamestate};
-use jomini::{TextDeserializer, text::TokenReader};
+use jomini::{TextDeserializer, Utf8Encoding};
 use wasm_bindgen::prelude::*;
 use wasm_pdx_core::blob::BlobReader;
 
@@ -47,7 +47,7 @@ fn diagnose_save_impl(save: web_sys::Blob) -> Result<(), String> {
             .map_err(|error| format!("Unable to decompress save file: {error}"))?;
         let file = eu5save::Eu5DebugFile::from_reader(decoder)
             .map_err(|error| format!("Unable to parse save file: {error}"))?;
-        let mut deserializer = TextDeserializer::from_utf8_reader(TokenReader::new(file));
+        let mut deserializer = TextDeserializer::from_reader(file, Utf8Encoding::new());
         let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &track);
         Gamestate::deserialize_in_arena(tracked, &arena)
     } else {

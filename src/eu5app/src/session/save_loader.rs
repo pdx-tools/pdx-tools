@@ -5,10 +5,9 @@ use eu5save::{
     models::{GameVersion, Gamestate, Metadata, ZipPrelude},
 };
 use jomini::{
-    TextDeserializer,
+    TextDeserializer, Utf8Encoding,
     binary::{BinaryFormatDeserializer, TokenResolver},
     common::PdsDate,
-    text::TokenReader,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -132,11 +131,12 @@ enum GamestateReader<'a, W> {
     Binary(TeeReader<'a, W>),
 }
 
-impl<'a, W: Write> GamestateReader<'a, W> {
-    fn text_deserializer(reader: TeeReader<'a, W>) -> Eu5TextDeserializer<'a> {
-        TextDeserializer::from_utf8_reader(TokenReader::new(reader))
-    }
+/// Share one text parser across reader types in the Wasm build.
+fn text_deserializer(reader: &mut dyn Read) -> Eu5TextDeserializer<&mut dyn Read> {
+    TextDeserializer::from_reader(reader, Utf8Encoding::new())
+}
 
+impl<'a, W: Write> GamestateReader<'a, W> {
     fn binary_deserializer<'res, RES: TokenResolver>(
         reader: TeeReader<'a, W>,
         resolver: &'res RES,
@@ -179,8 +179,8 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
             .map_err(Eu5LoadError::StringLookup)?;
 
         let game = match Self::gamestate_reader(&self.archive, &mut self.observer)? {
-            GamestateReader::Text(x) => {
-                let mut deser = GamestateReader::text_deserializer(x);
+            GamestateReader::Text(mut x) => {
+                let mut deser = text_deserializer(&mut x);
                 Gamestate::deserialize_in_arena(&mut deser, &self.arena)
             }
             GamestateReader::Binary(x) => {
@@ -215,8 +215,8 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
         let track = arena_serde::tracked::Track::new_with(&mut path_buf);
 
         let game = match Self::gamestate_reader(&self.archive, &mut self.observer)? {
-            GamestateReader::Text(x) => {
-                let mut deser = GamestateReader::text_deserializer(x);
+            GamestateReader::Text(mut x) => {
+                let mut deser = text_deserializer(&mut x);
                 let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &track);
                 Gamestate::deserialize_in_arena(tracked, &self.arena)
             }
@@ -272,21 +272,22 @@ impl Eu5DebugSaveLoader<()> {
         mut observer: W,
     ) -> Result<Eu5DebugSaveLoader<R, W>, Eu5LoadError> {
         let mut file = Eu5DebugFile::from_reader(reader).map_err(Eu5LoadError::Header)?;
-        let header = file.header().clone();
+        let metadata_len = file.header().metadata_len();
 
         let mut meta_bytes = Vec::new();
         (&mut file)
-            .take(header.metadata_len())
+            .take(metadata_len)
             .read_to_end(&mut meta_bytes)
             .and_then(|_| observer.write_all(&meta_bytes))
             .map_err(Eu5LoadError::MetaRead)?;
 
         let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
         let meta = {
-            let mut text =
-                SaveMetadata::<eu5save::TextEncoding, _>::new(meta_bytes.as_slice(), header);
-            let meta = ZipPrelude::deserialize_in_arena(&mut text.deserializer(), &arena)
-                .map_err(Eu5LoadError::MetaDeserialization)?;
+            let meta = ZipPrelude::deserialize_in_arena(
+                &mut text_deserializer(&mut meta_bytes.as_slice()),
+                &arena,
+            )
+            .map_err(Eu5LoadError::MetaDeserialization)?;
             Eu5SaveMetadata::from(&meta.metadata)
         };
 
@@ -316,11 +317,11 @@ impl<R: Read, W: Write> Eu5DebugSaveLoader<R, W> {
         } = self;
 
         let game = {
-            let reader = TeeReader {
+            let mut reader = TeeReader {
                 reader: Box::new(std::io::Cursor::new(meta_bytes).chain(file)),
                 observer: &mut observer,
             };
-            let mut deser = GamestateReader::text_deserializer(reader);
+            let mut deser = text_deserializer(&mut reader);
             Gamestate::deserialize_in_arena(&mut deser, &arena)
                 .map_err(Eu5LoadError::GamestateDeserialization)?
         };
@@ -452,7 +453,7 @@ fn deserialize_metadata<R: Read, RES: TokenResolver>(
 ) -> Result<Eu5SaveMetadata, Eu5LoadError> {
     let prelude = match meta {
         SaveMetadataKind::Text(mut text) => {
-            ZipPrelude::deserialize_in_arena(&mut text.deserializer(), arena)
+            ZipPrelude::deserialize_in_arena(&mut text_deserializer(&mut text), arena)
         }
         SaveMetadataKind::Binary(mut bin) => {
             ZipPrelude::deserialize_in_arena(&mut bin.deserializer(resolver), arena)

@@ -62,7 +62,8 @@ arg "<module>" help="Rust library name of the module, for example wasm_eu5"
 arg "[out_dir]" default="src/app/app/wasm" help="Directory for the bindings"
 flag "--release"
 '''
-run = "wasm-bindgen --target web ./target/wasm32-unknown-unknown/{% if usage.release %}release{% else %}wasm-dev{% endif %}/{{ usage.module }}.wasm --out-dir {{ usage.out_dir }}{% if usage.release %} && wasm-opt -O2 {{ usage.out_dir }}/{{ usage.module }}_bg.wasm -o {{ usage.out_dir }}/{{ usage.module }}_bg.wasm{% endif %}"
+# Group related functions by name to improve Brotli compression.
+run = "wasm-bindgen --target web ./target/wasm32-unknown-unknown/{% if usage.release %}release{% else %}wasm-dev{% endif %}/{{ usage.module }}.wasm --out-dir {{ usage.out_dir }}{% if usage.release %} && wasm-opt -O2 --reorder-functions-by-name {{ usage.out_dir }}/{{ usage.module }}_bg.wasm -o {{ usage.out_dir }}/{{ usage.module }}_bg.wasm{% endif %}"
 hide = true
 
 [tasks."build:api"]

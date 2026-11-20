@@ -195,11 +195,11 @@ fn terrain_from_name(name: &str) -> Option<schemas::eu4::Terrain> {
 }
 
 pub fn parse_terrain_txt(data: &[u8]) -> Terrain {
-    jomini::text::de::from_windows1252_slice(data).unwrap()
+    crate::eu4::deserialize(data).unwrap()
 }
 
 pub fn parse_default_map(data: &[u8]) -> DefaultMap {
-    jomini::text::de::from_windows1252_slice(data).unwrap()
+    crate::eu4::deserialize(data).unwrap()
 }
 
 pub fn parse_definition(data: &[u8]) -> HashMap<u16, Rgb> {
@@ -224,8 +224,7 @@ pub fn parse_definition(data: &[u8]) -> HashMap<u16, Rgb> {
 }
 
 pub fn parse_impassable_provinces(data: &[u8]) -> anyhow::Result<Vec<ProvinceId>> {
-    let climate: ClimateData =
-        jomini::text::de::from_windows1252_slice(data).context("unable to parse climate")?;
+    let climate: ClimateData = crate::eu4::deserialize(data).context("unable to parse climate")?;
     Ok(climate.impassable)
 }
 

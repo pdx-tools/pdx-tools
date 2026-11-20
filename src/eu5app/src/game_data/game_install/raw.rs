@@ -1,6 +1,6 @@
 use super::parsing::{
-    parse_building_keys, parse_culture_keys, parse_default_map, parse_goods, parse_locations_data,
-    parse_map_mode_colors, parse_named_locations, parse_religion_keys, resolve_goods,
+    parse_default_map, parse_goods, parse_keys, parse_locations_data, parse_map_mode_colors,
+    parse_named_locations, resolve_goods,
 };
 use crate::game_data::game_install::parsing::LocationTerrain;
 use crate::game_data::{GameData, GameDataError, GoodData, Localization, TextureProvider};
@@ -199,16 +199,8 @@ pub trait Eu5GameFileSourceExt: GameFileSource {
 
 impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
     fn parse_goods(&self) -> Result<FxHashMap<String, GoodData>, GameDataError> {
-        let goods_files = self.walk_directory("game/in_game/common/goods", &[".txt"])?;
-
         let mut raw_goods = FxHashMap::default();
-        for path in goods_files {
-            let Some(file_name) = path.rsplit('/').next() else {
-                continue;
-            };
-            if file_name.to_ascii_lowercase().contains("readme") {
-                continue;
-            }
+        for path in game_script_paths(self, "game/in_game/common/goods")? {
             let data = self.read_to_string(&path)?;
             raw_goods.extend(parse_goods(&data, &path)?);
         }
@@ -219,55 +211,15 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
     }
 
     fn parse_building_keys(&self) -> Result<FxHashSet<String>, GameDataError> {
-        let building_files =
-            self.walk_directory("game/in_game/common/building_types", &[".txt"])?;
-        let mut building_keys = FxHashSet::default();
-        for path in building_files {
-            let Some(file_name) = path.rsplit('/').next() else {
-                continue;
-            };
-            if file_name.to_ascii_lowercase().contains("readme") {
-                continue;
-            }
-            let data = self.read_to_string(&path)?;
-            building_keys.extend(parse_building_keys(&data)?);
-        }
-
-        Ok(building_keys)
+        parse_directory_keys(self, "game/in_game/common/building_types")
     }
 
     fn parse_religion_keys(&self) -> Result<FxHashSet<String>, GameDataError> {
-        let religion_files = self.walk_directory("game/in_game/common/religions", &[".txt"])?;
-        let mut religion_keys = FxHashSet::default();
-        for path in religion_files {
-            let Some(file_name) = path.rsplit('/').next() else {
-                continue;
-            };
-            if file_name.to_ascii_lowercase().contains("readme") {
-                continue;
-            }
-            let data = self.read_to_string(&path)?;
-            religion_keys.extend(parse_religion_keys(&data)?);
-        }
-
-        Ok(religion_keys)
+        parse_directory_keys(self, "game/in_game/common/religions")
     }
 
     fn parse_culture_keys(&self) -> Result<FxHashSet<String>, GameDataError> {
-        let culture_files = self.walk_directory("game/in_game/common/cultures", &[".txt"])?;
-        let mut culture_keys = FxHashSet::default();
-        for path in culture_files {
-            let Some(file_name) = path.rsplit('/').next() else {
-                continue;
-            };
-            if file_name.to_ascii_lowercase().contains("readme") {
-                continue;
-            }
-            let data = self.read_to_string(&path)?;
-            culture_keys.extend(parse_culture_keys(&data)?);
-        }
-
-        Ok(culture_keys)
+        parse_directory_keys(self, "game/in_game/common/cultures")
     }
 
     fn load_blessed_localizations(
@@ -365,6 +317,30 @@ impl<T: GameFileSource + ?Sized> Eu5GameFileSourceExt for T {
         }
         Ok(())
     }
+}
+
+fn game_script_paths(
+    source: &(impl GameFileSource + ?Sized),
+    directory: &str,
+) -> Result<Vec<String>, GameDataError> {
+    let mut paths = source.walk_directory(directory, &[".txt"])?;
+    paths.retain(|path| {
+        let file_name = path.rsplit('/').next().unwrap_or(path);
+        !file_name.to_ascii_lowercase().contains("readme")
+    });
+    Ok(paths)
+}
+
+fn parse_directory_keys(
+    source: &(impl GameFileSource + ?Sized),
+    directory: &str,
+) -> Result<FxHashSet<String>, GameDataError> {
+    let mut keys = FxHashSet::default();
+    for path in game_script_paths(source, directory)? {
+        let data = source.read_to_string(&path)?;
+        keys.extend(parse_keys(&data, &path)?);
+    }
+    Ok(keys)
 }
 
 /// A key that no other text points at, but that the game can use as a name.

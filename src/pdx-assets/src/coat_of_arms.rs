@@ -17,10 +17,8 @@
 
 pub mod color;
 mod model;
-mod preprocess;
 mod render;
 
 pub use color::{FColor, NamedColors, hsv_to_rgb};
 pub use model::{CoaDefinitions, CoatOfArms, Node, parse_entries, parse_named_colors};
-pub use preprocess::preprocess;
 pub use render::{GameCoaConfig, TextureSource, render};

@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 pub fn parse_superregions(data: &[u8]) -> HashMap<String, Vec<String>> {
-    let regions: HashMap<String, Vec<String>> =
-        jomini::text::de::from_windows1252_slice(data).unwrap();
+    let regions: HashMap<String, Vec<String>> = crate::eu4::deserialize(data).unwrap();
     regions
         .into_iter()
         .map(|(key, val)| {

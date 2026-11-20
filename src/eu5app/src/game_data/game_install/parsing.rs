@@ -3,8 +3,9 @@ use crate::color::{Hsv, UnitRgb};
 use crate::game_data::{GameDataError, GoodData};
 use crate::models::Terrain;
 use eu5save::hash::{FxHashMap, FxHashSet};
+use jomini::{Utf8Encoding, text::syntax};
 use serde::Deserialize;
-use serde::de::{self, IgnoredAny, SeqAccess, Visitor};
+use serde::de::{self, DeserializeOwned, SeqAccess, Visitor};
 use std::io::Read;
 use std::sync::LazyLock;
 
@@ -16,8 +17,6 @@ pub struct DefaultMap {
 }
 
 pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError> {
-    let reader = jomini::text::TokenReader::new(reader);
-
     #[derive(Deserialize, Debug)]
     struct DefaultMapRaw {
         sea_zones: Vec<String>,
@@ -26,9 +25,7 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
         non_ownable: Vec<String>,
     }
 
-    let default_map: DefaultMapRaw = jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-        .deserialize()
-        .map_err(|e| GameDataError::Jomini(e, "default.map"))?;
+    let default_map: DefaultMapRaw = deserialize_reader(reader, "default.map")?;
 
     let sea_zones = default_map.sea_zones.into_iter().collect::<FxHashSet<_>>();
     let lakes = default_map.lakes.into_iter().collect::<FxHashSet<_>>();
@@ -47,11 +44,8 @@ pub fn parse_default_map(reader: impl Read) -> Result<DefaultMap, GameDataError>
 }
 
 pub fn parse_named_locations(reader: impl Read) -> Result<FxHashMap<String, Srgb>, GameDataError> {
-    let reader = jomini::text::TokenReader::new(reader);
     let location_hex: FxHashMap<String, ClauseHexColor> =
-        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-            .deserialize()
-            .map_err(|e| GameDataError::Jomini(e, "named_locations"))?;
+        deserialize_reader(reader, "named_locations")?;
     Ok(location_hex
         .into_iter()
         .map(|(name, color)| (name, color.0))
@@ -142,41 +136,40 @@ impl<'de> Deserialize<'de> for ClauseHexColor {
     }
 }
 
-pub fn parse_building_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
-    let reader = jomini::text::TokenReader::new(data.as_bytes());
-    let buildings: FxHashMap<String, IgnoredAny> =
-        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-            .deserialize()
-            .map_err(|e| GameDataError::Jomini(e, "building_types"))?;
-    Ok(buildings.into_keys().collect())
+fn deserialize_reader<T: DeserializeOwned>(
+    mut reader: impl Read,
+    file: &str,
+) -> Result<T, GameDataError> {
+    let mut data = Vec::new();
+    reader
+        .read_to_end(&mut data)
+        .map_err(|error| GameDataError::Io(error, file.to_owned()))?;
+    deserialize(&data, file)
 }
 
-pub fn parse_religion_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
-    let reader = jomini::text::TokenReader::new(data.as_bytes());
-    let religions: FxHashMap<String, IgnoredAny> =
-        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-            .deserialize()
-            .map_err(|e| GameDataError::Jomini(e, "religions"))?;
-    Ok(religions.into_keys().collect())
+fn deserialize<'a, T: Deserialize<'a>>(data: &'a [u8], file: &str) -> Result<T, GameDataError> {
+    let parsed = syntax::parse(data);
+    let doc = parsed.document(Utf8Encoding::new()).with_file(file);
+    doc.check()?;
+    Ok(doc.deserialize()?)
 }
 
-pub fn parse_culture_keys(data: &str) -> Result<FxHashSet<String>, GameDataError> {
-    let reader = jomini::text::TokenReader::new(data.as_bytes());
-    let cultures: FxHashMap<String, IgnoredAny> =
-        jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-            .deserialize()
-            .map_err(|e| GameDataError::Jomini(e, "cultures"))?;
-    Ok(cultures.into_keys().collect())
+pub fn parse_keys(data: &str, file: &str) -> Result<FxHashSet<String>, GameDataError> {
+    let parsed = syntax::parse(data.as_bytes());
+    let doc = parsed.document(Utf8Encoding::new()).with_file(file);
+    doc.check()?;
+    Ok(doc
+        .root()
+        .fields()
+        .map(|field| field.key().decode(*doc.encoding()).into_owned())
+        .collect())
 }
 
 pub fn parse_goods(
     data: &str,
-    _source_name: &str,
+    source_name: &str,
 ) -> Result<FxHashMap<String, RawGoodData>, GameDataError> {
-    let reader = jomini::text::TokenReader::new(data.as_bytes());
-    jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-        .deserialize()
-        .map_err(|e| GameDataError::Jomini(e, "goods"))
+    deserialize(data.as_bytes(), source_name)
 }
 
 #[derive(Debug, Deserialize)]
@@ -280,10 +273,7 @@ fn float_component(value: f32) -> u8 {
 }
 
 pub fn parse_map_mode_colors(data: &str) -> Result<FxHashMap<String, [u8; 3]>, GameDataError> {
-    let reader = jomini::text::TokenReader::new(data.as_bytes());
-    let raw: MapModeColors = jomini::text::de::TextDeserializer::from_utf8_reader(reader)
-        .deserialize()
-        .map_err(|e| GameDataError::Jomini(e, "named_colors"))?;
+    let raw: MapModeColors = deserialize(data.as_bytes(), "named_colors")?;
     resolve_named_colors(&raw.colors)
 }
 
@@ -456,7 +446,7 @@ trade_office = {
 }
 "#;
 
-        let parsed = parse_building_keys(data).unwrap();
+        let parsed = parse_keys(data, "building_types").unwrap();
 
         assert!(parsed.contains("workshop"));
         assert!(parsed.contains("trade_office"));

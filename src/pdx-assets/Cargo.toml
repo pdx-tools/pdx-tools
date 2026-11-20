@@ -19,7 +19,7 @@ flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 image = { workspace = true, features = ["bmp", "png", "tga"] }
 image-extras = { workspace = true, default-features = false, features = ["dds"] }
 image_dds = { workspace = true }
-jomini = { workspace = true }
+jomini = { workspace = true, features = ["syntax"] }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
 postcard = { workspace = true }

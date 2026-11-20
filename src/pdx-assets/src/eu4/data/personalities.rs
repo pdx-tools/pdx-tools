@@ -1,36 +1,34 @@
+use jomini::{Windows1252Encoding, text::syntax};
 use std::collections::HashMap;
 
 pub fn personalities(data: &[u8]) -> HashMap<String, Vec<String>> {
-    let tape = jomini::TextTape::from_slice(data).unwrap();
-    let reader = tape.windows1252_reader();
+    let parsed = syntax::parse(data);
+    let encoding = Windows1252Encoding::new();
+    parsed.document(encoding).check().unwrap();
     let mut result = HashMap::new();
 
-    for (personality, _op, personality_value) in reader.fields() {
-        let personality = personality.read_string();
-        let fields = personality_value.read_object().unwrap();
-
+    for personality in parsed.ast().fields() {
+        let fields = personality
+            .value()
+            .and_then(|value| value.as_block())
+            .unwrap();
         let mut traits: Vec<String> = Vec::new();
-        for (field_name, _op, field_value) in fields.fields() {
-            let field_name = field_name.read_string();
-
-            if field_name.as_str() == "nation_designer_cost" {
-                if field_value
-                    .read_scalar()
-                    .unwrap()
-                    .to_i64()
-                    .unwrap()
-                    .is_negative()
-                {
-                    for trai in traits.iter_mut() {
-                        trai.push_str("_opposite");
+        for field in fields.fields() {
+            let Some(value) = field.value() else {
+                continue;
+            };
+            if field.key_is(b"nation_designer_cost") {
+                if value.to_i64().unwrap().is_negative() {
+                    for trait_name in &mut traits {
+                        trait_name.push_str("_opposite");
                     }
                 }
-            } else if field_value.read_str().is_ok() {
-                traits.push(field_name);
+            } else if value.as_scalar_token().is_some() || value.as_headered_block().is_some() {
+                traits.push(field.key().decode(encoding).into_owned());
             }
         }
 
-        result.insert(personality, traits);
+        result.insert(personality.key().decode(encoding).into_owned(), traits);
     }
 
     result

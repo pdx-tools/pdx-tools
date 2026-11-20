@@ -2,7 +2,7 @@ use eu4save::ProvinceId;
 use std::collections::HashMap;
 
 pub fn parse_areas(data: &[u8]) -> HashMap<String, Vec<ProvinceId>> {
-    jomini::text::de::from_windows1252_slice(data).unwrap()
+    crate::eu4::deserialize(data).unwrap()
 }
 
 #[cfg(test)]
