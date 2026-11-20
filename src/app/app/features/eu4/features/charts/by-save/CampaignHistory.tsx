@@ -333,13 +333,13 @@ function BySaveView({
           <p aria-live="polite" className="flex flex-wrap items-center gap-3">
             <span>
               {formatLongDate(selected.date)} · {selected.save.name} · {sourceText(selected.save)}:{" "}
-              {axisMarks([selected])[0]?.reason}
+              {axisMarks([selected])[0]?.reason ?? "Reading this save"}
             </span>
             {openControl}
           </p>
         )
       )}
-      {!open && (
+      {!campaign.open && (
         <p className="text-sm text-gray-600 dark:text-gray-300">
           The open save is not on this chart.
         </p>
