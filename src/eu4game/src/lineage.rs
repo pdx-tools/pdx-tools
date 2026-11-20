@@ -145,13 +145,18 @@ pub enum LineageKind {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Lineage {
-    pub tags: Vec<HeldTag>,
+    tags: Vec<HeldTag>,
     pub kind: LineageKind,
     /// The switches of the campaign that touch these tags, for [`Lineage::held_in`].
     #[serde(skip)]
     switches: Vec<TagSwitch>,
 }
 impl Lineage {
+    /// The tags that the country held, in date order. `held_in` gives an index into them.
+    pub fn tags(&self) -> &[HeldTag] {
+        &self.tags
+    }
+
     /// The tag that the country held in a save, with its index in `tags`, or
     /// None when the country is not in the save. `date` is the save's date
     /// and `recorded` the switches that the save records.

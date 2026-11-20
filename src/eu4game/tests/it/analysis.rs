@@ -168,7 +168,7 @@ fn observations_agree_with_the_parsed_save() {
     // The player formed Italy, so its tag is not the first of the lineage.
     let held = development[0]
         .lineage
-        .tags
+        .tags()
         .iter()
         .position(|x| x.tag == player)
         .unwrap();

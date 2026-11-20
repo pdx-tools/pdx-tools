@@ -882,7 +882,7 @@ mod tests {
             .map(|x| {
                 let name = x
                     .lineage
-                    .tags
+                    .tags()
                     .iter()
                     .map(|held| held.tag.to_string())
                     .collect::<Vec<_>>()
@@ -1412,10 +1412,10 @@ mod tests {
         };
         let byz = answer
             .iter()
-            .find(|x| x.lineage.tags[0].tag == tag("BYZ"))
+            .find(|x| x.lineage.tags()[0].tag == tag("BYZ"))
             .unwrap();
         assert_eq!(byz.lineage.kind, LineageKind::Ambiguous);
-        assert_eq!(byz.lineage.tags.len(), 1);
+        assert_eq!(byz.lineage.tags().len(), 1);
         assert_eq!(
             histories(answer),
             [
