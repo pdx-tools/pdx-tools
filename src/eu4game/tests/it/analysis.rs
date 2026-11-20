@@ -166,7 +166,7 @@ fn observations_agree_with_the_parsed_save() {
         panic!("country series");
     };
     assert_eq!(
-        development[0].values,
+        development.countries[0].values,
         developments
             .iter()
             .copied()

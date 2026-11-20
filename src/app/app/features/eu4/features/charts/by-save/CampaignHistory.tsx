@@ -153,18 +153,23 @@ function CountryFigure({
   );
   const countries = useEu4Countries();
   const byTag = useMemo(() => new Map(countries.map((x) => [x.tag, x])), [countries]);
+  // Rows pair by the switches that the values were judged on.
+  const joined = useMemo(
+    () => (chart && result ? { ...chart, switches: result.joins } : chart),
+    [chart, result],
+  );
   const data = useMemo((): BySaveData => {
     const { columns, at } = alignColumns(snapshotIds, campaign.saves);
-    if (!result || !chart) return { columns, rows: [] };
-    return { columns, rows: countryRows(result, at, chart, byTag) };
-  }, [result, snapshotIds, campaign.saves, chart, byTag]);
+    if (!result || !joined) return { columns, rows: [] };
+    return { columns, rows: countryRows(result.countries, at, joined, byTag) };
+  }, [result, snapshotIds, campaign.saves, joined, byTag]);
   return (
     <BySaveView
       campaign={campaign}
       figure={figure}
       data={data}
       error={error}
-      chart={chart}
+      chart={joined}
       loaded={!!result && data.columns.length > 0}
     />
   );

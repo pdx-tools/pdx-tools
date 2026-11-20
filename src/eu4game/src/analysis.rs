@@ -514,6 +514,17 @@ pub struct CountryValues {
     pub values: Vec<CountryValue>,
 }
 
+/// The country values of a chart, and the tag switches that join its rows.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct CountrySeries {
+    pub countries: Vec<CountryValues>,
+    /// The switches between the requested tags that pair their rows, judged
+    /// on the same switches as the values: none through a generated tag or
+    /// a tag that two countries held.
+    pub joins: Vec<TagSwitch>,
+}
+
 /// How to split a country value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
@@ -534,7 +545,7 @@ campaign_analysis::queries! {
         /// One history for each country, in the order of the tags. Generated
         /// tags ([`is_generated_tag`]) have none. The tag switches that the
         /// snapshots record tell which dates a tag names another country.
-        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<CountryValues> = country_series,
+        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => CountrySeries = country_series,
         /// One series for each part of a country value on the selected
         /// dates, by name. A part is zero on a date where the country exists
         /// without it, and a gap where the country does not exist.
@@ -566,7 +577,7 @@ pub fn country_series(
     view: &View<'_, Eu4Analysis>,
     tags: Vec<CountryTag>,
     metric: CountryMetric,
-) -> Vec<CountryValues> {
+) -> CountrySeries {
     let switches: Vec<_> = view
         .snapshots()
         .iter()
@@ -616,7 +627,20 @@ pub fn country_series(
             country.values.push(value);
         }
     }
-    series
+    let requested: BTreeSet<_> = series.iter().map(|country| country.tag).collect();
+    let joins = switches
+        .iter()
+        .filter(|x| {
+            [x.from, x.to].iter().all(|tag| {
+                requested.contains(tag) && TagSpan::of(*tag, &switches) != TagSpan::Ambiguous
+            })
+        })
+        .cloned()
+        .collect();
+    CountrySeries {
+        countries: series,
+        joins,
+    }
 }
 
 pub fn country_breakdown(
@@ -1022,8 +1046,12 @@ mod tests {
         series.into_iter().map(|s| (s.key, s.values)).collect()
     }
 
-    fn histories(series: Vec<CountryValues>) -> Vec<(CountryTag, Vec<CountryValue>)> {
-        series.into_iter().map(|s| (s.tag, s.values)).collect()
+    fn histories(series: CountrySeries) -> Vec<(CountryTag, Vec<CountryValue>)> {
+        series
+            .countries
+            .into_iter()
+            .map(|s| (s.tag, s.values))
+            .collect()
     }
 
     #[test]
@@ -1455,7 +1483,7 @@ mod tests {
             let Eu4Answer::CountrySeries(answer) = answer(&store, query) else {
                 panic!("country series");
             };
-            histories(answer)
+            answer
         };
 
         // The first BYZ is annexed, ULM forms BYZ in 1550, and another ULM
@@ -1482,8 +1510,10 @@ mod tests {
                 ),
             ]
         };
+        let answer = run(formed(), &["BYZ", "ULM"]);
+        assert_eq!(answer.joins, [switch("ULM", "BYZ", 15500101)]);
         assert_eq!(
-            run(formed(), &["BYZ", "ULM"]),
+            histories(answer),
             [
                 (
                     tag("BYZ"),
@@ -1512,8 +1542,11 @@ mod tests {
                 ],
             ),
         ];
+        // A chart pinned on a save that records only BYZ->ROM gets no join.
+        let answer = run(taken, &["BYZ", "ROM", "TRE"]);
+        assert!(answer.joins.is_empty());
         assert_eq!(
-            run(taken, &["BYZ", "ROM", "TRE"]),
+            histories(answer),
             [
                 (tag("BYZ"), vec![OtherCountry(10.0), OtherCountry(5.0)]),
                 (tag("ROM"), vec![NoProvinces, Value(20.0)]),
