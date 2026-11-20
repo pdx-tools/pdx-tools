@@ -161,7 +161,8 @@ pub struct StoreMemory {
     pub snapshots: usize,
     /// The number of shared key indexes, including analytical tables.
     pub layouts: usize,
-    /// An estimate of the row indexes of the layouts. It is not part of the limit.
+    /// An estimate of lookup storage: the row indexes of the layouts and the
+    /// lookups of the text dictionaries. It is not part of the limit.
     pub index_bytes: usize,
     /// The WASM memory of the worker. It does not shrink until the worker
     /// stops. Zero outside WASM.

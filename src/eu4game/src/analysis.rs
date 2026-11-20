@@ -464,8 +464,9 @@ campaign_analysis::queries! {
         /// One series for each country. A country that does not exist on a
         /// date has a gap there.
         CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<Series<CountryTag>> = country_series,
-        /// One series for each part of a country value, by name. A country
-        /// that does not exist on a date has gaps there.
+        /// One series for each part of a country value on the selected
+        /// dates, by name. A part is zero on a date where the country exists
+        /// without it, and a gap where the country does not exist.
         CountryBreakdown { tag: CountryTag, dimension: CountryDimension } => Vec<Series<String>> = country_breakdown,
     }
 }

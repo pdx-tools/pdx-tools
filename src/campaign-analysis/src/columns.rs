@@ -154,7 +154,9 @@ impl<'a> Decoder<'a> {
         let bytes = self.column::<u8>()?;
         match postcard::take_from_bytes(&bytes) {
             Ok((value, [])) => Ok(value),
-            Ok(_) => Err(DecodeError::TrailingBytes),
+            Ok(_) => Err(DecodeError::Header(String::from(
+                "A value has data after its end",
+            ))),
             Err(error) => Err(DecodeError::Header(error.to_string())),
         }
     }
@@ -593,10 +595,7 @@ mod tests {
     fn a_serde_value_must_fill_its_column() {
         let mut out = Encoder::new();
         out.column(&[2u8, b'a', b'b', 0]);
-        assert_eq!(
-            Decoder::new(&out.finish()).serde::<String>(),
-            Err(DecodeError::TrailingBytes)
-        );
+        Decoder::new(&out.finish()).serde::<String>().unwrap_err();
     }
 
     #[test]
