@@ -91,6 +91,7 @@ function fakeStore(): AnalysisStore {
       rows.splice(0);
       return memory();
     },
+    remove: () => memory(),
     query: () => ({ generation: 0, snapshotIds: [], outcome: { status: "stale" } }),
     snapshot: () => {
       throw Error("No snapshot");

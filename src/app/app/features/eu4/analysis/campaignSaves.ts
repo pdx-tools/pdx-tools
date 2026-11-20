@@ -11,11 +11,15 @@ import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresent
 import { saveProblemText } from "@/features/campaign/saveText";
 import { sameFileVersion } from "@/features/campaign/types";
 import type { CampaignSave } from "@/features/campaign/types";
+import { descriptorDate } from "@/features/campaign/analysis/descriptor";
+import type { DateComponents } from "@/features/timeline/date";
 import type { Eu4SnapshotDescriptor } from "./analysisTypes";
 
 /** A campaign save that analysis reads, and its snapshot when analysis has it. */
 export type AnalysisSave = {
   save: CampaignSave;
+  /** The date that the parse read, or the date of the campaign list before a parse. */
+  date: DateComponents;
   status: SaveAnalysisStatus;
   snapshot: Eu4SnapshotDescriptor | null;
   /** Why the save has no snapshot, when it failed. */
@@ -49,6 +53,37 @@ export function pendingEntries(
     const current = entry ? localSaveRegistry.get(entry) : undefined;
     return current && !isEntryAnalyzed(current, state.sources, stored) ? [current] : [];
   });
+}
+
+/** The snapshot that a candidate is bound to: the one of its file version, or of its upload. */
+function boundSnapshotId(
+  save: CampaignSave,
+  state: Pick<CampaignAnalysisState, "sources" | "uploads">,
+): string | null {
+  if (save.source.kind === "local") return localSaveSnapshotId(save, state.sources);
+  const upload = state.uploads[save.source.saveId];
+  return upload?.kind === "ready" ? upload.snapshotId : null;
+}
+
+/**
+ * The snapshots that no candidate is bound to, on a date where a candidate
+ * waits for analysis, such as a file that the game wrote again. The store
+ * keeps one snapshot for each date, so these go before that analysis.
+ */
+export function replacedSnapshots(
+  saves: readonly CampaignSave[],
+  state: Pick<CampaignAnalysisState, "sources" | "uploads" | "snapshots">,
+): string[] {
+  const bound = new Set<string>();
+  const waiting = new Set<number>();
+  for (const save of analysisCandidates(saves)) {
+    const id = boundSnapshotId(save, state);
+    if (id) bound.add(id);
+    else waiting.add(save.date.year * 10000 + save.date.month * 100 + save.date.day);
+  }
+  return state.snapshots
+    .filter((snapshot) => !bound.has(snapshot.id) && waiting.has(snapshot.dateSort))
+    .map((snapshot) => snapshot.id);
 }
 
 /** True when analysis failed on this version of the entry. */
@@ -100,6 +135,7 @@ export function analysisSaves(
       const failed = upload?.kind === "failed" ? upload : null;
       return {
         save,
+        date: snapshot ? descriptorDate(snapshot) : save.date,
         status: snapshot
           ? "ready"
           : state.analyzingUploadIds.includes(saveId)
@@ -117,10 +153,12 @@ export function analysisSaves(
     const entryId = save.source.entryId;
     const failure = entryId ? state.failedSources[entryId] : undefined;
     const problem = entryId ? entryById.get(entryId)?.problem : null;
+    const snapshot = status === "ready" && id ? (byId.get(id) ?? null) : null;
     return {
       save,
+      date: snapshot ? descriptorDate(snapshot) : save.date,
       status,
-      snapshot: status === "ready" && id ? (byId.get(id) ?? null) : null,
+      snapshot,
       error:
         status !== "failed"
           ? null

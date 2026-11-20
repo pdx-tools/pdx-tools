@@ -18,8 +18,11 @@ export type CampaignAnalyzer<Api, R, D extends SnapshotDescriptor> = {
   history: AnalysisHistory<D>;
   analysis: AnalysisSink<R, D> & { claim: (campaignId: string) => void };
   parser: ParserAdapter<Api, R>;
-  /** Download an uploaded save from the endpoint that the viewer reads. */
-  download?: (saveId: string, signal: AbortSignal) => Promise<Blob>;
+  /**
+   * Download an uploaded save from the endpoint that the viewer reads, as a
+   * file that the parser accepts.
+   */
+  download?: (upload: CampaignUpload, signal: AbortSignal) => Promise<File>;
 };
 
 /** An uploaded save of the campaign. */
@@ -51,6 +54,10 @@ export function campaignAnalyzer<
     // One import runs in the tab, for all games.
     const lease = analysisAdmission().acquireImport();
     analysis.claim(playthroughId);
+    // Downloads take a while, so the uploads stay on the session of this claim.
+    const session = uploads.length
+      ? { generation: analysis.generation(), signal: analysis.signal() }
+      : null;
     const controller = new AbortController();
     const startedAt = performance.now();
     const issues: string[] = [];
@@ -82,8 +89,11 @@ export function campaignAnalyzer<
       uploads: readonly CampaignUpload[],
       before: number,
       download: NonNullable<CampaignAnalyzer<Api, R, D>["download"]>,
-      signal: AbortSignal,
+      session: { generation: number; signal: AbortSignal },
     ) => {
+      // A release of the session stops downloads, and a later session refuses the snapshots.
+      const signal = AbortSignal.any([controller.signal, session.signal]);
+      const sink = { ...analysis, generation: () => session.generation };
       const issues: string[] = [];
       let completed = 0;
       const total = before + uploads.length;
@@ -98,8 +108,7 @@ export function campaignAnalyzer<
         const downloaded = await Promise.all(
           batch.map(async (upload) => {
             try {
-              const blob = await download(upload.saveId, signal);
-              return { upload, file: new File([blob], upload.name) };
+              return { upload, file: await download(upload, signal) };
             } catch (error) {
               if (signal.aborted) return null;
               completed++;
@@ -115,7 +124,7 @@ export function campaignAnalyzer<
         const result = await importBatch(
           files.map((x) => x.file),
           parser,
-          analysis,
+          sink,
           {
             signal,
             lease,
@@ -241,9 +250,8 @@ export function campaignAnalyzer<
         );
         // Do not parse more saves that cannot fit.
         history.getState().pauseAnalysis(playthroughId);
-      } else if (uploads.length && download) {
-        const uploadIssues = await analyzeUploads(uploads, entries.length, download, signal);
-        issues.push(...uploadIssues);
+      } else if (download && session) {
+        issues.push(...(await analyzeUploads(uploads, entries.length, download, session)));
       }
     } catch (error) {
       if (!signal.aborted) issues.push(String(error));

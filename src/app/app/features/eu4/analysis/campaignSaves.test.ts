@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ entries: new Map<string, LocalSaveEntry>() }))
 vi.mock("@/features/campaign/localSaves", () => ({
   localSaveRegistry: { get: (id: string) => mocks.entries.get(id) },
 }));
-import { analysisSaves, pendingEntries, pendingUploads } from "./campaignSaves";
+import { analysisSaves, pendingEntries, pendingUploads, replacedSnapshots } from "./campaignSaves";
 
 const entry = (id: string, lastModified = 1): LocalSaveEntry => ({
   id,
@@ -28,7 +28,8 @@ const local = (id: string, membership: CampaignSave["membership"] = "unknown"): 
   membership,
   problem: null,
 });
-const snapshot = (id: string) => ({ id, campaignId: "campaign" }) as Eu4SnapshotDescriptor;
+const snapshot = (id: string) =>
+  ({ id, campaignId: "campaign", dateSort: 14441111 }) as Eu4SnapshotDescriptor;
 const empty = {
   snapshots: [],
   sources: {},
@@ -100,4 +101,19 @@ it("downloads an upload again only after a failed download", () => {
     ["failed", false],
     ["pending", false],
   ]);
+});
+
+it("replaces the snapshot of a date whose save is now another file", () => {
+  const state = {
+    ...empty,
+    snapshots: [snapshot("eu4:a")],
+    sources: { a: { snapshotId: "eu4:a", version: { size: 4, lastModified: 1 } } },
+  };
+  expect(replacedSnapshots([local("a")], state)).toEqual([]);
+  // The game wrote the file again on the same date.
+  mocks.entries.set("a", entry("a", 2));
+  expect(replacedSnapshots([local("a")], state)).toEqual(["eu4:a"]);
+  // The list now keeps another file for the date.
+  mocks.entries.set("a", entry("a"));
+  expect(replacedSnapshots([local("b")], state)).toEqual(["eu4:a"]);
 });

@@ -72,6 +72,8 @@ export type AnalysisWorkerClient<S extends AnalysisStore> = {
   ) => Promise<StoreAppendReply<TypesOf<S>>>;
   /** Release all snapshots of the campaign and stop imports. */
   clear: () => Promise<void>;
+  /** Release these snapshots, such as a save that the campaign replaced with another of its date. */
+  remove: (ids: string[]) => Promise<void>;
   /**
    * Keep only this campaign in the tab. Stop the workers of other games, and
    * this worker when it was for another campaign, so their memory is released.
@@ -256,6 +258,12 @@ function createSession<S extends AnalysisStore>({
     admission().setResident(session, memory.bufferBytes);
   };
 
+  const remove = async (ids: string[]) => {
+    if (!ids.length) return;
+    const memory = await instance().client.remove(generation, ids);
+    admission().setResident(session, memory.bufferBytes);
+  };
+
   const release = () => {
     if (current) current.stop();
     else advance(new DOMException("Campaign analysis was released", "AbortError"));
@@ -321,6 +329,7 @@ function createSession<S extends AnalysisStore>({
     signal: () => stop.signal,
     append,
     clear,
+    remove,
     claim,
     release,
     query,

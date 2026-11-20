@@ -59,6 +59,7 @@ export type AnalysisStore<T extends StoreTypes = StoreTypes> = {
   open(generation: number): void;
   append(generation: number, data: T["data"], limitBytes: number): StoreAppendReply<T>;
   clear(generation: number): StoreMemory;
+  remove(generation: number, ids: string[]): StoreMemory;
   query(request: StoreQueryRequest<T>): StoreQueryReply<T>;
   snapshot(id: string): EncodedSnapshot<T>;
   memory(): StoreMemory;
@@ -111,7 +112,7 @@ export type QueryReply<T> = {
   outcome: QueryOutcome<T>;
 };
 
-const METHODS = ["open", "append", "clear", "query", "snapshot", "memory"] as const;
+const METHODS = ["open", "append", "clear", "remove", "query", "snapshot", "memory"] as const;
 type Method = (typeof METHODS)[number];
 /** The methods of `S`, as a call through a worker gives them. */
 export type Async<S> = {

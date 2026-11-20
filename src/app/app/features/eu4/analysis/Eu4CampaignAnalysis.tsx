@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { useCampaignNavigation } from "@/features/campaign/CampaignProvider";
 import {
   campaignAnalysisSourceKey,
@@ -6,7 +7,7 @@ import {
 } from "@/features/campaign/analysis/autoAnalysis";
 import { useEu4Meta } from "../store";
 import { eu4Analysis } from "./analysisClient";
-import { analyzeEu4Campaign } from "./analyzeCampaign";
+import { analyzeEu4Saves } from "./analyzeSaves";
 import { failedInVersion, pendingEntries } from "./campaignSaves";
 import { useEu4History } from "./store";
 
@@ -30,13 +31,18 @@ export function Eu4CampaignAnalysis() {
         .slice(0, 1000),
     [saves],
   );
+  const analyze = useCallback(
+    (entries: LocalSaveEntry[], playthroughId: string) =>
+      analyzeEu4Saves(saves ?? [], playthroughId, entries),
+    [saves],
+  );
   useCampaignAutoAnalysis({
     history: useEu4History,
     claim: eu4Analysis.claim,
     playthroughId,
     featureEnabled: true,
     pending,
-    analyze: analyzeEu4Campaign,
+    analyze,
   });
   return null;
 }

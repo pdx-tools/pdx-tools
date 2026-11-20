@@ -37,6 +37,8 @@ export type CampaignAnalysisState<D extends SnapshotDescriptor = SnapshotDescrip
   ) => void;
   /** Remove the snapshots and the source associations to them. */
   removeSnapshots: () => void;
+  /** Remove these snapshots and the source associations to them. */
+  forget: (ids: readonly string[]) => void;
 };
 
 /**
@@ -106,6 +108,21 @@ export function campaignAnalysisState<D extends SnapshotDescriptor>(
         };
       }),
     removeSnapshots: () => set({ snapshots: [], sources: {}, uploads: {} }),
+    forget: (ids) =>
+      set((state) => {
+        const gone = new Set(ids);
+        return {
+          snapshots: state.snapshots.filter((snapshot) => !gone.has(snapshot.id)),
+          sources: Object.fromEntries(
+            Object.entries(state.sources).filter(([, x]) => !gone.has(x.snapshotId)),
+          ),
+          uploads: Object.fromEntries(
+            Object.entries(state.uploads).filter(
+              ([, x]) => x.kind !== "ready" || !gone.has(x.snapshotId),
+            ),
+          ),
+        };
+      }),
   };
 }
 
