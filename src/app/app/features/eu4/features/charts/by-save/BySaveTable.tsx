@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { cx } from "class-variance-authority";
 import { formatLongDate } from "@/features/timeline/date";
-import type { ChartCountries, CountryValue } from "@/wasm/wasm_eu4";
+import type { CountryValue, TagSwitch } from "@/wasm/wasm_eu4";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import type { BySaveFigure } from "./figures";
 import { amount, earliestColumn, otherAmount, sortRows, sourceText } from "./model";
@@ -19,7 +19,7 @@ export function BySaveTable({
   column,
   reason,
   figure,
-  chart,
+  joins,
   openControl,
   steppers,
 }: {
@@ -30,13 +30,14 @@ export function BySaveTable({
   /** Why the selected save has no values. */
   reason: string | null;
   figure: BySaveFigure;
-  chart: ChartCountries | null;
+  /** The switches that pair rows. */
+  joins: readonly TagSwitch[];
   openControl: React.ReactNode;
   steppers: React.ReactNode;
 }) {
   const rows = useMemo(
-    () => (column === null ? data.rows : sortRows(data.rows, column, chart)),
-    [data.rows, column, chart],
+    () => (column === null ? data.rows : sortRows(data.rows, column, joins)),
+    [data.rows, column, joins],
   );
   const { save, date } = selected;
   return (

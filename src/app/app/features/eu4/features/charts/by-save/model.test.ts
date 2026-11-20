@@ -20,11 +20,8 @@ it("keeps only the snapshots of the campaign saves, in reply order", () => {
 });
 
 it("lists a formed nation beside the tag it was, and sorts countries without land last", () => {
-  const chart = {
-    tags: ["BRA", "FRA", "MLO", "PRU", "SWE"],
-    switches: [{ from: "BRA", to: "PRU", date: "1525-01-01" }],
-    leftOut: [],
-  };
+  const tags = ["BRA", "FRA", "MLO", "PRU", "SWE"];
+  const joins = [{ from: "BRA", to: "PRU", date: "1525-01-01" }];
   const countries = new Map([
     ["BRA", { name: "Brandenburg", color: "#000" }],
     ["PRU", { name: "Prussia", color: "#111" }],
@@ -38,7 +35,7 @@ it("lists a formed nation beside the tag it was, and sorts countries without lan
     // A tag with no value in any save has no row.
     { tag: "MLO", values: ["noProvinces", "noProvinces"] },
   ] as const satisfies readonly CountryValues[];
-  const rows = countryRows(series, [0, 1], chart, countries);
+  const rows = countryRows(series, [0, 1], tags, joins, countries);
   expect(rows.map((x) => x.key)).toEqual(["FRA", "PRU", "BRA", "SWE"]);
   expect(rows[1]).toMatchObject({
     label: "Prussia · PRU",
@@ -47,7 +44,7 @@ it("lists a formed nation beside the tag it was, and sorts countries without lan
   });
   expect(rows[3].label).toBe("SWE");
 
-  expect(sortRows(rows, 1, chart).map((x) => x.key)).toEqual(["FRA", "PRU", "BRA", "SWE"]);
+  expect(sortRows(rows, 1, joins).map((x) => x.key)).toEqual(["FRA", "PRU", "BRA", "SWE"]);
   // A pair sorts by its larger value and keeps its order.
-  expect(sortRows(rows, 0, chart).map((x) => x.key)).toEqual(["FRA", "SWE", "PRU", "BRA"]);
+  expect(sortRows(rows, 0, joins).map((x) => x.key)).toEqual(["FRA", "SWE", "PRU", "BRA"]);
 });

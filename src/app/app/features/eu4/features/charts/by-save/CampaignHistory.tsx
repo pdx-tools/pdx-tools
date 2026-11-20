@@ -12,7 +12,7 @@ import { useEu4History } from "@/features/eu4/analysis/store";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import { useEu4Actions, useEu4Countries, useTagFilter } from "@/features/eu4/store";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
-import type { ChartCountries, CountryMetric, CountryValue } from "@/wasm/wasm_eu4";
+import type { ChartCountries, CountryMetric, CountryValue, TagSwitch } from "@/wasm/wasm_eu4";
 import { BySaveChart } from "./BySaveChart";
 import type { AxisMark, BySavePoint, BySaveSeries } from "./BySaveChart";
 import { BySaveTable } from "./BySaveTable";
@@ -32,6 +32,8 @@ const EU4_SAVES: CampaignSaveFiles = {
 
 /** The most countries that a filter gives a chart, before formed nations join them. */
 const COUNTRY_LIMIT = 20;
+
+const NO_JOINS: readonly TagSwitch[] = [];
 
 /** One value for each analyzed save of the campaign, as a chart and a table. */
 export function CampaignHistory({ viz }: { viz: BySaveViz }) {
@@ -128,7 +130,16 @@ function WorldFigure({ campaign, figure }: { campaign: Eu4Campaign; figure: BySa
       ],
     };
   }, [result, snapshotIds, campaign.saves]);
-  return <BySaveView campaign={campaign} figure={figure} data={data} error={error} chart={null} />;
+  return (
+    <BySaveView
+      campaign={campaign}
+      figure={figure}
+      data={data}
+      error={error}
+      chart={null}
+      joins={NO_JOINS}
+    />
+  );
 }
 
 function CountryFigure({
@@ -154,22 +165,20 @@ function CountryFigure({
   const countries = useEu4Countries();
   const byTag = useMemo(() => new Map(countries.map((x) => [x.tag, x])), [countries]);
   // Rows pair by the switches that the values were judged on.
-  const joined = useMemo(
-    () => (chart && result ? { ...chart, switches: result.joins } : chart),
-    [chart, result],
-  );
+  const joins = result?.joins ?? NO_JOINS;
   const data = useMemo((): BySaveData => {
     const { columns, at } = alignColumns(snapshotIds, campaign.saves);
-    if (!result || !joined) return { columns, rows: [] };
-    return { columns, rows: countryRows(result.countries, at, joined, byTag) };
-  }, [result, snapshotIds, campaign.saves, joined, byTag]);
+    if (!result || !chart) return { columns, rows: [] };
+    return { columns, rows: countryRows(result.countries, at, chart.tags, result.joins, byTag) };
+  }, [result, snapshotIds, campaign.saves, chart, byTag]);
   return (
     <BySaveView
       campaign={campaign}
       figure={figure}
       data={data}
       error={error}
-      chart={joined}
+      chart={chart}
+      joins={joins}
       loaded={!!result && data.columns.length > 0}
     />
   );
@@ -205,6 +214,7 @@ function BySaveView({
   data,
   error,
   chart,
+  joins,
   loaded = true,
 }: {
   campaign: Eu4Campaign;
@@ -212,6 +222,8 @@ function BySaveView({
   data: BySaveData;
   error: string | null;
   chart: ChartCountries | null;
+  /** The switches that pair rows. */
+  joins: readonly TagSwitch[];
   /** False while the values are still coming. */
   loaded?: boolean;
 }) {
@@ -313,7 +325,7 @@ function BySaveView({
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
       <Alert.Error msg={error} />
-      {chart && <ChartCountriesNote chart={chart} rows={data.rows} loaded={loaded} />}
+      {chart && <ChartCountriesNote chart={chart} rows={data.rows} joins={joins} loaded={loaded} />}
       {saves.length > 0 && (
         <div
           role="group"
@@ -346,7 +358,7 @@ function BySaveView({
           column={columnAt >= 0 ? columnAt : null}
           reason={columnAt >= 0 ? null : (axisMarks([selected])[0]?.reason ?? "Reading this save")}
           figure={figure}
-          chart={chart}
+          joins={joins}
           openControl={openControl}
           steppers={steppers}
         />
@@ -365,14 +377,16 @@ function BySaveView({
 function ChartCountriesNote({
   chart,
   rows,
+  joins,
   loaded,
 }: {
   chart: ChartCountries;
   rows: BySaveData["rows"];
+  joins: readonly TagSwitch[];
   loaded: boolean;
 }) {
   const { updateTagFilter } = useEu4Actions();
-  const count = countryCount(rows, chart);
+  const count = countryCount(rows, joins);
   const shown = chart.leftOut.slice(0, 8).join(", ");
   const more = chart.leftOut.length > 8 ? ` and ${chart.leftOut.length - 8} more` : "";
   return (

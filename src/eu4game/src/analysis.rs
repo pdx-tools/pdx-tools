@@ -631,9 +631,9 @@ pub fn country_series(
     let joins = switches
         .iter()
         .filter(|x| {
-            [x.from, x.to].iter().all(|tag| {
-                requested.contains(tag) && TagSpan::of(*tag, &switches) != TagSpan::Ambiguous
-            })
+            [x.from, x.to]
+                .iter()
+                .all(|tag| requested.contains(tag) && joinable(tag, &switches))
         })
         .cloned()
         .collect();
@@ -799,6 +799,12 @@ impl TagSpan {
     }
 }
 
+/// True when a switch through this tag can pair two chart rows: the tag is
+/// not generated, and the switches give it to one country only.
+fn joinable(tag: &CountryTag, switches: &[TagSwitch]) -> bool {
+    !is_generated_tag(tag) && TagSpan::of(*tag, switches) != TagSpan::Ambiguous
+}
+
 /// The tag switches of the nation events of a save, in date order.
 pub fn tag_switches(events: &[NationEvents]) -> Vec<TagSwitch> {
     let mut switches: Vec<_> = events
@@ -823,14 +829,13 @@ pub fn tag_switches(events: &[NationEvents]) -> Vec<TagSwitch> {
     switches.into_iter().map(|(_, switch)| switch).collect()
 }
 
-/// The countries of a campaign chart and the tag switches between them.
+/// The countries of a campaign chart. The country series pairs their rows.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct ChartCountries {
     /// Sorted and distinct.
     pub tags: Vec<CountryTag>,
-    pub switches: Vec<TagSwitch>,
     /// Generated tags that the filter chose, which the chart leaves out.
     pub left_out: Vec<CountryTag>,
 }
@@ -844,13 +849,9 @@ pub fn chart_countries(
 ) -> ChartCountries {
     let (left_out, chosen): (BTreeSet<_>, BTreeSet<_>) =
         chosen.into_iter().partition(is_generated_tag);
-    // A tag that two countries held joins neither of them.
-    let joins = |tag: &CountryTag| {
-        !is_generated_tag(tag) && TagSpan::of(*tag, switches) != TagSpan::Ambiguous
-    };
     let switches: Vec<_> = switches
         .iter()
-        .filter(|x| joins(&x.from) && joins(&x.to))
+        .filter(|x| joinable(&x.from, switches) && joinable(&x.to, switches))
         .collect();
     let mut tags = chosen;
     loop {
@@ -865,11 +866,6 @@ pub fn chart_countries(
         tags.extend(joined);
     }
     ChartCountries {
-        switches: switches
-            .into_iter()
-            .filter(|x| tags.contains(&x.from))
-            .cloned()
-            .collect(),
         tags: tags.into_iter().collect(),
         left_out: left_out.into_iter().collect(),
     }
@@ -1443,7 +1439,6 @@ mod tests {
         let chart = chart_countries([tag("GER"), tag("C02"), tag("ENG")], &switches);
         assert_eq!(chart.tags, ["BRA", "ENG", "GER", "PRU"].map(tag));
         assert_eq!(chart.left_out, [tag("C02")]);
-        assert_eq!(chart.switches, switches[..2]);
         // A generated tag does not join a formed nation.
         assert_eq!(chart_countries([tag("MEX")], &switches).tags, [tag("MEX")]);
         // BYZ forms ROM, then TRE takes BYZ: BYZ joins neither country.
@@ -1453,7 +1448,6 @@ mod tests {
         ];
         let chart = chart_countries([tag("ROM")], &taken);
         assert_eq!(chart.tags, [tag("ROM")]);
-        assert!(chart.switches.is_empty());
     }
 
     #[test]

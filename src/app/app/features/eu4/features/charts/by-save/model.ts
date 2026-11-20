@@ -1,4 +1,4 @@
-import type { ChartCountries, CountryValue, CountryValues } from "@/wasm/wasm_eu4";
+import type { CountryValue, CountryValues, TagSwitch } from "@/wasm/wasm_eu4";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import type { CampaignSave } from "@/features/campaign/types";
 import { formatIsoDate, parseDate } from "@/features/timeline/date";
@@ -72,13 +72,15 @@ export function alignColumns(
 export function countryRows(
   series: readonly CountryValues[],
   at: readonly number[],
-  chart: ChartCountries,
+  tags: readonly string[],
+  /** The switches that pair the rows, as the country series judged them. */
+  joins: readonly TagSwitch[],
   countries: ReadonlyMap<string, CountryInfo>,
 ): BySaveRow[] {
   const byTag = new Map(series.map((x) => [x.tag, x]));
   const label = (tag: string) => countryLabel(tag, countries.get(tag));
   const was = new Map<string, string[]>();
-  for (const { from, to, date } of chart.switches) {
+  for (const { from, to, date } of joins) {
     const until = parseDate(date);
     was.set(to, [...(was.get(to) ?? []), `was ${label(from)} until ${until ? until.year : date}`]);
   }
@@ -87,13 +89,11 @@ export function countryRows(
   const visit = (tag: string) => {
     if (order.includes(tag) || !byTag.has(tag)) return;
     order.push(tag);
-    for (const x of chart.switches) if (x.to === tag) visit(x.from);
+    for (const x of joins) if (x.to === tag) visit(x.from);
   };
-  const latest = chart.tags.filter(
-    (tag) => !chart.switches.some((x) => x.from === tag && byTag.has(x.to)),
-  );
+  const latest = tags.filter((tag) => !joins.some((x) => x.from === tag && byTag.has(x.to)));
   for (const tag of latest) visit(tag);
-  for (const tag of chart.tags) visit(tag);
+  for (const tag of tags) visit(tag);
   return (
     order
       .map((tag) => ({
@@ -109,14 +109,14 @@ export function countryRows(
 }
 
 /** The countries of the rows, where tags that a switch joins count as one. */
-export function countryCount(rows: readonly BySaveRow[], chart: ChartCountries) {
-  return new Set(groups(rows, chart).values()).size;
+export function countryCount(rows: readonly BySaveRow[], joins: readonly TagSwitch[]) {
+  return new Set(groups(rows, joins).values()).size;
 }
 
 /** The groups of rows that a switch joins, so a sort keeps them adjacent. */
-function groups(rows: readonly BySaveRow[], chart: ChartCountries | null) {
+function groups(rows: readonly BySaveRow[], joins: readonly TagSwitch[]) {
   const group = new Map(rows.map((row, i) => [row.key, i]));
-  for (const { from, to } of chart?.switches ?? []) {
+  for (const { from, to } of joins) {
     const a = group.get(from);
     const b = group.get(to);
     if (a === undefined || b === undefined) continue;
@@ -133,9 +133,9 @@ function groups(rows: readonly BySaveRow[], chart: ChartCountries | null) {
 export function sortRows(
   rows: readonly BySaveRow[],
   column: number,
-  chart: ChartCountries | null,
+  joins: readonly TagSwitch[],
 ): BySaveRow[] {
-  const group = groups(rows, chart);
+  const group = groups(rows, joins);
   const best = new Map<number, number>();
   for (const row of rows) {
     const value = amount(row.values[column]);

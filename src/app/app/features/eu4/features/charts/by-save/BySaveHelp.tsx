@@ -19,9 +19,10 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
       {viz !== "world-dev-by-save" && (
         <>
           <p>
-            The countries, and the formed nations among them, come from the save that was open when
-            you chose them, and they stay the same when you open another save. Change the filter to
-            choose them again. Names and colors are those of the open save.
+            The countries come from the filter and the save that was open when you chose them, with
+            the countries that save records as formed from them or forming them. They stay the same
+            when you open another save; change the filter to choose them again. Names and colors are
+            those of the open save.
           </p>
           <p>
             A country that held no provinces in a save has no dot there. &quot;No record&quot; means
@@ -30,10 +31,12 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
             because the game gives their tags to other countries later. Custom nations stay.
           </p>
           <p>
-            When that save records that one country became another, the two are listed together and
-            their values are not added up. A value from before the switch under the new tag, or from
-            after it under the old tag, belongs to another country with that tag: it has no dot, the
-            table marks it, and it is never the first value seen.
+            Rows are listed together, and values marked, from the tag switches that all analyzed
+            saves record. When one country became another, the two are listed together and their
+            values are not added up. A value from before the switch under the new tag, or from after
+            it under the old tag, belongs to another country with that tag: it has no dot, the table
+            marks it, and it is never the first value seen. A tag that two countries held joins no
+            rows, and all its values are marked as another country&apos;s.
           </p>
         </>
       )}
