@@ -25,7 +25,6 @@ const muted = "text-gray-600 dark:text-gray-300";
 const faint = "text-gray-500 dark:text-gray-400";
 /** The ink of the rules and of the edge on the read strokes. */
 const ink = { light: "#0f172a", dark: "#f1f5f9" };
-const ground = { light: "#ffffff", dark: "#0f172a" };
 /** The world total's mark: the app's accent, not a country's color. */
 const accent = { light: "#0284c7", dark: "#38bdf8" };
 
@@ -151,6 +150,11 @@ export function BySaveLedger({
   }, [marks, world]);
 
   const ticks = useMemo(() => timeTicks(geometry.from, geometry.to, 0), [geometry]);
+  const tickGap =
+    ticks.ticks.length > 1
+      ? geometry.xDay(ticks.ticks[1]) - geometry.xDay(ticks.ticks[0])
+      : Infinity;
+  const labelEvery = tickGap < 40 ? 2 : 1;
 
   const pointerSave = (clientX: number) => {
     const box = strip.current?.getBoundingClientRect();
@@ -179,8 +183,10 @@ export function BySaveLedger({
           <div />
           <div ref={strip} className="relative">
             <svg width={size.strip} height={36} className="block overflow-visible">
-              {ticks.ticks.map((day) => {
+              {ticks.ticks.map((day, i) => {
                 const x = Math.round(geometry.xDay(day) + geometry.bar / 2) + 0.5;
+                // Every other label when they would crowd each other.
+                const labeled = labelEvery === 1 || i % labelEvery === 0;
                 return (
                   <g key={day}>
                     <line
@@ -196,7 +202,7 @@ export function BySaveLedger({
                       textAnchor="middle"
                       className={cx("fill-current text-xs", faint)}
                     >
-                      {ticks.label(day)}
+                      {labeled ? ticks.label(day) : ""}
                     </text>
                   </g>
                 );
@@ -306,7 +312,7 @@ type Scale = { lo: number; hi: number; refs: number[] };
 
 /** The y of a value in a row of a height: zero-based for countries, fitted for the world. */
 function yOf(scale: Scale, height: number, world: boolean) {
-  const top = world ? 10 : Math.round(height * 0.17);
+  const top = world ? 22 : Math.round(height * 0.17);
   const foot = world ? 18 : 0;
   return (value: number) =>
     top + (1 - (value - scale.lo) / (scale.hi - scale.lo || 1)) * (height - top - foot);
@@ -380,9 +386,10 @@ function LedgerRow({
   return (
     <Table.Row
       className={cx(
-        "border-gray-200 hover:bg-transparent dark:border-gray-700 dark:hover:bg-transparent",
-        emphasized &&
-          "bg-gray-200/50 hover:bg-gray-200/50 dark:bg-gray-600/40 dark:hover:bg-gray-600/40",
+        "border-gray-200 dark:border-gray-700",
+        emphasized
+          ? "bg-gray-200/50 hover:bg-gray-200/50 dark:bg-gray-600/40 dark:hover:bg-gray-600/40"
+          : "hover:bg-transparent dark:hover:bg-transparent",
         world && "border-0",
       )}
       style={{ height }}
@@ -421,17 +428,20 @@ function LedgerRow({
             </span>
           ))}
       </td>
-      <td aria-hidden className="p-0" style={{ opacity: faded ? 0.45 : 1 }}>
+      <td aria-hidden className="p-0">
         <div className="relative" style={{ height }}>
-          <Strip
-            marks={marks}
-            geometry={geometry}
-            width={width}
-            height={height}
-            scale={scale}
-            world={world}
-            dark={dark}
-          />
+          {/* Only the strokes fade; the rules and the carried beads stay. */}
+          <div className="transition-opacity duration-150" style={{ opacity: faded ? 0.45 : 1 }}>
+            <Strip
+              marks={marks}
+              geometry={geometry}
+              width={width}
+              height={height}
+              scale={scale}
+              world={world}
+              dark={dark}
+            />
+          </div>
           <svg
             width={width}
             height={height}
@@ -456,7 +466,7 @@ function LedgerRow({
               dark={dark}
             />
             {carried && geometry.beads && (
-              <Beads marks={carried} geometry={geometry} height={height} y={y} dark={dark} />
+              <Beads marks={carried} own={marks} geometry={geometry} height={height} y={y} />
             )}
           </svg>
         </div>
@@ -827,30 +837,28 @@ function ReadMarks({
  */
 function Beads({
   marks,
+  own,
   geometry,
   height,
   y,
-  dark,
 }: {
   marks: readonly (Mark | null)[];
+  /** The row's own marks: a bead over its stroke reaches past both edges, so no notch is cut. */
+  own: readonly (Mark | null)[];
   geometry: StripGeometry;
   height: number;
   y: (value: number) => number;
-  dark: boolean;
 }) {
-  const halo = dark ? ground.dark : ground.light;
   return (
     <g shapeRendering="crispEdges">
       {marks.map((mark, i) => {
         if (!mark || Number.isNaN(geometry.x[i])) return null;
-        const left = Math.round(geometry.x[i] + geometry.bar / 2 - 1);
         const top = Math.min(height - 3, Math.round(y(mark.value)) - 1);
-        return (
-          <g key={i}>
-            <rect x={left - 1} y={top - 1} width={4} height={4} fill={halo} />
-            <rect x={left} y={top} width={2} height={2} fill={mark.color} />
-          </g>
-        );
+        const stroke = own[i];
+        const over = stroke !== null && stroke !== undefined && top >= Math.round(y(stroke.value));
+        const width = over ? Math.ceil(geometry.bar) + 2 : 2;
+        const left = Math.round(geometry.x[i] + geometry.bar / 2 - width / 2);
+        return <rect key={i} x={left} y={top} width={width} height={2} fill={mark.color} />;
       })}
     </g>
   );

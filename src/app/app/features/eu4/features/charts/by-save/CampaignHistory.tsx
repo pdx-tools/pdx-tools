@@ -349,6 +349,7 @@ function BySaveView({
       )
     ) : (
       <Button
+        className="whitespace-nowrap"
         disabled={!nav || opening || nav.opening !== null}
         onClick={() => void openSelected()}
       >
