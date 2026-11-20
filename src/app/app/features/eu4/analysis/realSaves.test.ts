@@ -56,7 +56,7 @@ it.skipIf(!ready)(
       expect(reply.duplicate).toBe(false);
       expect(reply.descriptor).toEqual(descriptor);
     }
-    expect(store.memory()).toMatchObject({ snapshots: 3, layouts: 1 });
+    expect(store.memory()).toMatchObject({ snapshots: 3, layouts: 5 });
     const stored = store.snapshot(parsed[0].descriptor.id);
     expect(stored.descriptor).toEqual(parsed[0].descriptor);
     expect(stored.data).toEqual(parsed[0].data);
@@ -67,8 +67,12 @@ it.skipIf(!ready)(
     const run = (query: Eu4Query) => {
       const reply = store.query({ generation: 1, campaignId, query });
       if (reply.outcome.status !== "ok") throw Error(reply.outcome.status);
-      expect(reply.outcome.answer.kind).toBe(query.kind);
-      return reply.outcome.answer.value.rows.map((row) => [row.date, row.value]);
+      const { answer } = reply.outcome;
+      if (answer.kind !== "worldDevelopment" && answer.kind !== "provinceDevelopment") {
+        throw Error(answer.kind);
+      }
+      expect(answer.kind).toBe(query.kind);
+      return answer.value.rows.map((row) => [row.date, row.value]);
     };
     // These totals come from the save viewer's province list.
     expect(run({ kind: "worldDevelopment" })).toEqual([

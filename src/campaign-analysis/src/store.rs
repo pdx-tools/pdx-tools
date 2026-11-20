@@ -148,13 +148,15 @@ pub struct Appended<D> {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[serde(rename_all = "camelCase")]
 pub struct StoreMemory {
-    /// Retained column data and shared key data. The admission limit uses
-    /// this count. Registry overhead and spare capacity are excluded.
+    /// Retained column data, shared key data and dictionary text. The
+    /// admission limit uses this count. Registry overhead and spare capacity
+    /// are excluded.
     pub buffer_bytes: usize,
     /// Diagnostic column and key capacity. The limit does not use this count.
     /// Registry overhead is excluded.
     pub allocated_bytes: usize,
     pub allocated_column_bytes: usize,
+    /// Shared key data and dictionary text.
     pub allocated_key_bytes: usize,
     pub snapshots: usize,
     /// The number of shared key indexes, including analytical tables.
@@ -268,6 +270,11 @@ impl<G: Game> Store<G> {
             descriptor: described,
             duplicate: false,
         })
+    }
+
+    /// The registries that the snapshots share.
+    pub fn shared(&self) -> &G::Shared {
+        &self.shared
     }
 
     /// The snapshots in date order.

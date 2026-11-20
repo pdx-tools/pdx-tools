@@ -1,6 +1,8 @@
 use crate::utils;
-use campaign_analysis::{History, Observation, Query, Selection, Session, View};
-use eu4game::analysis::{self, Eu4Analysis, Eu4Answer, Eu4Query};
+use campaign_analysis::{History, Observation, Query, Selection, Series, Session, View};
+use eu4game::analysis::{
+    self, CountryDimension, CountryMetric, Eu4Analysis, Eu4Answer, Eu4Query, province_development,
+};
 use eu4game::shared::Eu4Parser;
 use eu4save::ProvinceId;
 use eu4save::query::Query as SaveQuery;
@@ -24,6 +26,7 @@ fn parse(name: &str) -> SaveQuery {
 fn observations_agree_with_the_parsed_save() {
     let mut campaigns = Vec::new();
     let mut layouts = Vec::new();
+    let mut players = Vec::new();
     let mut session = Session::<Eu4Analysis>::new();
     for (name, date, total, italy) in SAVES {
         let query = parse(name);
@@ -35,16 +38,24 @@ fn observations_agree_with_the_parsed_save() {
             observed.payload().provinces.columns().development.len(),
             provinces.len()
         );
-        assert_eq!(
-            observed.payload().provinces.columns().owned.len(),
-            provinces.len()
-        );
         assert!(observed.payload().provinces.keys().is_sorted());
+        assert_eq!(observed.payload().owned_development(), total, "{name}");
 
+        // Country development comes from the provinces of each owner.
+        let player = query.save().meta.player;
+        let player_development: f64 = provinces
+            .values()
+            .filter(|province| province.owner == Some(player))
+            .map(|province| f64::from(province_development(province)))
+            .sum();
+        let row = observed.payload().country_offset(&player).unwrap();
         assert_eq!(
-            observed.payload().provinces.columns().owned_development(),
-            total,
-            "{name}"
+            observed.payload().owned_development_by_country()[row],
+            player_development
+        );
+        assert_eq!(
+            observed.payload().countries.columns().treasury[row],
+            query.country(&player).unwrap().treasury
         );
 
         let mut italy_total = 0.0;
@@ -69,6 +80,9 @@ fn observations_agree_with_the_parsed_save() {
         let decoded = Observation::<Eu4Analysis>::decode(&bytes).unwrap();
         assert_eq!(decoded.payload(), observed.payload());
         session.append(0, &bytes, usize::MAX).unwrap();
+        let stored = session.snapshot(&observed.descriptor.id).unwrap();
+        assert_eq!(stored.encode(), bytes);
+        players.push(player);
         campaigns.push(observed.descriptor.campaign_id);
         layouts.push(observed.descriptor.layout_key);
     }
@@ -80,7 +94,10 @@ fn observations_agree_with_the_parsed_save() {
     let view = View::select(session.store(), &campaigns[0], &Selection::All);
     let rows = |query: Eu4Query| {
         let (Eu4Answer::WorldDevelopment(History { rows })
-        | Eu4Answer::ProvinceDevelopment(History { rows })) = query.answer(&view);
+        | Eu4Answer::ProvinceDevelopment(History { rows })) = query.answer(&view)
+        else {
+            panic!("history");
+        };
         rows.into_iter()
             .map(|row| (row.date, row.value))
             .collect::<Vec<_>>()
@@ -98,7 +115,36 @@ fn observations_agree_with_the_parsed_save() {
         }),
         expected(|save| save.3)
     );
-    assert_eq!(session.memory().layouts, 1);
+
+    assert_eq!(session.memory().layouts, 5);
+
+    // A country breakdown adds up to the development of the country.
+    let player = players[0];
+    let Eu4Answer::CountrySeries(development) = (Eu4Query::CountrySeries {
+        tags: vec![player],
+        metric: CountryMetric::OwnedDevelopment,
+    })
+    .answer(&view) else {
+        panic!("country series");
+    };
+    let Eu4Answer::CountryBreakdown(religions) = (Eu4Query::CountryBreakdown {
+        tag: player,
+        dimension: CountryDimension::Religion,
+    })
+    .answer(&view) else {
+        panic!("country breakdown");
+    };
+    assert!(!religions.is_empty());
+    let [Series { values, .. }] = development.as_slice() else {
+        panic!("one series");
+    };
+    for (at, total) in values.iter().enumerate() {
+        let sum: f64 = religions
+            .iter()
+            .map(|series| series.values[at].unwrap())
+            .sum();
+        assert!((sum - total.unwrap()).abs() < 0.01, "{sum} {total:?}");
+    }
 }
 
 #[test]

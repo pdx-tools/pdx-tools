@@ -1066,6 +1066,7 @@ version = "0.1.0"
 dependencies = [
  "attohttpc",
  "base64",
+ "bytemuck",
  "campaign-analysis",
  "erased-serde",
  "eu4-achievements",
