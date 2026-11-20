@@ -215,6 +215,8 @@ class Eu5Session {
     transport: CanvasCourierTransport,
     generation: number,
   ): Promise<void> {
+    // A new map keeps the names setting of the map it replaces.
+    const previous = this.shown()?.getState().appState;
     this.update({ status: "pending", progress: { percent: 0, stage: "Starting workers" } });
 
     const namesCanvas = surface.overlay;
@@ -235,8 +237,6 @@ class Eu5Session {
       },
     );
 
-    // A new map keeps the names setting of the map it replaces.
-    const previous = this.shown()?.getState().appState;
     const opened = await openEngine(
       game,
       previous ? { mapNamesVisible: previous.mapNamesVisible } : undefined,

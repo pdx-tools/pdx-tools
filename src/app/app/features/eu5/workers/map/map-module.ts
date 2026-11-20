@@ -718,7 +718,8 @@ export const createMapEngine = async (
         Math.abs(newDimensions.height - prevDimensions.height) +
         Math.abs(newDimensions.scaleFactor - prevDimensions.scaleFactor);
 
-      if (diff >= 4) {
+      // A new pixel ratio changes the size in CSS pixels, also when the canvas keeps its size.
+      if (diff >= 4 || newDimensions.scaleFactor !== prevDimensions.scaleFactor) {
         prevDimensions = { ...newDimensions };
         // Firefox also needs to wait for queued work before resizing
         // otherwise it will freeze up

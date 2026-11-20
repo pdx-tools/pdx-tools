@@ -264,15 +264,22 @@ const DIRECTIONS: readonly (readonly [number, number])[] = [
   [-0.7, 0.7],
 ];
 
-/** The places that a name that must show tries, the nearest first */
-function* noteOffsets(width: number, height: number, far: boolean): Generator<[number, number]> {
-  yield [0, 0];
+/**
+ * The places that a name that must show tries, the nearest first, and if
+ * each needs a line to its land. Only a name with a leader line goes far.
+ */
+function* noteOffsets(
+  width: number,
+  height: number,
+  leaderLine: boolean,
+): Generator<[number, number, boolean]> {
+  yield [0, 0, false];
   for (const reach of [1, 2]) {
-    for (const [x, y] of DIRECTIONS) yield [x * width * 0.6 * reach, y * height * reach];
+    for (const [x, y] of DIRECTIONS) yield [x * width * 0.6 * reach, y * height * reach, false];
   }
-  if (!far) return;
+  if (!leaderLine) return;
   for (const reach of [FAR_REACH / 2, FAR_REACH]) {
-    for (const [x, y] of DIRECTIONS) yield [x * reach, y * reach];
+    for (const [x, y] of DIRECTIONS) yield [x * reach, y * reach, true];
   }
 }
 
@@ -414,12 +421,10 @@ export function placeNames(
     // Away from its land a name is a plain note, level and small, so that it does not read as land.
     const noteWidth = measure(name.text, false) * NOTE_SIZE;
     const noteHeight = NOTE_SIZE * 1.15;
-    for (const [ox, oy] of noteOffsets(noteWidth, noteHeight, name.leaderLine)) {
+    for (const [ox, oy, line] of noteOffsets(noteWidth, noteHeight, name.leaderLine)) {
       const at = { x: land.x + ox, y: land.y + oy };
       const box = textBox(at.x, at.y, noteWidth, noteHeight, 0);
-      // A name beside its land needs no line. One further off does.
-      const far = Math.hypot(ox, oy) > Math.max(noteWidth / 2, noteHeight * 2);
-      if (!isFree(box) || (far && covered.some((cover) => crosses(land, at, cover)))) continue;
+      if (!isFree(box) || (line && covered.some((cover) => crosses(land, at, cover)))) continue;
       boxes.add(box);
       placed.push({
         text: name.text,
@@ -427,7 +432,7 @@ export function placeNames(
         size: NOTE_SIZE,
         angle: 0,
         capitals: false,
-        ...(far && name.leaderLine ? { anchor: land } : {}),
+        ...(line ? { anchor: land } : {}),
       });
       break;
     }

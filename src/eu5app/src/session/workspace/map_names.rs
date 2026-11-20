@@ -69,7 +69,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .map(|(at, (key, locations))| MapNameSource {
                 text: text(key),
                 must_show: !selection.is_empty() || at < MUST_SHOW_CATEGORIES,
-                leader_line: false,
+                leader_line: !selection.is_empty(),
                 locations,
             })
             .collect()

@@ -37,6 +37,17 @@ type Frame = { width: number; height: number; scaleFactor: number };
 /** The point of a location that is not on the map */
 const NOT_ON_MAP = 0xffffffff;
 
+/** A realm's land and its shape */
+type Shaped = { land: Uint16Array; shape: RealmShape | null };
+
+function sameLand(a: Uint16Array, b: Uint16Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 /** A key for a list of locations: its length and a hash of its ids */
 function landKey(locations: Uint16Array): string {
   let hash = 0x811c9dc5;
@@ -51,8 +62,10 @@ function landKey(locations: Uint16Array): string {
 export class MapNameLayer {
   private readonly ctx: OffscreenCanvasRenderingContext2D;
   private names: RealmName[] = [];
-  /** The shapes of the last names, by their land */
-  private shapes = new Map<string, RealmShape | null>();
+  /** The shapes of the last names, by a key of their land */
+  private shapes = new Map<string, Shaped>();
+  /** Names that have come but have no shapes yet */
+  private pending: { names: MapNames; points: Uint32Array; worldWidth: number } | null = null;
   private covers: Rect[] = [];
   private visible = true;
   /** The names, covers or canvas changed since the last draw */
@@ -81,15 +94,30 @@ export class MapNameLayer {
    *
    * @param points Each location's middle as `[x, y]` pairs by color id
    */
-  setNames({ names, locations }: MapNames, points: Uint32Array, worldWidth: number): void {
-    const shapes = new Map<string, RealmShape | null>();
+  setNames(names: MapNames, points: Uint32Array, worldWidth: number): void {
+    this.pending = { names, points, worldWidth };
+    this.dirty = true;
+  }
+
+  /** Give the names their shapes, only when they are about to show. */
+  private shapeNames(): void {
+    if (this.pending === null) return;
+    const {
+      names: { names, locations },
+      points,
+      worldWidth,
+    } = this.pending;
+    this.pending = null;
+    const shapes = new Map<string, Shaped>();
     let start = 0;
     this.names = names.flatMap((name) => {
       const land = locations.subarray(start, start + name.locationCount);
       start += name.locationCount;
       // A step on the timeline changes the land of few realms. The others keep their shape.
       const key = landKey(land);
-      let shape = shapes.get(key) ?? this.shapes.get(key);
+      const known = shapes.get(key) ?? this.shapes.get(key);
+      // Two lists of land can have one key, so the land must also be the same.
+      let shape = known && sameLand(known.land, land) ? known.shape : undefined;
       if (shape === undefined) {
         const at = new Float64Array(land.length * 2);
         let size = 0;
@@ -101,14 +129,13 @@ export class MapNameLayer {
         }
         shape = realmShape(at.subarray(0, size), worldWidth);
       }
-      shapes.set(key, shape);
+      shapes.set(key, { land, shape });
       return shape
         ? [{ text: name.text, shape, mustShow: name.mustShow, leaderLine: name.leaderLine }]
         : [];
     });
     // No names, as over a snapshot, keep the shapes for when the names come back.
     if (names.length > 0) this.shapes = shapes;
-    this.dirty = true;
   }
 
   /** The parts of the frame that panels cover, in CSS pixels */
@@ -148,6 +175,7 @@ export class MapNameLayer {
     this.lastView = view;
 
     const { ctx, frame } = this;
+    if (this.visible) this.shapeNames();
     const empty = !this.visible || this.names.length === 0;
     if (empty && this.blank) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
