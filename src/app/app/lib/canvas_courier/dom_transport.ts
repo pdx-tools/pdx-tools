@@ -230,7 +230,17 @@ export class CanvasCourierTransport {
   }
 
   private syncSurfaceSize(surface: CanvasCourierDomSurface): void {
-    const nextSize = this.measureSurface(surface);
+    let nextSize = this.measureSurface(surface);
+    // A zoom can keep the size in device pixels. The observer's last size is
+    // exact, where the product of the CSS size and the ratio can be a pixel short.
+    const last = this.canvasSize;
+    if (SUPPORTS_DEVICE_PIXEL_CONTENT_BOX && last !== undefined) {
+      const bounds = surface.canvas.getBoundingClientRect();
+      nextSize = canvasPhysicalSize(bounds.width, bounds.height, nextSize.scaleFactor, {
+        inlineSize: last.width,
+        blockSize: last.height,
+      });
+    }
     this.canvasSize = nextSize;
     this.inputQueue.writer.enqueueResize(nextSize);
   }
