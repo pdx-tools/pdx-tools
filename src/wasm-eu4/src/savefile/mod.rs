@@ -128,11 +128,10 @@ impl SaveFileImpl {
 
             let inter: HashSet<CountryTag> = tags.intersection(&ntags).cloned().collect();
             if inter.is_empty() {
-                tags.into_iter()
-                    .enumerate()
-                    .filter(|(i, _x)| *i < limit)
-                    .map(|(_i, x)| x)
-                    .collect()
+                // Sorted, so each call keeps the same tags.
+                let mut tags: Vec<_> = tags.into_iter().collect();
+                tags.sort_unstable();
+                tags.into_iter().take(limit).collect()
             } else {
                 inter
             }

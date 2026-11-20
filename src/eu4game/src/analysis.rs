@@ -820,9 +820,13 @@ pub fn chart_countries(
 ) -> ChartCountries {
     let (left_out, chosen): (BTreeSet<_>, BTreeSet<_>) =
         chosen.into_iter().partition(is_generated_tag);
+    // A tag that two countries held joins neither of them.
+    let joins = |tag: &CountryTag| {
+        !is_generated_tag(tag) && TagSpan::of(*tag, switches) != TagSpan::Ambiguous
+    };
     let switches: Vec<_> = switches
         .iter()
-        .filter(|x| !is_generated_tag(&x.from) && !is_generated_tag(&x.to))
+        .filter(|x| joins(&x.from) && joins(&x.to))
         .collect();
     let mut tags = chosen;
     loop {
@@ -1414,6 +1418,14 @@ mod tests {
         assert_eq!(chart.switches, switches[..2]);
         // A generated tag does not join a formed nation.
         assert_eq!(chart_countries([tag("MEX")], &switches).tags, [tag("MEX")]);
+        // BYZ forms ROM, then TRE takes BYZ: BYZ joins neither country.
+        let taken = [
+            switch("BYZ", "ROM", "1500-01-01"),
+            switch("TRE", "BYZ", "1550-01-01"),
+        ];
+        let chart = chart_countries([tag("ROM")], &taken);
+        assert_eq!(chart.tags, [tag("ROM")]);
+        assert!(chart.switches.is_empty());
     }
 
     #[test]
