@@ -202,6 +202,25 @@ describe("a name with a leader line", () => {
     expect(crossesCover).toBe(false);
   });
 
+  it("keeps a later name off its line", () => {
+    const crowd = Array.from({ length: 12 }, (_, i) =>
+      name(
+        "Neighbour",
+        { ...shape, center: { x: 500 + ((i % 4) - 1.5) * 70, y: 250 + (i % 3) * 18 - 18 } },
+        { placement: "nearLand" },
+      ),
+    );
+    // The line of "Small" goes up from its land, through the middle of "X".
+    const onTheLine = { center: { x: 500, y: 225 }, major: 20, minor: 20, angle: 0 };
+    const placed = place([
+      ...crowd,
+      name("Small", shape, { placement: "leaderLine" }),
+      name("X", onTheLine),
+    ]);
+    expect(placed.find((p) => p.text === "Small")?.anchor).toBeDefined();
+    expect(placed.find((p) => p.text === "X")).toBeUndefined();
+  });
+
   it("gives no line to a name on its land", () => {
     const [placed] = place([name("Home", shape, { placement: "leaderLine" })]);
     expect(placed.anchor).toBeUndefined();

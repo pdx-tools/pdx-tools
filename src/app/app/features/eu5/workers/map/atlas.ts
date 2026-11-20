@@ -403,8 +403,13 @@ export function placeNames(
     box.x1 <= frame.width - FRAME_MARGIN &&
     box.y0 >= FRAME_MARGIN &&
     box.y1 <= frame.height - FRAME_MARGIN;
+  /** The leader lines placed so far. A later name does not go on one. */
+  const lines: [WorldPoint, WorldPoint][] = [];
   const isFree = (box: Box) =>
-    inFrame(box) && !covered.some((other) => touches(box, other)) && !boxes.touches(box);
+    inFrame(box) &&
+    !covered.some((other) => touches(box, other)) &&
+    !boxes.touches(box) &&
+    !lines.some(([a, b]) => crosses(a, b, grow(box)));
 
   for (const name of names) {
     const { shape } = name;
@@ -463,6 +468,7 @@ export function placeNames(
         (covered.some((cover) => crosses(land, at, grow(cover))) || boxes.crosses(land, at));
       if (!isFree(box) || blocked) continue;
       boxes.add(box);
+      if (line) lines.push([land, at]);
       placed.push({
         text: name.text,
         ...at,

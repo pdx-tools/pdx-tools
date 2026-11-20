@@ -154,7 +154,7 @@ export class MapNameLayer {
       frame.width === this.frame.width &&
       frame.height === this.frame.height &&
       frame.scaleFactor === this.frame.scaleFactor;
-    if (same && this.canvas.width === frame.width) return;
+    if (same && this.canvas.width === frame.width && this.canvas.height === frame.height) return;
     this.frame = frame;
     this.canvas.width = frame.width;
     this.canvas.height = frame.height;
