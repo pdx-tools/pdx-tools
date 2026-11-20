@@ -1,52 +1,53 @@
 /**
  * Where each save's stroke stands in a strip of a given width.
  *
- * Strokes stand at their saves' dates. They never touch: where two saves
- * are closer than a stroke and a one-pixel gap, the later one moves right,
- * but never more than {@link MAX_SHIFT} pixels from its date, so no stroke
- * reaches another save's date. When the saves cannot all stand apart within
- * that, even at one pixel wide, the strip shows the longest run of saves
- * around the selected one that can.
+ * Every stroke has the same whole-pixel width and stands on a whole pixel,
+ * so no stroke looks heavier than another. Strokes stand at their saves'
+ * dates and never touch: where two saves are closer than a stroke and a
+ * one-pixel gap, the later one moves right, but never more than
+ * {@link MAX_SHIFT} pixels from its date, so no stroke reaches another
+ * save's date. When the saves cannot all stand apart within that, even at
+ * one pixel wide, the strip shows the longest run of saves around the
+ * selected one that can.
  */
 export type StripGeometry = {
   width: number;
-  /** The width of one stroke. */
+  /** The width of every stroke, in whole pixels. */
   bar: number;
   /** The first and last save that the strip shows. */
   first: number;
   last: number;
-  /** The left edge of each save's stroke; NaN for a save outside the strip. */
+  /** The left edge of each save's stroke, a whole pixel; NaN for a save outside the strip. */
   x: number[];
   /** The day at the strip's left and right edges, for the ruler. */
   from: number;
   to: number;
   /** The x of a day on the strip. */
   xDay: (day: number) => number;
-  /** Beads of another country can stand between strokes; each still keeps a gap from the last. */
-  beads: boolean;
 };
 
 const PAD = 3;
 /** The farthest a stroke may stand from its date, in pixels. */
 export const MAX_SHIFT = 2;
+/** The widest stroke: a stroke takes up to two fifths of the pitch, never more than this. */
+const WIDEST = 4;
 
 /** Strokes for saves first..last, or null when they cannot stand apart near their dates. */
 function place(days: readonly number[], width: number, bar: number, first: number, last: number) {
-  const span = Math.max(1, width - PAD * 2);
+  const span = Math.max(1, Math.floor(width) - PAD * 2);
   const step = bar + 1;
   const from = days[first];
   const to = days[last];
   const xDay = (day: number) =>
     to > from ? PAD + ((day - from) / (to - from)) * (span - bar) : PAD + (span - bar) / 2;
   const x = days.map(() => NaN);
-  for (let i = first; i <= last; i++) x[i] = xDay(days[i]);
+  for (let i = first; i <= last; i++) x[i] = Math.round(xDay(days[i]));
   // Apart from the left, then back from the right edge.
   for (let i = first + 1; i <= last; i++) x[i] = Math.max(x[i], x[i - 1] + step);
   x[last] = Math.min(x[last], PAD + span - bar);
   for (let i = last - 1; i >= first; i--) x[i] = Math.min(x[i], x[i + 1] - step);
   for (let i = first; i <= last; i++) {
-    if (x[i] < PAD - 0.01 || Math.abs(x[i] - xDay(days[i])) > MAX_SHIFT) return null;
-    x[i] = Math.round(x[i] * 2) / 2;
+    if (x[i] < PAD || Math.abs(x[i] - xDay(days[i])) > MAX_SHIFT) return null;
   }
   return { x, from, to, xDay };
 }
@@ -57,7 +58,7 @@ export function stripGeometry(
   selected: number,
 ): StripGeometry {
   const n = days.length;
-  const span = Math.max(1, width - PAD * 2);
+  const span = Math.max(1, Math.floor(width) - PAD * 2);
   // A typical gap sets the widest stroke to try; a lone save gets the widest.
   const gaps = days
     .slice(1)
@@ -66,7 +67,8 @@ export function stripGeometry(
   const median = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
   const whole = n > 1 ? days[n - 1] - days[0] : 0;
   const pitch = whole > 0 ? (median / whole) * span : span;
-  const bars = [3, 2, 1.5, 1].filter((bar) => bar === 1 || pitch >= bar * 4);
+  const widest = Math.max(1, Math.min(WIDEST, Math.floor(pitch / 2.5)));
+  const bars = Array.from({ length: widest }, (_, i) => widest - i);
   const at = Math.max(0, Math.min(n - 1, selected));
   // The longest run around the selected save that stands apart, widest stroke first.
   for (let count = n; count >= 1; count = count > 8 ? Math.floor(count * 0.9) : count - 1) {
@@ -74,9 +76,7 @@ export function stripGeometry(
     const last = first + count - 1;
     for (const bar of bars) {
       const placed = n ? place(days, width, bar, first, last) : null;
-      if (!placed) continue;
-      // At one-pixel strokes the saves are too close for beads beside them.
-      return { width, bar, first, last, ...placed, beads: bar > 1 };
+      if (placed) return { width, bar, first, last, ...placed };
     }
   }
   return {
@@ -88,7 +88,6 @@ export function stripGeometry(
     from: 0,
     to: 0,
     xDay: () => PAD,
-    beads: false,
   };
 }
 
@@ -106,6 +105,14 @@ export function nearestSave(geometry: StripGeometry, px: number): number | null 
   return best;
 }
 
+/** The smallest round figure at or above a value: 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten. */
+function roundUp(value: number): number {
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const step =
+    [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((m) => m * magnitude >= value - 1e-9) ?? 10;
+  return step * magnitude;
+}
+
 /** One reference line for every row: the round figure nearest the middle of the scale. */
 export function referenceValue(max: number): number {
   if (!(max > 0)) return 0;
@@ -113,6 +120,17 @@ export function referenceValue(max: number): number {
   return [1, 2, 2.5, 5, 10]
     .map((m) => m * magnitude)
     .reduce((a, b) => (Math.abs(b - max * 0.55) < Math.abs(a - max * 0.55) ? b : a));
+}
+
+/**
+ * The zero-based scale that every country row shares: its top is a round
+ * figure at least 5% above the largest value in view, so no stroke reaches
+ * the row's edge, and a reference line about halfway.
+ */
+export function countryScale(max: number): { lo: number; hi: number; refs: number[] } {
+  if (!(max > 0)) return { lo: 0, hi: 1, refs: [] };
+  const hi = roundUp(max * 1.05);
+  return { lo: 0, hi, refs: [referenceValue(hi), hi] };
 }
 
 /** A fitted scale for one series: round steps around its values, with headroom. */

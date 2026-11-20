@@ -348,14 +348,21 @@ function BySaveView({
   const dateText = (column: number) => formatLongDate(columns[column].date);
   const openSlot =
     campaign.open && selectedSave.save.key === campaign.open.save.key ? (
-      <Badge role="status">Open now</Badge>
+      <Badge role="status" className="h-[34px] justify-center rounded-md px-3 text-sm font-medium">
+        Open now
+      </Badge>
     ) : selectedSave.save.isOpen ? (
       campaign.openOtherVersion && (
-        <Badge title="The viewer shows another version of this file.">Other version</Badge>
+        <Badge
+          title="The viewer shows another version of this file."
+          className="h-[34px] justify-center rounded-md px-3 text-sm font-medium"
+        >
+          Other version
+        </Badge>
       )
     ) : (
       <Button
-        className="whitespace-nowrap"
+        className="h-[34px] px-3 py-0 text-sm whitespace-nowrap"
         disabled={!nav || opening || nav.opening !== null}
         onClick={() => void openSelected()}
       >
@@ -368,7 +375,7 @@ function BySaveView({
         className={cx("flex items-baseline gap-2.5 whitespace-nowrap", preview && "opacity-60")}
         title={`${shownSave.save.name} · ${sourceText(shownSave.save)}`}
       >
-        <span className="text-[40px] leading-10 font-semibold tracking-tight tabular-nums">
+        <span className="text-[44px] leading-[44px] font-semibold tracking-tight tabular-nums">
           {shownSave.date.year}
         </span>
         <span className="inline-grid text-xl text-gray-600 dark:text-gray-300">
