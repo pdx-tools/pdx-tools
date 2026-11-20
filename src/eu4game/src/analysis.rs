@@ -367,10 +367,10 @@ impl Game for Eu4Analysis {
         {
             return Err(PayloadError::NonFinite);
         }
-        // Queries find countries by binary search and religions by prefix.
-        if !payload.countries.is_sorted() {
+        // Queries search provinces and countries by key and religions by prefix.
+        if !payload.provinces.is_sorted() || !payload.countries.is_sorted() {
             return Err(PayloadError::Invalid(String::from(
-                "Country keys must be sorted",
+                "Province and country keys must be sorted",
             )));
         }
         if !payload.country_religions.is_prefix_sorted() {
@@ -953,7 +953,20 @@ mod tests {
             },
         )
         .unwrap();
-        for (payload, message) in [(unsorted, "sorted"), (unprefixed, "prefix sorted")] {
+        let mut provinces = payload.clone();
+        provinces.provinces = Table::map_order(
+            vec![ProvinceId::new(2), ProvinceId::new(1)],
+            ProvinceColumns {
+                development: vec![1.0; 2],
+                owner: vec![CountryRow::NONE; 2],
+            },
+        )
+        .unwrap();
+        for (payload, message) in [
+            (provinces, "keys must be sorted"),
+            (unsorted, "keys must be sorted"),
+            (unprefixed, "prefix sorted"),
+        ] {
             let error = saved(payload).unwrap_err();
             assert!(error.to_string().contains(message), "{error}");
         }

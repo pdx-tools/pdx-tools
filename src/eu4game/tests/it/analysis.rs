@@ -1,11 +1,12 @@
 use crate::utils;
-use campaign_analysis::{History, Observation, Query, Selection, Series, Session, View};
+use campaign_analysis::{History, Observation, Query, Selection, Session, View};
 use eu4game::analysis::{
     self, CountryDimension, CountryMetric, Eu4Analysis, Eu4Answer, Eu4Query, province_development,
 };
 use eu4game::shared::Eu4Parser;
 use eu4save::ProvinceId;
 use eu4save::query::Query as SaveQuery;
+use std::collections::{BTreeMap, BTreeSet};
 
 const SAVES: [(&str, &str, f64, f64); 3] = [
     ("ita2.eu4", "1528-07-01", 19311.0, 196.0),
@@ -27,6 +28,8 @@ fn observations_agree_with_the_parsed_save() {
     let mut campaigns = Vec::new();
     let mut layouts = Vec::new();
     let mut players = Vec::new();
+    let mut developments = Vec::new();
+    let mut by_religion = Vec::new();
     let mut session = Session::<Eu4Analysis>::new();
     for (name, date, total, italy) in SAVES {
         let query = parse(name);
@@ -48,6 +51,15 @@ fn observations_agree_with_the_parsed_save() {
             .filter(|province| province.owner == Some(player))
             .map(|province| f64::from(province_development(province)))
             .sum();
+        let mut religions = BTreeMap::<String, f64>::new();
+        for province in provinces.values().filter(|x| x.owner == Some(player)) {
+            if let Some(religion) = &province.religion {
+                *religions.entry(religion.clone()).or_default() +=
+                    f64::from(province_development(province));
+            }
+        }
+        by_religion.push(religions);
+        developments.push(player_development);
         let row = observed.payload().country_offset(&player).unwrap();
         assert_eq!(
             observed.payload().province_development_by_country()[row],
@@ -118,8 +130,9 @@ fn observations_agree_with_the_parsed_save() {
 
     assert_eq!(session.memory().layouts, 3);
 
-    // A country breakdown adds up to the development of the country.
+    // The player's series agree with its provinces in each save.
     let player = players[0];
+    assert!(players.iter().all(|x| *x == player));
     let Eu4Answer::CountrySeries(development) = (Eu4Query::CountrySeries {
         tags: vec![player],
         metric: CountryMetric::ProvinceDevelopment,
@@ -127,6 +140,10 @@ fn observations_agree_with_the_parsed_save() {
     .answer(&view) else {
         panic!("country series");
     };
+    assert_eq!(
+        development[0].values,
+        developments.iter().copied().map(Some).collect::<Vec<_>>()
+    );
     let Eu4Answer::CountryBreakdown(religions) = (Eu4Query::CountryBreakdown {
         tag: player,
         dimension: CountryDimension::Religion,
@@ -134,16 +151,20 @@ fn observations_agree_with_the_parsed_save() {
     .answer(&view) else {
         panic!("country breakdown");
     };
-    assert!(!religions.is_empty());
-    let [Series { values, .. }] = development.as_slice() else {
-        panic!("one series");
-    };
-    for (at, total) in values.iter().enumerate() {
-        let sum: f64 = religions
+    let names: BTreeSet<_> = by_religion.iter().flat_map(|x| x.keys()).collect();
+    assert_eq!(
+        religions.iter().map(|x| &x.key).collect::<BTreeSet<_>>(),
+        names
+    );
+    for series in &religions {
+        let expected: Vec<_> = by_religion
             .iter()
-            .map(|series| series.values[at].unwrap())
-            .sum();
-        assert!((sum - total.unwrap()).abs() < 0.01, "{sum} {total:?}");
+            .map(|totals| {
+                let total = totals.get(&series.key).copied().unwrap_or(0.0);
+                Some(f64::from(total as f32))
+            })
+            .collect();
+        assert_eq!(series.values, expected, "{}", series.key);
     }
 }
 
