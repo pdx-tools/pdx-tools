@@ -49,10 +49,12 @@ export function useAnalysisQuery<S extends AnalysisStore, Q extends QueryOf<S>>(
   }, [subscription, identity, dataset, selected, active, campaignId, query, selection, client]);
   const current = subscription.current(identity);
   // A result stays while the snapshots that it read are still there and selected.
-  const available = useMemo(
-    () => new Set(selection?.kind === "ids" ? selection.ids : dataset.split("\n")),
-    [selection, dataset],
-  );
+  const available = useMemo(() => {
+    const stored = new Set(dataset.split("\n"));
+    return selection?.kind === "ids"
+      ? new Set(selection.ids.filter((id) => stored.has(id)))
+      : stored;
+  }, [selection, dataset]);
   const state = current.snapshotIds.every((id) => available.has(id))
     ? current
     : { ...current, result: null, snapshotIds: [] };

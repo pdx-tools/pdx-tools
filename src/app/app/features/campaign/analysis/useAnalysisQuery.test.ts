@@ -111,4 +111,7 @@ it("keeps a result through an added snapshot but not past a removed one", async 
   expect(run(["a", "b", "c"]).result).toBe("answer");
   // A save that leaves the selection, such as one that another replaced, ends it.
   expect(run(["a", "c"]).result).toBeNull();
+  // So does one that leaves the store while the selection still names it.
+  history.getState().forget(["a"]);
+  expect(run(["a", "b", "c"]).result).toBeNull();
 });

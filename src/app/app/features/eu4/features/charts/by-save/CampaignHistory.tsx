@@ -574,7 +574,7 @@ function Foot({
       : []),
     ...(unclear.length
       ? [
-          `${unclear.join(", ")}: two countries changed to or from this tag on one day, so whose values are whose cannot be told.`,
+          `${unclear.join(", ")}: this tag changed more than once on one day, so whose values are whose cannot be told.`,
         ]
       : []),
     ...(nav?.truncated ? ["Only the latest 200 uploads are listed."] : []),
