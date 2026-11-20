@@ -67,6 +67,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     label: "Tools",
     shortcuts: [
       { action: "Search", keys: ["/"] },
+      { action: "Show or hide names", keys: ["N"] },
       { action: "Toggle shortcuts", keys: ["?"] },
     ],
   },

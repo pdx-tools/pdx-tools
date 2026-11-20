@@ -19,6 +19,7 @@ it("ignores late hover events after a campaign save releases its worker", async 
     onCursorHintUpdate: vi.fn(),
     onViewportChange: vi.fn(),
     startHoverTracking: vi.fn(),
+    showMapNames: vi.fn(),
     stopHoverTracking: vi.fn(),
     release: vi.fn(() => {
       released = true;

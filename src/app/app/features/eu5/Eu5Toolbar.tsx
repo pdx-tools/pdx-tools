@@ -10,6 +10,7 @@ import { Eu5ShortcutPanel } from "./Eu5ShortcutPanel";
 import { focusRing } from "@/components/game/focusRing";
 import { Kbd } from "@/components/game/Kbd";
 import { resolveSearchSelection } from "./searchSelection";
+import { mapCoverRef } from "./MapNames";
 
 export function Eu5Toolbar() {
   const [searchActive, setSearchActive] = useState(false);
@@ -109,6 +110,7 @@ export function Eu5Toolbar() {
 
   return (
     <div
+      ref={mapCoverRef}
       className={cx(
         "absolute top-4 left-1/2 z-20 -translate-x-1/2",
         searchActive ? "pointer-events-auto" : "pointer-events-none",

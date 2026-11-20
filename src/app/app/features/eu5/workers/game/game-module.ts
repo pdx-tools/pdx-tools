@@ -10,6 +10,7 @@ import type {
   LocationClickChangeEvent,
   LocationHoverChangeEvent,
   MapDataSync,
+  MapNames,
 } from "../map/map-module";
 import type { BoxSelectCommitEvent } from "../../types/box-select";
 import { eu5SaveFileUrl } from "../../store/types";
@@ -165,6 +166,17 @@ type SearchIndexes = {
 };
 // Indexes follow their parsed save without preventing eviction.
 const indexes = new WeakMap<wasm_eu5.Eu5App, SearchIndexes>();
+
+/** The names on the map, read out of wasm memory */
+function mapNames(app: wasm_eu5.Eu5App): MapNames {
+  const found = app.map_names();
+  try {
+    return { names: found.names(), locations: found.locations() };
+  } finally {
+    found.free();
+  }
+}
+
 function searchIndexes(app: wasm_eu5.Eu5App) {
   let index = indexes.get(app);
   if (!index) {
@@ -272,7 +284,8 @@ const loadSaveInner = async (
 
   if (!mapEndpoint) throw new Error("Map endpoint not initialized");
   const map = mapEndpoint;
-  const syncSave = (source: wasm_eu5.Eu5WasmWorkspace | wasm_eu5.Eu5App) => {
+  /** A workspace has no names yet, because the save's text is not loaded. */
+  const syncSave = (source: wasm_eu5.Eu5WasmWorkspace | wasm_eu5.Eu5App, names?: MapNames) => {
     const buffer = source.location_arrays();
     const locationArray = new Uint32Array(wasm.memory.buffer, buffer.ptr(), buffer.len());
 
@@ -281,9 +294,9 @@ const loadSaveInner = async (
     // to 6ms.
     const locations = new Uint32Array(locationArray);
     const groupingTable = source.grouping_table();
-    return map.syncSave(
-      transfer({ locations, groupingTable }, [locations.buffer, groupingTable.buffer]),
-    );
+    const buffers = [locations.buffer, groupingTable.buffer];
+    if (names) buffers.push(names.locations.buffer);
+    return map.syncSave(transfer({ locations, groupingTable, names }, buffers));
   };
 
   const app = await parseApp(saveData, gameBundle, onProgress, async (workspace) => {
@@ -315,9 +328,13 @@ const loadSaveInner = async (
   // Apply changed buffers together. A held save waits until `show`.
   const syncMapData = (data: MapDataSync) => {
     if (held) return Promise.resolve();
-    const buffers = [data.colors?.buffer, data.flags?.buffer].filter((x) => x !== undefined);
+    const buffers = [data.colors?.buffer, data.flags?.buffer, data.names?.locations.buffer].filter(
+      (x) => x !== undefined,
+    );
     return map.syncMapData(transfer(data, buffers));
   };
+  // The first sync had no names, because the save's text was not loaded yet.
+  void syncMapData({ names: mapNames(app) });
 
   const syncFlagData = () => syncMapData({ flags: cloneBuffer(app.location_flag_data()) });
 
@@ -325,9 +342,12 @@ const loadSaveInner = async (
     if (!change.colorsChanged && !change.flagsChanged) {
       return Promise.resolve();
     }
+    // New colors or flags come with a new date, mode or selection, which
+    // can change the names. They go together, so that they show on one frame.
     return syncMapData({
       colors: change.colorsChanged ? cloneBuffer(app.location_color_data()) : undefined,
       flags: change.flagsChanged ? cloneBuffer(app.location_flag_data()) : undefined,
+      names: mapNames(app),
     });
   };
 
@@ -421,7 +441,7 @@ const loadSaveInner = async (
     show: async (): Promise<void> => {
       if (!held || openSave !== opened) return;
       held = false;
-      await syncSave(app);
+      await syncSave(app, mapNames(app));
       if (openSave === opened) opened.events = events;
     },
     getMapLayoutKey: () => {

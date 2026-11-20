@@ -156,6 +156,9 @@ fn workspace_scenarios() {
             run_workspace_scenario(save_name, "swatches match the map", ws, |ws| {
                 swatches_match_the_map(ws, &localization)
             });
+        snapshot["map_names"] = run_workspace_scenario(save_name, "map names", ws, |ws| {
+            map_names_are_those_of_the_date(ws, &localization)
+        });
         insta::assert_json_snapshot!(snapshot);
 
         run_workspace_scenario(save_name, "market selection", ws, |ws| {
@@ -1291,6 +1294,109 @@ fn foreign_owner_cells_hold_the_most_foreign_building(
     ))
 }
 
+/// A name on the map and the hover of its land say one thing, on the save date and on the
+/// first date of the timeline. A realm is named over all of its land, and a map of religions
+/// or markets over all the land that has one. A selection names only its countries.
+fn map_names_are_those_of_the_date(
+    ws: &mut Eu5Workspace,
+    localization: &Localization,
+) -> serde_json::Value {
+    let by_color: BTreeMap<u16, LocationIdx> = ws
+        .gamestate()
+        .locations
+        .iter()
+        .filter_map(|entry| Some((ws.center_at(entry.idx())?.value(), entry.idx())))
+        .collect();
+    let summary = ws.timeline_summary();
+    let mut dates = vec![summary.end];
+    if summary.available {
+        dates.push(summary.start);
+    }
+    for date in dates {
+        ws.set_timeline_date(date);
+        let presenter = ws.localized(localization).presenter();
+        let names = presenter.map_names();
+        assert!(!names.names.is_empty(), "no names on {date:?}");
+        for (name, land) in names.lands() {
+            let first = by_color[&land[0]];
+            let hover = match presenter.hover_data(first) {
+                HoverDisplayData::HistoricalCountry { name, .. } => name,
+                HoverDisplayData::Country { country, .. } => country.country.name,
+                other => panic!("{} has a hover of {other:?}", name.text),
+            };
+            assert_eq!(name.text, hover, "{date:?}");
+            let owner = ws.owner_at_timeline_date(first);
+            let owned = by_color
+                .values()
+                .filter(|&&idx| ws.owner_at_timeline_date(idx) == owner)
+                .count();
+            assert_eq!(land.len(), owned, "{} on {date:?}", name.text);
+        }
+    }
+    ws.set_timeline_date(summary.end);
+
+    let first_names = |ws: &Eu5Workspace, count: usize| -> Vec<String> {
+        let names = ws.localized(localization).presenter().map_names().names;
+        names
+            .into_iter()
+            .take(count)
+            .map(|name| name.text)
+            .collect()
+    };
+    let political = first_names(ws, 5);
+
+    // Each named location of a map of categories has the category.
+    let land_with =
+        |has: &dyn Fn(LocationIdx) -> bool| by_color.values().filter(|&&idx| has(idx)).count();
+    let named = |ws: &Eu5Workspace| -> usize {
+        ws.localized(localization)
+            .presenter()
+            .map_names()
+            .locations
+            .len()
+    };
+
+    ws.set_map_mode(MapMode::Religion);
+    let religions = first_names(ws, 3);
+    let religious = land_with(&|idx| {
+        ws.gamestate()
+            .locations
+            .index(idx)
+            .location()
+            .religion
+            .is_some()
+    });
+    assert_eq!(named(ws), religious);
+
+    ws.set_map_mode(MapMode::Markets);
+    let markets = first_names(ws, 3);
+    let in_markets = land_with(&|idx| {
+        let location = ws.gamestate().locations.index(idx).location();
+        let center = location
+            .market
+            .and_then(|market| ws.gamestate().market_manager.get(market))
+            .and_then(|market| ws.gamestate().locations.get(market.center));
+        center.is_some() && !ws.location_terrain(idx).is_water()
+    });
+    assert_eq!(named(ws), in_markets);
+    ws.set_map_mode(MapMode::Political);
+
+    let location = find_owned_location(ws).expect("an owned location");
+    let HoverDisplayData::Country { country, .. } =
+        ws.localized(localization).presenter().hover_data(location)
+    else {
+        panic!("no country at {location:?}");
+    };
+    ws.change_selection(SelectionOp::Replace, countries_at(ws, location));
+    let names = ws.localized(localization).presenter().map_names().names;
+    assert_eq!(names.len(), 1, "a selected country names only itself");
+    assert_eq!(names[0].text, country.country.name);
+    assert!(names[0].must_show);
+    ws.clear_selection();
+
+    serde_json::json!({ "political": political, "religion": religions, "markets": markets })
+}
+
 /// The search list has the live countries. Only the hover of a past date has the dead
 /// countries, and the names that they had before a rename.
 fn no_name_shows_a_token(ws: &mut Eu5Workspace, localization: &Localization) {
@@ -1312,6 +1418,13 @@ fn no_name_shows_a_token(ws: &mut Eu5Workspace, localization: &Localization) {
             continue;
         }
         let presenter = ws.localized(localization).presenter();
+        names.extend(
+            presenter
+                .map_names()
+                .names
+                .into_iter()
+                .map(|name| name.text),
+        );
         names.extend(ws.gamestate().locations.iter().filter_map(|entry| {
             match presenter.hover_data(entry.idx()) {
                 HoverDisplayData::HistoricalCountry { name, .. } => Some(name),

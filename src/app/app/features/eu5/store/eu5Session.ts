@@ -19,6 +19,8 @@ import type { Eu5SessionSnapshot } from "./eu5SessionState";
 export type { Eu5LoadingState, Eu5SessionSnapshot } from "./eu5SessionState";
 
 const CANVAS_CLASS = "h-full w-full touch-none outline-none";
+/** The names on the map. The map worker draws them in the same frame as the map. */
+const NAMES_CLASS = "pointer-events-none absolute inset-0 h-full w-full";
 
 /** Allow a short gap between page owners before releasing the session. */
 const UNCLAIMED_MS = 1_000;
@@ -56,8 +58,10 @@ class Eu5Session {
   constructor(private save: Eu5SaveInput) {
     this.pageSaves = [save];
     this.unregisterTerminator = registerAnalysisTerminator((next) => this.terminate(next));
-    this.host = new CanvasCourierHost(CANVAS_CLASS, (surface, transport) =>
-      this.startMap(surface, transport),
+    this.host = new CanvasCourierHost(
+      CANVAS_CLASS,
+      (surface, transport) => this.startMap(surface, transport),
+      NAMES_CLASS,
     );
   }
 
@@ -213,10 +217,13 @@ class Eu5Session {
   ): Promise<void> {
     this.update({ status: "pending", progress: { percent: 0, stage: "Starting workers" } });
 
+    const namesCanvas = surface.overlay;
+    if (namesCanvas === null) throw new Error("The map has no canvas for its names");
     const source = readSaveData(save);
     const game = await workers.start(
       {
         canvas: surface.offscreen,
+        namesCanvas,
         display: transport.currentSize(),
         inputConfig: transport.inputConfig,
         save: source,
@@ -309,6 +316,7 @@ class Eu5Session {
 
     const opened = await openEngine(game, {
       ownerBordersEnabled: previous.getState().appState.ownerBordersEnabled,
+      mapNamesVisible: previous.getState().appState.mapNamesVisible,
     });
     if (!this.isCurrent(generation)) {
       opened.engine.destroy();

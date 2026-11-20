@@ -10,7 +10,7 @@ import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm
 import wasmPath from "../../../../wasm/wasm_eu5_map_bg.wasm?url";
 import { proxy, expose } from "comlink";
 import { formatInt } from "@/lib/format";
-import type { ScreenshotOverlayData, SelectionOp, TableCell } from "@/wasm/wasm_eu5";
+import type { MapName, ScreenshotOverlayData, SelectionOp, TableCell } from "@/wasm/wasm_eu5";
 import {
   SharedCanvasInputReader,
   SharedCanvasEventType,
@@ -33,6 +33,8 @@ import type {
   TimelapseFrameTiming,
 } from "@pdx.tools/timelapse";
 import type { Eu5DateComponents } from "@/wasm/wasm_eu5";
+import { MapNameLayer } from "./nameLayer";
+import type { Rect } from "./atlas";
 
 // Reverse lookup: numeric WebKeyCode value → string key code name
 const webKeyCodeToString = Object.fromEntries(
@@ -84,6 +86,15 @@ let lastViewport: MapViewport | null = null;
 let newGroupingTable: Uint32Array | null = null;
 let newMapData: MapDataSync | null = null;
 
+/** The names on the map, with the land of all of them in one buffer */
+export type MapNames = {
+  names: MapName[];
+  /** The map color ids of the land of each name, in the order of the names */
+  locations: Uint16Array;
+};
+
+const NO_NAMES: MapNames = { names: [], locations: new Uint16Array() };
+
 /**
  * The last buffers of the loaded save. The map shows them again when the
  * overlay clears.
@@ -93,7 +104,11 @@ const live: {
   colors?: Uint32Array;
   flags?: Uint32Array;
   groups: Uint32Array | null;
-} = { locations: null, groups: null };
+  names: MapNames;
+} = { locations: null, groups: null, names: NO_NAMES };
+
+/** The names to show changed: new names came, or an overlay came or went. */
+let namesDirty = false;
 
 /** A snapshot that shows over the loaded save, which does not change. */
 let overlay: { colors: Uint32Array; flags: Uint32Array; groups: Uint32Array } | null = null;
@@ -140,6 +155,8 @@ async function presentOverlay(frame: OverlayFrame): Promise<boolean> {
   presentationToken = frame.token;
   overlay = { colors: frame.colors, flags: frame.flags, groups: frame.groups };
   overlayDirty = true;
+  // The names are those of the loaded save, so they do not show over a snapshot.
+  namesDirty = true;
   // The live buffers are kept, and go to the GPU when the overlay clears.
   newMapData = null;
   newGroupingTable = null;
@@ -153,6 +170,7 @@ async function clearOverlay(token: number) {
   if (!overlay) return;
   overlay = null;
   overlayDirty = false;
+  namesDirty = true;
   newLocations = live.locations;
   newMapData = { colors: live.colors, flags: live.flags };
   newGroupingTable = live.groups;
@@ -164,14 +182,19 @@ const mapGameEndpoint = () => {
     async syncSave({
       locations,
       groupingTable,
+      names,
     }: {
       locations: Uint32Array;
       groupingTable: Uint32Array;
+      /** None while the save is still loading its text */
+      names?: MapNames;
     }) {
       live.locations = locations;
       live.groups = groupingTable;
       live.colors = undefined;
       live.flags = undefined;
+      live.names = names ?? NO_NAMES;
+      namesDirty = true;
       newLocations = locations;
       newGroupingTable = overlay ? null : groupingTable;
       newMapData = null;
@@ -185,6 +208,10 @@ const mapGameEndpoint = () => {
     async syncMapData(data: MapDataSync) {
       live.colors = data.colors ?? live.colors;
       live.flags = data.flags ?? live.flags;
+      if (data.names) {
+        live.names = data.names;
+        namesDirty = true;
+      }
       if (overlay) return;
       // A later buffer replaces an earlier pending one of the same kind.
       newMapData = {
@@ -234,10 +261,13 @@ const emitCursor = (hint: CursorHint) => {
 export const createMapEngine = async (
   {
     canvas,
+    namesCanvas,
     display,
     inputConfig,
   }: {
     canvas: OffscreenCanvas;
+    /** A canvas over the map, for the names on it */
+    namesCanvas: OffscreenCanvas;
     display: CanvasDisplay;
     inputConfig: SharedCanvasInputConfig;
   },
@@ -276,6 +306,9 @@ export const createMapEngine = async (
   }
 
   const app = await appTask;
+  const [worldWidth] = app.world_size();
+  const locationPoints = new Uint32Array(app.location_points());
+  const names = new MapNameLayer(namesCanvas, display);
 
   // Send initial zoom level to game worker
   const initialZoom = app.get_zoom();
@@ -642,6 +675,10 @@ export const createMapEngine = async (
       app.sync_grouping_table(overlay.groups);
       overlayDirty = false;
     }
+    if (namesDirty) {
+      names.setNames(overlay ? NO_NAMES : live.names, locationPoints, worldWidth);
+      namesDirty = false;
+    }
   };
 
   // A failed frame is logged once, not on every frame until it recovers.
@@ -687,6 +724,7 @@ export const createMapEngine = async (
         // otherwise it will freeze up
         await app.queued_work().wait();
         app.resize(newDimensions.width, newDimensions.height, newDimensions.scaleFactor);
+        names.resize(newDimensions);
       }
 
       newDimensions = null;
@@ -703,6 +741,8 @@ export const createMapEngine = async (
     if (hasLocationInformation && (drawsEveryFrame || app.frame_due())) {
       app.render();
     }
+    // In the same frame as the map, so that the names move with it.
+    if (lastViewport !== null) names.draw(lastViewport.viewport, worldWidth);
   };
   // Four integers read off the input state: cheap enough for every frame,
   // and the comparison keeps a resting map silent.
@@ -887,6 +927,14 @@ export const createMapEngine = async (
             app.set_owner_borders(command.enabled);
             break;
           }
+          case "showNames": {
+            names.setVisible(command.visible);
+            break;
+          }
+          case "coverNames": {
+            names.setCovers(command.covers);
+            break;
+          }
         }
       }
     },
@@ -930,7 +978,11 @@ export const createMapEngine = async (
   });
 };
 
-export type MapCommand = { kind: "setOwnerBorders"; enabled: boolean };
+export type MapCommand =
+  | { kind: "setOwnerBorders"; enabled: boolean }
+  | { kind: "showNames"; visible: boolean }
+  /** The parts of the map that panels cover, in CSS pixels. No name goes under them. */
+  | { kind: "coverNames"; covers: Rect[] };
 
 /** A snapshot for the overlay, in the format of the live buffers. */
 export type OverlayFrame = {
@@ -946,6 +998,8 @@ export type MapDataSync = {
   colors?: Uint32Array;
   /** Interaction flags. */
   flags?: Uint32Array;
+  /** The names on the map, when they changed with the colors. */
+  names?: MapNames;
 };
 
 type BoxSelectDrag = {

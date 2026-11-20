@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { cx } from "class-variance-authority";
 import ChevronLeftIcon from "@heroicons/react/24/outline/ChevronLeftIcon";
 import ChevronRightIcon from "@heroicons/react/24/outline/ChevronRightIcon";
@@ -38,6 +38,7 @@ interface RootProps {
   onWidthChange?: (width: number) => void;
   className?: string;
   children: ReactNode;
+  ref?: Ref<HTMLDivElement>;
 }
 
 function Root({
@@ -51,6 +52,7 @@ function Root({
   onWidthChange,
   className,
   children,
+  ref,
 }: RootProps) {
   const [width, setWidth] = useState(defaultWidth);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -129,6 +131,7 @@ function Root({
       value={{ side, isMaximized, toggleMaximize, onClose, isDragging, width, collapseThreshold }}
     >
       <div
+        ref={ref}
         style={isMaximized ? undefined : { width: `${width}px` }}
         className={cx(
           "pointer-events-auto absolute inset-y-0 z-30 flex flex-col",

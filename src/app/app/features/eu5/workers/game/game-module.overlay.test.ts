@@ -80,6 +80,7 @@ beforeEach(() => {
     location_color_data: buffer,
     location_flag_data: buffer,
     grouping_table: () => new Uint32Array(),
+    map_names: () => ({ names: () => [], locations: () => new Uint16Array(), free: vi.fn() }),
     paint_map_projection: vi.fn(() => ({
       colors: new Uint32Array([1]),
       flags: new Uint32Array([2]),

@@ -37,6 +37,7 @@ import { Eu5ErrorDisplay } from "./Eu5ErrorDisplay";
 import { Eu5Toolbar } from "./Eu5Toolbar";
 import { Eu5SelectionPill } from "./Eu5SelectionPill";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
+import { MapNames, mapCoverRef } from "./MapNames";
 import { TimelineBar } from "./timeline/TimelineBar";
 import { useCanvasCourierSurface } from "@/lib/canvas_courier";
 import type { CanvasCourierHost } from "@/lib/canvas_courier";
@@ -108,7 +109,10 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
     "Insights";
 
   return (
-    <div className="pointer-events-auto absolute top-4 right-4 z-20 rounded-panel border border-game-line-strong bg-game-overlay p-1.5 font-game-ui shadow-xl backdrop-blur-md">
+    <div
+      ref={mapCoverRef}
+      className="pointer-events-auto absolute top-4 right-4 z-20 rounded-panel border border-game-line-strong bg-game-overlay p-1.5 font-game-ui shadow-xl backdrop-blur-md"
+    >
       <button
         type="button"
         onClick={onOpen}
@@ -195,6 +199,7 @@ const Eu5UiContent = ({
 
       {/* Canvas overlays */}
       <BoxSelectOverlay />
+      <MapNames host={host} />
       {!preview ? <Eu5CursorTooltip cursorRef={cursorRef} /> : null}
       {!preview ? <Eu5SelectionPill /> : null}
       <TimelineBar />
