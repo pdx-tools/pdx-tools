@@ -8,9 +8,13 @@
 //!
 //! Tables keep typed keys and immutable row columns. Keys must implement
 //! `Copy`. Use domain IDs or composite IDs for table keys.
-//! If a table needs text keys, add a store dictionary and use its IDs as keys.
+//! If a table needs text keys, put the texts in a snapshot dictionary
+//! ([`Texts`]) and use its rows ([`TextRow`]) in keys. A store dictionary
+//! ([`TextRegistry`]) keeps each text once and gives it a [`TextId`] that
+//! is the same in every snapshot.
 //!
-//! The store counts column data and shared key data once for admission.
+//! The store counts column data, shared key data and dictionary text once
+//! for admission.
 //! This count excludes spare capacity, lookup maps, and temporary data.
 //! Set the admission limit below the available memory to leave room for
 //! these allocations. The limit does not guarantee that an import fits
@@ -19,6 +23,7 @@
 mod columns;
 mod descriptor;
 mod query;
+mod registry;
 mod session;
 mod snapshot;
 mod store;
@@ -33,8 +38,9 @@ pub use columns::{
 };
 pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
 pub use query::{
-    History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, View,
+    History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, Series, View,
 };
+pub use registry::Registry;
 pub use session::Session;
 pub use snapshot::Observation;
 pub use store::{AnalysisError, AnalysisErrorName, Appended, Snapshot, Store, StoreMemory};
@@ -43,7 +49,7 @@ pub use table::{
     PreparedIndex, RegistryMemory, ResolvedBatch, Row, RowError, RowRange, RowSelect,
     SelectionRows, Table, TableError,
 };
-pub use text::{decode_text_dictionary, encode_text_dictionary};
+pub use text::{PreparedTexts, TextId, TextRegistry, TextRow, Texts};
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;

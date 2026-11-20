@@ -236,6 +236,15 @@ impl<K, C> Table<K, C> {
     pub fn index_id(&self) -> IndexId {
         self.index.id
     }
+    /// True when keys strictly increase, so lookups can binary search.
+    pub fn is_sorted(&self) -> bool {
+        self.index.sorted
+    }
+    /// True when `sorted_prefix` checked the prefix order that
+    /// `prefix_range` requires.
+    pub fn is_prefix_sorted(&self) -> bool {
+        self.index.prefix_sorted
+    }
     pub fn rows(&self) -> impl ExactSizeIterator<Item = Row> + '_ {
         (0..self.len() as u32).map(|offset| Row {
             index: self.index.id,

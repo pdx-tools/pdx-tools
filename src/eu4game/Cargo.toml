@@ -16,6 +16,7 @@ zstd_c = ["pdx-zstd/zstd_c", "eu4save/zstd_c"]
 tsify = ["dep:tsify", "dep:wasm-bindgen", "campaign-analysis/tsify"]
 
 [dependencies]
+bytemuck = { workspace = true, features = ["derive"] }
 campaign-analysis = { workspace = true }
 jomini = { workspace = true }
 erased-serde = { workspace = true }
