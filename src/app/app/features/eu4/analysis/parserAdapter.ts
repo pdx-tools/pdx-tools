@@ -2,14 +2,14 @@ import type { ParserAdapter } from "@/features/campaign/analysis/importScheduler
 import type { Eu4Snapshot } from "./analysisTypes";
 import type { parseImport } from "./snapshot-worker";
 
+/** True for a file name that the EU4 parser reads. */
+export const isEu4SaveName = (name: string) => /\.eu4(\.zst)?$/i.test(name);
+
 /**
  * The EU4 save parser for campaign analysis. Its worker loads the WASM
  * parser and tokens, but no game data. The file name is the only check
  * before the parse: the metadata has only a hint of the campaign.
  */
-/** True for a file name that the EU4 parser reads. */
-export const isEu4SaveName = (name: string) => /\.eu4(\.zst)?$/i.test(name);
-
 export const eu4ParserAdapter: ParserAdapter<{ parseImport: typeof parseImport }, Eu4Snapshot> = {
   refuse: (file) => (isEu4SaveName(file.name) ? null : "Not an EU4 save"),
   start: () => new Worker(new URL("./snapshot-worker.ts", import.meta.url), { type: "module" }),

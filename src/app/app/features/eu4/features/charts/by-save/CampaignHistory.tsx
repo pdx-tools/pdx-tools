@@ -142,10 +142,7 @@ function CountryFigure({
 }) {
   const chart = useChartCountries(campaign.playthroughId);
   const query = useMemo(
-    () =>
-      chart
-        ? { kind: "countrySeries" as const, tags: chart.tags, switches: chart.switches, metric }
-        : null,
+    () => (chart ? { kind: "countrySeries" as const, tags: chart.tags, metric } : null),
     [chart, metric],
   );
   const { result, snapshotIds, error } = useAnalysisQuery(
@@ -161,7 +158,16 @@ function CountryFigure({
     if (!result || !chart) return { columns, rows: [] };
     return { columns, rows: countryRows(result, at, chart, byTag) };
   }, [result, snapshotIds, campaign.saves, chart, byTag]);
-  return <BySaveView campaign={campaign} figure={figure} data={data} error={error} chart={chart} />;
+  return (
+    <BySaveView
+      campaign={campaign}
+      figure={figure}
+      data={data}
+      error={error}
+      chart={chart}
+      loaded={!!result && data.columns.length > 0}
+    />
+  );
 }
 
 /** The countries of the filter, pinned so that opening another save keeps them. */
@@ -194,12 +200,15 @@ function BySaveView({
   data,
   error,
   chart,
+  loaded = true,
 }: {
   campaign: Eu4Campaign;
   figure: BySaveFigure;
   data: BySaveData;
   error: string | null;
   chart: ChartCountries | null;
+  /** False while the values are still coming. */
+  loaded?: boolean;
 }) {
   const { saves, nav, playthroughId } = campaign;
   const series = useMemo(
@@ -299,7 +308,7 @@ function BySaveView({
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
       <Alert.Error msg={error} />
-      {chart && <ChartCountriesNote chart={chart} rows={data.rows} />}
+      {chart && <ChartCountriesNote chart={chart} rows={data.rows} loaded={loaded} />}
       {saves.length > 0 && (
         <div
           role="group"
@@ -348,14 +357,22 @@ function BySaveView({
 }
 
 /** Says when the filter gives one country, and which chosen tags the chart leaves out. */
-function ChartCountriesNote({ chart, rows }: { chart: ChartCountries; rows: BySaveData["rows"] }) {
+function ChartCountriesNote({
+  chart,
+  rows,
+  loaded,
+}: {
+  chart: ChartCountries;
+  rows: BySaveData["rows"];
+  loaded: boolean;
+}) {
   const { updateTagFilter } = useEu4Actions();
   const count = countryCount(rows, chart);
   const shown = chart.leftOut.slice(0, 8).join(", ");
   const more = chart.leftOut.length > 8 ? ` and ${chart.leftOut.length - 8} more` : "";
   return (
     <>
-      {count === 1 && (
+      {loaded && count === 1 && (
         <p className="flex items-center gap-2 text-sm">
           Only 1 country shown.
           <Button
@@ -375,7 +392,7 @@ function ChartCountriesNote({ chart, rows }: { chart: ChartCountries; rows: BySa
           {more}. The game gives these tags to other countries later.
         </p>
       )}
-      {count === 0 && chart.leftOut.length === 0 && (
+      {loaded && count === 0 && chart.leftOut.length === 0 && (
         <p className="text-sm">No country of the filter has a value in these saves.</p>
       )}
     </>

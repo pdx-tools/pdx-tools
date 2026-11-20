@@ -1067,11 +1067,12 @@ impl SaveFileImpl {
         limit: usize,
     ) -> eu4game::analysis::ChartCountries {
         use eu4game::analysis::is_generated_tag;
-        // The limit counts only the tags that the chart keeps.
+        // The generated tags that the other charts show for this filter.
         let left_out = self
-            .matching_tags(&TagFilterPayload::from(payload.clone()))
+            .filter_stored_tags(payload.clone(), limit)
             .into_iter()
             .filter(is_generated_tag);
+        // The limit counts only the tags that the chart keeps.
         let tags = self.filter_stored_tags_where(payload, limit, |tag| !is_generated_tag(tag));
         let switches = eu4game::analysis::tag_switches(&self.nation_events);
         eu4game::analysis::chart_countries(tags.into_iter().chain(left_out), &switches)

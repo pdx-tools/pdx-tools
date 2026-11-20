@@ -113,6 +113,8 @@ pub struct Eu4Payload {
     pub countries: Table<CountryTag, CountryColumns>,
     pub religions: Texts,
     pub country_religions: Table<CountryReligion, CountryReligionColumns>,
+    /// The tag switches that the save records, in date order.
+    pub switches: Vec<TagSwitch>,
 }
 impl Columns for Eu4Payload {
     fn encode(&self, out: &mut Encoder) {
@@ -130,6 +132,7 @@ impl Columns for Eu4Payload {
                     .collect::<Vec<_>>(),
             );
         });
+        out.serde(&self.switches);
     }
     fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
         let provinces = Table::decode_sorted_with(input, |input| {
@@ -153,20 +156,23 @@ impl Columns for Eu4Payload {
                 })
                 .collect())
         })?;
+        let switches = input.serde()?;
         Ok(Self {
             provinces,
             countries,
             religions,
             country_religions,
+            switches,
         })
     }
-    /// Country religion keys are local to the snapshot, so they count here.
+    /// Country religion keys and switches are local to the snapshot, so they count here.
     fn heap_bytes(&self) -> usize {
         self.provinces.columns().heap_bytes()
             + self.countries.columns().heap_bytes()
             + self.religions.heap_bytes()
             + size_of_val(self.country_religions.keys())
             + self.country_religions.columns().heap_bytes()
+            + size_of_val(self.switches.as_slice())
     }
     fn allocated_bytes(&self) -> usize {
         self.provinces.columns().allocated_bytes()
@@ -174,6 +180,7 @@ impl Columns for Eu4Payload {
             + self.religions.allocated_bytes()
             + size_of_val(self.country_religions.keys())
             + self.country_religions.columns().allocated_bytes()
+            + self.switches.capacity() * size_of::<TagSwitch>()
     }
 }
 fn encode_tags<'a>(tags: impl Iterator<Item = &'a CountryTag>, out: &mut Encoder) {
@@ -363,6 +370,7 @@ pub fn extract(
                     development: religion_development,
                 },
             )?,
+            switches: tag_switches(&query.nation_events(&query.province_owners())),
         },
     )
 }
@@ -524,9 +532,9 @@ campaign_analysis::queries! {
         /// snapshot does not have one of the provinces, its total is a gap.
         ProvinceDevelopment { #[serde(deserialize_with = "deserialize_provinces")] province_ids: Vec<ProvinceId> } => History = fixed_province_development,
         /// One history for each country, in the order of the tags. Generated
-        /// tags ([`is_generated_tag`]) have none. The switches tell which
-        /// dates a tag names another country.
-        CountrySeries { tags: Vec<CountryTag>, switches: Vec<TagSwitch>, metric: CountryMetric } => Vec<CountryValues> = country_series,
+        /// tags ([`is_generated_tag`]) have none. The tag switches that the
+        /// snapshots record tell which dates a tag names another country.
+        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<CountryValues> = country_series,
         /// One series for each part of a country value on the selected
         /// dates, by name. A part is zero on a date where the country exists
         /// without it, and a gap where the country does not exist.
@@ -557,9 +565,16 @@ pub fn fixed_province_development(
 pub fn country_series(
     view: &View<'_, Eu4Analysis>,
     tags: Vec<CountryTag>,
-    switches: Vec<TagSwitch>,
     metric: CountryMetric,
 ) -> Vec<CountryValues> {
+    let switches: Vec<_> = view
+        .snapshots()
+        .iter()
+        .flat_map(|snapshot| &snapshot.payload().switches)
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
     let mut series: Vec<_> = tags
         .into_iter()
         .filter(|tag| !is_generated_tag(tag))
@@ -695,7 +710,7 @@ impl<'de> serde::Deserialize<'de> for GameDate {
 
 /// A country that changed its tag on a date, as the nation events of a save
 /// record it.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct TagSwitch {
     pub from: CountryTag,
@@ -704,31 +719,59 @@ pub struct TagSwitch {
     pub date: GameDate,
 }
 
-/// The dates when a tag names the country of its chart row: from the latest
-/// switch into the tag to the next switch out of it. A tag without switches
-/// names one country on every date.
+/// The dates when a tag names the country of its chart row: from the switch
+/// into the tag to the switch out of it. A tag without switches names one
+/// country on every date. A tag that the switches give to more than one
+/// country, such as one taken again after it was given up, names none for
+/// sure, so none of its values counts as the row's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct TagSpan {
-    from: Option<GameDate>,
-    until: Option<GameDate>,
+enum TagSpan {
+    One {
+        from: Option<GameDate>,
+        until: Option<GameDate>,
+    },
+    Ambiguous,
 }
 impl TagSpan {
     fn of(tag: CountryTag, switches: &[TagSwitch]) -> Self {
-        let from = switches
+        let into: Vec<_> = switches
             .iter()
             .filter(|x| x.to == tag)
             .map(|x| x.date)
-            .max();
-        let until = switches
+            .collect();
+        let out: Vec<_> = switches
             .iter()
-            .filter(|x| x.from == tag && from.is_none_or(|from| x.date >= from))
+            .filter(|x| x.from == tag)
             .map(|x| x.date)
-            .min();
-        Self { from, until }
+            .collect();
+        match (into.as_slice(), out.as_slice()) {
+            ([], []) => Self::One {
+                from: None,
+                until: None,
+            },
+            (&[from], []) => Self::One {
+                from: Some(from),
+                until: None,
+            },
+            ([], &[until]) => Self::One {
+                from: None,
+                until: Some(until),
+            },
+            (&[from], &[until]) if from <= until => Self::One {
+                from: Some(from),
+                until: Some(until),
+            },
+            _ => Self::Ambiguous,
+        }
     }
     fn contains(self, date_sort: i32) -> bool {
-        self.from.is_none_or(|from| from.date_sort() <= date_sort)
-            && self.until.is_none_or(|until| date_sort < until.date_sort())
+        match self {
+            Self::One { from, until } => {
+                from.is_none_or(|from| from.date_sort() <= date_sort)
+                    && until.is_none_or(|until| date_sort < until.date_sort())
+            }
+            Self::Ambiguous => false,
+        }
     }
 }
 
@@ -875,6 +918,7 @@ mod tests {
             religions,
             country_religions: Table::sorted_prefix(keys, CountryReligionColumns { development })
                 .unwrap(),
+            switches: Vec::new(),
         }
     }
 
@@ -1009,7 +1053,6 @@ mod tests {
         let run = |metric, tags: &[&str]| {
             let query = Eu4Query::CountrySeries {
                 tags: tags.iter().copied().map(tag).collect(),
-                switches: Vec::new(),
                 metric,
             };
             match answer(&store, query) {
@@ -1045,12 +1088,11 @@ mod tests {
         // A generated tag has no series.
         assert_eq!(run(CountryMetric::ArmySize, &["C01", "ENG"]).len(), 1);
         let query: Eu4Query = serde_json::from_value(serde_json::json!({
-            "kind": "countrySeries", "tags": ["ENG"], "switches": [], "metric": "maxManpower",
+            "kind": "countrySeries", "tags": ["ENG"], "metric": "maxManpower",
         }))
         .unwrap();
         serde_json::from_value::<Eu4Query>(serde_json::json!({
             "kind": "countrySeries", "tags": ["ENG"], "metric": "armySize",
-            "switches": [{ "from": "ULM", "to": "BYZ", "date": "1550-01-01" }],
         }))
         .unwrap();
         assert!(matches!(
@@ -1061,7 +1103,7 @@ mod tests {
             }
         ));
         serde_json::from_value::<Eu4Query>(serde_json::json!({
-            "kind": "countrySeries", "tags": ["ENGLAND"], "switches": [], "metric": "maxManpower",
+            "kind": "countrySeries", "tags": ["ENGLAND"], "metric": "maxManpower",
         }))
         .unwrap_err();
     }
@@ -1176,7 +1218,6 @@ mod tests {
             &store,
             Eu4Query::CountrySeries {
                 tags: vec![tag("ENG")],
-                switches: Vec::new(),
                 metric,
             },
         ) {
@@ -1378,51 +1419,93 @@ mod tests {
     #[test]
     fn a_tag_names_another_country_outside_its_switches() {
         use CountryValue::{NoProvinces, OtherCountry, Value};
-        // The first BYZ is annexed. ULM forms BYZ in 1550, and another ULM
-        // appears by 1600.
-        let mut store = Store::new();
-        for observation in [
-            observation(
-                "a",
-                (1444, 11, 11),
-                &[(1, 10.0, Some("BYZ"), None), (2, 3.0, Some("ULM"), None)],
-            ),
-            observation(
-                "b",
-                (1500, 1, 1),
-                &[(1, 10.0, Some("TUR"), None), (2, 4.0, Some("ULM"), None)],
-            ),
-            observation(
-                "c",
-                (1600, 1, 1),
-                &[(1, 20.0, Some("BYZ"), None), (2, 5.0, Some("ULM"), None)],
-            ),
-        ] {
-            store.append(observation, usize::MAX).unwrap();
-        }
-        let switches = vec![TagSwitch {
-            from: tag("ULM"),
-            to: tag("BYZ"),
-            date: GameDate(15500101),
-        }];
-        let Eu4Answer::CountrySeries(answer) = answer(
-            &store,
-            Eu4Query::CountrySeries {
-                tags: vec![tag("BYZ"), tag("ULM")],
-                switches,
+        let switch = |from: &str, to: &str, date: i32| TagSwitch {
+            from: tag(from),
+            to: tag(to),
+            date: GameDate(date),
+        };
+        // Each snapshot carries the switches that its save records.
+        let saved = |hash, date, provinces: &[Spec], switches: Vec<TagSwitch>| {
+            let observation = observation(hash, date, provinces);
+            let mut payload = observation.payload().clone();
+            payload.switches = switches;
+            Observation::new(observation.descriptor.clone(), Eu4Detail {}, payload).unwrap()
+        };
+        let run = |snapshots: Vec<Observation<Eu4Analysis>>, tags: &[&str]| {
+            let mut store = Store::new();
+            for snapshot in snapshots {
+                store.append(snapshot, usize::MAX).unwrap();
+            }
+            let query = Eu4Query::CountrySeries {
+                tags: tags.iter().copied().map(tag).collect(),
                 metric: CountryMetric::ProvinceDevelopment,
-            },
-        ) else {
-            panic!("country series");
+            };
+            let Eu4Answer::CountrySeries(answer) = answer(&store, query) else {
+                panic!("country series");
+            };
+            histories(answer)
+        };
+
+        // The first BYZ is annexed, ULM forms BYZ in 1550, and another ULM
+        // appears by 1600. Only the last save records the switch.
+        let formed = || {
+            vec![
+                saved(
+                    "a",
+                    (1444, 11, 11),
+                    &[(1, 10.0, Some("BYZ"), None), (2, 3.0, Some("ULM"), None)],
+                    vec![],
+                ),
+                saved(
+                    "b",
+                    (1500, 1, 1),
+                    &[(1, 10.0, Some("TUR"), None), (2, 4.0, Some("ULM"), None)],
+                    vec![],
+                ),
+                saved(
+                    "c",
+                    (1600, 1, 1),
+                    &[(1, 20.0, Some("BYZ"), None), (2, 5.0, Some("ULM"), None)],
+                    vec![switch("ULM", "BYZ", 15500101)],
+                ),
+            ]
         };
         assert_eq!(
-            histories(answer),
+            run(formed(), &["BYZ", "ULM"]),
             [
                 (
                     tag("BYZ"),
                     vec![OtherCountry(10.0), NoProvinces, Value(20.0)]
                 ),
                 (tag("ULM"), vec![Value(3.0), Value(4.0), OtherCountry(5.0)]),
+            ]
+        );
+
+        // BYZ forms ROM in 1500 and TRE takes BYZ in 1550: BYZ names two
+        // countries, so none of its values counts as the row's.
+        let taken = vec![
+            saved(
+                "a",
+                (1444, 11, 11),
+                &[(1, 10.0, Some("BYZ"), None), (2, 3.0, Some("TRE"), None)],
+                vec![],
+            ),
+            saved(
+                "c",
+                (1600, 1, 1),
+                &[(1, 20.0, Some("ROM"), None), (2, 5.0, Some("BYZ"), None)],
+                vec![
+                    switch("BYZ", "ROM", 15000101),
+                    switch("TRE", "BYZ", 15500101),
+                ],
+            ),
+        ];
+        assert_eq!(
+            run(taken, &["BYZ", "ROM", "TRE"]),
+            [
+                (tag("BYZ"), vec![OtherCountry(10.0), OtherCountry(5.0)]),
+                (tag("ROM"), vec![NoProvinces, Value(20.0)]),
+                (tag("TRE"), vec![Value(3.0), NoProvinces]),
             ]
         );
         assert_eq!(
