@@ -44,3 +44,20 @@ it("picks one reference line and a fitted scale", () => {
   expect(scale.hi).toBeGreaterThan(22173);
   expect(scale.steps[0]).toBe(scale.lo);
 });
+
+it("never moves a stroke onto another save's date", () => {
+  const days = [0, 1, 2, 3, 4, 20, 1000].map((d) => year(1444) + d);
+  const g = stripGeometry(days, 400, 4);
+  for (let i = g.first; i <= g.last; i++) {
+    expect(Math.abs(g.x[i] - g.xDay(days[i]))).toBeLessThanOrEqual(2.5);
+    if (i > g.first) expect(g.x[i] - g.x[i - 1]).toBeGreaterThanOrEqual(g.bar + 1);
+  }
+  expect(g.first <= 4 && 4 <= g.last).toBe(true);
+});
+
+it("tries thinner strokes before showing fewer saves", () => {
+  const days: number[] = [];
+  for (let i = 0, day = year(1444); i < 51; i++) days.push((day += i % 2 ? 9 : 1));
+  const g = stripGeometry(days, 113, 50);
+  expect(g.last - g.first + 1).toBe(51);
+});

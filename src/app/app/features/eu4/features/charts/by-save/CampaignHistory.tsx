@@ -250,16 +250,21 @@ function BySaveView({
   );
   const found = columns.findIndex((x) => x.save.key === selectedKey);
   const selected = found >= 0 ? found : columns.length - 1;
-  const select = (column: number) => {
-    const save = columns[column];
-    if (save && playthroughId) selectSave(playthroughId, save.save.key);
-  };
   // The snapshot under the pointer, so a column that goes or a file that is read again ends the hover.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const select = (column: number) => {
+    const save = columns[column];
+    if (!save || !playthroughId) return;
+    // A step ends the hover, so the heading and values show the selection.
+    setHoveredId(null);
+    selectSave(playthroughId, save.save.key);
+  };
   const hoveredAt = columns.findIndex((x) => x.snapshot?.id === hoveredId);
   const hovered = hoveredAt >= 0 ? hoveredAt : null;
   const shown = hovered ?? selected;
-  const [emphasized, setEmphasized] = useState<string | null>(null);
+  // The pointer's emphasis wins while it lasts; keyboard focus keeps its own.
+  const [pointerEmphasis, setPointerEmphasis] = useState<string | null>(null);
+  const [focusEmphasis, setFocusEmphasis] = useState<string | null>(null);
   const openColumn = campaign.open
     ? columns.findIndex((x) => x.save.key === campaign.open!.save.key)
     : -1;
@@ -308,8 +313,9 @@ function BySaveView({
   // Rows stand in the order of the selected save once stepping stops, so a
   // held arrow key does not shuffle them. Hover never moves them. A country
   // without a value there joins the end only while it has one.
-  const settled = useSettled(selected, 350);
-  const orderAt = settled >= 0 && settled < columns.length ? settled : selected;
+  const settledKey = useSettled(columns[selected]?.save.key ?? null, 350);
+  const settledAt = columns.findIndex((x) => x.save.key === settledKey);
+  const orderAt = settledAt >= 0 ? settledAt : selected;
   const order = useMemo(() => (orderAt >= 0 ? rowsAt(rows, orderAt) : []), [rows, orderAt]);
   const present = useMemo(
     () => [...order, ...rows.filter((row) => !order.includes(row) && row.cells[selected] !== null)],
@@ -357,7 +363,7 @@ function BySaveView({
       </Button>
     );
   const header = (
-    <div className="flex h-12 items-center gap-4">
+    <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-2 py-1">
       <span
         className={cx("flex items-baseline gap-2.5 whitespace-nowrap", preview && "opacity-60")}
         title={`${shownSave.save.name} · ${sourceText(shownSave.save)}`}
@@ -379,7 +385,8 @@ function BySaveView({
           icon={<ChevronLeftIcon className="size-4" aria-hidden />}
           disabled={selected <= 0}
           aria-label={selected > 0 ? `Earlier save, ${dateText(selected - 1)}` : "Earlier save"}
-          tooltip={selected > 0 ? `Earlier save: ${dateText(selected - 1)}` : undefined}
+          // A tooltip at the ends too, so the button keeps its focus.
+          tooltip={selected > 0 ? `Earlier save: ${dateText(selected - 1)}` : "The earliest save"}
           onClick={() => select(selected - 1)}
         />
         <IconButton
@@ -391,7 +398,9 @@ function BySaveView({
             selected < columns.length - 1 ? `Later save, ${dateText(selected + 1)}` : "Later save"
           }
           tooltip={
-            selected < columns.length - 1 ? `Later save: ${dateText(selected + 1)}` : undefined
+            selected < columns.length - 1
+              ? `Later save: ${dateText(selected + 1)}`
+              : "The latest save"
           }
           onClick={() => select(selected + 1)}
         />
@@ -447,8 +456,15 @@ function BySaveView({
           figure={figure}
           names={names}
           world={world}
-          emphasized={world ? null : emphasized}
-          onEmphasize={setEmphasized}
+          emphasized={
+            world
+              ? null
+              : ([pointerEmphasis, focusEmphasis].find(
+                  (key) => key !== null && shownRows.some((row) => row.key === key),
+                ) ?? null)
+          }
+          onPointerEmphasis={setPointerEmphasis}
+          onFocusEmphasis={setFocusEmphasis}
           onHover={(column) =>
             setHoveredId(column === null ? null : (columns[column]?.snapshot?.id ?? null))
           }

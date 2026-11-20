@@ -68,7 +68,9 @@ export type LedgerProps = {
   world: boolean;
   /** The row whose level the other rows carry, while it is hovered or focused. */
   emphasized: string | null;
-  onEmphasize: (key: string | null) => void;
+  /** The row under the pointer, and the row whose name has keyboard focus. */
+  onPointerEmphasis: (key: string | null) => void;
+  onFocusEmphasis: (key: string | null) => void;
   onHover: (column: number | null) => void;
   onPick: (column: number) => void;
   /** The heading over the ruler; it stays in view while the rows scroll. */
@@ -91,7 +93,8 @@ export function BySaveLedger({
   names,
   world,
   emphasized,
-  onEmphasize,
+  onPointerEmphasis,
+  onFocusEmphasis,
   onHover,
   onPick,
   header,
@@ -113,7 +116,8 @@ export function BySaveLedger({
     if (strip.current) observer.observe(strip.current);
     return () => observer.disconnect();
   }, []);
-  const layout = layoutFor(size.ledger, rows.length, world);
+  // Row height follows every lineage of the figure, so a row that joins while hovering moves nothing.
+  const layout = layoutFor(size.ledger, allRows.length, world);
   const widths = columnsFor(layout, world);
 
   const days = useMemo(() => columns.map((x) => dayNumber(x.date)), [columns]);
@@ -155,7 +159,9 @@ export function BySaveLedger({
     ticks.ticks.length > 1
       ? geometry.xDay(ticks.ticks[1]) - geometry.xDay(ticks.ticks[0])
       : Infinity;
-  const labelEvery = tickGap < 40 ? 2 : 1;
+  // Every other label when the widest one would not fit between ticks.
+  const widest = Math.max(0, ...ticks.ticks.map((day) => ticks.label(day).length)) * 7 + 8;
+  const labelEvery = tickGap < widest ? Math.ceil(widest / Math.max(1, tickGap)) : 1;
 
   const pointerSave = (clientX: number) => {
     const box = strip.current?.getBoundingClientRect();
@@ -299,7 +305,8 @@ export function BySaveLedger({
                 names={names}
                 world={world}
                 dark={dark}
-                onEmphasize={onEmphasize}
+                onPointerEmphasis={onPointerEmphasis}
+                onFocusEmphasis={onFocusEmphasis}
               />
             ))}
           </Table.Body>
@@ -351,7 +358,8 @@ function LedgerRow({
   names,
   world,
   dark,
-  onEmphasize,
+  onPointerEmphasis,
+  onFocusEmphasis,
 }: {
   row: BySaveRow;
   marks: readonly (Mark | null)[];
@@ -371,7 +379,8 @@ function LedgerRow({
   names: ReadonlyMap<string, CountryInfo>;
   world: boolean;
   dark: boolean;
-  onEmphasize: (key: string | null) => void;
+  onPointerEmphasis: (key: string | null) => void;
+  onFocusEmphasis: (key: string | null) => void;
 }) {
   const shown = hovered ?? selected;
   const height = layout.rowHeight;
@@ -381,8 +390,8 @@ function LedgerRow({
   const emphasize = world
     ? {}
     : {
-        onPointerEnter: () => onEmphasize(row.key),
-        onPointerLeave: () => onEmphasize(null),
+        onPointerEnter: () => onPointerEmphasis(row.key),
+        onPointerLeave: () => onPointerEmphasis(null),
       };
   return (
     <Table.Row
@@ -395,11 +404,7 @@ function LedgerRow({
       )}
       style={{ height }}
     >
-      <th
-        scope="row"
-        className={cx("p-0 text-left font-normal", world && "sr-only")}
-        {...emphasize}
-      >
+      <th scope="row" className="p-0 text-left font-normal" {...emphasize}>
         {!world && (
           <RowName
             row={row}
@@ -407,10 +412,10 @@ function LedgerRow({
             selected={selected}
             names={names}
             layout={layout}
-            onFocusChange={(focused) => onEmphasize(focused ? row.key : null)}
+            onFocusChange={(focused) => onFocusEmphasis(focused ? row.key : null)}
           />
         )}
-        {world && figure.title}
+        {world && <span className="sr-only">{figure.title}</span>}
         <span className="sr-only">{historyText(row, columns, figure)}</span>
       </th>
       <td aria-hidden className="relative p-0">
@@ -425,7 +430,7 @@ function LedgerRow({
               )}
               style={{ top: Math.round(y(ref)) }}
             >
-              {world ? `${Math.round(ref / 100) / 10}K` : figure.format(ref)}
+              {scaleLabel(ref, scale, world, figure)}
             </span>
           ))}
       </td>
@@ -500,6 +505,15 @@ function LedgerRow({
       </Table.Cell>
     </Table.Row>
   );
+}
+
+/** A reference line's label, precise enough that distinct lines read apart. */
+function scaleLabel(ref: number, scale: Scale, world: boolean, figure: BySaveFigure) {
+  if (!world) return ref >= 10 ? figure.format(ref) : String(ref);
+  const step = scale.refs.length > 1 ? scale.refs[1] - scale.refs[0] : 1000;
+  if (step < 100) return Math.round(ref).toLocaleString("en-US");
+  const digits = step >= 1000 ? 0 : 1;
+  return `${(ref / 1000).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits })}K`;
 }
 
 /** What a row's strip shows, in words, for assistive technology. */
@@ -637,6 +651,9 @@ function AllTags({
       </Popover.Trigger>
       <Popover.Content
         data-no-pick
+        aria-label="Every tag of this country"
+        // Keys here stay in the list and do not step the chart.
+        onKeyDown={(event) => event.stopPropagation()}
         align="start"
         className="max-h-80 w-[min(560px,90vw)] overflow-y-auto rounded-md border border-gray-300 bg-white p-3 text-xs shadow-md dark:border-gray-600 dark:bg-slate-900"
       >
@@ -647,6 +664,7 @@ function AllTags({
             return (
               <li
                 key={`${held.tag}${held.from}`}
+                aria-current={i === current ? "true" : undefined}
                 className={cx(
                   "flex items-center gap-1",
                   i === current && "font-semibold text-gray-900 dark:text-white",
@@ -827,7 +845,8 @@ function ReadMarks({
           );
         }
         const wide = geometry.bar + (geometry.bar >= 2 ? 2 : 1);
-        const top = Math.min(Math.round(y(mark.value)), height - 6);
+        // A small floor keeps a low read stroke visible without lifting it to another value.
+        const top = Math.min(Math.round(y(mark.value)), height - 2);
         return (
           <rect
             key={i}
@@ -864,19 +883,46 @@ function Beads({
   height: number;
   y: (value: number) => number;
 }) {
+  // A bead that would touch the one before it is left out, so beads never join into a line.
+  const beads = keptBeads(marks, own, geometry, height, y);
   return (
     <g shapeRendering="crispEdges">
-      {marks.map((mark, i) => {
-        if (!mark || Number.isNaN(geometry.x[i])) return null;
-        const top = Math.min(height - 3, Math.round(y(mark.value)) - 1);
-        const stroke = own[i];
-        const over = stroke !== null && stroke !== undefined && top >= Math.round(y(stroke.value));
-        const width = over ? Math.ceil(geometry.bar) + 2 : 2;
-        const left = Math.round(geometry.x[i] + geometry.bar / 2 - width / 2);
-        return <rect key={i} x={left} y={top} width={width} height={2} fill={mark.color} />;
-      })}
+      {beads.map((bead) => (
+        <rect
+          key={bead.i}
+          x={bead.left}
+          y={bead.top}
+          width={bead.width}
+          height={2}
+          fill={bead.color}
+        />
+      ))}
     </g>
   );
+}
+
+/** The beads to draw, each at least two pixels from the one before. */
+function keptBeads(
+  marks: readonly (Mark | null)[],
+  own: readonly (Mark | null)[],
+  geometry: StripGeometry,
+  height: number,
+  y: (value: number) => number,
+) {
+  const kept: { i: number; left: number; top: number; width: number; color: string }[] = [];
+  for (let i = 0; i < marks.length; i++) {
+    const mark = marks[i];
+    if (!mark || Number.isNaN(geometry.x[i])) continue;
+    const top = Math.min(height - 3, Math.round(y(mark.value)) - 1);
+    const stroke = own[i];
+    const over = !!stroke && top >= Math.round(y(stroke.value));
+    const width = over ? Math.ceil(geometry.bar) + 2 : 2;
+    const left = Math.round(geometry.x[i] + geometry.bar / 2 - width / 2);
+    const before = kept.at(-1);
+    if (before && left - (before.left + before.width) < 2) continue;
+    kept.push({ i, left, top, width, color: mark.color });
+  }
+  return kept;
 }
 
 /** The countries with dots elsewhere that have no row at the selected save. */

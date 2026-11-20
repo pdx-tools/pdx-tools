@@ -2,9 +2,11 @@
  * Where each save's stroke stands in a strip of a given width.
  *
  * Strokes stand at their saves' dates. They never touch: where two saves
- * are closer than a stroke and a one-pixel gap, the later one moves right
- * just enough. When even one-pixel strokes cannot all fit apart, the strip
- * shows the run of saves around the selected one that fits, at their dates.
+ * are closer than a stroke and a one-pixel gap, the later one moves right,
+ * but never more than {@link MAX_SHIFT} pixels from its date, so no stroke
+ * reaches another save's date. When the saves cannot all stand apart within
+ * that, even at one pixel wide, the strip shows the longest run of saves
+ * around the selected one that can.
  */
 export type StripGeometry = {
   width: number;
@@ -20,36 +22,20 @@ export type StripGeometry = {
   to: number;
   /** The x of a day on the strip. */
   xDay: (day: number) => number;
-  /** Beads of another country fit between strokes without touching. */
+  /** Beads of another country can stand between strokes; each still keeps a gap from the last. */
   beads: boolean;
 };
 
 const PAD = 3;
+/** The farthest a stroke may stand from its date, in pixels. */
+export const MAX_SHIFT = 2;
 
-export function stripGeometry(
-  days: readonly number[],
-  width: number,
-  selected: number,
-): StripGeometry {
-  const n = days.length;
+/** Strokes for saves first..last, or null when they cannot stand apart near their dates. */
+function place(days: readonly number[], width: number, bar: number, first: number, last: number) {
   const span = Math.max(1, width - PAD * 2);
-  // A typical gap sets the stroke's width; a lone save gets the widest.
-  const gaps = days
-    .slice(1)
-    .map((day, i) => day - days[i])
-    .sort((a, b) => a - b);
-  const median = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
-  const whole = n > 1 ? days[n - 1] - days[0] : 0;
-  const pitch = whole > 0 ? (median / whole) * span : span;
-  const bar = pitch >= 12 ? 3 : pitch >= 4.5 ? 2 : pitch >= 2.5 ? 1.5 : 1;
   const step = bar + 1;
-  // How many saves fit apart; beyond that the strip shows a run of them.
-  const fits = Math.max(1, Math.floor((span - bar) / step) + 1);
-  const count = Math.min(n, fits);
-  const first = Math.max(0, Math.min(n - count, selected - Math.floor(count / 2)));
-  const last = first + count - 1;
-  const from = days[first] ?? 0;
-  const to = days[last] ?? 0;
+  const from = days[first];
+  const to = days[last];
   const xDay = (day: number) =>
     to > from ? PAD + ((day - from) / (to - from)) * (span - bar) : PAD + (span - bar) / 2;
   const x = days.map(() => NaN);
@@ -58,10 +44,52 @@ export function stripGeometry(
   for (let i = first + 1; i <= last; i++) x[i] = Math.max(x[i], x[i - 1] + step);
   x[last] = Math.min(x[last], PAD + span - bar);
   for (let i = last - 1; i >= first; i--) x[i] = Math.min(x[i], x[i + 1] - step);
-  for (let i = first; i <= last; i++) x[i] = Math.round(x[i] * 2) / 2;
-  let closest = Infinity;
-  for (let i = first + 1; i <= last; i++) closest = Math.min(closest, x[i] - x[i - 1]);
-  return { width, bar, first, last, x, from, to, xDay, beads: closest >= 4 };
+  for (let i = first; i <= last; i++) {
+    if (x[i] < PAD - 0.01 || Math.abs(x[i] - xDay(days[i])) > MAX_SHIFT) return null;
+    x[i] = Math.round(x[i] * 2) / 2;
+  }
+  return { x, from, to, xDay };
+}
+
+export function stripGeometry(
+  days: readonly number[],
+  width: number,
+  selected: number,
+): StripGeometry {
+  const n = days.length;
+  const span = Math.max(1, width - PAD * 2);
+  // A typical gap sets the widest stroke to try; a lone save gets the widest.
+  const gaps = days
+    .slice(1)
+    .map((day, i) => day - days[i])
+    .sort((a, b) => a - b);
+  const median = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
+  const whole = n > 1 ? days[n - 1] - days[0] : 0;
+  const pitch = whole > 0 ? (median / whole) * span : span;
+  const bars = [3, 2, 1.5, 1].filter((bar) => bar === 1 || pitch >= bar * 4);
+  const at = Math.max(0, Math.min(n - 1, selected));
+  // The longest run around the selected save that stands apart, widest stroke first.
+  for (let count = n; count >= 1; count = count > 8 ? Math.floor(count * 0.9) : count - 1) {
+    const first = Math.max(0, Math.min(n - count, at - Math.floor(count / 2)));
+    const last = first + count - 1;
+    for (const bar of bars) {
+      const placed = n ? place(days, width, bar, first, last) : null;
+      if (!placed) continue;
+      // At one-pixel strokes the saves are too close for beads beside them.
+      return { width, bar, first, last, ...placed, beads: bar > 1 };
+    }
+  }
+  return {
+    width,
+    bar: 1,
+    first: 0,
+    last: -1,
+    x: days.map(() => NaN),
+    from: 0,
+    to: 0,
+    xDay: () => PAD,
+    beads: false,
+  };
 }
 
 /** The nearest shown save to an x on the strip. */
