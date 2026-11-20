@@ -1,7 +1,7 @@
 //! Compact province and country observations of one save for campaign
 //! analysis.
 
-use crate::lineage::{GameDate, Lineage, TagSwitch, lineages, tag_switches};
+use crate::lineage::{GameDate, HeldTag, Lineage, TagSwitch, lineages, tag_switches};
 use crate::shared::playthrough_id;
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
@@ -598,8 +598,7 @@ pub fn country_series(
                 .map(|(snapshot, development)| {
                     let date = GameDate::from_date_sort(snapshot.descriptor().date_sort);
                     let payload = snapshot.payload();
-                    let held = lineage.held_in(date, &payload.switches, &switches)?;
-                    let tag = lineage.tags[held].tag;
+                    let (held, &HeldTag { tag, .. }) = lineage.held_in(date, &payload.switches)?;
                     let row = payload.country_offset(&tag)?;
                     let owned = development[row]?;
                     let columns = payload.countries.columns();
