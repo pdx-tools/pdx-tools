@@ -149,12 +149,14 @@ struct Segment {
 }
 
 /// The lineages that hold any of the tags on some date. A switch joins the
-/// tag held until its date to the tag held from it. Pass only the switches
-/// that are safe to follow: a tag that the game reuses without a switch,
-/// such as a colonial nation's, joins unrelated countries.
+/// tag held until its date to the tag held from it when `follow` accepts its
+/// tags; any other switch only ends one holding and starts another. A tag
+/// that the game reuses without a switch, such as a colonial nation's, must
+/// not be followed, or it joins unrelated countries.
 pub fn lineages(
     tags: impl IntoIterator<Item = CountryTag>,
     switches: &[TagSwitch],
+    follow: impl Fn(&CountryTag) -> bool,
 ) -> Vec<Lineage> {
     let mut events = BTreeMap::<CountryTag, Vec<(GameDate, Event)>>::new();
     for switch in switches.iter().filter(|x| x.from != x.to) {
@@ -190,7 +192,8 @@ pub fn lineages(
             return None;
         };
         let (next, from) = *starts.get(&(to, segment.held.until?))?;
-        (from == segment.held.tag && !segment.ambiguous).then_some(next)
+        let linked = from == segment.held.tag && follow(&from) && follow(&to);
+        (linked && !segment.ambiguous).then_some(next)
     };
     let followed: BTreeSet<_> = (0..segments.len()).filter_map(next).collect();
 
@@ -288,7 +291,7 @@ mod tests {
     }
     /// Each lineage as its tags and their first years.
     fn chains(tags: &[&str], switches: &[TagSwitch]) -> Vec<(Vec<String>, LineageKind)> {
-        let mut result: Vec<_> = lineages(tags.iter().map(|x| tag(x)), switches)
+        let mut result: Vec<_> = lineages(tags.iter().map(|x| tag(x)), switches, |_| true)
             .into_iter()
             .map(|lineage| {
                 let tags = lineage
@@ -305,7 +308,7 @@ mod tests {
 
     #[test]
     fn a_tag_without_switches_is_one_country() {
-        let found = lineages([tag("FRA")], &[]);
+        let found = lineages([tag("FRA")], &[], |_| true);
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].tag_at(date(1444)), Some(tag("FRA")));
         assert_eq!(found[0].kind, LineageKind::Country);
@@ -314,7 +317,7 @@ mod tests {
     #[test]
     fn a_switch_and_a_chain_are_one_country() {
         let switches = [switch("ALO", "NBI", 1451)];
-        let found = lineages([tag("NBI")], &switches);
+        let found = lineages([tag("NBI")], &switches, |_| true);
         let nubia = found
             .iter()
             .find(|x| x.kind == LineageKind::Country)

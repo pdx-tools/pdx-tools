@@ -564,13 +564,11 @@ pub fn fixed_province_development(
     })
 }
 
-/// The tag switches that the snapshots record that a lineage follows. A
-/// generated tag is reused without a switch, so no switch through one is.
+/// Every tag switch that the snapshots record.
 fn campaign_switches(view: &View<'_, Eu4Analysis>) -> Vec<TagSwitch> {
     view.snapshots()
         .iter()
         .flat_map(|snapshot| &snapshot.payload().switches)
-        .filter(|x| !is_generated_tag(&x.from) && !is_generated_tag(&x.to))
         .cloned()
         .collect::<BTreeSet<_>>()
         .into_iter()
@@ -583,9 +581,12 @@ pub fn country_series(
     metric: CountryMetric,
 ) -> Vec<LineageValues> {
     let switches = campaign_switches(view);
+    // A generated tag is reused without a switch, so no switch through one
+    // joins two tags. It still ends the holding of the tag on its other side.
     let found = lineages(
         tags.into_iter().filter(|tag| !is_generated_tag(tag)),
         &switches,
+        |tag| !is_generated_tag(tag),
     );
     let developments: Vec<_> = view
         .snapshots()
@@ -605,11 +606,15 @@ pub fn country_series(
                     let tag = lineage.tags[held].tag;
                     let payload = snapshot.payload();
                     // A save records its own past switches. One that lacks a
-                    // switch of this tag is on another branch of the campaign.
-                    let recorded = switches
-                        .iter()
-                        .filter(|x| x.date <= date && (x.from == tag || x.to == tag))
-                        .all(|x| payload.switches.contains(x));
+                    // switch of a tag the country held by then is on another
+                    // branch of the campaign.
+                    let recorded = lineage.tags[..=held].iter().all(|seg| {
+                        let end = seg.until.map_or(date, |until| until.min(date));
+                        switches
+                            .iter()
+                            .filter(|x| x.date <= end && (x.from == seg.tag || x.to == seg.tag))
+                            .all(|x| payload.switches.contains(x))
+                    });
                     if !recorded {
                         return None;
                     }
@@ -1459,6 +1464,54 @@ mod tests {
                     "ULM>BYZ".into(),
                     vec![cell("ULM", 3.0), cell("BYZ", 20.0), None]
                 ),
+            ]
+        );
+
+        // Two branches where each holds a switch of the other's tags: in one
+        // the first BYZ forms ROM in 1600, in the other ULM forms BYZ in 1550.
+        // The Rome save lacks Ulm's switch, so Rome is not put after Ulm.
+        let crossed = vec![
+            saved("a", 1500, &[p("BYZ", 10.0), q("ULM", 3.0)], vec![]),
+            saved(
+                "b",
+                1560,
+                &[p("BYZ", 20.0)],
+                vec![switch("ULM", "BYZ", 1550)],
+            ),
+            saved(
+                "c",
+                1650,
+                &[p("ROM", 30.0)],
+                vec![switch("BYZ", "ROM", 1600)],
+            ),
+        ];
+        assert_eq!(
+            run(crossed, &["BYZ", "ULM", "ROM"]),
+            [
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
+                (
+                    "ULM>BYZ>ROM".into(),
+                    vec![cell("ULM", 3.0), cell("BYZ", 20.0), None]
+                ),
+            ]
+        );
+
+        // A colonial nation forms BYZ after the first BYZ is gone. The
+        // switch is not followed, but the two holders of BYZ stay apart.
+        let colonial = vec![
+            saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
+            saved(
+                "b",
+                1720,
+                &[p("BYZ", 25.0)],
+                vec![switch("C01", "BYZ", 1700)],
+            ),
+        ];
+        assert_eq!(
+            run(colonial, &["BYZ"]),
+            [
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None]),
+                ("BYZ".into(), vec![None, cell("BYZ", 25.0)]),
             ]
         );
     }
