@@ -371,7 +371,7 @@ pub fn extract(
                     development: religion_development,
                 },
             )?,
-            switches: tag_switches(&query.nation_events(&query.province_owners())),
+            switches: tag_switches(save),
         },
     )
 }
@@ -581,13 +581,8 @@ pub fn country_series(
     metric: CountryMetric,
 ) -> Vec<LineageValues> {
     let switches = campaign_switches(view);
-    // A generated tag is reused without a switch, so no switch through one
-    // joins two tags. It still ends the holding of the tag on its other side.
-    let found = lineages(
-        tags.into_iter().filter(|tag| !is_generated_tag(tag)),
-        &switches,
-        |tag| !is_generated_tag(tag),
-    );
+    // The game reuses a generated tag without a switch, so it is followed by no lineage.
+    let found = lineages(tags, &switches, |tag| !is_generated_tag(tag));
     let developments: Vec<_> = view
         .snapshots()
         .iter()
@@ -602,24 +597,9 @@ pub fn country_series(
                 .zip(&developments)
                 .map(|(snapshot, development)| {
                     let date = GameDate::from_date_sort(snapshot.descriptor().date_sort);
-                    let held = lineage.held_at(date)?;
-                    let tag = lineage.tags[held].tag;
                     let payload = snapshot.payload();
-                    // A save records its own past switches. One that lacks a
-                    // switch of a tag while the country held it is on another
-                    // branch of the campaign. A switch before the holding
-                    // belongs to an earlier holder of the tag.
-                    let recorded = lineage.tags[..=held].iter().all(|seg| {
-                        let end = seg.until.map_or(date, |until| until.min(date));
-                        switches
-                            .iter()
-                            .filter(|x| seg.from.is_none_or(|from| from <= x.date) && x.date <= end)
-                            .filter(|x| x.from == seg.tag || x.to == seg.tag)
-                            .all(|x| payload.switches.contains(x))
-                    });
-                    if !recorded {
-                        return None;
-                    }
+                    let held = lineage.held_in(date, &payload.switches, &switches)?;
+                    let tag = lineage.tags[held].tag;
                     let row = payload.country_offset(&tag)?;
                     let owned = development[row]?;
                     let columns = payload.countries.columns();
