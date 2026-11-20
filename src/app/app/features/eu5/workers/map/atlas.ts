@@ -237,6 +237,8 @@ export const CAPITAL_SPACING = 0.14;
 const MIN_SIZE = 11;
 /** Each smaller size that a name tries, as a share of the last */
 const SIZE_STEP = 0.8;
+/** A name in title case is at most this many times the thickness of its land */
+const TITLE_THICKNESS = 1.5;
 const MAX_SIZE = 30;
 const CAPITALS_FROM = 18;
 /** The share of a realm's long axis that its name can fill */
@@ -330,46 +332,66 @@ function textBox(x: number, y: number, width: number, height: number, angle: num
   };
 }
 
-/** The boxes of the placed names, by cell of the frame, so that a test reads only its neighbors */
-class BoxGrid {
+/** The box that a segment spans */
+const spanOf = (a: WorldPoint, b: WorldPoint): Box => ({
+  x0: Math.min(a.x, b.x),
+  y0: Math.min(a.y, b.y),
+  x1: Math.max(a.x, b.x),
+  y1: Math.max(a.y, b.y),
+});
+
+/** The distance from `p` to the segment from `a` to `b` */
+function pointToSegment(p: WorldPoint, a: WorldPoint, b: WorldPoint): number {
+  const [dx, dy] = [b.x - a.x, b.y - a.y];
+  const length = dx * dx + dy * dy;
+  const along = length === 0 ? 0 : ((p.x - a.x) * dx + (p.y - a.y) * dy) / length;
+  const t = Math.max(0, Math.min(1, along));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/** The distance between two segments */
+function segmentDistance(a: WorldPoint, b: WorldPoint, c: WorldPoint, d: WorldPoint): number {
+  const side = (p: WorldPoint, q: WorldPoint, r: WorldPoint) =>
+    Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+  if (side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0) return 0;
+  return Math.min(
+    pointToSegment(a, c, d),
+    pointToSegment(b, c, d),
+    pointToSegment(c, a, b),
+    pointToSegment(d, a, b),
+  );
+}
+
+/** Things placed in the frame, by cell, so that a test reads only its neighbors */
+class Grid<T> {
   private static readonly CELL = 64;
-  private readonly cells = new Map<number, Box[]>();
+  private readonly cells = new Map<number, T[]>();
 
-  add(box: Box): void {
-    this.each(box, (key) => {
-      const boxes = this.cells.get(key);
-      if (boxes) boxes.push(box);
-      else this.cells.set(key, [box]);
+  add(area: Box, item: T): void {
+    this.each(area, (key) => {
+      const items = this.cells.get(key);
+      if (items) items.push(item);
+      else this.cells.set(key, [item]);
     });
   }
 
-  /** True if the segment from `a` to `b` crosses a placed name */
-  crosses(a: WorldPoint, b: WorldPoint): boolean {
-    const span = {
-      x0: Math.min(a.x, b.x),
-      y0: Math.min(a.y, b.y),
-      x1: Math.max(a.x, b.x),
-      y1: Math.max(a.y, b.y),
-    };
+  /** True if a thing in the cells of `area` passes the test */
+  some(area: Box, test: (item: T) => boolean): boolean {
     let found = false;
-    this.each(span, (key) => {
-      found ||= this.cells.get(key)?.some((other) => crosses(a, b, other)) ?? false;
+    this.each(area, (key) => {
+      found ||= this.cells.get(key)?.some(test) ?? false;
     });
     return found;
   }
 
-  touches(box: Box): boolean {
-    let found = false;
-    this.each(box, (key) => {
-      found ||= this.cells.get(key)?.some((other) => touches(box, other)) ?? false;
-    });
-    return found;
-  }
-
-  private each(box: Box, visit: (key: number) => void): void {
-    const cell = BoxGrid.CELL;
-    for (let row = Math.floor(box.y0 / cell); row <= Math.floor(box.y1 / cell); row++) {
-      for (let column = Math.floor(box.x0 / cell); column <= Math.floor(box.x1 / cell); column++) {
+  private each(area: Box, visit: (key: number) => void): void {
+    const cell = Grid.CELL;
+    for (let row = Math.floor(area.y0 / cell); row <= Math.floor(area.y1 / cell); row++) {
+      for (
+        let column = Math.floor(area.x0 / cell);
+        column <= Math.floor(area.x1 / cell);
+        column++
+      ) {
         visit(row * 4096 + column);
       }
     }
@@ -397,19 +419,32 @@ export function placeNames(
   const scaleY = frame.height / view.height;
   const covered = covers.map((r) => ({ x0: r.x, y0: r.y, x1: r.x + r.width, y1: r.y + r.height }));
   const placed: PlacedName[] = [];
-  const boxes = new BoxGrid();
+  const boxes = new Grid<Box>();
   const inFrame = (box: Box) =>
     box.x0 >= FRAME_MARGIN &&
     box.x1 <= frame.width - FRAME_MARGIN &&
     box.y0 >= FRAME_MARGIN &&
     box.y1 <= frame.height - FRAME_MARGIN;
-  /** The leader lines placed so far. A later name does not go on one. */
-  const lines: [WorldPoint, WorldPoint][] = [];
-  const isFree = (box: Box) =>
-    inFrame(box) &&
-    !covered.some((other) => touches(box, other)) &&
-    !boxes.touches(box) &&
-    !lines.some(([a, b]) => crosses(a, b, grow(box)));
+  /** The leader lines placed so far. A later name or line does not go on one. */
+  const lines = new Grid<[WorldPoint, WorldPoint]>();
+  const isFree = (box: Box) => {
+    const halo = grow(box);
+    return (
+      inFrame(box) &&
+      !covered.some((other) => touches(box, other)) &&
+      !boxes.some(box, (other) => touches(box, other)) &&
+      !lines.some(halo, ([a, b]) => crosses(a, b, halo))
+    );
+  };
+  /** True if a line would go under a panel, through a name, or along another line */
+  const lineBlocked = (a: WorldPoint, b: WorldPoint) => {
+    const span = spanOf(a, b);
+    return (
+      covered.some((cover) => crosses(a, b, grow(cover))) ||
+      boxes.some(span, (other) => crosses(a, b, other)) ||
+      lines.some(grow(span), ([c, d]) => segmentDistance(a, b, c, d) < LEADER_HALO * 2)
+    );
+  };
 
   for (const name of names) {
     const { shape } = name;
@@ -435,17 +470,22 @@ export function placeNames(
     const fitted = canCapitals
       ? Math.min(asCapitals, Math.max(across * 0.7, CAPITALS_FROM))
       : room / measure(name.text, false);
+    // Title case stays below the size of capitals, so that a larger name is never
+    // the lesser one, and its letters stay about as tall as the land is thick.
+    const titleMax = Math.min(CAPITALS_FROM - 1, across * TITLE_THICKNESS);
     let onLand = false;
     // A name that meets another one tries smaller sizes on its land, the smallest last.
     const smaller = (size: number) => (size > MIN_SIZE ? Math.max(MIN_SIZE, size * SIZE_STEP) : 0);
     for (let size = Math.min(MAX_SIZE, fitted); size >= MIN_SIZE; size = smaller(size)) {
       const capitals = canCapitals && size >= CAPITALS_FROM;
-      // Title case stays below the size of capitals, so that a larger name is never the lesser one.
-      if (!capitals) size = Math.min(size, CAPITALS_FROM - 1);
+      if (!capitals) {
+        size = Math.min(size, titleMax);
+        if (size < MIN_SIZE) break;
+      }
       const width = measure(name.text, capitals) * size;
       const box = textBox(land.x, land.y, width, size * 1.15, angle);
       if (!isFree(box)) continue;
-      boxes.add(box);
+      boxes.add(box, box);
       placed.push({ text: name.text, x: land.x, y: land.y, size, angle, capitals });
       onLand = true;
       break;
@@ -462,13 +502,9 @@ export function placeNames(
     )) {
       const at = { x: land.x + ox, y: land.y + oy };
       const box = textBox(at.x, at.y, noteWidth, noteHeight, 0);
-      // A line goes neither under a panel nor through another name.
-      const blocked =
-        line &&
-        (covered.some((cover) => crosses(land, at, grow(cover))) || boxes.crosses(land, at));
-      if (!isFree(box) || blocked) continue;
-      boxes.add(box);
-      if (line) lines.push([land, at]);
+      if (!isFree(box) || (line && lineBlocked(land, at))) continue;
+      boxes.add(box, box);
+      if (line) lines.add(grow(spanOf(land, at)), [land, at]);
       placed.push({
         text: name.text,
         ...at,

@@ -112,6 +112,11 @@ describe("placeNames", () => {
     expect(place([name("Chile", strip)])).toEqual([]);
   });
 
+  it("keeps a name in title case about as tall as its land is thick", () => {
+    const strip = { center: { x: 200, y: 200 }, major: 160, minor: 4, angle: 0 };
+    expect(place([name("Chile", strip)])).toEqual([]);
+  });
+
   it("names no realm whose middle is under a panel", () => {
     const covers = [{ x: 0, y: 0, width: 400, height: 500 }];
     expect(place([name("Russia", large, { placement: "nearLand" })], covers)).toEqual([]);
