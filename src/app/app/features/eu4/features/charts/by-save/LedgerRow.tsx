@@ -185,7 +185,12 @@ export function LedgerRow({
 
 /** A reference line's label, precise enough that distinct lines read apart. */
 function scaleLabel(ref: number, scale: Scale, world: boolean, figure: BySaveFigure) {
-  if (!world) return ref >= 10 ? figure.format(ref) : String(ref);
+  if (!world) {
+    if (ref >= 10) return figure.format(ref);
+    // A small reference keeps its decimals, without floating-point noise, and its unit.
+    const unit = figure.format(1).replace(/[\d.,\s]/g, "");
+    return `${Number(ref.toPrecision(3))}${unit}`;
+  }
   const step = scale.refs.length > 1 ? scale.refs[1] - scale.refs[0] : 1000;
   if (step < 100) return Math.round(ref).toLocaleString("en-US");
   const digits = step >= 1000 ? 0 : 1;

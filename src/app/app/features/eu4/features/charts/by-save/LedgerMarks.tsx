@@ -26,6 +26,11 @@ export const Strip = memo(function Strip({
   dark: boolean;
 }) {
   const y = yOf(scale, height, world);
+  // World dots no wider than the closest pitch allows, so equal values never merge.
+  let closest = Infinity;
+  for (let i = geometry.first + 1; i <= geometry.last; i++)
+    closest = Math.min(closest, geometry.x[i] - geometry.x[i - 1]);
+  const dot = Math.max(1, Math.min(2.5, (closest - 1) / 2));
   const rim = dark ? "rgb(255 255 255 / 0.6)" : "rgb(15 23 42 / 0.6)";
   return (
     <svg width={width} height={height} className="block" shapeRendering="crispEdges">
@@ -60,7 +65,7 @@ export const Strip = memo(function Strip({
               <circle
                 cx={middle}
                 cy={y(mark.value)}
-                r={2.5}
+                r={dot}
                 fill={mark.color}
                 shapeRendering="auto"
               />
@@ -77,8 +82,9 @@ export const Strip = memo(function Strip({
               height={height - top}
               fill={mark.color}
             />
-            {/* A color that would vanish into the ground gets a one-pixel cap, not an outline. */}
-            {needsRim(mark.color, dark) && (
+            {/* A color that would vanish into the ground gets a one-pixel cap, not an outline;
+                a stroke too short to keep its own color under a cap gets none. */}
+            {needsRim(mark.color, dark) && height - top >= 3 && (
               <rect x={geometry.x[i]} y={top} width={geometry.bar} height={1} fill={rim} />
             )}
           </g>
@@ -174,8 +180,32 @@ export function ReadMarks({
             />
           );
         }
-        const wide = geometry.bar + (chosen ? 2 : 1);
-        const left = geometry.x[i] - (chosen ? 1 : 0);
+        // Widen only into free space, so a read stroke never covers a neighbor.
+        const before = geometry.x[i - 1];
+        const after = geometry.x[i + 1];
+        const roomLeft =
+          Number.isNaN(before) || before === undefined
+            ? 1
+            : geometry.x[i] - (before + geometry.bar) - 1;
+        const roomRight =
+          Number.isNaN(after) || after === undefined
+            ? 1
+            : after - (geometry.x[i] + geometry.bar) - 1;
+        const left = geometry.x[i] - (chosen && roomLeft >= 1 ? 1 : 0);
+        const wide = geometry.x[i] + geometry.bar + (roomRight >= 1 ? 1 : 0) - left;
+        // A zero has no height: a mark on the baseline says which save is read.
+        if (mark.value === 0)
+          return (
+            <rect
+              key={i}
+              x={left}
+              y={height - 2}
+              width={wide}
+              height={2}
+              fill={color}
+              fillOpacity={chosen ? 1 : 0.6}
+            />
+          );
         const top = Math.min(Math.round(y(mark.value)), height - 4);
         return chosen ? (
           <rect

@@ -257,11 +257,15 @@ function BySaveView({
     if (!save || !playthroughId) return;
     // A step ends the hover, so the heading and values show the selection.
     setHoveredId(null);
+    // A focused country without a value there leaves the list, and its emphasis with it.
+    if (focusEmphasis && !rows.find((row) => row.key === focusEmphasis)?.cells[column])
+      setFocusEmphasis(null);
     selectSave(playthroughId, save.save.key);
   };
   const hoveredAt = columns.findIndex((x) => x.snapshot?.id === hoveredId);
   const hovered = hoveredAt >= 0 ? hoveredAt : null;
   const shown = hovered ?? selected;
+  const group = useRef<HTMLDivElement>(null);
   // The pointer's emphasis wins while it lasts; keyboard focus keeps its own.
   const [pointerEmphasis, setPointerEmphasis] = useState<string | null>(null);
   const [focusEmphasis, setFocusEmphasis] = useState<string | null>(null);
@@ -332,6 +336,11 @@ function BySaveView({
           ...present,
           ...absent.filter((row) => row.cells[hovered] !== null && !present.includes(row)),
         ];
+  // A focused row that a step removes hands focus to the chart, so the arrows keep stepping.
+  const focusedGone = focusEmphasis !== null && !shownRows.some((row) => row.key === focusEmphasis);
+  useEffect(() => {
+    if (focusedGone && !group.current?.contains(document.activeElement)) group.current?.focus();
+  }, [focusedGone]);
 
   if (!columns.length || selected < 0) {
     return (
@@ -433,6 +442,7 @@ function BySaveView({
       )}
       {chart && <ChartCountriesNote chart={chart} count={rows.length} loaded={loaded} />}
       <div
+        ref={group}
         role="group"
         tabIndex={0}
         aria-label="Campaign chart. Left and right arrows select an earlier or a later save."

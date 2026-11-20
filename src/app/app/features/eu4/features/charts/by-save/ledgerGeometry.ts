@@ -32,7 +32,12 @@ export const MAX_SHIFT = 2;
 /** The widest stroke: a stroke takes up to two fifths of the pitch, never more than this. */
 const WIDEST = 4;
 
-/** Strokes for saves first..last, or null when they cannot stand apart near their dates. */
+/**
+ * Strokes for saves first..last, or null when they cannot stand apart near
+ * their dates. Each stroke may stand anywhere within {@link MAX_SHIFT} whole
+ * pixels of its date; placing each as far left as its window and the one
+ * before allow finds a fit whenever there is one.
+ */
 function place(days: readonly number[], width: number, bar: number, first: number, last: number) {
   const span = Math.max(1, Math.floor(width) - PAD * 2);
   const step = bar + 1;
@@ -40,14 +45,21 @@ function place(days: readonly number[], width: number, bar: number, first: numbe
   const to = days[last];
   const xDay = (day: number) =>
     to > from ? PAD + ((day - from) / (to - from)) * (span - bar) : PAD + (span - bar) / 2;
+  const right = PAD + span - bar;
   const x = days.map(() => NaN);
-  for (let i = first; i <= last; i++) x[i] = Math.round(xDay(days[i]));
-  // Apart from the left, then back from the right edge.
-  for (let i = first + 1; i <= last; i++) x[i] = Math.max(x[i], x[i - 1] + step);
-  x[last] = Math.min(x[last], PAD + span - bar);
-  for (let i = last - 1; i >= first; i--) x[i] = Math.min(x[i], x[i + 1] - step);
   for (let i = first; i <= last; i++) {
-    if (x[i] < PAD || Math.abs(x[i] - xDay(days[i])) > MAX_SHIFT) return null;
+    const at = xDay(days[i]);
+    const lo = Math.max(PAD, Math.ceil(at - MAX_SHIFT));
+    const hi = Math.min(right, Math.floor(at + MAX_SHIFT));
+    const next = i === first ? lo : Math.max(lo, x[i - 1] + step);
+    if (next > hi) return null;
+    x[i] = next;
+  }
+  // Each stroke back toward its date where the next one leaves room.
+  for (let i = last; i >= first; i--) {
+    const at = Math.round(xDay(days[i]));
+    const ceiling = i === last ? right : x[i + 1] - step;
+    if (x[i] < at) x[i] = Math.min(at, ceiling);
   }
   return { x, from, to, xDay };
 }

@@ -181,3 +181,9 @@ it("puts the scale's top above the largest value with headroom", () => {
   }
   expect(countryScale(901).hi).toBe(1000);
 });
+
+it("keeps every save that fits at whole pixels", () => {
+  const days = [0, 27, 28, 1000].map((d) => year(1444) + d);
+  const g = stripGeometry(days, 100, 3);
+  expect([g.first, g.last]).toEqual([0, 3]);
+});
