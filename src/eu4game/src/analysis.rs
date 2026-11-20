@@ -1304,11 +1304,14 @@ mod tests {
             to: tag(to),
             date: GameDate::from_date_sort(year * 10000 + 101),
             country: tag(from),
+            country_since: GameDate::from_date_sort(year * 10000 + 101),
             order: 0,
+            copy: 0,
         };
-        // A later switch of the country whose first tag is `country`.
-        let then = |country: &str, order: u16, from: &str, to: &str, year: i32| TagSwitch {
-            country: tag(country),
+        // A later switch of the country whose first switch is `first`.
+        let then = |first: TagSwitch, order: u16, from: &str, to: &str, year: i32| TagSwitch {
+            country: first.country,
+            country_since: first.country_since,
             order,
             ..switch(from, to, year)
         };
@@ -1441,10 +1444,8 @@ mod tests {
         // switches, so it is one country through ULM, BYZ and ROM. The 1600
         // save lacks the second switch of that day, so it can be from before
         // it and gives nothing.
-        let one_day = [
-            switch("ULM", "BYZ", 1600),
-            then("ULM", 1, "BYZ", "ROM", 1600),
-        ];
+        let first = switch("ULM", "BYZ", 1600);
+        let one_day = [first, then(first, 1, "BYZ", "ROM", 1600)];
         let same_day = vec![
             saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
             saved("b", 1600, &[p("BYZ", 20.0)], vec![one_day[0]]),

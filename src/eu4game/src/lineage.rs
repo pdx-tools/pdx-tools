@@ -67,12 +67,24 @@ pub struct TagSwitch {
     pub to: CountryTag,
     #[cfg_attr(feature = "tsify", tsify(type = "string"))]
     pub date: GameDate,
-    /// The first tag of the country that switched, which names it across
-    /// the saves of a campaign.
+    /// The first tag of the country that switched. With the date of its
+    /// first switch, this names the country across the saves of a campaign.
     pub country: CountryTag,
+    /// The date of that country's first switch.
+    #[cfg_attr(feature = "tsify", tsify(type = "string"))]
+    pub country_since: GameDate,
     /// The place of the switch in that country's history, which orders its
     /// switches on one day.
     pub order: u16,
+    /// Which one this is of switches that one save records alike for
+    /// different countries. Usually 0.
+    pub copy: u8,
+}
+impl TagSwitch {
+    /// The country that made the switch, as its history names it.
+    fn maker(&self) -> (CountryTag, GameDate) {
+        (self.country, self.country_since)
+    }
 }
 impl TagSwitch {
     /// False for a recorded switch to the same tag, which changes nothing.
@@ -101,8 +113,24 @@ pub fn tag_switches(save: &Eu4Save) -> Vec<TagSwitch> {
             country_switches(*tag, froms, &country.previous_country_tags)
         })
         .collect();
-    switches.sort();
+    number_alike(&mut switches);
     switches
+}
+
+/// Sort switches and number apart the alike ones that two countries record,
+/// so that neither hides the other.
+fn number_alike(switches: &mut [TagSwitch]) {
+    switches.sort();
+    for at in 1..switches.len() {
+        let before = switches[at - 1];
+        let alike = TagSwitch {
+            copy: before.copy,
+            ..switches[at]
+        };
+        if alike == before {
+            switches[at].copy = before.copy.saturating_add(1);
+        }
+    }
 }
 
 /// The switches of one country: the tags it changed from, with their dates,
@@ -113,7 +141,7 @@ fn country_switches(
     previous: &[CountryTag],
 ) -> Vec<TagSwitch> {
     let froms: Vec<_> = froms.collect();
-    let Some(&(_, country)) = froms.first() else {
+    let Some(&(country_since, country)) = froms.first() else {
         return Vec::new();
     };
     // The tag after the last switch, as eu4save reads it.
@@ -132,7 +160,9 @@ fn country_switches(
             to,
             date,
             country,
+            country_since,
             order: u16::try_from(order).unwrap_or(u16::MAX),
+            copy: 0,
         })
         .filter(TagSwitch::changes_tag)
         .collect()
@@ -334,11 +364,10 @@ fn segments_of(tag: CountryTag, events: &[Event]) -> Vec<Segment> {
     let mut events = events.to_vec();
     events.sort_by_key(|x| (x.switch().date, x.switch().order));
     // Switches of two countries on one day have no known order. Two
-    // switches at one place of one country's history are of two countries
-    // that share a first tag.
+    // switches at one place of one history are of two countries too.
     let unordered = events.windows(2).any(|pair| {
         let (a, b) = (pair[0].switch(), pair[1].switch());
-        a.date == b.date && (a.country != b.country || a.order == b.order)
+        a.date == b.date && (a.maker() != b.maker() || a.order == b.order)
     });
     if unordered {
         return vec![Segment {
@@ -400,7 +429,9 @@ mod tests {
             to: tag(to),
             date: date(year),
             country: tag(from),
+            country_since: date(year),
             order: 0,
+            copy: 0,
         }
     }
     /// The switches of one country in its order: `chain[i]` is (from, to, date_sort).
@@ -413,7 +444,9 @@ mod tests {
                 to: tag(to),
                 date: GameDate::from_date_sort(day),
                 country: tag(chain[0].0),
+                country_since: GameDate::from_date_sort(chain[0].2),
                 order: order as u16,
+                copy: 0,
             })
             .collect()
     }
@@ -748,5 +781,32 @@ mod tests {
                 (vec!["NBI@0".into()], LineageKind::EarlierHolder),
             ]
         );
+    }
+
+    #[test]
+    fn countries_that_share_a_first_tag_are_told_apart() {
+        // AAA forms TTT. A released AAA forms TTT again on the day that the
+        // first forms BBB. Both histories start at AAA, but on other dates.
+        let first = history(&[("AAA", "TTT", 15000101), ("TTT", "BBB", 15200101)]);
+        let released = history(&[("AAA", "TTT", 15200101)]);
+        let switches: Vec<_> = first.iter().chain(&released).copied().collect();
+        let found = lineages([tag("AAA"), tag("TTT"), tag("BBB")], &switches, |_| true);
+        let ttt = found.iter().find(|x| x.tags[0].tag == tag("TTT")).unwrap();
+        assert_eq!(ttt.kind, LineageKind::Ambiguous);
+        // No row joins the released AAA to the first country's BBB.
+        assert!(found.iter().all(|x| x.tags.len() == 1));
+    }
+
+    #[test]
+    fn alike_switches_of_two_countries_both_count() {
+        // AAA forms BBB and then CCC on one day; a released AAA forms BBB
+        // later that day. Both records hold the same AAA to BBB switch.
+        let mut switches = history(&[("AAA", "BBB", 15000101), ("BBB", "CCC", 15000101)]);
+        switches.push(switches[0]);
+        number_alike(&mut switches);
+        assert_eq!(switches.iter().map(|x| x.copy).max(), Some(1));
+        let found = lineages([tag("BBB")], &switches, |_| true);
+        let bbb = found.iter().find(|x| x.tags[0].tag == tag("BBB")).unwrap();
+        assert_eq!(bbb.kind, LineageKind::Ambiguous);
     }
 }
