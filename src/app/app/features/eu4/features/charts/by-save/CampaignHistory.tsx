@@ -268,10 +268,10 @@ function BySaveView({
   };
   // "Open now" only where the snapshot is of the bytes that the viewer parsed.
   const openControl =
-    open && selected?.save.key === open.save.key ? (
+    campaign.open && selected?.save.key === campaign.open.save.key ? (
       <span className="font-medium">Open now</span>
     ) : selected?.save.isOpen ? (
-      <span>The viewer shows another version of this file.</span>
+      campaign.openOtherVersion && <span>The viewer shows another version of this file.</span>
     ) : (
       <Button
         variant="primary"

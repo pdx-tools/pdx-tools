@@ -76,12 +76,10 @@ export function useEu4Campaign() {
     openSave?.save.source.kind === "local" && openSave.save.source.entryId
       ? sources[openSave.save.source.entryId]
       : null;
-  const open =
-    openSave &&
-    (openSave.save.source.kind === "upload" ||
-      (!!source && !!fileVersion && sameFileVersion(source.version, fileVersion)))
-      ? openSave
-      : null;
+  const sameBytes =
+    openSave?.save.source.kind === "upload" ||
+    (!!source && !!fileVersion && sameFileVersion(source.version, fileVersion));
+  const open = openSave && sameBytes ? openSave : null;
   const waitingUploads = saves.filter(
     (x) => x.save.source.kind === "upload" && x.status === "pending",
   ).length;
@@ -91,6 +89,8 @@ export function useEu4Campaign() {
     saves,
     /** The open save, when its snapshot is of the bytes that the viewer parsed. */
     open,
+    /** True when the open save has a snapshot of other bytes than the viewer parsed. */
+    openOtherVersion: !!openSave && !sameBytes,
     enabled,
     paused,
     progress,
