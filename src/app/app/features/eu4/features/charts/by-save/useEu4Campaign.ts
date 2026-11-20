@@ -4,7 +4,11 @@ import { isAnalysisPaused } from "@/features/campaign/analysis/analysisState";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { useEu4Meta } from "@/features/eu4/store";
 import { analyzeEu4Campaign } from "@/features/eu4/analysis/analyzeCampaign";
-import { analysisSaves, pendingEntries } from "@/features/eu4/analysis/campaignSaves";
+import {
+  analysisSaves,
+  pendingEntries,
+  pendingUploads,
+} from "@/features/eu4/analysis/campaignSaves";
 import { useEu4History } from "@/features/eu4/analysis/store";
 
 /** The open campaign, the saves that analysis reads and what analysis has of them. */
@@ -16,6 +20,8 @@ export function useEu4Campaign() {
   const sources = useEu4History((state) => state.sources);
   const failedSources = useEu4History((state) => state.failedSources);
   const analyzingEntryIds = useEu4History((state) => state.analyzingEntryIds);
+  const uploads = useEu4History((state) => state.uploads);
+  const analyzingUploadIds = useEu4History((state) => state.analyzingUploadIds);
   const progress = useEu4History((state) => state.progress);
   const issues = useEu4History((state) => state.issues);
   const cancel = useEu4History((state) => state.cancel);
@@ -32,23 +38,39 @@ export function useEu4Campaign() {
           sources,
           failedSources,
           analyzingEntryIds,
+          uploads,
+          analyzingUploadIds,
         },
         entries,
       ),
-    [nav?.saves, snapshots, sources, failedSources, analyzingEntryIds, playthroughId, entries],
+    [
+      nav?.saves,
+      snapshots,
+      sources,
+      failedSources,
+      analyzingEntryIds,
+      uploads,
+      analyzingUploadIds,
+      playthroughId,
+      entries,
+    ],
   );
+  /** Analyze each save without a snapshot, and download the uploads among them. */
   const analyze = () => {
     if (!playthroughId) return;
     const history = useEu4History.getState();
-    history.enableAnalysis(playthroughId);
-    // The first press hands over to the background analysis. Later ones retry now.
-    if (!enabled) return;
-    const pending = pendingEntries(nav?.saves ?? [], history);
-    if (pending.length)
-      void analyzeEu4Campaign(pending.slice(0, 1000), playthroughId).catch((error) =>
+    const uploads = pendingUploads(nav?.saves ?? [], history);
+    const local = pendingEntries(nav?.saves ?? [], history).slice(0, 1000 - uploads.length);
+    // The import starts before the campaign is enabled, so background analysis waits for it.
+    if (local.length || uploads.length)
+      void analyzeEu4Campaign(local, playthroughId, uploads).catch((error) =>
         useEu4History.setState({ issues: [String(error)] }),
       );
+    history.enableAnalysis(playthroughId);
   };
+  const waitingUploads = saves.filter(
+    (x) => x.save.source.kind === "upload" && x.status === "pending",
+  ).length;
   return {
     nav,
     playthroughId,
@@ -57,6 +79,7 @@ export function useEu4Campaign() {
     paused,
     progress,
     issues,
+    waitingUploads,
     stop: () => cancel?.(),
     analyze,
   };

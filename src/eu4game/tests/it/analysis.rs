@@ -212,3 +212,23 @@ fn metadata_hints_do_not_split_a_campaign() {
             .campaign_id
     );
 }
+
+#[test]
+fn an_upload_has_the_snapshot_of_its_file() {
+    // The server keeps the file that the browser uploads, which the browser
+    // compresses again.
+    let data = utils::request("ita2_later.eu4");
+    let stored = pdx_save_codec::Compression::new(data.clone())
+        .unwrap()
+        .compress()
+        .unwrap();
+    assert_ne!(stored, data);
+    let observe = |data: &[u8]| {
+        let out = Eu4Parser::new().with_hash(true).parse(data).unwrap();
+        analysis::extract(&SaveQuery::from_save(out.save), out.hash.unwrap()).unwrap()
+    };
+    let file = observe(&data);
+    let upload = observe(&stored);
+    assert_eq!(upload.descriptor, file.descriptor);
+    assert_eq!(upload.encode(), file.encode());
+}

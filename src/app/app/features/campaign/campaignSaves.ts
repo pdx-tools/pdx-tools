@@ -14,25 +14,34 @@ export function canOpen(save: { problem: LocalSaveProblem | null }): boolean {
   return save.problem === null || save.problem.kind === "moved";
 }
 
-/**
- * Build one timeline point per date. Prefer the open save, then usable local files.
- * Keep files selected with a campaign save visible while their membership is unknown.
- */
-export function mergeCampaignSaves({
-  open,
-  uploads,
-  entries,
-  openEntry,
-}: {
+type CampaignSaveInputs = {
   open: OpenSave;
   /** The campaign's uploads, newest first, as the server sends them. */
   uploads: readonly CampaignUpload[];
   entries: readonly LocalSaveEntry[];
 
   openEntry: LocalSaveEntry | undefined;
-}): CampaignSave[] {
+};
+
+/**
+ * Build one timeline point per date. Prefer the open save, then usable local files.
+ * Keep files selected with a campaign save visible while their membership is unknown.
+ */
+export function mergeCampaignSaves(inputs: CampaignSaveInputs): CampaignSave[] {
+  return mergeCampaign(inputs).saves;
+}
+
+/** A save of the campaign that the list left out, because another save has its date. */
+export type LeftOutSave = Readonly<{ save: CampaignSave; kept: CampaignSave }>;
+
+/** The timeline points, and the saves of the campaign that share a date with one. */
+export function mergeCampaign({ open, uploads, entries, openEntry }: CampaignSaveInputs): {
+  saves: CampaignSave[];
+  leftOut: LeftOutSave[];
+} {
   const { game } = open;
   const byDay = new Map<number, CampaignSave>();
+  const dropped: CampaignSave[] = [];
   const isOpenUpload = (saveId: string) =>
     open.source.kind === "upload" && open.source.saveId === saveId;
 
@@ -41,8 +50,7 @@ export function mergeCampaignSaves({
     const date = parseDate(save.date);
     if (date === null) continue;
     const day = dayNumber(date);
-    if (byDay.has(day) && !isOpenUpload(save.id)) continue;
-    byDay.set(day, {
+    const upload: CampaignSave = {
       key: `upload:${save.id}`,
       date,
       name: save.filename,
@@ -55,7 +63,14 @@ export function mergeCampaignSaves({
       },
       membership: "same",
       problem: null,
-    });
+    };
+    const current = byDay.get(day);
+    if (current && !isOpenUpload(save.id)) {
+      dropped.push(upload);
+      continue;
+    }
+    if (current) dropped.push(current);
+    byDay.set(day, upload);
   }
 
   const ofGame = entries.flatMap((entry) => {
@@ -75,13 +90,7 @@ export function mergeCampaignSaves({
     const date = isOpen ? open.date : identity.date;
     const day = dayNumber(date);
     const current = byDay.get(day);
-    if (current !== undefined && !isOpen) {
-      if (current.isOpen) continue;
-      // Preserve a usable campaign save when a conflicting file has less reliable membership.
-      if (!canOpen(entry) && canOpen(current)) continue;
-      if (membership === "different" && current.membership !== "different") continue;
-    }
-    byDay.set(day, {
+    const local: CampaignSave = {
       key: `local:${entry.id}`,
       date,
       name: entry.name,
@@ -96,12 +105,27 @@ export function mergeCampaignSaves({
       },
       membership,
       problem: entry.problem,
-    });
+    };
+    if (current !== undefined && !isOpen) {
+      // Preserve a usable campaign save when a conflicting file has less reliable membership.
+      if (
+        current.isOpen ||
+        (!canOpen(entry) && canOpen(current)) ||
+        (membership === "different" && current.membership !== "different")
+      ) {
+        dropped.push(local);
+        continue;
+      }
+    }
+    if (current) dropped.push(current);
+    byDay.set(day, local);
   }
 
   // Include the open save even when the server omits it from the returned uploads.
   const openDay = dayNumber(open.date);
   if (!byDay.get(openDay)?.isOpen) {
+    const current = byDay.get(openDay);
+    if (current) dropped.push(current);
     byDay.set(openDay, {
       key: "open",
       date: open.date,
@@ -121,5 +145,12 @@ export function mergeCampaignSaves({
     });
   }
 
-  return [...byDay.entries()].sort(([a], [b]) => a - b).map(([, save]) => save);
+  const saves = [...byDay.entries()].sort(([a], [b]) => a - b).map(([, save]) => save);
+  const kept = new Set(saves.map((save) => save.key));
+  const leftOut = dropped.flatMap((save) =>
+    kept.has(save.key) || save.membership === "different"
+      ? []
+      : [{ save, kept: byDay.get(dayNumber(save.date))! }],
+  );
+  return { saves, leftOut };
 }

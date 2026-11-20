@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ entries: new Map<string, LocalSaveEntry>() }))
 vi.mock("@/features/campaign/localSaves", () => ({
   localSaveRegistry: { get: (id: string) => mocks.entries.get(id) },
 }));
-import { analysisSaves, pendingEntries } from "./campaignSaves";
+import { analysisSaves, pendingEntries, pendingUploads } from "./campaignSaves";
 
 const entry = (id: string, lastModified = 1): LocalSaveEntry => ({
   id,
@@ -29,7 +29,20 @@ const local = (id: string, membership: CampaignSave["membership"] = "unknown"): 
   problem: null,
 });
 const snapshot = (id: string) => ({ id, campaignId: "campaign" }) as Eu4SnapshotDescriptor;
-const empty = { snapshots: [], sources: {}, failedSources: {}, analyzingEntryIds: [] };
+const empty = {
+  snapshots: [],
+  sources: {},
+  failedSources: {},
+  analyzingEntryIds: [],
+  uploads: {},
+  analyzingUploadIds: [],
+};
+const upload = (id: string): CampaignSave => ({
+  ...local(id),
+  key: `upload:${id}`,
+  source: { kind: "upload", saveId: id, uploaderId: null, userName: "nick" },
+  membership: "same",
+});
 
 beforeEach(() => {
   mocks.entries = new Map(["a", "b", "other"].map((id) => [id, entry(id)]));
@@ -67,4 +80,24 @@ it("binds a snapshot only to the file version that analysis read", () => {
     snapshot: null,
   });
   expect(pendingEntries(saves, state).map((x) => x.id)).toEqual(["a", "b"]);
+});
+
+it("downloads an upload again only after a failed download", () => {
+  const saves = [upload("ready"), upload("lost"), upload("broken"), upload("new")];
+  const state = {
+    ...empty,
+    snapshots: [snapshot("eu4:ready")],
+    uploads: {
+      ready: { kind: "ready", snapshotId: "eu4:ready" },
+      lost: { kind: "failed", reason: "download", error: "offline" },
+      broken: { kind: "failed", reason: "read", error: "bad save" },
+    } as const,
+  };
+  expect(pendingUploads(saves, state).map((x) => x.saveId)).toEqual(["lost", "new"]);
+  expect(analysisSaves(saves, state, []).map((x) => [x.status, x.retry])).toEqual([
+    ["ready", false],
+    ["failed", true],
+    ["failed", false],
+    ["pending", false],
+  ]);
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { userId } from "@/lib/auth";
 import { campaignKeyFor } from "./campaignKey";
-import { mergeCampaignSaves } from "./campaignSaves";
+import { mergeCampaign, mergeCampaignSaves } from "./campaignSaves";
 import type { CampaignUpload } from "./campaignSaves";
 import type { LocalSaveEntry } from "./localSaves";
 import { toPlaythroughId } from "./types";
@@ -64,6 +64,25 @@ const openLocal = (date: string): OpenSave => ({
 });
 
 describe("mergeCampaignSaves", () => {
+  it("names the saves that share a date with a save of the list", () => {
+    const { saves, leftOut } = mergeCampaign({
+      open: openUpload("c", "1450-01-01"),
+      uploads: [upload("c", "1450-01-01"), upload("b", "1400-01-01"), upload("old", "1400-01-01")],
+      entries: [
+        entry("auto", "1400-01-01"),
+        entry("manual", "1400-01-01"),
+        entry("x", "1500-01-01"),
+      ],
+      openEntry: undefined,
+    });
+    expect(saves.map((x) => x.key)).toEqual(["local:manual", "upload:c", "local:x"]);
+    expect(leftOut.map((x) => [x.save.key, x.kept.key])).toEqual([
+      ["upload:old", "local:manual"],
+      ["upload:b", "local:manual"],
+      ["local:auto", "local:manual"],
+    ]);
+  });
+
   it("orders saves by date and marks the open upload", () => {
     const saves = mergeCampaignSaves({
       open: openUpload("b", "1400-01-01"),

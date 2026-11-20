@@ -18,18 +18,36 @@ export type CampaignAnalyzer<Api, R, D extends SnapshotDescriptor> = {
   history: AnalysisHistory<D>;
   analysis: AnalysisSink<R, D> & { claim: (campaignId: string) => void };
   parser: ParserAdapter<Api, R>;
+  /** Download an uploaded save from the endpoint that the viewer reads. */
+  download?: (saveId: string, signal: AbortSignal) => Promise<Blob>;
 };
 
-/** Analyze local campaign entries without opening a save or controlling navigation. */
+/** An uploaded save of the campaign. */
+export type CampaignUpload = { saveId: string; name: string };
+
+/** The uploads that download at a time. The bytes of each go when its parse ends. */
+const UPLOAD_BATCH = 4;
+
+/**
+ * Analyze local campaign entries, then uploads, without opening a save or
+ * controlling navigation.
+ */
 export function campaignAnalyzer<
   Api,
   R extends { descriptor: SnapshotDescriptor },
   D extends SnapshotDescriptor,
->({ history, analysis, parser }: CampaignAnalyzer<Api, R, D>) {
-  return async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: string) {
+>({ history, analysis, parser, download }: CampaignAnalyzer<Api, R, D>) {
+  return async function analyzeCampaign(
+    entries: LocalSaveEntry[],
+    playthroughId: string,
+    uploads: readonly CampaignUpload[] = [],
+  ) {
     if (!playthroughId) throw Error("This save has no campaign identity.");
-    if (!entries.length) throw Error("Add local saves to analyze this campaign.");
-    if (entries.length > 1000) throw Error("Analyze at most 1000 saves at a time.");
+    if (!entries.length && !uploads.length)
+      throw Error("Add local saves to analyze this campaign.");
+    if (entries.length + uploads.length > 1000)
+      throw Error("Analyze at most 1000 saves at a time.");
+    if (uploads.length && !download) throw Error("This game cannot analyze uploads.");
     // One import runs in the tab, for all games.
     const lease = analysisAdmission().acquireImport();
     analysis.claim(playthroughId);
@@ -38,7 +56,7 @@ export function campaignAnalyzer<
     const issues: string[] = [];
     history.setState((state) => ({
       analysisPausedCampaigns: state.analysisPausedCampaigns.filter((id) => id !== playthroughId),
-      progress: { completed: 0, total: entries.length, startedAt },
+      progress: { completed: 0, total: entries.length + uploads.length, startedAt },
       analyzingEntryIds: [],
       issues: [],
       cancel: () => {
@@ -54,6 +72,83 @@ export function campaignAnalyzer<
         failedSources: { ...state.failedSources, [entry.id]: { version, error } },
       }));
     };
+    const recordUpload = (saveId: string, reason: "download" | "read", error: string) =>
+      history.setState((state) => ({
+        uploads: { ...state.uploads, [saveId]: { kind: "failed", reason, error } },
+      }));
+
+    /** Download a few uploads, parse them, and drop their bytes before the next ones. */
+    const analyzeUploads = async (
+      uploads: readonly CampaignUpload[],
+      before: number,
+      download: NonNullable<CampaignAnalyzer<Api, R, D>["download"]>,
+      signal: AbortSignal,
+    ) => {
+      const issues: string[] = [];
+      let completed = 0;
+      const total = before + uploads.length;
+      const progress = (fileName: string, downloading: boolean) =>
+        history.setState({
+          progress: { completed: before + completed, total, startedAt, fileName, downloading },
+        });
+      for (let i = 0; i < uploads.length && !signal.aborted; i += UPLOAD_BATCH) {
+        const batch = uploads.slice(i, i + UPLOAD_BATCH);
+        history.setState({ analyzingUploadIds: batch.map((x) => x.saveId) });
+        progress(batch[0].name, true);
+        const downloaded = await Promise.all(
+          batch.map(async (upload) => {
+            try {
+              const blob = await download(upload.saveId, signal);
+              return { upload, file: new File([blob], upload.name) };
+            } catch (error) {
+              if (signal.aborted) return null;
+              completed++;
+              issues.push(`Could not download ${upload.name}: ${String(error)}`);
+              recordUpload(upload.saveId, "download", String(error));
+              return null;
+            }
+          }),
+        );
+        if (signal.aborted) break;
+        const files = downloaded.filter((x) => x !== null);
+        const uploadOf = new Map(files.map(({ upload, file }) => [file, upload]));
+        const result = await importBatch(
+          files.map((x) => x.file),
+          parser,
+          analysis,
+          {
+            signal,
+            lease,
+            onFileComplete: (completion) => {
+              const upload = uploadOf.get(completion.file)!;
+              if ("descriptor" in completion) {
+                const { descriptor } = completion;
+                history.getState().add([descriptor], {}, { [upload.saveId]: descriptor.id });
+              } else if (completion.status === "failed") {
+                recordUpload(upload.saveId, "read", completion.error);
+              }
+            },
+            onProgress: ({ fileName }) => {
+              completed++;
+              progress(fileName, false);
+            },
+            refuseOutput: ({ descriptor }) =>
+              descriptor.campaignId === playthroughId
+                ? null
+                : "belongs to another campaign; not analyzed with this campaign.",
+          },
+        );
+        issues.push(...result.failures.map(({ fileName, error }) => `${fileName}: ${error}`));
+        if (result.memoryFull) {
+          const refused = result.outcomes.refused + result.outcomes.unprocessed;
+          issues.push(`${result.memoryFull} ${refused} uploads were not analyzed.`);
+          history.getState().pauseAnalysis(playthroughId);
+          break;
+        }
+      }
+      return issues;
+    };
+
     try {
       const { sources, failures } = await readSources(entries, signal).catch((error) => {
         if (signal.aborted) return { sources: [], failures: [] };
@@ -114,7 +209,7 @@ export function campaignAnalyzer<
               history.setState({
                 progress: {
                   completed: completed + unavailable,
-                  total: total + unavailable,
+                  total: total + unavailable + uploads.length,
                   startedAt,
                   fileName,
                   phase,
@@ -146,6 +241,9 @@ export function campaignAnalyzer<
         );
         // Do not parse more saves that cannot fit.
         history.getState().pauseAnalysis(playthroughId);
+      } else if (uploads.length && download) {
+        const uploadIssues = await analyzeUploads(uploads, entries.length, download, signal);
+        issues.push(...uploadIssues);
       }
     } catch (error) {
       if (!signal.aborted) issues.push(String(error));
@@ -154,6 +252,7 @@ export function campaignAnalyzer<
       history.setState((state) => ({
         progress: null,
         analyzingEntryIds: [],
+        ...(uploads.length && { analyzingUploadIds: [] }),
         cancel: null,
         issues: signal.aborted ? [...new Set([...state.issues, ...issues])] : issues,
       }));

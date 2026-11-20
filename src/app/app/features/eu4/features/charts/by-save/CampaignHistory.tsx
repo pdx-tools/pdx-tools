@@ -58,6 +58,7 @@ function NotAnalyzed({ campaign }: { campaign: Eu4Campaign }) {
   return (
     <div className="flex flex-col items-start gap-3">
       <p>{countLine(campaign.saves)}</p>
+      {campaign.nav?.truncated && <p>Shows the latest 200 uploads.</p>}
       <div className="flex items-center gap-3">
         <Button variant="primary" onClick={campaign.analyze}>
           Analyze campaign
@@ -71,12 +72,20 @@ function NotAnalyzed({ campaign }: { campaign: Eu4Campaign }) {
   );
 }
 
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+/** "14 saves, 1444 Nov 11 to 1650 Mar 3: 6 local files, 8 uploads to download." */
 function countLine(saves: readonly AnalysisSave[]) {
   const first = saves[0]?.save.date;
   const last = saves.at(-1)?.save.date;
   const range = first && last ? `, ${formatLongDate(first)} to ${formatLongDate(last)}` : "";
-  const files = saves.length === 1 ? "1 local file" : `${saves.length} local files`;
-  return `${saves.length === 1 ? "1 save" : `${saves.length} saves`}${range}: ${files}.`;
+  const uploads = saves.filter((x) => x.save.source.kind === "upload").length;
+  const local = saves.length - uploads;
+  const parts = [
+    local && plural(local, "local file", "local files"),
+    uploads && plural(uploads, "upload to download", "uploads to download"),
+  ].filter(Boolean);
+  return `${plural(saves.length, "save", "saves")}${range}: ${parts.join(", ")}.`;
 }
 
 const WORLD_DEVELOPMENT = { kind: "worldDevelopment" } as const;
@@ -345,30 +354,52 @@ function axisMarks(saves: readonly AnalysisSave[]): AxisMark[] {
   });
 }
 
+/** Shown only while analysis runs or stopped, or when a save failed or was left out. */
 function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
-  const { saves, progress, paused, issues } = campaign;
+  const { saves, progress, paused, issues, waitingUploads, nav } = campaign;
   const done = saves.filter((x) => x.snapshot).length;
   const failed = saves.filter((x) => x.status === "failed");
+  const leftOut = nav?.leftOut ?? [];
   return (
     <div role="status" className="flex flex-col gap-1 text-sm">
       {progress ? (
         <p className="flex items-center gap-3">
           <span>
-            {progress.completed} of {progress.total} · reading
+            {progress.completed} of {progress.total} ·{" "}
+            {progress.downloading ? "downloading" : "reading"}
           </span>
           <Button onClick={campaign.stop}>Stop</Button>
         </p>
       ) : paused ? (
         <p className="flex items-center gap-3">
           <span>
-            {done} of {saves.length} saves analyzed.
+            {plural(done, "save", "saves")} of {saves.length} analyzed.
           </span>
           <Button onClick={campaign.analyze}>Resume</Button>
         </p>
+      ) : waitingUploads > 0 ? (
+        <p className="flex items-center gap-3">
+          <span>{plural(waitingUploads, "more upload", "more uploads")}.</span>
+          <Button onClick={campaign.analyze}>Analyze</Button>
+        </p>
       ) : null}
-      {failed.map((x) => (
-        <p key={x.save.key}>Could not read {x.save.name}.</p>
-      ))}
+      {failed.map((x) =>
+        x.retry ? (
+          <p key={x.save.key} className="flex items-center gap-3">
+            <span>Could not download {x.save.name}.</span>
+            {!progress && <Button onClick={campaign.analyze}>Retry</Button>}
+          </p>
+        ) : (
+          <p key={x.save.key}>Could not read {x.save.name}.</p>
+        ),
+      )}
+      {leftOut.length > 0 && (
+        <p>
+          Left out:{" "}
+          {leftOut.map(({ save, kept }) => `${save.name} (same date as ${kept.name})`).join(", ")}.
+        </p>
+      )}
+      {nav?.truncated && <p>Shows the latest 200 uploads.</p>}
       {issues.length > 0 && failed.length === 0 && !progress && (
         <details>
           <summary className="cursor-pointer">{issues.length} analysis notices</summary>

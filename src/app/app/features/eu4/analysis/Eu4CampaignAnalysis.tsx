@@ -7,12 +7,13 @@ import {
 import { useEu4Meta } from "../store";
 import { eu4Analysis } from "./analysisClient";
 import { analyzeEu4Campaign } from "./analyzeCampaign";
-import { pendingEntries } from "./campaignSaves";
+import { failedInVersion, pendingEntries } from "./campaignSaves";
 import { useEu4History } from "./store";
 
 /**
  * Keep the analysis session on the open campaign, and analyze local saves
- * that arrive after the player chose to analyze it.
+ * that arrive after the player chose to analyze it. Uploads download only on
+ * request, and a failed file waits for a request until it changes.
  */
 export function Eu4CampaignAnalysis() {
   const nav = useCampaignNavigation();
@@ -21,7 +22,11 @@ export function Eu4CampaignAnalysis() {
   const pending = useCallback(
     (attempted: ReadonlySet<string>) =>
       pendingEntries(saves ?? [], useEu4History.getState())
-        .filter((entry) => !attempted.has(campaignAnalysisSourceKey(entry)))
+        .filter(
+          (entry) =>
+            !attempted.has(campaignAnalysisSourceKey(entry)) &&
+            !failedInVersion(entry, useEu4History.getState().failedSources),
+        )
         .slice(0, 1000),
     [saves],
   );
