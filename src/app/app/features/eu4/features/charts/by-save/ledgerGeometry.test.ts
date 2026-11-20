@@ -159,8 +159,8 @@ const KUSH = [
 });
 
 it.each([
-  ["the 800 px drawer", 470, 2],
-  ["the 520 px drawer", 246, 1],
+  ["the 800 px drawer", 469, 2],
+  ["the 520 px drawer", 243, 1],
 ])("gives every kush stroke one whole-pixel width at whole pixels in %s", (_, width, bar) => {
   const g = stripGeometry(KUSH, width, KUSH.length - 1);
   expect(g.bar).toBe(bar);

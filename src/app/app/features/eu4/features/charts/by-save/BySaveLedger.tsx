@@ -199,7 +199,7 @@ export function BySaveLedger({
                 width={size.strip}
                 layout={layout}
                 scale={scale}
-                label={world || index === 0 || layout.dense}
+                label={world || index === 0 || layout.compact}
                 figure={figure}
                 names={names}
                 world={world}

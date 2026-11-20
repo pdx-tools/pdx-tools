@@ -36,7 +36,12 @@ export function LedgerRuler({
       ? centerOf(geometry, openColumn)
       : null;
   // "Open" takes the label row there, so no year label touches it.
-  const clear = (x: number) => open === null || Math.abs(x - open) > widest / 2 + 16;
+  const openAnchor =
+    open === null ? null : open > width - 24 ? "end" : open < 24 ? "start" : "middle";
+  const openLeft =
+    open === null ? 0 : openAnchor === "end" ? width - 30 : openAnchor === "start" ? 0 : open - 15;
+  const clear = (x: number) =>
+    open === null || x + widest / 2 + 6 < openLeft || x - widest / 2 - 6 > openLeft + 30;
   return (
     <svg width={width} height={36} className="block overflow-visible">
       {ticks.ticks.map((day, i) => {
@@ -55,9 +60,9 @@ export function LedgerRuler({
       })}
       {open !== null && (
         <text
-          x={open > width - 24 ? width : open < 24 ? 0 : open}
+          x={openAnchor === "end" ? width : openAnchor === "start" ? 0 : open}
           y={12}
-          textAnchor={open > width - 24 ? "end" : open < 24 ? "start" : "middle"}
+          textAnchor={openAnchor ?? "middle"}
           className={cx("fill-current text-[11px] font-semibold", muted)}
         >
           Open

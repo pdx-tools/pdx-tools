@@ -8,9 +8,9 @@ export type Scale = { lo: number; hi: number; refs: number[] };
 
 export type Layout = {
   narrow: boolean;
-  /** Nine rows or more: rows take less height so the list still fits. */
+  /** Nine rows or more: rows take less height, and the scale labels repeat on every row, as the list can scroll. */
   compact: boolean;
-  /** Sixteen rows or more: the reference labels repeat on every row. */
+  /** Sixteen rows or more: rows are at their smallest. */
   dense: boolean;
   rowHeight: number;
   flag: "compact" | "small";
