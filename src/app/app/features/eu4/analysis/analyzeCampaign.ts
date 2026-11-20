@@ -9,6 +9,8 @@ export const analyzeEu4Campaign = campaignAnalyzer({
   history: useEu4History,
   analysis: eu4Analysis,
   parser: eu4ParserAdapter,
+  // The chart shows only the snapshot of each file's current version.
+  releaseEarlierVersions: true,
   download: async ({ saveId, name }, signal) => {
     const response = await fetchOk(`/api/saves/${encodeURIComponent(saveId)}/file`, { signal });
     // A renamed upload keeps its bytes, so the parser gets an EU4 file name.

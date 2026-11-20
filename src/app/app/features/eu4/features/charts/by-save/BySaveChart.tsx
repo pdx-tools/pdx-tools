@@ -3,7 +3,7 @@ import type * as echarts from "echarts/core";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
-import { MONTH_ABBR, dateFromDayNumber, dayNumber } from "@/features/timeline/date";
+import { MONTH_ABBR, dateFromDayNumber, dayNumber, formatLongDate } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
 
 /** One dot: a country's value in one save, in the game color of the tag it held then. */
@@ -45,7 +45,7 @@ export function BySaveChart({
     // Half a dot beyond the first and last save.
     const pad = Math.max(5, Math.round((last - first) * 0.006));
     const ink = dark ? "#cbd5e1" : "#334155";
-    const { ticks, label } = timeTicks(first - pad, last + pad);
+    const { ticks, label } = timeTicks(first, last, pad);
     const rule = (day: number, type: "solid" | "dashed", opacity = 1, label?: string) => ({
       xAxis: day,
       lineStyle: { color: ink, type, width: type === "dashed" ? 2 : 1, opacity },
@@ -143,9 +143,12 @@ function yearStep(years: number) {
 
 /**
  * Ticks on the first day of round years, or of months when the axis holds
- * fewer than two years, such as for saves within one year.
+ * fewer than two years, such as for saves within one year. Without a month
+ * start on the axis, the first and last save days are the ticks.
  */
-export function timeTicks(min: number, max: number) {
+export function timeTicks(first: number, last: number, pad: number) {
+  const min = first - pad;
+  const max = last + pad;
   const inRange = (day: number) => day >= min && day <= max;
   const start = dateFromDayNumber(min);
   const end = dateFromDayNumber(max);
@@ -166,11 +169,17 @@ export function timeTicks(min: number, max: number) {
     const day = dayNumber({ year: Math.floor(at / 12), month, day: 1 });
     if ((month - 1) % months === 0 && inRange(day)) ticks.push(day);
   }
+  if (!ticks.length) {
+    return {
+      ticks: [...new Set([first, last])],
+      label: (day: number) => formatLongDate(dateFromDayNumber(day)),
+    };
+  }
   return {
     ticks,
     label: (day: number) => {
       const date = dateFromDayNumber(day);
-      return `${MONTH_ABBR[date.month]} ${date.year}`;
+      return `${date.year} ${MONTH_ABBR[date.month]}`;
     },
   };
 }

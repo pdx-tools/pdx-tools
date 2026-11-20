@@ -96,11 +96,16 @@ export function useCampaignAutoAnalysis<D extends SnapshotDescriptor>({
         history.setState({ issues: [String(error)] });
       })
       .finally(() => {
-        // Identity reads may finish during analysis. Don't immediately retry failed files.
+        // The import records the version that it read, so a failed file is not
+        // tried again at once. A newer version that navigation read meanwhile is.
         if (busy || visit.current !== started) return;
+        const { sources, failedSources } = history.getState();
         for (const entry of entries) {
           const current = localSaveRegistry.get(entry.id);
-          if (current) attempted.current.add(campaignAnalysisSourceKey(current));
+          const version = current && entryVersion(current);
+          const read = sources[entry.id]?.version ?? failedSources[entry.id]?.version;
+          if (current && version && read && sameFileVersion(version, read))
+            attempted.current.add(campaignAnalysisSourceKey(current));
         }
       });
   }, [

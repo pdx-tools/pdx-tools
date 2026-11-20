@@ -82,6 +82,9 @@ export function BySaveTable({
                   >
                     <Swatch color={names.get(tag)?.color ?? "#808080"} />
                     {rowName(row, column, selected, names)}
+                    {row.lineage?.kind === "earlierHolder" && (
+                      <span className={muted}>(earlier country)</span>
+                    )}
                     {otherTags(row, column, selected).map((other) => (
                       <span
                         key={`${other.tag}${other.from}`}

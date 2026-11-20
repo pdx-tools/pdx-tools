@@ -26,6 +26,12 @@ export type CampaignAnalyzer<Api, R, D extends SnapshotDescriptor> = {
    * file that the parser accepts.
    */
   download?: (upload: CampaignUpload, signal: AbortSignal) => Promise<File>;
+  /**
+   * Release the snapshot of a file's earlier version, such as of a rolling
+   * autosave, once no save is bound to it. A game that shows every snapshot
+   * keeps them.
+   */
+  releaseEarlierVersions?: boolean;
 };
 
 /** An uploaded save of the campaign. */
@@ -42,7 +48,13 @@ export function campaignAnalyzer<
   Api,
   R extends { descriptor: SnapshotDescriptor },
   D extends SnapshotDescriptor,
->({ history, analysis, parser, download }: CampaignAnalyzer<Api, R, D>) {
+>({
+  history,
+  analysis,
+  parser,
+  download,
+  releaseEarlierVersions = false,
+}: CampaignAnalyzer<Api, R, D>) {
   return async function analyzeCampaign(
     entries: LocalSaveEntry[],
     playthroughId: string,
@@ -89,6 +101,8 @@ export function campaignAnalyzer<
         uploads: { ...state.uploads, [saveId]: { kind: "failed", reason, error } },
       }));
 
+    // The snapshots of earlier versions of the files that this import read.
+    const superseded = new Set<string>();
     /** Release the snapshots that no save is bound to anymore. Nothing shows them. */
     const reclaim = async (ids: ReadonlySet<string>) => {
       const state = history.getState();
@@ -99,7 +113,8 @@ export function campaignAnalyzer<
       const unbound = state.snapshots
         .map((snapshot) => snapshot.id)
         .filter((id) => ids.has(id) && !bound.has(id));
-      if (!unbound.length || signal.aborted) return;
+      // A stopped import still releases them, but a later session has none of them.
+      if (!unbound.length || session.signal.aborted) return;
       await sink.remove(unbound);
       history.getState().forget(unbound);
     };
@@ -195,8 +210,6 @@ export function campaignAnalyzer<
       const unavailable = entries.length - sources.length;
       const byFile = sourcesByFile(sources);
       const sourcesOf = (file: File) => byFile.get(file) ?? [];
-      // The snapshots of earlier versions of the files, such as of a rolling autosave.
-      const superseded = new Set<string>();
       // These saves are not failures. Their identity moves them to another campaign.
       const otherCampaign = new Set<File>();
       let lastProgress = 0;
@@ -221,7 +234,8 @@ export function campaignAnalyzer<
               const before = history.getState().sources;
               for (const id of Object.keys(associations)) {
                 const previous = before[id]?.snapshotId;
-                if (previous && previous !== descriptor.id) superseded.add(previous);
+                if (releaseEarlierVersions && previous && previous !== descriptor.id)
+                  superseded.add(previous);
               }
               history.getState().add([descriptor], associations);
             } else if (completion.status === "failed" && !otherCampaign.has(file)) {
@@ -272,7 +286,6 @@ export function campaignAnalyzer<
         },
       );
       issues.push(...result.failures.map(({ fileName, error }) => `${fileName}: ${error}`));
-      await reclaim(superseded);
       if (result.memoryFull) {
         const refused = result.outcomes.refused + result.outcomes.unprocessed;
         const saves = refused === 1 ? "1 save was" : `${refused} saves were`;
@@ -287,6 +300,7 @@ export function campaignAnalyzer<
     } catch (error) {
       if (!signal.aborted) issues.push(String(error));
     } finally {
+      await reclaim(superseded).catch((error) => issues.push(String(error)));
       lease.release();
       history.setState((state) => ({
         progress: null,

@@ -258,7 +258,10 @@ function BySaveView({
     const save = columns[column];
     if (save && playthroughId) selectSave(playthroughId, save.save.key);
   };
-  const [hovered, setHovered] = useState<number | null>(null);
+  // The save under the pointer, by its key, so a column that goes does not move the hover.
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const hoveredAt = columns.findIndex((x) => x.save.key === hoveredKey);
+  const hovered = hoveredAt >= 0 ? hoveredAt : null;
   const shown = hovered ?? selected;
   const openColumn = campaign.open
     ? columns.findIndex((x) => x.save.key === campaign.open!.save.key)
@@ -355,7 +358,11 @@ function BySaveView({
           selectedDay={dayNumber(selectedSave.date)}
           openDay={openColumn >= 0 ? dayNumber(columns[openColumn].date) : null}
           hoverDay={hovered === null ? null : dayNumber(columns[hovered].date)}
-          onPointer={(day) => setHovered(day === null ? null : nearestColumn(columns, day))}
+          onPointer={(day) =>
+            setHoveredKey(
+              day === null ? null : (columns[nearestColumn(columns, day)]?.save.key ?? null),
+            )
+          }
           onPick={(day) => select(nearestColumn(columns, day))}
         />
       </div>

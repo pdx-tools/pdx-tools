@@ -235,34 +235,44 @@ it("keeps local reads on the session that the import claimed", async () => {
   expect(sinks).toEqual([]);
 });
 
-it("releases the snapshot of an earlier version of a file", async () => {
-  const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
-  const file = new File(["1500"], "autosave.eu4", { lastModified: 2 });
-  const [entry] = await localSaveRegistry.register("eu4", [{ kind: "file", file }]);
-  // The snapshot of the file when it held an earlier date.
-  history.getState().add([descriptor("eu4:1444")], {
-    [entry.id]: { snapshotId: "eu4:1444", version: { size: 4, lastModified: 1 } },
-  });
-  mocks.importBatch
-    .mockReset()
-    .mockImplementation(async (files: File[], options: ImportOptions<SnapshotDescriptor>) => {
-      for (const file of files)
-        options.onFileComplete({ status: "accepted", file, descriptor: descriptor("eu4:1500") });
-      return done;
+it.each([true, false])(
+  "releases the snapshot of an earlier version of a file when asked: %s",
+  async (releaseEarlierVersions) => {
+    const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
+    const file = new File(["1500"], "autosave.eu4", { lastModified: 2 });
+    const [entry] = await localSaveRegistry.register("eu4", [{ kind: "file", file }]);
+    // The snapshot of the file when it held an earlier date.
+    history.getState().add([descriptor("eu4:1444")], {
+      [entry.id]: { snapshotId: "eu4:1444", version: { size: 4, lastModified: 1 } },
     });
-  const remove = vi.fn(async () => {});
-  await campaignAnalyzer({
-    history,
-    analysis: {
-      claim: () => {},
-      generation: () => 1,
-      signal: () => new AbortController().signal,
-      append: vi.fn(),
-      remove,
-    },
-    parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
-  })([entry], "campaign");
-  expect(remove).toHaveBeenCalledWith(["eu4:1444"]);
-  expect(history.getState().snapshots.map((x) => x.id)).toEqual(["eu4:1500"]);
-  expect(history.getState().sources[entry.id].snapshotId).toBe("eu4:1500");
-});
+    mocks.importBatch
+      .mockReset()
+      .mockImplementation(async (files: File[], options: ImportOptions<SnapshotDescriptor>) => {
+        for (const file of files)
+          options.onFileComplete({ status: "accepted", file, descriptor: descriptor("eu4:1500") });
+        return done;
+      });
+    const remove = vi.fn(async () => {});
+    await campaignAnalyzer({
+      history,
+      analysis: {
+        claim: () => {},
+        generation: () => 1,
+        signal: () => new AbortController().signal,
+        append: vi.fn(),
+        remove,
+      },
+      parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
+      releaseEarlierVersions,
+    })([entry], "campaign");
+    expect(history.getState().sources[entry.id].snapshotId).toBe("eu4:1500");
+    // A game that shows every snapshot, such as EU5's map history, keeps it.
+    if (!releaseEarlierVersions) {
+      expect(remove).not.toHaveBeenCalled();
+      expect(history.getState().snapshots).toHaveLength(2);
+      return;
+    }
+    expect(remove).toHaveBeenCalledWith(["eu4:1444"]);
+    expect(history.getState().snapshots.map((x) => x.id)).toEqual(["eu4:1500"]);
+  },
+);
