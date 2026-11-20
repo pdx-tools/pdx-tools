@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import type { LineageValues } from "@/wasm/wasm_eu4";
-import { alignColumns, lineageRows, otherTags, rowTag, rowsAt } from "./model";
+import { alignColumns, lineageRows, nearestTags, otherTags, rowTag, rowsAt } from "./model";
 
 const save = (id: string, year: number) =>
   ({
@@ -91,4 +91,24 @@ it("names a row by the tag it held at the column, even a tag it held twice", () 
 
   // Without a cell at a hovered column, the row keeps its selected name.
   expect(rowTag(row, 2, 1)).toBe("BOH");
+});
+
+it("names the three nearest other tags of a long chain and counts the rest", () => {
+  const tags = ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"].map((tag, i, all) => ({
+    tag,
+    ...(i > 0 && { from: `${1450 + i}-01-01` }),
+    ...(i < all.length - 1 && { until: `${1451 + i}-01-01` }),
+  }));
+  const [row] = lineageRows(
+    [
+      {
+        lineage: { kind: "country", tags },
+        values: [{ kind: "value", tag: "EEE", held: 4, value: 1 }],
+      },
+    ],
+    [0],
+  );
+  const { near, more } = nearestTags(row, 0);
+  expect(near.map((x) => `${x.relation} ${x.tag}`)).toEqual(["was DDD", "was CCC", "was BBB"]);
+  expect(more).toBe(2);
 });

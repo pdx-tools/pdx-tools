@@ -8,7 +8,7 @@ import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
 import { openCampaignSave } from "@/features/campaign/openSave";
 import { currentSaveInput } from "@/features/engine";
-import { MONTH_ABBR, dayNumber, formatLongDate } from "@/features/timeline/date";
+import { MONTH_ABBR, formatLongDate } from "@/features/timeline/date";
 import { MONTH_DAY_SIZERS } from "@/features/timeline/TimelineReadout";
 import { cx } from "class-variance-authority";
 import { eu4Analysis } from "@/features/eu4/analysis/analysisClient";
@@ -17,20 +17,15 @@ import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import { useEu4Actions, useEu4Countries, useTagFilter } from "@/features/eu4/store";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { ChartCountries, CountryMetric } from "@/wasm/wasm_eu4";
-import { BySaveChart } from "./BySaveChart";
-import type { BySaveSeries } from "./BySaveChart";
-import { BySaveTable, NotAtThisSave } from "./BySaveTable";
+import ChevronLeftIcon from "@heroicons/react/20/solid/ChevronLeftIcon";
+import ChevronRightIcon from "@heroicons/react/20/solid/ChevronRightIcon";
+import { Badge } from "@/components/Badge";
+import { Collapsible } from "@/components/Collapsible";
+import { IconButton } from "@/components/IconButton";
+import { BySaveLedger, NotAtThisSave, useSettled } from "./BySaveLedger";
 import { bySaveFigures } from "./figures";
 import type { BySaveFigure, BySaveViz } from "./figures";
-import {
-  alignColumns,
-  amount,
-  bySaveCsv,
-  lineageRows,
-  rowsAt,
-  sourceText,
-  unclearTags,
-} from "./model";
+import { alignColumns, bySaveCsv, lineageRows, rowsAt, sourceText, unclearTags } from "./model";
 import type { BySaveData } from "./model";
 import { useEu4Campaign } from "./useEu4Campaign";
 import { selectSave, useBySaveView } from "./view";
@@ -217,20 +212,6 @@ function useChartCountries(campaignId: string | null) {
   return current;
 }
 
-/** The column of the save nearest a day. */
-function nearestColumn(columns: readonly AnalysisSave[], day: number) {
-  let best = -1;
-  let distance = Infinity;
-  columns.forEach((column, i) => {
-    const gap = Math.abs(dayNumber(column.date) - day);
-    if (gap < distance) {
-      distance = gap;
-      best = i;
-    }
-  });
-  return best;
-}
-
 function BySaveView({
   campaign,
   figure,
@@ -255,19 +236,6 @@ function BySaveView({
     const name = names.get(tag)?.name;
     return name ? `${name} (${tag})` : tag;
   });
-  const series = useMemo(
-    (): BySaveSeries[] =>
-      rows.map((row) => ({
-        key: row.key,
-        points: row.cells.flatMap((cell, i) => {
-          const value = amount(cell);
-          if (value === null || !cell) return [];
-          const color = cell.tag ? (names.get(cell.tag)?.color ?? "#808080") : "#64748b";
-          return [{ day: dayNumber(columns[i].date), value, color }];
-        }),
-      })),
-    [rows, columns, names],
-  );
   const visualizationDispatch = useVisualizationDispatch();
   useEffect(() => {
     visualizationDispatch({
@@ -291,6 +259,7 @@ function BySaveView({
   const hoveredAt = columns.findIndex((x) => x.snapshot?.id === hoveredId);
   const hovered = hoveredAt >= 0 ? hoveredAt : null;
   const shown = hovered ?? selected;
+  const [emphasized, setEmphasized] = useState<string | null>(null);
   const openColumn = campaign.open
     ? columns.findIndex((x) => x.save.key === campaign.open!.save.key)
     : -1;
@@ -336,15 +305,27 @@ function BySaveView({
     }
   };
 
-  // Rows keep the order of the selected save while the pointer moves. A
-  // country without a value there joins the end only while it has one.
-  const order = useMemo(() => (selected >= 0 ? rowsAt(rows, selected) : []), [rows, selected]);
+  // Rows stand in the order of the selected save once stepping stops, so a
+  // held arrow key does not shuffle them. Hover never moves them. A country
+  // without a value there joins the end only while it has one.
+  const settled = useSettled(selected, 350);
+  const orderAt = settled < columns.length ? settled : selected;
+  const order = useMemo(() => (orderAt >= 0 ? rowsAt(rows, orderAt) : []), [rows, orderAt]);
+  const present = useMemo(
+    () => [...order, ...rows.filter((row) => !order.includes(row) && row.cells[selected] !== null)],
+    [order, rows, selected],
+  );
   const absent = useMemo(
     () => (selected >= 0 ? rows.filter((row) => row.cells[selected] === null) : []),
     [rows, selected],
   );
   const shownRows =
-    hovered === null ? order : [...order, ...absent.filter((row) => row.cells[hovered] !== null)];
+    hovered === null
+      ? present.filter((row) => row.cells[selected] !== null)
+      : [
+          ...present,
+          ...absent.filter((row) => row.cells[hovered] !== null && !present.includes(row)),
+        ];
 
   if (!columns.length || selected < 0) {
     return (
@@ -357,20 +338,71 @@ function BySaveView({
   }
   const shownSave = columns[shown];
   const world = !chart;
-  const openControl =
+  const preview = hovered !== null && hovered !== selected;
+  const dateText = (column: number) => formatLongDate(columns[column].date);
+  const openSlot =
     campaign.open && selectedSave.save.key === campaign.open.save.key ? (
-      <span className="font-medium">Open now</span>
+      <Badge role="status">Open now</Badge>
     ) : selectedSave.save.isOpen ? (
-      campaign.openOtherVersion && <span>The viewer shows another version of this file.</span>
+      campaign.openOtherVersion && (
+        <Badge title="The viewer shows another version of this file.">Other version</Badge>
+      )
     ) : (
       <Button
-        variant="primary"
         disabled={!nav || opening || nav.opening !== null}
         onClick={() => void openSelected()}
       >
         {opening ? "Opening" : "Open save"}
       </Button>
     );
+  const header = (
+    <div className="flex h-12 items-center gap-4">
+      <span
+        className={cx("flex items-baseline gap-2.5 whitespace-nowrap", preview && "opacity-60")}
+        title={`${shownSave.save.name} · ${sourceText(shownSave.save)}`}
+      >
+        <span className="text-[40px] leading-10 font-semibold tracking-tight tabular-nums">
+          {shownSave.date.year}
+        </span>
+        <span className="inline-grid text-xl text-gray-600 dark:text-gray-300">
+          {MONTH_DAY_SIZERS}
+          <span className="col-start-1 row-start-1">
+            {MONTH_ABBR[shownSave.date.month]} {shownSave.date.day}
+          </span>
+        </span>
+      </span>
+      <span className="flex">
+        <IconButton
+          shape="square"
+          className="rounded-r-none"
+          icon={<ChevronLeftIcon className="size-4" aria-hidden />}
+          disabled={selected <= 0}
+          aria-label={selected > 0 ? `Earlier save, ${dateText(selected - 1)}` : "Earlier save"}
+          tooltip={selected > 0 ? `Earlier save: ${dateText(selected - 1)}` : undefined}
+          onClick={() => select(selected - 1)}
+        />
+        <IconButton
+          shape="square"
+          className="-ml-px rounded-l-none"
+          icon={<ChevronRightIcon className="size-4" aria-hidden />}
+          disabled={selected >= columns.length - 1}
+          aria-label={
+            selected < columns.length - 1 ? `Later save, ${dateText(selected + 1)}` : "Later save"
+          }
+          tooltip={
+            selected < columns.length - 1 ? `Later save: ${dateText(selected + 1)}` : undefined
+          }
+          onClick={() => select(selected + 1)}
+        />
+      </span>
+      {/* The slot acts on the selected save only, so it dims while the pointer shows another. */}
+      <span
+        className={cx("ml-auto flex w-28 justify-end transition-opacity", preview && "opacity-40")}
+      >
+        {openSlot}
+      </span>
+    </div>
+  );
   return (
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
@@ -389,85 +421,48 @@ function BySaveView({
         aria-label="Campaign chart. Left and right arrows select an earlier or a later save."
         className="rounded-md focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:outline-none"
         onKeyDown={(event) => {
-          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          const step =
+            event.key === "ArrowLeft"
+              ? selected - 1
+              : event.key === "ArrowRight"
+                ? selected + 1
+                : event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? columns.length - 1
+                    : null;
+          if (step === null) return;
           event.preventDefault();
-          select(selected + (event.key === "ArrowLeft" ? -1 : 1));
+          select(Math.max(0, Math.min(columns.length - 1, step)));
         }}
       >
-        <BySaveChart
-          series={series}
-          range={[columns[0].date, columns[columns.length - 1].date]}
-          tick={figure.format}
-          selectedDay={dayNumber(selectedSave.date)}
-          openDay={openColumn >= 0 ? dayNumber(columns[openColumn].date) : null}
-          hoverDay={hovered === null ? null : dayNumber(columns[hovered].date)}
-          onPointer={(day) =>
-            setHoveredId(
-              day === null ? null : (columns[nearestColumn(columns, day)]?.snapshot?.id ?? null),
-            )
+        <BySaveLedger
+          columns={columns}
+          rows={world ? rows : shownRows}
+          allRows={rows}
+          selected={selected}
+          hovered={hovered}
+          openColumn={openColumn}
+          figure={figure}
+          names={names}
+          world={world}
+          emphasized={world ? null : emphasized}
+          onEmphasize={setEmphasized}
+          onHover={(column) =>
+            setHoveredId(column === null ? null : (columns[column]?.snapshot?.id ?? null))
           }
-          onPick={(day) => select(nearestColumn(columns, day))}
+          onPick={select}
+          header={header}
         />
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span
-          className={cx(
-            "font-medium tabular-nums",
-            hovered !== null && "text-gray-600 dark:text-gray-300",
-          )}
-          title={`${shownSave.save.name} · ${sourceText(shownSave.save)}`}
-        >
-          <SaveDate date={shownSave.date} />
-          {world && amount(rows[0]?.cells[shown] ?? null) !== null && (
-            <> · {figure.format(amount(rows[0].cells[shown])!)}</>
-          )}
-        </span>
-        {/* The open control acts on the selected save only, so it hides while the pointer shows another. */}
-        <span className={cx(hovered !== null && hovered !== selected && "invisible")}>
-          {openControl}
-        </span>
-        <span className="ml-auto flex gap-2">
-          <Button disabled={selected <= 0} onClick={() => select(selected - 1)}>
-            Earlier save
-          </Button>
-          <Button disabled={selected >= columns.length - 1} onClick={() => select(selected + 1)}>
-            Later save
-          </Button>
-        </span>
       </div>
       <p aria-live="polite" aria-atomic className="sr-only">
         Selected {formatLongDate(selectedSave.date)}, {selectedSave.save.name}
       </p>
-      {!world && (
-        <>
-          <BySaveTable
-            rows={shownRows}
-            column={shown}
-            selected={selected}
-            dateLabel={formatLongDate(shownSave.date)}
-            figure={figure}
-            names={names}
-          />
-          {hovered === null && <NotAtThisSave rows={absent} column={selected} names={names} />}
-        </>
+      {!world && hovered === null && (
+        <NotAtThisSave rows={absent} column={selected} names={names} />
       )}
       <Foot campaign={campaign} chart={chart} unclear={unclear} />
     </div>
-  );
-}
-
-/** A date at one width, so the line beside it does not move as the date changes. */
-function SaveDate({ date }: { date: { year: number; month: number; day: number } }) {
-  return (
-    <>
-      {date.year}{" "}
-      <span className="inline-grid">
-        {MONTH_DAY_SIZERS}
-        <span className="col-start-1 row-start-1">
-          {MONTH_ABBR[date.month]} {date.day}
-        </span>
-      </span>
-    </>
   );
 }
 
@@ -585,31 +580,39 @@ function Foot({
     countries > 0 && plural(countries, "country", "countries"),
   ].filter(Boolean);
   return (
-    <div className="flex flex-wrap items-start gap-3 text-sm">
-      <AddSaves />
+    <Collapsible className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
+      <AddSaves quiet />
       {entries.length > 0 && (
-        <details className="pt-2">
-          <summary className="cursor-pointer text-gray-600 dark:text-gray-300">
+        <>
+          <Collapsible.Trigger className="w-auto! gap-1.5 font-normal text-gray-600 dark:text-gray-300">
             Not shown{parts.length ? `: ${parts.join(", ")}` : ""}
-          </summary>
-          <ul className="mt-1 list-disc pl-5">
-            {entries.map((entry, i) => (
-              <li key={i}>{entry}</li>
-            ))}
-          </ul>
-        </details>
+          </Collapsible.Trigger>
+          <Collapsible.Content className="basis-full">
+            <ul className="mt-1 list-disc pl-5 text-gray-600 dark:text-gray-300">
+              {entries.map((entry, i) => (
+                <li key={i}>{entry}</li>
+              ))}
+            </ul>
+          </Collapsible.Content>
+        </>
       )}
-    </div>
+    </Collapsible>
   );
 }
 
-function AddSaves() {
+/** Add saves: a bordered button where it is the one action, a quiet one in the foot. */
+function AddSaves({ quiet = false }: { quiet?: boolean }) {
   const { busy, chooseFiles, fileInput } = useAddCampaignSaves(EU4_SAVES, (issue) =>
     useEu4History.setState({ issues: [issue] }),
   );
   return (
     <>
-      <Button className="self-start" disabled={busy} onClick={() => void chooseFiles()}>
+      <Button
+        className={cx("self-start", quiet && "underline underline-offset-2")}
+        {...(quiet && { variant: "ghost", shape: "none" })}
+        disabled={busy}
+        onClick={() => void chooseFiles()}
+      >
         Add saves
       </Button>
       <input {...fileInput} tabIndex={-1} aria-label="Add campaign saves" className="sr-only" />

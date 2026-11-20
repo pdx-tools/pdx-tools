@@ -93,7 +93,7 @@ export function rowsAt(rows: readonly BySaveRow[], column: number): BySaveRow[] 
  * The index of the lineage tag that a row shows at a column. Without a cell
  * there, the row keeps its tag at the fallback column, else its latest one.
  */
-function heldIndex(row: BySaveRow, column: number, fallback: number): number | null {
+export function heldIndex(row: BySaveRow, column: number, fallback = column): number | null {
   const cell = row.cells[column] ?? row.cells[fallback] ?? row.cells.findLast((x) => x !== null);
   return cell?.held ?? null;
 }
@@ -125,6 +125,18 @@ export function otherTags(
           },
         ],
   );
+}
+
+/**
+ * The other tags to name beside a row: the three nearest in time, earlier
+ * ones first and nearest first, and how many more there are.
+ */
+export function nearestTags(row: BySaveRow, column: number, fallback = column) {
+  const others = otherTags(row, column, fallback);
+  const before = others.filter((x) => x.relation === "was").reverse();
+  const after = others.filter((x) => x.relation === "later");
+  const near = [...before, ...after].slice(0, 3);
+  return { near, more: others.length - near.length };
 }
 
 /** The year of a switch date, for hover text. */

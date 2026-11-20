@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { dayNumber } from "@/features/timeline/date";
-import { timeTicks } from "./BySaveChart";
+import { timeTicks } from "./timeTicks";
 
 it("puts ticks on round years, or on months for saves within one year", () => {
   const long = timeTicks(
