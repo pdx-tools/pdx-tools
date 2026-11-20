@@ -228,7 +228,7 @@ class Eu5Session {
     const game = await workers.start(
       {
         canvas: surface.offscreen,
-        namesCanvas,
+        names: { canvas: namesCanvas, visible: this.mapNamesVisible },
         display: transport.currentSize(),
         inputConfig: transport.inputConfig,
         save: source,

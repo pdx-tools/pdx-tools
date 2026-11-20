@@ -100,8 +100,8 @@ export class Eu5GameAdapter {
   async start(
     config: {
       canvas: OffscreenCanvas;
-      /** The canvas over the map, for the names on it */
-      namesCanvas: OffscreenCanvas;
+      /** The canvas over the map for the names on it, and if they show at the start */
+      names: { canvas: OffscreenCanvas; visible: boolean };
       display: {
         width: number;
         height: number;
@@ -164,11 +164,11 @@ export class Eu5GameAdapter {
         transfer(
           {
             canvas: config.canvas,
-            namesCanvas: config.namesCanvas,
+            names: config.names,
             display: config.display,
             inputConfig: config.inputConfig,
           },
-          [config.canvas, config.namesCanvas],
+          [config.canvas, config.names.canvas],
         ),
         proxy({
           mapBundle: mapBundleApi,

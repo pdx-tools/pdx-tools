@@ -343,6 +343,21 @@ class BoxGrid {
     });
   }
 
+  /** True if the segment from `a` to `b` crosses a placed name */
+  crosses(a: WorldPoint, b: WorldPoint): boolean {
+    const span = {
+      x0: Math.min(a.x, b.x),
+      y0: Math.min(a.y, b.y),
+      x1: Math.max(a.x, b.x),
+      y1: Math.max(a.y, b.y),
+    };
+    let found = false;
+    this.each(span, (key) => {
+      found ||= this.cells.get(key)?.some((other) => crosses(a, b, other)) ?? false;
+    });
+    return found;
+  }
+
   touches(box: Box): boolean {
     let found = false;
     this.each(box, (key) => {
@@ -401,16 +416,20 @@ export function placeNames(
 
     const majorPx = shape.major * scaleX;
     const minorPx = shape.minor * scaleX;
-    const room = majorPx * AXIS_SHARE;
-    const asCapitals = room / measure(name.text, true);
-    const canCapitals = asCapitals >= CAPITALS_FROM && minorPx >= CAPITALS_FROM;
-    const fitted = canCapitals
-      ? Math.min(asCapitals, Math.max(minorPx * 0.7, CAPITALS_FROM))
-      : room / measure(name.text, false);
     const long = shape.major / shape.minor >= LONG_REALM && majorPx > 60;
     // A name reads left to right, so a slope folds into the upright half.
     const lean = shape.angle - Math.round(shape.angle / Math.PI) * Math.PI;
     const angle = long ? Math.max(-MAX_LEAN, Math.min(MAX_LEAN, lean)) : 0;
+    // The land along the text and across it. A steep realm has less room than its length.
+    const [cosT, sinT] = [Math.abs(Math.cos(angle - lean)), Math.abs(Math.sin(angle - lean))];
+    const along = Math.min(majorPx / cosT, minorPx / sinT);
+    const across = Math.min(minorPx / cosT, majorPx / sinT);
+    const room = along * AXIS_SHARE;
+    const asCapitals = room / measure(name.text, true);
+    const canCapitals = asCapitals >= CAPITALS_FROM && across >= CAPITALS_FROM;
+    const fitted = canCapitals
+      ? Math.min(asCapitals, Math.max(across * 0.7, CAPITALS_FROM))
+      : room / measure(name.text, false);
     let onLand = false;
     // A name that meets another one tries smaller sizes on its land, the smallest last.
     const smaller = (size: number) => (size > MIN_SIZE ? Math.max(MIN_SIZE, size * SIZE_STEP) : 0);
@@ -438,8 +457,11 @@ export function placeNames(
     )) {
       const at = { x: land.x + ox, y: land.y + oy };
       const box = textBox(at.x, at.y, noteWidth, noteHeight, 0);
-      if (!isFree(box) || (line && covered.some((cover) => crosses(land, at, grow(cover)))))
-        continue;
+      // A line goes neither under a panel nor through another name.
+      const blocked =
+        line &&
+        (covered.some((cover) => crosses(land, at, grow(cover))) || boxes.crosses(land, at));
+      if (!isFree(box) || blocked) continue;
       boxes.add(box);
       placed.push({
         text: name.text,

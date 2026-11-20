@@ -261,13 +261,13 @@ const emitCursor = (hint: CursorHint) => {
 export const createMapEngine = async (
   {
     canvas,
-    namesCanvas,
+    names: namesConfig,
     display,
     inputConfig,
   }: {
     canvas: OffscreenCanvas;
-    /** A canvas over the map, for the names on it */
-    namesCanvas: OffscreenCanvas;
+    /** A canvas over the map for the names on it, and if they show at the start */
+    names: { canvas: OffscreenCanvas; visible: boolean };
     display: CanvasDisplay;
     inputConfig: SharedCanvasInputConfig;
   },
@@ -307,8 +307,11 @@ export const createMapEngine = async (
 
   const app = await appTask;
   const [worldWidth] = app.world_size();
-  const locationPoints = new Uint32Array(app.location_points());
-  const names = new MapNameLayer(namesCanvas, display);
+  const names = new MapNameLayer(namesConfig.canvas, display, {
+    points: new Uint32Array(app.location_points()),
+    worldWidth,
+  });
+  names.setVisible(namesConfig.visible);
 
   // Send initial zoom level to game worker
   const initialZoom = app.get_zoom();
@@ -676,7 +679,7 @@ export const createMapEngine = async (
       overlayDirty = false;
     }
     if (namesDirty) {
-      names.setNames(overlay ? NO_NAMES : live.names, locationPoints, worldWidth);
+      names.setNames(overlay ? NO_NAMES : live.names);
       namesDirty = false;
     }
   };
@@ -725,8 +728,9 @@ export const createMapEngine = async (
         // otherwise it will freeze up
         await app.queued_work().wait();
         app.resize(newDimensions.width, newDimensions.height, newDimensions.scaleFactor);
-        names.resize(newDimensions);
       }
+      // The names follow each resize, so that they and the panels share one size in CSS pixels.
+      names.resize(newDimensions);
 
       newDimensions = null;
     }
@@ -743,7 +747,7 @@ export const createMapEngine = async (
       app.render();
     }
     // In the same frame as the map, so that the names move with it.
-    if (lastViewport !== null) names.draw(lastViewport.viewport, worldWidth);
+    if (lastViewport !== null) names.draw(lastViewport.viewport);
   };
   // Four integers read off the input state: cheap enough for every frame,
   // and the comparison keeps a resting map silent.

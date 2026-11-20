@@ -107,6 +107,11 @@ describe("placeNames", () => {
     expect(Math.abs(placed.angle)).toBeLessThanOrEqual(Math.PI / 5);
   });
 
+  it("gives no name to a steep strip that is too narrow for it", () => {
+    const strip = { center: { x: 200, y: 200 }, major: 200, minor: 10, angle: Math.PI / 2 };
+    expect(place([name("Chile", strip)])).toEqual([]);
+  });
+
   it("names no realm whose middle is under a panel", () => {
     const covers = [{ x: 0, y: 0, width: 400, height: 500 }];
     expect(place([name("Russia", large, { placement: "nearLand" })], covers)).toEqual([]);

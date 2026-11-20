@@ -108,7 +108,7 @@ async function openMap() {
   const engine = await module.createMapEngine(
     {
       canvas: {} as OffscreenCanvas,
-      namesCanvas: {} as OffscreenCanvas,
+      names: { canvas: {} as OffscreenCanvas, visible: true },
       display: { width: 960, height: 640, scaleFactor: 2 },
       inputConfig: config,
     },
@@ -235,10 +235,10 @@ describe("EU5 map frame loop", () => {
     const renders = mocks.app.render.mock.calls.length;
     await nextFrame();
 
-    expect(mocks.names.setNames).toHaveBeenLastCalledWith(names, expect.any(Uint32Array), 1000);
+    expect(mocks.names.setNames).toHaveBeenLastCalledWith(names);
     expect(mocks.app.render).toHaveBeenCalledTimes(renders + 1);
     expect(mocks.names.draw).toHaveBeenCalledOnce();
-    expect(mocks.names.draw).toHaveBeenCalledWith({ x: 50, y: 0, width: 800, height: 400 }, 1000);
+    expect(mocks.names.draw).toHaveBeenCalledWith({ x: 50, y: 0, width: 800, height: 400 });
     expect(mocks.app.render.mock.invocationCallOrder.at(-1)).toBeLessThan(
       mocks.names.draw.mock.invocationCallOrder[0],
     );
@@ -312,11 +312,7 @@ describe("EU5 map overlay", () => {
     await endpoint.presentOverlay(overlay(1));
     await nextFrame();
     // The names are of the loaded save, so the snapshot has none.
-    expect(mocks.names.setNames).toHaveBeenLastCalledWith(
-      expect.objectContaining({ names: [] }),
-      expect.any(Uint32Array),
-      1000,
-    );
+    expect(mocks.names.setNames).toHaveBeenLastCalledWith(expect.objectContaining({ names: [] }));
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_flag_array).toHaveBeenLastCalledWith(overlay(1).flags);
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(overlay(1).groups);
@@ -346,7 +342,7 @@ describe("EU5 map overlay", () => {
     expect(mocks.app.sync_grouping_table).toHaveBeenLastCalledWith(new Uint32Array([6]));
     expect(mocks.app.sync_color_array).toHaveBeenLastCalledWith(overlay(1).colors);
     expect(mocks.app.sync_color_array).toHaveBeenCalledTimes(2);
-    expect(mocks.names.setNames).toHaveBeenLastCalledWith(later, expect.any(Uint32Array), 1000);
+    expect(mocks.names.setNames).toHaveBeenLastCalledWith(later);
   });
 });
 

@@ -65,7 +65,7 @@ export class MapNameLayer {
   /** The shapes of the last names, by a key of their land */
   private shapes = new Map<string, Shaped>();
   /** Names that have come but have no shapes yet */
-  private pending: { names: MapNames; points: Uint32Array; worldWidth: number } | null = null;
+  private pending: MapNames | null = null;
   private covers: Rect[] = [];
   private visible = true;
   /** The names, covers or canvas changed since the last draw */
@@ -76,37 +76,38 @@ export class MapNameLayer {
   private readonly widths = new Map<string, number>();
   private frame: Frame;
 
+  /**
+   * @param map Each location's middle as `[x, y]` pairs by color id, and the
+   * width of the world. They are of one map, so a shape stays true.
+   */
   constructor(
     private readonly canvas: OffscreenCanvas,
     frame: Frame,
+    private readonly map: { points: Uint32Array; worldWidth: number },
   ) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("No 2D context for the map names");
     this.ctx = ctx;
     this.frame = frame;
     this.resize(frame);
+    // A canvas that lost its picture draws the names again.
+    canvas.addEventListener("contextrestored", () => {
+      this.dirty = true;
+    });
     void this.loadFont();
   }
 
-  /**
-   * Take the names for the map. A name has no shape until the map knows
-   * where its locations are.
-   *
-   * @param points Each location's middle as `[x, y]` pairs by color id
-   */
-  setNames(names: MapNames, points: Uint32Array, worldWidth: number): void {
-    this.pending = { names, points, worldWidth };
+  /** Take the names for the map. They get their shapes when they show. */
+  setNames(names: MapNames): void {
+    this.pending = names;
     this.dirty = true;
   }
 
   /** Give the names their shapes, only when they are about to show. */
   private shapeNames(): void {
     if (this.pending === null) return;
-    const {
-      names: { names, locations },
-      points,
-      worldWidth,
-    } = this.pending;
+    const { names, locations } = this.pending;
+    const { points, worldWidth } = this.map;
     this.pending = null;
     const shapes = new Map<string, Shaped>();
     let start = 0;
@@ -149,6 +150,11 @@ export class MapNameLayer {
 
   /** Match the size of the map canvas, in device pixels */
   resize(frame: Frame): void {
+    const same =
+      frame.width === this.frame.width &&
+      frame.height === this.frame.height &&
+      frame.scaleFactor === this.frame.scaleFactor;
+    if (same && this.canvas.width === frame.width) return;
     this.frame = frame;
     this.canvas.width = frame.width;
     this.canvas.height = frame.height;
@@ -157,7 +163,7 @@ export class MapNameLayer {
   }
 
   /** Draw the names for this view, when it or the names changed. */
-  draw(view: Rect, worldWidth: number): void {
+  draw(view: Rect): void {
     const last = this.lastView;
     if (
       !this.dirty &&
@@ -185,7 +191,14 @@ export class MapNameLayer {
       width: frame.width / frame.scaleFactor,
       height: frame.height / frame.scaleFactor,
     };
-    const placed = placeNames(this.names, view, worldWidth, size, this.covers, this.measure);
+    const placed = placeNames(
+      this.names,
+      view,
+      this.map.worldWidth,
+      size,
+      this.covers,
+      this.measure,
+    );
     ctx.setTransform(frame.scaleFactor, 0, 0, frame.scaleFactor, 0, 0);
     ctx.lineJoin = "round";
     for (const name of placed) {
