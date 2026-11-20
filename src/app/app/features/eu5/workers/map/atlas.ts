@@ -274,9 +274,9 @@ function* noteOffsets(
   leaderLine: boolean,
 ): Generator<[number, number, boolean]> {
   yield [0, 0, false];
-  for (const reach of [1, 2]) {
-    for (const [x, y] of DIRECTIONS) yield [x * width * 0.6 * reach, y * height * reach, false];
-  }
+  // Near places keep the text against its land: beside it, or up to two lines away.
+  for (const [x, y] of DIRECTIONS) yield [x * width * 0.6, y * height, false];
+  for (const [x, y] of DIRECTIONS) if (x === 0) yield [0, y * height * 2, false];
   if (!leaderLine) return;
   for (const reach of [FAR_REACH / 2, FAR_REACH]) {
     for (const [x, y] of DIRECTIONS) yield [x * reach, y * reach, true];
@@ -403,8 +403,9 @@ export function placeNames(
     const lean = shape.angle - Math.round(shape.angle / Math.PI) * Math.PI;
     const angle = long ? Math.max(-MAX_LEAN, Math.min(MAX_LEAN, lean)) : 0;
     let onLand = false;
-    // A name that meets another one tries smaller sizes on its land.
-    for (let size = Math.min(MAX_SIZE, fitted); size >= MIN_SIZE; size *= SIZE_STEP) {
+    // A name that meets another one tries smaller sizes on its land, the smallest last.
+    const smaller = (size: number) => (size > MIN_SIZE ? Math.max(MIN_SIZE, size * SIZE_STEP) : 0);
+    for (let size = Math.min(MAX_SIZE, fitted); size >= MIN_SIZE; size = smaller(size)) {
       const capitals = canCapitals && size >= CAPITALS_FROM;
       // Title case stays below the size of capitals, so that a larger name is never the lesser one.
       if (!capitals) size = Math.min(size, CAPITALS_FROM - 1);

@@ -119,6 +119,12 @@ describe("placeNames", () => {
     expect(placed.size).toBeLessThan(30);
   });
 
+  it("tries the smallest size before it gives way", () => {
+    const narrow = { center: { x: 200, y: 200 }, major: 68, minor: 10, angle: 0 };
+    const [placed] = place([name("Abcdefgh", narrow)], [{ x: 230, y: 0, width: 770, height: 500 }]);
+    expect(placed.size).toBe(11);
+  });
+
   it("keeps a name out from under a panel", () => {
     const covers = [{ x: 210, y: 0, width: 790, height: 500 }];
     expect(place([name("Russia", large)], covers)).toEqual([]);

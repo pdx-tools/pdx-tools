@@ -42,6 +42,8 @@ class Eu5Session {
   private pageSaves: Eu5SaveInput[];
 
   private claims = 0;
+  /** The names setting of the last shown save, for the next new map */
+  private mapNamesVisible = true;
 
   private unclaimed: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -215,8 +217,9 @@ class Eu5Session {
     transport: CanvasCourierTransport,
     generation: number,
   ): Promise<void> {
-    // A new map keeps the names setting of the map it replaces.
-    const previous = this.shown()?.getState().appState;
+    // A new map keeps the names setting of the map it replaces, also when a load fails.
+    this.mapNamesVisible =
+      this.shown()?.getState().appState.mapNamesVisible ?? this.mapNamesVisible;
     this.update({ status: "pending", progress: { percent: 0, stage: "Starting workers" } });
 
     const namesCanvas = surface.overlay;
@@ -237,10 +240,7 @@ class Eu5Session {
       },
     );
 
-    const opened = await openEngine(
-      game,
-      previous ? { mapNamesVisible: previous.mapNamesVisible } : undefined,
-    );
+    const opened = await openEngine(game, { mapNamesVisible: this.mapNamesVisible });
     if (!this.isCurrent(generation)) {
       opened.engine.destroy();
       return;
