@@ -15,6 +15,7 @@ import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import PlayIcon from "@heroicons/react/20/solid/PlayIcon";
 import { emitEvent } from "@/lib/events";
 import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
+import { bySaveFigures, bySaveVizs } from "./by-save/figures";
 
 interface ChartDrawerTitleProps {
   selectedViz: VizModules;
@@ -60,7 +61,11 @@ export const ChartDrawerTitle = ({
           {campaignHistory && (
             <Select.Group>
               <Select.Label>By save</Select.Label>
-              <Select.Item value="world-dev-by-save">World development by save</Select.Item>
+              {bySaveVizs.map((viz) => (
+                <Select.Item key={viz} value={viz}>
+                  {bySaveFigures[viz].title}
+                </Select.Item>
+              ))}
             </Select.Group>
           )}
           <Select.Group>

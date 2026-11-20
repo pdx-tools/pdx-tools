@@ -1,0 +1,146 @@
+import type { ChartCountries, Series } from "@/wasm/wasm_eu4";
+import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
+import { formatIsoDate, parseDate } from "@/features/timeline/date";
+
+/** A series of the chart and a row of the table. */
+export type BySaveRow = {
+  key: string;
+  label: string;
+  color: string;
+  /** The value in each column, or null where the series has none. */
+  values: (number | null)[];
+  /** The tags that a recorded switch made this one, such as "was Brandenburg · BRA until 1525". */
+  was: string[];
+};
+
+/** The columns of the chart and the table: the snapshots of the campaign saves, in date order. */
+export type BySaveData = { columns: AnalysisSave[]; rows: BySaveRow[] };
+
+type CountryInfo = { name: string; color: string };
+
+/** "France · FRA", or the tag alone when the open save has no name for it. */
+export function countryLabel(tag: string, country: CountryInfo | undefined) {
+  return country && country.name !== tag ? `${country.name} · ${tag}` : tag;
+}
+
+/**
+ * Keep the snapshots that are bound to a save of the campaign list, in the
+ * order of the reply. A snapshot of a replaced file or of a save that the
+ * list left out has no dot.
+ */
+export function alignColumns(
+  snapshotIds: readonly string[],
+  saves: readonly AnalysisSave[],
+): { columns: AnalysisSave[]; at: number[] } {
+  const bySnapshot = new Map(saves.flatMap((x) => (x.snapshot ? [[x.snapshot.id, x]] : [])));
+  const columns: AnalysisSave[] = [];
+  const at: number[] = [];
+  snapshotIds.forEach((id, i) => {
+    const save = bySnapshot.get(id);
+    if (save) {
+      columns.push(save);
+      at.push(i);
+    }
+  });
+  return { columns, at };
+}
+
+/**
+ * One row for each country. Tags that a recorded switch joins are adjacent:
+ * the later tag first, with the tags it was.
+ */
+export function countryRows(
+  series: readonly Series<string>[],
+  at: readonly number[],
+  chart: ChartCountries,
+  countries: ReadonlyMap<string, CountryInfo>,
+): BySaveRow[] {
+  const byTag = new Map(series.map((x) => [x.key, x]));
+  const label = (tag: string) => countryLabel(tag, countries.get(tag));
+  const was = new Map<string, string[]>();
+  for (const { from, to, date } of chart.switches) {
+    const until = parseDate(date);
+    was.set(to, [...(was.get(to) ?? []), `was ${label(from)} until ${until ? until.year : date}`]);
+  }
+  // Order each pair by its chain: a switch puts the later tag before the earlier one.
+  const order: string[] = [];
+  const visit = (tag: string) => {
+    if (order.includes(tag) || !byTag.has(tag)) return;
+    order.push(tag);
+    for (const x of chart.switches) if (x.to === tag) visit(x.from);
+  };
+  const latest = chart.tags.filter(
+    (tag) => !chart.switches.some((x) => x.from === tag && byTag.has(x.to)),
+  );
+  for (const tag of latest) visit(tag);
+  for (const tag of chart.tags) visit(tag);
+  return order.map((tag) => ({
+    key: tag,
+    label: label(tag),
+    color: countries.get(tag)?.color ?? "#808080",
+    values: at.map((i) => byTag.get(tag)?.values[i] ?? null),
+    was: was.get(tag) ?? [],
+  }));
+}
+
+/** The groups of rows that a switch joins, so a sort keeps them adjacent. */
+function groups(rows: readonly BySaveRow[], chart: ChartCountries | null) {
+  const group = new Map(rows.map((row, i) => [row.key, i]));
+  for (const { from, to } of chart?.switches ?? []) {
+    const a = group.get(from);
+    const b = group.get(to);
+    if (a === undefined || b === undefined) continue;
+    for (const [key, value] of group) if (value === b) group.set(key, a);
+  }
+  return group;
+}
+
+/**
+ * Sort by the value in a column, larger first. A group of joined tags
+ * sorts by its largest value and keeps its order. Rows without a value
+ * come last.
+ */
+export function sortRows(
+  rows: readonly BySaveRow[],
+  column: number,
+  chart: ChartCountries | null,
+): BySaveRow[] {
+  const group = groups(rows, chart);
+  const best = new Map<number, number>();
+  for (const row of rows) {
+    const value = row.values[column];
+    const id = group.get(row.key)!;
+    if (value !== null) best.set(id, Math.max(best.get(id) ?? -Infinity, value));
+  }
+  const rank = (row: BySaveRow) => best.get(group.get(row.key)!) ?? -Infinity;
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => rank(b.row) - rank(a.row) || a.index - b.index)
+    .map(({ row }) => row);
+}
+
+/** The earliest column where a row has a value. */
+export function earliestColumn(row: BySaveRow): number | null {
+  const index = row.values.findIndex((value) => value !== null);
+  return index < 0 ? null : index;
+}
+
+/** Each save's value of each row, one line per value. */
+export function bySaveCsv(data: BySaveData) {
+  return data.rows.flatMap((row) =>
+    data.columns.flatMap((column, i) => {
+      const value = row.values[i];
+      return value === null
+        ? []
+        : [
+            {
+              country: row.key,
+              name: row.label,
+              date: formatIsoDate(column.save.date),
+              save: column.save.name,
+              value,
+            },
+          ];
+    }),
+  );
+}

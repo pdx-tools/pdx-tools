@@ -227,6 +227,11 @@ export function eu4GetProvinces(filter: CountryMatcher) {
   return wasm.save.get_provinces(filter);
 }
 
+/** The countries of a campaign chart for a filter, at most `limit` of them before pairing. */
+export function eu4ChartCountries(filter: CountryMatcher, limit: number) {
+  return wasm.save.chart_countries(filter, limit);
+}
+
 export function eu4GetHealth(filter: CountryMatcher): HealthData {
   return wasm.save.get_health(filter);
 }

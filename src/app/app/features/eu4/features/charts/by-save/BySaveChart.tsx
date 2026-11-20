@@ -27,9 +27,18 @@ export type BySaveChartProps = {
   axisName: string;
   /** The hover text of a dot. */
   describe: (series: BySaveSeries, point: BySavePoint) => string[];
+  /** Name each series beside its last dot. */
+  endLabels: boolean;
 };
 
-export function BySaveChart({ series, marks, range, axisName, describe }: BySaveChartProps) {
+export function BySaveChart({
+  series,
+  marks,
+  range,
+  axisName,
+  describe,
+  endLabels,
+}: BySaveChartProps) {
   const dark = isDarkMode();
   const option = useMemo((): EChartsOption => {
     const [first, last] = range.map(dayNumber);
@@ -37,7 +46,15 @@ export function BySaveChart({ series, marks, range, axisName, describe }: BySave
     const ink = dark ? "#cbd5e1" : "#334155";
     return {
       animation: false,
-      grid: { left: 64, right: 24, top: 24, bottom: 48 },
+      grid: { left: 64, right: endLabels ? 96 : 24, top: 24, bottom: series.length > 1 ? 72 : 48 },
+      legend: {
+        show: series.length > 1,
+        type: "scroll",
+        bottom: 0,
+        data: series.map((entry) => entry.label),
+        textStyle: { color: ink },
+        pageTextStyle: { color: ink },
+      },
       tooltip: {
         trigger: "item",
         formatter: (params) => {
@@ -75,9 +92,13 @@ export function BySaveChart({ series, marks, range, axisName, describe }: BySave
             borderColor: needsOutline(entry.color) ? ink : undefined,
             borderWidth: needsOutline(entry.color) ? 1 : 0,
           },
-          data: entry.points.map((point) => ({
+          data: entry.points.map((point, i) => ({
             value: [point.day, point.value],
             lines: describe(entry, point),
+            label:
+              endLabels && i === entry.points.length - 1
+                ? { show: true, position: "right" as const, formatter: entry.key, color: ink }
+                : undefined,
           })),
         })),
         {
@@ -93,7 +114,7 @@ export function BySaveChart({ series, marks, range, axisName, describe }: BySave
         },
       ],
     };
-  }, [series, marks, range, axisName, describe, dark]);
+  }, [series, marks, range, axisName, describe, endLabels, dark]);
   return <EChart option={option} style={{ height: "360px", width: "100%" }} />;
 }
 

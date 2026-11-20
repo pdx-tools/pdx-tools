@@ -1,5 +1,7 @@
+import type { BySaveViz } from "../features/charts/by-save/figures";
+
 export type VizModules =
-  | "world-dev-by-save"
+  | BySaveViz
   | "idea-group"
   | "monthly-income"
   | "nation-size"

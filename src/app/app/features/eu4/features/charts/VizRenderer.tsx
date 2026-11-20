@@ -23,8 +23,11 @@ interface VizRendererProps {
 
 export const VizRenderer = ({ module }: VizRendererProps) => {
   switch (module) {
+    case "dev-by-save":
+    case "army-by-save":
+    case "manpower-by-save":
     case "world-dev-by-save":
-      return <CampaignHistory />;
+      return <CampaignHistory viz={module} />;
     case "idea-group":
       return <IdeaGroupsChart />;
     case "monthly-income":
