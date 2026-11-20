@@ -16,6 +16,7 @@ import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { Eu4CampaignProvider } from "./campaign";
 import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 import { Eu4CampaignAnalysis } from "./analysis/Eu4CampaignAnalysis";
+import { ChartCampaignAction } from "./features/charts/by-save/ChartCampaignAction";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -74,20 +75,22 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
         <Eu4StoreProvider store={data}>
           <Eu4CampaignProvider loadError={error}>
             {campaignAnalysis && <Eu4CampaignAnalysis />}
-            <GameThemeProvider theme="eu4">
-              <TimelineBar onClearance={setTimelineClearance} />
-              <div
-                className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500"
-                style={
-                  timelineClearance === null
-                    ? undefined
-                    : ({ "--timeline-clearance": `${timelineClearance}px` } as CSSProperties)
-                }
-              >
-                <Eu4CanvasOverlay />
-              </div>
-              <Eu4CursorTooltip />
-            </GameThemeProvider>
+            <ChartCampaignAction enabled={campaignAnalysis}>
+              <GameThemeProvider theme="eu4">
+                <TimelineBar onClearance={setTimelineClearance} />
+                <div
+                  className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500"
+                  style={
+                    timelineClearance === null
+                      ? undefined
+                      : ({ "--timeline-clearance": `${timelineClearance}px` } as CSSProperties)
+                  }
+                >
+                  <Eu4CanvasOverlay />
+                </div>
+                <Eu4CursorTooltip />
+              </GameThemeProvider>
+            </ChartCampaignAction>
           </Eu4CampaignProvider>
         </Eu4StoreProvider>
       ) : null}

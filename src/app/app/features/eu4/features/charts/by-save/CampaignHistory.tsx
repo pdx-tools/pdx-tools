@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { create } from "zustand";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisQuery } from "@/features/campaign/analysis/useAnalysisQuery";
 import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
 import { saveSourceText } from "@/features/campaign/saveText";
+import { openCampaignSave } from "@/features/campaign/openSave";
 import { dayNumber, formatLongDate } from "@/features/timeline/date";
 import { eu4Analysis } from "@/features/eu4/analysis/analysisClient";
 import { useEu4History } from "@/features/eu4/analysis/store";
@@ -21,6 +21,7 @@ import type { BySaveFigure, BySaveViz } from "./figures";
 import { alignColumns, bySaveCsv, countryRows } from "./model";
 import type { BySaveData } from "./model";
 import { useEu4Campaign } from "./useEu4Campaign";
+import { selectSave, useBySaveView } from "./view";
 import type { Eu4Campaign } from "./useEu4Campaign";
 
 const EU4_SAVES: CampaignSaveFiles = {
@@ -31,11 +32,6 @@ const EU4_SAVES: CampaignSaveFiles = {
 
 /** The most countries that a filter gives a chart, before formed nations join them. */
 const COUNTRY_LIMIT = 20;
-
-/** The chart countries stay pinned until the filter or the campaign changes. */
-const usePinned = create<{
-  pinned: { campaignId: string; filter: string; countries: ChartCountries } | null;
-}>()(() => ({ pinned: null }));
 
 /** One value for each analyzed save of the campaign, as a chart and a table. */
 export function CampaignHistory({ viz }: { viz: BySaveViz }) {
@@ -145,7 +141,7 @@ function CountryFigure({
 function useChartCountries(campaignId: string | null) {
   const filter = useTagFilter();
   const key = JSON.stringify(filter);
-  const current = usePinned((state) =>
+  const current = useBySaveView((state) =>
     state.pinned && state.pinned.campaignId === campaignId && state.pinned.filter === key
       ? state.pinned.countries
       : null,
@@ -156,7 +152,7 @@ function useChartCountries(campaignId: string | null) {
     void getEu4Worker()
       .eu4ChartCountries(filter, COUNTRY_LIMIT)
       .then((countries) => {
-        if (!cancelled) usePinned.setState({ pinned: { campaignId, filter: key, countries } });
+        if (!cancelled) useBySaveView.setState({ pinned: { campaignId, filter: key, countries } });
       });
     return () => {
       cancelled = true;
@@ -178,7 +174,7 @@ function BySaveView({
   error: string | null;
   chart: ChartCountries | null;
 }) {
-  const { saves } = campaign;
+  const { saves, nav, playthroughId } = campaign;
   const series = useMemo(
     (): BySaveSeries[] =>
       data.rows.map((row) => ({
@@ -186,21 +182,16 @@ function BySaveView({
         label: row.label,
         color: row.color,
         points: row.values.flatMap((value, i): BySavePoint[] => {
-          const column = data.columns[i];
-          return value === null || !column.snapshot
-            ? []
-            : [{ snapshotId: column.snapshot.id, day: dayNumber(column.save.date), value }];
+          const { save } = data.columns[i];
+          return value === null ? [] : [{ saveKey: save.key, day: dayNumber(save.date), value }];
         }),
       })),
     [data],
   );
-  const bySnapshot = useMemo(
-    () => new Map(data.columns.map((x) => [x.snapshot!.id, x] as const)),
-    [data.columns],
-  );
+  const byKey = useMemo(() => new Map(data.columns.map((x) => [x.save.key, x])), [data.columns]);
   const describe = useCallback(
     (entry: BySaveSeries, point: BySavePoint) => {
-      const column = bySnapshot.get(point.snapshotId);
+      const column = byKey.get(point.saveKey);
       return [
         `${entry.label}: ${figure.format(point.value)}`,
         column ? formatLongDate(column.save.date) : "",
@@ -208,7 +199,7 @@ function BySaveView({
         column?.snapshot ? `Patch ${column.snapshot.gameVersion}` : "",
       ].filter(Boolean);
     },
-    [bySnapshot, figure],
+    [byKey, figure],
   );
   const marks = useMemo(() => axisMarks(saves), [saves]);
   const visualizationDispatch = useVisualizationDispatch();
@@ -218,24 +209,105 @@ function BySaveView({
       getCsvData: async () => toCsv(bySaveCsv(data)),
     });
   }, [data, visualizationDispatch]);
-  const selected = data.columns.length - 1;
+
+  // The latest save with dots is selected at first.
+  const selectedKey = useBySaveView((state) =>
+    state.selected?.campaignId === playthroughId ? state.selected.saveKey : null,
+  );
+  const selectedAt = saves.findIndex((x) => x.save.key === selectedKey);
+  const at = selectedAt >= 0 ? selectedAt : saves.findLastIndex((x) => byKey.has(x.save.key));
+  const selected = at >= 0 ? saves[at] : null;
+  const column = selected ? data.columns.indexOf(byKey.get(selected.save.key)!) : -1;
+  const select = (index: number) => {
+    const save = saves[index];
+    if (save && playthroughId) selectSave(playthroughId, save.save.key);
+  };
+  const open = saves.find((x) => x.save.isOpen && byKey.has(x.save.key)) ?? null;
+  const [opening, setOpening] = useState(false);
+  const openSelected = async () => {
+    if (!nav || !selected || !playthroughId) return;
+    selectSave(playthroughId, selected.save.key);
+    setOpening(true);
+    try {
+      await openCampaignSave(nav, selected.save);
+    } finally {
+      setOpening(false);
+    }
+  };
+  const openControl = selected?.save.isOpen ? (
+    <span className="font-medium">Open now</span>
+  ) : (
+    <Button
+      variant="primary"
+      disabled={!nav || opening || nav.opening !== null}
+      onClick={() => void openSelected()}
+    >
+      {opening ? "Opening" : "Open save"}
+    </Button>
+  );
   return (
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
       {error && <p className="text-rose-700 dark:text-rose-300">{error}</p>}
       {chart && <FewCountries count={data.rows.length} />}
       {saves.length > 0 && (
-        <BySaveChart
-          series={series}
-          marks={marks}
-          range={[saves[0].save.date, saves[saves.length - 1].save.date]}
-          axisName={figure.axis}
-          describe={describe}
-          endLabels={series.length <= 8}
-        />
+        <div
+          tabIndex={0}
+          aria-label="Campaign chart. Left and right arrows select an earlier or a later save."
+          className="rounded-md focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:outline-none"
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            event.preventDefault();
+            select(at + (event.key === "ArrowLeft" ? -1 : 1));
+          }}
+        >
+          <BySaveChart
+            series={series}
+            marks={marks}
+            range={[saves[0].save.date, saves[saves.length - 1].save.date]}
+            axisName={figure.axis}
+            describe={describe}
+            endLabels={series.length <= 8}
+            selectedDay={selected ? dayNumber(selected.save.date) : null}
+            openDay={open ? dayNumber(open.save.date) : null}
+            onSelect={(key) => select(saves.findIndex((x) => x.save.key === key))}
+          />
+        </div>
       )}
-      {selected >= 0 && <BySaveTable data={data} column={selected} figure={figure} chart={chart} />}
-      <OpenSaveNote saves={saves} />
+      {selected && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button disabled={at <= 0} onClick={() => select(at - 1)}>
+            Earlier save
+          </Button>
+          <Button disabled={at >= saves.length - 1} onClick={() => select(at + 1)}>
+            Later save
+          </Button>
+        </div>
+      )}
+      {selected && column >= 0 ? (
+        <BySaveTable
+          data={data}
+          column={column}
+          figure={figure}
+          chart={chart}
+          header={openControl}
+        />
+      ) : (
+        selected && (
+          <p aria-live="polite" className="flex flex-wrap items-center gap-3">
+            <span>
+              {formatLongDate(selected.save.date)} · {selected.save.name} ·{" "}
+              {saveSourceText(selected.save)}: {axisMarks([selected])[0]?.reason}
+            </span>
+            {openControl}
+          </p>
+        )
+      )}
+      {!open && (
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          The open save is not on this chart.
+        </p>
+      )}
       <AddSaves />
     </div>
   );
@@ -308,14 +380,6 @@ function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
         </details>
       )}
     </div>
-  );
-}
-
-function OpenSaveNote({ saves }: { saves: readonly AnalysisSave[] }) {
-  const open = saves.find((x) => x.save.isOpen);
-  if (open?.snapshot) return null;
-  return (
-    <p className="text-sm text-gray-600 dark:text-gray-300">The open save is not on this chart.</p>
   );
 }
 

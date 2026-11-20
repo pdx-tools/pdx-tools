@@ -36,6 +36,7 @@ import type {
 } from "@/features/timeline/controller";
 import { log } from "@/lib/log";
 import type { Eu4Carry } from "../campaignCarry";
+import type { VizModules } from "../types/visualizations";
 import type { FileVersion } from "@/features/campaign/types";
 import type { Eu4SaveInput } from "./useLoadEu4";
 
@@ -80,6 +81,8 @@ type Eu4State = Eu4StateProps & {
   showMapModeBorders: boolean;
   selectedTag: string;
   countryDrawerVisible: boolean;
+  /** The world charts drawer. A campaign step keeps it. */
+  charts: ChartDrawer;
   /**
    * The political timeline is read with the save; the others are read on
    * the first switch to their map mode. All three span the same dates.
@@ -99,6 +102,7 @@ type Eu4State = Eu4StateProps & {
   };
   actions: {
     setCountryDrawer: (open: boolean) => void;
+    setCharts: (charts: Partial<ChartDrawer>) => void;
     panToTag: (tag: string, offset?: number) => Promise<void>;
     nextMapMode: () => void;
     setMapMode: (mode: Eu4State["mapMode"]) => Promise<void>;
@@ -134,6 +138,8 @@ type Eu4State = Eu4StateProps & {
   };
 };
 
+export type ChartDrawer = { open: boolean; viz: VizModules; expanded: boolean };
+
 export type Eu4Store = StoreApi<Eu4State>;
 type Eu4StoreInit = Eu4StateProps & {
   store: Eu4Store | null;
@@ -168,6 +174,7 @@ export const createEu4Store = async ({
     showCountryBorders: true,
     showMapModeBorders: false,
     countryDrawerVisible: false,
+    charts: { open: false, viz: "monthly-income", expanded: false } as ChartDrawer,
   } as const;
 
   const syncMapSettings = (state: Eu4State, options?: { draw?: boolean }) => {
@@ -235,6 +242,8 @@ export const createEu4Store = async ({
     ...(carry && {
       mapMode: carry.mapMode,
       countryDrawerVisible: carry.countryDrawerVisible && carriedTag !== null,
+      countryFilter: carry.countryFilter,
+      charts: carry.charts,
     }),
     timelines: { political: politicalTimeline },
     requestedDay: save.meta.total_days,
@@ -247,6 +256,7 @@ export const createEu4Store = async ({
     },
     actions: {
       setCountryDrawer: (open: boolean) => set({ countryDrawerVisible: open }),
+      setCharts: (charts) => set({ charts: { ...get().charts, ...charts } }),
       panToTag: async (tag, offset?: number) => {
         const pos = await getEu4Worker().eu4MapPositionOf(tag);
         map.setScaleOfMax(0.5);
@@ -583,6 +593,7 @@ export const useTagFilter = () => useEu4Store((x) => x.countryFilter);
 export const useValueFormatPreference = () => useEu4Store((x) => x.prefereredValueFormat);
 export const useShowOnetimeLineItems = () => useEu4Store((x) => x.showOneTimeLineItems);
 export const useCountryDrawerVisible = () => useEu4Store((x) => x.countryDrawerVisible);
+export const useChartDrawer = () => useEu4Store((x) => x.charts);
 export const useWatcher = () => useEu4Store((x) => x.watcher);
 export const useEu4Timeline = () => useEu4Store(selectTimeline);
 export const useEu4TimelineRequestedDay = () => useEu4Store((x) => x.requestedDay);
