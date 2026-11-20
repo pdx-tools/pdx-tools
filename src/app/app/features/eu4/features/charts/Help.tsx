@@ -8,6 +8,25 @@ interface HelpProps {
 
 export const Help = ({ module }: HelpProps) => {
   switch (module) {
+    case "world-dev-by-save": {
+      return (
+        <>
+          <p>
+            Each dot is one save of this campaign: the development of all owned provinces, as the
+            Provinces table totals it. Nothing is drawn between saves.
+          </p>
+          <p>
+            The campaign list keeps one save for each date. Analysis reads each save once and keeps
+            what it found until you refresh this page. Saves that you add later are analyzed on
+            their own.
+          </p>
+          <p>
+            If you went back to an earlier save in the game, the dots still show what each save
+            holds.
+          </p>
+        </>
+      );
+    }
     case "monthly-income": {
       return (
         <>

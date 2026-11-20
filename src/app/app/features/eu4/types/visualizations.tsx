@@ -1,4 +1,5 @@
 export type VizModules =
+  | "world-dev-by-save"
   | "idea-group"
   | "monthly-income"
   | "nation-size"

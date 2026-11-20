@@ -1,0 +1,37 @@
+import { useCallback } from "react";
+import { useCampaignNavigation } from "@/features/campaign/CampaignProvider";
+import {
+  campaignAnalysisSourceKey,
+  useCampaignAutoAnalysis,
+} from "@/features/campaign/analysis/autoAnalysis";
+import { useEu4Meta } from "../store";
+import { eu4Analysis } from "./analysisClient";
+import { analyzeEu4Campaign } from "./analyzeCampaign";
+import { pendingEntries } from "./campaignSaves";
+import { useEu4History } from "./store";
+
+/**
+ * Keep the analysis session on the open campaign, and analyze local saves
+ * that arrive after the player chose to analyze it.
+ */
+export function Eu4CampaignAnalysis() {
+  const nav = useCampaignNavigation();
+  const playthroughId = useEu4Meta().playthroughId;
+  const saves = nav?.saves;
+  const pending = useCallback(
+    (attempted: ReadonlySet<string>) =>
+      pendingEntries(saves ?? [], useEu4History.getState())
+        .filter((entry) => !attempted.has(campaignAnalysisSourceKey(entry)))
+        .slice(0, 1000),
+    [saves],
+  );
+  useCampaignAutoAnalysis({
+    history: useEu4History,
+    claim: eu4Analysis.claim,
+    playthroughId,
+    featureEnabled: true,
+    pending,
+    analyze: analyzeEu4Campaign,
+  });
+  return null;
+}

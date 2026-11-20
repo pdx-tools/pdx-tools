@@ -14,6 +14,7 @@ import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import PlayIcon from "@heroicons/react/20/solid/PlayIcon";
 import { emitEvent } from "@/lib/events";
+import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 
 interface ChartDrawerTitleProps {
   selectedViz: VizModules;
@@ -29,6 +30,7 @@ export const ChartDrawerTitle = ({
   setExpanded,
 }: ChartDrawerTitleProps) => {
   const viz = useVisualization();
+  const campaignHistory = useIsCampaignAnalysisEnabled();
   const filename = useSaveFilenameWith(`-${selectedViz}.csv`);
 
   return (
@@ -55,6 +57,12 @@ export const ChartDrawerTitle = ({
           </Button>
         </Select.Trigger>
         <Select.Content>
+          {campaignHistory && (
+            <Select.Group>
+              <Select.Label>By save</Select.Label>
+              <Select.Item value="world-dev-by-save">World development by save</Select.Item>
+            </Select.Group>
+          )}
           <Select.Group>
             <Select.Label>Charts</Select.Label>
             <Select.Item value="monthly-income">Monthly Income</Select.Item>
