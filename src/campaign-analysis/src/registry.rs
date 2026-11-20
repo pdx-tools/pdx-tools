@@ -26,7 +26,8 @@ impl<K> Registry for IndexRegistry<K> {
 
 /// Declare the shared data of a game as named registries, and the struct of
 /// their prepared plans. The declared struct is a [`Registry`] too, so a
-/// game delegates `added_bytes`, `commit` and `shared_memory` to it.
+/// game delegates `added_bytes`, `commit` and `shared_memory` to it. Only
+/// doc comments are accepted, so every generated item has the same fields.
 ///
 /// ```ignore
 /// campaign_analysis::registries! {
@@ -39,15 +40,15 @@ impl<K> Registry for IndexRegistry<K> {
 #[macro_export]
 macro_rules! registries {
     (
-        $(#[$meta:meta])*
+        $(#[doc = $doc:literal])*
         $vis:vis struct $name:ident => $prepared:ident {
-            $($(#[$field_meta:meta])* $field:ident : $ty:ty),+ $(,)?
+            $($(#[doc = $field_doc:literal])* $field:ident : $ty:ty),+ $(,)?
         }
     ) => {
-        $(#[$meta])*
+        $(#[doc = $doc])*
         #[derive(Debug, Default)]
         $vis struct $name {
-            $($(#[$field_meta])* pub $field: $ty),+
+            $($(#[doc = $field_doc])* pub $field: $ty),+
         }
 
         /// One prepared plan for each registry.

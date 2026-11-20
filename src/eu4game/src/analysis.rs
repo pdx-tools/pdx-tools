@@ -200,7 +200,8 @@ impl Eu4Payload {
             .sum()
     }
 
-    /// The development of the provinces that each country row owns.
+    /// The development of the provinces that each country row owns. The
+    /// payload must be validated, as every stored snapshot is.
     pub fn province_development_by_country(&self) -> Vec<f64> {
         let provinces = self.provinces.columns();
         let mut totals = vec![0.0; self.countries.len()];
@@ -1055,15 +1056,19 @@ mod tests {
             )
             .unwrap_err();
         }
-        for raw in [-42, i32::MIN] {
+        // Replace only the province IDs of a complete payload.
+        let keys = |raw: i32| {
             let mut out = Encoder::new();
             out.serde(&vec![raw]);
-            ProvinceColumns {
-                development: vec![1.0],
-                owner: vec![CountryRow::NONE],
-            }
-            .encode(&mut out);
-            Eu4Payload::decode(&mut Decoder::new(&out.finish())).unwrap_err();
+            out.finish()
+        };
+        let mut out = Encoder::new();
+        payload(&[(1, 1.0, None, None)], &[]).encode(&mut out);
+        let rest = out.finish().split_off(keys(1).len());
+        for raw in [-42, i32::MIN] {
+            let bytes = [keys(raw), rest.clone()].concat();
+            let error = Eu4Payload::decode(&mut Decoder::new(&bytes)).unwrap_err();
+            assert!(error.to_string().contains("nonnegative"), "{error}");
         }
     }
 }

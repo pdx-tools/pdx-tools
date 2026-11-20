@@ -149,8 +149,14 @@ impl<'a> Decoder<'a> {
         self.take(len).map(|_| ())
     }
 
+    /// A value that fills its column exactly.
     pub fn serde<T: serde::de::DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
-        postcard::from_bytes(&self.column::<u8>()?).map_err(|e| DecodeError::Header(e.to_string()))
+        let bytes = self.column::<u8>()?;
+        match postcard::take_from_bytes(&bytes) {
+            Ok((value, [])) => Ok(value),
+            Ok(_) => Err(DecodeError::TrailingBytes),
+            Err(error) => Err(DecodeError::Header(error.to_string())),
+        }
     }
 
     /// Refuse bytes after the last column.
@@ -581,6 +587,16 @@ mod tests {
         let mut input = Decoder::new(&bytes);
         assert_eq!(Pair::decode(&mut input).unwrap(), pair);
         input.finish().unwrap();
+    }
+
+    #[test]
+    fn a_serde_value_must_fill_its_column() {
+        let mut out = Encoder::new();
+        out.column(&[2u8, b'a', b'b', 0]);
+        assert_eq!(
+            Decoder::new(&out.finish()).serde::<String>(),
+            Err(DecodeError::TrailingBytes)
+        );
     }
 
     #[test]
