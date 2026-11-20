@@ -5,6 +5,7 @@ import { localSaveRegistry } from "@/features/campaign/localSaves";
 import { useEu4FileVersion, useEu4Meta } from "@/features/eu4/store";
 import { sameFileVersion } from "@/features/campaign/types";
 import { analyzeEu4Saves } from "@/features/eu4/analysis/analyzeSaves";
+import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import {
   analysisSaves,
   pendingEntries,
@@ -80,6 +81,23 @@ export function useEu4Campaign() {
     openSave?.save.source.kind === "upload" ||
     (!!source && !!fileVersion && sameFileVersion(source.version, fileVersion));
   const open = openSave && sameBytes ? openSave : null;
+  /**
+   * True when the file of a local dot no longer holds the bytes that analysis
+   * read, such as a save that the game wrote again on the same date. The
+   * registry then reads the new version, and analysis reads it again.
+   */
+  const fileChanged = async (save: AnalysisSave): Promise<boolean> => {
+    const entryId = save.save.source.kind === "local" ? save.save.source.entryId : null;
+    const entry = entryId ? localSaveRegistry.get(entryId) : undefined;
+    const read = entry ? useEu4History.getState().sources[entry.id] : undefined;
+    // A held file cannot change; a reader of a changed one fails.
+    if (!entry || !read || entry.ref.kind !== "handle") return false;
+    const file = await entry.ref.file.getFile().catch(() => null);
+    // Opening reports a missing file.
+    if (!file || sameFileVersion(file, read.version)) return false;
+    await localSaveRegistry.verify(entry.id);
+    return true;
+  };
   const waitingUploads = saves.filter(
     (x) => x.save.source.kind === "upload" && x.status === "pending",
   ).length;
@@ -98,6 +116,7 @@ export function useEu4Campaign() {
     waitingUploads,
     stop: () => cancel?.(),
     analyze,
+    fileChanged,
   };
 }
 

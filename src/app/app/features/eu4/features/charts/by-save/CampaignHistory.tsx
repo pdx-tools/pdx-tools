@@ -273,13 +273,18 @@ function BySaveView({
     useBySaveView.setState({ lastOpen: { campaignId: playthroughId, saveKey: openKey } });
   }, [playthroughId, openKey]);
   const [opening, setOpening] = useState(false);
+  // The file name of a save that changed after analysis read it.
+  const [changed, setChanged] = useState<string | null>(null);
   const selectedSave = columns[selected];
   const openSelected = async () => {
     if (!nav || !selectedSave || !playthroughId) return;
     selectSave(playthroughId, selectedSave.save.key);
     setOpening(true);
+    setChanged(null);
     try {
-      await openCampaignSave(nav, selectedSave.save);
+      // The dot is of the bytes that analysis read, so other bytes do not open as its save.
+      if (await campaign.fileChanged(selectedSave)) setChanged(selectedSave.save.name);
+      else await openCampaignSave(nav, selectedSave.save);
     } finally {
       setOpening(false);
     }
@@ -324,6 +329,13 @@ function BySaveView({
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
       <Alert.Error msg={error} />
+      {changed && (
+        <Alert variant="info">
+          <Alert.Description className="px-3 py-2">
+            {changed} changed after it was read, so it did not open. It is read again.
+          </Alert.Description>
+        </Alert>
+      )}
       {chart && <ChartCountriesNote chart={chart} count={rows.length} loaded={loaded} />}
       <div
         role="group"
