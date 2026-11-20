@@ -1298,10 +1298,19 @@ mod tests {
 
     #[test]
     fn a_series_follows_each_country_through_its_tags() {
+        // A country's switch, the first one of its history.
         let switch = |from: &str, to: &str, year: i32| TagSwitch {
             from: tag(from),
             to: tag(to),
             date: GameDate::from_date_sort(year * 10000 + 101),
+            country: tag(from),
+            order: 0,
+        };
+        // A later switch of the country whose first tag is `country`.
+        let then = |country: &str, order: u16, from: &str, to: &str, year: i32| TagSwitch {
+            country: tag(country),
+            order,
+            ..switch(from, to, year)
         };
         // Each snapshot carries the switches that its save records.
         let saved = |hash, year, provinces: &[Spec], switches: Vec<TagSwitch>| {
@@ -1428,28 +1437,41 @@ mod tests {
         );
 
         // The first BYZ lives in 1500. After it is gone, ULM forms BYZ and
-        // that BYZ forms ROM on one day. Neither BYZ gets the other's value.
+        // that country forms ROM on one day. Its history orders the two
+        // switches, so it is one country through ULM, BYZ and ROM. The 1600
+        // save lacks the second switch of that day, so it can be from before
+        // it and gives nothing.
+        let one_day = [
+            switch("ULM", "BYZ", 1600),
+            then("ULM", 1, "BYZ", "ROM", 1600),
+        ];
         let same_day = vec![
             saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
-            saved(
-                "b",
-                1600,
-                &[p("BYZ", 20.0)],
-                vec![switch("ULM", "BYZ", 1600)],
-            ),
-            saved(
-                "c",
-                1610,
-                &[p("ROM", 30.0)],
-                vec![switch("ULM", "BYZ", 1600), switch("BYZ", "ROM", 1600)],
-            ),
+            saved("b", 1600, &[p("BYZ", 20.0)], vec![one_day[0]]),
+            saved("c", 1610, &[p("ROM", 30.0)], one_day.to_vec()),
         ];
         assert_eq!(
             run(same_day, &["BYZ", "ULM", "ROM"]),
             [
-                ("BYZ".into(), vec![None, None, None]),
-                ("ROM".into(), vec![None, None, cell("ROM", 30.0)]),
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
+                ("ULM>BYZ>ROM".into(), vec![None, None, cell("ROM", 30.0)]),
             ]
+        );
+
+        // Two countries switch into BYZ on one day: whose BYZ it is cannot
+        // be told, so BYZ has no values.
+        let two_countries = vec![
+            saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
+            saved(
+                "b",
+                1610,
+                &[p("BYZ", 30.0)],
+                vec![switch("ULM", "BYZ", 1600), switch("TRE", "BYZ", 1600)],
+            ),
+        ];
+        assert_eq!(
+            run(two_countries, &["BYZ"]),
+            [("BYZ".into(), vec![None, None])]
         );
 
         // Two branches of one campaign: in one ULM forms BYZ in 1550, in the

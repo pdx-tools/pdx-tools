@@ -3,8 +3,12 @@
 //! A tag names a country only between switches. When Alodia forms Nubia,
 //! one country holds ALO and then NBI: one lineage. When Ulm forms
 //! Byzantium after the first Byzantium was annexed, BYZ names two countries:
-//! the first is a lineage of its own, an earlier holder of the tag. A tag
-//! whose switches share a date cannot be split by date, so it is one
+//! the first is a lineage of its own, an earlier holder of the tag.
+//!
+//! A country's history lists its switches in order, so one country's
+//! switches on one day keep that order: a tag it passes through that day is
+//! a holding of no length between its neighbors. When switches of two
+//! countries touch a tag on one day, their order is unknown; that tag is one
 //! lineage, flagged, and joined to no other.
 
 use eu4save::{
@@ -52,8 +56,8 @@ impl<'de> serde::Deserialize<'de> for GameDate {
     }
 }
 
-/// A country that changed its tag on a date, as the nation events of a save
-/// record it.
+/// A country that changed its tag on a date, as its history in a save
+/// records it.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
@@ -63,6 +67,12 @@ pub struct TagSwitch {
     pub to: CountryTag,
     #[cfg_attr(feature = "tsify", tsify(type = "string"))]
     pub date: GameDate,
+    /// The first tag of the country that switched, which names it across
+    /// the saves of a campaign.
+    pub country: CountryTag,
+    /// The place of the switch in that country's history, which orders its
+    /// switches on one day.
+    pub order: u16,
 }
 impl TagSwitch {
     /// False for a recorded switch to the same tag, which changes nothing.
@@ -103,6 +113,9 @@ fn country_switches(
     previous: &[CountryTag],
 ) -> Vec<TagSwitch> {
     let froms: Vec<_> = froms.collect();
+    let Some(&(_, country)) = froms.first() else {
+        return Vec::new();
+    };
     // The tag after the last switch, as eu4save reads it.
     let latest = previous.get(froms.len()).copied().unwrap_or(tag);
     let tos = froms
@@ -113,7 +126,14 @@ fn country_switches(
     froms
         .iter()
         .zip(tos)
-        .map(|(&(date, from), to)| TagSwitch { from, to, date })
+        .enumerate()
+        .map(|(order, (&(date, from), to))| TagSwitch {
+            from,
+            to,
+            date,
+            country,
+            order: u16::try_from(order).unwrap_or(u16::MAX),
+        })
         .filter(TagSwitch::changes_tag)
         .collect()
 }
@@ -201,9 +221,16 @@ impl Lineage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Event {
     /// Another tag switched to this one.
-    Into(CountryTag),
+    Into(TagSwitch),
     /// This tag switched to another one.
-    Out(CountryTag),
+    Out(TagSwitch),
+}
+impl Event {
+    fn switch(self) -> TagSwitch {
+        match self {
+            Event::Into(x) | Event::Out(x) => x,
+        }
+    }
 }
 
 /// One stretch of one tag between its switch dates.
@@ -227,16 +254,16 @@ pub fn lineages(
 ) -> Vec<Lineage> {
     // Saves of one campaign record the same switch, so each counts once.
     let switches: BTreeSet<_> = switches.iter().filter(|x| x.changes_tag()).collect();
-    let mut events = BTreeMap::<CountryTag, Vec<(GameDate, Event)>>::new();
+    let mut events = BTreeMap::<CountryTag, Vec<Event>>::new();
     for switch in &switches {
         events
             .entry(switch.to)
             .or_default()
-            .push((switch.date, Event::Into(switch.from)));
+            .push(Event::Into(**switch));
         events
             .entry(switch.from)
             .or_default()
-            .push((switch.date, Event::Out(switch.to)));
+            .push(Event::Out(**switch));
     }
     let tags: BTreeSet<_> = tags.into_iter().filter(|tag| tracked(tag)).collect();
     let mut segments = Vec::new();
@@ -244,25 +271,22 @@ pub fn lineages(
         segments.extend(segments_of(*tag, events.get(tag).map_or(&[][..], |x| &**x)));
     }
 
-    // The segment that a switch starts, by its tag and date.
+    // The segment that a switch starts.
     let starts: BTreeMap<_, _> = segments
         .iter()
         .enumerate()
         .filter_map(|(at, x)| match x.start {
-            Some(Event::Into(from)) if !x.ambiguous => {
-                Some(((x.held.tag, x.held.from?), (at, from)))
-            }
+            Some(Event::Into(switch)) if !x.ambiguous => Some((switch, at)),
             _ => None,
         })
         .collect();
     let next = |at: usize| -> Option<usize> {
         let segment: &Segment = &segments[at];
-        let Some(Event::Out(to)) = segment.end else {
+        let Some(Event::Out(switch)) = segment.end else {
             return None;
         };
-        let (next, from) = *starts.get(&(to, segment.held.until?))?;
-        let linked = from == segment.held.tag && tracked(&from) && tracked(&to);
-        (linked && !segment.ambiguous).then_some(next)
+        let linked = !segment.ambiguous && tracked(&switch.from) && tracked(&switch.to);
+        linked.then(|| starts.get(&switch).copied()).flatten()
     };
     let continued: BTreeSet<_> = (0..segments.len()).filter_map(next).collect();
 
@@ -304,12 +328,19 @@ pub fn lineages(
     result
 }
 
-/// The stretches of a tag between its switch dates.
-fn segments_of(tag: CountryTag, events: &[(GameDate, Event)]) -> Vec<Segment> {
+/// The stretches of a tag between its switches. A tag that a country passes
+/// through on one day has a stretch of no length.
+fn segments_of(tag: CountryTag, events: &[Event]) -> Vec<Segment> {
     let mut events = events.to_vec();
-    events.sort_by_key(|(date, _)| *date);
-    if events.windows(2).any(|pair| pair[0].0 == pair[1].0) {
-        // The order of two switches on one date is unknown.
+    events.sort_by_key(|x| (x.switch().date, x.switch().order));
+    // Switches of two countries on one day have no known order. Two
+    // switches at one place of one country's history are of two countries
+    // that share a first tag.
+    let unordered = events.windows(2).any(|pair| {
+        let (a, b) = (pair[0].switch(), pair[1].switch());
+        a.date == b.date && (a.country != b.country || a.order == b.order)
+    });
+    if unordered {
         return vec![Segment {
             held: HeldTag {
                 tag,
@@ -324,7 +355,8 @@ fn segments_of(tag: CountryTag, events: &[(GameDate, Event)]) -> Vec<Segment> {
     let mut segments = Vec::with_capacity(events.len() + 1);
     let mut from = None;
     let mut start = None;
-    for (date, event) in events {
+    for event in events {
+        let date = event.switch().date;
         segments.push(Segment {
             held: HeldTag {
                 tag,
@@ -361,12 +393,29 @@ mod tests {
     fn date(year: i32) -> GameDate {
         GameDate::from_date_sort(year * 10000 + 101)
     }
+    /// The first switch of a country, from its first tag.
     fn switch(from: &str, to: &str, year: i32) -> TagSwitch {
         TagSwitch {
             from: tag(from),
             to: tag(to),
             date: date(year),
+            country: tag(from),
+            order: 0,
         }
+    }
+    /// The switches of one country in its order: `chain[i]` is (from, to, date_sort).
+    fn history(chain: &[(&str, &str, i32)]) -> Vec<TagSwitch> {
+        chain
+            .iter()
+            .enumerate()
+            .map(|(order, &(from, to, day))| TagSwitch {
+                from: tag(from),
+                to: tag(to),
+                date: GameDate::from_date_sort(day),
+                country: tag(chain[0].0),
+                order: order as u16,
+            })
+            .collect()
     }
     /// The tag of a lineage in a save of a year that records `switches`.
     fn tag_in(lineage: &Lineage, year: i32, switches: &[TagSwitch]) -> Option<CountryTag> {
@@ -526,7 +575,7 @@ mod tests {
         );
         assert_eq!(
             germany,
-            [switch("BRA", "PRU", 1525), switch("PRU", "GER", 1700)]
+            history(&[("BRA", "PRU", 15250101), ("PRU", "GER", 17000101)])
         );
     }
 
@@ -563,14 +612,117 @@ mod tests {
     }
 
     #[test]
-    fn a_tag_changed_twice_on_one_day_resolves_no_save() {
-        // The first B lives in 1500. Later A forms B, and that B forms C, on one day.
-        let switches = [switch("A00", "B00", 1600), switch("B00", "C00", 1600)];
+    fn switches_of_two_countries_on_one_day_join_nothing() {
+        // A00 forms B00, and C00 also forms B00, on one day.
+        let switches = [switch("A00", "B00", 1600), switch("C00", "B00", 1600)];
         let found = lineages([tag("B00")], &switches, |_| true);
         let b = found.iter().find(|x| x.tags[0].tag == tag("B00")).unwrap();
         assert_eq!(b.kind, LineageKind::Ambiguous);
         assert_eq!(b.held_in(date(1500), &[]), None);
         assert_eq!(b.held_in(date(1610), &switches), None);
+    }
+
+    #[test]
+    fn one_country_passes_through_tags_on_one_day() {
+        // A00 forms B00, and that country forms C00, on one day.
+        let switches = history(&[("A00", "B00", 16000101), ("B00", "C00", 16000101)]);
+        let found = lineages([tag("B00")], &switches, |_| true);
+        let country = found
+            .iter()
+            .find(|x| {
+                x.tags
+                    .iter()
+                    .map(|h| h.tag)
+                    .eq([tag("A00"), tag("B00"), tag("C00")])
+            })
+            .unwrap();
+        assert_eq!(country.kind, LineageKind::Country);
+        assert_eq!(tag_in(country, 1610, &switches), Some(tag("C00")));
+        // The first B00 is its own country.
+        let first = found
+            .iter()
+            .find(|x| x.kind == LineageKind::EarlierHolder)
+            .unwrap();
+        assert_eq!(tag_in(first, 1500, &[]), Some(tag("B00")));
+        assert_eq!(first.held_in(date(1610), &switches), None);
+    }
+
+    #[test]
+    fn a_long_chain_of_one_country_is_one_lineage() {
+        // The player of a world conquest, as one save records it: 33
+        // switches, TIM held twice, and five days with more than one switch.
+        let chain = [
+            ("TIM", "ISR", 14501017),
+            ("ISR", "GEO", 14501020),
+            ("GEO", "MAM", 14571113),
+            ("MAM", "YEM", 14590929),
+            ("YEM", "HUN", 14591019),
+            ("HUN", "HAB", 14591028),
+            ("HAB", "SOM", 14591117),
+            ("SOM", "LXA", 14600103),
+            ("LXA", "HAU", 14600103),
+            ("HAU", "MAL", 14600103),
+            ("MAL", "TIM", 14600103),
+            ("TIM", "ALG", 14600105),
+            ("ALG", "MSI", 14600107),
+            ("MSI", "KOJ", 14600108),
+            ("KOJ", "NPL", 14600111),
+            ("NPL", "ARM", 14600113),
+            ("ARM", "TUN", 14600114),
+            ("TUN", "MCH", 14600114),
+            ("MCH", "KON", 14600115),
+            ("KON", "MOR", 14600115),
+            ("MOR", "DLH", 14600115),
+            ("DLH", "CRO", 14600323),
+            ("CRO", "TIB", 14600414),
+            ("TIB", "ENG", 14600414),
+            ("ENG", "KLK", 14600414),
+            ("KLK", "DAI", 14600521),
+            ("DAI", "INC", 14600729),
+            ("INC", "SCO", 14600805),
+            ("SCO", "JAP", 14600806),
+            ("JAP", "ROM", 14600919),
+            ("ROM", "AOT", 14611012),
+            ("AOT", "VIT", 14611024),
+            ("VIT", "UHW", 14611024),
+        ];
+        let switches = history(&chain);
+        let tags = chain.iter().map(|x| tag(x.0)).chain([tag("UHW")]);
+        let found = lineages(tags, &switches, |_| true);
+        assert!(found.iter().all(|x| x.kind != LineageKind::Ambiguous));
+        let player = found.iter().find(|x| x.tags.len() > 2).unwrap();
+        assert_eq!(player.tags.len(), 34);
+        assert_eq!(player.kind, LineageKind::Country);
+        assert_eq!(
+            player.tags.iter().filter(|h| h.tag == tag("TIM")).count(),
+            2
+        );
+        let at = |day| GameDate::from_date_sort(day);
+        let held = |day| player.held_in(at(day), &switches).map(|x| x.1.tag);
+        assert_eq!(held(14710309), Some(tag("UHW")));
+        assert_eq!(held(14600104), Some(tag("TIM")));
+        assert_eq!(held(14450101), Some(tag("TIM")));
+        // A save from a day of several switches, after them, holds the
+        // last tag of the day; a tag passed through that day holds no date.
+        assert_eq!(held(14600414), Some(tag("KLK")));
+        assert_eq!(held(14600103), Some(tag("TIM")));
+        assert!(
+            player
+                .tags
+                .iter()
+                .filter(|h| h.from.is_some() && h.from == h.until)
+                .count()
+                == 9
+        );
+
+        // A Tibet released after the player passed through TIB is its own
+        // country and has its value.
+        let tibet = found
+            .iter()
+            .find(|x| x.tags.len() == 1 && x.tags[0].tag == tag("TIB") && x.tags[0].from.is_some())
+            .unwrap();
+        assert_eq!(tibet.kind, LineageKind::Country);
+        assert_eq!(tag_in(tibet, 1471, &switches), Some(tag("TIB")));
     }
 
     #[test]
