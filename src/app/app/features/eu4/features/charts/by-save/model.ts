@@ -7,6 +7,8 @@ import { formatIsoDate, parseDate } from "@/features/timeline/date";
 export type BySaveRow = {
   key: string;
   label: string;
+  /** The name beside the last dot, such as the tag. */
+  short: string;
   color: string;
   /** The value in each column, or why there is none. */
   values: CountryValue[];
@@ -99,6 +101,7 @@ export function countryRows(
       .map((tag) => ({
         key: tag,
         label: label(tag),
+        short: tag,
         color: countries.get(tag)?.color ?? "#808080",
         values: at.map((i) => byTag.get(tag)!.values[i]),
         was: was.get(tag) ?? [],

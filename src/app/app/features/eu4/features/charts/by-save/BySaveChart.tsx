@@ -13,6 +13,8 @@ export type BySavePoint = { saveKey: string; day: number; value: number };
 export type BySaveSeries = {
   key: string;
   label: string;
+  /** The name beside the last dot, such as the tag. */
+  short: string;
   color: string;
   points: BySavePoint[];
 };
@@ -55,6 +57,12 @@ export function BySaveChart({
     // Dots stay off the plot edges.
     const pad = Math.max(30, Math.round((last - first) * 0.05));
     const ink = dark ? "#cbd5e1" : "#334155";
+    const step = yearStep((last - first) / 365);
+    const firstYear = Math.ceil(dateFromDayNumber(first - pad).year / step) * step;
+    const years = Array.from(
+      { length: Math.floor((dateFromDayNumber(last + pad).year - firstYear) / step) + 1 },
+      (_, i) => dayNumber({ year: firstYear + i * step, month: 1, day: 1 }),
+    ).filter((day) => day >= first - pad && day <= last + pad);
     const rule = (
       day: number,
       label: string,
@@ -91,8 +99,11 @@ export function BySaveChart({
         type: "value",
         min: first - pad,
         max: last + pad,
+        // Ticks on the first day of round years.
+        axisTick: { customValues: years },
         axisLabel: {
           color: ink,
+          customValues: years,
           formatter: (value: number) => String(dateFromDayNumber(value).year),
         },
         splitLine: { show: false },
@@ -124,7 +135,7 @@ export function BySaveChart({
             lines: describe(entry, point),
             label:
               endLabels && i === entry.points.length - 1
-                ? { show: true, position: "right" as const, formatter: entry.key, color: ink }
+                ? { show: true, position: "right" as const, formatter: entry.short, color: ink }
                 : undefined,
           })),
         })),
@@ -165,6 +176,11 @@ export function BySaveChart({
       style={{ height: "360px", width: "100%" }}
     />
   );
+}
+
+/** A round number of years between ticks, for a span of years. */
+function yearStep(years: number) {
+  return [1, 2, 5, 10, 20, 25, 50, 100].find((step) => years / step <= 10) ?? 100;
 }
 
 /** Near black and near white game colors get a neutral outline. */

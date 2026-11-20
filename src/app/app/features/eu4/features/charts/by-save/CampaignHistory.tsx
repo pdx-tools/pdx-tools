@@ -120,6 +120,7 @@ function WorldFigure({ campaign, figure }: { campaign: Eu4Campaign; figure: BySa
         {
           key: "world",
           label: "All countries",
+          short: "All",
           color: "#64748b",
           values: at.map((i): CountryValue => {
             const value = values[i];
@@ -233,6 +234,7 @@ function BySaveView({
       data.rows.map((row) => ({
         key: row.key,
         label: row.label,
+        short: row.short,
         color: row.color,
         points: row.values.map(amount).flatMap((value, i): BySavePoint[] => {
           const { save, date } = data.columns[i];
