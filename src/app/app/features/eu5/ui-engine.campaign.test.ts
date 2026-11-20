@@ -39,6 +39,7 @@ it("publishes the restored map mode, date, selection and gradient together", asy
     viewport: null,
     selection: null,
     insightPanel: { open: true, width: 640 },
+    mapNames: true,
   };
   await engine.trigger.restoreCampaignView(carry);
   expect(restore).toHaveBeenCalledExactlyOnceWith(carry);

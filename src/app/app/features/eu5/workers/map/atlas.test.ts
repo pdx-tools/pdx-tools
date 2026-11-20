@@ -179,7 +179,10 @@ describe("a name with a leader line", () => {
       ),
     );
     const placed = place([...crowd, name("Small", shape, { placement: "leaderLine" })]);
-    expect(placed.find((p) => p.text === "Small")?.anchor).toEqual({ x: 500, y: 250 });
+    const small = placed.find((p) => p.text === "Small")!;
+    expect(small.leader?.from).toEqual({ x: 500, y: 250 });
+    // The line stops below the name, so that it does not strike the letters.
+    expect(small.leader!.to.y).toBeGreaterThan(small.y + 6);
   });
 
   it("never draws its line across a panel", () => {
@@ -196,7 +199,7 @@ describe("a name with a leader line", () => {
       [...crowd, name("Small", shape, { placement: "leaderLine" })],
       [cover],
     ).find((p) => p.text === "Small");
-    expect(placed?.anchor).toEqual({ x: 500, y: 250 });
+    expect(placed?.leader?.from).toEqual({ x: 500, y: 250 });
     const crossesCover = Array.from({ length: 101 }, (_, i) => i / 100).some((t) => {
       const x = 500 + (placed!.x - 500) * t;
       const y = 250 + (placed!.y - 250) * t;
@@ -222,13 +225,13 @@ describe("a name with a leader line", () => {
       name("Small", shape, { placement: "leaderLine" }),
       name("X", onTheLine),
     ]);
-    expect(placed.find((p) => p.text === "Small")?.anchor).toBeDefined();
+    expect(placed.find((p) => p.text === "Small")?.leader).toBeDefined();
     expect(placed.find((p) => p.text === "X")).toBeUndefined();
   });
 
   it("gives no line to a name on its land", () => {
     const [placed] = place([name("Home", shape, { placement: "leaderLine" })]);
-    expect(placed.anchor).toBeUndefined();
+    expect(placed.leader).toBeUndefined();
   });
 
   it("is only for the names that have one", () => {

@@ -202,7 +202,7 @@ export class MapNameLayer {
     ctx.setTransform(frame.scaleFactor, 0, 0, frame.scaleFactor, 0, 0);
     ctx.lineJoin = "round";
     for (const name of placed) {
-      if (name.anchor) drawLeader(ctx, name);
+      if (name.leader) drawLeader(ctx, name);
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -250,11 +250,11 @@ export class MapNameLayer {
 }
 
 function drawLeader(ctx: OffscreenCanvasRenderingContext2D, name: PlacedName): void {
-  const { anchor } = name;
-  if (!anchor) return;
+  const { leader } = name;
+  if (!leader) return;
   ctx.beginPath();
-  ctx.moveTo(anchor.x, anchor.y);
-  ctx.lineTo(name.x, name.y);
+  ctx.moveTo(leader.from.x, leader.from.y);
+  ctx.lineTo(leader.to.x, leader.to.y);
   ctx.strokeStyle = `rgba(${HALO}, 0.85)`;
   ctx.lineWidth = LEADER_HALO * 2;
   ctx.stroke();

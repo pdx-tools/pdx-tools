@@ -17,6 +17,7 @@ const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   mapMode: "population",
   viewport: null,
   insightPanel: { open: true, width: 640 },
+  mapNames: true,
   selection: null,
   ...extra,
 });

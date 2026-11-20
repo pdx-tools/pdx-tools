@@ -224,8 +224,8 @@ export type PlacedName = {
   angle: number;
   /** A large realm is set in spaced capitals */
   capitals: boolean;
-  /** The realm's place, when the name stands away from it. A line joins the two. */
-  anchor?: WorldPoint;
+  /** A line from the realm's place to the edge of the name, when the name stands away */
+  leader?: { from: WorldPoint; to: WorldPoint };
 };
 
 /** The width of a text in ems, at a font size of 1 */
@@ -317,6 +317,19 @@ function crosses(a: WorldPoint, b: WorldPoint, box: Box): boolean {
     if (low > high) return false;
   }
   return true;
+}
+
+/** The point where the segment from `a`, outside the box, to `b`, inside it, meets its edge */
+function edgeOf(a: WorldPoint, b: WorldPoint, box: Box): WorldPoint {
+  let entry = 0;
+  for (const [from, delta, min, max] of [
+    [a.x, b.x - a.x, box.x0, box.x1],
+    [a.y, b.y - a.y, box.y0, box.y1],
+  ]) {
+    if (delta === 0) continue;
+    entry = Math.max(entry, Math.min((min - from) / delta, (max - from) / delta));
+  }
+  return { x: a.x + (b.x - a.x) * entry, y: a.y + (b.y - a.y) * entry };
 }
 
 function textBox(x: number, y: number, width: number, height: number, angle: number): Box {
@@ -502,16 +515,18 @@ export function placeNames(
     )) {
       const at = { x: land.x + ox, y: land.y + oy };
       const box = textBox(at.x, at.y, noteWidth, noteHeight, 0);
-      if (!isFree(box) || (line && lineBlocked(land, at))) continue;
+      // The line stops at the edge of the name, so that it does not strike the letters.
+      const end = line ? edgeOf(land, at, box) : at;
+      if (!isFree(box) || (line && lineBlocked(land, end))) continue;
       boxes.add(box, box);
-      if (line) lines.add(grow(spanOf(land, at)), [land, at]);
+      if (line) lines.add(grow(spanOf(land, end)), [land, end]);
       placed.push({
         text: name.text,
         ...at,
         size: NOTE_SIZE,
         angle: 0,
         capitals: false,
-        ...(line ? { anchor: land } : {}),
+        ...(line ? { leader: { from: land, to: end } } : {}),
       });
       break;
     }

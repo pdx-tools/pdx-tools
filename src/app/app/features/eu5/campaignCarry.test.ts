@@ -7,16 +7,22 @@ const carry = (extra: Partial<Eu5Carry> = {}): Eu5Carry => ({
   mapMode: "population",
   viewport: null,
   insightPanel: { open: true, width: 640 },
+  mapNames: true,
   selection: null,
   ...extra,
 });
 
 it("restores the view in one worker call, then moves the camera", async () => {
-  const trigger = { restoreCampaignView: vi.fn(), fitWorldRect: vi.fn() };
+  const trigger = {
+    restoreCampaignView: vi.fn(),
+    fitWorldRect: vi.fn(),
+    setMapNamesVisible: vi.fn(),
+  };
   const engine = { trigger } as unknown as AppEngine;
 
   await applyEu5Carry(engine, carry());
   expect(trigger.restoreCampaignView).toHaveBeenCalledOnce();
+  expect(trigger.setMapNamesVisible).toHaveBeenCalledWith(true);
   expect(trigger.fitWorldRect).not.toHaveBeenCalled();
 
   const viewport = { x: 1, y: 2, width: 3, height: 4 };
