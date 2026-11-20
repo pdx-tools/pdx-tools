@@ -621,7 +621,7 @@ pub fn country_series(
         })
         // A tag whose holders cannot be told apart stays, so the chart can say so.
         .filter(|x| {
-            x.lineage.kind == LineageKind::Ambiguous || x.values.iter().any(Option::is_some)
+            x.lineage.kind() == LineageKind::Ambiguous || x.values.iter().any(Option::is_some)
         })
         .collect()
 }
@@ -1428,7 +1428,7 @@ mod tests {
             .iter()
             .find(|x| x.lineage.tags()[0].tag == tag("BYZ"))
             .unwrap();
-        assert_eq!(byz.lineage.kind, LineageKind::Ambiguous);
+        assert_eq!(byz.lineage.kind(), LineageKind::Ambiguous);
         assert_eq!(byz.lineage.tags().len(), 1);
         assert_eq!(
             histories(answer),

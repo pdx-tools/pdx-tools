@@ -141,9 +141,6 @@ fn country_switches(
     previous: &[CountryTag],
 ) -> Vec<TagSwitch> {
     let froms: Vec<_> = froms.collect();
-    let Some(&(country_since, country)) = froms.first() else {
-        return Vec::new();
-    };
     // The tag after the last switch, as eu4save reads it.
     let latest = previous.get(froms.len()).copied().unwrap_or(tag);
     let tos = froms
@@ -151,11 +148,21 @@ fn country_switches(
         .skip(1)
         .map(|(_, from)| *from)
         .chain(std::iter::once(latest));
-    froms
+    // A switch to the same tag changes nothing, so it neither names the
+    // country nor takes a place in its order.
+    let changes: Vec<_> = froms
         .iter()
         .zip(tos)
+        .map(|(&(date, from), to)| (date, from, to))
+        .filter(|(_, from, to)| from != to)
+        .collect();
+    let Some(&(country_since, country, _)) = changes.first() else {
+        return Vec::new();
+    };
+    changes
+        .iter()
         .enumerate()
-        .map(|(order, (&(date, from), to))| TagSwitch {
+        .map(|(order, &(date, from, to))| TagSwitch {
             from,
             to,
             date,
@@ -164,7 +171,6 @@ fn country_switches(
             order: u16::try_from(order).unwrap_or(u16::MAX),
             copy: 0,
         })
-        .filter(TagSwitch::changes_tag)
         .collect()
 }
 
@@ -203,7 +209,7 @@ pub enum LineageKind {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Lineage {
     tags: Vec<HeldTag>,
-    pub kind: LineageKind,
+    kind: LineageKind,
     /// The switches of the campaign that touch these tags, for [`Lineage::held_in`].
     #[serde(skip)]
     switches: Vec<TagSwitch>,
@@ -212,6 +218,10 @@ impl Lineage {
     /// The tags that the country held, in date order. `held_in` gives an index into them.
     pub fn tags(&self) -> &[HeldTag] {
         &self.tags
+    }
+
+    pub fn kind(&self) -> LineageKind {
+        self.kind
     }
 
     /// The tag that the country held in a save, with its index in `tags`, or
@@ -808,5 +818,19 @@ mod tests {
         let found = lineages([tag("BBB")], &switches, |_| true);
         let bbb = found.iter().find(|x| x.tags[0].tag == tag("BBB")).unwrap();
         assert_eq!(bbb.kind, LineageKind::Ambiguous);
+    }
+
+    #[test]
+    fn a_switch_to_the_same_tag_does_not_change_a_country_name() {
+        // A later save that also records an earlier switch to the same tag
+        // names and orders the country's real switch the same way.
+        let plain = country_switches(tag("BBB"), [(date(1500), tag("AAA"))].into_iter(), &[]);
+        let with_noop = country_switches(
+            tag("BBB"),
+            [(date(1400), tag("AAA")), (date(1500), tag("AAA"))].into_iter(),
+            &[],
+        );
+        assert_eq!(plain, [switch("AAA", "BBB", 1500)]);
+        assert_eq!(with_noop, plain);
     }
 }
