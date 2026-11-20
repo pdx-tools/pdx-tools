@@ -179,7 +179,7 @@ const TITLE_THICKNESS = 1.5;
 const MAX_SIZE = 30;
 const CAPITALS_FROM = 18;
 /** A realm this long on screen, in pixels, can have its name in capitals */
-const CAPITALS_REALM = 160;
+const CAPITALS_REALM = 100;
 /** The share of a realm's long axis that its name can fill */
 const AXIS_SHARE = 0.86;
 /** A name leans only when its realm is clearly long, and never steeply */
