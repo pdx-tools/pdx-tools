@@ -1059,7 +1059,7 @@ impl SaveFileImpl {
     }
 
     /// The countries of a campaign chart: the tags of the filter, up to the
-    /// limit, and the tags that a switch recorded in this save joins to them.
+    /// limit, and the generated tags that the chart leaves out.
     pub fn chart_countries(
         &self,
         payload: TagFilterPayloadRaw,
@@ -1073,8 +1073,7 @@ impl SaveFileImpl {
             .filter(is_generated_tag);
         // The limit counts only the tags that the chart keeps.
         let tags = self.filter_stored_tags_where(payload, limit, |tag| !is_generated_tag(tag));
-        let switches = eu4game::analysis::tag_switches(&self.nation_events);
-        eu4game::analysis::chart_countries(tags.into_iter().chain(left_out), &switches)
+        eu4game::analysis::chart_countries(tags.into_iter().chain(left_out))
     }
 
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
