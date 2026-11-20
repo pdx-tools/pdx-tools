@@ -16,8 +16,13 @@ function Swatch({ color }: { color: string }) {
 }
 
 /** The name of a row's country at a column; a tag that two countries held keeps its code. */
-function rowName(row: BySaveRow, column: number, names: ReadonlyMap<string, CountryInfo>) {
-  const tag = rowTag(row, column);
+function rowName(
+  row: BySaveRow,
+  column: number,
+  fallback: number,
+  names: ReadonlyMap<string, CountryInfo>,
+) {
+  const tag = rowTag(row, column, fallback);
   return row.lineage?.kind === "ambiguous" ? tag : (names.get(tag)?.name ?? tag);
 }
 
@@ -29,6 +34,7 @@ function rowName(row: BySaveRow, column: number, names: ReadonlyMap<string, Coun
 export function BySaveTable({
   rows,
   column,
+  selected,
   dateLabel,
   figure,
   names,
@@ -37,6 +43,8 @@ export function BySaveTable({
   rows: readonly BySaveRow[];
   /** The column whose values show. */
   column: number;
+  /** The selected column, whose name a row keeps where it has no value. */
+  selected: number;
   /** The date of the shown save, for assistive technology. */
   dateLabel: string;
   figure: BySaveFigure;
@@ -58,7 +66,7 @@ export function BySaveTable({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const tag = rowTag(row, column);
+            const tag = rowTag(row, column, selected);
             const cell = row.cells[column];
             const value = amount(cell);
             return (
@@ -73,8 +81,8 @@ export function BySaveTable({
                     }
                   >
                     <Swatch color={names.get(tag)?.color ?? "#808080"} />
-                    {rowName(row, column, names)}
-                    {otherTags(row, column).map((other) => (
+                    {rowName(row, column, selected, names)}
+                    {otherTags(row, column, selected).map((other) => (
                       <span
                         key={`${other.tag}${other.from}`}
                         className={cx("flex items-center gap-1", muted)}
@@ -128,7 +136,7 @@ export function NotAtThisSave({
         return (
           <span key={row.key} className="flex items-center gap-1">
             <Swatch color={names.get(tag)?.color ?? "#808080"} />
-            {rowName(row, column, names)}
+            {rowName(row, column, column, names)}
             {row.lineage?.kind === "earlierHolder" && " (earlier country)"}
           </span>
         );

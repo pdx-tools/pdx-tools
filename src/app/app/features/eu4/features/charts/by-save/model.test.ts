@@ -20,7 +20,12 @@ it("keeps only the snapshots of the campaign saves, in reply order", () => {
 });
 
 it("gives each country one row named by the tag it held, sorted at the selected save", () => {
-  const value = (tag: string, value: number) => ({ kind: "value" as const, tag, value });
+  const value = (tag: string, value: number, held = 0) => ({
+    kind: "value" as const,
+    tag,
+    held,
+    value,
+  });
   const series: LineageValues[] = [
     {
       lineage: {
@@ -30,7 +35,7 @@ it("gives each country one row named by the tag it held, sorted at the selected 
           { tag: "NBI", from: "1451-01-01" },
         ],
       },
-      values: [value("ALO", 21), value("NBI", 748)],
+      values: [value("ALO", 21), value("NBI", 748, 1)],
     },
     {
       lineage: { kind: "country", tags: [{ tag: "FRA" }] },
@@ -59,4 +64,31 @@ it("gives each country one row named by the tag it held, sorted at the selected 
   expect(otherTags(late[1], 1)).toEqual([
     { relation: "was", tag: "ALO", from: null, until: "1451-01-01" },
   ]);
+});
+
+it("names a row by the tag it held at the column, even a tag it held twice", () => {
+  const cell = (tag: string, held: number) => ({ kind: "value" as const, tag, held, value: 1 });
+  // Austria forms Bohemia and later takes back its tag.
+  const series: LineageValues[] = [
+    {
+      lineage: {
+        kind: "country",
+        tags: [
+          { tag: "HAB", until: "1500-01-01" },
+          { tag: "BOH", from: "1500-01-01", until: "1600-01-01" },
+          { tag: "HAB", from: "1600-01-01" },
+        ],
+      },
+      values: [cell("HAB", 0), cell("BOH", 1), undefined, cell("HAB", 2)],
+    },
+  ];
+  const [row] = lineageRows(series, [0, 1, 2, 3]);
+  expect(otherTags(row, 3)).toEqual([
+    { relation: "was", tag: "HAB", from: null, until: "1500-01-01" },
+    { relation: "was", tag: "BOH", from: "1500-01-01", until: "1600-01-01" },
+  ]);
+  expect(otherTags(row, 0).map((x) => x.relation)).toEqual(["later", "later"]);
+
+  // Without a cell at a hovered column, the row keeps its selected name.
+  expect(rowTag(row, 2, 1)).toBe("BOH");
 });

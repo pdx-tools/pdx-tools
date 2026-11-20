@@ -124,7 +124,7 @@ function WorldFigure({ campaign, figure }: { campaign: Eu4Campaign; figure: BySa
             const value = values[i];
             return value === null || value === undefined
               ? null
-              : { kind: "value" as const, tag: "", value };
+              : { kind: "value" as const, tag: "", held: 0, value };
           }),
         },
       ],
@@ -381,6 +381,7 @@ function BySaveView({
           <BySaveTable
             rows={shownRows}
             column={shown}
+            selected={selected}
             dateLabel={formatLongDate(shownSave.date)}
             figure={figure}
             names={names}

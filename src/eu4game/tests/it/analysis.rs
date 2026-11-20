@@ -165,11 +165,22 @@ fn observations_agree_with_the_parsed_save() {
     .answer(&view) else {
         panic!("country series");
     };
+    // The player formed Italy, so its tag is not the first of the lineage.
+    let held = development[0]
+        .lineage
+        .tags
+        .iter()
+        .position(|x| x.tag == player)
+        .unwrap();
     assert_eq!(
         development[0].values,
         developments
             .iter()
-            .map(|&value| Some(LineageCell::Value { tag: player, value }))
+            .map(|&value| Some(LineageCell::Value {
+                tag: player,
+                held,
+                value,
+            }))
             .collect::<Vec<_>>()
     );
     let Eu4Answer::CountryBreakdown(religions) = (Eu4Query::CountryBreakdown {

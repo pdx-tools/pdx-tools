@@ -119,10 +119,15 @@ pub struct Lineage {
     pub kind: LineageKind,
 }
 impl Lineage {
+    /// The index in `tags` of the tag that the country held on a date, if it
+    /// existed then.
+    pub fn held_at(&self, date: GameDate) -> Option<usize> {
+        self.tags.iter().position(|held| held.contains(date))
+    }
+
     /// The tag that the country held on a date, if it existed then.
     pub fn tag_at(&self, date: GameDate) -> Option<CountryTag> {
-        let held = self.tags.iter().find(|held| held.contains(date))?;
-        Some(held.tag)
+        self.held_at(date).map(|i| self.tags[i].tag)
     }
 }
 

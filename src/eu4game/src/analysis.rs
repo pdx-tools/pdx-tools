@@ -499,12 +499,12 @@ pub enum CountryMetric {
 pub enum LineageCell {
     Value {
         tag: CountryTag,
+        /// The index of the tag in the lineage's tags.
+        held: usize,
         value: f64,
     },
     /// The country owns provinces, but the save has no record of it.
-    NoRecord {
-        tag: CountryTag,
-    },
+    NoRecord { tag: CountryTag, held: usize },
 }
 
 /// One country over time and its value in each snapshot of the reply. A
@@ -564,21 +564,25 @@ pub fn fixed_province_development(
     })
 }
 
-pub fn country_series(
-    view: &View<'_, Eu4Analysis>,
-    tags: Vec<CountryTag>,
-    metric: CountryMetric,
-) -> Vec<LineageValues> {
-    // A generated tag is reused without a switch, so no switch through one is followed.
-    let switches: Vec<_> = view
-        .snapshots()
+/// The tag switches that the snapshots record that a lineage follows. A
+/// generated tag is reused without a switch, so no switch through one is.
+fn campaign_switches(view: &View<'_, Eu4Analysis>) -> Vec<TagSwitch> {
+    view.snapshots()
         .iter()
         .flat_map(|snapshot| &snapshot.payload().switches)
         .filter(|x| !is_generated_tag(&x.from) && !is_generated_tag(&x.to))
         .cloned()
         .collect::<BTreeSet<_>>()
         .into_iter()
-        .collect();
+        .collect()
+}
+
+pub fn country_series(
+    view: &View<'_, Eu4Analysis>,
+    tags: Vec<CountryTag>,
+    metric: CountryMetric,
+) -> Vec<LineageValues> {
+    let switches = campaign_switches(view);
     let found = lineages(
         tags.into_iter().filter(|tag| !is_generated_tag(tag)),
         &switches,
@@ -597,8 +601,18 @@ pub fn country_series(
                 .zip(&developments)
                 .map(|(snapshot, development)| {
                     let date = GameDate::from_date_sort(snapshot.descriptor().date_sort);
-                    let tag = lineage.tag_at(date)?;
+                    let held = lineage.held_at(date)?;
+                    let tag = lineage.tags[held].tag;
                     let payload = snapshot.payload();
+                    // A save records its own past switches. One that lacks a
+                    // switch of this tag is on another branch of the campaign.
+                    let recorded = switches
+                        .iter()
+                        .filter(|x| x.date <= date && (x.from == tag || x.to == tag))
+                        .all(|x| payload.switches.contains(x));
+                    if !recorded {
+                        return None;
+                    }
                     let row = payload.country_offset(&tag)?;
                     let owned = development[row]?;
                     let columns = payload.countries.columns();
@@ -612,8 +626,8 @@ pub fn country_series(
                         }
                     };
                     Some(match value {
-                        Some(value) => LineageCell::Value { tag, value },
-                        None => LineageCell::NoRecord { tag },
+                        Some(value) => LineageCell::Value { tag, held, value },
+                        None => LineageCell::NoRecord { tag, held },
                     })
                 })
                 .collect::<Vec<_>>();
@@ -891,8 +905,8 @@ mod tests {
                     .values
                     .into_iter()
                     .map(|cell| match cell? {
-                        LineageCell::Value { tag, value } => Some((tag.to_string(), value)),
-                        LineageCell::NoRecord { tag } => Some((tag.to_string(), f64::NAN)),
+                        LineageCell::Value { tag, value, .. } => Some((tag.to_string(), value)),
+                        LineageCell::NoRecord { tag, .. } => Some((tag.to_string(), f64::NAN)),
                     })
                     .collect();
                 (name, cells)
@@ -1340,10 +1354,15 @@ mod tests {
             [("ALO>NBI".into(), vec![cell("ALO", 21.0), cell("NBI", 55.0)])]
         );
 
-        // A chain: BRA, then PRU, then GER.
+        // A chain: BRA, then PRU, then GER. Each save records its past switches.
         let chain = vec![
             saved("a", 1500, &[p("BRA", 10.0)], vec![]),
-            saved("b", 1600, &[p("PRU", 20.0)], vec![]),
+            saved(
+                "b",
+                1600,
+                &[p("PRU", 20.0)],
+                vec![switch("BRA", "PRU", 1525)],
+            ),
             saved(
                 "c",
                 1750,
@@ -1416,6 +1435,30 @@ mod tests {
             [
                 ("BYZ".into(), vec![cell("BYZ", 10.0), cell("BYZ", 20.0)]),
                 ("ULM".into(), vec![cell("ULM", 3.0), None]),
+            ]
+        );
+
+        // Two branches of one campaign: in one ULM forms BYZ in 1550, in the
+        // other the first BYZ lives on. The other branch's later save lacks
+        // the switch, so neither its BYZ nor its ULM gets a row's value.
+        let forked = vec![
+            saved("a", 1500, &[p("BYZ", 10.0), q("ULM", 3.0)], vec![]),
+            saved(
+                "b",
+                1560,
+                &[p("BYZ", 20.0)],
+                vec![switch("ULM", "BYZ", 1550)],
+            ),
+            saved("c", 1580, &[p("BYZ", 12.0), q("ULM", 4.0)], vec![]),
+        ];
+        assert_eq!(
+            run(forked, &["BYZ", "ULM"]),
+            [
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
+                (
+                    "ULM>BYZ".into(),
+                    vec![cell("ULM", 3.0), cell("BYZ", 20.0), None]
+                ),
             ]
         );
     }

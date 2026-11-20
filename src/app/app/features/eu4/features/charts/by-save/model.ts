@@ -79,19 +79,30 @@ export function rowsAt(rows: readonly BySaveRow[], column: number): BySaveRow[] 
     .map(({ row }) => row);
 }
 
-/** The tag that a row's country held at a column, or its latest tag with a value. */
-export function rowTag(row: BySaveRow, column: number): string {
-  const cell = row.cells[column] ?? row.cells.findLast((x) => x !== null);
-  return cell?.tag ?? row.lineage?.tags[0]?.tag ?? "";
+/**
+ * The index of the lineage tag that a row shows at a column. Without a cell
+ * there, the row keeps its tag at the fallback column, else its latest one.
+ */
+function heldIndex(row: BySaveRow, column: number, fallback: number): number | null {
+  const cell = row.cells[column] ?? row.cells[fallback] ?? row.cells.findLast((x) => x !== null);
+  return cell?.held ?? null;
 }
 
-/** The other tags of a row's country, as they read beside the tag held at a column. */
+/** The tag that a row's country held at a column. */
+export function rowTag(row: BySaveRow, column: number, fallback = column): string {
+  const held = heldIndex(row, column, fallback);
+  return (held !== null ? row.lineage?.tags[held]?.tag : undefined) ?? "";
+}
+
+/** The row's other tags, before and after the one it held at a column. */
 export function otherTags(
   row: BySaveRow,
   column: number,
+  fallback = column,
 ): { relation: "was" | "later"; tag: string; until: string | null; from: string | null }[] {
   const tags = row.lineage?.tags ?? [];
-  const current = tags.findIndex((held) => held.tag === rowTag(row, column));
+  const current = heldIndex(row, column, fallback);
+  if (current === null) return [];
   return tags.flatMap((held, i) =>
     i === current
       ? []
