@@ -1386,7 +1386,10 @@ fn map_names_are_those_of_the_date(
     let names = names.names();
     assert_eq!(names.len(), 1, "a selected country names only itself");
     assert_eq!(names[0].text, country.country.name);
-    assert!(names[0].must_show);
+    assert_eq!(
+        names[0].placement,
+        eu5app::map_names::NamePlacement::LeaderLine
+    );
 
     // A selection of part of a realm names it over that part only.
     ws.change_selection(

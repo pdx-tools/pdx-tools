@@ -65,10 +65,11 @@ function useMapNameCovers(host: CanvasCourierHost) {
         const y1 = Math.min(box.bottom, origin.bottom) - origin.top;
         if (x1 > x0 && y1 > y0) {
           rects.push({
+            // Round outward, so that the rectangle holds all of the panel.
             x: Math.floor(x0),
             y: Math.floor(y0),
-            width: Math.ceil(x1 - x0),
-            height: Math.ceil(y1 - y0),
+            width: Math.ceil(x1) - Math.floor(x0),
+            height: Math.ceil(y1) - Math.floor(y0),
           });
         }
       }

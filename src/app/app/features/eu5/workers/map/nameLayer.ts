@@ -2,7 +2,7 @@ import latin from "@fontsource/public-sans/files/public-sans-latin-600-normal.wo
 import latinExt from "@fontsource/public-sans/files/public-sans-latin-ext-600-normal.woff2?url";
 import vietnamese from "@fontsource/public-sans/files/public-sans-vietnamese-600-normal.woff2?url";
 import type { MapNames } from "./map-module";
-import { CAPITAL_SPACING, placeNames, realmShape } from "./atlas";
+import { CAPITAL_SPACING, LEADER_HALO, placeNames, realmShape } from "./atlas";
 import type { MeasureText, PlacedName, RealmName, RealmShape, Rect } from "./atlas";
 
 /** The face of the page's game text, with the ranges that each file holds */
@@ -130,9 +130,7 @@ export class MapNameLayer {
         shape = realmShape(at.subarray(0, size), worldWidth);
       }
       shapes.set(key, { land, shape });
-      return shape
-        ? [{ text: name.text, shape, mustShow: name.mustShow, leaderLine: name.leaderLine }]
-        : [];
+      return shape ? [{ text: name.text, shape, placement: name.placement }] : [];
     });
     // No names, as over a snapshot, keep the shapes for when the names come back.
     if (names.length > 0) this.shapes = shapes;
@@ -214,24 +212,27 @@ export class MapNameLayer {
     return width;
   };
 
-  /** Load the face into this worker. Until then, the names use a fallback face. */
+  /**
+   * Load the face into this worker. Until then, the names use a fallback
+   * face. Each file changes the widths of its letters when it loads.
+   */
   private async loadFont(): Promise<void> {
     const { fonts } = self as unknown as { fonts?: FontFaceSet };
     if (!fonts) return;
-    try {
-      await Promise.all(
-        FACES.map(async ({ url, unicodeRange }) => {
-          const face = new FontFace("Public Sans", `url(${url})`, { weight: "600", unicodeRange });
-          fonts.add(face);
+    await Promise.all(
+      FACES.map(async ({ url, unicodeRange }) => {
+        const face = new FontFace("Public Sans", `url(${url})`, { weight: "600", unicodeRange });
+        fonts.add(face);
+        try {
           await face.load();
-        }),
-      );
-    } catch (error) {
-      console.warn("The map names keep a fallback face", error);
-      return;
-    }
-    this.widths.clear();
-    this.dirty = true;
+        } catch (error) {
+          console.warn("The map names keep a fallback face for some letters", error);
+          return;
+        }
+        this.widths.clear();
+        this.dirty = true;
+      }),
+    );
   }
 }
 
@@ -242,7 +243,7 @@ function drawLeader(ctx: OffscreenCanvasRenderingContext2D, name: PlacedName): v
   ctx.moveTo(anchor.x, anchor.y);
   ctx.lineTo(name.x, name.y);
   ctx.strokeStyle = `rgba(${HALO}, 0.85)`;
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = LEADER_HALO * 2;
   ctx.stroke();
   ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
   ctx.lineWidth = 1;

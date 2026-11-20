@@ -16,8 +16,7 @@ const flat = (points: { x: number; y: number }[]) =>
 const name = (text: string, shape: RealmShape, extra: Partial<RealmName> = {}): RealmName => ({
   text,
   shape,
-  mustShow: false,
-  leaderLine: false,
+  placement: "onLand",
   ...extra,
 });
 
@@ -96,7 +95,7 @@ describe("placeNames", () => {
 
   it("moves a name that must show near its land", () => {
     const names = Array.from({ length: 30 }, (_, i) =>
-      name(`Netherlands ${i}`, small, { mustShow: true }),
+      name(`Netherlands ${i}`, small, { placement: "nearLand" }),
     );
     const placed = place(names);
     expect(placed.length).toBeGreaterThan(1);
@@ -110,7 +109,7 @@ describe("placeNames", () => {
 
   it("names no realm whose middle is under a panel", () => {
     const covers = [{ x: 0, y: 0, width: 400, height: 500 }];
-    expect(place([name("Russia", large, { mustShow: true })], covers)).toEqual([]);
+    expect(place([name("Russia", large, { placement: "nearLand" })], covers)).toEqual([]);
   });
 
   it("makes a name smaller to keep it out from under a panel", () => {
@@ -166,10 +165,10 @@ describe("a name with a leader line", () => {
           ...shape,
           center: { x: 500 + ((i % 4) - 1.5) * 70, y: 250 + (i % 3) * 18 - 18 },
         },
-        { mustShow: true },
+        { placement: "nearLand" },
       ),
     );
-    const placed = place([...crowd, name("Small", shape, { mustShow: true, leaderLine: true })]);
+    const placed = place([...crowd, name("Small", shape, { placement: "leaderLine" })]);
     expect(placed.find((p) => p.text === "Small")?.anchor).toEqual({ x: 500, y: 250 });
   });
 
@@ -178,13 +177,13 @@ describe("a name with a leader line", () => {
       name(
         "Neighbour",
         { ...shape, center: { x: 500 + ((i % 4) - 1.5) * 70, y: 250 + (i % 3) * 18 - 18 } },
-        { mustShow: true },
+        { placement: "nearLand" },
       ),
     );
     // A thin panel across the way up, where the name would go without it.
     const cover = { x: 480, y: 212, width: 40, height: 4 };
     const placed = place(
-      [...crowd, name("Small", shape, { mustShow: true, leaderLine: true })],
+      [...crowd, name("Small", shape, { placement: "leaderLine" })],
       [cover],
     ).find((p) => p.text === "Small");
     expect(placed?.anchor).toEqual({ x: 500, y: 250 });
@@ -199,7 +198,7 @@ describe("a name with a leader line", () => {
   });
 
   it("gives no line to a name on its land", () => {
-    const [placed] = place([name("Home", shape, { mustShow: true, leaderLine: true })]);
+    const [placed] = place([name("Home", shape, { placement: "leaderLine" })]);
     expect(placed.anchor).toBeUndefined();
   });
 
@@ -208,6 +207,6 @@ describe("a name with a leader line", () => {
       { x: 300, y: 150, width: 400, height: 95 },
       { x: 300, y: 255, width: 400, height: 95 },
     ];
-    expect(place([name("Other", shape, { mustShow: true })], covers)).toEqual([]);
+    expect(place([name("Other", shape, { placement: "nearLand" })], covers)).toEqual([]);
   });
 });

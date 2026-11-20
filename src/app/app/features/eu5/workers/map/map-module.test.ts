@@ -226,7 +226,7 @@ describe("EU5 map frame loop", () => {
   it("draws new names and a new view in the frame that draws the map", async () => {
     const { endpoint } = await openMap();
     const names = {
-      names: [{ text: "France", mustShow: true, leaderLine: false, locationCount: 1 }],
+      names: [{ text: "France", placement: "nearLand" as const, locationCount: 1 }],
       locations: new Uint16Array([1]),
     };
     await endpoint.syncMapData({ colors: new Uint32Array([7]), names });
@@ -303,7 +303,7 @@ describe("EU5 map overlay", () => {
   it("keeps the save under the overlay and shows it again when the overlay clears", async () => {
     const { engine, endpoint } = await openMap();
     const names = {
-      names: [{ text: "France", mustShow: true, leaderLine: false, locationCount: 1 }],
+      names: [{ text: "France", placement: "nearLand" as const, locationCount: 1 }],
       locations: new Uint16Array([1]),
     };
     await endpoint.syncMapData({ names });
@@ -331,7 +331,7 @@ describe("EU5 map overlay", () => {
     // A new save under the overlay gets its locations, and the overlay stays on top.
     const locations = new Uint32Array([9]);
     const later = {
-      names: [{ text: "Burgundy", mustShow: false, leaderLine: false, locationCount: 1 }],
+      names: [{ text: "Burgundy", placement: "onLand" as const, locationCount: 1 }],
       locations: new Uint16Array([1]),
     };
     await endpoint.syncSave({ locations, groupingTable: new Uint32Array([6]), names: later });

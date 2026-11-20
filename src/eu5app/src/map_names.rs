@@ -30,12 +30,24 @@ impl Present for MapNameText {
     }
 }
 
+/// Where a name can go when its land has no room for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub enum NamePlacement {
+    /// The name shows only on its land.
+    OnLand,
+    /// A small note beside the land.
+    NearLand,
+    /// A note beside the land, or further away with a line to the land.
+    LeaderLine,
+}
+
 /// One name and the land that it names.
 #[derive(Debug, Clone)]
 pub(crate) struct MapNameSource {
     pub text: MapNameText,
-    pub must_show: bool,
-    pub leader_line: bool,
+    pub placement: NamePlacement,
     pub locations: Vec<u16>,
 }
 
@@ -51,10 +63,7 @@ pub(crate) struct MapNamesSource {
 #[serde(rename_all = "camelCase")]
 pub struct MapName {
     pub text: String,
-    /// The name keeps a place near its land when the land is too small for it.
-    pub must_show: bool,
-    /// The name can stand away from its land, with a line to it.
-    pub leader_line: bool,
+    pub placement: NamePlacement,
     /// The number of the name's locations in [`MapNames::locations`].
     pub location_count: u32,
 }
@@ -97,8 +106,7 @@ impl Present for MapNamesSource {
             // The count and the land go in together, so that they always agree.
             out.names.push(MapName {
                 text: name.text.present(ctx),
-                must_show: name.must_show,
-                leader_line: name.leader_line,
+                placement: name.placement,
                 location_count: name.locations.len() as u32,
             });
             out.locations.extend(name.locations);

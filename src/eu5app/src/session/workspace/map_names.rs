@@ -1,5 +1,5 @@
 use super::*;
-use crate::map_names::{MapNameSource, MapNameText, MapNamesSource};
+use crate::map_names::{MapNameSource, MapNameText, MapNamesSource, NamePlacement};
 use crate::presentation::OwnedCountryName;
 use crate::selection::SelectionPreset;
 use eu5save::models::{CountryId, LocationIdx};
@@ -68,8 +68,13 @@ impl<'bump> Eu5Workspace<'bump> {
             .enumerate()
             .map(|(at, (key, locations))| MapNameSource {
                 text: text(key),
-                must_show: !selection.is_empty() || at < MUST_SHOW_CATEGORIES,
-                leader_line: !selection.is_empty(),
+                placement: if !selection.is_empty() {
+                    NamePlacement::LeaderLine
+                } else if at < MUST_SHOW_CATEGORIES {
+                    NamePlacement::NearLand
+                } else {
+                    NamePlacement::OnLand
+                },
                 locations,
             })
             .collect()
@@ -158,9 +163,14 @@ impl<'bump> Eu5Workspace<'bump> {
                 };
                 let name = MapNameSource {
                     text,
-                    must_show: !selection.is_empty() || is_home || player || great_power,
                     // A selected name can stand away from crowded land, with a line to it.
-                    leader_line: is_home || !selection.is_empty(),
+                    placement: if is_home || !selection.is_empty() {
+                        NamePlacement::LeaderLine
+                    } else if player || great_power {
+                        NamePlacement::NearLand
+                    } else {
+                        NamePlacement::OnLand
+                    },
                     locations: realm.locations,
                 };
                 Some(((tier, by_land), name))

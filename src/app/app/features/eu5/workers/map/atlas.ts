@@ -3,6 +3,8 @@
  * sized by its extent, upright, and the most important name first.
  */
 
+import type { NamePlacement } from "@/wasm/wasm_eu5";
+
 export type WorldPoint = { x: number; y: number };
 
 /** The shape of a realm in world units */
@@ -209,10 +211,7 @@ function largestBody(points: Float64Array, worldWidth: number): Uint32Array {
 export type RealmName = {
   text: string;
   shape: RealmShape;
-  /** The name moves near its land when the land is too small for it */
-  mustShow: boolean;
-  /** The name can stand away from its land, with a line to it */
-  leaderLine: boolean;
+  placement: NamePlacement;
 };
 
 export type PlacedName = {
@@ -250,6 +249,8 @@ const NAME_GAP = 4;
 const FRAME_MARGIN = 4;
 /** How far a name with a leader line looks for a place, in pixels */
 const FAR_REACH = 80;
+/** Half the width of a leader line with its halo, in pixels */
+export const LEADER_HALO = 1.25;
 /** The size of a name away from its land */
 const NOTE_SIZE = 12;
 /** The directions to look in, the nearest to reading order first */
@@ -284,6 +285,14 @@ function* noteOffsets(
 }
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
+
+/** A box with room for the halo of a leader line on each side */
+const grow = (box: Box): Box => ({
+  x0: box.x0 - LEADER_HALO,
+  y0: box.y0 - LEADER_HALO,
+  x1: box.x1 + LEADER_HALO,
+  y1: box.y1 + LEADER_HALO,
+});
 
 const touches = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 
@@ -417,15 +426,20 @@ export function placeNames(
       onLand = true;
       break;
     }
-    if (onLand || !name.mustShow) continue;
+    if (onLand || name.placement === "onLand") continue;
 
     // Away from its land a name is a plain note, level and small, so that it does not read as land.
     const noteWidth = measure(name.text, false) * NOTE_SIZE;
     const noteHeight = NOTE_SIZE * 1.15;
-    for (const [ox, oy, line] of noteOffsets(noteWidth, noteHeight, name.leaderLine)) {
+    for (const [ox, oy, line] of noteOffsets(
+      noteWidth,
+      noteHeight,
+      name.placement === "leaderLine",
+    )) {
       const at = { x: land.x + ox, y: land.y + oy };
       const box = textBox(at.x, at.y, noteWidth, noteHeight, 0);
-      if (!isFree(box) || (line && covered.some((cover) => crosses(land, at, cover)))) continue;
+      if (!isFree(box) || (line && covered.some((cover) => crosses(land, at, grow(cover)))))
+        continue;
       boxes.add(box);
       placed.push({
         text: name.text,
