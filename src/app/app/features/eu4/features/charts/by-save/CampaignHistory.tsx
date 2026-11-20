@@ -7,6 +7,7 @@ import type { SnapshotSelection } from "@/features/campaign/analysis/session";
 import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
 import { openCampaignSave } from "@/features/campaign/openSave";
+import { currentSaveInput } from "@/features/engine";
 import { MONTH_ABBR, dayNumber, formatLongDate } from "@/features/timeline/date";
 import { MONTH_DAY_SIZERS } from "@/features/timeline/TimelineReadout";
 import { cx } from "class-variance-authority";
@@ -21,7 +22,15 @@ import type { BySaveSeries } from "./BySaveChart";
 import { BySaveTable, NotAtThisSave } from "./BySaveTable";
 import { bySaveFigures } from "./figures";
 import type { BySaveFigure, BySaveViz } from "./figures";
-import { alignColumns, amount, bySaveCsv, lineageRows, rowsAt, sourceText } from "./model";
+import {
+  alignColumns,
+  amount,
+  bySaveCsv,
+  lineageRows,
+  rowsAt,
+  sourceText,
+  unclearTags,
+} from "./model";
 import type { BySaveData } from "./model";
 import { useEu4Campaign } from "./useEu4Campaign";
 import { selectSave, useBySaveView } from "./view";
@@ -157,7 +166,11 @@ function CountryFigure({
   );
   const data = useMemo((): BySaveData => {
     const { columns, at } = alignColumns(snapshotIds, campaign.saves);
-    return { columns, rows: result ? lineageRows(result, at) : [] };
+    return {
+      columns,
+      rows: result ? lineageRows(result, at) : [],
+      unclear: result ? unclearTags(result) : [],
+    };
   }, [result, snapshotIds, campaign.saves]);
   return (
     <BySaveView
@@ -238,6 +251,10 @@ function BySaveView({
   const { columns, rows } = data;
   const countries = useEu4Countries();
   const names = useMemo(() => new Map(countries.map((x) => [x.tag, x])), [countries]);
+  const unclear = (data.unclear ?? []).map((tag) => {
+    const name = names.get(tag)?.name;
+    return name ? `${name} (${tag})` : tag;
+  });
   const series = useMemo(
     (): BySaveSeries[] =>
       rows.map((row) => ({
@@ -303,11 +320,13 @@ function BySaveView({
     try {
       // The dot is of the bytes that analysis read, so other bytes do not open as its save.
       const address = window.location.href;
+      const input = currentSaveInput();
       const { openKey: before } = now.current;
       if (await campaign.fileChanged(selectedSave)) setChanged(selectedSave.save.name);
-      // The player can leave the page or open another save while the file is read.
+      // The player can leave the page or open or drop another save while the file is read.
       else if (
         window.location.href === address &&
+        currentSaveInput() === input &&
         now.current.openKey === before &&
         now.current.stepping === null
       )
@@ -332,7 +351,7 @@ function BySaveView({
       <div className="flex flex-col gap-3">
         <StatusLine campaign={campaign} />
         <Alert.Error msg={error} />
-        <Foot campaign={campaign} chart={chart} />
+        <Foot campaign={campaign} chart={chart} unclear={unclear} />
       </div>
     );
   }
@@ -432,7 +451,7 @@ function BySaveView({
           {hovered === null && <NotAtThisSave rows={absent} column={selected} names={names} />}
         </>
       )}
-      <Foot campaign={campaign} chart={chart} />
+      <Foot campaign={campaign} chart={chart} unclear={unclear} />
     </div>
   );
 }
@@ -527,7 +546,16 @@ function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
 }
 
 /** Add saves, and what the chart leaves out, folded into one line. */
-function Foot({ campaign, chart }: { campaign: Eu4Campaign; chart: ChartCountries | null }) {
+function Foot({
+  campaign,
+  chart,
+  unclear,
+}: {
+  campaign: Eu4Campaign;
+  chart: ChartCountries | null;
+  /** The names of the tags whose holders cannot be told apart. */
+  unclear: readonly string[];
+}) {
   const { saves, issues, nav } = campaign;
   const unreadable = saves.filter((x) => x.status === "failed" && !x.retry);
   const saveEntries = [
@@ -544,11 +572,17 @@ function Foot({ campaign, chart }: { campaign: Eu4Campaign; chart: ChartCountrie
     ...(tags.length
       ? [`${tags.join(", ")}: the game gives these tags to other countries later.`]
       : []),
+    ...(unclear.length
+      ? [
+          `${unclear.join(", ")}: two countries changed to or from this tag on one day, so whose values are whose cannot be told.`,
+        ]
+      : []),
     ...(nav?.truncated ? ["Only the latest 200 uploads are listed."] : []),
   ];
+  const countries = tags.length + unclear.length;
   const parts = [
     saveEntries.length > 0 && plural(saveEntries.length, "save", "saves"),
-    tags.length > 0 && plural(tags.length, "country", "countries"),
+    countries > 0 && plural(countries, "country", "countries"),
   ].filter(Boolean);
   return (
     <div className="flex flex-wrap items-start gap-3 text-sm">

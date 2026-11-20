@@ -60,3 +60,5 @@ const useEngineStore = create<EngineState>()((set, get) => ({
 export const useSaveFileInput = () => useEngineStore((x) => x.input);
 export const useEngineActions = () => useEngineStore((x) => x.actions);
 export const isSaveLoaded = () => useEngineStore.getState().input !== null;
+/** The save input now, such as to tell whether another save started to load. */
+export const currentSaveInput = () => useEngineStore.getState().input;

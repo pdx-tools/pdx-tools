@@ -73,3 +73,42 @@ it("runs again when snapshots arrive and gives nothing after a new generation", 
   generation = 2;
   expect(run().result).toBeNull();
 });
+
+it("keeps a result through an added snapshot but not past a removed one", async () => {
+  hooks.state = [];
+  const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
+  const query = vi.fn(async ({ identity, sequence }: { identity: string; sequence: number }) => ({
+    generation: 1,
+    identity,
+    sequence,
+    snapshotIds: history.getState().snapshots.map((x) => x.id),
+    outcome: { status: "ok" as const, value: "answer" },
+  }));
+  const client = { generation: () => 1, query } as unknown as Parameters<
+    typeof useAnalysisQuery
+  >[0];
+  const run = (ids: string[]) => {
+    hooks.at = 0;
+    return useAnalysisQuery(
+      client,
+      history,
+      "campaign",
+      { kind: "worldDevelopment" },
+      {
+        kind: "ids",
+        ids,
+      },
+    );
+  };
+  const snapshot = (id: string) =>
+    ({ id, campaignId: "campaign", dateSort: 1 }) as SnapshotDescriptor;
+  history.getState().add([snapshot("a"), snapshot("b")]);
+  run(["a", "b"]);
+  await vi.runAllTimersAsync();
+  expect(run(["a", "b"]).result).toBe("answer");
+  // A new save keeps the last result until the new one.
+  history.getState().add([snapshot("c")]);
+  expect(run(["a", "b", "c"]).result).toBe("answer");
+  // A save that leaves the selection, such as one that another replaced, ends it.
+  expect(run(["a", "c"]).result).toBeNull();
+});

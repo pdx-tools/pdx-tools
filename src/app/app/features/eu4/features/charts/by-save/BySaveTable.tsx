@@ -15,7 +15,7 @@ function Swatch({ color }: { color: string }) {
   );
 }
 
-/** The name of a row's country at a column; a tag that two countries held keeps its code. */
+/** The name of a row's country at a column. */
 function rowName(
   row: BySaveRow,
   column: number,
@@ -23,7 +23,7 @@ function rowName(
   names: ReadonlyMap<string, CountryInfo>,
 ) {
   const tag = rowTag(row, column, fallback);
-  return row.lineage?.kind === "ambiguous" ? tag : (names.get(tag)?.name ?? tag);
+  return names.get(tag)?.name ?? tag;
 }
 
 /**
@@ -72,14 +72,7 @@ export function BySaveTable({
             return (
               <tr key={row.key} className="border-t border-gray-200 dark:border-gray-700">
                 <th scope="row" className="py-1 pr-6 text-left font-normal">
-                  <span
-                    className="flex flex-wrap items-center gap-x-2"
-                    title={
-                      row.lineage?.kind === "ambiguous"
-                        ? "More than one country held this tag."
-                        : undefined
-                    }
-                  >
+                  <span className="flex flex-wrap items-center gap-x-2">
                     <Swatch color={names.get(tag)?.color ?? "#808080"} />
                     {rowName(row, column, selected, names)}
                     {row.lineage?.kind === "earlierHolder" && (

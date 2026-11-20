@@ -13,7 +13,12 @@ export type BySaveRow = {
 };
 
 /** The columns of the chart and the table: the snapshots of the campaign saves, in date order. */
-export type BySaveData = { columns: AnalysisSave[]; rows: BySaveRow[] };
+export type BySaveData = {
+  columns: AnalysisSave[];
+  rows: BySaveRow[];
+  /** The tags whose holders cannot be told apart, which have no values. */
+  unclear?: string[];
+};
 
 export type CountryInfo = { name: string; color: string };
 
@@ -51,6 +56,11 @@ export function alignColumns(
     }
   });
   return { columns, at };
+}
+
+/** The tags that two countries changed to or from on one day. */
+export function unclearTags(series: readonly LineageValues[]): string[] {
+  return series.flatMap((x) => (x.lineage.kind === "ambiguous" ? [x.lineage.tags[0].tag] : []));
 }
 
 /** One row for each lineage, with its cells in the aligned columns. */

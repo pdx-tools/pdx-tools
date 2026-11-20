@@ -110,11 +110,11 @@ it("keeps uploads on the session that the import claimed", async () => {
   const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
   const session = new AbortController();
   let generation = 1;
-  const sinks: { generation: () => number }[] = [];
+  const claimed: (number | undefined)[] = [];
   mocks.importBatch
     .mockReset()
-    .mockImplementation(async (_files: File[], _options: unknown, sink: (typeof sinks)[number]) => {
-      sinks.push(sink);
+    .mockImplementation(async (_files: File[], options: { generation?: number }) => {
+      claimed.push(options.generation);
       return done;
     });
   const analyze = campaignAnalyzer({
@@ -135,7 +135,7 @@ it("keeps uploads on the session that the import claimed", async () => {
   });
   await analyze([], "campaign", [{ saveId: "a", name: "a.eu4" }]);
   // The upload batch appends to the claimed generation, which the session refuses.
-  expect(sinks.at(-1)!.generation()).toBe(1);
+  expect(claimed.at(-1)).toBe(1);
 
   // A release of the session stops the downloads.
   session.abort();
@@ -192,11 +192,11 @@ it("keeps local reads on the session that the import claimed", async () => {
   const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
   const session = new AbortController();
   let generation = 1;
-  const sinks: { generation: () => number }[] = [];
+  const claimed: (number | undefined)[] = [];
   mocks.importBatch
     .mockReset()
-    .mockImplementation(async (_files: File[], _options: unknown, sink: (typeof sinks)[number]) => {
-      sinks.push(sink);
+    .mockImplementation(async (_files: File[], options: { generation?: number }) => {
+      claimed.push(options.generation);
       return done;
     });
   let release = false;
@@ -226,13 +226,13 @@ it("keeps local reads on the session that the import claimed", async () => {
     parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
   });
   await analyze([entry], "campaign");
-  expect(sinks.at(-1)!.generation()).toBe(1);
+  expect(claimed.at(-1)).toBe(1);
 
   // A release of the session during the read ends the import.
   release = true;
-  sinks.length = 0;
+  claimed.length = 0;
   await analyze([entry], "campaign");
-  expect(sinks).toEqual([]);
+  expect(claimed).toEqual([]);
 });
 
 it.each([true, false])(

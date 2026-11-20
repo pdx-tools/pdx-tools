@@ -66,6 +66,12 @@ export type ImportOptions<D, R = unknown> = {
   /** The maximum number of parsers for this batch. */
   concurrency?: number;
   /**
+   * The session generation that the batch appends to, such as the one of
+   * the caller's claim. The sink's current generation by default. When the
+   * session moves on, the batch stops and an append is not a failure.
+   */
+  generation?: number;
+  /**
    * The reason that the session must not keep this parser output, or null.
    * The file then fails with this reason, and the session does not get it.
    */
@@ -111,7 +117,7 @@ export async function importBatch<Api, R, D extends SnapshotDescriptor>(
   options: ImportOptions<D, R>,
 ): Promise<ImportResult> {
   const { lease } = options;
-  const generation = sink.generation();
+  const generation = options.generation ?? sink.generation();
   // Stops all parses when a consumer throws.
   const halt = new AbortController();
   const signal = AbortSignal.any([options.signal, sink.signal(), halt.signal]);

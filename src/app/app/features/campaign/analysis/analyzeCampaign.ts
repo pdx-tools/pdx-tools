@@ -74,7 +74,6 @@ export function campaignAnalyzer<
     // The import stays on the session of this claim. Another claim, such as
     // of a save that opens while files are read, ends it.
     const session = { generation: analysis.generation(), signal: analysis.signal() };
-    const sink = { ...analysis, generation: () => session.generation };
     const controller = new AbortController();
     const startedAt = performance.now();
     const issues: string[] = [];
@@ -115,7 +114,7 @@ export function campaignAnalyzer<
         .filter((id) => ids.has(id) && !bound.has(id));
       // A stopped import still releases them, but a later session has none of them.
       if (!unbound.length || session.signal.aborted) return;
-      await sink.remove(unbound);
+      await analysis.remove(unbound);
       history.getState().forget(unbound);
     };
 
@@ -155,10 +154,11 @@ export function campaignAnalyzer<
         const result = await importBatch(
           files.map((x) => x.file),
           parser,
-          sink,
+          analysis,
           {
             signal,
             lease,
+            generation: session.generation,
             onFileComplete: (completion) => {
               const upload = uploadOf.get(completion.file)!;
               if ("descriptor" in completion) {
@@ -222,10 +222,13 @@ export function campaignAnalyzer<
       const result = await importBatch(
         sources.map((source) => source.file),
         parser,
-        sink,
+        // The live generation tells the scheduler that an append that a
+        // change of session interrupts is stale, not a failure.
+        analysis,
         {
           signal,
           lease,
+          generation: session.generation,
           onFileComplete: (completion) => {
             const { file } = completion;
             if ("descriptor" in completion) {
