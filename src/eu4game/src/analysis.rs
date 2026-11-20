@@ -4,9 +4,9 @@
 use crate::shared::playthrough_id;
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
-    IndexRegistry, Observation, PayloadError, PrefixKey, ReferenceError, Registry, RegistryMemory,
-    RowSelect, SaveDate, Series, SnapshotDescriptor, SnapshotSource, Table, TableError,
-    TextRegistry, TextRow, Texts, View, check_length,
+    IndexRegistry, NullableColumn, Observation, PayloadError, PrefixKey, ReferenceError, Registry,
+    RegistryMemory, RowSelect, SaveDate, Series, SnapshotDescriptor, SnapshotSource, Table,
+    TableError, TextRegistry, TextRow, Texts, View, check_length,
 };
 use eu4save::{CountryTag, PdsDate, ProvinceId, models::Province, query::Query};
 use std::collections::{BTreeMap, BTreeSet};
@@ -44,14 +44,15 @@ pub struct ProvinceColumns {
 }
 campaign_analysis::columns!(rows ProvinceColumns, "provinces" { development, owner });
 
-/// The country columns of a snapshot, one row for each country that owns a
-/// province. Country development comes from the province columns.
+/// The country columns of a snapshot, one row for each country that is
+/// alive or owns a province. Country development comes from the province
+/// columns. A value is absent when the save has no record of the country.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CountryColumns {
-    pub treasury: Vec<f32>,
-    pub max_manpower: Vec<f32>,
+    /// In thousands of men, as Country Details shows it.
+    pub max_manpower: NullableColumn<f32>,
 }
-campaign_analysis::columns!(rows CountryColumns, "countries" { treasury, max_manpower });
+campaign_analysis::columns!(rows CountryColumns, "countries" { max_manpower });
 
 /// A religion of a country. The religion is a row of the snapshot religions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -126,16 +127,19 @@ impl Columns for Eu4Payload {
             country_religions,
         })
     }
+    /// Country religion keys are local to the snapshot, so they count here.
     fn heap_bytes(&self) -> usize {
         self.provinces.columns().heap_bytes()
             + self.countries.columns().heap_bytes()
             + self.religions.heap_bytes()
+            + size_of_val(self.country_religions.keys())
             + self.country_religions.columns().heap_bytes()
     }
     fn allocated_bytes(&self) -> usize {
         self.provinces.columns().allocated_bytes()
             + self.countries.columns().allocated_bytes()
             + self.religions.allocated_bytes()
+            + size_of_val(self.country_religions.keys())
             + self.country_religions.columns().allocated_bytes()
     }
 }
@@ -197,7 +201,7 @@ impl Eu4Payload {
     }
 
     /// The development of the provinces that each country row owns.
-    pub fn owned_development_by_country(&self) -> Vec<f64> {
+    pub fn province_development_by_country(&self) -> Vec<f64> {
         let provinces = self.provinces.columns();
         let mut totals = vec![0.0; self.countries.len()];
         for (development, owner) in provinces.development.iter().zip(&provinces.owner) {
@@ -228,26 +232,26 @@ pub fn extract(
     let mut provinces: Vec<_> = save.game.provinces.iter().collect();
     provinces.sort_unstable_by_key(|(id, _)| **id);
 
-    // The countries that own a province, in tag order.
+    // The countries that are alive or own a province, in tag order.
     let tags: Vec<CountryTag> = provinces
         .iter()
         .filter_map(|(_, province)| province.owner)
+        .chain(
+            save.game
+                .countries
+                .iter()
+                .filter(|(_, country)| country.num_of_cities > 0)
+                .map(|(tag, _)| *tag),
+        )
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
-    let mut countries = CountryColumns {
-        treasury: Vec::with_capacity(tags.len()),
-        max_manpower: Vec::with_capacity(tags.len()),
+    let countries = CountryColumns {
+        max_manpower: tags
+            .iter()
+            .map(|tag| query.country(tag).map(|country| country.max_manpower))
+            .collect(),
     };
-    for tag in &tags {
-        let country = query.country(tag).ok_or_else(|| {
-            AnalysisError::Payload(PayloadError::Invalid(format!(
-                "Province owner {tag} is not a country"
-            )))
-        })?;
-        countries.treasury.push(country.treasury);
-        countries.max_manpower.push(country.max_manpower);
-    }
 
     let mut fingerprint = std::hash::DefaultHasher::new();
     let mut ids = Vec::with_capacity(provinces.len());
@@ -329,7 +333,6 @@ campaign_analysis::registries! {
         provinces: IndexRegistry<ProvinceId>,
         countries: IndexRegistry<CountryTag>,
         religions: TextRegistry,
-        country_religions: IndexRegistry<CountryReligion>,
     }
 }
 
@@ -350,15 +353,29 @@ impl Game for Eu4Analysis {
         let countries = payload.countries.columns();
         let measurements = [
             &provinces.development,
-            &countries.treasury,
-            &countries.max_manpower,
             &payload.country_religions.columns().development,
         ];
         if measurements
             .iter()
             .any(|column| column.iter().any(|x| !x.is_finite()))
+            || countries
+                .max_manpower
+                .iter()
+                .flatten()
+                .any(|x| !x.is_finite())
         {
             return Err(PayloadError::NonFinite);
+        }
+        // Queries find countries by binary search and religions by prefix.
+        if !payload.countries.is_sorted() {
+            return Err(PayloadError::Invalid(String::from(
+                "Country keys must be sorted",
+            )));
+        }
+        if !payload.country_religions.is_prefix_sorted() {
+            return Err(PayloadError::Invalid(String::from(
+                "Country religion keys must be prefix sorted",
+            )));
         }
         if payload.countries.len() > usize::from(u16::MAX) {
             return Err(PayloadError::DictionarySize { table: "countries" });
@@ -400,9 +417,6 @@ impl Game for Eu4Analysis {
                 .prepare(&mut payload.provinces, Some(layout))?,
             countries: shared.countries.prepare(&mut payload.countries, None)?,
             religions: shared.religions.prepare(&mut payload.religions)?,
-            country_religions: shared
-                .country_religions
-                .prepare(&mut payload.country_religions, None)?,
         })
     }
     fn added_bytes(prepared: &Eu4Prepared) -> usize {
@@ -422,10 +436,10 @@ impl Game for Eu4Analysis {
 #[serde(rename_all = "camelCase")]
 pub enum CountryMetric {
     /// The development of the provinces that the country owns, as the
-    /// province list of the viewer totals it. Country Details shows the
-    /// development that the game stores for the country, which can differ.
-    OwnedDevelopment,
-    Treasury,
+    /// Province list totals it. Country Details shows the game's figure,
+    /// which also counts the native development of a tribal country.
+    ProvinceDevelopment,
+    /// In thousands of men, as Country Details shows it.
     MaxManpower,
 }
 
@@ -490,14 +504,17 @@ pub fn country_series(
     for snapshot in view.snapshots() {
         let payload = snapshot.payload();
         let columns = payload.countries.columns();
-        let widen = |column: &[f32]| column.iter().copied().map(f64::from).collect();
-        let by_row: Vec<f64> = match metric {
-            CountryMetric::OwnedDevelopment => payload.owned_development_by_country(),
-            CountryMetric::Treasury => widen(&columns.treasury),
-            CountryMetric::MaxManpower => widen(&columns.max_manpower),
-        };
+        let development = (metric == CountryMetric::ProvinceDevelopment)
+            .then(|| payload.province_development_by_country());
         for country in &mut series {
-            let value = payload.country_offset(&country.key).map(|row| by_row[row]);
+            let value = payload
+                .country_offset(&country.key)
+                .and_then(|row| match metric {
+                    CountryMetric::ProvinceDevelopment => development.as_ref().map(|x| x[row]),
+                    CountryMetric::MaxManpower => {
+                        columns.max_manpower.get(row).flatten().map(f64::from)
+                    }
+                });
             country.values.push(value);
         }
     }
@@ -571,11 +588,14 @@ mod tests {
         tag.parse().unwrap()
     }
 
-    /// Countries get their treasury from the order of their tags.
-    fn payload(provinces: &[Spec]) -> Eu4Payload {
+    /// Countries get their max manpower from the order of their tags. An
+    /// alive country may own no province.
+    fn payload(provinces: &[Spec], alive: &[&str]) -> Eu4Payload {
         let tags: Vec<_> = provinces
             .iter()
-            .filter_map(|p| p.2.map(tag))
+            .filter_map(|p| p.2)
+            .chain(alive.iter().copied())
+            .map(tag)
             .collect::<BTreeSet<_>>()
             .into_iter()
             .collect();
@@ -619,8 +639,7 @@ mod tests {
             countries: Table::sorted(
                 tags,
                 CountryColumns {
-                    treasury: (0..count).map(|i| 100.0 * (i + 1) as f32).collect(),
-                    max_manpower: vec![9.0; count],
+                    max_manpower: (1..=count).map(|i| Some(10.0 * i as f32)).collect(),
                 },
             )
             .unwrap(),
@@ -651,11 +670,20 @@ mod tests {
         date: (i32, u8, u8),
         provinces: &[Spec],
     ) -> Observation<Eu4Analysis> {
+        observation_with(hash, date, provinces, &[])
+    }
+
+    fn observation_with(
+        hash: &str,
+        date: (i32, u8, u8),
+        provinces: &[Spec],
+        alive: &[&str],
+    ) -> Observation<Eu4Analysis> {
         let ids: Vec<_> = provinces.iter().map(|p| p.0).collect();
         Observation::new(
             descriptor(hash, date, format!("{ids:?}")),
             Eu4Detail {},
-            payload(provinces),
+            payload(provinces, alive),
         )
         .unwrap()
     }
@@ -680,13 +708,14 @@ mod tests {
                     (3, 30.0, Some("ENG"), Some("orthodox")),
                 ],
             ),
-            observation(
+            observation_with(
                 "c",
                 (1600, 1, 1),
                 &[
                     (1, 15.0, Some("FRA"), Some("calvinist")),
                     (2, 25.0, Some("FRA"), Some("catholic")),
                 ],
+                &["SWE"],
             ),
         ]
     }
@@ -754,19 +783,19 @@ mod tests {
             }
         };
         assert_eq!(
-            run(CountryMetric::OwnedDevelopment),
+            run(CountryMetric::ProvinceDevelopment),
             [
                 (tag("FRA"), vec![None, Some(31.0), Some(40.0)]),
                 (tag("ENG"), vec![Some(60.0), Some(12.0), None]),
-                (tag("SWE"), vec![None, None, None]),
+                (tag("SWE"), vec![None, None, Some(0.0)]),
             ]
         );
         assert_eq!(
-            run(CountryMetric::Treasury),
+            run(CountryMetric::MaxManpower),
             [
-                (tag("FRA"), vec![None, Some(200.0), Some(100.0)]),
-                (tag("ENG"), vec![Some(100.0), Some(100.0), None]),
-                (tag("SWE"), vec![None, None, None]),
+                (tag("FRA"), vec![None, Some(20.0), Some(10.0)]),
+                (tag("ENG"), vec![Some(10.0), Some(10.0), None]),
+                (tag("SWE"), vec![None, None, Some(20.0)]),
             ]
         );
         let query: Eu4Query = serde_json::from_value(serde_json::json!({
@@ -781,7 +810,7 @@ mod tests {
             }
         ));
         serde_json::from_value::<Eu4Query>(serde_json::json!({
-            "kind": "countrySeries", "tags": ["ENGLAND"], "metric": "treasury",
+            "kind": "countrySeries", "tags": ["ENGLAND"], "metric": "maxManpower",
         }))
         .unwrap_err();
     }
@@ -821,9 +850,8 @@ mod tests {
     fn shares_keys_and_texts_and_a_failed_append_changes_nothing() {
         let mut store = store();
         let memory = store.memory();
-        // Equal province and country keys share; each snapshot has its own
-        // country religions.
-        assert_eq!(memory.layouts, 2 + 3 + 3);
+        // Equal province and country keys share.
+        assert_eq!(memory.layouts, 2 + 3);
         let texts = "catholicorthodoxcalvinist".len();
         assert_eq!(store.shared().religions.memory().data_bytes, texts);
 
@@ -858,6 +886,78 @@ mod tests {
         }
     }
 
+    #[test]
+    fn admission_charges_only_new_text() {
+        let added = |religion| {
+            let mut store = store();
+            let before = store.memory().buffer_bytes;
+            let next = observation("d", (1700, 1, 1), &[(1, 1.0, Some("TUR"), Some(religion))]);
+            store.append(next, usize::MAX).unwrap();
+            store.memory().buffer_bytes - before
+        };
+        assert_eq!(added("sunni") - added("orthodox"), "sunni".len());
+    }
+
+    #[test]
+    fn a_country_without_a_record_has_gaps_and_unordered_tables_are_refused() {
+        let mut payload = payload(&[(1, 5.0, Some("ENG"), None)], &[]);
+        payload.countries = Table::sorted(
+            vec![tag("ENG")],
+            CountryColumns {
+                max_manpower: [None].into_iter().collect(),
+            },
+        )
+        .unwrap();
+        let layout = String::from("[1]");
+        let saved = |payload| {
+            Observation::new(
+                descriptor("a", (1444, 11, 11), layout.clone()),
+                Eu4Detail {},
+                payload,
+            )
+        };
+        let mut store = Store::new();
+        store
+            .append(saved(payload.clone()).unwrap(), usize::MAX)
+            .unwrap();
+        let run = |metric| match answer(
+            &store,
+            Eu4Query::CountrySeries {
+                tags: vec![tag("ENG")],
+                metric,
+            },
+        ) {
+            Eu4Answer::CountrySeries(answer) => series(answer),
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(run(CountryMetric::MaxManpower), [(tag("ENG"), vec![None])]);
+        assert_eq!(
+            run(CountryMetric::ProvinceDevelopment),
+            [(tag("ENG"), vec![Some(5.0)])]
+        );
+
+        let mut unsorted = payload.clone();
+        unsorted.countries = Table::map_order(
+            vec![tag("FRA"), tag("ENG")],
+            CountryColumns {
+                max_manpower: [None, None].into_iter().collect(),
+            },
+        )
+        .unwrap();
+        let mut unprefixed = payload.clone();
+        unprefixed.country_religions = Table::sorted(
+            Vec::new(),
+            CountryReligionColumns {
+                development: Vec::new(),
+            },
+        )
+        .unwrap();
+        for (payload, message) in [(unsorted, "sorted"), (unprefixed, "prefix sorted")] {
+            let error = saved(payload).unwrap_err();
+            assert!(error.to_string().contains(message), "{error}");
+        }
+    }
+
     fn splice(payload: &Eu4Payload) -> Vec<u8> {
         let original = &saves()[0];
         let mut baseline = Encoder::new();
@@ -880,10 +980,14 @@ mod tests {
         columns.owner[0] = CountryRow(2);
         owner.provinces = Table::sorted(owner.provinces.keys().to_vec(), columns).unwrap();
 
-        let mut treasury = valid.clone();
-        let mut columns = treasury.countries.columns().clone();
-        columns.treasury[0] = f32::NAN;
-        treasury.countries = Table::sorted(treasury.countries.keys().to_vec(), columns).unwrap();
+        let mut manpower = valid.clone();
+        manpower.countries = Table::sorted(
+            manpower.countries.keys().to_vec(),
+            CountryColumns {
+                max_manpower: [Some(f32::NAN), None].into_iter().collect(),
+            },
+        )
+        .unwrap();
 
         let mut religion = valid.clone();
         religion.religions = Texts::new(Vec::<&str>::new()).unwrap();
@@ -903,7 +1007,7 @@ mod tests {
         let mut session = Session::<Eu4Analysis>::new();
         for (payload, message) in [
             (owner, "owner names row 2 of 2"),
-            (treasury, "not finite"),
+            (manpower, "not finite"),
             (religion, "Dictionary reference 0 is outside 0 rows"),
             (country, "SWE"),
         ] {

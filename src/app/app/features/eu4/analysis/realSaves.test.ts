@@ -56,7 +56,7 @@ it.skipIf(!ready)(
       expect(reply.duplicate).toBe(false);
       expect(reply.descriptor).toEqual(descriptor);
     }
-    expect(store.memory()).toMatchObject({ snapshots: 3, layouts: 5 });
+    expect(store.memory()).toMatchObject({ snapshots: 3, layouts: 3 });
     const stored = store.snapshot(parsed[0].descriptor.id);
     expect(stored.descriptor).toEqual(parsed[0].descriptor);
     expect(stored.data).toEqual(parsed[0].data);

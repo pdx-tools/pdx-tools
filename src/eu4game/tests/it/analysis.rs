@@ -50,12 +50,12 @@ fn observations_agree_with_the_parsed_save() {
             .sum();
         let row = observed.payload().country_offset(&player).unwrap();
         assert_eq!(
-            observed.payload().owned_development_by_country()[row],
+            observed.payload().province_development_by_country()[row],
             player_development
         );
         assert_eq!(
-            observed.payload().countries.columns().treasury[row],
-            query.country(&player).unwrap().treasury
+            observed.payload().countries.columns().max_manpower.get(row),
+            Some(Some(query.country(&player).unwrap().max_manpower))
         );
 
         let mut italy_total = 0.0;
@@ -116,13 +116,13 @@ fn observations_agree_with_the_parsed_save() {
         expected(|save| save.3)
     );
 
-    assert_eq!(session.memory().layouts, 5);
+    assert_eq!(session.memory().layouts, 3);
 
     // A country breakdown adds up to the development of the country.
     let player = players[0];
     let Eu4Answer::CountrySeries(development) = (Eu4Query::CountrySeries {
         tags: vec![player],
-        metric: CountryMetric::OwnedDevelopment,
+        metric: CountryMetric::ProvinceDevelopment,
     })
     .answer(&view) else {
         panic!("country series");

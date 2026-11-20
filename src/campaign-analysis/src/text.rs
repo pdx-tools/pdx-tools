@@ -146,9 +146,10 @@ impl TextRegistry {
             new,
         })
     }
-    /// Commit a plan from the same exclusive append operation.
+    /// Commit a plan from the same exclusive append operation. Another
+    /// commit in between would give its IDs away, so that is a bug.
     pub fn commit(&mut self, plan: PreparedTexts) {
-        debug_assert_eq!(plan.first, self.texts.len());
+        assert_eq!(plan.first, self.texts.len(), "a stale text plan");
         for text in plan.new {
             self.ids
                 .insert(Rc::clone(&text), TextId(self.texts.len() as u32));
@@ -243,5 +244,15 @@ mod tests {
         drop(plan);
         assert_eq!(registry.memory().data_bytes, "catholicorthodoxcoptic".len());
         assert_eq!(registry.texts.len(), 3);
+    }
+
+    #[test]
+    #[should_panic(expected = "a stale text plan")]
+    fn a_plan_from_before_another_commit_is_refused() {
+        let mut registry = TextRegistry::default();
+        let first = registry.prepare(&mut texts(&["catholic"])).unwrap();
+        let second = registry.prepare(&mut texts(&["sunni"])).unwrap();
+        registry.commit(first);
+        registry.commit(second);
     }
 }

@@ -357,6 +357,22 @@ impl<T: Pod> NullableColumn<T> {
         (0..self.len()).map(|i| self.get(i).expect("in-range row"))
     }
 }
+impl<T: Pod> FromIterator<Option<T>> for NullableColumn<T> {
+    fn from_iter<I: IntoIterator<Item = Option<T>>>(iter: I) -> Self {
+        let mut values = Vec::new();
+        let mut validity = Vec::new();
+        for (offset, value) in iter.into_iter().enumerate() {
+            if offset % 8 == 0 {
+                validity.push(0);
+            }
+            if value.is_some() {
+                *validity.last_mut().expect("a byte for this value") |= 1 << (offset % 8);
+            }
+            values.push(value.unwrap_or_else(T::zeroed));
+        }
+        Self { values, validity }
+    }
+}
 impl<T: Pod> Columns for NullableColumn<T> {
     fn encode(&self, out: &mut Encoder) {
         out.column(&self.values);
@@ -607,6 +623,26 @@ mod nullable_tests {
         let decoded = NullableColumn::<f64>::decode(&mut Decoder::new(&out.finish())).unwrap();
         assert_eq!(decoded.values[0].to_bits(), 0.0f64.to_bits());
         assert_eq!(decoded.values[1].to_bits(), (-0.0f64).to_bits());
+    }
+    #[test]
+    fn collects_options_into_a_valid_bitmap() {
+        let values = [
+            Some(1u32),
+            None,
+            Some(3),
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(9),
+        ];
+        let column: NullableColumn<u32> = values.into_iter().collect();
+        assert_eq!(column.iter().collect::<Vec<_>>(), values);
+        assert_eq!(
+            column,
+            NullableColumn::new(column.values.clone(), column.validity.clone()).unwrap()
+        );
     }
     #[test]
     fn nullable_bitmap_and_value_bounds_are_checked() {
