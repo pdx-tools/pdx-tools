@@ -7,7 +7,7 @@ import {
 } from "@/features/campaign/analysis/autoAnalysis";
 import { useEu4Meta } from "../store";
 import { eu4Analysis } from "./analysisClient";
-import { analyzeEu4Saves } from "./analyzeSaves";
+import { importEu4Saves } from "./analyzeSaves";
 import { failedInVersion } from "@/features/campaign/analysis/saveStatus";
 import { pendingEntries } from "./campaignSaves";
 import { useEu4History } from "./store";
@@ -34,7 +34,7 @@ export function Eu4CampaignAnalysis() {
   );
   const analyze = useCallback(
     (entries: LocalSaveEntry[], playthroughId: string) =>
-      analyzeEu4Saves(saves ?? [], playthroughId, entries),
+      importEu4Saves(saves ?? [], playthroughId, entries),
     [saves],
   );
   useCampaignAutoAnalysis({
