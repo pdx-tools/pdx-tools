@@ -3,6 +3,7 @@ import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
 import { useVisualizationDispatch } from "@/components/viz";
 import { useAnalysisQuery } from "@/features/campaign/analysis/useAnalysisQuery";
+import type { SnapshotSelection } from "@/features/campaign/analysis/session";
 import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
 import { openCampaignSave } from "@/features/campaign/openSave";
@@ -152,6 +153,7 @@ function CountryFigure({
     useEu4History,
     campaign.playthroughId,
     query,
+    useShownSnapshots(campaign),
   );
   const data = useMemo((): BySaveData => {
     const { columns, at } = alignColumns(snapshotIds, campaign.saves);
@@ -167,6 +169,15 @@ function CountryFigure({
       loaded={!!result && data.columns.length > 0}
     />
   );
+}
+
+/**
+ * The snapshots of the saves that the chart shows. A snapshot that the
+ * campaign list left out, such as of another branch, adds no tag switches.
+ */
+function useShownSnapshots(campaign: Eu4Campaign): SnapshotSelection {
+  const ids = campaign.saves.flatMap((x) => (x.snapshot ? [x.snapshot.id] : [])).join("\n");
+  return useMemo(() => ({ kind: "ids", ids: ids ? ids.split("\n") : [] }), [ids]);
 }
 
 /** The countries of the filter, pinned so that opening another save keeps them. */
@@ -258,9 +269,9 @@ function BySaveView({
     const save = columns[column];
     if (save && playthroughId) selectSave(playthroughId, save.save.key);
   };
-  // The save under the pointer, by its key, so a column that goes does not move the hover.
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const hoveredAt = columns.findIndex((x) => x.save.key === hoveredKey);
+  // The snapshot under the pointer, so a column that goes or a file that is read again ends the hover.
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const hoveredAt = columns.findIndex((x) => x.snapshot?.id === hoveredId);
   const hovered = hoveredAt >= 0 ? hoveredAt : null;
   const shown = hovered ?? selected;
   const openColumn = campaign.open
@@ -286,8 +297,10 @@ function BySaveView({
     setChanged(null);
     try {
       // The dot is of the bytes that analysis read, so other bytes do not open as its save.
+      const address = window.location.href;
       if (await campaign.fileChanged(selectedSave)) setChanged(selectedSave.save.name);
-      else await openCampaignSave(nav, selectedSave.save);
+      // The player can leave the page while the file is read.
+      else if (window.location.href === address) await openCampaignSave(nav, selectedSave.save);
     } finally {
       setOpening(false);
     }
@@ -359,8 +372,8 @@ function BySaveView({
           openDay={openColumn >= 0 ? dayNumber(columns[openColumn].date) : null}
           hoverDay={hovered === null ? null : dayNumber(columns[hovered].date)}
           onPointer={(day) =>
-            setHoveredKey(
-              day === null ? null : (columns[nearestColumn(columns, day)]?.save.key ?? null),
+            setHoveredId(
+              day === null ? null : (columns[nearestColumn(columns, day)]?.snapshot?.id ?? null),
             )
           }
           onPick={(day) => select(nearestColumn(columns, day))}
