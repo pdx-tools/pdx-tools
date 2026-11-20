@@ -60,6 +60,13 @@ describe("realmShape", () => {
     expect(shape?.center.y).toBeLessThan(110);
   });
 
+  it("cuts a wide body at its gap, and not through its land", () => {
+    const line = Array.from({ length: 71 }, (_, i) => ({ x: i * 10, y: 100 }));
+    const cluster = Array.from({ length: 60 }, (_, i) => ({ x: i % 20, y: 100 + (i % 3) }));
+    const shape = realmShape(flat([...line, ...cluster]), WORLD);
+    expect(shape?.major).toBeLessThan(750);
+  });
+
   it("has no shape without points", () => {
     expect(realmShape(new Float64Array(), WORLD)).toBeNull();
   });
@@ -70,6 +77,12 @@ describe("placeNames", () => {
     const [placed] = place([name("Russia", large)]);
     expect(placed.capitals).toBe(true);
     expect(placed.size).toBeGreaterThan(20);
+  });
+
+  it("keeps a name in title case smaller than any name in capitals", () => {
+    const [placed] = place([name("Alençon", { ...large, minor: 10 })]);
+    expect(placed.capitals).toBe(false);
+    expect(placed.size).toBeLessThan(18);
   });
 
   it("lets the earlier name win a place", () => {
@@ -100,8 +113,14 @@ describe("placeNames", () => {
     expect(place([name("Russia", large, { mustShow: true })], covers)).toEqual([]);
   });
 
+  it("makes a name smaller to keep it out from under a panel", () => {
+    const covers = [{ x: 290, y: 0, width: 710, height: 500 }];
+    const [placed] = place([name("England", large)], covers);
+    expect(placed.size).toBeLessThan(30);
+  });
+
   it("keeps a name out from under a panel", () => {
-    const covers = [{ x: 230, y: 0, width: 770, height: 500 }];
+    const covers = [{ x: 210, y: 0, width: 790, height: 500 }];
     expect(place([name("Russia", large)], covers)).toEqual([]);
   });
 

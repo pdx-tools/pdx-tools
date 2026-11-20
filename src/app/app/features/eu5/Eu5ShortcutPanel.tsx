@@ -109,12 +109,13 @@ export function Eu5ShortcutPanel() {
         </button>
       </Popover.Trigger>
       <Popover.Content
+        ref={mapCoverRef}
         side="bottom"
         align="center"
         sideOffset={16}
         className="w-104 rounded-panel border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
       >
-        <div ref={mapCoverRef} className="px-5 pt-4 pb-5">
+        <div className="px-5 pt-4 pb-5">
           {SHORTCUT_GROUPS.map((group, groupIdx) => (
             <div key={group.label}>
               {groupIdx > 0 && <div className="my-3 h-px bg-game-line" />}

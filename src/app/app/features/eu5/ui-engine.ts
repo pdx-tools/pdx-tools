@@ -369,6 +369,8 @@ export class Eu5UIEngine implements AppEngine {
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     setMapNamesVisible: (visible) => {
+      // The map worker can outlive this engine, and then it follows the next one.
+      if (this.destroyed) return;
       this.gameInstance.showMapNames(visible);
       this.updateState(() => ({ mapNamesVisible: visible }));
     },

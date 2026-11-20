@@ -58,6 +58,8 @@ export class MapNameLayer {
   /** The names, covers or canvas changed since the last draw */
   private dirty = true;
   private lastView: Rect | null = null;
+  /** The canvas has nothing on it */
+  private blank = true;
   private readonly widths = new Map<string, number>();
   private frame: Frame;
 
@@ -104,7 +106,8 @@ export class MapNameLayer {
         ? [{ text: name.text, shape, mustShow: name.mustShow, leaderLine: name.leaderLine }]
         : [];
     });
-    this.shapes = shapes;
+    // No names, as over a snapshot, keep the shapes for when the names come back.
+    if (names.length > 0) this.shapes = shapes;
     this.dirty = true;
   }
 
@@ -124,6 +127,7 @@ export class MapNameLayer {
     this.frame = frame;
     this.canvas.width = frame.width;
     this.canvas.height = frame.height;
+    this.blank = true;
     this.dirty = true;
   }
 
@@ -144,9 +148,12 @@ export class MapNameLayer {
     this.lastView = view;
 
     const { ctx, frame } = this;
+    const empty = !this.visible || this.names.length === 0;
+    if (empty && this.blank) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, frame.width, frame.height);
-    if (!this.visible || this.names.length === 0) return;
+    this.blank = true;
+    if (empty) return;
 
     const size = {
       width: frame.width / frame.scaleFactor,
@@ -161,6 +168,7 @@ export class MapNameLayer {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (const name of placed) drawName(ctx, name);
+    this.blank = placed.length === 0;
   }
 
   private readonly measure: MeasureText = (text, capitals) => {

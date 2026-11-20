@@ -53,14 +53,7 @@ export function realmShape(points: Float64Array, worldWidth: number): RealmShape
   if (points.length === 0) return null;
   const main = largestBody(points, worldWidth);
 
-  // The world wraps, so x is read around the middle of the body.
-  const turn = (2 * Math.PI) / worldWidth;
-  let [sin, cos] = [0, 0];
-  for (const i of main) {
-    sin += Math.sin(points[i * 2] * turn);
-    cos += Math.cos(points[i * 2] * turn);
-  }
-  const middle = Math.atan2(sin, cos) / turn;
+  const middle = bodyMiddle(points, main, worldWidth);
   const count = main.length;
   const xs = new Float64Array(count);
   const ys = new Float64Array(count);
@@ -125,6 +118,28 @@ export function realmShape(points: Float64Array, worldWidth: number): RealmShape
     minor: Math.max(acrossHigh - acrossLow, worldWidth / 2400),
     angle,
   };
+}
+
+/**
+ * The x that the body is read around. The world wraps, so the body is cut
+ * where it has the widest gap of empty columns, and read from the far side
+ * of that gap.
+ */
+function bodyMiddle(points: Float64Array, body: Uint32Array, worldWidth: number): number {
+  const cell = worldWidth / BODY_CELLS;
+  const filled = new Uint8Array(BODY_CELLS);
+  for (const i of body) {
+    filled[((Math.floor(points[i * 2] / cell) % BODY_CELLS) + BODY_CELLS) % BODY_CELLS] = 1;
+  }
+  let [gapStart, gapLength, run] = [-1, 0, 0];
+  // Two passes over the columns find a gap that wraps past the last column.
+  for (let n = 0; n < BODY_CELLS * 2; n++) {
+    run = filled[n % BODY_CELLS] ? 0 : run + 1;
+    if (run > gapLength && run <= BODY_CELLS) [gapStart, gapLength] = [n - run + 1, run];
+  }
+  // A body around the whole world has no gap, and is read from its first column.
+  const cut = gapStart < 0 ? 0 : (gapStart + gapLength / 2) * cell;
+  return cut + worldWidth / 2;
 }
 
 /** Locations in neighboring cells of a grid this many cells wide are one body of land */
@@ -221,6 +236,8 @@ export type MeasureText = (text: string, capitals: boolean) => number;
 export const CAPITAL_SPACING = 0.14;
 
 const MIN_SIZE = 11;
+/** Each smaller size that a name tries, as a share of the last */
+const SIZE_STEP = 0.8;
 const MAX_SIZE = 30;
 const CAPITALS_FROM = 18;
 /** The share of a realm's long axis that its name can fill */
@@ -287,10 +304,12 @@ function crosses(a: WorldPoint, b: WorldPoint, box: Box): boolean {
 function textBox(x: number, y: number, width: number, height: number, angle: number): Box {
   const w = Math.abs(Math.cos(angle)) * width + Math.abs(Math.sin(angle)) * height;
   const h = Math.abs(Math.sin(angle)) * width + Math.abs(Math.cos(angle)) * height;
+  // About a letter between two names on one line, so that they do not read as one.
+  const gap = Math.max(NAME_GAP, height * 0.3);
   return {
-    x0: x - w / 2 - NAME_GAP,
+    x0: x - w / 2 - gap,
     y0: y - h / 2 - NAME_GAP / 2,
-    x1: x + w / 2 + NAME_GAP,
+    x1: x + w / 2 + gap,
     y1: y + h / 2 + NAME_GAP / 2,
   };
 }
@@ -368,25 +387,29 @@ export function placeNames(
     const minorPx = shape.minor * scaleX;
     const room = majorPx * AXIS_SHARE;
     const asCapitals = room / measure(name.text, true);
-    const capitals = asCapitals >= CAPITALS_FROM && minorPx >= CAPITALS_FROM;
-    const fitted = capitals
+    const canCapitals = asCapitals >= CAPITALS_FROM && minorPx >= CAPITALS_FROM;
+    const fitted = canCapitals
       ? Math.min(asCapitals, Math.max(minorPx * 0.7, CAPITALS_FROM))
       : room / measure(name.text, false);
-    const size = Math.min(MAX_SIZE, fitted);
-    if (size >= MIN_SIZE) {
-      const long = shape.major / shape.minor >= LONG_REALM && majorPx > 60;
-      // A name reads left to right, so a slope folds into the upright half.
-      const lean = shape.angle - Math.round(shape.angle / Math.PI) * Math.PI;
-      const angle = long ? Math.max(-MAX_LEAN, Math.min(MAX_LEAN, lean)) : 0;
+    const long = shape.major / shape.minor >= LONG_REALM && majorPx > 60;
+    // A name reads left to right, so a slope folds into the upright half.
+    const lean = shape.angle - Math.round(shape.angle / Math.PI) * Math.PI;
+    const angle = long ? Math.max(-MAX_LEAN, Math.min(MAX_LEAN, lean)) : 0;
+    let onLand = false;
+    // A name that meets another one tries smaller sizes on its land.
+    for (let size = Math.min(MAX_SIZE, fitted); size >= MIN_SIZE; size *= SIZE_STEP) {
+      const capitals = canCapitals && size >= CAPITALS_FROM;
+      // Title case stays below the size of capitals, so that a larger name is never the lesser one.
+      if (!capitals) size = Math.min(size, CAPITALS_FROM - 1);
       const width = measure(name.text, capitals) * size;
       const box = textBox(land.x, land.y, width, size * 1.15, angle);
-      if (isFree(box)) {
-        boxes.add(box);
-        placed.push({ text: name.text, x: land.x, y: land.y, size, angle, capitals });
-        continue;
-      }
+      if (!isFree(box)) continue;
+      boxes.add(box);
+      placed.push({ text: name.text, x: land.x, y: land.y, size, angle, capitals });
+      onLand = true;
+      break;
     }
-    if (!name.mustShow) continue;
+    if (onLand || !name.mustShow) continue;
 
     // Away from its land a name is a plain note, level and small, so that it does not read as land.
     const noteWidth = measure(name.text, false) * NOTE_SIZE;

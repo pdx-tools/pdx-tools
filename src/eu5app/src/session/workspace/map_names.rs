@@ -159,7 +159,8 @@ impl<'bump> Eu5Workspace<'bump> {
                 let name = MapNameSource {
                     text,
                     must_show: !selection.is_empty() || is_home || player || great_power,
-                    leader_line: is_home,
+                    // A selected name can stand away from crowded land, with a line to it.
+                    leader_line: is_home || !selection.is_empty(),
                     locations: realm.locations,
                 };
                 Some(((tier, by_land), name))

@@ -235,7 +235,12 @@ class Eu5Session {
       },
     );
 
-    const opened = await openEngine(game);
+    // A new map keeps the names setting of the map it replaces.
+    const previous = this.shown()?.getState().appState;
+    const opened = await openEngine(
+      game,
+      previous ? { mapNamesVisible: previous.mapNamesVisible } : undefined,
+    );
     if (!this.isCurrent(generation)) {
       opened.engine.destroy();
       return;
