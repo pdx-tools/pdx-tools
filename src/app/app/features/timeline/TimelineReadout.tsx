@@ -7,7 +7,7 @@ import type { TimelineController } from "./controller";
  * cell takes the width of the widest, so the readout keeps one width in any
  * face and the scrubber next to it does not move during playback.
  */
-const MONTH_SIZERS = MONTH_ABBR.filter(Boolean).map((month) => (
+export const MONTH_DAY_SIZERS = MONTH_ABBR.filter(Boolean).map((month) => (
   <span key={month} aria-hidden="true" className="invisible col-start-1 row-start-1">
     {month} 00
   </span>
@@ -32,7 +32,7 @@ export function TimelineReadout({
         {date.year}
       </span>
       <span className="inline-grid font-game-num text-game-small text-game-ink-300">
-        {MONTH_SIZERS}
+        {MONTH_DAY_SIZERS}
         <span className="col-start-1 row-start-1">
           {MONTH_ABBR[date.month]} {date.day}
         </span>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
 import { useVisualizationDispatch } from "@/components/viz";
@@ -6,19 +6,21 @@ import { useAnalysisQuery } from "@/features/campaign/analysis/useAnalysisQuery"
 import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
 import { openCampaignSave } from "@/features/campaign/openSave";
-import { dayNumber, formatLongDate } from "@/features/timeline/date";
+import { MONTH_ABBR, dayNumber, formatLongDate } from "@/features/timeline/date";
+import { MONTH_DAY_SIZERS } from "@/features/timeline/TimelineReadout";
+import { cx } from "class-variance-authority";
 import { eu4Analysis } from "@/features/eu4/analysis/analysisClient";
 import { useEu4History } from "@/features/eu4/analysis/store";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import { useEu4Actions, useEu4Countries, useTagFilter } from "@/features/eu4/store";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
-import type { ChartCountries, CountryMetric, CountryValue, TagSwitch } from "@/wasm/wasm_eu4";
+import type { ChartCountries, CountryMetric } from "@/wasm/wasm_eu4";
 import { BySaveChart } from "./BySaveChart";
-import type { AxisMark, BySavePoint, BySaveSeries } from "./BySaveChart";
-import { BySaveTable } from "./BySaveTable";
+import type { BySaveSeries } from "./BySaveChart";
+import { BySaveTable, NotAtThisSave } from "./BySaveTable";
 import { bySaveFigures } from "./figures";
 import type { BySaveFigure, BySaveViz } from "./figures";
-import { alignColumns, amount, bySaveCsv, countryCount, countryRows, sourceText } from "./model";
+import { alignColumns, amount, bySaveCsv, lineageRows, rowsAt, sourceText } from "./model";
 import type { BySaveData } from "./model";
 import { useEu4Campaign } from "./useEu4Campaign";
 import { selectSave, useBySaveView } from "./view";
@@ -30,10 +32,8 @@ const EU4_SAVES: CampaignSaveFiles = {
   picker: { description: "EU4 saves", accept: { "application/pdx": [".eu4"] } },
 };
 
-/** The most countries that a filter gives a chart, before formed nations join them. */
+/** The most countries that a filter gives a chart. */
 const COUNTRY_LIMIT = 20;
-
-const NO_JOINS: readonly TagSwitch[] = [];
 
 /** One value for each analyzed save of the campaign, as a chart and a table. */
 export function CampaignHistory({ viz }: { viz: BySaveViz }) {
@@ -119,28 +119,18 @@ function WorldFigure({ campaign, figure }: { campaign: Eu4Campaign; figure: BySa
       rows: [
         {
           key: "world",
-          label: "All countries",
-          short: "All",
-          color: "#64748b",
-          values: at.map((i): CountryValue => {
+          lineage: null,
+          cells: at.map((i) => {
             const value = values[i];
-            return value === null || value === undefined ? "noRecord" : { value };
+            return value === null || value === undefined
+              ? null
+              : { kind: "value" as const, tag: "", value };
           }),
-          was: [],
         },
       ],
     };
   }, [result, snapshotIds, campaign.saves]);
-  return (
-    <BySaveView
-      campaign={campaign}
-      figure={figure}
-      data={data}
-      error={error}
-      chart={null}
-      joins={NO_JOINS}
-    />
-  );
+  return <BySaveView campaign={campaign} figure={figure} data={data} error={error} chart={null} />;
 }
 
 function CountryFigure({
@@ -163,15 +153,10 @@ function CountryFigure({
     campaign.playthroughId,
     query,
   );
-  const countries = useEu4Countries();
-  const byTag = useMemo(() => new Map(countries.map((x) => [x.tag, x])), [countries]);
-  // Rows pair by the switches that the values were judged on.
-  const joins = result?.joins ?? NO_JOINS;
   const data = useMemo((): BySaveData => {
     const { columns, at } = alignColumns(snapshotIds, campaign.saves);
-    if (!result || !chart) return { columns, rows: [] };
-    return { columns, rows: countryRows(result.countries, at, chart.tags, result.joins, byTag) };
-  }, [result, snapshotIds, campaign.saves, chart, byTag]);
+    return { columns, rows: result ? lineageRows(result, at) : [] };
+  }, [result, snapshotIds, campaign.saves]);
   return (
     <BySaveView
       campaign={campaign}
@@ -179,7 +164,6 @@ function CountryFigure({
       data={data}
       error={error}
       chart={chart}
-      joins={joins}
       loaded={!!result && data.columns.length > 0}
     />
   );
@@ -209,13 +193,26 @@ function useChartCountries(campaignId: string | null) {
   return current;
 }
 
+/** The column of the save nearest a day. */
+function nearestColumn(columns: readonly AnalysisSave[], day: number) {
+  let best = -1;
+  let distance = Infinity;
+  columns.forEach((column, i) => {
+    const gap = Math.abs(dayNumber(column.date) - day);
+    if (gap < distance) {
+      distance = gap;
+      best = i;
+    }
+  });
+  return best;
+}
+
 function BySaveView({
   campaign,
   figure,
   data,
   error,
   chart,
-  joins,
   loaded = true,
 }: {
   campaign: Eu4Campaign;
@@ -223,63 +220,51 @@ function BySaveView({
   data: BySaveData;
   error: string | null;
   chart: ChartCountries | null;
-  /** The switches that pair rows. */
-  joins: readonly TagSwitch[];
   /** False while the values are still coming. */
   loaded?: boolean;
 }) {
-  const { saves, nav, playthroughId } = campaign;
+  const { nav, playthroughId } = campaign;
+  const { columns, rows } = data;
+  const countries = useEu4Countries();
+  const names = useMemo(() => new Map(countries.map((x) => [x.tag, x])), [countries]);
   const series = useMemo(
     (): BySaveSeries[] =>
-      data.rows.map((row) => ({
+      rows.map((row) => ({
         key: row.key,
-        label: row.label,
-        short: row.short,
-        color: row.color,
-        points: row.values.map(amount).flatMap((value, i): BySavePoint[] => {
-          const { save, date } = data.columns[i];
-          return value === null ? [] : [{ saveKey: save.key, day: dayNumber(date), value }];
+        points: row.cells.flatMap((cell, i) => {
+          const value = amount(cell);
+          if (value === null || !cell) return [];
+          const color = cell.tag ? (names.get(cell.tag)?.color ?? "#808080") : "#64748b";
+          return [{ day: dayNumber(columns[i].date), value, color }];
         }),
       })),
-    [data],
+    [rows, columns, names],
   );
-  const byKey = useMemo(() => new Map(data.columns.map((x) => [x.save.key, x])), [data.columns]);
-  const describe = useCallback(
-    (entry: BySaveSeries, point: BySavePoint) => {
-      const column = byKey.get(point.saveKey);
-      return [
-        `${entry.label}: ${figure.describe(point.value)}`,
-        column ? formatLongDate(column.date) : "",
-        column ? `${column.save.name} · ${sourceText(column.save)}` : "",
-        column?.snapshot ? `Patch ${column.snapshot.gameVersion}` : "",
-      ].filter(Boolean);
-    },
-    [byKey, figure],
-  );
-  const marks = useMemo(() => axisMarks(saves), [saves]);
   const visualizationDispatch = useVisualizationDispatch();
   useEffect(() => {
     visualizationDispatch({
       type: "update-csv-data",
-      getCsvData: async () => bySaveCsv(data, figure),
+      getCsvData: async () => bySaveCsv(data, figure, names),
     });
-  }, [data, figure, visualizationDispatch]);
+  }, [data, figure, names, visualizationDispatch]);
 
-  // The latest save with dots is selected at first.
+  // Only saves with values can be selected. The latest one is selected at first.
   const selectedKey = useBySaveView((state) =>
     state.selected?.campaignId === playthroughId ? state.selected.saveKey : null,
   );
-  const selectedAt = saves.findIndex((x) => x.save.key === selectedKey);
-  const at = selectedAt >= 0 ? selectedAt : saves.findLastIndex((x) => byKey.has(x.save.key));
-  const selected = at >= 0 ? saves[at] : null;
-  const columnAt = selected ? data.columns.indexOf(byKey.get(selected.save.key)!) : -1;
-  const select = (index: number) => {
-    const save = saves[index];
+  const found = columns.findIndex((x) => x.save.key === selectedKey);
+  const selected = found >= 0 ? found : columns.length - 1;
+  const select = (column: number) => {
+    const save = columns[column];
     if (save && playthroughId) selectSave(playthroughId, save.save.key);
   };
-  const open = campaign.open && byKey.has(campaign.open.save.key) ? campaign.open : null;
+  const [hovered, setHovered] = useState<number | null>(null);
+  const shown = hovered ?? selected;
+  const openColumn = campaign.open
+    ? columns.findIndex((x) => x.save.key === campaign.open!.save.key)
+    : -1;
   // The selection follows a step to another save, as the open marker does.
-  const openKey = saves.find((x) => x.save.isOpen)?.save.key ?? null;
+  const openKey = campaign.saves.find((x) => x.save.isOpen)?.save.key ?? null;
   useEffect(() => {
     if (!playthroughId || !openKey) return;
     const { lastOpen } = useBySaveView.getState();
@@ -288,21 +273,43 @@ function BySaveView({
     useBySaveView.setState({ lastOpen: { campaignId: playthroughId, saveKey: openKey } });
   }, [playthroughId, openKey]);
   const [opening, setOpening] = useState(false);
+  const selectedSave = columns[selected];
   const openSelected = async () => {
-    if (!nav || !selected || !playthroughId) return;
-    selectSave(playthroughId, selected.save.key);
+    if (!nav || !selectedSave || !playthroughId) return;
+    selectSave(playthroughId, selectedSave.save.key);
     setOpening(true);
     try {
-      await openCampaignSave(nav, selected.save);
+      await openCampaignSave(nav, selectedSave.save);
     } finally {
       setOpening(false);
     }
   };
-  // "Open now" only where the snapshot is of the bytes that the viewer parsed.
+
+  // Rows keep the order of the selected save while the pointer moves. A
+  // country without a value there joins the end only while it has one.
+  const order = useMemo(() => (selected >= 0 ? rowsAt(rows, selected) : []), [rows, selected]);
+  const absent = useMemo(
+    () => (selected >= 0 ? rows.filter((row) => row.cells[selected] === null) : []),
+    [rows, selected],
+  );
+  const shownRows =
+    hovered === null ? order : [...order, ...absent.filter((row) => row.cells[hovered] !== null)];
+
+  if (!columns.length || selected < 0) {
+    return (
+      <div className="flex flex-col gap-3">
+        <StatusLine campaign={campaign} />
+        <Alert.Error msg={error} />
+        <Foot campaign={campaign} chart={chart} />
+      </div>
+    );
+  }
+  const shownSave = columns[shown];
+  const world = !chart;
   const openControl =
-    campaign.open && selected?.save.key === campaign.open.save.key ? (
+    campaign.open && selectedSave.save.key === campaign.open.save.key ? (
       <span className="font-medium">Open now</span>
-    ) : selected?.save.isOpen ? (
+    ) : selectedSave.save.isOpen ? (
       campaign.openOtherVersion && <span>The viewer shows another version of this file.</span>
     ) : (
       <Button
@@ -313,133 +320,131 @@ function BySaveView({
         {opening ? "Opening" : "Open save"}
       </Button>
     );
-  const steppers = (
-    <>
-      <Button disabled={at <= 0} onClick={() => select(at - 1)}>
-        Earlier save
-      </Button>
-      <Button disabled={at >= saves.length - 1} onClick={() => select(at + 1)}>
-        Later save
-      </Button>
-    </>
-  );
   return (
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
       <Alert.Error msg={error} />
-      {chart && <ChartCountriesNote chart={chart} rows={data.rows} joins={joins} loaded={loaded} />}
-      {saves.length > 0 && (
-        <div
-          role="group"
-          tabIndex={0}
-          aria-label="Campaign chart. Left and right arrows select an earlier or a later save."
-          className="rounded-md focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:outline-none"
-          onKeyDown={(event) => {
-            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-            event.preventDefault();
-            select(at + (event.key === "ArrowLeft" ? -1 : 1));
-          }}
-        >
-          <BySaveChart
-            series={series}
-            marks={marks}
-            range={[saves[0].date, saves[saves.length - 1].date]}
-            axisName={figure.axis}
-            describe={describe}
-            endLabels={series.length <= 8}
-            selectedDay={selected ? dayNumber(selected.date) : null}
-            openDay={open ? dayNumber(open.date) : null}
-            onSelect={(key) => select(saves.findIndex((x) => x.save.key === key))}
-          />
-        </div>
-      )}
-      {selected && (
-        <BySaveTable
-          data={data}
-          selected={selected}
-          column={columnAt >= 0 ? columnAt : null}
-          reason={columnAt >= 0 ? null : (axisMarks([selected])[0]?.reason ?? "Reading this save")}
-          figure={figure}
-          joins={joins}
-          openControl={openControl}
-          steppers={steppers}
+      {chart && <ChartCountriesNote chart={chart} count={rows.length} loaded={loaded} />}
+      <div
+        role="group"
+        tabIndex={0}
+        aria-label="Campaign chart. Left and right arrows select an earlier or a later save."
+        className="rounded-md focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:outline-none"
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          event.preventDefault();
+          select(selected + (event.key === "ArrowLeft" ? -1 : 1));
+        }}
+      >
+        <BySaveChart
+          series={series}
+          range={[columns[0].date, columns[columns.length - 1].date]}
+          tick={figure.format}
+          selectedDay={dayNumber(selectedSave.date)}
+          openDay={openColumn >= 0 ? dayNumber(columns[openColumn].date) : null}
+          hoverDay={hovered === null ? null : dayNumber(columns[hovered].date)}
+          onPointer={(day) => setHovered(day === null ? null : nearestColumn(columns, day))}
+          onPick={(day) => select(nearestColumn(columns, day))}
         />
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span
+          className={cx(
+            "font-medium tabular-nums",
+            hovered !== null && "text-gray-600 dark:text-gray-300",
+          )}
+          title={`${shownSave.save.name} · ${sourceText(shownSave.save)}`}
+        >
+          <SaveDate date={shownSave.date} />
+          {world && amount(rows[0]?.cells[shown] ?? null) !== null && (
+            <> · {figure.format(amount(rows[0].cells[shown])!)}</>
+          )}
+        </span>
+        {/* The open control acts on the selected save only, so it hides while the pointer shows another. */}
+        <span className={cx(hovered !== null && hovered !== selected && "invisible")}>
+          {openControl}
+        </span>
+        <span className="ml-auto flex gap-2">
+          <Button disabled={selected <= 0} onClick={() => select(selected - 1)}>
+            Earlier save
+          </Button>
+          <Button disabled={selected >= columns.length - 1} onClick={() => select(selected + 1)}>
+            Later save
+          </Button>
+        </span>
+      </div>
+      <p aria-live="polite" aria-atomic className="sr-only">
+        Selected {formatLongDate(selectedSave.date)}, {selectedSave.save.name}
+      </p>
+      {!world && (
+        <>
+          <BySaveTable
+            rows={shownRows}
+            column={shown}
+            dateLabel={formatLongDate(shownSave.date)}
+            figure={figure}
+            names={names}
+          />
+          {hovered === null && <NotAtThisSave rows={absent} column={selected} names={names} />}
+        </>
       )}
-      {!campaign.open && (
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          The open save is not on this chart.
-        </p>
-      )}
-      <AddSaves />
+      <Foot campaign={campaign} chart={chart} />
     </div>
   );
 }
 
-/** Says when the filter gives one country, and which chosen tags the chart leaves out. */
-function ChartCountriesNote({
-  chart,
-  rows,
-  joins,
-  loaded,
-}: {
-  chart: ChartCountries;
-  rows: BySaveData["rows"];
-  joins: readonly TagSwitch[];
-  loaded: boolean;
-}) {
-  const { updateTagFilter } = useEu4Actions();
-  const count = countryCount(rows, joins);
-  const shown = chart.leftOut.slice(0, 8).join(", ");
-  const more = chart.leftOut.length > 8 ? ` and ${chart.leftOut.length - 8} more` : "";
+/** A date at one width, so the line beside it does not move as the date changes. */
+function SaveDate({ date }: { date: { year: number; month: number; day: number } }) {
   return (
     <>
-      {loaded && count === 1 && (
-        <p className="flex items-center gap-2 text-sm">
-          Only 1 country shown.
-          <Button
-            shape="none"
-            variant="ghost"
-            className="underline"
-            aria-label="Add great powers"
-            onClick={() => void updateTagFilter({ ai: "great" })}
-          >
-            + Greats
-          </Button>
-        </p>
-      )}
-      {chart.leftOut.length > 0 && (
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          Left out: {shown}
-          {more}. The game gives these tags to other countries later.
-        </p>
-      )}
-      {loaded && count === 0 && chart.leftOut.length === 0 && (
-        <p className="text-sm">No country of the filter has a value in these saves.</p>
-      )}
+      {date.year}{" "}
+      <span className="inline-grid">
+        {MONTH_DAY_SIZERS}
+        <span className="col-start-1 row-start-1">
+          {MONTH_ABBR[date.month]} {date.day}
+        </span>
+      </span>
     </>
   );
 }
 
-/** Saves that have no dot get a mark on the axis at their date, with the reason. */
-function axisMarks(saves: readonly AnalysisSave[]): AxisMark[] {
-  return saves.flatMap((x): AxisMark[] => {
-    if (x.snapshot) return [];
-    const reason =
-      x.status === "failed"
-        ? `Could not ${x.retry ? "download" : "read"} ${x.save.name}${x.error ? `: ${x.error}` : ""}`
-        : x.status === "analyzing"
-          ? `Analyzing ${x.save.name}`
-          : `${x.save.name} waits for analysis`;
-    return [{ key: x.save.key, day: dayNumber(x.date), reason }];
-  });
+/** Says when the filter gives one country, or none. */
+function ChartCountriesNote({
+  chart,
+  count,
+  loaded,
+}: {
+  chart: ChartCountries;
+  count: number;
+  loaded: boolean;
+}) {
+  const { updateTagFilter } = useEu4Actions();
+  if (!loaded) return null;
+  if (count === 1)
+    return (
+      <p className="flex items-center gap-2 text-sm">
+        Only 1 country shown.
+        <Button
+          shape="none"
+          variant="ghost"
+          className="underline"
+          aria-label="Add great powers"
+          onClick={() => void updateTagFilter({ ai: "great" })}
+        >
+          + Greats
+        </Button>
+      </p>
+    );
+  if (count === 0 && chart.leftOut.length === 0)
+    return <p className="text-sm">No country of the filter has a value in these saves.</p>;
+  return null;
 }
 
-/** Shown while analysis runs or stopped, or when a save failed or was left out. */
+/** Progress, Stop and Resume, and downloads to retry: what needs an action. */
 function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
-  const { saves, progress, paused, issues, waitingUploads, nav } = campaign;
+  const { saves, progress, paused, waitingUploads } = campaign;
   const done = saves.filter((x) => x.snapshot).length;
-  const failed = saves.filter((x) => x.status === "failed");
-  const leftOut = nav?.leftOut ?? [];
+  const lost = saves.filter((x) => x.status === "failed" && x.retry);
   const action = progress ? (
     <Button onClick={campaign.stop}>Stop</Button>
   ) : paused ? (
@@ -448,9 +453,9 @@ function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
     <Button onClick={campaign.analyze}>Analyze</Button>
   ) : null;
   return (
-    <div className="flex flex-col gap-2 text-sm">
+    <>
       {(progress || paused || waitingUploads > 0) && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 text-sm">
           <span role="status">
             {progress
               ? `${progress.completed} of ${progress.total} · ${progress.downloading ? "downloading" : "reading"}`
@@ -461,33 +466,57 @@ function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
           {action}
         </div>
       )}
-      {failed.length > 0 && (
+      {lost.length > 0 && (
         <Alert variant="error">
           <Alert.Description className="flex flex-col gap-1 px-3 py-2">
-            {failed.map((x) => (
+            {lost.map((x) => (
               <span key={x.save.key} className="flex items-center gap-3">
-                Could not {x.retry ? "download" : "read"} {x.save.name}.
-                {x.retry && !progress && <Button onClick={campaign.analyze}>Retry</Button>}
+                Could not download {x.save.name}.
+                {!progress && <Button onClick={campaign.analyze}>Retry</Button>}
               </span>
             ))}
           </Alert.Description>
         </Alert>
       )}
-      {leftOut.length > 0 && (
-        <p>
-          Left out:{" "}
-          {leftOut.map(({ save, kept }) => `${save.name} (same date as ${kept.name})`).join(", ")}.
-        </p>
-      )}
-      {nav?.truncated && <p>Shows the latest 200 uploads.</p>}
-      {issues.length > 0 && !progress && (
-        <details>
-          <summary className="cursor-pointer">
-            {plural(issues.length, "analysis notice", "analysis notices")}
+    </>
+  );
+}
+
+/** Add saves, and what the chart leaves out, folded into one line. */
+function Foot({ campaign, chart }: { campaign: Eu4Campaign; chart: ChartCountries | null }) {
+  const { saves, issues, nav } = campaign;
+  const unreadable = saves.filter((x) => x.status === "failed" && !x.retry);
+  const saveEntries = [
+    ...unreadable.map((x) => `${x.save.name}: could not be read.`),
+    ...(nav?.leftOut ?? []).map(
+      ({ save, kept }) => `${save.name}: same date as ${kept.name}, which is shown.`,
+    ),
+    // A notice names a save that analysis left out, such as one of another campaign.
+    ...issues.filter((issue) => !unreadable.some((x) => issue.startsWith(`${x.save.name}:`))),
+  ];
+  const tags = chart?.leftOut ?? [];
+  const entries = [
+    ...saveEntries,
+    ...(tags.length
+      ? [`${tags.join(", ")}: the game gives these tags to other countries later.`]
+      : []),
+    ...(nav?.truncated ? ["Only the latest 200 uploads are listed."] : []),
+  ];
+  const parts = [
+    saveEntries.length > 0 && plural(saveEntries.length, "save", "saves"),
+    tags.length > 0 && plural(tags.length, "country", "countries"),
+  ].filter(Boolean);
+  return (
+    <div className="flex flex-wrap items-start gap-3 text-sm">
+      <AddSaves />
+      {entries.length > 0 && (
+        <details className="pt-2">
+          <summary className="cursor-pointer text-gray-600 dark:text-gray-300">
+            Not shown{parts.length ? `: ${parts.join(", ")}` : ""}
           </summary>
           <ul className="mt-1 list-disc pl-5">
-            {issues.map((issue, i) => (
-              <li key={i}>{issue}</li>
+            {entries.map((entry, i) => (
+              <li key={i}>{entry}</li>
             ))}
           </ul>
         </details>

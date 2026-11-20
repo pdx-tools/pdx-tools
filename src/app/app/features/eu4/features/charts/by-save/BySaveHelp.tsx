@@ -2,51 +2,29 @@ import type { BySaveViz } from "./figures";
 
 const definitions: Record<BySaveViz, string> = {
   "dev-by-save":
-    "the development of the provinces that the country owns, as the Provinces table totals it. Country details also counts a tribal country's own native development, so it can be higher.",
+    "the development of the provinces that the country owns, as the Provinces table totals it.",
   "army-by-save":
-    "the men in the land regiments of the country, mercenaries too, in thousands, as the Health Heatmap shows the current force strength. It is not the number of regiments or the force limit.",
-  "manpower-by-save":
-    "the maximum manpower of the country, in thousands, as the Health Heatmap and Country details show it. It is not the current manpower pool.",
+    "the men in the country's land regiments, mercenaries too, in thousands; not regiments or the force limit.",
+  "manpower-by-save": "the country's maximum manpower in thousands, not its current pool.",
   "world-dev-by-save": "the development of all owned provinces, as the Provinces table totals it.",
 };
 
 export function BySaveHelp({ viz }: { viz: BySaveViz }) {
   return (
     <>
-      <p>
-        Each dot is one save of this campaign: {definitions[viz]} Nothing is drawn between saves.
-      </p>
+      <p>Each dot is one save: {definitions[viz]}</p>
       {viz !== "world-dev-by-save" && (
         <>
           <p>
-            The countries come from the filter and the save that was open when you chose them, with
-            the countries that save records as formed from them or forming them. They stay the same
-            when you open another save; change the filter to choose them again. Names and colors are
-            those of the open save.
+            Countries are the filter&apos;s, as chosen when you analyzed; a country without
+            provinces in a save has no dot there.
           </p>
-          <p>
-            A country that held no provinces in a save has no dot there. &quot;No record&quot; means
-            the country held provinces but the save keeps no record of it. Colonial nations, client
-            states, trading companies, federations and estate countries are left out and named,
-            because the game gives their tags to other countries later. Custom nations stay.
-          </p>
-          <p>
-            Rows are listed together, and values marked, from the tag switches that all analyzed
-            saves record. When one country became another, the two are listed together and their
-            values are not added up. A value from before the switch under the new tag, or from after
-            it under the old tag, belongs to another country with that tag: it has no dot, the table
-            marks it, and it is never the first value seen. A tag that two countries held joins no
-            rows, and all its values are marked as another country&apos;s.
-          </p>
+          <p>A country that changed its tag stays one row; its dots change color with the tag.</p>
         </>
       )}
       <p>
-        The campaign list keeps one save for each date. Analysis reads each save once and keeps what
-        it found until you refresh this page. Local saves that you add later are analyzed on their
-        own.
-      </p>
-      <p>
-        If you went back to an earlier save in the game, the dots still show what each save holds.
+        The campaign list keeps one save for each date, and analysis keeps what it read until you
+        refresh this page.
       </p>
     </>
   );

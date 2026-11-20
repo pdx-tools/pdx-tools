@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
-import type { CountryValues } from "@/wasm/wasm_eu4";
-import { alignColumns, countryRows, sortRows } from "./model";
+import type { LineageValues } from "@/wasm/wasm_eu4";
+import { alignColumns, lineageRows, otherTags, rowTag, rowsAt } from "./model";
 
 const save = (id: string, year: number) =>
   ({
@@ -19,32 +19,44 @@ it("keeps only the snapshots of the campaign saves, in reply order", () => {
   expect(at).toEqual([0, 2]);
 });
 
-it("lists a formed nation beside the tag it was, and sorts countries without land last", () => {
-  const tags = ["BRA", "FRA", "MLO", "PRU", "SWE"];
-  const joins = [{ from: "BRA", to: "PRU", date: "1525-01-01" }];
-  const countries = new Map([
-    ["BRA", { name: "Brandenburg", color: "#000" }],
-    ["PRU", { name: "Prussia", color: "#111" }],
-    ["FRA", { name: "France", color: "#222" }],
-  ]);
-  const series = [
-    { tag: "BRA", values: [{ value: 211 }, "noProvinces"] },
-    { tag: "FRA", values: [{ value: 402 }, { value: 744 }] },
-    { tag: "PRU", values: ["noProvinces", { value: 544 }] },
-    { tag: "SWE", values: [{ value: 300 }, "noProvinces"] },
-    // A tag with no value in any save has no row.
-    { tag: "MLO", values: ["noProvinces", "noProvinces"] },
-  ] as const satisfies readonly CountryValues[];
-  const rows = countryRows(series, [0, 1], tags, joins, countries);
-  expect(rows.map((x) => x.key)).toEqual(["FRA", "PRU", "BRA", "SWE"]);
-  expect(rows[1]).toMatchObject({
-    label: "Prussia · PRU",
-    values: ["noProvinces", { value: 544 }],
-    was: ["was Brandenburg · BRA until 1525"],
-  });
-  expect(rows[3].label).toBe("SWE");
+it("gives each country one row named by the tag it held, sorted at the selected save", () => {
+  const value = (tag: string, value: number) => ({ kind: "value" as const, tag, value });
+  const series: LineageValues[] = [
+    {
+      lineage: {
+        kind: "country",
+        tags: [
+          { tag: "ALO", until: "1451-01-01" },
+          { tag: "NBI", from: "1451-01-01" },
+        ],
+      },
+      values: [value("ALO", 21), value("NBI", 748)],
+    },
+    {
+      lineage: { kind: "country", tags: [{ tag: "FRA" }] },
+      values: [value("FRA", 252), value("FRA", 901)],
+    },
+    // The first Byzantium, before another country took the tag.
+    {
+      lineage: { kind: "earlierHolder", tags: [{ tag: "BYZ", until: "1500-01-01" }] },
+      values: [value("BYZ", 30), undefined],
+    },
+    // No value in any save: no row.
+    { lineage: { kind: "country", tags: [{ tag: "MLO" }] }, values: [undefined, undefined] },
+  ];
+  const rows = lineageRows(series, [0, 1]);
+  expect(rows.map((x) => x.key)).toEqual(["ALO>NBI@1451-01-01", "FRA", "BYZ"]);
 
-  expect(sortRows(rows, 1, joins).map((x) => x.key)).toEqual(["FRA", "PRU", "BRA", "SWE"]);
-  // A pair sorts by its larger value and keeps its order.
-  expect(sortRows(rows, 0, joins).map((x) => x.key)).toEqual(["FRA", "SWE", "PRU", "BRA"]);
+  const early = rowsAt(rows, 0);
+  expect(early.map((row) => rowTag(row, 0))).toEqual(["FRA", "BYZ", "ALO"]);
+  expect(otherTags(early[2], 0)).toEqual([
+    { relation: "later", tag: "NBI", from: "1451-01-01", until: null },
+  ]);
+
+  // Byzantium has no value at the later save, so it has no row there.
+  const late = rowsAt(rows, 1);
+  expect(late.map((row) => rowTag(row, 1))).toEqual(["FRA", "NBI"]);
+  expect(otherTags(late[1], 1)).toEqual([
+    { relation: "was", tag: "ALO", from: null, until: "1451-01-01" },
+  ]);
 });

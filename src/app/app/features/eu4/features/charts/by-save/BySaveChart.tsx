@@ -2,60 +2,48 @@ import { useEffectEvent, useMemo } from "react";
 import type * as echarts from "echarts/core";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
-import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { isDarkMode } from "@/lib/dark";
-import { dateFromDayNumber, dayNumber, formatLongDate } from "@/features/timeline/date";
+import { dateFromDayNumber, dayNumber } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
 
-/** One dot: the value of a series in the snapshot of one campaign save. */
-export type BySavePoint = { saveKey: string; day: number; value: number };
+/** One dot: a country's value in one save, in the game color of the tag it held then. */
+export type BySavePoint = { day: number; value: number; color: string };
 
-export type BySaveSeries = {
-  key: string;
-  label: string;
-  /** The name beside the last dot, such as the tag. */
-  short: string;
-  color: string;
-  points: BySavePoint[];
-};
-
-/** A save without a dot of its own, such as one that failed. */
-export type AxisMark = { key: string; day: number; reason: string };
+export type BySaveSeries = { key: string; points: BySavePoint[] };
 
 export type BySaveChartProps = {
   series: BySaveSeries[];
-  marks: AxisMark[];
   /** The first and last save date of the campaign. */
   range: [DateComponents, DateComponents];
-  axisName: string;
-  /** The hover text of a dot. */
-  describe: (series: BySaveSeries, point: BySavePoint) => string[];
-  /** Name each series beside its last dot. */
-  endLabels: boolean;
+  /** The value as an axis tick, such as "80K". */
+  tick: (value: number) => string;
   /** The day of the selected save, drawn as a rule through the plot. */
   selectedDay: number | null;
-  /** The day of the open save, when it has dots. */
+  /** The day of the open save when it is not the selected one. */
   openDay: number | null;
-  /** Select the save of a dot or an axis mark. */
-  onSelect: (saveKey: string) => void;
+  /** The day of the save under the pointer, drawn as a light rule. */
+  hoverDay: number | null;
+  /** The day under the pointer, or null when it leaves the plot. */
+  onPointer: (day: number | null) => void;
+  /** A click on the plot picks the day under the pointer. */
+  onPick: (day: number) => void;
 };
 
 export function BySaveChart({
   series,
-  marks,
   range,
-  axisName,
-  describe,
-  endLabels,
+  tick,
   selectedDay,
   openDay,
-  onSelect,
+  hoverDay,
+  onPointer,
+  onPick,
 }: BySaveChartProps) {
   const dark = isDarkMode();
   const option = useMemo((): EChartsOption => {
     const [first, last] = range.map(dayNumber);
-    // Dots stay off the plot edges.
-    const pad = Math.max(30, Math.round((last - first) * 0.05));
+    // Half a dot beyond the first and last save.
+    const pad = Math.max(5, Math.round((last - first) * 0.006));
     const ink = dark ? "#cbd5e1" : "#334155";
     const step = yearStep((last - first) / 365);
     const firstYear = Math.ceil(dateFromDayNumber(first - pad).year / step) * step;
@@ -63,38 +51,25 @@ export function BySaveChart({
       { length: Math.floor((dateFromDayNumber(last + pad).year - firstYear) / step) + 1 },
       (_, i) => dayNumber({ year: firstYear + i * step, month: 1, day: 1 }),
     ).filter((day) => day >= first - pad && day <= last + pad);
-    const rule = (
-      day: number,
-      label: string,
-      type: "solid" | "dashed",
-      position: "insideEndTop" | "insideStartTop",
-    ) => ({
+    const rule = (day: number, type: "solid" | "dashed", opacity = 1, label?: string) => ({
       xAxis: day,
-      lineStyle: { color: ink, type, width: type === "dashed" ? 2 : 1 },
-      label: { formatter: label, position, color: ink },
+      lineStyle: { color: ink, type, width: type === "dashed" ? 2 : 1, opacity },
+      label: label
+        ? { show: true, formatter: label, position: "end" as const, color: ink }
+        : { show: false },
     });
-    // One rule when the selected save is the open one; the open rule is dashed.
-    const rules =
-      selectedDay !== null && selectedDay === openDay
-        ? [rule(selectedDay, "Selected · Open now", "dashed", "insideEndTop")]
-        : [
-            ...(selectedDay === null
-              ? []
-              : [rule(selectedDay, "Selected", "solid", "insideStartTop")]),
-            ...(openDay === null ? [] : [rule(openDay, "Open now", "dashed", "insideEndTop")]),
-          ];
+    const rules = [
+      ...(hoverDay !== null && hoverDay !== selectedDay ? [rule(hoverDay, "solid", 0.35)] : []),
+      ...(selectedDay !== null
+        ? [rule(selectedDay, selectedDay === openDay ? "dashed" : "solid")]
+        : []),
+      ...(openDay !== null && openDay !== selectedDay ? [rule(openDay, "dashed", 1, "Open")] : []),
+    ];
     return {
       animation: false,
       // The table under the chart is the legend: its swatches are these colors.
-      grid: { left: 64, right: endLabels ? 96 : 24, top: 24, bottom: 48 },
-      tooltip: {
-        trigger: "item",
-        formatter: (params) => {
-          const item = Array.isArray(params) ? params[0] : params;
-          const data = item.data as { lines: string[] };
-          return data.lines.map(escapeEChartsHtml).join("<br/>");
-        },
-      },
+      grid: { left: 48, right: 16, top: 24, bottom: 28 },
+      tooltip: { show: false },
       xAxis: {
         type: "value",
         min: first - pad,
@@ -111,69 +86,62 @@ export function BySaveChart({
       yAxis: {
         type: "value",
         min: 0,
-        name: axisName,
-        nameLocation: "middle",
-        nameGap: 48,
-        nameTextStyle: { color: ink },
-        axisLabel: { color: ink },
+        axisLabel: { color: ink, formatter: tick },
       },
       series: [
         ...series.map((entry) => ({
           type: "scatter" as const,
-          name: entry.label,
+          name: entry.key,
           symbolSize: 8,
-          itemStyle: {
-            // The game's color, unchanged.
-            opacity: 1,
-            color: entry.color,
-            borderColor: needsOutline(entry.color) ? ink : undefined,
-            borderWidth: needsOutline(entry.color) ? 1 : 0,
-          },
-          data: entry.points.map((point, i) => ({
+          silent: true,
+          data: entry.points.map((point) => ({
             value: [point.day, point.value],
-            saveKey: point.saveKey,
-            lines: describe(entry, point),
-            label:
-              endLabels && i === entry.points.length - 1
-                ? { show: true, position: "right" as const, formatter: entry.short, color: ink }
-                : undefined,
+            itemStyle: {
+              // The game's color, unchanged.
+              opacity: 1,
+              color: point.color,
+              borderColor: needsOutline(point.color) ? ink : undefined,
+              borderWidth: needsOutline(point.color) ? 1 : 0,
+            },
           })),
         })),
         {
           type: "scatter" as const,
-          name: "Saves without a value",
-          symbol: "triangle",
-          symbolSize: 12,
-          z: 3,
-          itemStyle: { color: ink, opacity: 1 },
-          data: marks.map((mark) => ({
-            value: [mark.day, 0],
-            saveKey: mark.key,
-            lines: [formatLongDate(dateFromDayNumber(mark.day)), mark.reason],
-          })),
-          markLine: {
-            silent: true,
-            symbol: ["none", "none"],
-            animation: false,
-            data: rules,
-          },
+          silent: true,
+          data: [],
+          markLine: { silent: true, symbol: ["none", "none"], animation: false, data: rules },
         },
       ],
     };
-  }, [series, marks, range, axisName, describe, endLabels, selectedDay, openDay, dark]);
+  }, [series, range, tick, selectedDay, openDay, hoverDay, dark]);
   const onInit = useEffectEvent((chart: echarts.ECharts) => {
-    const onClick = (params: { data?: unknown }) => {
-      const key = (params.data as { saveKey?: string } | undefined)?.saveKey;
-      if (key) onSelect(key);
+    const day = (event: { offsetX: number; offsetY: number }) => {
+      const point = [event.offsetX, event.offsetY];
+      if (!chart.containPixel("grid", point)) return null;
+      const [value] = chart.convertFromPixel("grid", point) as number[];
+      return value;
     };
-    chart.on("click", onClick);
-    return () => chart.off("click", onClick);
+    const zr = chart.getZr();
+    const onMove = (event: { offsetX: number; offsetY: number }) => onPointer(day(event));
+    const onOut = () => onPointer(null);
+    const onClick = (event: { offsetX: number; offsetY: number }) => {
+      const at = day(event);
+      if (at !== null) onPick(at);
+    };
+    zr.on("mousemove", onMove);
+    zr.on("globalout", onOut);
+    zr.on("click", onClick);
+    return () => {
+      zr.off("mousemove", onMove);
+      zr.off("globalout", onOut);
+      zr.off("click", onClick);
+    };
   });
   return (
     <EChart
       option={option}
       onInit={(chart) => onInit(chart)}
-      style={{ height: "360px", width: "100%" }}
+      style={{ height: "320px", width: "100%" }}
     />
   );
 }
