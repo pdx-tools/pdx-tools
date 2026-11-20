@@ -454,41 +454,20 @@ impl<'bump> Eu5Workspace<'bump> {
         metrics
     }
 
-    /// Returns a histogram distribution of per-location metric values for the
-    /// current map mode over the current selection (or all locations if empty).
-    pub(crate) fn selection_location_distribution(&self) -> LocationDistribution {
-        let building_levels = self.get_location_building_levels();
-
-        let metric_label = match self.current_map_mode {
-            MapMode::Control => "Control",
-            MapMode::Population => "Population",
-            MapMode::RgoLevel => "RGO Level",
-            MapMode::BuildingLevels => "Building Levels",
-            MapMode::Wealth | MapMode::Markets => "Wealth",
-            MapMode::UnrealizedTaxBase => "Unrealized Tax Base",
-            MapMode::StateEfficacy => "Effective Development",
-            MapMode::PopulationGrowth => "Population Growth",
-            _ => "Development",
-        };
-
+    /// Returns a histogram over the selected locations, or all owned locations
+    /// when there is no selection. The caller supplies the chart's metric.
+    fn selection_location_distribution(
+        &self,
+        metric_label: &'static str,
+        measure: impl Fn(&eu5save::models::Location<'_>) -> f64,
+    ) -> LocationDistribution {
         let mut metrics: Vec<(LocationIdx, f64)> = Vec::new();
         let mut add_location = |idx: LocationIdx| {
             let loc = self.gamestate.locations.index(idx).location();
             if loc.owner.is_dummy() {
                 return;
             }
-            let value = match self.current_map_mode {
-                MapMode::Control => loc.control,
-                MapMode::Population => self.gamestate.location_population(loc),
-                MapMode::RgoLevel => loc.rgo_level,
-                MapMode::BuildingLevels => building_levels[idx],
-                MapMode::Wealth | MapMode::Markets => loc.possible_tax,
-                MapMode::UnrealizedTaxBase => loc.possible_tax - loc.tax,
-                MapMode::StateEfficacy => loc.control * loc.development,
-                MapMode::PopulationGrowth => location_reproduction_rate(&self.gamestate, loc),
-                _ => loc.development,
-            };
-            metrics.push((idx, value));
+            metrics.push((idx, measure(loc)));
         };
 
         if self.selection_state.is_empty() {
@@ -592,7 +571,8 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
-        let distribution = self.selection_location_distribution();
+        let distribution =
+            self.selection_location_distribution("Development", |loc| loc.development);
         let location_count = all_locs.len() as u32;
 
         DevelopmentInsightData {
@@ -697,7 +677,7 @@ impl<'bump> Eu5Workspace<'bump> {
             .collect();
 
         let concentration = concentration_curve(all_locs.iter().map(|(_, wealth, ..)| *wealth));
-        let distribution = self.selection_location_distribution();
+        let distribution = self.selection_location_distribution("Wealth", |loc| loc.possible_tax);
 
         WealthInsightData {
             countries,
@@ -805,7 +785,9 @@ impl<'bump> Eu5Workspace<'bump> {
             })
             .collect();
 
-        let distribution = self.selection_location_distribution();
+        let distribution = self.selection_location_distribution("Unrealized Tax Base", |loc| {
+            loc.possible_tax - loc.tax
+        });
 
         UnrealizedTaxBaseInsightData {
             countries,

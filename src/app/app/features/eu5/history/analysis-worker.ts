@@ -7,6 +7,6 @@ import wasmUrl from "@/wasm/wasm_eu5_bg.wasm?url";
 const store = init({ module_or_path: wasmUrl }).then(() => new Eu5AnalysisStore());
 export const analysisApi = {
   ...sessionApi(store),
-  ...frameServer(async (id) => (await store).snapshot(id)),
+  ...frameServer(async (id) => (await store).map_frame(id)),
 };
 expose(analysisApi);

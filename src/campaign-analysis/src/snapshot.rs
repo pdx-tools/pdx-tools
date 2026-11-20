@@ -34,7 +34,9 @@ impl<G: Game> Observation<G> {
     }
 
     pub fn encode(&self) -> Vec<u8> {
-        encode::<G>(&self.descriptor, &self.detail, &self.payload)
+        encode(&self.descriptor, &self.detail, |out| {
+            self.payload.encode(out)
+        })
     }
 
     /// Read a snapshot of game `G`. A snapshot of another game gives an
@@ -55,16 +57,16 @@ impl<G: Game> Observation<G> {
     }
 }
 
-pub(crate) fn encode<G: Game>(
+pub(crate) fn encode(
     descriptor: &SnapshotDescriptor,
-    detail: &G::Detail,
-    payload: &G::Payload,
+    detail: &impl serde::Serialize,
+    payload: impl FnOnce(&mut Encoder),
 ) -> Vec<u8> {
     let mut out = Encoder::new();
     out.raw(&MAGIC);
     out.column(&header_bytes(descriptor));
     out.column(&header_bytes(detail));
-    payload.encode(&mut out);
+    payload(&mut out);
     out.finish()
 }
 
