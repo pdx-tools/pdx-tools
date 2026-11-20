@@ -2,8 +2,9 @@ use std::io;
 
 #[derive(Debug, thiserror::Error)]
 pub enum GameDataError {
-    #[error("Jomini data failure on: {1} {0}")]
-    Jomini(#[source] jomini::Error, &'static str),
+    #[cfg(feature = "game-install")]
+    #[error("Failed to parse game script: {0}")]
+    Jomini(#[from] jomini::text::syntax::de::Error),
 
     #[error("Unsupported compression method: {0:?}")]
     UnsupportedCompression(rawzip::CompressionMethod),

@@ -451,17 +451,17 @@ mod tests {
     #[test]
     fn undated_ownership_preserves_the_dated_timeline_and_current_owner() {
         use arena_serde::{Arena, ArenaDeserialize};
-        use jomini::TextDeserializer;
+        use jomini::{TextDeserializer, Utf8Encoding};
 
         let arena = Arena::new();
-        let deserializer = TextDeserializer::from_utf8_slice(
+        let mut deserializer = TextDeserializer::from_slice(
             br#"locations={ 1={ owner=5 ownership_history={
                 { date=1337.4.1 owner=4 tag="DAN" }
                 { owner=5 tag="SKE" }
             } } }"#,
-        )
-        .unwrap();
-        let locations = Locations::deserialize_in_arena(&deserializer, &arena).unwrap();
+            Utf8Encoding::new(),
+        );
+        let locations = Locations::deserialize_in_arena(&mut deserializer, &arena).unwrap();
         let save_date = date("1340.1.1");
         let index = TimelineIndex::from_save(&locations, &[], save_date);
 

@@ -1,4 +1,7 @@
-use jomini::{Windows1252Encoding, text::ObjectReader};
+use jomini::{
+    Windows1252Encoding,
+    text::syntax::{self, Block, Value},
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -33,11 +36,6 @@ pub struct ReligionBody {
     pub allowed_conversions: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
-pub struct MaybeReligion {
-    pub color: Option<[u8; 3]>,
-}
-
 pub fn parse_enhanced_religions(
     data: &[u8],
     localization: &HashMap<String, String>,
@@ -55,27 +53,27 @@ pub fn parse_enhanced_religions(
 }
 
 pub fn parse_religions(data: &[u8]) -> Vec<RawReligion> {
-    let tape = jomini::TextTape::from_slice(data).unwrap();
-    let reader = tape.windows1252_reader();
+    let parsed = syntax::parse(data);
+    let encoding = Windows1252Encoding::new();
+    let doc = parsed.document(encoding);
+    doc.check().unwrap();
     let mut result = Vec::new();
-    for (religion_group_name, _, value) in reader.fields() {
-        if let Ok(religion_group) = value.read_object() {
-            for (key, _, value) in religion_group.fields() {
-                let religion_name = key.read_str();
-                if let Ok(religion) = value.read_object() {
-                    let de: MaybeReligion = religion.deserialize().unwrap();
-                    if de.color.is_none() {
-                        continue;
-                    }
-
-                    let de: ReligionBody = religion.deserialize().unwrap();
-                    result.push(RawReligion {
-                        group: religion_group_name.read_string(),
-                        id: religion_name.to_string(),
-                        colors: de.color,
-                        allowed_conversions: de.allowed_conversions,
-                    });
-                }
+    for group in doc.root().fields() {
+        let Some(block) = group.value().and_then(|value| value.as_block()) else {
+            continue;
+        };
+        for field in block.fields() {
+            let Some(value @ Value::Block(religion)) = field.value() else {
+                continue;
+            };
+            if religion.get(b"color").is_some() {
+                let body: ReligionBody = doc.deserialize_value(value).unwrap();
+                result.push(RawReligion {
+                    group: group.key().decode(encoding).into_owned(),
+                    id: field.key().decode(encoding).into_owned(),
+                    colors: body.color,
+                    allowed_conversions: body.allowed_conversions,
+                });
             }
         }
     }
@@ -84,26 +82,34 @@ pub fn parse_religions(data: &[u8]) -> Vec<RawReligion> {
 }
 
 pub fn religion_rebels(data: &[u8]) -> Option<ReligiousRebels> {
-    let tape = jomini::TextTape::from_slice(data).unwrap();
-    let reader = tape.windows1252_reader();
+    let parsed = syntax::parse(data);
+    let encoding = Windows1252Encoding::new();
+    let doc = parsed.document(encoding);
+    doc.check().unwrap();
 
     let mut negotiate_convert_on_dominant_religion = false;
     let mut force_convert_on_break = false;
     let mut religion = None;
-    for (_, _, value) in reader.fields() {
-        if let Ok(rebels) = value.read_object() {
-            for (key, _, value) in rebels.fields() {
-                match key.read_str().as_ref() {
-                    "can_negotiate_trigger" => {
-                        negotiate_convert_on_dominant_religion =
-                            dominant_religion_key(value.read_object().unwrap())
-                    }
-                    "demands_enforced_effect" => {
-                        force_convert_on_break = convert_on_break(value.read_object().unwrap())
-                    }
-                    "religion" => religion = value.read_string().ok(),
-                    _ => {}
+    for rebels in doc
+        .root()
+        .fields()
+        .filter_map(|field| field.value()?.as_block())
+    {
+        for field in rebels.fields() {
+            let Some(value) = field.value() else {
+                continue;
+            };
+            match field.key().as_bytes() {
+                b"can_negotiate_trigger" => {
+                    negotiate_convert_on_dominant_religion =
+                        contains_key(value.as_block().unwrap(), b"dominant_religion");
                 }
+                b"demands_enforced_effect" => {
+                    force_convert_on_break =
+                        contains_key(value.as_block().unwrap(), b"change_religion");
+                }
+                b"religion" => religion = value.decode(encoding).map(|name| name.into_owned()),
+                _ => {}
             }
         }
     }
@@ -115,32 +121,14 @@ pub fn religion_rebels(data: &[u8]) -> Option<ReligiousRebels> {
     })
 }
 
-fn dominant_religion_key(reader: ObjectReader<Windows1252Encoding>) -> bool {
-    for (key, _, value) in reader.fields() {
-        if key.read_str() == "dominant_religion" {
-            return true;
-        } else if let Ok(obj) = value.read_object()
-            && dominant_religion_key(obj)
-        {
-            return true;
-        }
-    }
-
-    false
-}
-
-fn convert_on_break(reader: ObjectReader<Windows1252Encoding>) -> bool {
-    for (key, _, value) in reader.fields() {
-        if key.read_str() == "change_religion" {
-            return true;
-        } else if let Ok(obj) = value.read_object()
-            && convert_on_break(obj)
-        {
-            return true;
-        }
-    }
-
-    false
+fn contains_key(block: Block<'_, '_>, key: &[u8]) -> bool {
+    block.fields().any(|field| {
+        field.key_is(key)
+            || field
+                .value()
+                .and_then(|value| value.as_block())
+                .is_some_and(|block| contains_key(block, key))
+    })
 }
 
 #[cfg(test)]

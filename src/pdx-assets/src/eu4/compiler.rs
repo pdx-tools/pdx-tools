@@ -170,8 +170,7 @@ fn generate_countries<P: FileProvider + ?Sized>(
     let country_localization = localization::country_localization(localization);
 
     let tag_data = fs.read_file("common/country_tags/00_countries.txt")?;
-    let tags: HashMap<CountryTag, PathBuf> =
-        jomini::text::de::from_windows1252_slice(tag_data.as_slice())?;
+    let tags: HashMap<CountryTag, PathBuf> = crate::eu4::deserialize(tag_data.as_slice())?;
 
     let mut countries = Vec::new();
     for (tag, _path) in tags {
@@ -205,8 +204,7 @@ where
     }
 
     let file_data = fs.read_file("common/tradecompany_investments/00_Investments.txt")?;
-    let data: HashMap<String, InvestmentData> =
-        jomini::text::de::from_windows1252_slice(file_data.as_slice())?;
+    let data: HashMap<String, InvestmentData> = crate::eu4::deserialize(file_data.as_slice())?;
 
     let gfx_data = fs.read_file("interface/trade_company_investments_view.gfx")?;
     let gfx = sprites::parse_sprites(gfx_data.as_slice());
@@ -355,7 +353,7 @@ where
     let mut advisors = Vec::new();
     for advisor_file in advisor_files {
         let data = fs.read_file(&advisor_file)?;
-        let advise: HashMap<String, IgnoredAny> = jomini::text::de::from_windows1252_slice(&data)?;
+        let advise: HashMap<String, IgnoredAny> = crate::eu4::deserialize(&data)?;
 
         for advisor in advise.keys() {
             advisors.push((advisor.clone(), localization.get(advisor).unwrap().clone()));
@@ -638,7 +636,7 @@ fn extract_units<P: FileProvider + ?Sized>(fs: &P) -> anyhow::Result<Vec<(String
     let mut units = Vec::new();
     for unit_file in unit_files {
         let data = fs.read_file(&unit_file)?;
-        let unit: UnitFile = jomini::text::de::from_windows1252_slice(&data)?;
+        let unit: UnitFile = crate::eu4::deserialize(&data)?;
 
         // Extract filename without extension
         let filename = std::path::Path::new(&unit_file)

@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = ["zstd_rust"]
-game-install = ["dep:image", "dep:regex", "dep:walkdir"]
+game-install = ["dep:image", "dep:regex", "dep:walkdir", "jomini/syntax"]
 track-parse = []
 tsify = ["dep:tsify", "dep:wasm-bindgen", "campaign-analysis/tsify"]
 zstd_c = ["pdx-zstd/zstd_c", "jomini/zstd_c"]
@@ -20,7 +20,7 @@ campaign-analysis = { workspace = true }
 eu5save = { workspace = true }
 highway = { workspace = true }
 image = { workspace = true, features = ["png"], optional = true }
-jomini =  { workspace = true }
+jomini = { workspace = true }
 pdx-map = { workspace = true, default-features = false }
 pdx-zstd = { workspace = true, default-features = false }
 postcard = { workspace = true, features = ["use-std"] }

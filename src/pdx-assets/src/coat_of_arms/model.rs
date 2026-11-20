@@ -1,15 +1,17 @@
-//! Parse preprocessed coat of arms script into an owned model.
-//!
-//! Ported from pdx_unlimiter's `CoatOfArms`/`Emblem` model. Input text must have
-//! already been run through [`super::preprocess::preprocess`], so no `@` macros
-//! remain. Inline tagged colors (`rgb { .. }`) are parsed here into
-//! [`Node::Color`].
+//! Parse coat of arms script into an owned model.
 
 use std::collections::HashMap;
 
 use super::color::{COLOR_SLOTS, FColor, NamedColors, parse_tagged_color};
-use super::preprocess::preprocess;
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
+use jomini::{
+    Utf8Encoding,
+    text::syntax::{
+        self, AstNode, Field, SyntaxElement, SyntaxErrorKind, SyntaxKind, Value,
+        de::Document,
+        resolve::{ResolveErrorKind, resolve},
+    },
+};
 
 /// The color environment used to resolve `colorN` slots at model-build time, so
 /// the rendered model carries [`FColor`]s rather than unresolved name strings.
@@ -22,12 +24,11 @@ pub struct ColorEnv<'a> {
 
 /// Parse a game's `named_colors` coat of arms file into a name -> sRGB map.
 ///
-/// Accepts raw (un-preprocessed) file text. A value is an inline tagged color
+/// A value is an inline tagged color
 /// (`hsv360`/`hsv`/`rgb`/`hex`) or the name of a color defined earlier.
 pub fn parse_named_colors(raw: &str) -> Result<NamedColors> {
-    let text = preprocess(raw)?;
     let mut colors = NamedColors::default();
-    for (key, node) in parse_entries(&text)? {
+    for (key, node) in parse_entries(raw)? {
         if key != "colors" {
             continue;
         }
@@ -92,59 +93,86 @@ impl Node {
     }
 }
 
-/// Parse a preprocessed file into ordered top-level `(key, node)` entries.
+/// Parse ordered top-level entries and resolve their script variables.
 pub fn parse_entries(text: &str) -> Result<Vec<(String, Node)>> {
-    let tape = jomini::TextTape::from_slice(text.as_bytes())
-        .context("could not parse preprocessed coat of arms script")?;
-    let reader = tape.utf8_reader();
-    let mut entries = Vec::new();
-    for (key, _, value) in reader.fields() {
-        entries.push((key.read_string(), build_node(&value)));
+    let parsed = syntax::parse(text.as_bytes());
+    let doc = parsed.document(Utf8Encoding::new());
+    // EU5 1.0–1.2 shipped a stray ']' in a flag's position. The syntax
+    // tree recovers the position and the fields that follow it.
+    if let Some(error) = parsed.errors().iter().find(|error| {
+        !matches!(
+            error.kind,
+            SyntaxErrorKind::UnmatchedCloseBrace | SyntaxErrorKind::UnmatchedCloseBracket
+        )
+    }) {
+        bail!("{}: {}", doc.line_col(error.range.start()), error.message());
     }
-    Ok(entries)
+
+    let resolution = resolve(parsed.tree());
+    for error in resolution.errors() {
+        // A bare unresolved reference can still be a literal name. A definition
+        // or calculation must resolve before it can contribute a value.
+        if error.kind == ResolveErrorKind::UndefinedVariable
+            && let SyntaxElement::Token(token) = parsed.tree().covering_element(error.range)
+            && token.kind() == SyntaxKind::Variable
+            && !token
+                .parent()
+                .and_then(Field::cast)
+                .is_some_and(|field| field.is_variable_definition())
+        {
+            continue;
+        }
+        bail!("{}: {}", doc.line_col(error.range.start()), error.message());
+    }
+
+    let doc = doc.with_resolution(resolution)?;
+    Ok(doc
+        .root()
+        .fields()
+        .filter_map(|field| build_field(&doc, field))
+        .collect())
 }
 
-fn build_node<'data, 'tokens, E>(value: &jomini::text::ValueReader<'data, 'tokens, E>) -> Node
-where
-    E: jomini::Encoding + Clone,
-{
-    if matches!(value.token(), jomini::TextToken::Header(_)) {
-        return Node::Color(read_tagged_color(value));
+fn build_field(
+    doc: &Document<'_, '_, Utf8Encoding>,
+    field: Field<'_, '_>,
+) -> Option<(String, Node)> {
+    if field.is_variable_definition() {
+        return None;
     }
-    if let Ok(scalar) = value.read_str() {
-        return Node::Scalar(scalar.into_owned());
-    }
-    if let Ok(obj) = value.read_object()
-        && obj.fields_len() > 0
-    {
-        let mut fields = Vec::new();
-        for (key, _, val) in obj.fields() {
-            fields.push((key.read_string(), build_node(&val)));
-        }
-        return Node::Object(fields);
-    }
-    if let Ok(arr) = value.read_array() {
-        let mut items = Vec::new();
-        for val in arr.values() {
-            items.push(build_node(&val));
-        }
-        return Node::Array(items);
-    }
-    Node::Object(Vec::new())
+    let value = build_node(doc, field.value()?);
+    Some((field.key().decode(*doc.encoding()).into_owned(), value))
 }
 
-/// Read a tagged value (`rgb { 255 0 0 }`) as a color. jomini gives a tagged
-/// value as a two-element array: the tag, then the array of values.
-fn read_tagged_color<'data, 'tokens, E>(
-    value: &jomini::text::ValueReader<'data, 'tokens, E>,
-) -> Option<[u8; 3]>
-where
-    E: jomini::Encoding + Clone,
-{
-    let tag = value.read_str().ok()?;
-    let body = value.read_array().ok()?.values().nth(1)?;
-    let values = body.read_array().ok()?;
-    parse_tagged_color(&tag, values.values().filter_map(|v| v.read_str().ok()))
+fn build_node(doc: &Document<'_, '_, Utf8Encoding>, value: Value<'_, '_>) -> Node {
+    match value {
+        Value::HeaderedBlock(tagged) => {
+            let tag = tagged.header().decode(*doc.encoding());
+            let body = tagged.block();
+            if body.is_empty() {
+                // An empty tagged block leaves the tag available as a named color.
+                Node::Scalar(tag.into_owned())
+            } else {
+                let values = body.values().filter_map(|value| doc.str(value).ok());
+                Node::Color(parse_tagged_color(&tag, values))
+            }
+        }
+        Value::Block(block) => {
+            let fields: Vec<_> = block
+                .fields()
+                .filter_map(|field| build_field(doc, field))
+                .collect();
+            if fields.is_empty() {
+                Node::Array(block.values().map(|value| build_node(doc, value)).collect())
+            } else {
+                Node::Object(fields)
+            }
+        }
+        value => match doc.str(value) {
+            Ok(text) => Node::Scalar(text.into_owned()),
+            Err(_) => Node::Object(Vec::new()),
+        },
+    }
 }
 
 /// Resolve a color value (an inline tagged color or a named color) to sRGB.
@@ -465,8 +493,7 @@ impl CoaDefinitions {
     /// inserts win for duplicate keys. Returns the top-level keys added, in
     /// source order, so callers can track which keys a given file contributes.
     pub fn add_file(&mut self, raw: &str) -> Result<Vec<String>> {
-        let text = preprocess(raw)?;
-        let entries = parse_entries(&text)?;
+        let entries = parse_entries(raw)?;
         let keys: Vec<String> = entries.iter().map(|(k, _)| k.clone()).collect();
         for (key, node) in entries {
             self.map.insert(key, node);
@@ -542,6 +569,31 @@ mod tests {
     }
 
     #[test]
+    fn definitions_resolve_variables_and_calculations() {
+        let mut definitions = CoaDefinitions::new();
+        let keys = definitions
+            .add_file(
+                r#"
+                @size = 0.25
+                @offset = @[1 - size]
+                X = {
+                    colored_emblem = {
+                        texture = "emblem.dds"
+                        instance = { position = { @size @offset } }
+                    }
+                }"#,
+            )
+            .unwrap();
+        assert_eq!(keys, ["X"]);
+        let coa = definitions
+            .resolve("X", &test_palette(), MISSING)
+            .unwrap()
+            .unwrap();
+        let instance = &coa.subs[0].emblems[0].instances[0];
+        assert_eq!((instance.x, instance.y), (0.25, 0.75));
+    }
+
+    #[test]
     fn definitions_return_keys_in_source_order_and_later_files_win() {
         let mut definitions = CoaDefinitions::new();
         assert_eq!(
@@ -582,8 +634,7 @@ mod tests {
         assert_eq!(colors[0], Some(FColor::opaque([255, 0, 0])));
         assert_eq!(colors[1], Some(FColor::opaque([0, 128, 0])));
         assert_eq!(colors[2], Some(FColor::opaque([0, 0, 255])));
-        // `#` starts a comment, so `hex { #0000ff }` has an empty body. jomini
-        // drops the empty `{ }` and gives the scalar `hex`.
+        // The comment leaves an empty body, so the tag is used as a color name.
         assert_eq!(colors[3], Some(FColor::opaque([1, 2, 3])));
         assert_eq!(colors[4], Some(MISSING));
     }
@@ -652,11 +703,29 @@ mod tests {
     }
 
     #[test]
+    fn definitions_recover_the_position_with_a_stray_bracket() {
+        let mut definitions = CoaDefinitions::new();
+        definitions
+            .add_file("A = { colored_emblem = { instance = { position = { 0.5 0.5] } scale = { 1.0 0.32 } } } }")
+            .unwrap();
+        let coa = definitions
+            .resolve("A", &test_palette(), MISSING)
+            .unwrap()
+            .unwrap();
+        let instance = &coa.subs[0].emblems[0].instances[0];
+        assert_eq!((instance.x, instance.y, instance.scale_y), (0.5, 0.5, 0.32));
+    }
+
+    #[test]
     fn rejects_malformed_definition_files() {
         let mut definitions = CoaDefinitions::new();
         definitions.add_file("A = {").unwrap_err();
         definitions
             .add_file("A = { x = @[unknown(1)] }")
+            .unwrap_err();
+        definitions.add_file("A = { x = @[1 / 0] }").unwrap_err();
+        definitions
+            .add_file("A = { x = @[unknown + 1] }")
             .unwrap_err();
     }
 }
