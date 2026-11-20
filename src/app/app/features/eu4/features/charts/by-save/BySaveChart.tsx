@@ -3,7 +3,7 @@ import type * as echarts from "echarts/core";
 import { EChart } from "@/components/viz";
 import type { EChartsOption } from "@/components/viz";
 import { isDarkMode } from "@/lib/dark";
-import { dateFromDayNumber, dayNumber } from "@/features/timeline/date";
+import { MONTH_ABBR, dateFromDayNumber, dayNumber } from "@/features/timeline/date";
 import type { DateComponents } from "@/features/timeline/date";
 
 /** One dot: a country's value in one save, in the game color of the tag it held then. */
@@ -45,12 +45,7 @@ export function BySaveChart({
     // Half a dot beyond the first and last save.
     const pad = Math.max(5, Math.round((last - first) * 0.006));
     const ink = dark ? "#cbd5e1" : "#334155";
-    const step = yearStep((last - first) / 365);
-    const firstYear = Math.ceil(dateFromDayNumber(first - pad).year / step) * step;
-    const years = Array.from(
-      { length: Math.floor((dateFromDayNumber(last + pad).year - firstYear) / step) + 1 },
-      (_, i) => dayNumber({ year: firstYear + i * step, month: 1, day: 1 }),
-    ).filter((day) => day >= first - pad && day <= last + pad);
+    const { ticks, label } = timeTicks(first - pad, last + pad);
     const rule = (day: number, type: "solid" | "dashed", opacity = 1, label?: string) => ({
       xAxis: day,
       lineStyle: { color: ink, type, width: type === "dashed" ? 2 : 1, opacity },
@@ -74,13 +69,8 @@ export function BySaveChart({
         type: "value",
         min: first - pad,
         max: last + pad,
-        // Ticks on the first day of round years.
-        axisTick: { customValues: years },
-        axisLabel: {
-          color: ink,
-          customValues: years,
-          formatter: (value: number) => String(dateFromDayNumber(value).year),
-        },
+        axisTick: { customValues: ticks },
+        axisLabel: { color: ink, customValues: ticks, formatter: label },
         splitLine: { show: false },
       },
       yAxis: {
@@ -149,6 +139,40 @@ export function BySaveChart({
 /** A round number of years between ticks, for a span of years. */
 function yearStep(years: number) {
   return [1, 2, 5, 10, 20, 25, 50, 100].find((step) => years / step <= 10) ?? 100;
+}
+
+/**
+ * Ticks on the first day of round years, or of months when the axis holds
+ * fewer than two years, such as for saves within one year.
+ */
+export function timeTicks(min: number, max: number) {
+  const inRange = (day: number) => day >= min && day <= max;
+  const start = dateFromDayNumber(min);
+  const end = dateFromDayNumber(max);
+  const step = yearStep((max - min) / 365);
+  const firstYear = Math.ceil(start.year / step) * step;
+  const years = Array.from(
+    { length: Math.max(0, Math.floor((end.year - firstYear) / step) + 1) },
+    (_, i) => dayNumber({ year: firstYear + i * step, month: 1, day: 1 }),
+  ).filter(inRange);
+  if (years.length >= 2) {
+    return { ticks: years, label: (day: number) => String(dateFromDayNumber(day).year) };
+  }
+  const span = (end.year - start.year) * 12 + end.month - start.month;
+  const months = [1, 2, 3, 6].find((x) => span / x <= 8) ?? 12;
+  const ticks: number[] = [];
+  for (let at = start.year * 12 + start.month - 1; at <= end.year * 12 + end.month - 1; at++) {
+    const month = (at % 12) + 1;
+    const day = dayNumber({ year: Math.floor(at / 12), month, day: 1 });
+    if ((month - 1) % months === 0 && inRange(day)) ticks.push(day);
+  }
+  return {
+    ticks,
+    label: (day: number) => {
+      const date = dateFromDayNumber(day);
+      return `${MONTH_ABBR[date.month]} ${date.year}`;
+    },
+  };
 }
 
 /** Near black and near white game colors get a neutral outline. */
