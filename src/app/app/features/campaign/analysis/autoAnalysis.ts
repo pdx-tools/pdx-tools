@@ -103,8 +103,8 @@ export function useCampaignAutoAnalysis<D extends SnapshotDescriptor>({
         for (const entry of entries) {
           const current = localSaveRegistry.get(entry.id);
           const version = current && entryVersion(current);
-          const read = sources[entry.id]?.version ?? failedSources[entry.id]?.version;
-          if (current && version && read && sameFileVersion(version, read))
+          const read = [sources[entry.id]?.version, failedSources[entry.id]?.version];
+          if (current && version && read.some((x) => x && sameFileVersion(version, x)))
             attempted.current.add(campaignAnalysisSourceKey(current));
         }
       });

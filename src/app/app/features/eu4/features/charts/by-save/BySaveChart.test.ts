@@ -34,4 +34,12 @@ it("puts ticks on round years, or on months for saves within one year", () => {
     5,
   );
   expect(days.ticks.map(days.label)).toEqual(["1444 Mar 12", "1444 Mar 16"]);
+
+  // The padding reaches the first of the month, but one month tick says little.
+  const early = timeTicks(
+    dayNumber({ year: 1500, month: 3, day: 3 }),
+    dayNumber({ year: 1500, month: 3, day: 5 }),
+    5,
+  );
+  expect(early.ticks.map(early.label)).toEqual(["1500 Mar 3", "1500 Mar 5"]);
 });

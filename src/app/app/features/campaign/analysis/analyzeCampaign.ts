@@ -237,6 +237,9 @@ export function campaignAnalyzer<
                 if (releaseEarlierVersions && previous && previous !== descriptor.id)
                   superseded.add(previous);
               }
+              // A file that changed while it was parsed gives a snapshot no save is bound to.
+              if (releaseEarlierVersions && !Object.keys(associations).length)
+                superseded.add(descriptor.id);
               history.getState().add([descriptor], associations);
             } else if (completion.status === "failed" && !otherCampaign.has(file)) {
               for (const { entry } of sourcesOf(file)) recordFailure(entry, completion.error, file);
@@ -295,6 +298,8 @@ export function campaignAnalyzer<
         // Do not parse more saves that cannot fit.
         history.getState().pauseAnalysis(playthroughId);
       } else if (download && uploads.length) {
+        // The uploads can need the memory of the released snapshots.
+        await reclaim(superseded);
         issues.push(...(await analyzeUploads(uploads, entries.length, download)));
       }
     } catch (error) {

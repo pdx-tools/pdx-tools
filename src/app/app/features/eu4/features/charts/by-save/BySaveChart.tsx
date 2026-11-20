@@ -104,6 +104,9 @@ export function BySaveChart({
       ],
     };
   }, [series, range, tick, selectedDay, openDay, hoverDay, dark]);
+  // The listeners stay for the chart's life, so they reach the latest props through these.
+  const pointer = useEffectEvent((day: number | null) => onPointer(day));
+  const pick = useEffectEvent((day: number) => onPick(day));
   const onInit = useEffectEvent((chart: echarts.ECharts) => {
     const day = (event: { offsetX: number; offsetY: number }) => {
       const point = [event.offsetX, event.offsetY];
@@ -112,11 +115,11 @@ export function BySaveChart({
       return value;
     };
     const zr = chart.getZr();
-    const onMove = (event: { offsetX: number; offsetY: number }) => onPointer(day(event));
-    const onOut = () => onPointer(null);
+    const onMove = (event: { offsetX: number; offsetY: number }) => pointer(day(event));
+    const onOut = () => pointer(null);
     const onClick = (event: { offsetX: number; offsetY: number }) => {
       const at = day(event);
-      if (at !== null) onPick(at);
+      if (at !== null) pick(at);
     };
     zr.on("mousemove", onMove);
     zr.on("globalout", onOut);
@@ -143,8 +146,8 @@ function yearStep(years: number) {
 
 /**
  * Ticks on the first day of round years, or of months when the axis holds
- * fewer than two years, such as for saves within one year. Without a month
- * start on the axis, the first and last save days are the ticks.
+ * fewer than two years, such as for saves within one year. Without two month
+ * starts on the axis, the first and last save days are the ticks.
  */
 export function timeTicks(first: number, last: number, pad: number) {
   const min = first - pad;
@@ -169,7 +172,7 @@ export function timeTicks(first: number, last: number, pad: number) {
     const day = dayNumber({ year: Math.floor(at / 12), month, day: 1 });
     if ((month - 1) % months === 0 && inRange(day)) ticks.push(day);
   }
-  if (!ticks.length) {
+  if (ticks.length < 2) {
     return {
       ticks: [...new Set([first, last])],
       label: (day: number) => formatLongDate(dateFromDayNumber(day)),
