@@ -44,7 +44,12 @@ export function BySaveTable({
 }) {
   return (
     <div className="max-h-72 overflow-y-auto">
-      <table className="text-sm">
+      {/* A fixed width, so the values do not move as names change under the pointer. */}
+      <table className="w-full max-w-md table-fixed text-sm">
+        <colgroup>
+          <col />
+          <col className="w-20" />
+        </colgroup>
         <thead className="sr-only">
           <tr>
             <th scope="col">Country</th>
