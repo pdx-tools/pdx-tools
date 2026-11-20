@@ -37,28 +37,6 @@ describe("realmShape", () => {
     expect(shape?.major).toBeLessThan(20);
   });
 
-  it("does not let a far colony stretch the realm", () => {
-    const home = Array.from({ length: 40 }, (_, i) => ({ x: 100 + i, y: 100 + (i % 5) }));
-    const shape = realmShape(flat([...home, { x: 700, y: 400 }]), WORLD);
-    expect(shape?.major).toBeLessThan(60);
-  });
-
-  it("stands on the main body, when a realm also holds land across a sea", () => {
-    const home = Array.from({ length: 30 }, (_, i) => ({ x: 100 + (i % 6) * 4, y: 100 + i }));
-    const overseas = Array.from({ length: 12 }, (_, i) => ({ x: 300 + (i % 3) * 4, y: 300 + i }));
-    const shape = realmShape(flat([...home, ...overseas]), WORLD);
-    expect(shape?.center.x).toBeLessThan(150);
-    expect(shape?.center.y).toBeLessThan(150);
-  });
-
-  it("keeps a body across the edge of the map whole, beside land overseas", () => {
-    const body = Array.from({ length: 21 }, (_, i) => ({ x: (990 + i) % WORLD, y: 100 + (i % 3) }));
-    const overseas = Array.from({ length: 20 }, (_, i) => ({ x: 500 + (i % 4), y: 300 + i }));
-    const shape = realmShape(flat([...body, ...overseas]), WORLD);
-    expect(Math.min(shape!.center.x, WORLD - shape!.center.x)).toBeLessThan(20);
-    expect(shape?.center.y).toBeLessThan(110);
-  });
-
   it("cuts a wide body at its gap, and not through its land", () => {
     const line = Array.from({ length: 71 }, (_, i) => ({ x: i * 10, y: 100 }));
     const cluster = Array.from({ length: 60 }, (_, i) => ({ x: i % 20, y: 100 + (i % 3) }));
@@ -82,6 +60,12 @@ describe("placeNames", () => {
     const [placed] = place([name("Alençon", { ...large, minor: 10 })]);
     expect(placed.capitals).toBe(false);
     expect(placed.size).toBeLessThan(18);
+  });
+
+  it("keeps capitals for large realms, and not for short names", () => {
+    const duchy = { center: { x: 200, y: 200 }, major: 70, minor: 40, angle: 0 };
+    const [placed] = place([name("Bar", duchy)]);
+    expect(placed.capitals).toBe(false);
   });
 
   it("lets the earlier name win a place", () => {

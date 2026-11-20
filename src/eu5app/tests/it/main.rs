@@ -1295,8 +1295,8 @@ fn foreign_owner_cells_hold_the_most_foreign_building(
 }
 
 /// A name on the map and the hover of its land say one thing, on the save date and on the
-/// first date of the timeline. A realm is named over all of its land, and a map of religions
-/// or markets over all the land that has one. A selection names only its countries.
+/// first date of the timeline. A name stands on its own land only: one piece of a realm's
+/// land, or of the land that has a religion or market. A selection names only its countries.
 fn map_names_are_those_of_the_date(
     ws: &mut Eu5Workspace,
     localization: &Localization,
@@ -1326,11 +1326,11 @@ fn map_names_are_those_of_the_date(
             };
             assert_eq!(name.text, hover, "{date:?}");
             let owner = ws.owner_at_timeline_date(first);
-            let owned = by_color
-                .values()
-                .filter(|&&idx| ws.owner_at_timeline_date(idx) == owner)
+            let foreign = land
+                .iter()
+                .filter(|id| ws.owner_at_timeline_date(by_color[id]) != owner)
                 .count();
-            assert_eq!(land.len(), owned, "{} on {date:?}", name.text);
+            assert_eq!(foreign, 0, "{} on {date:?}", name.text);
         }
     }
     ws.set_timeline_date(summary.end);
@@ -1360,7 +1360,7 @@ fn map_names_are_those_of_the_date(
             .religion
             .is_some()
     });
-    assert_eq!(named(ws), religious);
+    assert!(named(ws) <= religious);
 
     ws.set_map_mode(MapMode::Markets);
     let markets = first_names(ws, 3);
@@ -1372,7 +1372,7 @@ fn map_names_are_those_of_the_date(
             .and_then(|market| ws.gamestate().locations.get(market.center));
         center.is_some() && !ws.location_terrain(idx).is_water()
     });
-    assert_eq!(named(ws), in_markets);
+    assert!(named(ws) <= in_markets);
     ws.set_map_mode(MapMode::Political);
 
     let location = find_owned_location(ws).expect("an owned location");

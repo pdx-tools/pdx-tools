@@ -3,6 +3,7 @@ use crate::map_names::{MapNameSource, MapNameText, MapNamesSource, NamePlacement
 use crate::presentation::OwnedCountryName;
 use crate::selection::SelectionPreset;
 use eu5save::models::{CountryId, LocationIdx};
+use pdx_map::TopologyIndex;
 use std::cmp::Reverse;
 
 /// Great powers up to this rank always try to show their names.
@@ -15,7 +16,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// religions or markets names those. Other maps name the realms of the
     /// map date. With a selection, only the names of the selection show.
     pub(crate) fn map_names(&self) -> MapNamesSource {
-        let names = match self.current_map_mode {
+        let mut names = match self.current_map_mode {
             MapMode::Religion => {
                 self.category_names(|_, location| location.religion, MapNameText::Religion)
             }
@@ -35,6 +36,12 @@ impl<'bump> Eu5Workspace<'bump> {
             ),
             _ => self.realm_names(),
         };
+        // A name stands on the main body of its land, so that an enclave or
+        // land overseas does not stretch it across land of another realm.
+        let mut bodies = MainBody::new(&self.game_data.topology);
+        for name in &mut names {
+            name.locations = bodies.of(&name.locations);
+        }
         MapNamesSource { names }
     }
 
@@ -188,4 +195,96 @@ fn group_land<K: Copy + Ord>(mut land: Vec<(K, u16)>) -> Vec<(K, Vec<u16>)> {
     land.chunk_by(|a, b| a.0 == b.0)
         .map(|group| (group[0].0, group.iter().map(|(_, color)| *color).collect()))
         .collect()
+}
+
+/// Finds the largest piece of a list of land whose locations touch.
+struct MainBody<'a> {
+    topology: &'a TopologyIndex,
+    /// The number of the list that a location is in, by color id
+    member: Vec<u32>,
+    /// The number of the list in which a location was reached, by color id
+    reached: Vec<u32>,
+    list: u32,
+}
+
+impl<'a> MainBody<'a> {
+    fn new(topology: &'a TopologyIndex) -> Self {
+        Self {
+            topology,
+            member: vec![0; topology.len()],
+            reached: vec![0; topology.len()],
+            list: 0,
+        }
+    }
+
+    /// The largest piece of `land`, in the order of the color ids.
+    fn of(&mut self, land: &[u16]) -> Vec<u16> {
+        self.list += 1;
+        let list = self.list;
+        let len = self.member.len();
+        let ids: Vec<usize> = land
+            .iter()
+            .map(|&id| id as usize)
+            .filter(|&id| id < len)
+            .collect();
+        for &id in &ids {
+            self.member[id] = list;
+        }
+        let mut best: Vec<u16> = Vec::new();
+        let mut stack = Vec::new();
+        for start in ids {
+            if self.reached[start] == list {
+                continue;
+            }
+            self.reached[start] = list;
+            let mut piece = vec![start as u16];
+            stack.push(start as u16);
+            while let Some(at) = stack.pop() {
+                for next in self.topology.neighbors_of_index(at) {
+                    let next = next.value();
+                    let index = next as usize;
+                    if self.member[index] == list && self.reached[index] != list {
+                        self.reached[index] = list;
+                        piece.push(next);
+                        stack.push(next);
+                    }
+                }
+            }
+            if piece.len() > best.len() {
+                best = piece;
+            }
+        }
+        best.sort_unstable();
+        best
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pdx_map::{Hemisphere, HemisphereLength, R16, World};
+
+    fn topology(rows: &[[u16; 8]]) -> TopologyIndex {
+        let (mut west, mut east) = (Vec::new(), Vec::new());
+        for row in rows {
+            west.extend(row[..4].iter().map(|&id| R16::new(id)));
+            east.extend(row[4..].iter().map(|&id| R16::new(id)));
+        }
+        World::builder(
+            Hemisphere::new(west, HemisphereLength::new(4)),
+            Hemisphere::new(east, HemisphereLength::new(4)),
+        )
+        .build()
+        .build_topology_index()
+    }
+
+    #[test]
+    fn a_name_stands_on_the_largest_piece_of_its_land() {
+        // Location 0 is sea. Location 1 is an enclave, apart from 2 and 4, which touch.
+        let topology = topology(&[[0, 1, 0, 2, 4, 0, 3, 0], [0, 0, 0, 2, 4, 0, 0, 0]]);
+        let mut bodies = MainBody::new(&topology);
+        assert_eq!(bodies.of(&[1, 2, 3, 4]), [2, 4]);
+        // The next list does not see the marks of the last one.
+        assert_eq!(bodies.of(&[3]), [3]);
+    }
 }

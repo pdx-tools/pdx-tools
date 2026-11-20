@@ -47,23 +47,21 @@ function quantile(values: Float64Array, q: number): number {
 }
 
 /**
- * The shape of a realm from the middles of its locations, given as `[x, y]`
- * pairs. Only the main body counts, and its outer 5% on each side go, so
- * that land overseas does not pull the name into the sea.
+ * The shape of a realm from the middles of the locations of one piece of its
+ * land, given as `[x, y]` pairs. The outer 5% on each side go, so that a long
+ * arm does not stretch a name.
  */
 export function realmShape(points: Float64Array, worldWidth: number): RealmShape | null {
   if (points.length === 0) return null;
-  const main = largestBody(points, worldWidth);
-
-  const middle = bodyMiddle(points, main, worldWidth);
-  const count = main.length;
+  const middle = landMiddle(points, worldWidth);
+  const count = points.length / 2;
   const xs = new Float64Array(count);
   const ys = new Float64Array(count);
   for (let n = 0; n < count; n++) {
-    let x = points[main[n] * 2] - middle;
+    let x = points[n * 2] - middle;
     x -= Math.round(x / worldWidth) * worldWidth;
     xs[n] = x;
-    ys[n] = points[main[n] * 2 + 1];
+    ys[n] = points[n * 2 + 1];
   }
 
   const [sortedX, sortedY] = [xs.slice(), ys.slice()];
@@ -122,90 +120,29 @@ export function realmShape(points: Float64Array, worldWidth: number): RealmShape
   };
 }
 
+/** The world is cut into this many columns to find the gap in a piece of land */
+const COLUMNS = 90;
+
 /**
- * The x that the body is read around. The world wraps, so the body is cut
+ * The x that the land is read around. The world wraps, so the land is cut
  * where it has the widest gap of empty columns, and read from the far side
  * of that gap.
  */
-function bodyMiddle(points: Float64Array, body: Uint32Array, worldWidth: number): number {
-  const cell = worldWidth / BODY_CELLS;
-  const filled = new Uint8Array(BODY_CELLS);
-  for (const i of body) {
-    filled[((Math.floor(points[i * 2] / cell) % BODY_CELLS) + BODY_CELLS) % BODY_CELLS] = 1;
+function landMiddle(points: Float64Array, worldWidth: number): number {
+  const cell = worldWidth / COLUMNS;
+  const filled = new Uint8Array(COLUMNS);
+  for (let i = 0; i < points.length; i += 2) {
+    filled[((Math.floor(points[i] / cell) % COLUMNS) + COLUMNS) % COLUMNS] = 1;
   }
   let [gapStart, gapLength, run] = [-1, 0, 0];
   // Two passes over the columns find a gap that wraps past the last column.
-  for (let n = 0; n < BODY_CELLS * 2; n++) {
-    run = filled[n % BODY_CELLS] ? 0 : run + 1;
-    if (run > gapLength && run <= BODY_CELLS) [gapStart, gapLength] = [n - run + 1, run];
+  for (let n = 0; n < COLUMNS * 2; n++) {
+    run = filled[n % COLUMNS] ? 0 : run + 1;
+    if (run > gapLength && run <= COLUMNS) [gapStart, gapLength] = [n - run + 1, run];
   }
   // A body around the whole world has no gap, and is read from its first column.
   const cut = gapStart < 0 ? 0 : (gapStart + gapLength / 2) * cell;
   return cut + worldWidth / 2;
-}
-
-/** Locations in neighboring cells of a grid this many cells wide are one body of land */
-const BODY_CELLS = 90;
-
-/**
- * The indices of the largest group of locations that lie near each other.
- * The grid wraps at the edge of the world, as the map does.
- */
-function largestBody(points: Float64Array, worldWidth: number): Uint32Array {
-  const count = points.length / 2;
-  const cell = worldWidth / BODY_CELLS;
-  // The grid has the rows of the realm only, so a small realm has a small grid.
-  let [top, bottom] = [Infinity, -Infinity];
-  for (let i = 0; i < count; i++) {
-    const row = Math.floor(points[i * 2 + 1] / cell);
-    top = Math.min(top, row);
-    bottom = Math.max(bottom, row);
-  }
-  const rows = bottom - top + 1;
-  const cellOf = new Int32Array(count);
-  for (let i = 0; i < count; i++) {
-    const column = ((Math.floor(points[i * 2] / cell) % BODY_CELLS) + BODY_CELLS) % BODY_CELLS;
-    cellOf[i] = (Math.floor(points[i * 2 + 1] / cell) - top) * BODY_CELLS + column;
-  }
-  const counts = new Uint32Array(rows * BODY_CELLS);
-  for (const at of cellOf) counts[at] += 1;
-
-  // Each cell with land gets the number of its group. Zero is no group yet.
-  const group = new Uint32Array(counts.length);
-  const stack = new Int32Array(counts.length);
-  let [groups, best, bestSize] = [0, 0, 0];
-  for (const start of cellOf) {
-    if (group[start] !== 0) continue;
-    groups += 1;
-    group[start] = groups;
-    let size = 0;
-    let depth = 0;
-    stack[depth++] = start;
-    while (depth > 0) {
-      const at = stack[--depth];
-      size += counts[at];
-      const row = Math.floor(at / BODY_CELLS);
-      const column = at % BODY_CELLS;
-      for (let dy = -1; dy <= 1; dy++) {
-        const r = row + dy;
-        if (r < 0 || r >= rows) continue;
-        for (let dx = -1; dx <= 1; dx++) {
-          const next = r * BODY_CELLS + ((column + dx + BODY_CELLS) % BODY_CELLS);
-          if (counts[next] === 0 || group[next] !== 0) continue;
-          group[next] = groups;
-          stack[depth++] = next;
-        }
-      }
-    }
-    if (size > bestSize) [best, bestSize] = [groups, size];
-  }
-
-  const body = new Uint32Array(bestSize);
-  let next = 0;
-  for (let i = 0; i < count; i++) {
-    if (group[cellOf[i]] === best) body[next++] = i;
-  }
-  return body;
 }
 
 export type RealmName = {
@@ -241,6 +178,8 @@ const SIZE_STEP = 0.8;
 const TITLE_THICKNESS = 1.5;
 const MAX_SIZE = 30;
 const CAPITALS_FROM = 18;
+/** A realm this long on screen, in pixels, can have its name in capitals */
+const CAPITALS_REALM = 160;
 /** The share of a realm's long axis that its name can fill */
 const AXIS_SHARE = 0.86;
 /** A name leans only when its realm is clearly long, and never steeply */
@@ -479,7 +418,9 @@ export function placeNames(
     const across = Math.min(minorPx / cosT, majorPx / sinT);
     const room = along * AXIS_SHARE;
     const asCapitals = room / measure(name.text, true);
-    const canCapitals = asCapitals >= CAPITALS_FROM && across >= CAPITALS_FROM;
+    // Capitals mark a large realm, so a short name on small land does not get them.
+    const canCapitals =
+      majorPx >= CAPITALS_REALM && asCapitals >= CAPITALS_FROM && across >= CAPITALS_FROM;
     const fitted = canCapitals
       ? Math.min(asCapitals, Math.max(across * 0.7, CAPITALS_FROM))
       : room / measure(name.text, false);
