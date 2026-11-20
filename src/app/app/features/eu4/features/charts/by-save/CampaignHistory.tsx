@@ -309,7 +309,7 @@ function BySaveView({
   // held arrow key does not shuffle them. Hover never moves them. A country
   // without a value there joins the end only while it has one.
   const settled = useSettled(selected, 350);
-  const orderAt = settled < columns.length ? settled : selected;
+  const orderAt = settled >= 0 && settled < columns.length ? settled : selected;
   const order = useMemo(() => (orderAt >= 0 ? rowsAt(rows, orderAt) : []), [rows, orderAt]);
   const present = useMemo(
     () => [...order, ...rows.filter((row) => !order.includes(row) && row.cells[selected] !== null)],

@@ -5,7 +5,8 @@ import { Button } from "@/components/Button";
 import { Popover } from "@/components/Popover";
 import { Table } from "@/components/Table";
 import { isDarkMode } from "@/lib/dark";
-import { dayNumber, formatLongDate } from "@/features/timeline/date";
+import { MONTH_ABBR, dayNumber, formatLongDate, parseDate } from "@/features/timeline/date";
+import type { DateComponents } from "@/features/timeline/date";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import { Flag } from "@/features/eu4/components/avatars";
 import type { BySaveFigure } from "./figures";
@@ -176,7 +177,7 @@ export function BySaveLedger({
   return (
     <div ref={wrapper} style={style} className="relative">
       {/* The heading and the ruler stay in view while a long list scrolls. */}
-      <div className="sticky -top-6 z-10 -mx-4 -mt-6 border-b border-gray-200 bg-white px-4 pt-6 dark:border-gray-700 dark:bg-slate-900">
+      <div className="sticky -top-6 z-10 -mx-4 border-b border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-slate-900">
         {header}
         <div className={cx(grid, "mt-2 h-9")} aria-hidden>
           <div />
@@ -510,7 +511,7 @@ function historyText(row: BySaveRow, columns: readonly AnalysisSave[], figure: B
   if (!values.length) return "";
   const first = values[0];
   const last = values[values.length - 1];
-  return `, ${values.length} saves with values, ${figure.format(first.value)} in ${first.year} to ${figure.format(last.value)} in ${last.year}`;
+  return `, ${values.length} ${values.length === 1 ? "save" : "saves"} with values, ${figure.format(first.value)} in ${first.year} to ${figure.format(last.value)} in ${last.year}`;
 }
 
 /**
@@ -565,7 +566,7 @@ function RowName({
               {near.map((other, i) => (
                 <span
                   key={`${other.tag}${other.from}`}
-                  className="flex shrink-0 items-center gap-1 last:shrink"
+                  className="flex min-w-0 shrink-0 items-center gap-1 first:shrink"
                   title={
                     other.relation === "was"
                       ? `${names.get(other.tag)?.name ?? other.tag} until ${switchYear(other.until)}`
@@ -578,7 +579,10 @@ function RowName({
                   <Flag tag={other.tag} name={names.get(other.tag)?.name ?? other.tag}>
                     <Flag.Image size="xs" />
                   </Flag>
-                  <span className="truncate">{names.get(other.tag)?.name ?? other.tag}</span>
+                  {/* The nearest gets its name; further ones keep theirs in the title. */}
+                  {i === 0 && (
+                    <span className="truncate">{names.get(other.tag)?.name ?? other.tag}</span>
+                  )}
                 </span>
               ))}
             </span>
@@ -588,6 +592,19 @@ function RowName({
       </span>
     </div>
   );
+}
+
+/** When a tag was held: years, or the days when it began and ended in one year. */
+function heldSpan(from: string | undefined, until: string | undefined) {
+  const start = from ? parseDate(from) : null;
+  const end = until ? parseDate(until) : null;
+  if (start && end && start.year === end.year) {
+    const day = (x: DateComponents) => `${MONTH_ABBR[x.month]} ${x.day}`;
+    return start.month === end.month && start.day === end.day
+      ? formatLongDate(start)
+      : `${formatLongDate(start)}–${day(end)}`;
+  }
+  return `${start?.year ?? "…"}–${end?.year ?? "…"}`;
 }
 
 /** Every tag of a long chain, in order with dates, behind an "all" button. */
@@ -626,7 +643,7 @@ function AllTags({
         <ol className={cx("flex flex-wrap gap-x-3 gap-y-1", muted)}>
           {tags.map((held, i) => {
             const name = names.get(held.tag)?.name ?? held.tag;
-            const years = [held.from, held.until].map((x) => switchYear(x ?? null));
+            const span = heldSpan(held.from, held.until);
             return (
               <li
                 key={`${held.tag}${held.from}`}
@@ -639,9 +656,7 @@ function AllTags({
                   <Flag.Image size="xs" />
                 </Flag>
                 {name}
-                <span className={faint}>
-                  {years[0] || "…"}–{years[1] || "…"}
-                </span>
+                <span className={faint}>{span}</span>
               </li>
             );
           })}
