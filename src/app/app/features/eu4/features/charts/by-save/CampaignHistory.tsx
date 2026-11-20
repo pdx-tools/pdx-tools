@@ -266,17 +266,21 @@ function BySaveView({
       setOpening(false);
     }
   };
-  const openControl = selected?.save.isOpen ? (
-    <span className="font-medium">Open now</span>
-  ) : (
-    <Button
-      variant="primary"
-      disabled={!nav || opening || nav.opening !== null}
-      onClick={() => void openSelected()}
-    >
-      {opening ? "Opening" : "Open save"}
-    </Button>
-  );
+  // "Open now" only where the snapshot is of the bytes that the viewer parsed.
+  const openControl =
+    open && selected?.save.key === open.save.key ? (
+      <span className="font-medium">Open now</span>
+    ) : selected?.save.isOpen ? (
+      <span>The viewer shows another version of this file.</span>
+    ) : (
+      <Button
+        variant="primary"
+        disabled={!nav || opening || nav.opening !== null}
+        onClick={() => void openSelected()}
+      >
+        {opening ? "Opening" : "Open save"}
+      </Button>
+    );
   return (
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />

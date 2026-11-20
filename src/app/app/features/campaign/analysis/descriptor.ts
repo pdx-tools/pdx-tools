@@ -15,6 +15,11 @@ export function descriptorDate(descriptor: Pick<SnapshotDescriptor, "dateSort">)
   };
 }
 
+/** The `dateSort` key of a date, by which a store keeps one snapshot for each date. */
+export function dateSort(date: DateComponents): number {
+  return date.year * 10000 + date.month * 100 + date.day;
+}
+
 /** Date order. Snapshots on the same date have a stable order. */
 export function compareDescriptors(a: SnapshotDescriptor, b: SnapshotDescriptor) {
   return a.dateSort - b.dateSort || a.id.localeCompare(b.id);

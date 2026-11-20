@@ -11,7 +11,7 @@ import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresent
 import { saveProblemText } from "@/features/campaign/saveText";
 import { sameFileVersion } from "@/features/campaign/types";
 import type { CampaignSave } from "@/features/campaign/types";
-import { descriptorDate } from "@/features/campaign/analysis/descriptor";
+import { dateSort, descriptorDate } from "@/features/campaign/analysis/descriptor";
 import type { DateComponents } from "@/features/timeline/date";
 import type { Eu4SnapshotDescriptor } from "./analysisTypes";
 
@@ -78,8 +78,15 @@ export function replacedSnapshots(
   const waiting = new Set<number>();
   for (const save of analysisCandidates(saves)) {
     const id = boundSnapshotId(save, state);
-    if (id) bound.add(id);
-    else waiting.add(save.date.year * 10000 + save.date.month * 100 + save.date.day);
+    if (id) {
+      bound.add(id);
+      continue;
+    }
+    // The list gives the open save the date that the viewer read; the file can be newer.
+    waiting.add(dateSort(save.date));
+    const entryId = save.source.kind === "local" ? save.source.entryId : null;
+    const current = entryId ? localSaveRegistry.get(entryId)?.identity : null;
+    if (current) waiting.add(dateSort(current.date));
   }
   return state.snapshots
     .filter((snapshot) => !bound.has(snapshot.id) && waiting.has(snapshot.dateSort))
@@ -127,45 +134,50 @@ export function analysisSaves(
   const entryById = new Map(entries.map((entry) => [entry.id, entry]));
   const byId = new Map(state.snapshots.map((snapshot) => [snapshot.id, snapshot]));
   const ready = new Set(byId.keys());
-  return analysisCandidates(saves).map((save): AnalysisSave => {
-    if (save.source.kind === "upload") {
-      const { saveId } = save.source;
-      const upload = state.uploads[saveId];
-      const snapshot = upload?.kind === "ready" ? (byId.get(upload.snapshotId) ?? null) : null;
-      const failed = upload?.kind === "failed" ? upload : null;
-      return {
-        save,
-        date: snapshot ? descriptorDate(snapshot) : save.date,
-        status: snapshot
-          ? "ready"
-          : state.analyzingUploadIds.includes(saveId)
-            ? "analyzing"
-            : failed
-              ? "failed"
-              : "pending",
-        snapshot,
-        error: failed && !snapshot ? failed.error : null,
-        retry: failed?.reason === "download",
-      };
-    }
-    const status = localSaveAnalysisStatus(save, state, ready) ?? "pending";
-    const id = localSaveSnapshotId(save, state.sources);
-    const entryId = save.source.entryId;
-    const failure = entryId ? state.failedSources[entryId] : undefined;
-    const problem = entryId ? entryById.get(entryId)?.problem : null;
-    const snapshot = status === "ready" && id ? (byId.get(id) ?? null) : null;
-    return {
-      save,
-      date: snapshot ? descriptorDate(snapshot) : save.date,
-      status,
-      snapshot,
-      error:
-        status !== "failed"
-          ? null
-          : problem && problem.kind !== "moved"
-            ? saveProblemText(problem)
-            : (failure?.error ?? null),
-      retry: false,
-    };
-  });
+  return (
+    analysisCandidates(saves)
+      .map((save): AnalysisSave => {
+        if (save.source.kind === "upload") {
+          const { saveId } = save.source;
+          const upload = state.uploads[saveId];
+          const snapshot = upload?.kind === "ready" ? (byId.get(upload.snapshotId) ?? null) : null;
+          const failed = upload?.kind === "failed" ? upload : null;
+          return {
+            save,
+            date: snapshot ? descriptorDate(snapshot) : save.date,
+            status: snapshot
+              ? "ready"
+              : state.analyzingUploadIds.includes(saveId)
+                ? "analyzing"
+                : failed
+                  ? "failed"
+                  : "pending",
+            snapshot,
+            error: failed && !snapshot ? failed.error : null,
+            retry: failed?.reason === "download",
+          };
+        }
+        const status = localSaveAnalysisStatus(save, state, ready) ?? "pending";
+        const id = localSaveSnapshotId(save, state.sources);
+        const entryId = save.source.entryId;
+        const failure = entryId ? state.failedSources[entryId] : undefined;
+        const problem = entryId ? entryById.get(entryId)?.problem : null;
+        const snapshot = status === "ready" && id ? (byId.get(id) ?? null) : null;
+        return {
+          save,
+          date: snapshot ? descriptorDate(snapshot) : save.date,
+          status,
+          snapshot,
+          error:
+            status !== "failed"
+              ? null
+              : problem && problem.kind !== "moved"
+                ? saveProblemText(problem)
+                : (failure?.error ?? null),
+          retry: false,
+        };
+      })
+      // Dots sit at the parsed date, so Earlier and Later save follow them.
+      .sort((a, b) => dateSort(a.date) - dateSort(b.date))
+  );
 }

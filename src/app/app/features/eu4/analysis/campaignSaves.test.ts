@@ -117,3 +117,17 @@ it("replaces the snapshot of a date whose save is now another file", () => {
   mocks.entries.set("a", entry("a"));
   expect(replacedSnapshots([local("b")], state)).toEqual(["eu4:a"]);
 });
+
+it("replaces a snapshot on the date of the file now, not of the open save", () => {
+  const state = {
+    ...empty,
+    snapshots: [{ ...snapshot("eu4:a"), dateSort: 14500101 }],
+    sources: { a: { snapshotId: "eu4:a", version: { size: 4, lastModified: 1 } } },
+  };
+  // The list keeps the viewer's date for the open save; the file is newer.
+  mocks.entries.set("a", {
+    ...entry("a", 2),
+    identity: { playthroughId: null, campaignIdHint: null, date: { year: 1450, month: 1, day: 1 } },
+  });
+  expect(replacedSnapshots([{ ...local("a"), isOpen: true }], state)).toEqual(["eu4:a"]);
+});
