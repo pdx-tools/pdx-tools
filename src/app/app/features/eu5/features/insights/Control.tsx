@@ -241,7 +241,13 @@ function ControlLossBars({ countries }: { countries: CountryControlBarSummary[] 
 
   const height = rows.length * 24 + 54;
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <EChart
+      gpuBars
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+      onInit={handleInit}
+    />
   );
 }
 

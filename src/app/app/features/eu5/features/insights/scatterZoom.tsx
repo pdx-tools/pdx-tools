@@ -1,4 +1,4 @@
-import { useEffectEvent, useRef, useState } from "react";
+import { useEffectEvent, useMemo, useState } from "react";
 import * as echarts from "echarts/core";
 import type { EChartsOption } from "@/components/viz";
 import { chartInk, neutralFill } from "@/components/viz/echartsTheme";
@@ -174,23 +174,24 @@ const resolve = (option: ScatterOption, chart: echarts.ECharts) =>
  */
 export function useBoxZoom(option: ScatterOption) {
   // The option that the zoom is for. In a box, because an option can be a function.
-  const [zoomedFor, setZoomedFor] = useState<{ option: ScatterOption } | null>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
-
-  const zoomChart = useEffectEvent(
-    (chart: echarts.ECharts, range: { x: [number, number]; y: [number, number] }) => {
+  type ZoomRange = { x: [number, number]; y: [number, number] };
+  const [zoom, setZoom] = useState<{ option: ScatterOption; range: ZoomRange } | null>(null);
+  const zoomed = zoom?.option === option ? zoom : null;
+  const zoomOption = useMemo(() => {
+    if (!zoomed) return option;
+    return (chart: echarts.ECharts): EChartsOption => {
       const base = resolve(option, chart);
-      if (Array.isArray(base.xAxis) || Array.isArray(base.yAxis)) return;
-      const axes = zoomedAxes({ x: base.xAxis ?? {}, y: base.yAxis ?? {} }, range);
-      chart.setOption({ ...base, xAxis: axes.x, yAxis: axes.y }, { notMerge: true });
-      setZoomedFor({ option });
-    },
-  );
+      if (Array.isArray(base.xAxis) || Array.isArray(base.yAxis)) return base;
+      const { x, y } = zoomedAxes({ x: base.xAxis ?? {}, y: base.yAxis ?? {} }, zoomed.range);
+      return { ...base, xAxis: x, yAxis: y };
+    };
+  }, [option, zoomed]);
+
+  const zoomChart = useEffectEvent((range: ZoomRange) => setZoom({ option, range }));
 
   const attach = (chart: echarts.ECharts) => {
-    chartRef.current = chart;
     // A new chart starts with no zoom, such as after a change of theme.
-    setZoomedFor(null);
+    setZoom(null);
     const zr = chart.getZr();
     const dom = chart.getDom();
     let drag: { pointerId: number; start: Pixel; end: Pixel | null } | null = null;
@@ -230,7 +231,7 @@ export function useBoxZoom(option: ScatterOption) {
       const corner = (pixel: Pixel) => chart.convertFromPixel({ gridIndex: 0 }, pixel) as number[];
       const [x0 = 0, y0 = 0] = corner([drawn.x, drawn.y + drawn.height]);
       const [x1 = 0, y1 = 0] = corner([drawn.x + drawn.width, drawn.y]);
-      zoomChart(chart, { x: [x0, x1], y: [y0, y1] });
+      zoomChart({ x: [x0, x1], y: [y0, y1] });
 
       // The release of the drag is also a click, which must not select the dot under it.
       const swallow = (ev: MouseEvent) => ev.stopPropagation();
@@ -338,13 +339,7 @@ export function useBoxZoom(option: ScatterOption) {
     };
   };
 
-  const reset = () => {
-    const chart = chartRef.current;
-    if (chart && !chart.isDisposed()) chart.setOption(resolve(option, chart), { notMerge: true });
-    setZoomedFor(null);
-  };
-
-  return { attach, zoomed: zoomedFor?.option === option, reset };
+  return { attach, option: zoomOption, zoomed: zoomed != null, reset: () => setZoom(null) };
 }
 
 /** A button over the top right of a zoomed scatter */
