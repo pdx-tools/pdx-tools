@@ -1074,6 +1074,7 @@ dependencies = [
  "eu4save",
  "highway",
  "jomini",
+ "pdx-save-codec",
  "pdx-zstd",
  "schemas",
  "serde",

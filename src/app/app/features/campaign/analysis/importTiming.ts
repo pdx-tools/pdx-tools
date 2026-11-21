@@ -11,6 +11,8 @@ export type ImportProgressState = {
   total: number;
   startedAt: number;
   fileName?: string;
+  /** Set while the saves of the import are downloaded. */
+  downloading?: boolean;
   phase?: ImportPhaseState;
 };
 

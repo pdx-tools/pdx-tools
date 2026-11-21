@@ -1,6 +1,7 @@
 //! Compact province and country observations of one save for campaign
 //! analysis.
 
+use crate::lineage::{GameDate, HeldTag, Lineage, LineageKind, TagSwitch, lineages, tag_switches};
 use crate::shared::playthrough_id;
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
@@ -8,13 +9,44 @@ use campaign_analysis::{
     RegistryMemory, RowSelect, SaveDate, Series, SnapshotDescriptor, SnapshotSource, Table,
     TableError, TextRegistry, TextRow, Texts, View, check_length,
 };
-use eu4save::{CountryTag, PdsDate, ProvinceId, models::Province, query::Query};
+use eu4save::{
+    CountryTag, PdsDate, ProvinceId,
+    models::{Country, Province},
+    query::Query,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 
 /// The development of a province, as the province list of the viewer shows it.
 pub fn province_development(province: &Province) -> f32 {
     province.base_tax + province.base_production + province.base_manpower
+}
+
+/// The men in the land regiments of a country, in thousands, as the Health
+/// Heatmap totals its current force strength. Every regiment counts,
+/// mercenaries too, whatever its unit type.
+pub fn army_size(country: &Country) -> f32 {
+    country
+        .armies
+        .iter()
+        .flat_map(|army| &army.regiments)
+        .map(|regiment| regiment.strength)
+        .sum()
+}
+
+/// A tag that the game makes for a new country and gives to another country
+/// later, so one tag is not one country over a campaign: a colonial nation
+/// (C00), an estate country (E00), a federation (F00), a client state (K00)
+/// or a trading company (T00). These are the letters of the
+/// `dynamic_countries` list that saves keep. A custom nation (D00) keeps its
+/// tag, so it stays.
+pub fn is_generated_tag(tag: &CountryTag) -> bool {
+    let [letter, first, second] = *tag.as_bytes() else {
+        return false;
+    };
+    matches!(letter, b'C' | b'E' | b'F' | b'K' | b'T')
+        && first.is_ascii_digit()
+        && second.is_ascii_digit()
 }
 
 /// A row of the country table of the same snapshot, or no country.
@@ -51,8 +83,10 @@ campaign_analysis::columns!(rows ProvinceColumns, "provinces" { development, own
 pub struct CountryColumns {
     /// In thousands of men, as Country Details shows it.
     pub max_manpower: NullableColumn<f32>,
+    /// See [`army_size`].
+    pub army_size: NullableColumn<f32>,
 }
-campaign_analysis::columns!(rows CountryColumns, "countries" { max_manpower });
+campaign_analysis::columns!(rows CountryColumns, "countries" { max_manpower, army_size });
 
 /// A religion of a country. The religion is a row of the snapshot religions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -80,6 +114,14 @@ pub struct Eu4Payload {
     pub countries: Table<CountryTag, CountryColumns>,
     pub religions: Texts,
     pub country_religions: Table<CountryReligion, CountryReligionColumns>,
+    /// The tag switches that the save records, in date order.
+    pub switches: Vec<TagSwitch>,
+    /// The countries that the save marks as played, now or before, on their
+    /// own records. Sorted.
+    pub played: Vec<CountryTag>,
+    /// The countries a person was playing when the save was made, by its
+    /// human flags. Sorted. In multiplayer only who was connected then.
+    pub connected: Vec<CountryTag>,
 }
 impl Columns for Eu4Payload {
     fn encode(&self, out: &mut Encoder) {
@@ -97,6 +139,9 @@ impl Columns for Eu4Payload {
                     .collect::<Vec<_>>(),
             );
         });
+        out.serde(&self.switches);
+        out.serde(&self.played);
+        out.serde(&self.connected);
     }
     fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
         let provinces = Table::decode_sorted_with(input, |input| {
@@ -120,20 +165,27 @@ impl Columns for Eu4Payload {
                 })
                 .collect())
         })?;
+        let switches = input.serde()?;
+        let played = input.serde()?;
+        let connected = input.serde()?;
         Ok(Self {
             provinces,
             countries,
             religions,
             country_religions,
+            switches,
+            played,
+            connected,
         })
     }
-    /// Country religion keys are local to the snapshot, so they count here.
+    /// Country religion keys and switches are local to the snapshot, so they count here.
     fn heap_bytes(&self) -> usize {
         self.provinces.columns().heap_bytes()
             + self.countries.columns().heap_bytes()
             + self.religions.heap_bytes()
             + size_of_val(self.country_religions.keys())
             + self.country_religions.columns().heap_bytes()
+            + size_of_val(self.switches.as_slice())
     }
     fn allocated_bytes(&self) -> usize {
         self.provinces.columns().allocated_bytes()
@@ -141,6 +193,7 @@ impl Columns for Eu4Payload {
             + self.religions.allocated_bytes()
             + size_of_val(self.country_religions.keys())
             + self.country_religions.columns().allocated_bytes()
+            + self.switches.capacity() * size_of::<TagSwitch>()
     }
 }
 fn encode_tags<'a>(tags: impl Iterator<Item = &'a CountryTag>, out: &mut Encoder) {
@@ -200,14 +253,15 @@ impl Eu4Payload {
             .sum()
     }
 
-    /// The development of the provinces that each country row owns. The
-    /// payload must be validated, as every stored snapshot is.
-    pub fn province_development_by_country(&self) -> Vec<f64> {
+    /// The development of the provinces that each country row owns, or
+    /// none for a country that owns no province. The payload must be
+    /// validated, as every stored snapshot is.
+    pub fn province_development_by_country(&self) -> Vec<Option<f64>> {
         let provinces = self.provinces.columns();
-        let mut totals = vec![0.0; self.countries.len()];
+        let mut totals = vec![None; self.countries.len()];
         for (development, owner) in provinces.development.iter().zip(&provinces.owner) {
             if let Some(row) = owner.get() {
-                totals[row] += f64::from(*development);
+                *totals[row].get_or_insert(0.0) += f64::from(*development);
             }
         }
         totals
@@ -225,6 +279,20 @@ pub struct Eu4Detail {}
 
 /// Extract the observations from a full parse. The campaign identity comes
 /// from the parsed game state, not from the metadata.
+/// The countries a save marks as played, now or before, on their own
+/// records. The save's player list is left out: it can keep a tag that a
+/// player once held and another country holds now. Sorted, each once.
+fn played_countries(save: &eu4save::models::Eu4Save) -> Vec<CountryTag> {
+    save.game
+        .countries
+        .iter()
+        .filter(|(_, country)| country.human || country.was_player)
+        .map(|(tag, _)| *tag)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
 pub fn extract(
     query: &Query,
     content_hash: String,
@@ -247,10 +315,15 @@ pub fn extract(
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
+    let records: Vec<_> = tags.iter().map(|tag| query.country(tag)).collect();
     let countries = CountryColumns {
-        max_manpower: tags
+        max_manpower: records
             .iter()
-            .map(|tag| query.country(tag).map(|country| country.max_manpower))
+            .map(|country| country.map(|country| country.max_manpower))
+            .collect(),
+        army_size: records
+            .iter()
+            .map(|country| country.map(army_size))
             .collect(),
     };
 
@@ -324,6 +397,17 @@ pub fn extract(
                     development: religion_development,
                 },
             )?,
+            switches: tag_switches(save),
+            played: played_countries(save),
+            connected: save
+                .game
+                .countries
+                .iter()
+                .filter(|(_, country)| country.human)
+                .map(|(tag, _)| *tag)
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect(),
         },
     )
 }
@@ -359,11 +443,9 @@ impl Game for Eu4Analysis {
         if measurements
             .iter()
             .any(|column| column.iter().any(|x| !x.is_finite()))
-            || countries
-                .max_manpower
+            || [&countries.max_manpower, &countries.army_size]
                 .iter()
-                .flatten()
-                .any(|x| !x.is_finite())
+                .any(|column| column.iter().flatten().any(|x| !x.is_finite()))
         {
             return Err(PayloadError::NonFinite);
         }
@@ -442,6 +524,35 @@ pub enum CountryMetric {
     ProvinceDevelopment,
     /// In thousands of men, as Country Details shows it.
     MaxManpower,
+    /// See [`army_size`].
+    ArmySize,
+}
+
+/// The value of a lineage in one snapshot, with the tag it held then.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum LineageCell {
+    Value {
+        tag: CountryTag,
+        /// The index of the tag in the lineage's tags.
+        held: usize,
+        value: f64,
+    },
+    /// The country owns provinces, but the save has no record of it.
+    NoRecord { tag: CountryTag, held: usize },
+}
+
+/// One country over time and its value in each snapshot of the reply. A
+/// snapshot where it did not exist or owned no province has none.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct LineageValues {
+    pub lineage: Lineage,
+    pub values: Vec<Option<LineageCell>>,
+    /// A snapshot says the country was played, under the tag it held there,
+    /// at that save or before. Who was playing at a given save is not known.
+    pub played: bool,
 }
 
 /// How to split a country value.
@@ -461,14 +572,25 @@ campaign_analysis::queries! {
         /// The development of a fixed set of provinces on each date. If a
         /// snapshot does not have one of the provinces, its total is a gap.
         ProvinceDevelopment { #[serde(deserialize_with = "deserialize_provinces")] province_ids: Vec<ProvinceId> } => History = fixed_province_development,
-        /// One series for each country. A country that does not exist on a
-        /// date has a gap there.
-        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<Series<CountryTag>> = country_series,
+        /// The lineages that hold the tags, followed through the tag
+        /// switches that the snapshots record, each with a value in some
+        /// snapshot. Generated tags ([`is_generated_tag`]) have none.
+        CountrySeries { tags: Vec<CountryTag>, metric: CountryMetric } => Vec<LineageValues> = country_series,
         /// One series for each part of a country value on the selected
         /// dates, by name. A part is zero on a date where the country exists
         /// without it, and a gap where the country does not exist.
         CountryBreakdown { tag: CountryTag, dimension: CountryDimension } => Vec<Series<String>> = country_breakdown,
+        /// The countries that each snapshot marks as played, now or before,
+        /// in date order.
+        PlayedCountries => Vec<Vec<CountryTag>> = played_by_snapshot,
     }
+}
+
+pub fn played_by_snapshot(view: &View<'_, Eu4Analysis>) -> Vec<Vec<CountryTag>> {
+    view.snapshots()
+        .iter()
+        .map(|snapshot| snapshot.payload().played.clone())
+        .collect()
 }
 
 pub fn world_development(view: &View<'_, Eu4Analysis>) -> History {
@@ -491,36 +613,79 @@ pub fn fixed_province_development(
     })
 }
 
+/// Every tag switch that the snapshots record.
+fn campaign_switches(view: &View<'_, Eu4Analysis>) -> Vec<TagSwitch> {
+    view.snapshots()
+        .iter()
+        .flat_map(|snapshot| &snapshot.payload().switches)
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
 pub fn country_series(
     view: &View<'_, Eu4Analysis>,
     tags: Vec<CountryTag>,
     metric: CountryMetric,
-) -> Vec<Series<CountryTag>> {
-    let mut series: Vec<_> = tags
-        .into_iter()
-        .map(|key| Series {
-            key,
-            values: Vec::with_capacity(view.snapshots().len()),
-        })
+) -> Vec<LineageValues> {
+    let switches = campaign_switches(view);
+    // The game reuses a generated tag without a switch, so it is followed by no lineage.
+    let found = lineages(tags, &switches, |tag| !is_generated_tag(tag));
+    let developments: Vec<_> = view
+        .snapshots()
+        .iter()
+        .map(|snapshot| snapshot.payload().province_development_by_country())
         .collect();
-    for snapshot in view.snapshots() {
-        let payload = snapshot.payload();
-        let columns = payload.countries.columns();
-        let development = (metric == CountryMetric::ProvinceDevelopment)
-            .then(|| payload.province_development_by_country());
-        for country in &mut series {
-            let value = payload
-                .country_offset(&country.key)
-                .and_then(|row| match metric {
-                    CountryMetric::ProvinceDevelopment => development.as_ref().map(|x| x[row]),
-                    CountryMetric::MaxManpower => {
-                        columns.max_manpower.get(row).flatten().map(f64::from)
-                    }
-                });
-            country.values.push(value);
-        }
-    }
-    series
+    found
+        .into_iter()
+        .map(|lineage| {
+            let values = view
+                .snapshots()
+                .iter()
+                .zip(&developments)
+                .map(|(snapshot, development)| {
+                    let date = GameDate::from_date_sort(snapshot.descriptor().date_sort);
+                    let payload = snapshot.payload();
+                    let (held, &HeldTag { tag, .. }) = lineage.held_in(date, &payload.switches)?;
+                    let row = payload.country_offset(&tag)?;
+                    let owned = development[row]?;
+                    let columns = payload.countries.columns();
+                    let value = match metric {
+                        CountryMetric::ProvinceDevelopment => Some(owned),
+                        CountryMetric::MaxManpower => {
+                            columns.max_manpower.get(row).flatten().map(f64::from)
+                        }
+                        CountryMetric::ArmySize => {
+                            columns.army_size.get(row).flatten().map(f64::from)
+                        }
+                    };
+                    Some(match value {
+                        Some(value) => LineageCell::Value { tag, held, value },
+                        None => LineageCell::NoRecord { tag, held },
+                    })
+                })
+                .collect::<Vec<_>>();
+            // A save that says the tag it held there was played counts, also
+            // where the country has no figure, such as after an annexation.
+            let played = view.snapshots().iter().any(|snapshot| {
+                let date = GameDate::from_date_sort(snapshot.descriptor().date_sort);
+                let payload = snapshot.payload();
+                lineage
+                    .held_in(date, &payload.switches)
+                    .is_some_and(|(_, held)| payload.played.binary_search(&held.tag).is_ok())
+            });
+            LineageValues {
+                lineage,
+                values,
+                played,
+            }
+        })
+        // A tag whose holders cannot be told apart stays, so the chart can say so.
+        .filter(|x| {
+            x.lineage.kind() == LineageKind::Ambiguous || x.values.iter().any(Option::is_some)
+        })
+        .collect()
 }
 
 pub fn country_breakdown(
@@ -578,6 +743,28 @@ fn religion_development(view: &View<'_, Eu4Analysis>, tag: CountryTag) -> Vec<Se
     series
 }
 
+/// The countries of a campaign chart. The country series follows each one
+/// through its tag switches.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct ChartCountries {
+    /// Sorted and distinct.
+    pub tags: Vec<CountryTag>,
+    /// Generated tags that the filter chose, which the chart leaves out.
+    pub left_out: Vec<CountryTag>,
+}
+
+/// The chosen tags, with generated tags left out and listed.
+pub fn chart_countries(chosen: impl IntoIterator<Item = CountryTag>) -> ChartCountries {
+    let (left_out, tags): (BTreeSet<_>, BTreeSet<_>) =
+        chosen.into_iter().partition(is_generated_tag);
+    ChartCountries {
+        tags: tags.into_iter().collect(),
+        left_out: left_out.into_iter().collect(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -590,8 +777,8 @@ mod tests {
         tag.parse().unwrap()
     }
 
-    /// Countries get their max manpower from the order of their tags. An
-    /// alive country may own no province.
+    /// Countries get their max manpower and army size from the order of
+    /// their tags. An alive country may own no province.
     fn payload(provinces: &[Spec], alive: &[&str]) -> Eu4Payload {
         let tags: Vec<_> = provinces
             .iter()
@@ -642,12 +829,16 @@ mod tests {
                 tags,
                 CountryColumns {
                     max_manpower: (1..=count).map(|i| Some(10.0 * i as f32)).collect(),
+                    army_size: (1..=count).map(|i| Some(i as f32)).collect(),
                 },
             )
             .unwrap(),
             religions,
             country_religions: Table::sorted_prefix(keys, CountryReligionColumns { development })
                 .unwrap(),
+            switches: Vec::new(),
+            played: Vec::new(),
+            connected: Vec::new(),
         }
     }
 
@@ -747,6 +938,40 @@ mod tests {
         series.into_iter().map(|s| (s.key, s.values)).collect()
     }
 
+    /// A cell as its tag and value; no record is NaN.
+    type Cell = Option<(String, f64)>;
+
+    /// Each lineage as its tags, and its cells.
+    fn histories(series: Vec<LineageValues>) -> Vec<(String, Vec<Cell>)> {
+        let mut result: Vec<_> = series
+            .into_iter()
+            .map(|x| {
+                let name = x
+                    .lineage
+                    .tags()
+                    .iter()
+                    .map(|held| held.tag.to_string())
+                    .collect::<Vec<_>>()
+                    .join(">");
+                let cells = x
+                    .values
+                    .into_iter()
+                    .map(|cell| match cell? {
+                        LineageCell::Value { tag, value, .. } => Some((tag.to_string(), value)),
+                        LineageCell::NoRecord { tag, .. } => Some((tag.to_string(), f64::NAN)),
+                    })
+                    .collect();
+                (name, cells)
+            })
+            .collect();
+        result.sort_by(|a, b| a.0.cmp(&b.0));
+        result
+    }
+
+    fn cell(tag: &str, value: f64) -> Cell {
+        Some((tag.to_owned(), value))
+    }
+
     #[test]
     fn sums_the_owned_provinces_in_date_order() {
         assert_eq!(
@@ -774,34 +999,59 @@ mod tests {
     #[test]
     fn a_country_series_reads_stored_values_and_derives_development() {
         let store = store();
-        let run = |metric| {
+        let run = |metric, tags: &[&str]| {
             let query = Eu4Query::CountrySeries {
-                tags: vec![tag("FRA"), tag("ENG"), tag("SWE")],
+                tags: tags.iter().copied().map(tag).collect(),
                 metric,
             };
             match answer(&store, query) {
-                Eu4Answer::CountrySeries(answer) => series(answer),
+                Eu4Answer::CountrySeries(answer) => histories(answer),
                 other => panic!("{other:?}"),
             }
         };
+        // SWE is alive in 1600 but owns no province, so it has no value and no lineage.
+        let tags = ["FRA", "ENG", "SWE"];
         assert_eq!(
-            run(CountryMetric::ProvinceDevelopment),
+            run(CountryMetric::ProvinceDevelopment, &tags),
             [
-                (tag("FRA"), vec![None, Some(31.0), Some(40.0)]),
-                (tag("ENG"), vec![Some(60.0), Some(12.0), None]),
-                (tag("SWE"), vec![None, None, Some(0.0)]),
+                (
+                    "ENG".into(),
+                    vec![cell("ENG", 60.0), cell("ENG", 12.0), None]
+                ),
+                (
+                    "FRA".into(),
+                    vec![None, cell("FRA", 31.0), cell("FRA", 40.0)]
+                ),
             ]
         );
         assert_eq!(
-            run(CountryMetric::MaxManpower),
+            run(CountryMetric::MaxManpower, &tags),
             [
-                (tag("FRA"), vec![None, Some(20.0), Some(10.0)]),
-                (tag("ENG"), vec![Some(10.0), Some(10.0), None]),
-                (tag("SWE"), vec![None, None, Some(20.0)]),
+                (
+                    "ENG".into(),
+                    vec![cell("ENG", 10.0), cell("ENG", 10.0), None]
+                ),
+                (
+                    "FRA".into(),
+                    vec![None, cell("FRA", 20.0), cell("FRA", 10.0)]
+                ),
             ]
         );
+        assert_eq!(
+            run(CountryMetric::ArmySize, &tags[..2]),
+            [
+                ("ENG".into(), vec![cell("ENG", 1.0), cell("ENG", 1.0), None]),
+                ("FRA".into(), vec![None, cell("FRA", 2.0), cell("FRA", 1.0)]),
+            ]
+        );
+        // A generated tag has no series.
+        assert_eq!(run(CountryMetric::ArmySize, &["C01", "ENG"]).len(), 1);
         let query: Eu4Query = serde_json::from_value(serde_json::json!({
             "kind": "countrySeries", "tags": ["ENG"], "metric": "maxManpower",
+        }))
+        .unwrap();
+        serde_json::from_value::<Eu4Query>(serde_json::json!({
+            "kind": "countrySeries", "tags": ["ENG"], "metric": "armySize",
         }))
         .unwrap();
         assert!(matches!(
@@ -907,6 +1157,7 @@ mod tests {
             vec![tag("ENG")],
             CountryColumns {
                 max_manpower: [None].into_iter().collect(),
+                army_size: [None].into_iter().collect(),
             },
         )
         .unwrap();
@@ -929,13 +1180,16 @@ mod tests {
                 metric,
             },
         ) {
-            Eu4Answer::CountrySeries(answer) => series(answer),
+            Eu4Answer::CountrySeries(answer) => histories(answer),
             other => panic!("{other:?}"),
         };
-        assert_eq!(run(CountryMetric::MaxManpower), [(tag("ENG"), vec![None])]);
+        // ENG owns a province but has no record, which is not "no provinces".
+        let found = run(CountryMetric::MaxManpower);
+        assert_eq!(found.len(), 1);
+        assert!(found[0].1[0].as_ref().unwrap().1.is_nan());
         assert_eq!(
             run(CountryMetric::ProvinceDevelopment),
-            [(tag("ENG"), vec![Some(5.0)])]
+            [("ENG".into(), vec![cell("ENG", 5.0)])]
         );
 
         let mut unsorted = payload.clone();
@@ -943,6 +1197,7 @@ mod tests {
             vec![tag("FRA"), tag("ENG")],
             CountryColumns {
                 max_manpower: [None, None].into_iter().collect(),
+                army_size: [None, None].into_iter().collect(),
             },
         )
         .unwrap();
@@ -999,7 +1254,8 @@ mod tests {
         manpower.countries = Table::sorted(
             manpower.countries.keys().to_vec(),
             CountryColumns {
-                max_manpower: [Some(f32::NAN), None].into_iter().collect(),
+                max_manpower: [None, None].into_iter().collect(),
+                army_size: [Some(f32::NAN), None].into_iter().collect(),
             },
         )
         .unwrap();
@@ -1084,5 +1340,358 @@ mod tests {
             let error = Eu4Payload::decode(&mut Decoder::new(&bytes)).unwrap_err();
             assert!(error.to_string().contains("nonnegative"), "{error}");
         }
+    }
+
+    #[test]
+    fn generated_tags_are_the_reused_dynamic_tags() {
+        for generated in ["C00", "E01", "F01", "K12", "T99"] {
+            assert!(is_generated_tag(&tag(generated)), "{generated}");
+        }
+        // A custom nation keeps its tag.
+        for fixed in ["FRA", "TUR", "MEX", "---", "REB", "D05", "Z01"] {
+            assert!(!is_generated_tag(&tag(fixed)), "{fixed}");
+        }
+    }
+
+    #[test]
+    fn a_chart_leaves_out_generated_tags() {
+        let chart = chart_countries([tag("GER"), tag("C02"), tag("ENG"), tag("D01")]);
+        assert_eq!(chart.tags, ["D01", "ENG", "GER"].map(tag));
+        assert_eq!(chart.left_out, [tag("C02")]);
+    }
+
+    #[test]
+    fn a_series_follows_each_country_through_its_tags() {
+        // A country's switch, the first one of its history.
+        let switch = |from: &str, to: &str, year: i32| TagSwitch {
+            from: tag(from),
+            to: tag(to),
+            date: GameDate::from_date_sort(year * 10000 + 101),
+            country: tag(from),
+            country_since: GameDate::from_date_sort(year * 10000 + 101),
+            order: 0,
+            copy: 0,
+            joins: true,
+        };
+        // A later switch of the country whose first switch is `first`.
+        let then = |first: TagSwitch, order: u16, from: &str, to: &str, year: i32| TagSwitch {
+            country: first.country,
+            country_since: first.country_since,
+            order,
+            ..switch(from, to, year)
+        };
+        // Each snapshot carries the switches that its save records.
+        let saved = |hash, year, provinces: &[Spec], switches: Vec<TagSwitch>| {
+            let observation = observation(hash, (year, 1, 1), provinces);
+            let mut payload = observation.payload().clone();
+            payload.switches = switches;
+            Observation::new(observation.descriptor.clone(), Eu4Detail {}, payload).unwrap()
+        };
+        let run = |snapshots: Vec<Observation<Eu4Analysis>>, tags: &[&str]| {
+            let mut store = Store::new();
+            for snapshot in snapshots {
+                store.append(snapshot, usize::MAX).unwrap();
+            }
+            let query = Eu4Query::CountrySeries {
+                tags: tags.iter().copied().map(tag).collect(),
+                metric: CountryMetric::ProvinceDevelopment,
+            };
+            let Eu4Answer::CountrySeries(answer) = answer(&store, query) else {
+                panic!("country series");
+            };
+            histories(answer)
+        };
+        let p = |tag: &'static str, development: f32| -> Spec { (1, development, Some(tag), None) };
+        let q = |tag: &'static str, development: f32| -> Spec { (2, development, Some(tag), None) };
+
+        // A simple switch, recorded only in the later save: ALO becomes NBI.
+        let simple = vec![
+            saved("a", 1445, &[p("ALO", 21.0)], vec![]),
+            saved(
+                "b",
+                1460,
+                &[p("NBI", 55.0)],
+                vec![switch("ALO", "NBI", 1451)],
+            ),
+        ];
+        assert_eq!(
+            run(simple, &["NBI"]),
+            [("ALO>NBI".into(), vec![cell("ALO", 21.0), cell("NBI", 55.0)])]
+        );
+
+        // A chain: BRA, then PRU, then GER, by one country. Each save records
+        // its past switches.
+        let formed = switch("BRA", "PRU", 1525);
+        let chain = vec![
+            saved("a", 1500, &[p("BRA", 10.0)], vec![]),
+            saved("b", 1600, &[p("PRU", 20.0)], vec![formed]),
+            saved(
+                "c",
+                1750,
+                &[p("GER", 30.0)],
+                vec![formed, then(formed, 1, "PRU", "GER", 1700)],
+            ),
+        ];
+        assert_eq!(
+            run(chain, &["GER"]),
+            [(
+                "BRA>PRU>GER".into(),
+                vec![cell("BRA", 10.0), cell("PRU", 20.0), cell("GER", 30.0)]
+            )]
+        );
+
+        // A tag reused by an unrelated country, before: the first BYZ is
+        // annexed and ULM forms BYZ in 1550. After: POL forms PLC in 1519
+        // and a new POL appears.
+        let reused = vec![
+            saved("a", 1444, &[p("BYZ", 10.0), q("ULM", 3.0)], vec![]),
+            saved(
+                "b",
+                1600,
+                &[p("BYZ", 20.0), q("POL", 5.0)],
+                vec![switch("ULM", "BYZ", 1550), switch("POL", "PLC", 1519)],
+            ),
+        ];
+        let found = run(reused, &["BYZ", "POL"]);
+        assert_eq!(
+            found,
+            [
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None]),
+                ("POL".into(), vec![None, cell("POL", 5.0)]),
+                ("ULM>BYZ".into(), vec![cell("ULM", 3.0), cell("BYZ", 20.0)]),
+            ]
+        );
+
+        // Two holders that cannot be told apart: two switches into BYZ on
+        // one date. BYZ is one flagged lineage and joins neither.
+        let unclear = vec![
+            saved("a", 1444, &[p("BYZ", 10.0), q("ULM", 3.0)], vec![]),
+            saved(
+                "b",
+                1600,
+                &[p("BYZ", 20.0)],
+                vec![switch("ULM", "BYZ", 1550), switch("TRE", "BYZ", 1550)],
+            ),
+        ];
+        let mut store = Store::new();
+        for snapshot in unclear {
+            store.append(snapshot, usize::MAX).unwrap();
+        }
+        let Eu4Answer::CountrySeries(answer) = answer(
+            &store,
+            Eu4Query::CountrySeries {
+                tags: vec![tag("BYZ"), tag("ULM")],
+                metric: CountryMetric::ProvinceDevelopment,
+            },
+        ) else {
+            panic!("country series");
+        };
+        let byz = answer
+            .iter()
+            .find(|x| x.lineage.tags()[0].tag == tag("BYZ"))
+            .unwrap();
+        assert_eq!(byz.lineage.kind(), LineageKind::Ambiguous);
+        assert_eq!(byz.lineage.tags().len(), 1);
+        assert_eq!(
+            histories(answer),
+            [
+                // Two countries took BYZ on one day: its values are not shown.
+                ("BYZ".into(), vec![None, None]),
+                ("ULM".into(), vec![cell("ULM", 3.0), None]),
+            ]
+        );
+
+        // The first BYZ lives in 1500. After it is gone, ULM forms BYZ and
+        // that country forms ROM on one day. Its history orders the two
+        // switches, so it is one country through ULM, BYZ and ROM. The 1600
+        // save lacks the second switch of that day, so it can be from before
+        // it and gives nothing.
+        let first = switch("ULM", "BYZ", 1600);
+        let one_day = [first, then(first, 1, "BYZ", "ROM", 1600)];
+        let same_day = vec![
+            saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
+            saved("b", 1600, &[p("BYZ", 20.0)], vec![one_day[0]]),
+            saved("c", 1610, &[p("ROM", 30.0)], one_day.to_vec()),
+        ];
+        assert_eq!(
+            run(same_day, &["BYZ", "ULM", "ROM"]),
+            [
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
+                ("ULM>BYZ>ROM".into(), vec![None, None, cell("ROM", 30.0)]),
+            ]
+        );
+
+        // A save that lists ALO as played marks the whole country as played.
+        let first = saved("a", 1445, &[p("ALO", 21.0), q("FRA", 5.0)], vec![]);
+        let first = {
+            let mut payload = first.payload().clone();
+            payload.played = vec![tag("ALO")];
+            Observation::new(first.descriptor.clone(), Eu4Detail {}, payload).unwrap()
+        };
+        let mut store = Store::new();
+        store.append(first, usize::MAX).unwrap();
+        store
+            .append(
+                saved(
+                    "b",
+                    1460,
+                    &[p("NBI", 55.0)],
+                    vec![switch("ALO", "NBI", 1451)],
+                ),
+                usize::MAX,
+            )
+            .unwrap();
+        let Eu4Answer::CountrySeries(played) = super::tests::answer(
+            &store,
+            Eu4Query::CountrySeries {
+                tags: vec![tag("NBI"), tag("FRA")],
+                metric: CountryMetric::ProvinceDevelopment,
+            },
+        ) else {
+            panic!("country series");
+        };
+        let played: Vec<_> = played
+            .iter()
+            .map(|x| (x.lineage.tags().last().unwrap().tag.to_string(), x.played))
+            .collect();
+        assert!(played.contains(&("NBI".to_string(), true)));
+        assert!(played.contains(&("FRA".to_string(), false)));
+
+        // A later save lists FRA as played, though FRA owns nothing there.
+        let mut later = Store::new();
+        later
+            .append(
+                saved("a", 1445, &[p("ALO", 21.0), q("FRA", 5.0)], vec![]),
+                usize::MAX,
+            )
+            .unwrap();
+        let annexed = saved("b", 1460, &[p("ALO", 30.0)], vec![]);
+        let annexed = {
+            let mut payload = annexed.payload().clone();
+            payload.played = vec![tag("FRA")];
+            Observation::new(annexed.descriptor.clone(), Eu4Detail {}, payload).unwrap()
+        };
+        later.append(annexed, usize::MAX).unwrap();
+        let Eu4Answer::CountrySeries(series) = super::tests::answer(
+            &later,
+            Eu4Query::CountrySeries {
+                tags: vec![tag("FRA")],
+                metric: CountryMetric::ProvinceDevelopment,
+            },
+        ) else {
+            panic!("country series");
+        };
+        assert!(series[0].played);
+        let Eu4Answer::PlayedCountries(by_save) =
+            super::tests::answer(&store, Eu4Query::PlayedCountries)
+        else {
+            panic!("played countries");
+        };
+        assert_eq!(by_save, [vec![tag("ALO")], vec![]]);
+
+        // Two countries switch into BYZ on one day: whose BYZ it is cannot
+        // be told, so BYZ has no values.
+        let two_countries = vec![
+            saved("a", 1500, &[p("BYZ", 10.0)], vec![]),
+            saved(
+                "b",
+                1610,
+                &[p("BYZ", 30.0)],
+                vec![switch("ULM", "BYZ", 1600), switch("TRE", "BYZ", 1600)],
+            ),
+        ];
+        assert_eq!(
+            run(two_countries, &["BYZ"]),
+            [("BYZ".into(), vec![None, None])]
+        );
+
+        // Two branches of one campaign: in one ULM forms BYZ in 1550, in the
+        // other the first BYZ lives on. The other branch's later save lacks
+        // the switch, so neither its BYZ nor its ULM gets a row's value.
+        let forked = vec![
+            saved("a", 1500, &[p("BYZ", 10.0), q("ULM", 3.0)], vec![]),
+            saved(
+                "b",
+                1560,
+                &[p("BYZ", 20.0)],
+                vec![switch("ULM", "BYZ", 1550)],
+            ),
+            saved("c", 1580, &[p("BYZ", 12.0), q("ULM", 4.0)], vec![]),
+        ];
+        assert_eq!(
+            run(forked, &["BYZ", "ULM"]),
+            [
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
+                (
+                    "ULM>BYZ".into(),
+                    vec![cell("ULM", 3.0), cell("BYZ", 20.0), None]
+                ),
+            ]
+        );
+
+        // Two branches where each holds a switch of the other's tags: in one
+        // the first BYZ forms ROM in 1600, in the other ULM forms BYZ in 1550.
+        // Together they show BYZ taken by ULM and left by the first BYZ: two
+        // countries held it in turn, so that holding has no values and joins
+        // nothing. Rome is its own row, never put after Ulm.
+        let crossed = vec![
+            saved("a", 1500, &[p("BYZ", 10.0), q("ULM", 3.0)], vec![]),
+            saved(
+                "b",
+                1560,
+                &[p("BYZ", 20.0)],
+                vec![switch("ULM", "BYZ", 1550)],
+            ),
+            saved(
+                "c",
+                1650,
+                &[p("ROM", 30.0)],
+                vec![switch("BYZ", "ROM", 1600)],
+            ),
+        ];
+        assert_eq!(
+            run(crossed, &["BYZ", "ULM", "ROM"]),
+            [
+                ("BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
+                ("BYZ".into(), vec![None, None, None]),
+                ("ROM".into(), vec![None, None, cell("ROM", 30.0)]),
+                ("ULM".into(), vec![cell("ULM", 3.0), None, None]),
+            ]
+        );
+
+        // A colonial nation forms BYZ after the first BYZ is gone. The
+        // switch is not followed, but the two holders of BYZ stay apart.
+        // A later save of the same branch keeps the value, even when it no
+        // longer records a switch of the first BYZ.
+        let colonial = vec![
+            saved(
+                "a",
+                1500,
+                &[p("BYZ", 10.0)],
+                vec![switch("GRE", "BYZ", 1450)],
+            ),
+            saved(
+                "b",
+                1720,
+                &[p("BYZ", 25.0)],
+                vec![switch("GRE", "BYZ", 1450), switch("C01", "BYZ", 1700)],
+            ),
+            saved(
+                "c",
+                1800,
+                &[p("BYZ", 40.0)],
+                vec![switch("C01", "BYZ", 1700)],
+            ),
+        ];
+        assert_eq!(
+            run(colonial, &["BYZ"]),
+            [
+                (
+                    "BYZ".into(),
+                    vec![None, cell("BYZ", 25.0), cell("BYZ", 40.0)]
+                ),
+                ("GRE>BYZ".into(), vec![cell("BYZ", 10.0), None, None]),
+            ]
+        );
     }
 }

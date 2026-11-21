@@ -13,7 +13,10 @@ vi.mock("@/features/campaign/analysis/importScheduler", () => ({
   importBatch: (files: File[], _parser: unknown, _sink: unknown, options: unknown) =>
     mocks.importBatch(files, options),
 }));
-vi.mock("./analysisClient", () => ({ eu5Analysis: { claim: () => {} } }));
+// The session of a claim does not end in these tests.
+vi.mock("./analysisClient", () => ({
+  eu5Analysis: { claim: () => {}, generation: () => 1, signal: () => new AbortController().signal },
+}));
 vi.mock("@/features/campaign/localSaves", () => ({
   localSaveRegistry: { get: mocks.getLocalSave, recordIdentity: mocks.setLocalSaveIdentity },
   fileVersion: (file: File) => ({ size: file.size, lastModified: file.lastModified }),

@@ -3,6 +3,7 @@ pub mod analysis;
 mod errors;
 mod ext;
 pub mod game;
+pub mod lineage;
 mod models;
 pub mod province_control;
 mod save_game_query;

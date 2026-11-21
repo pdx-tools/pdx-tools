@@ -59,6 +59,15 @@ impl<G: Game> Session<G> {
         self.store.clear();
     }
 
+    /// Release these snapshots of `generation`.
+    pub fn remove(&mut self, generation: u32, ids: &[String]) -> Result<(), AnalysisError> {
+        if generation != self.generation {
+            return Err(AnalysisError::Stale);
+        }
+        self.store.remove(ids);
+        Ok(())
+    }
+
     pub fn query(
         &self,
         request: QueryRequest<G::Query>,

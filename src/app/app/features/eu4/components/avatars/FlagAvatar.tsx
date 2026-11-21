@@ -98,7 +98,7 @@ const FlagCountryName = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<H
 
 Flag.CountryName = FlagCountryName;
 
-type AvatarSize = "xs" | "small" | "base" | "large" | "xl";
+type AvatarSize = "micro" | "mini" | "xs" | "compact" | "small" | "base" | "large" | "xl";
 interface FlagAvatarCoreProps {
   tag: string;
   size?: AvatarSize;
@@ -119,8 +119,14 @@ function sizeFactor(size?: AvatarSize): number {
       return 12;
     case "small":
       return 8;
+    case "compact":
+      return 6;
     case "xs":
       return 5;
+    case "mini":
+      return 4;
+    case "micro":
+      return 3;
     case "base":
     default:
       return 10;

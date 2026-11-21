@@ -540,6 +540,7 @@ impl SaveFileImpl {
             cavalry_units: cavalry,
             artillery_units: artillery,
             mercenary_units: mercenaries,
+            army_size: eu4game::analysis::army_size(country),
             heavy_ship_units: heavy_ship,
             light_ship_units: light_ship,
             galley_units: galley,
