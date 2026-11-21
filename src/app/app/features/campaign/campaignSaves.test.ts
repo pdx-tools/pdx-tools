@@ -294,6 +294,17 @@ describe("mergeCampaignSaves", () => {
       expect(saves.saves.map((x) => x.key)).toEqual(["local:first", "upload:u", "local:third"]);
     });
 
+    it("keeps a usable save of the campaign over an unknown file of the same drop", () => {
+      const known = eu4("known", "1600-01-01", "h1", 2, true);
+      const saves = mergeCampaign({
+        open: open("h1"),
+        uploads: [{ ...upload("u", "1550-01-01"), game: "eu4" }],
+        entries: [first, known, eu4("other", "1550-01-01", "x", 2)],
+        openEntry: first,
+      });
+      expect(saves.saves.map((x) => x.key)).toEqual(["local:first", "upload:u", "local:known"]);
+    });
+
     it("does not take files from before the campaign's first known save", () => {
       const later = eu4("open", "1580-10-21", "h4", 5, true);
       const saves = mergeCampaignSaves({
