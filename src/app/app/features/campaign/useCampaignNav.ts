@@ -120,9 +120,13 @@ export function useCampaignNav(
   const openPlaythroughId = open?.playthroughId ?? null;
   const openDate = open?.date ?? null;
 
-  // Restore the exact identity from the parsed save after entry updates.
+  // Record the exact identity of a new parse, and restore it after an entry update drops it.
+  const observed = useRef<OpenSave | null>(null);
   useEffect(() => {
-    if (open !== null) registry.observeOpen(open);
+    if (open === null) return;
+    const cause = observed.current === open ? "entry" : "parse";
+    observed.current = open;
+    registry.observeOpen(open, cause);
   }, [open, openEntry, registry]);
 
   const openKey = openSaveKey(open);
