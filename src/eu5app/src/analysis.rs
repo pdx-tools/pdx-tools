@@ -7,8 +7,8 @@ use crate::map_projection::{
 };
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
-    IndexRegistry, Observation, PayloadError, PreparedIndex, ReferenceError, RegistryMemory,
-    RowSelect, SnapshotDescriptor, SnapshotSource, Table, View,
+    IndexRegistry, MapOrder, Observation, PayloadError, PreparedIndex, ReferenceError, RowSelect,
+    SnapshotDescriptor, SnapshotSource, Table, View,
 };
 use eu5save::models::LocationId;
 use serde::{Deserialize, Serialize};
@@ -56,7 +56,7 @@ campaign_analysis::columns!(rows ProjectionColumns, "locations" {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Eu5Payload {
-    pub locations: Table<LocationId, ProjectionColumns>,
+    pub locations: Table<LocationId, ProjectionColumns, MapOrder>,
     pub countries: Vec<u32>,
     pub religion_colors: Vec<u32>,
     pub market_colors: Vec<u32>,
@@ -195,7 +195,6 @@ impl Game for Eu5Analysis {
     type Detail = Eu5Detail;
     type Payload = Eu5Payload;
     type Shared = IndexRegistry<LocationId>;
-    type Prepared = PreparedIndex<LocationId>;
     type Query = Eu5Query;
 
     fn validate(payload: &Eu5Payload) -> Result<(), PayloadError> {
@@ -239,17 +238,8 @@ impl Game for Eu5Analysis {
         payload: &mut Eu5Payload,
         layout: &str,
         shared: &Self::Shared,
-    ) -> Result<Self::Prepared, AnalysisError> {
+    ) -> Result<PreparedIndex<LocationId>, AnalysisError> {
         shared.prepare(&mut payload.locations, Some(layout))
-    }
-    fn added_bytes(prepared: &Self::Prepared) -> usize {
-        prepared.added_bytes()
-    }
-    fn commit(shared: &mut Self::Shared, prepared: Self::Prepared) {
-        shared.commit(prepared);
-    }
-    fn shared_memory(shared: &Self::Shared) -> RegistryMemory {
-        shared.memory()
     }
 }
 
@@ -326,11 +316,7 @@ mod tests {
         let source = SnapshotSource {
             campaign_id: String::from("campaign"),
             content_hash: String::from(hash),
-            date: SaveDate {
-                year: date_sort / 10000,
-                month: (date_sort / 100 % 100) as u8,
-                day: (date_sort % 100) as u8,
-            },
+            date: SaveDate::from_sort_key(date_sort).unwrap(),
             game_version: String::from("1.0.0"),
         };
         observation(projection, world, source).unwrap()

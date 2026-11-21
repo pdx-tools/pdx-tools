@@ -444,11 +444,8 @@ fn analysis_result(
             projection,
             eu5app::map_projection::world_summary(&game),
             meta.playthrough_id.to_str().to_owned(),
-            campaign_analysis::SaveDate {
-                year: i32::from(date.year),
-                month: date.month,
-                day: date.day,
-            },
+            campaign_analysis::SaveDate::new(i32::from(date.year), date.month, date.day)
+                .ok_or_else(|| JsError::new("Save date is out of range"))?,
             version,
         )
     };

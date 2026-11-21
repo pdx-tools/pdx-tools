@@ -110,11 +110,7 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
         campaign_analysis::SnapshotSource {
             campaign_id: String::from("campaign"),
             content_hash: String::from(save),
-            date: campaign_analysis::SaveDate {
-                year: 1617,
-                month: 4,
-                day: 1,
-            },
+            date: campaign_analysis::SaveDate::new(1617, 4, 1).unwrap(),
             game_version: String::from("1.0.0"),
         },
     )
@@ -304,11 +300,7 @@ fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
         let source = SnapshotSource {
             campaign_id: String::from("poland"),
             content_hash: String::from(save),
-            date: SaveDate {
-                year: i32::from(date.0),
-                month: date.1,
-                day: date.2,
-            },
+            date: SaveDate::new(i32::from(date.0), date.1, date.2).unwrap(),
             game_version: String::from("1.0.0"),
         };
         let observed = eu5app::analysis::observation(projection, summary, source).unwrap();

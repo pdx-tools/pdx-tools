@@ -23,12 +23,51 @@ pub struct SnapshotDescriptor {
     pub artifacts: Vec<String>,
 }
 
-/// The in-game date of a save.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The in-game date of a save. The game calendar has no leap days. The year
+/// is from -99999 to 99999, so the date has one `YYYYMMDD` sort key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SaveDate {
-    pub year: i32,
-    pub month: u8,
-    pub day: u8,
+    year: i32,
+    month: u8,
+    day: u8,
+}
+impl SaveDate {
+    pub const fn new(year: i32, month: u8, day: u8) -> Option<Self> {
+        const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        let valid_day = month >= 1 && month <= 12 && day >= 1 && day <= DAYS[month as usize - 1];
+        if year >= -99_999 && year <= 99_999 && valid_day {
+            Some(Self { year, month, day })
+        } else {
+            None
+        }
+    }
+    /// The date of a `YYYYMMDD` sort key. The month and day of a year before
+    /// 0 count up from the year, as they do after it.
+    pub fn from_sort_key(key: i32) -> Option<Self> {
+        let rest = key.rem_euclid(10000);
+        let month = u8::try_from(rest / 100).ok()?;
+        let day = u8::try_from(rest % 100).ok()?;
+        Self::new(key.div_euclid(10000), month, day)
+    }
+    /// The date as `YYYYMMDD`, which sorts in date order.
+    pub const fn sort_key(self) -> i32 {
+        self.year * 10000 + self.month as i32 * 100 + self.day as i32
+    }
+    pub const fn year(self) -> i32 {
+        self.year
+    }
+    pub const fn month(self) -> u8 {
+        self.month
+    }
+    pub const fn day(self) -> u8 {
+        self.day
+    }
+}
+/// The date as `YYYY-MM-DD`.
+impl std::fmt::Display for SaveDate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:04}-{:02}-{:02}", self.year, self.month, self.day)
+    }
 }
 
 /// The values of a save that identify its snapshot.
@@ -43,18 +82,21 @@ pub struct SnapshotSource {
 impl SnapshotDescriptor {
     /// The descriptor of a snapshot of game `G`.
     pub fn new<G: Game>(source: SnapshotSource, layout_key: String) -> Self {
-        let SaveDate { year, month, day } = source.date;
         Self {
             id: snapshot_id(G::GAME, &source.content_hash),
             game: G::GAME.to_owned(),
             campaign_id: source.campaign_id,
             content_hash: source.content_hash,
-            date: format!("{year:04}-{month:02}-{day:02}"),
-            date_sort: year * 10000 + i32::from(month) * 100 + i32::from(day),
+            date: source.date.to_string(),
+            date_sort: source.date.sort_key(),
             game_version: source.game_version,
             layout_key,
             artifacts: G::ARTIFACTS.iter().map(|kind| (*kind).to_owned()).collect(),
         }
+    }
+    /// The save date, if the two date fields agree.
+    pub fn save_date(&self) -> Option<SaveDate> {
+        SaveDate::from_sort_key(self.date_sort).filter(|date| date.to_string() == self.date)
     }
 }
 

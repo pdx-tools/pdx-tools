@@ -26,8 +26,8 @@ impl<K> Registry for IndexRegistry<K> {
 
 /// Declare the shared data of a game as named registries, and the struct of
 /// their prepared plans. The declared struct is a [`Registry`] too, so a
-/// game delegates `added_bytes`, `commit` and `shared_memory` to it. Only
-/// doc comments are accepted, so every generated item has the same fields.
+/// game uses it as [`Game::Shared`](crate::Game::Shared). Only doc comments
+/// are accepted, so every generated item has the same fields.
 ///
 /// ```ignore
 /// campaign_analysis::registries! {

@@ -8,11 +8,10 @@ export type { SnapshotDescriptor };
 
 export function descriptorDate(descriptor: Pick<SnapshotDescriptor, "dateSort">): DateComponents {
   const { dateSort } = descriptor;
-  return {
-    year: Math.floor(dateSort / 10000),
-    month: Math.floor(dateSort / 100) % 100,
-    day: dateSort % 100,
-  };
+  const year = Math.floor(dateSort / 10000);
+  // Month and day count up from the year, also before year 0.
+  const rest = dateSort - year * 10000;
+  return { year, month: Math.floor(rest / 100), day: rest % 100 };
 }
 
 /** Date order. Snapshots on the same date have a stable order. */
