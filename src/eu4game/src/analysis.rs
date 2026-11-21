@@ -116,8 +116,8 @@ pub struct Eu4Payload {
     pub country_religions: Table<CountryReligion, CountryReligionColumns>,
     /// The tag switches that the save records, in date order.
     pub switches: Vec<TagSwitch>,
-    /// The countries that the save says have been played, now or before:
-    /// its player list and the countries it marks as played. Sorted.
+    /// The countries that the save marks as played, now or before, on their
+    /// own records. Sorted.
     pub played: Vec<CountryTag>,
     /// The countries a person was playing when the save was made, by its
     /// human flags. Sorted. In multiplayer only who was connected then.
@@ -279,23 +279,15 @@ pub struct Eu4Detail {}
 
 /// Extract the observations from a full parse. The campaign identity comes
 /// from the parsed game state, not from the metadata.
-/// The countries a save says have been played: its player list, which pairs
-/// each player with a country, and the countries marked as played now or
-/// before. Sorted, each once.
+/// The countries a save marks as played, now or before, on their own
+/// records. The save's player list is left out: it can keep a tag that a
+/// player once held and another country holds now. Sorted, each once.
 fn played_countries(save: &eu4save::models::Eu4Save) -> Vec<CountryTag> {
-    let listed = save
-        .game
-        .players_countries
-        .chunks(2)
-        .filter_map(|pair| pair.get(1)?.parse::<CountryTag>().ok());
-    let marked = save
-        .game
+    save.game
         .countries
         .iter()
         .filter(|(_, country)| country.human || country.was_player)
-        .map(|(tag, _)| *tag);
-    listed
-        .chain(marked)
+        .map(|(tag, _)| *tag)
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
@@ -588,8 +580,8 @@ campaign_analysis::queries! {
         /// dates, by name. A part is zero on a date where the country exists
         /// without it, and a gap where the country does not exist.
         CountryBreakdown { tag: CountryTag, dimension: CountryDimension } => Vec<Series<String>> = country_breakdown,
-        /// The countries that each snapshot says have been played, in date
-        /// order: its player list and the countries marked as played.
+        /// The countries that each snapshot marks as played, now or before,
+        /// in date order.
         PlayedCountries => Vec<Vec<CountryTag>> = played_by_snapshot,
     }
 }
