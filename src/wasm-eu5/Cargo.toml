@@ -20,6 +20,7 @@ bytemuck = { workspace = true }
 campaign-analysis = { workspace = true, features = ["wasm"] }
 eu5app = { workspace = true, default-features = false, features = ["tsify"] }
 eu5save = { workspace = true }
+jomini = { workspace = true }
 js-sys = { workspace = true }
 pdx-zstd = { workspace = true }
 schemas = { workspace = true }

@@ -279,7 +279,7 @@ pub fn location_population(view: &View<'_, Eu5Analysis>, location_ids: Vec<Locat
 mod tests {
     use super::*;
     use crate::map_projection::NO_ROW;
-    use campaign_analysis::{Query, SaveDate, Selection, Store};
+    use campaign_analysis::{Query, Selection, Store, date_from_sort};
 
     fn save(
         hash: &str,
@@ -316,7 +316,7 @@ mod tests {
         let source = SnapshotSource {
             campaign_id: String::from("campaign"),
             content_hash: String::from(hash),
-            date: SaveDate::from_sort_key(date_sort).unwrap(),
+            date: date_from_sort(date_sort).unwrap(),
             game_version: String::from("1.0.0"),
         };
         observation(projection, world, source).unwrap()

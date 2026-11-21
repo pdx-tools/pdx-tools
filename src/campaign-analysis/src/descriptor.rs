@@ -1,4 +1,5 @@
 use crate::Game;
+use jomini::common::{Date, PdsDate};
 use serde::{Deserialize, Serialize};
 
 /// The fields that each game gives for a snapshot.
@@ -23,51 +24,22 @@ pub struct SnapshotDescriptor {
     pub artifacts: Vec<String>,
 }
 
-/// The in-game date of a save. The game calendar has no leap days. The year
-/// is from -99999 to 99999, so the date has one `YYYYMMDD` sort key.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SaveDate {
-    year: i32,
-    month: u8,
-    day: u8,
+/// A save date as `YYYYMMDD`, which sorts in date order: the year times
+/// 10000, plus the month times 100, plus the day, also before year 0.
+pub fn date_sort(date: Date) -> i32 {
+    i32::from(date.year()) * 10000 + i32::from(date.month()) * 100 + i32::from(date.day())
 }
-impl SaveDate {
-    pub const fn new(year: i32, month: u8, day: u8) -> Option<Self> {
-        const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-        let valid_day = month >= 1 && month <= 12 && day >= 1 && day <= DAYS[month as usize - 1];
-        if year >= -99_999 && year <= 99_999 && valid_day {
-            Some(Self { year, month, day })
-        } else {
-            None
-        }
-    }
-    /// The date of a `YYYYMMDD` sort key. The month and day of a year before
-    /// 0 count up from the year, as they do after it.
-    pub fn from_sort_key(key: i32) -> Option<Self> {
-        let rest = key.rem_euclid(10000);
-        let month = u8::try_from(rest / 100).ok()?;
-        let day = u8::try_from(rest % 100).ok()?;
-        Self::new(key.div_euclid(10000), month, day)
-    }
-    /// The date as `YYYYMMDD`, which sorts in date order.
-    pub const fn sort_key(self) -> i32 {
-        self.year * 10000 + self.month as i32 * 100 + self.day as i32
-    }
-    pub const fn year(self) -> i32 {
-        self.year
-    }
-    pub const fn month(self) -> u8 {
-        self.month
-    }
-    pub const fn day(self) -> u8 {
-        self.day
-    }
-}
-/// The date as `YYYY-MM-DD`.
-impl std::fmt::Display for SaveDate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:04}-{:02}-{:02}", self.year, self.month, self.day)
-    }
+
+/// The save date of a `YYYYMMDD` sort key. The month and day of a year
+/// before 0 count up from the year, as they do after it.
+pub fn date_from_sort(key: i32) -> Option<Date> {
+    let year = i16::try_from(key.div_euclid(10000)).ok()?;
+    let rest = key.rem_euclid(10000);
+    Date::from_ymd_opt(
+        year,
+        u8::try_from(rest / 100).ok()?,
+        u8::try_from(rest % 100).ok()?,
+    )
 }
 
 /// The values of a save that identify its snapshot.
@@ -75,7 +47,8 @@ impl std::fmt::Display for SaveDate {
 pub struct SnapshotSource {
     pub campaign_id: String,
     pub content_hash: String,
-    pub date: SaveDate,
+    /// The in-game date. The game calendar has no leap days.
+    pub date: Date,
     pub game_version: String,
 }
 
@@ -87,16 +60,16 @@ impl SnapshotDescriptor {
             game: G::GAME.to_owned(),
             campaign_id: source.campaign_id,
             content_hash: source.content_hash,
-            date: source.date.to_string(),
-            date_sort: source.date.sort_key(),
+            date: source.date.iso_8601().to_string(),
+            date_sort: date_sort(source.date),
             game_version: source.game_version,
             layout_key,
             artifacts: G::ARTIFACTS.iter().map(|kind| (*kind).to_owned()).collect(),
         }
     }
     /// The save date, if the two date fields agree.
-    pub fn save_date(&self) -> Option<SaveDate> {
-        SaveDate::from_sort_key(self.date_sort).filter(|date| date.to_string() == self.date)
+    pub fn save_date(&self) -> Option<Date> {
+        date_from_sort(self.date_sort).filter(|date| date.iso_8601().to_string() == self.date)
     }
 }
 

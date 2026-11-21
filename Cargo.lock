@@ -509,6 +509,7 @@ name = "campaign-analysis"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "jomini",
  "js-sys",
  "postcard",
  "serde",
@@ -4973,6 +4974,7 @@ dependencies = [
  "campaign-analysis",
  "eu5app",
  "eu5save",
+ "jomini",
  "js-sys",
  "pdx-zstd",
  "schemas",

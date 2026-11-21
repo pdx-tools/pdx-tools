@@ -5,10 +5,10 @@ use crate::shared::playthrough_id;
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
     IndexRegistry, NullableColumn, Observation, PayloadError, PrefixKey, Prefixed, ReferenceError,
-    RowSelect, SaveDate, Series, SnapshotDescriptor, SnapshotSource, Table, TableError,
-    TextRegistry, TextRow, Texts, View, check_length,
+    RowSelect, Series, SnapshotDescriptor, SnapshotSource, Table, TableError, TextRegistry,
+    TextRow, Texts, View, check_length,
 };
-use eu4save::{CountryTag, PdsDate, ProvinceId, models::Province, query::Query};
+use eu4save::{CountryTag, ProvinceId, models::Province, query::Query};
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 
@@ -299,8 +299,7 @@ pub fn extract(
         SnapshotSource {
             campaign_id: playthrough_id(query),
             content_hash,
-            date: SaveDate::new(i32::from(date.year()), date.month(), date.day())
-                .ok_or(AnalysisError::InvalidDescriptor)?,
+            date,
             game_version: format!(
                 "{}.{}.{}.{}",
                 version.first, version.second, version.third, version.fourth
@@ -624,12 +623,12 @@ mod tests {
         }
     }
 
-    fn descriptor(hash: &str, date: (i32, u8, u8), layout: String) -> SnapshotDescriptor {
+    fn descriptor(hash: &str, date: (i16, u8, u8), layout: String) -> SnapshotDescriptor {
         SnapshotDescriptor::new::<Eu4Analysis>(
             SnapshotSource {
                 campaign_id: String::from("campaign"),
                 content_hash: String::from(hash),
-                date: SaveDate::new(date.0, date.1, date.2).unwrap(),
+                date: eu4save::Eu4Date::from_ymd(date.0, date.1, date.2),
                 game_version: String::from("1.37.5.0"),
             },
             layout,
@@ -638,7 +637,7 @@ mod tests {
 
     fn observation(
         hash: &str,
-        date: (i32, u8, u8),
+        date: (i16, u8, u8),
         provinces: &[Spec],
     ) -> Observation<Eu4Analysis> {
         observation_with(hash, date, provinces, &[])
@@ -646,7 +645,7 @@ mod tests {
 
     fn observation_with(
         hash: &str,
-        date: (i32, u8, u8),
+        date: (i16, u8, u8),
         provinces: &[Spec],
         alive: &[&str],
     ) -> Observation<Eu4Analysis> {

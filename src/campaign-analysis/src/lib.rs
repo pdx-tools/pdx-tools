@@ -36,7 +36,9 @@ pub use columns::{
     ColumnError, Columns, DecodeError, Decoder, Encoder, NullableColumn, PayloadError,
     ReferenceError, RowColumns, check_length,
 };
-pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
+pub use descriptor::{
+    Descriptor, SnapshotDescriptor, SnapshotSource, date_from_sort, date_sort, snapshot_id,
+};
 pub use query::{
     History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, Series, View,
 };
@@ -84,6 +86,7 @@ pub trait Game: Sized + 'static {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jomini::common::Date;
 
     /// A game-neutral payload: one value for each geographic ID.
     #[derive(Debug)]
@@ -175,7 +178,7 @@ mod tests {
             SnapshotSource {
                 campaign_id: String::from("campaign"),
                 content_hash: String::from(hash),
-                date: SaveDate::from_sort_key(date_sort).unwrap(),
+                date: date_from_sort(date_sort).unwrap(),
                 game_version: String::from("1.0"),
             },
             String::from(layout),
@@ -221,7 +224,7 @@ mod tests {
         assert_eq!(descriptor.date, "1444-11-11");
         assert_eq!(descriptor.date_sort, 14441111);
         assert_eq!(descriptor.artifacts, ["observations"]);
-        let before_zero = SaveDate::new(-17, 12, 31).unwrap();
+        let before_zero = Date::from_ymd(-17, 12, 31);
         let source = SnapshotSource {
             campaign_id: String::from("campaign"),
             content_hash: String::from("hash"),
@@ -233,21 +236,18 @@ mod tests {
             (early.date.as_str(), early.date_sort),
             ("-017-12-31", -168769)
         );
-        assert_eq!(
-            SaveDate::from_sort_key(before_zero.sort_key()),
-            Some(before_zero)
-        );
-        assert!(before_zero.sort_key() < SaveDate::new(-16, 1, 1).unwrap().sort_key());
-        for (year, month, day) in [
-            (-100_000, 1, 1),
-            (100_000, 1, 1),
-            (1444, 0, 1),
-            (1444, 13, 1),
+        assert_eq!(early.save_date(), Some(before_zero));
+        for date in [
+            Date::from_ymd(i16::MIN, 1, 1),
+            Date::from_ymd(i16::MAX, 12, 31),
         ] {
-            assert_eq!(SaveDate::new(year, month, day), None);
+            assert_eq!(date_from_sort(date_sort(date)), Some(date));
         }
-        assert_eq!(SaveDate::new(1444, 11, 31), None);
-        assert_eq!(SaveDate::new(1600, 2, 29), None);
+        assert!(date_sort(before_zero) < date_sort(Date::from_ymd(-16, 1, 1)));
+        // The game calendar has no leap days, and years fit in an i16.
+        for key in [16000229, 14441131, 14441301, 400_000_101] {
+            assert_eq!(date_from_sort(key), None);
+        }
     }
 
     #[test]

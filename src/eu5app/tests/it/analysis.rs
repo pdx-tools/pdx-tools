@@ -110,7 +110,7 @@ fn map_projection_preserves_all_modes_and_leaves_the_full_save_unchanged() {
         campaign_analysis::SnapshotSource {
             campaign_id: String::from("campaign"),
             content_hash: String::from(save),
-            date: campaign_analysis::SaveDate::new(1617, 4, 1).unwrap(),
+            date: jomini::common::Date::from_ymd(1617, 4, 1),
             game_version: String::from("1.0.0"),
         },
     )
@@ -258,8 +258,9 @@ fn observed_world_population(projection: &eu5app::map_projection::MapProjection)
 
 #[test]
 fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
-    use campaign_analysis::{Query, SaveDate, Selection, Session, SnapshotSource, View};
+    use campaign_analysis::{Query, Selection, Session, SnapshotSource, View};
     use eu5app::analysis::{Eu5Analysis, Eu5Answer, Eu5Query};
+    use jomini::common::Date;
     let mut layouts = Vec::new();
     let mut session = Session::<Eu5Analysis>::new();
     for (save, date, population) in [
@@ -300,7 +301,7 @@ fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
         let source = SnapshotSource {
             campaign_id: String::from("poland"),
             content_hash: String::from(save),
-            date: SaveDate::new(i32::from(date.0), date.1, date.2).unwrap(),
+            date: Date::from_ymd(date.0, date.1, date.2),
             game_version: String::from("1.0.0"),
         };
         let observed = eu5app::analysis::observation(projection, summary, source).unwrap();
