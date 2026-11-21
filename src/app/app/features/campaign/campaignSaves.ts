@@ -126,7 +126,7 @@ export function mergeCampaign({ open, uploads, entries, openEntry }: CampaignSav
       if (
         current.isOpen ||
         // A file taken in only until a full parse never displaces a save known to be of the campaign.
-        (candidate && current.membership === "same") ||
+        (candidate && current.membership === "same" && canOpen(current)) ||
         (!canOpen(entry) && canOpen(current)) ||
         (membership === "different" && current.membership !== "different")
       ) {
