@@ -351,14 +351,20 @@ export function escapeFocus(focus: Focus): Focus {
 export function distinctTexts(
   values: readonly (number | null)[],
   coarse: (value: number) => string,
-  fine: (value: number) => string,
+  fine: (value: number, digits: number) => string,
 ): string[] {
   const texts = values.map((value) => (value === null ? "" : coarse(value)));
-  return values.map((value, i) => {
-    if (value === null) return "";
-    const clash = values.some(
-      (other, k) => k !== i && other !== null && other !== value && texts[k] === texts[i],
+  const clashes = (i: number, all: readonly string[]) =>
+    values.some(
+      (other, k) => k !== i && other !== null && other !== values[i] && all[k] === all[i],
     );
-    return clash ? fine(value) : texts[i];
-  });
+  // More digits, up to three, only for figures that still read alike.
+  for (let digits = 1; digits <= 3; digits++) {
+    const next = texts.map((text, i) =>
+      values[i] !== null && clashes(i, texts) ? fine(values[i]!, digits) : text,
+    );
+    if (next.every((text, i) => text === texts[i])) break;
+    next.forEach((text, i) => (texts[i] = text));
+  }
+  return texts;
 }

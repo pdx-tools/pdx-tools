@@ -32,7 +32,7 @@ export function HistoryHeader({
 }) {
   return (
     <div className="flex flex-col gap-1 py-1">
-      <div className="flex min-h-12 items-center gap-x-4">
+      <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-2">
         <span className="flex items-baseline gap-2.5 whitespace-nowrap" title={title}>
           <span className="text-[44px] leading-[44px] font-semibold tracking-tight tabular-nums">
             {date.year}

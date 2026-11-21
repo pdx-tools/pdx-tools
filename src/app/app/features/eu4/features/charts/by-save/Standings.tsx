@@ -144,8 +144,10 @@ export function Standings({
             const grey = row.role === "grey" && !compared;
             const two = !!row.note && height >= 34;
             // Beside the name only where it fits whole; a long chain keeps a short way to its list.
-            // About 7 px a character of name and 5.6 of note, in the 128 px they share.
-            const fits = !!row.note && row.name.length * 7 + 6 + row.note.length * 5.6 <= 128;
+            // About 7 px a character of name and 5.6 of note, in what the rank, flag, badge
+            // and figure leave of the row.
+            const room = 226 - 24 - 22 - 10 - row.figure.length * 8.5 - (row.badge ? 44 : 0);
+            const fits = !!row.note && row.name.length * 7 + 6 + row.note.length * 5.6 <= room;
             const inline = !!row.note && !two && !narrow && (fits || row.chain.length >= 3);
             const flag = compact || narrow ? "mini" : "xs";
             return (
@@ -217,6 +219,7 @@ export function Standings({
                     {(two || inline) && row.note && (
                       <Note
                         row={row}
+                        reachable={row.key === tabKey}
                         note={two || fits ? row.note : `${row.chain.length} names`}
                         small={!two}
                       />
@@ -261,7 +264,18 @@ export function Standings({
 }
 
 /** "was Viti and 32 earlier": a long chain opens to every name it held. */
-function Note({ row, note, small }: { row: StandingRow; note: string; small: boolean }) {
+function Note({
+  row,
+  note,
+  small,
+  reachable,
+}: {
+  row: StandingRow;
+  note: string;
+  small: boolean;
+  /** The row has the tab stop, so Tab from it reaches the list. */
+  reachable: boolean;
+}) {
   const text = cx(
     "min-w-0 truncate text-gray-500 dark:text-gray-400",
     small ? "text-[11px] leading-3" : "text-[11px] leading-3",
@@ -272,7 +286,7 @@ function Note({ row, note, small }: { row: StandingRow; note: string; small: boo
       <Popover.Trigger asChild>
         <button
           type="button"
-          tabIndex={-1}
+          tabIndex={reachable ? 0 : -1}
           className={cx(
             text,
             "cursor-pointer text-left underline decoration-dotted underline-offset-2",
@@ -286,6 +300,9 @@ function Note({ row, note, small }: { row: StandingRow; note: string; small: boo
       </Popover.Trigger>
       <Popover.Content
         align="start"
+        // Events in the portal still bubble through React to the row: keep them in the list.
+        onClick={(event) => event.stopPropagation()}
+        onPointerEnter={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
         className="max-h-80 w-[min(560px,90vw)] overflow-y-auto rounded-md border border-gray-300 bg-white p-3 text-xs shadow-md dark:border-gray-600 dark:bg-slate-900"
       >

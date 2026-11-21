@@ -292,9 +292,9 @@ export function seriesIds(keys: readonly string[]): string[] {
   return [...keys.flatMap((key) => PARTS.map((part) => `${part}:${key}`)), "rules"];
 }
 
-/** The series indices of a line, to highlight it. */
-export function lineSeries(index: number): number[] {
-  return PARTS.map((_, k) => index * PARTS.length + k);
+/** The series ids of a line, to highlight it. */
+export function lineSeriesIds(key: string): string[] {
+  return PARTS.map((part) => `${part}:${key}`);
 }
 
 /** The column whose day is nearest, among those in view. */
@@ -418,15 +418,27 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       },
     });
 
+    // A lone value has no join, so it keeps a dot even where the line has none.
+    const lone = (i: number) => has(i) && !has(i - 1) && !has(i + 1);
     const future = joins(selected, n - 1);
     series.push({
       id: `f:${line.key}`,
       type: "line",
       z,
       silent: true,
-      data: future.solid,
-      // After the selected save, lines are faded and without dots, as in D5.
-      showSymbol: false,
+      // After the selected save, lines are faded and without dots, as in D5; a lone value
+      // there keeps a faded dot, so a "from" in the standings has a point to refer to.
+      data: future.solid.map((p) => {
+        const i = days.indexOf(p[0]);
+        return p[1] !== null && i > selected && lone(i)
+          ? { value: p, symbol: "circle", symbolSize: 4 }
+          : p;
+      }),
+      showSymbol: future.solid.some(
+        (p) => p[1] !== null && days.indexOf(p[0]) > selected && lone(days.indexOf(p[0])),
+      ),
+      symbolSize: 0,
+      itemStyle: color({ opacity: Math.min(1, own.future * 2) }),
       connectNulls: false,
       clip: true,
       lineStyle: color({ width: own.width, opacity: own.future, cap: "round", join: "round" }),
@@ -491,8 +503,6 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
 
     const radius = !input.dots ? 0 : own.radius;
     const size = (s: Strength) => (s.radius > 0 ? s.radius * 2 : 0);
-    // A lone value has no join, so it keeps a dot even where the line has none.
-    const lone = (i: number) => has(i) && !has(i - 1) && !has(i + 1);
     const pastLine: LineSeriesOption = {
       id: `a:${line.key}`,
       name: line.key,
@@ -552,7 +562,14 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       const index = series.length;
       const at = (day: number) => {
         const i = days.findIndex((d) => d > day);
-        return i > 0 && has(i - 1) && has(i) && input.long(days[i] - days[i - 1]) ? days[i] : day;
+        // Strictly inside a dotted join: a switch on a saved date keeps that save's color.
+        return i > 0 &&
+          days[i - 1] < day &&
+          has(i - 1) &&
+          has(i) &&
+          input.long(days[i] - days[i - 1])
+          ? days[i]
+          : day;
       };
       const pieces: { gte: number; lt: number; color: string }[] = [];
       let from = days[0] - 1;
@@ -659,7 +676,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     xAxis: {
       type: "value",
       min: days[0],
-      max: days[n - 1],
+      max: Math.max(days[n - 1], days[0] + 1),
       axisLine: { show: true, lineStyle: { color: palette.base } },
       axisTick: {
         show: true,

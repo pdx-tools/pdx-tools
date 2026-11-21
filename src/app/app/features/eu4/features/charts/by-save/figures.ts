@@ -11,18 +11,18 @@ export type BySaveFigure = {
   metric: CountryMetric | null;
   /** The value as the viewer shows it. */
   format: (value: number) => string;
-  /** One decimal more, for figures that would otherwise read alike. */
-  fine: (value: number) => string;
+  /** With decimals, for figures that would otherwise read alike. */
+  fine: (value: number, digits: number) => string;
   /** A round value on the axis, with the axis step, so ticks read apart. */
   tick: (value: number, step: number) => string;
 };
 
 const points = (value: number) => formatInt(value);
 const thousands = (value: number) => `${formatInt(value)}K`;
-const oneDecimal = (value: number) =>
-  value.toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
-const finePoints = (value: number) => oneDecimal(value);
-const fineThousands = (value: number) => `${oneDecimal(value)}K`;
+const decimals = (value: number, digits: number) =>
+  value.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits });
+const finePoints = (value: number, digits: number) => decimals(value, digits);
+const fineThousands = (value: number, digits: number) => `${decimals(value, digits)}K`;
 /** The decimals that show every multiple of an axis step exactly, at most three. */
 const stepDigits = (step: number) =>
   [0, 1, 2, 3].find((d) => Math.abs(step * 10 ** d - Math.round(step * 10 ** d)) < 1e-6) ?? 3;

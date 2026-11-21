@@ -8,7 +8,7 @@ import type { ValueScale } from "./history";
 import {
   edgeFor,
   historyOption,
-  lineSeries,
+  lineSeriesIds,
   nearestColumn,
   palettes,
   plotMap,
@@ -56,7 +56,7 @@ export type HistoryChartProps = {
   /** The followed country against the pointed one, else the latest pin. */
   comparison: Comparison | null;
   format: (value: number) => string;
-  fine: (value: number) => string;
+  fine: (value: number, digits: number) => string;
   tick: (value: number, step: number) => string;
   yearOf: (day: number) => string;
   dateOf: (day: number) => string;
@@ -108,14 +108,20 @@ export function HistoryChart(props: HistoryChartProps) {
   const narrow = width < 600;
   const n = days.length;
   const from = props.view?.[0] ?? days[0];
-  const to = props.view?.[1] ?? days[n - 1];
+  // One save alone still has a span, as ECharts gives one to an axis whose bounds are equal.
+  const to = Math.max(props.view?.[1] ?? days[n - 1], from + 1);
 
   const scroll = rows.length > MOST_PLACED;
   const many = lines.length > 12;
-  const tableWidth = world ? 0 : narrow ? 170 : 226;
-  const fan = world ? (narrow ? 76 : 104) : narrow ? 26 : 44;
-  const left = 46;
-  const plotWidth = Math.max(80, width - left - tableWidth - fan);
+  // At the narrowest the standings give up width before they would cover the plot.
+  const tableWidth = world
+    ? 0
+    : narrow
+      ? Math.min(170, Math.max(118, Math.round(width * 0.42)))
+      : 226;
+  const fan = world ? (narrow ? 76 : 104) : narrow ? (width < 420 ? 14 : 26) : 44;
+  const left = width < 420 ? 40 : 46;
+  const plotWidth = Math.max(40, width - left - tableWidth - fan);
   const liveCount = rows.filter((row) => !row.gone).length;
   const slider = n > STRIP_SAVES || props.view !== null;
   // D5's 384 px (330 narrow), grown to at most 520 px where the drawer has the room.
@@ -142,7 +148,7 @@ export function HistoryChart(props: HistoryChartProps) {
   }, [lines, days, from, to, fitted, world]);
   const grid = useMemo(
     () => ({ left, top: TOP, width: plotWidth, height: plotHeight }),
-    [plotWidth, plotHeight],
+    [left, plotWidth, plotHeight],
   );
   const map = useMemo(() => plotMap(grid, [from, to], scale), [grid, from, to, scale]);
 
@@ -290,21 +296,27 @@ export function HistoryChart(props: HistoryChartProps) {
   const chartRef = useRef<echarts.ECharts | null>(null);
   // Pointing is a highlight: the pointed line and the followed one lit, the others blurred.
   const { pointed, subject } = props;
-  const lit = useRef<number[]>([]);
+  const lit = useRef<string[]>([]);
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    // Only what was lit is let down: a downplay of every series costs a full repaint.
-    if (lit.current.length) chart.dispatchAction({ type: "downplay", seriesIndex: lit.current });
+    // By id, so a rebuild that moves a line never lets down or lights another; only what
+    // was lit is let down, as a downplay of every series costs a full repaint.
+    if (lit.current.length) chart.dispatchAction({ type: "downplay", seriesId: lit.current });
     lit.current = [];
-    const at = lines.findIndex((line) => line.key === pointed);
-    if (at < 0) return;
-    const next = [...lineSeries(at)];
-    const own = lines.findIndex((line) => line.key === subject);
-    if (own >= 0 && own !== at) next.push(...lineSeries(own));
-    chart.dispatchAction({ type: "highlight", seriesIndex: next });
+    if (!pointed || !lines.some((line) => line.key === pointed)) return;
+    const keys = subject && subject !== pointed ? [pointed, subject] : [pointed];
+    const next = keys.flatMap((key) => lineSeriesIds(key));
+    chart.dispatchAction({ type: "highlight", seriesId: next });
     lit.current = next;
   }, [option, pointed, subject, lines]);
+
+  // A new layout or new saves move what the resting pointer is over: hover it afresh.
+  const pointerAt = useRef<{ x: number; y: number } | null>(null);
+  const rehover = useRef<() => void>(() => {});
+  useEffect(() => {
+    rehover.current();
+  }, [option]);
 
   const onInit = useCallback((chart: echarts.ECharts) => {
     chartRef.current = chart;
@@ -351,7 +363,17 @@ export function HistoryChart(props: HistoryChartProps) {
       }
       return { column, key };
     };
+    rehover.current = () => {
+      const at = pointerAt.current;
+      const { column } = at ? hit(at.x, at.y) : { column: -1 };
+      const next = column >= 0 ? column : null;
+      if (next !== shown) {
+        shown = next;
+        setHover(next);
+      }
+    };
     zr.on("mousemove", (event) => {
+      pointerAt.current = { x: event.offsetX, y: event.offsetY };
       const { column, key } = hit(event.offsetX, event.offsetY);
       zr.setCursorStyle(key ? "pointer" : "default");
       const next = column >= 0 ? column : null;
@@ -365,6 +387,7 @@ export function HistoryChart(props: HistoryChartProps) {
       }
     });
     zr.on("globalout", () => {
+      pointerAt.current = null;
       shown = null;
       setHover(null);
       if (pointedKey !== null) {
@@ -391,16 +414,18 @@ export function HistoryChart(props: HistoryChartProps) {
       const first = props.days[0];
       const last = props.days[props.days.length - 1];
       if (at.start === undefined || at.end === undefined) return;
+      // The overlay follows ECharts' own bounds; whole days are kept only once the hand rests.
       const view: [number, number] = [
-        Math.round(first + ((last - first) * at.start) / 100),
-        Math.round(first + ((last - first) * at.end) / 100),
+        first + ((last - first) * at.start) / 100,
+        first + ((last - first) * at.end) / 100,
       ];
       const base = props.view ?? [first, last];
       setDrag({ key: `${base[0]}:${base[1]}`, view });
       clearTimeout(timer);
       timer = setTimeout(() => {
         const whole = view[0] <= first && view[1] >= last;
-        latest.current.props.onZoom(whole ? null : view);
+        latest.current.props.onZoom(whole ? null : [Math.round(view[0]), Math.round(view[1])]);
+        setDrag(null);
       }, 250);
     });
     return () => {
@@ -614,6 +639,12 @@ const Marks = memo(function Marks(p: MarkProps) {
   const live = p.rows.filter((row) => !row.gone);
   const listTop = TOP - 12;
   const listH = p.placement.layout.kind === "flow" ? p.placement.layout.height : 0;
+  const own = live.findIndex((row) => row.role === "subject");
+  const ownAt = listTop + 1 + own * ROW + ROW / 2 - p.scrollTop;
+  const stuck =
+    p.scroll && own >= 0 && (ownAt < listTop + 12 || ownAt > listTop + listH - 12)
+      ? Math.max(listTop + 12, Math.min(listTop + listH - 12, ownAt))
+      : null;
   const leaders = live.flatMap((row, k) => {
     const value = p.values[p.rows.indexOf(row)];
     if (value === null || value === undefined) return [];
@@ -621,6 +652,8 @@ const Marks = memo(function Marks(p: MarkProps) {
     if (p.scroll) {
       ry = listTop + 1 + k * ROW + ROW / 2 - p.scrollTop;
       if (row.role === "subject") ry = Math.max(listTop + 12, Math.min(listTop + listH - 12, ry));
+      // A row behind the followed row where it sticks has no leader of its own.
+      else if (stuck !== null && Math.abs(ry - stuck) < ROW) return [];
       if (ry < listTop + 6 || ry > listTop + listH - 6) return [];
     } else ry = p.placement.centers[k];
     const { isP, isE, grey, back } = roleOf(row);
@@ -779,7 +812,7 @@ type HoverProps = {
   palette: Palette;
   dark: boolean;
   format: (value: number) => string;
-  fine: (value: number) => string;
+  fine: (value: number, digits: number) => string;
   dateOf: (day: number) => string;
 };
 
@@ -791,7 +824,7 @@ type HoverProps = {
 const Hover = memo(function Hover(p: HoverProps) {
   const { map, days, palette } = p;
   const h = p.column;
-  if (h === null || h === p.selected) return null;
+  if (h === null || h === p.selected || h >= days.length) return null;
   const hx = map.x(days[h]);
   const fx = map.x(days[p.selected]);
   const plotR = map.left + map.width;

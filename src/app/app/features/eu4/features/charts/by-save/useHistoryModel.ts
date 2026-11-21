@@ -55,7 +55,7 @@ export type HistoryModelInput = {
   selected: number;
   multiplayer: boolean;
   format: (value: number) => string;
-  fine: (value: number) => string;
+  fine: (value: number, digits: number) => string;
 };
 
 /**

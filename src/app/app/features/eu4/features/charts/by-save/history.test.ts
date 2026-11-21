@@ -263,7 +263,7 @@ describe("focus", () => {
 describe("distinctTexts", () => {
   it("adds a decimal only to figures that would otherwise read alike", () => {
     const coarse = (v: number) => `${Math.round(v)}K`;
-    const fine = (v: number) => `${v.toFixed(1)}K`;
+    const fine = (v: number, digits: number) => `${v.toFixed(digits)}K`;
     expect(distinctTexts([75, 9.51, 10.49, 33, 33, null], coarse, fine)).toEqual([
       "75K",
       "9.5K",
@@ -272,6 +272,7 @@ describe("distinctTexts", () => {
       "33K",
       "",
     ]);
+    expect(distinctTexts([75.021, 75.038], coarse, fine)).toEqual(["75.02K", "75.04K"]);
   });
 });
 

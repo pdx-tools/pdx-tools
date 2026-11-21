@@ -4,7 +4,7 @@ import { valueScale } from "./history";
 import {
   historyOption,
   isNoisy,
-  lineSeries,
+  lineSeriesIds,
   nearestColumn,
   palettes,
   plotMap,
@@ -75,9 +75,7 @@ describe("historyOption", () => {
     );
     expect(rest.map((x) => x.id)).toEqual(seriesIds(["FRA", "ENG>GBR"]));
     expect(pinned.map((x) => x.id)).toEqual(rest.map((x) => x.id));
-    expect(lineSeries(1).map((i) => rest[i].id)).toEqual(
-      ["f", "g", "h", "d", "a"].map((part) => `${part}:ENG>GBR`),
-    );
+    expect(lineSeriesIds("ENG>GBR").every((id) => rest.some((x) => x.id === id))).toBe(true);
     // The chart draws its own hover, so no series takes pointer events.
     expect(rest.every((x) => x.silent)).toBe(true);
   });
@@ -112,6 +110,21 @@ describe("historyOption", () => {
     expect(points(past).filter((p) => p[1] === null)).toHaveLength(4);
     expect(series.find((x) => x.id === "d:ENG>GBR")!.data.length).toBeGreaterThan(0);
   });
+});
+
+it("keeps a switch on a saved date in that save's color, and recolors inside a dotted join at the next save", () => {
+  const pieces = (day: number) => {
+    const option = historyOption(
+      input([
+        { ...line("CAS>SPA", [500, 600, 700, 800, 900]), changes: [{ day, color: "#ffcc00" }] },
+      ]),
+    ) as { visualMap: { pieces: { gte: number; lt: number }[] }[] };
+    return option.visualMap[0].pieces.map((x) => x.gte);
+  };
+  // On the 1526 save itself: the cut is there.
+  expect(pieces(days[1])).toContain(days[1]);
+  // Inside the long 1526 to 1547 join: the cut moves to 1547.
+  expect(pieces(year(1530))).toContain(days[2]);
 });
 
 describe("strength", () => {
