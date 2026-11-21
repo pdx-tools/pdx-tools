@@ -199,7 +199,7 @@ impl<'bump> Eu5Workspace<'bump> {
     /// The live countries that a replace selects this exact land with, and
     /// the followed countries with no land on the timeline date. None when no
     /// set of whole countries gives this land.
-    fn whole_countries(&self) -> Option<Vec<CountryIdx>> {
+    pub(super) fn whole_countries(&self) -> Option<Vec<CountryIdx>> {
         let selection = &self.selection_state;
         let in_save = |id: RealCountryId| {
             self.live_country_of(id.country_id())

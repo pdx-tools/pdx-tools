@@ -7,7 +7,7 @@ import { saveAnalysisPresentation } from "@/features/campaign/saveAnalysisPresen
 import type { SaveAnalysisStatus } from "@/features/campaign/saveAnalysisPresentation";
 import { useHistory } from "../history/store";
 import { useMapHistory } from "../history/context";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
 import { focusRing } from "@/components/game/focusRing";
 import { SavedDateExport, TimelapseExport } from "./TimelapseExport";
@@ -16,9 +16,18 @@ import { TimelineScrubber } from "@/features/timeline/TimelineScrubber";
 import { useTimelineCampaign } from "@/features/campaign/SaveMarks";
 import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
+import { clampDate, sameDate } from "@/features/timeline/date";
 import type { TimelineController } from "@/features/timeline/controller";
 import { useTimelineController } from "./useTimelineController";
-import { useEu5Input, useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
+import {
+  useEu5Engine,
+  useEu5Input,
+  useEu5MapMode,
+  useEu5SelectionState,
+  useSetEu5TimelineBarHeight,
+} from "../store";
+import { useEu5Trigger } from "../features/profiles/useEu5Trigger";
+import { landChapters } from "./landChapters";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";
 import styles from "./TimelineBar.module.css";
@@ -42,8 +51,6 @@ function usePresence(open: boolean) {
 /**
  * The campaign timeline as a bar along the bottom of the map. The track gets
  * the full map width, which is what a long campaign needs for a precise drag.
- * Political mode retains ownership history; other modes seek observed save dates
- * from the same compact analytical timeline.
  */
 export function TimelineBar() {
   const navigation = useCampaign();
@@ -55,7 +62,40 @@ export function TimelineBar() {
   const ownership = useTimelineController();
   const history = useMapHistory();
   const mapMode = useEu5MapMode();
-  const controller = history?.controller ?? (isHistoricalMapMode(mapMode) ? ownership : null);
+  const base = history?.controller ?? ownership;
+  const frozen = !history?.controller && !isHistoricalMapMode(mapMode);
+  const engine = useEu5Engine();
+  const selected = useEu5SelectionState()?.timelineCountry;
+  const countryKey = selected?.key;
+  const countryName = selected?.name;
+  const ownershipEnd = ownership?.timeline.end;
+  const { data } = useEu5Trigger(
+    async (current) => {
+      if (countryKey === undefined || !ownershipEnd) return;
+      const land = await current.queries.getLandHistory(countryKey);
+      return { engine: current, countryKey, land };
+    },
+    [countryKey, ownershipEnd],
+  );
+  const land = data?.engine === engine && data.countryKey === countryKey ? data.land : undefined;
+  const controller = useMemo(() => {
+    if (!base) return null;
+    if (!frozen && !land) return base;
+    const { start, end } = base.timeline;
+    const notes =
+      land && countryName && ownershipEnd
+        ? landChapters(land).flatMap(({ year, text }) => {
+            const date = year === ownershipEnd.year ? ownershipEnd : { year, month: 12, day: 31 };
+            if (!sameDate(date, clampDate(date, start, end))) return [];
+            return [{ key: `land:${countryKey}:${year}`, label: `${countryName}. ${text}`, date }];
+          })
+        : [];
+    return {
+      ...base,
+      locked: base.locked || frozen,
+      timeline: { ...base.timeline, notes: [...base.timeline.notes, ...notes] },
+    };
+  }, [base, frozen, land, ownershipEnd, countryKey, countryName]);
   const sources = useHistory((state) => state.sources);
   const failedSources = useHistory((state) => state.failedSources);
   const analyzingEntryIds = useHistory((state) => state.analyzingEntryIds);
@@ -92,7 +132,7 @@ export function TimelineBar() {
   );
   const speed = useHistory((state) => state.playbackSpeed);
   const insets = useViewportInsets();
-  useTimelineKeyboard(controller);
+  useTimelineKeyboard(frozen ? null : controller);
   const open = controller !== null;
   const presence = usePresence(open);
   const barRef = useRef<HTMLDivElement>(null);
@@ -101,6 +141,8 @@ export function TimelineBar() {
   return (
     <div
       ref={barRef}
+      role="region"
+      aria-label="Campaign timeline"
       data-state={presence.state}
       onAnimationEnd={presence.onAnimationEnd}
       className={cx(styles.bar, "@container pointer-events-auto absolute z-20 font-game-ui")}
@@ -133,6 +175,10 @@ export function TimelineBar() {
             </select>
             {history.frames > 0 && <SavedDateExport controller={controller} history={history} />}
           </div>
+        ) : frozen ? (
+          <span className="text-xs text-game-ink-300">
+            Only borders have a history. Showing the save date.
+          </span>
         ) : (
           <TimelapseExport controller={controller} />
         )}

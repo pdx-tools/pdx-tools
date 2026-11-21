@@ -1,6 +1,8 @@
 use super::*;
+use crate::insights::{LandChange, LandHistory, LandPoint};
 use crate::timeline::{CountryIdentities, CountryIdentity, TimelineIndex, is_same_country};
 use eu5save::Eu5Date;
+use std::cmp::Reverse;
 
 /// The date the map shows, and the owners on that date.
 ///
@@ -21,6 +23,12 @@ pub(super) struct TimelineState<'bump> {
 }
 
 impl<'bump> TimelineState<'bump> {
+    fn has_history(&self) -> bool {
+        self.index
+            .first_date()
+            .is_some_and(|first| first < self.save_date)
+    }
+
     pub(super) fn new(gamestate: &Gamestate<'bump>) -> Self {
         let save_date = gamestate.metadata().date.start_of_day();
         let index = TimelineIndex::from_save(
@@ -122,9 +130,7 @@ impl<'bump> Eu5Workspace<'bump> {
         // Reconciliation puts a change on the save date for every owned
         // location of a save without a history, so availability means a
         // change before the save date, not any change at all.
-        let available = index
-            .first_date()
-            .is_some_and(|first| first < self.timeline.save_date);
+        let available = self.timeline.has_history();
 
         let (change_dates, change_counts) = index.history_changes().into_iter().unzip();
         TimelineSummary {
@@ -135,6 +141,60 @@ impl<'bump> Eu5Workspace<'bump> {
             change_counts,
             notes,
         }
+    }
+
+    pub(crate) fn timeline_country(&self) -> Option<CountryIdx> {
+        if self.selection_state.preset().is_some() {
+            return None;
+        }
+        match self.active_profile_identity() {
+            Some(ActiveProfileIdentity::Country(country)) => Some(country),
+            None if !self.selection_state.followed().is_empty() => {
+                let countries = self.whole_countries()?;
+                match countries.as_slice() {
+                    [country] => Some(*country),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn land_history(&self, country: CountryIdx) -> Option<LandHistory> {
+        if !self.timeline.has_history()
+            || country.value() as usize > self.gamestate.countries.len()
+            || self.gamestate.countries.index(country).id().is_dummy()
+        {
+            return None;
+        }
+
+        let points: Vec<_> = self
+            .timeline
+            .index
+            .land_by_year(&self.lineage_ids(country), self.timeline.save_date)
+            .into_iter()
+            .map(|(year, locations)| LandPoint { year, locations })
+            .collect();
+        let peak = *points
+            .iter()
+            .filter(|point| point.locations > 0)
+            .max_by_key(|point| (point.locations, Reverse(point.year)))?;
+        let changes = || {
+            points.windows(2).map(|pair| LandChange {
+                year: pair[1].year,
+                change: pair[1].locations as i32 - pair[0].locations as i32,
+            })
+        };
+        Some(LandHistory {
+            biggest_gain: changes()
+                .filter(|c| c.change > 0)
+                .max_by_key(|c| (c.change, Reverse(c.year))),
+            biggest_loss: changes()
+                .filter(|c| c.change < 0)
+                .min_by_key(|c| (c.change, c.year)),
+            peak,
+            points,
+        })
     }
 
     /// The live country that an owner on any date is now: itself, or the country

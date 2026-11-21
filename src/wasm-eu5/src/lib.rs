@@ -23,7 +23,7 @@ use eu5app::insights::religion::presentation::ReligionInsightData;
 use eu5app::insights::rgo::presentation::RgoInsightData;
 use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
-use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope, WorldSummary};
+use eu5app::insights::{LandHistory, UnrealizedTaxBaseScope, WealthScope, WorldSummary};
 use eu5app::{
     CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, OpeningView,
     UiCountryIdx,
@@ -119,6 +119,7 @@ pub struct SelectionSummaryData {
     pub first_location_idx: Option<u32>,
     /// Typed profile identity that the current selection naturally opens in the insight panel.
     pub active_profile: Option<ActiveProfileIdentity>,
+    pub timeline_country: Option<eu5app::presentation::Localized<UiCountryIdx>>,
 }
 
 impl From<MapMode> for Eu5MapMode {
@@ -1069,6 +1070,7 @@ impl Eu5App {
             scope_display_name: self.localized().presenter().scope_display_name(),
             first_location_idx,
             active_profile: self.localized().presenter().active_profile_identity(),
+            timeline_country: self.localized().presenter().timeline_country(),
         })
     }
 
@@ -1181,6 +1183,14 @@ impl Eu5App {
                 .presenter()
                 .country_population_profile_for(idx),
         )
+    }
+
+    #[wasm_bindgen]
+    pub fn get_land_history(&self, country_idx: u32) -> Result<Option<Ts<LandHistory>>, JsError> {
+        let Some(country) = eu5save::models::CountryIdx::from_value(country_idx) else {
+            return Ok(None);
+        };
+        option_into_ts(self.app().land_history(country))
     }
 
     /// The market whose center is the location with this id.

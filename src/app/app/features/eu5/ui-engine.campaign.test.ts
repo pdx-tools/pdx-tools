@@ -51,3 +51,54 @@ it("publishes the restored map mode, date, selection and gradient together", asy
     mapModeGradient: null,
   });
 });
+
+it("settles a pending seek before changing modes and restores the date once", async () => {
+  const start = { year: 1337, month: 4, day: 1 };
+  const end = { year: 1340, month: 4, day: 1 };
+  const change = {
+    colorsChanged: false,
+    flagsChanged: false,
+    gradient: undefined,
+    selectionChanged: false,
+  };
+  const seek = Promise.withResolvers<Awaited<ReturnType<GameInstance["setTimelineDate"]>>>();
+  const setTimelineDate = vi
+    .fn<GameInstance["setTimelineDate"]>()
+    .mockReturnValueOnce(seek.promise)
+    .mockImplementation(async (date) => ({ ...change, mapMode: "political", date }));
+  const setMapMode = vi
+    .fn<GameInstance["setMapMode"]>()
+    .mockImplementation(async (mapMode) => ({ ...change, mapMode, date: end }));
+  const game = {
+    onHoverDisplayUpdate: vi.fn(),
+    onSelectionUpdate: vi.fn(),
+    onBoxSelectRectUpdate: vi.fn(),
+    onCursorHintUpdate: vi.fn(),
+    onViewportChange: vi.fn(),
+    startHoverTracking: vi.fn(),
+    setTimelineDate,
+    setMapMode,
+  } as unknown as GameInstance;
+  const engine = new Eu5UIEngine(game, {} as PaletteGradients, {
+    available: true,
+    start,
+    end,
+    changeDays: [],
+    changeCounts: [],
+    notes: [],
+  });
+
+  engine.trigger.setTimelineDate(start);
+  const switchMode = engine.trigger.selectMapMode("control");
+  const switchBack = engine.trigger.selectMapMode("political");
+  await Promise.resolve();
+  expect(setMapMode).not.toHaveBeenCalled();
+
+  seek.resolve({ ...change, mapMode: "political", date: start });
+  await switchMode;
+  expect(engine.state.timelineMapDate).toEqual(end);
+  await switchBack;
+  expect(engine.state.timelineMapDate).toEqual(start);
+  expect(setMapMode).toHaveBeenCalledExactlyOnceWith("control");
+  expect(setTimelineDate.mock.calls).toEqual([[start], [start]]);
+});

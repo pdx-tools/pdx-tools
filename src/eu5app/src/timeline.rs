@@ -19,6 +19,7 @@ use eu5save::models::{
     BStr, Color, CountryId, CountryName, CountryRename, DeadCountry, Gamestate, LocationIdx,
     LocationIndexedVec, Locations,
 };
+use jomini::common::PdsDate;
 
 /// One location changing hands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -221,6 +222,40 @@ impl TimelineIndex {
             }
         }
         result
+    }
+
+    /// Count locations at each year end and on the last date.
+    pub(crate) fn land_by_year(&self, ids: &[CountryId], end: Eu5Date) -> Vec<(i16, u32)> {
+        let Some(start) = self.first_date() else {
+            return Vec::new();
+        };
+        let mut dates = self.dates[..self.position(end)]
+            .iter()
+            .enumerate()
+            .peekable();
+        let mut count = 0;
+        (start.year()..=end.year())
+            .map(|year| {
+                while let Some(&(idx, date)) = dates.peek() {
+                    if date.year() > year {
+                        break;
+                    }
+                    dates.next();
+                    for change in self
+                        .events_on(idx)
+                        .iter()
+                        .filter_map(TimelineEvent::owner_change)
+                    {
+                        match (ids.contains(&change.from), ids.contains(&change.to)) {
+                            (true, false) => count -= 1,
+                            (false, true) => count += 1,
+                            _ => {}
+                        }
+                    }
+                }
+                (year, count)
+            })
+            .collect()
     }
 
     fn events_on(&self, date_idx: usize) -> &[TimelineEvent] {
@@ -489,6 +524,23 @@ mod tests {
             (&mahu, flag),
             (&mahu, other_flag)
         ));
+    }
+
+    #[test]
+    fn annual_land_carries_forward_and_stops_at_the_given_date() {
+        let index = sample_index();
+        assert_eq!(
+            index.land_by_year(&[CountryId::new(4)], date("1338.6.2")),
+            [(1337, 2), (1338, 2)]
+        );
+        assert_eq!(
+            index.land_by_year(&[CountryId::new(5)], date("1340.1.1")),
+            [(1337, 0), (1338, 1), (1339, 1), (1340, 1)]
+        );
+        assert_eq!(
+            index.land_by_year(&[CountryId::new(4), CountryId::new(5)], date("1340.1.1")),
+            [(1337, 2), (1338, 2), (1339, 2), (1340, 1)]
+        );
     }
 
     #[test]

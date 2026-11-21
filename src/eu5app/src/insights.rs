@@ -2,6 +2,30 @@ use crate::entity_profile::{CountryRef, MarketRef};
 use crate::presentation::{Localized, UiLocationIdx, present_dto};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct LandPoint {
+    pub year: i16,
+    pub locations: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct LandChange {
+    pub year: i16,
+    pub change: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[serde(rename_all = "camelCase")]
+pub struct LandHistory {
+    pub points: Vec<LandPoint>,
+    pub peak: LandPoint,
+    pub biggest_gain: Option<LandChange>,
+    pub biggest_loss: Option<LandChange>,
+}
+
 /// The whole map, as the scope every insight falls back to when nothing is
 /// selected. Computed once per save.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
