@@ -143,7 +143,10 @@ export function Standings({
             const subject = row.role === "subject";
             const grey = row.role === "grey" && !compared;
             const two = !!row.note && height >= 34;
-            const inline = !!row.note && !two && !narrow;
+            // Beside the name only where it fits whole; a long chain keeps a short way to its list.
+            // About 7 px a character of name and 5.6 of note, in the 128 px they share.
+            const fits = !!row.note && row.name.length * 7 + 6 + row.note.length * 5.6 <= 128;
+            const inline = !!row.note && !two && !narrow && (fits || row.chain.length >= 3);
             const flag = compact || narrow ? "mini" : "xs";
             return (
               <div
@@ -211,7 +214,13 @@ export function Standings({
                         </Badge>
                       )}
                     </span>
-                    {(two || inline) && row.note && <Note row={row} note={row.note} small={!two} />}
+                    {(two || inline) && row.note && (
+                      <Note
+                        row={row}
+                        note={two || fits ? row.note : `${row.chain.length} names`}
+                        small={!two}
+                      />
+                    )}
                     <span className="sr-only">
                       {row.lineage ? `, ${row.lineage}` : ""}
                       {subject ? ", followed" : row.pinned ? ", compared" : ""}
