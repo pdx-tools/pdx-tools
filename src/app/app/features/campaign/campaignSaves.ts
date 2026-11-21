@@ -99,12 +99,8 @@ export function mergeCampaign({ open, uploads, entries, openEntry }: CampaignSav
     !(identity.campaignIdHint !== null && otherHints.has(identity.campaignIdHint));
 
   for (const { entry, identity, membership } of ofGame) {
-    if (
-      membership !== "same" &&
-      !campaignBatches.has(entry.batch) &&
-      !added(entry, identity, membership)
-    )
-      continue;
+    const candidate = membership !== "same" && !campaignBatches.has(entry.batch);
+    if (candidate && !added(entry, identity, membership)) continue;
     const isOpen = entry === openEntry;
     const date = isOpen ? open.date : identity.date;
     const day = dayNumber(date);
@@ -129,6 +125,8 @@ export function mergeCampaign({ open, uploads, entries, openEntry }: CampaignSav
       // Preserve a usable campaign save when a conflicting file has less reliable membership.
       if (
         current.isOpen ||
+        // A file taken in only until a full parse never displaces a save known to be of the campaign.
+        (candidate && current.membership === "same") ||
         (!canOpen(entry) && canOpen(current)) ||
         (membership === "different" && current.membership !== "different")
       ) {

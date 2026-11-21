@@ -284,6 +284,16 @@ describe("mergeCampaignSaves", () => {
       ]);
     });
 
+    it("keeps a save known to be of the campaign over an added file of its date", () => {
+      const saves = mergeCampaign({
+        open: open("h1"),
+        uploads: [{ ...upload("u", "1526-04-18"), game: "eu4" }],
+        entries: [first, eu4("other", "1526-04-18", "x", 2), eu4("third", "1547-06-09", "h3", 2)],
+        openEntry: first,
+      });
+      expect(saves.saves.map((x) => x.key)).toEqual(["local:first", "upload:u", "local:third"]);
+    });
+
     it("does not take files from before the campaign's first known save", () => {
       const later = eu4("open", "1580-10-21", "h4", 5, true);
       const saves = mergeCampaignSaves({
