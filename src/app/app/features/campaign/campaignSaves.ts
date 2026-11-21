@@ -2,7 +2,7 @@ import { dayNumber, parseDate } from "@/features/timeline/date";
 import type { FeedSave } from "@/server-lib/fn/feed";
 import type { LocalSaveEntry } from "./localSaves";
 import { campaignMembership } from "./types";
-import type { CampaignSave, LocalSaveProblem, OpenSave } from "./types";
+import type { CampaignSave, LocalSaveProblem, Membership, OpenSave, SaveIdentity } from "./types";
 
 export type CampaignUpload = Pick<
   FeedSave,
@@ -83,9 +83,28 @@ export function mergeCampaign({ open, uploads, entries, openEntry }: CampaignSav
     ofGame.filter((x) => x.membership === "same").map((x) => x.entry.batch),
   );
   if (openEntry !== undefined) campaignBatches.add(openEntry.batch);
+  // Each host and player of an EU4 multiplayer campaign writes another
+  // metadata campaign id, so a file added after the campaign's first known
+  // save is taken as one of its saves until a full parse says otherwise,
+  // unless its drop or its metadata id ties it to another campaign.
+  const start = Math.min(...campaignBatches);
+  const other = ofGame.filter((x) => x.membership === "different");
+  const otherBatches = new Set(other.map((x) => x.entry.batch));
+  const otherHints = new Set(other.map((x) => x.identity.campaignIdHint));
+  const added = (entry: LocalSaveEntry, identity: SaveIdentity, membership: Membership) =>
+    game === "eu4" &&
+    membership === "unknown" &&
+    entry.batch > start &&
+    !otherBatches.has(entry.batch) &&
+    !(identity.campaignIdHint !== null && otherHints.has(identity.campaignIdHint));
 
   for (const { entry, identity, membership } of ofGame) {
-    if (membership !== "same" && !campaignBatches.has(entry.batch)) continue;
+    if (
+      membership !== "same" &&
+      !campaignBatches.has(entry.batch) &&
+      !added(entry, identity, membership)
+    )
+      continue;
     const isOpen = entry === openEntry;
     const date = isOpen ? open.date : identity.date;
     const day = dayNumber(date);

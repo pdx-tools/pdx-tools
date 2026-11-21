@@ -214,6 +214,88 @@ describe("mergeCampaignSaves", () => {
     ]);
   });
 
+  describe("EU4 multiplayer files", () => {
+    const eu4 = (id: string, date: string, hint: string, batch: number, known = false) => ({
+      ...entry(id, date, {
+        playthroughId: known ? CAMPAIGN : null,
+        campaignIdHint: hint,
+        batch,
+      }),
+      game: "eu4" as const,
+    });
+    const open = (hint: string): OpenSave => ({
+      ...openLocal("1502-08-02"),
+      game: "eu4",
+      campaignIdHint: hint,
+      multiplayer: true,
+    });
+    const first = eu4("first", "1502-08-02", "h1", 1, true);
+
+    it("takes files added one at a time as saves of the campaign while their campaign is unknown", () => {
+      const saves = mergeCampaignSaves({
+        open: open("h1"),
+        uploads: [],
+        entries: [first, eu4("second", "1526-04-18", "h2", 2), eu4("third", "1547-06-09", "h3", 3)],
+        openEntry: first,
+      });
+      expect(saves.map((x) => [x.key, x.membership])).toEqual([
+        ["local:first", "same"],
+        ["local:second", "unknown"],
+        ["local:third", "unknown"],
+      ]);
+    });
+
+    it("takes files added together the same way", () => {
+      const saves = mergeCampaignSaves({
+        open: open("h1"),
+        uploads: [],
+        entries: [first, eu4("second", "1526-04-18", "h2", 2), eu4("third", "1547-06-09", "h3", 2)],
+        openEntry: first,
+      });
+      expect(saves.map((x) => x.key)).toEqual(["local:first", "local:second", "local:third"]);
+    });
+
+    it("leaves out an added file that a full parse finds of another campaign, and files tied to it", () => {
+      const refuted = {
+        ...eu4("kush", "1444-11-11", "k", 2),
+        identity: {
+          playthroughId: "kush" as PlaythroughId,
+          campaignIdHint: "k",
+          date: { year: 1444, month: 11, day: 11 },
+        },
+      };
+      const saves = mergeCampaignSaves({
+        open: open("h1"),
+        uploads: [],
+        entries: [
+          first,
+          refuted,
+          // Of the same drop as a file of another campaign.
+          eu4("dropped", "1460-01-01", "x", 2),
+          // With the metadata id of a file of another campaign.
+          eu4("hinted", "1470-01-01", "k", 3),
+          eu4("second", "1526-04-18", "h2", 4),
+        ],
+        openEntry: first,
+      });
+      expect(saves.map((x) => [x.key, x.membership])).toEqual([
+        ["local:first", "same"],
+        ["local:second", "unknown"],
+      ]);
+    });
+
+    it("does not take files from before the campaign's first known save", () => {
+      const later = eu4("open", "1580-10-21", "h4", 5, true);
+      const saves = mergeCampaignSaves({
+        open: { ...open("h4"), date: { year: 1580, month: 10, day: 21 } },
+        uploads: [],
+        entries: [eu4("earlier", "1450-01-01", "e", 4), later, eu4("added", "1602-03-16", "s", 6)],
+        openEntry: later,
+      });
+      expect(saves.map((x) => x.key)).toEqual(["local:open", "local:added"]);
+    });
+  });
+
   it("adds the open save when no list has it", () => {
     const saves = mergeCampaignSaves({
       open: openUpload("z", "1500-01-01"),
