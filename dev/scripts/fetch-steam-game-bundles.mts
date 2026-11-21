@@ -48,7 +48,7 @@ const targets: BundleTarget[] = [
       version: release.game_version,
     })),
   ),
-  { game: "ck3", version: "1.20.0.3" },
+  { game: "ck3", version: "1.21.0.3" },
   { game: "hoi4", version: "1.19.3" },
   { game: "imperator", version: "2.0.5" },
   { game: "vic3", version: "1.15.0" },
