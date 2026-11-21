@@ -36,7 +36,9 @@ pub use columns::{
     ColumnError, Columns, DecodeError, Decoder, Encoder, NullableColumn, PayloadError,
     ReferenceError, RowColumns, check_length,
 };
-pub use descriptor::{Descriptor, SaveDate, SnapshotDescriptor, SnapshotSource, snapshot_id};
+pub use descriptor::{
+    Descriptor, SnapshotDescriptor, SnapshotSource, date_from_sort, date_sort, snapshot_id,
+};
 pub use query::{
     History, HistoryRow, Query, QueryOutcome, QueryReply, QueryRequest, Selection, Series, View,
 };
@@ -45,9 +47,9 @@ pub use session::Session;
 pub use snapshot::Observation;
 pub use store::{AnalysisError, AnalysisErrorName, Appended, Snapshot, Store, StoreMemory};
 pub use table::{
-    BoundRows, BoundSelectionRows, Column, IndexId, IndexRegistry, KeyError, PrefixKey,
-    PreparedIndex, RegistryMemory, ResolvedBatch, Row, RowError, RowRange, RowSelect,
-    SelectionRows, Table, TableError,
+    BoundRows, BoundSelectionRows, Column, IndexId, IndexRegistry, KeyError, KeyOrder, MapOrder,
+    PrefixKey, Prefixed, PreparedIndex, RangeOrder, RegistryMemory, ResolvedBatch, Row, RowError,
+    RowRange, RowSelect, SelectionRows, Sorted, Table, TableError,
 };
 pub use text::{PreparedTexts, TextId, TextRegistry, TextRow, Texts};
 
@@ -66,28 +68,25 @@ pub trait Game: Sized + 'static {
     /// The concrete tables and dictionaries of a snapshot.
     type Payload: Columns + fmt::Debug;
     type Query: Query<Self>;
-
-    type Shared: Default + fmt::Debug;
-    type Prepared;
+    /// The keys and texts that the snapshots of a store share.
+    type Shared: Registry + Default + fmt::Debug;
 
     /// Check rules that require the complete payload. Construction and decode
     /// call this hook. Append accepts only a constructed observation.
     fn validate(payload: &Self::Payload) -> Result<(), PayloadError>;
-    /// Prepare references against typed registries without changing the store.
+    /// Prepare references against the shared registries without changing
+    /// them. The store commits the plan only if the snapshot fits.
     fn prepare(
         payload: &mut Self::Payload,
         layout: &str,
         shared: &Self::Shared,
-    ) -> Result<Self::Prepared, AnalysisError>;
-    fn added_bytes(prepared: &Self::Prepared) -> usize;
-    /// Commit a prepared append after admission. This operation cannot fail.
-    fn commit(shared: &mut Self::Shared, prepared: Self::Prepared);
-    fn shared_memory(shared: &Self::Shared) -> RegistryMemory;
+    ) -> Result<<Self::Shared as Registry>::Prepared, AnalysisError>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jomini::common::Date;
 
     /// A game-neutral payload: one value for each geographic ID.
     #[derive(Debug)]
@@ -95,7 +94,7 @@ mod tests {
 
     #[derive(Debug, Clone, PartialEq)]
     struct Values {
-        table: Table<u32, Vec<f64>>,
+        table: Table<u32, Vec<f64>, MapOrder>,
     }
     impl Columns for Values {
         fn encode(&self, out: &mut Encoder) {
@@ -156,7 +155,6 @@ mod tests {
         type Payload = Values;
         type Query = TestQuery;
         type Shared = IndexRegistry<u32>;
-        type Prepared = PreparedIndex<u32>;
 
         fn validate(_: &Values) -> Result<(), PayloadError> {
             VALIDATIONS.with(|count| count.set(count.get() + 1));
@@ -166,17 +164,8 @@ mod tests {
             payload: &mut Values,
             layout: &str,
             shared: &Self::Shared,
-        ) -> Result<Self::Prepared, AnalysisError> {
+        ) -> Result<PreparedIndex<u32>, AnalysisError> {
             shared.prepare(&mut payload.table, Some(layout))
-        }
-        fn added_bytes(prepared: &Self::Prepared) -> usize {
-            prepared.added_bytes()
-        }
-        fn commit(shared: &mut Self::Shared, prepared: Self::Prepared) {
-            shared.commit(prepared);
-        }
-        fn shared_memory(shared: &Self::Shared) -> RegistryMemory {
-            shared.memory()
         }
     }
 
@@ -189,11 +178,7 @@ mod tests {
             SnapshotSource {
                 campaign_id: String::from("campaign"),
                 content_hash: String::from(hash),
-                date: SaveDate {
-                    year: date_sort / 10000,
-                    month: (date_sort / 100 % 100) as u8,
-                    day: (date_sort % 100) as u8,
-                },
+                date: date_from_sort(date_sort).unwrap(),
                 game_version: String::from("1.0"),
             },
             String::from(layout),
@@ -239,6 +224,41 @@ mod tests {
         assert_eq!(descriptor.date, "1444-11-11");
         assert_eq!(descriptor.date_sort, 14441111);
         assert_eq!(descriptor.artifacts, ["observations"]);
+        let before_zero = Date::from_ymd(-17, 12, 31);
+        let source = SnapshotSource {
+            campaign_id: String::from("campaign"),
+            content_hash: String::from("hash"),
+            date: before_zero,
+            game_version: String::from("1.0"),
+        };
+        let early = SnapshotDescriptor::new::<TestGame>(source, String::from("layout"));
+        assert_eq!(
+            (early.date.as_str(), early.date_sort),
+            ("-017-12-31", -168769)
+        );
+        assert_eq!(early.save_date(), Some(before_zero));
+        for date in [
+            Date::from_ymd(i16::MIN, 1, 1),
+            Date::from_ymd(i16::MAX, 12, 31),
+        ] {
+            assert_eq!(date_from_sort(date_sort(date)), Some(date));
+        }
+        assert!(date_sort(before_zero) < date_sort(Date::from_ymd(-16, 1, 1)));
+        // The game calendar has no leap days, and years fit in an i16.
+        for key in [16000229, 14441131, 14441301, 400_000_101] {
+            assert_eq!(date_from_sort(key), None);
+        }
+    }
+
+    #[test]
+    fn refuses_a_descriptor_whose_dates_disagree() {
+        let mut descriptor = descriptor("a", 15000101, "[42]");
+        descriptor.date_sort = 15000102;
+        let mut store = Store::new();
+        assert_eq!(
+            append(&mut store, descriptor, &[42], usize::MAX).unwrap_err(),
+            AnalysisError::InvalidDescriptor
+        );
     }
 
     #[test]

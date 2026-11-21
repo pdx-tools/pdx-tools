@@ -1,8 +1,10 @@
 //! Typed keys and immutable, aligned table columns.
 use crate::{ColumnError, Columns, DecodeError, Decoder, Encoder, RowColumns};
+use std::borrow::Cow;
 use std::cell::{Cell, OnceCell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::ops::{Bound, RangeBounds};
 use std::rc::Rc;
 
@@ -26,7 +28,6 @@ pub enum TableError {
 pub enum RowError {
     ForeignIndex,
     OutOfBounds,
-    Unordered,
     ReversedRange,
 }
 
@@ -51,7 +52,6 @@ struct KeyIndex<K> {
     keys: Vec<K>,
     sorted: bool,
     rows: OnceCell<HashMap<K, u32>>,
-    prefix_sorted: bool,
 }
 /// A row can be used only with its original shared index.
 #[derive(Debug, Clone, Copy)]
@@ -78,40 +78,118 @@ impl<T> Column for Vec<T> {
     }
 }
 
-/// A prefix is part of the key schema. Its order must agree with key order.
+/// A prefix is part of the key schema. Its order must agree with key order,
+/// and equal keys must have equal prefixes.
 pub trait PrefixKey: Ord {
     type Prefix: Ord + ?Sized;
     fn prefix(&self) -> &Self::Prefix;
 }
 
+mod sealed {
+    pub trait Sealed {
+        /// The constructor rejects keys that do not strictly increase.
+        const SORTED: bool;
+    }
+}
+/// How a table orders its keys. The order is part of the table type, so a
+/// table reaches a range query only if its constructor checked the order.
+pub trait KeyOrder: sealed::Sealed {}
+/// An order that supports key ranges.
+pub trait RangeOrder: KeyOrder {}
+/// Keys strictly increase.
+#[derive(Debug, Clone, Copy)]
+pub struct Sorted;
+/// Keys strictly increase, and their [`PrefixKey`] prefixes never decrease.
+#[derive(Debug, Clone, Copy)]
+pub struct Prefixed;
+/// Keys keep the order of the map they came from.
+#[derive(Debug, Clone, Copy)]
+pub struct MapOrder;
+impl sealed::Sealed for Sorted {
+    const SORTED: bool = true;
+}
+impl sealed::Sealed for Prefixed {
+    const SORTED: bool = true;
+}
+impl sealed::Sealed for MapOrder {
+    const SORTED: bool = false;
+}
+impl KeyOrder for Sorted {}
+impl KeyOrder for Prefixed {}
+impl KeyOrder for MapOrder {}
+impl RangeOrder for Sorted {}
+impl RangeOrder for Prefixed {}
+
 /// A table with fixed-size keys. Use domain IDs or composite IDs for keys.
 #[derive(Debug, Clone)]
-pub struct Table<K, C> {
+pub struct Table<K, C, O = Sorted> {
     index: Rc<KeyIndex<K>>,
     columns: C,
+    order: PhantomData<O>,
 }
-impl<K: PartialEq, C: PartialEq> PartialEq for Table<K, C> {
+impl<K: PartialEq, C: PartialEq, O> PartialEq for Table<K, C, O> {
     fn eq(&self, other: &Self) -> bool {
         self.index.keys == other.index.keys && self.columns == other.columns
     }
 }
-impl<K: Copy + Ord, C: RowColumns> Table<K, C> {
+impl<K: Copy + Ord, C: RowColumns> Table<K, C, Sorted> {
     /// Construct an analytical table. Keys must be strictly increasing.
     pub fn sorted(keys: Vec<K>, columns: C) -> Result<Self, TableError> {
-        Self::new(keys, columns, true)
+        Self::new(keys, columns)
     }
+    /// The schema supplies the ordering policy; bytes cannot select it.
+    pub fn decode_sorted_with(
+        input: &mut Decoder<'_>,
+        keys: impl FnOnce(&mut Decoder<'_>) -> Result<Vec<K>, DecodeError>,
+    ) -> Result<Self, DecodeError> {
+        Self::decode_with(input, keys, Self::sorted)
+    }
+}
+impl<K: Copy + Ord, C: RowColumns> Table<K, C, MapOrder> {
     /// Preserve map order. Only this policy permits a lazy hash lookup.
     pub fn map_order(keys: Vec<K>, columns: C) -> Result<Self, TableError> {
-        Self::new(keys, columns, false)
+        Self::new(keys, columns)
     }
-    fn new(keys: Vec<K>, columns: C, require_sorted: bool) -> Result<Self, TableError> {
-        Self::new_inner(keys, columns, require_sorted)
-            .map_err(|error| error.in_table(C::table_name()))
+    pub fn decode_map_order_with(
+        input: &mut Decoder<'_>,
+        keys: impl FnOnce(&mut Decoder<'_>) -> Result<Vec<K>, DecodeError>,
+    ) -> Result<Self, DecodeError> {
+        Self::decode_with(input, keys, Self::map_order)
     }
-    fn new_inner(keys: Vec<K>, columns: C, require_sorted: bool) -> Result<Self, TableError> {
+}
+impl<K: Copy + Ord + PrefixKey, C: RowColumns> Table<K, C, Prefixed> {
+    /// Construct a sorted composite table and check the declared prefix order,
+    /// which `prefix_range` needs.
+    pub fn sorted_prefix(keys: Vec<K>, columns: C) -> Result<Self, TableError> {
+        if keys.windows(2).any(|x| x[0].prefix() > x[1].prefix()) {
+            return Err(TableError::Key(KeyError::UnsortedPrefix).in_table(C::table_name()));
+        }
+        Self::new(keys, columns)
+    }
+    pub fn decode_sorted_prefix_with(
+        input: &mut Decoder<'_>,
+        keys: impl FnOnce(&mut Decoder<'_>) -> Result<Vec<K>, DecodeError>,
+    ) -> Result<Self, DecodeError> {
+        Self::decode_with(input, keys, Self::sorted_prefix)
+    }
+}
+impl<K: Copy + Ord, C: RowColumns, O: KeyOrder> Table<K, C, O> {
+    fn new(keys: Vec<K>, columns: C) -> Result<Self, TableError> {
+        Self::new_inner(keys, columns).map_err(|error| error.in_table(C::table_name()))
+    }
+    fn decode_with(
+        input: &mut Decoder<'_>,
+        keys: impl FnOnce(&mut Decoder<'_>) -> Result<Vec<K>, DecodeError>,
+        build: impl FnOnce(Vec<K>, C) -> Result<Self, TableError>,
+    ) -> Result<Self, DecodeError> {
+        let keys = keys(input).map_err(|error| error.in_table(C::table_name()))?;
+        let columns = C::decode(input).map_err(|error| error.in_table(C::table_name()))?;
+        build(keys, columns).map_err(DecodeError::Table)
+    }
+    fn new_inner(keys: Vec<K>, columns: C) -> Result<Self, TableError> {
         u32::try_from(keys.len()).map_err(|_| TableError::Key(KeyError::TooManyRows))?;
         let sorted = keys.is_sorted();
-        if require_sorted && !sorted {
+        if O::SORTED && !sorted {
             return Err(TableError::Key(KeyError::Unsorted));
         }
         let duplicate = if sorted {
@@ -131,65 +209,13 @@ impl<K: Copy + Ord, C: RowColumns> Table<K, C> {
                 keys,
                 sorted,
                 rows: OnceCell::new(),
-                prefix_sorted: false,
             }),
             columns,
+            order: PhantomData,
         })
     }
-    /// Construct a sorted composite table and check the declared prefix order.
-    /// Use this constructor with `prefix_range`.
-    pub fn sorted_prefix(keys: Vec<K>, columns: C) -> Result<Self, TableError>
-    where
-        K: PrefixKey,
-    {
-        if keys.windows(2).any(|x| x[0].prefix() > x[1].prefix()) {
-            return Err(TableError::Key(KeyError::UnsortedPrefix).in_table(C::table_name()));
-        }
-        let mut table = Self::sorted(keys, columns)?;
-        Rc::get_mut(&mut table.index)
-            .expect("new index")
-            .prefix_sorted = true;
-        Ok(table)
-    }
-    /// The schema supplies the ordering policy; bytes cannot select it.
-    pub fn decode_sorted_with(
-        input: &mut Decoder<'_>,
-        keys: impl FnOnce(&mut Decoder<'_>) -> Result<Vec<K>, DecodeError>,
-    ) -> Result<Self, DecodeError> {
-        let keys = keys(input).map_err(|error| error.in_table(C::table_name()))?;
-        Self::sorted(
-            keys,
-            C::decode(input).map_err(|error| error.in_table(C::table_name()))?,
-        )
-        .map_err(DecodeError::Table)
-    }
-    pub fn decode_sorted_prefix_with(
-        input: &mut Decoder<'_>,
-        keys: impl FnOnce(&mut Decoder<'_>) -> Result<Vec<K>, DecodeError>,
-    ) -> Result<Self, DecodeError>
-    where
-        K: PrefixKey,
-    {
-        let keys = keys(input).map_err(|error| error.in_table(C::table_name()))?;
-        Self::sorted_prefix(
-            keys,
-            C::decode(input).map_err(|error| error.in_table(C::table_name()))?,
-        )
-        .map_err(DecodeError::Table)
-    }
-    pub fn decode_map_order_with(
-        input: &mut Decoder<'_>,
-        keys: impl FnOnce(&mut Decoder<'_>) -> Result<Vec<K>, DecodeError>,
-    ) -> Result<Self, DecodeError> {
-        let keys = keys(input).map_err(|error| error.in_table(C::table_name()))?;
-        Self::map_order(
-            keys,
-            C::decode(input).map_err(|error| error.in_table(C::table_name()))?,
-        )
-        .map_err(DecodeError::Table)
-    }
 }
-impl<K: Copy + Ord + Hash, C> Table<K, C> {
+impl<K: Copy + Ord + Hash, C, O> Table<K, C, O> {
     pub fn row(&self, key: &K) -> Option<Row> {
         let offset = if self.index.sorted {
             self.index.keys.binary_search(key).ok().map(|x| x as u32)
@@ -213,14 +239,14 @@ impl<K: Copy + Ord + Hash, C> Table<K, C> {
         })
     }
 }
-impl<K, C: Columns> Table<K, C> {
+impl<K, C: Columns, O> Table<K, C, O> {
     /// Encode keys through a domain codec, then encode the aligned columns.
     pub fn encode_with(&self, out: &mut Encoder, keys: impl FnOnce(&[K], &mut Encoder)) {
         keys(self.keys(), out);
         self.columns.encode(out);
     }
 }
-impl<K, C> Table<K, C> {
+impl<K, C, O> Table<K, C, O> {
     pub fn keys(&self) -> &[K] {
         &self.index.keys
     }
@@ -235,15 +261,6 @@ impl<K, C> Table<K, C> {
     }
     pub fn index_id(&self) -> IndexId {
         self.index.id
-    }
-    /// True when keys strictly increase, so lookups can binary search.
-    pub fn is_sorted(&self) -> bool {
-        self.index.sorted
-    }
-    /// True when `sorted_prefix` checked the prefix order that
-    /// `prefix_range` requires.
-    pub fn is_prefix_sorted(&self) -> bool {
-        self.index.prefix_sorted
     }
     pub fn rows(&self) -> impl ExactSizeIterator<Item = Row> + '_ {
         (0..self.len() as u32).map(|offset| Row {
@@ -277,12 +294,9 @@ impl<K, C> Table<K, C> {
             .ok_or(RowError::OutOfBounds)
     }
 }
-impl<K: Ord, C> Table<K, C> {
+impl<K: Ord, C, O: RangeOrder> Table<K, C, O> {
     /// Borrow a key interval without allocating offsets.
     pub fn range(&self, bounds: impl RangeBounds<K>) -> Result<RowRange<'_, K, C>, RowError> {
-        if !self.index.sorted {
-            return Err(RowError::Unordered);
-        }
         match (bounds.start_bound(), bounds.end_bound()) {
             (
                 Bound::Included(start) | Bound::Excluded(start),
@@ -311,59 +325,54 @@ impl<K: Ord, C> Table<K, C> {
         if start > end {
             return Err(RowError::ReversedRange);
         }
-        Ok(RowRange {
-            table: self,
-            start,
-            end,
-        })
+        Ok(self.row_range(start, end))
     }
-    /// Read one checked schema prefix. Empty and absent prefixes borrow an
-    /// empty interval. Construct this table with `sorted_prefix`.
-    pub fn prefix_range(&self, prefix: &K::Prefix) -> Result<RowRange<'_, K, C>, RowError>
-    where
-        K: PrefixKey,
-    {
-        if !self.index.sorted {
-            return Err(RowError::Unordered);
-        }
-        if !self.index.prefix_sorted {
-            return Err(RowError::Unordered);
-        }
+}
+impl<K: PrefixKey, C> Table<K, C, Prefixed> {
+    /// The rows of one prefix. An absent prefix gives an empty interval.
+    pub fn prefix_range(&self, prefix: &K::Prefix) -> RowRange<'_, K, C> {
         let start = self.keys().partition_point(|k| k.prefix() < prefix);
         let end = self.keys().partition_point(|k| k.prefix() <= prefix);
-        Ok(RowRange {
-            table: self,
+        self.row_range(start, end)
+    }
+}
+impl<K, C, O> Table<K, C, O> {
+    fn row_range(&self, start: usize, end: usize) -> RowRange<'_, K, C> {
+        RowRange {
+            index: self.index.id,
+            keys: &self.keys()[start..end],
+            columns: &self.columns,
             start,
-            end,
-        })
+        }
     }
 }
 /// A borrowed interval bound to a shared key index.
 #[derive(Debug)]
 pub struct RowRange<'a, K, C> {
-    table: &'a Table<K, C>,
+    index: IndexId,
+    keys: &'a [K],
+    columns: &'a C,
     start: usize,
-    end: usize,
 }
 impl<'a, K, C> RowRange<'a, K, C> {
     pub fn len(&self) -> usize {
-        self.end - self.start
+        self.keys.len()
     }
     pub fn is_empty(&self) -> bool {
-        self.start == self.end
+        self.keys.is_empty()
     }
-    pub fn keys(&self) -> &[K] {
-        &self.table.keys()[self.start..self.end]
+    pub fn keys(&self) -> &'a [K] {
+        self.keys
     }
-    pub fn bind<D>(&self, table: &'a Table<K, D>) -> Result<RowRange<'a, K, D>, RowError> {
-        if self.table.index.id != table.index.id {
+    /// The same rows of another table with the same shared index.
+    pub fn bind<'t, D, O>(
+        &self,
+        table: &'t Table<K, D, O>,
+    ) -> Result<RowRange<'t, K, D>, RowError> {
+        if self.index != table.index.id {
             return Err(RowError::ForeignIndex);
         }
-        Ok(RowRange {
-            table,
-            start: self.start,
-            end: self.end,
-        })
+        Ok(table.row_range(self.start, self.start + self.len()))
     }
     pub fn values<'b, A: Column + 'b>(
         &'b self,
@@ -372,8 +381,9 @@ impl<'a, K, C> RowRange<'a, K, C> {
     where
         'a: 'b,
     {
-        let column = column(self.table.columns());
-        (self.start..self.end).map(move |i| column.get_value(i).expect("validated aligned column"))
+        let column = column(self.columns);
+        (self.start..self.start + self.len())
+            .map(move |i| column.get_value(i).expect("validated aligned column"))
     }
 }
 #[derive(Debug)]
@@ -381,12 +391,14 @@ enum ResolvedRows {
     MissingKey,
     Rows(Box<[u32]>),
 }
-/// A borrowed selection with one cached resolution for each encountered index.
+/// A borrowed set of keys with one cached resolution for each encountered
+/// index. Rows follow the order of the given keys, and a repeated key counts
+/// once, at its first place.
 /// Use `resolve_bound` to read each table. Use `resolve` and `bind` to read
 /// another snapshot with the same index. See the EU4 province query.
 #[derive(Debug)]
-pub struct RowSelect<'q, K> {
-    keys: &'q [K],
+pub struct RowSelect<'q, K: Clone> {
+    keys: Cow<'q, [K]>,
     cache: Vec<(IndexId, ResolvedRows)>,
 }
 #[derive(Debug)]
@@ -397,10 +409,10 @@ pub enum SelectionRows<'a> {
 }
 /// A selection resolved and bound to the table supplied to `resolve_bound`.
 #[derive(Debug)]
-pub enum BoundSelectionRows<'t, 'r, K, C> {
+pub enum BoundSelectionRows<'t, 'r, C> {
     EmptySelection,
     MissingKey,
-    Rows(BoundRows<'t, 'r, K, C>),
+    Rows(BoundRows<'t, 'r, C>),
 }
 #[derive(Debug)]
 pub struct ResolvedBatch<'a> {
@@ -408,50 +420,60 @@ pub struct ResolvedBatch<'a> {
     offsets: &'a [u32],
 }
 #[derive(Debug)]
-pub struct BoundRows<'a, 'b, K, C> {
-    table: &'a Table<K, C>,
+pub struct BoundRows<'a, 'b, C> {
+    columns: &'a C,
     offsets: &'b [u32],
 }
-impl<'q, K> RowSelect<'q, K> {
+impl<'q, K: Copy + Ord + Hash> RowSelect<'q, K> {
     pub fn new(keys: &'q [K]) -> Self {
+        let mut seen = HashSet::new();
+        let keys = if keys.len() < 2 || keys.iter().all(|key| seen.insert(*key)) {
+            Cow::Borrowed(keys)
+        } else {
+            seen.clear();
+            Cow::Owned(
+                keys.iter()
+                    .copied()
+                    .filter(|key| seen.insert(*key))
+                    .collect(),
+            )
+        };
         Self {
             keys,
             cache: Vec::new(),
         }
     }
-}
-impl<K: Copy + Ord + Hash> RowSelect<'_, K> {
     /// Resolve and bind in one operation. The resolved offsets come from this
     /// table, so no rebinding identity check is required.
-    pub fn resolve_bound<'r, 't, C>(
+    pub fn resolve_bound<'r, 't, C, O>(
         &'r mut self,
-        table: &'t Table<K, C>,
-    ) -> BoundSelectionRows<'t, 'r, K, C> {
+        table: &'t Table<K, C, O>,
+    ) -> BoundSelectionRows<'t, 'r, C> {
         match self.resolve(table) {
             SelectionRows::EmptySelection => BoundSelectionRows::EmptySelection,
             SelectionRows::MissingKey => BoundSelectionRows::MissingKey,
             SelectionRows::Rows(rows) => BoundSelectionRows::Rows(BoundRows {
-                table,
+                columns: &table.columns,
                 offsets: rows.offsets,
             }),
         }
     }
-    pub fn resolve<C>(&mut self, table: &Table<K, C>) -> SelectionRows<'_> {
+    pub fn resolve<C, O>(&mut self, table: &Table<K, C, O>) -> SelectionRows<'_> {
         if self.keys.is_empty() {
             return SelectionRows::EmptySelection;
         }
         let at = match self.cache.iter().position(|(id, _)| *id == table.index.id) {
             Some(at) => at,
             None => {
-                let rows: Option<Box<[u32]>> = self
+                let rows: Option<Vec<u32>> = self
                     .keys
                     .iter()
                     .map(|key| table.row(key).map(|row| row.offset))
                     .collect();
-                self.cache.push((
-                    table.index.id,
-                    rows.map_or(ResolvedRows::MissingKey, ResolvedRows::Rows),
-                ));
+                let rows = rows.map_or(ResolvedRows::MissingKey, |rows| {
+                    ResolvedRows::Rows(rows.into_boxed_slice())
+                });
+                self.cache.push((table.index.id, rows));
                 self.cache.len() - 1
             }
         };
@@ -465,25 +487,25 @@ impl<K: Copy + Ord + Hash> RowSelect<'_, K> {
     }
 }
 impl<'b> ResolvedBatch<'b> {
-    pub fn bind<'a, K, C>(
+    pub fn bind<'a, K, C, O>(
         &self,
-        table: &'a Table<K, C>,
-    ) -> Result<BoundRows<'a, 'b, K, C>, RowError> {
+        table: &'a Table<K, C, O>,
+    ) -> Result<BoundRows<'a, 'b, C>, RowError> {
         if self.index != table.index.id {
             return Err(RowError::ForeignIndex);
         }
         Ok(BoundRows {
-            table,
+            columns: &table.columns,
             offsets: self.offsets,
         })
     }
 }
-impl<K, C> BoundRows<'_, '_, K, C> {
+impl<C> BoundRows<'_, '_, C> {
     pub fn values<'a, A: Column + 'a>(
         &'a self,
         column: impl FnOnce(&C) -> &A,
     ) -> impl ExactSizeIterator<Item = A::Value<'a>> {
-        let column = column(self.table.columns());
+        let column = column(self.columns);
         self.offsets.iter().map(move |i| {
             column
                 .get_value(*i as usize)
@@ -542,13 +564,13 @@ impl std::ops::Add for RegistryMemory {
 }
 impl<K: Copy + Eq + Hash> IndexRegistry<K> {
     /// Prepare sharing without changing the registry or an existing lookup.
-    pub fn prepare<C>(
+    pub fn prepare<C, O>(
         &self,
-        table: &mut Table<K, C>,
+        table: &mut Table<K, C, O>,
         layout: Option<&str>,
     ) -> Result<PreparedIndex<K>, crate::AnalysisError> {
         if let Some(index) = layout.and_then(|name| self.layouts.get(name)) {
-            if index.keys != table.index.keys || index.prefix_sorted != table.index.prefix_sorted {
+            if index.keys != table.index.keys {
                 return Err(crate::AnalysisError::IncompatibleLayout);
             }
             table.index = Rc::clone(index);
@@ -564,9 +586,9 @@ impl<K: Copy + Eq + Hash> IndexRegistry<K> {
         table.keys().hash(&mut hash);
         self.prepare_hash(table, layout, hash.finish())
     }
-    fn prepare_hash<C>(
+    fn prepare_hash<C, O>(
         &self,
-        table: &mut Table<K, C>,
+        table: &mut Table<K, C, O>,
         layout: Option<&str>,
         hash: u64,
     ) -> Result<PreparedIndex<K>, crate::AnalysisError> {
@@ -576,11 +598,10 @@ impl<K: Copy + Eq + Hash> IndexRegistry<K> {
         {
             return Err(crate::AnalysisError::IncompatibleLayout);
         }
-        let existing = self.buckets.get(&hash).and_then(|bucket| {
-            bucket.iter().find(|index| {
-                index.keys == table.index.keys && index.prefix_sorted == table.index.prefix_sorted
-            })
-        });
+        let existing = self
+            .buckets
+            .get(&hash)
+            .and_then(|bucket| bucket.iter().find(|index| index.keys == table.index.keys));
         if let Some(index) = existing {
             table.index = Rc::clone(index);
         }
@@ -668,7 +689,6 @@ impl std::fmt::Display for RowError {
         f.write_str(match self {
             Self::ForeignIndex => "Row or range belongs to another key index",
             Self::OutOfBounds => "Row is outside the column",
-            Self::Unordered => "Table ordering does not support this range",
             Self::ReversedRange => "Range bounds are reversed",
         })
     }
@@ -791,7 +811,6 @@ mod tests {
         assert_eq!(registry.memory().lookup_bytes, 0);
         assert_eq!(*table.value(table.row(&1).unwrap(), |v| v).unwrap(), 10);
         assert!(registry.memory().lookup_bytes > 0);
-        assert_eq!(table.range(1..=2).unwrap_err(), RowError::Unordered);
     }
 
     #[test]
@@ -899,6 +918,11 @@ mod tests {
             RowSelect::new(&[3]).resolve(&a),
             SelectionRows::MissingKey
         ));
+        let mut repeated = RowSelect::new(&[1, 2, 1]);
+        let BoundSelectionRows::Rows(rows) = repeated.resolve_bound(&a) else {
+            panic!("resolved")
+        };
+        assert_eq!(rows.values(|v| v).copied().collect::<Vec<_>>(), [10, 20]);
     }
 
     #[test]
@@ -920,6 +944,34 @@ mod tests {
                 .unwrap_err(),
             crate::AnalysisError::IncompatibleLayout
         );
+    }
+
+    #[test]
+    fn tables_of_different_orders_share_equal_keys() {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        struct Key(u8, u8);
+        impl PrefixKey for Key {
+            type Prefix = u8;
+            fn prefix(&self) -> &u8 {
+                &self.0
+            }
+        }
+        let keys = vec![Key(1, 1), Key(1, 2), Key(2, 1)];
+        let mut registry = IndexRegistry::<Key>::default();
+        let mut sorted = Table::sorted(keys.clone(), vec![10u8, 20, 30]).unwrap();
+        let plan = registry.prepare(&mut sorted, Some("layout")).unwrap();
+        registry.commit(plan);
+        // A known layout name, then a fresh one that finds the keys by hash.
+        for layout in ["layout", "other"] {
+            let mut prefixed = Table::sorted_prefix(keys.clone(), vec![11u8, 21, 31]).unwrap();
+            let plan = registry.prepare(&mut prefixed, Some(layout)).unwrap();
+            registry.commit(plan);
+            assert_eq!(sorted.index_id(), prefixed.index_id());
+            let rows = prefixed.prefix_range(&2);
+            assert_eq!(rows.values(|v| v).copied().collect::<Vec<_>>(), [31]);
+            let rows = rows.bind(&sorted).unwrap();
+            assert_eq!(rows.values(|v| v).copied().collect::<Vec<_>>(), [30]);
+        }
     }
 
     #[test]

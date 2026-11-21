@@ -1,6 +1,6 @@
 use crate::columns::{Columns, DecodeError};
 use crate::snapshot::encode;
-use crate::{Descriptor, Game, Observation, SnapshotDescriptor, snapshot_id};
+use crate::{Descriptor, Game, Observation, Registry, SnapshotDescriptor, snapshot_id};
 use serde::Serialize;
 use std::fmt;
 
@@ -219,6 +219,7 @@ impl<G: Game> Store<G> {
         if descriptor.content_hash.is_empty()
             || descriptor.campaign_id.is_empty()
             || descriptor.id != snapshot_id(&descriptor.game, &descriptor.content_hash)
+            || descriptor.save_date().is_none()
         {
             return Err(AnalysisError::InvalidDescriptor);
         }
@@ -249,7 +250,7 @@ impl<G: Game> Store<G> {
         let prepared = G::prepare(&mut payload, &descriptor.layout_key, &self.shared)?;
         let added = payload
             .heap_bytes()
-            .checked_add(G::added_bytes(&prepared))
+            .checked_add(G::Shared::added_bytes(&prepared))
             .ok_or(AnalysisError::MemoryFull)?;
         let total = self
             .bytes
@@ -258,7 +259,7 @@ impl<G: Game> Store<G> {
             .ok_or(AnalysisError::MemoryFull)?;
 
         // Commit has no recoverable errors.
-        G::commit(&mut self.shared, prepared);
+        self.shared.commit(prepared);
         self.bytes = total;
         let snapshot = Snapshot {
             descriptor,
@@ -294,7 +295,7 @@ impl<G: Game> Store<G> {
     }
 
     pub fn memory(&self) -> StoreMemory {
-        let shared = G::shared_memory(&self.shared);
+        let shared = self.shared.memory();
         let columns = self
             .snapshots
             .iter()

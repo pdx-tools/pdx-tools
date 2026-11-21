@@ -4,11 +4,11 @@
 use crate::shared::playthrough_id;
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
-    IndexRegistry, NullableColumn, Observation, PayloadError, PrefixKey, ReferenceError, Registry,
-    RegistryMemory, RowSelect, SaveDate, Series, SnapshotDescriptor, SnapshotSource, Table,
-    TableError, TextRegistry, TextRow, Texts, View, check_length,
+    IndexRegistry, NullableColumn, Observation, PayloadError, PrefixKey, Prefixed, ReferenceError,
+    RowSelect, Series, SnapshotDescriptor, SnapshotSource, Table, TableError, TextRegistry,
+    TextRow, Texts, View, check_length,
 };
-use eu4save::{CountryTag, PdsDate, ProvinceId, models::Province, query::Query};
+use eu4save::{CountryTag, ProvinceId, models::Province, query::Query};
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 
@@ -79,7 +79,7 @@ pub struct Eu4Payload {
     pub provinces: Table<ProvinceId, ProvinceColumns>,
     pub countries: Table<CountryTag, CountryColumns>,
     pub religions: Texts,
-    pub country_religions: Table<CountryReligion, CountryReligionColumns>,
+    pub country_religions: Table<CountryReligion, CountryReligionColumns, Prefixed>,
 }
 impl Columns for Eu4Payload {
     fn encode(&self, out: &mut Encoder) {
@@ -299,11 +299,7 @@ pub fn extract(
         SnapshotSource {
             campaign_id: playthrough_id(query),
             content_hash,
-            date: SaveDate {
-                year: i32::from(date.year()),
-                month: date.month(),
-                day: date.day(),
-            },
+            date,
             game_version: format!(
                 "{}.{}.{}.{}",
                 version.first, version.second, version.third, version.fourth
@@ -346,7 +342,6 @@ impl Game for Eu4Analysis {
     type Detail = Eu4Detail;
     type Payload = Eu4Payload;
     type Shared = Eu4Shared;
-    type Prepared = Eu4Prepared;
     type Query = Eu4Query;
 
     fn validate(payload: &Eu4Payload) -> Result<(), PayloadError> {
@@ -366,17 +361,6 @@ impl Game for Eu4Analysis {
                 .any(|x| !x.is_finite())
         {
             return Err(PayloadError::NonFinite);
-        }
-        // Queries search provinces and countries by key and religions by prefix.
-        if !payload.provinces.is_sorted() || !payload.countries.is_sorted() {
-            return Err(PayloadError::Invalid(String::from(
-                "Province and country keys must be sorted",
-            )));
-        }
-        if !payload.country_religions.is_prefix_sorted() {
-            return Err(PayloadError::Invalid(String::from(
-                "Country religion keys must be prefix sorted",
-            )));
         }
         if payload.countries.len() > usize::from(u16::MAX) {
             return Err(PayloadError::DictionarySize { table: "countries" });
@@ -419,15 +403,6 @@ impl Game for Eu4Analysis {
             countries: shared.countries.prepare(&mut payload.countries, None)?,
             religions: shared.religions.prepare(&mut payload.religions)?,
         })
-    }
-    fn added_bytes(prepared: &Eu4Prepared) -> usize {
-        Eu4Shared::added_bytes(prepared)
-    }
-    fn commit(shared: &mut Eu4Shared, prepared: Eu4Prepared) {
-        shared.commit(prepared);
-    }
-    fn shared_memory(shared: &Eu4Shared) -> RegistryMemory {
-        shared.memory()
     }
 }
 
@@ -545,10 +520,7 @@ fn religion_development(view: &View<'_, Eu4Analysis>, tag: CountryTag) -> Vec<Se
             continue;
         }
         exists[at] = true;
-        let rows = payload
-            .country_religions
-            .prefix_range(&tag)
-            .expect("country religions are prefix sorted");
+        let rows = payload.country_religions.prefix_range(&tag);
         for (key, development) in rows.keys().iter().zip(rows.values(|c| &c.development)) {
             let id = payload
                 .religions
@@ -651,16 +623,12 @@ mod tests {
         }
     }
 
-    fn descriptor(hash: &str, date: (i32, u8, u8), layout: String) -> SnapshotDescriptor {
+    fn descriptor(hash: &str, date: (i16, u8, u8), layout: String) -> SnapshotDescriptor {
         SnapshotDescriptor::new::<Eu4Analysis>(
             SnapshotSource {
                 campaign_id: String::from("campaign"),
                 content_hash: String::from(hash),
-                date: SaveDate {
-                    year: date.0,
-                    month: date.1,
-                    day: date.2,
-                },
+                date: eu4save::Eu4Date::from_ymd(date.0, date.1, date.2),
                 game_version: String::from("1.37.5.0"),
             },
             layout,
@@ -669,7 +637,7 @@ mod tests {
 
     fn observation(
         hash: &str,
-        date: (i32, u8, u8),
+        date: (i16, u8, u8),
         provinces: &[Spec],
     ) -> Observation<Eu4Analysis> {
         observation_with(hash, date, provinces, &[])
@@ -677,7 +645,7 @@ mod tests {
 
     fn observation_with(
         hash: &str,
-        date: (i32, u8, u8),
+        date: (i16, u8, u8),
         provinces: &[Spec],
         alive: &[&str],
     ) -> Observation<Eu4Analysis> {
@@ -901,7 +869,7 @@ mod tests {
     }
 
     #[test]
-    fn a_country_without_a_record_has_gaps_and_unordered_tables_are_refused() {
+    fn a_country_without_a_record_has_gaps() {
         let mut payload = payload(&[(1, 5.0, Some("ENG"), None)], &[]);
         payload.countries = Table::sorted(
             vec![tag("ENG")],
@@ -937,40 +905,6 @@ mod tests {
             run(CountryMetric::ProvinceDevelopment),
             [(tag("ENG"), vec![Some(5.0)])]
         );
-
-        let mut unsorted = payload.clone();
-        unsorted.countries = Table::map_order(
-            vec![tag("FRA"), tag("ENG")],
-            CountryColumns {
-                max_manpower: [None, None].into_iter().collect(),
-            },
-        )
-        .unwrap();
-        let mut unprefixed = payload.clone();
-        unprefixed.country_religions = Table::sorted(
-            Vec::new(),
-            CountryReligionColumns {
-                development: Vec::new(),
-            },
-        )
-        .unwrap();
-        let mut provinces = payload.clone();
-        provinces.provinces = Table::map_order(
-            vec![ProvinceId::new(2), ProvinceId::new(1)],
-            ProvinceColumns {
-                development: vec![1.0; 2],
-                owner: vec![CountryRow::NONE; 2],
-            },
-        )
-        .unwrap();
-        for (payload, message) in [
-            (provinces, "keys must be sorted"),
-            (unsorted, "keys must be sorted"),
-            (unprefixed, "prefix sorted"),
-        ] {
-            let error = saved(payload).unwrap_err();
-            assert!(error.to_string().contains(message), "{error}");
-        }
     }
 
     fn splice(payload: &Eu4Payload) -> Vec<u8> {
