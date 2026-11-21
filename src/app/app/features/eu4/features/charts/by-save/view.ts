@@ -19,7 +19,7 @@ export const useBySaveView = create<{
   focus: { campaignId: string; focus: Focus } | null;
   /** The days in view, or null for the whole campaign, and a scale fitted to them. */
   zoom: { campaignId: string; view: [number, number] | null; fitted: boolean } | null;
-  /** Which countries are in color, in words, for the chip beside the filter. */
+  /** What is drawn in front, in words, for the chip beside the filter. */
   colorRule: string | null;
 }>()(() => ({
   pinned: null,

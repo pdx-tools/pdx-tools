@@ -47,6 +47,7 @@ const input = (
   open: -1,
   map,
   slider: false,
+  zoomed: false,
   sparse: true,
   long: (gap) => gap > 5 * 365,
   xLabels: { kind: "saves", columns: [0, 1, 2, 3, 4] },
@@ -190,4 +191,28 @@ describe("strength", () => {
 it("finds the nearest save among those in view", () => {
   expect(nearestColumn(days, year(1560))).toBe(2);
   expect(nearestColumn(days, year(1560), [year(1570), year(1610)])).toBe(3);
+});
+
+describe("the rendered chart", () => {
+  it("draws each save where the plot mapping puts it, the overlay's only source of position", async () => {
+    const echarts = await import("echarts");
+    const france = line("FRA", [820, 878, 1162, 1361, 1648], "subject");
+    const option = historyOption(input([france], { sparse: false, long: () => false }));
+    const chart = echarts.init(null, null, { renderer: "svg", ssr: true, width: 800, height: 440 });
+    chart.setOption(option);
+    const svg = chart.renderToSVGString();
+    chart.dispose();
+    // The dots of the earlier part of the line ("a:FRA", the fifth series) carry their centers.
+    const index = seriesIds(["FRA"]).indexOf("a:FRA");
+    const centers = [
+      ...svg.matchAll(/transform="matrix\(([^)]*)\)"[^>]*ecmeta_series_index="(\d+)"/g),
+    ]
+      .filter((m) => Number(m[2]) === index)
+      .map((m) => m[1].split(",").map(Number).slice(4));
+    expect(centers).toHaveLength(days.length);
+    centers.forEach(([x, y], i) => {
+      expect(x).toBeCloseTo(map.x(days[i]), 0);
+      expect(y).toBeCloseTo(map.y(france.values[i]!), 0);
+    });
+  });
 });

@@ -546,6 +546,7 @@ function BySaveView({
           dateOf={dateOfDay}
           label={`${figure.title}, ${formatLongDate(selectedSave.date)}`}
           focusKey={model.focusKey ?? subject}
+          focused={model.focusKey}
           onSelect={select}
           onPick={model.pick}
           onPoint={model.setPointerKey}

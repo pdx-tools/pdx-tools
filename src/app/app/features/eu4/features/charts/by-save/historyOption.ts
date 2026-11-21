@@ -145,6 +145,8 @@ export type StrengthContext = {
   pitch: number;
   /** A country is followed; without one, nobody leads. */
   anySubject: boolean;
+  /** Above twelve lines, rivals keep dots only where saves stand well apart. */
+  many?: boolean;
   world: boolean;
 };
 
@@ -212,25 +214,29 @@ export function strength(role: LineRole, back: boolean, c: StrengthContext): Str
               : 0.75,
     radius: c.world
       ? 2.6
-      : grey
-        ? c.pitch >= 4
-          ? 1
-          : 0
-        : role === "subject"
+      : c.many && (role === "plain" || role === "grey") && c.pitch < 8
+        ? 0
+        : grey
           ? c.pitch >= 5.5
-            ? 2.9
-            : c.pitch >= 2.5
-              ? 2.2
+            ? 1.5
+            : c.pitch >= 4
+              ? 1
               : 0
-          : c.pitch >= 5.5
-            ? role === "compared"
-              ? 2.1
-              : 1.6
-            : c.pitch >= 3.3
-              ? c.noisy || role === "compared"
-                ? 1.4
-                : 1.1
-              : 0,
+          : role === "subject"
+            ? c.pitch >= 5.5
+              ? 2.9
+              : c.pitch >= 2.5
+                ? 2.2
+                : 0
+            : c.pitch >= 5.5
+              ? role === "compared"
+                ? 2.1
+                : 1.6
+              : c.pitch >= 3.3
+                ? c.noisy || role === "compared"
+                  ? 1.4
+                  : 1.1
+                : 0,
     future,
   };
 }
@@ -268,6 +274,8 @@ export type HistoryOptionInput = {
   map: PlotMap;
   /** Show the zoom strip. */
   slider: boolean;
+  /** A zoom is set; at rest the strip is only a faint track. */
+  zoomed: boolean;
   sparse: boolean;
   /** A gap in days that is not drawn as a measured trend. */
   long: (gap: number) => boolean;
@@ -361,6 +369,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     pitch,
     anySubject: lines.some((line) => line.role === "subject"),
     world: input.world,
+    many: lines.length > 12,
   };
 
   const series: (LineSeriesOption | ScatterSeriesOption)[] = [];
@@ -400,7 +409,37 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     const color = (style: Record<string, unknown>) =>
       shown ? { ...style, color: shown } : line.changes.length ? style : { ...style, color: first };
     const edge = !grey && !input.world ? edgeFor(first, dark, palette.ground) : null;
-    const dotWidth = (s: Strength) => Math.max(1.7, s.width - 0.5);
+    // A long join is dashed at rest, so a path can be followed, and goes to fine dots when it
+    // recedes; either way nothing solid crosses a span with no saves.
+    const dash = (role: LineRole, back: boolean, future: boolean) => {
+      const lead = role === "subject" || role === "compared" || input.world;
+      if (back && !lead)
+        return {
+          width: 1.7,
+          type: [0.1, 3.6],
+          cap: "round" as const,
+          opacity: future ? 0.15 : 0.35,
+        };
+      return {
+        width: role === "subject" ? 2.5 : role === "compared" ? 2 : role === "grey" ? 1 : 1.5,
+        type: [5, 3],
+        cap: "butt" as const,
+        opacity: (lead ? 1 : role === "grey" ? 0.6 : 0.7) * (future ? 0.4 : 1),
+      };
+    };
+    // A pale color keeps a soft darker edge, on dashes as on solid joins.
+    const paleEdge = edge ? { shadowColor: edge, shadowBlur: 1.5 } : {};
+    const dashStates = (future: boolean) => ({
+      emphasis: {
+        focus: "series" as const,
+        blurScope: "coordinateSystem" as const,
+        lineStyle: {
+          ...dash(line.role === "subject" ? "subject" : "compared", false, future),
+          ...(grey ? { color: litColor } : {}),
+        },
+      },
+      blur: { lineStyle: dash(line.role, true, future) },
+    });
     const states = (
       base: (s: Strength) => Record<string, unknown>,
       item?: (s: Strength) => object,
@@ -453,13 +492,8 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       data: future.dotted,
       symbol: "none",
       clip: true,
-      lineStyle: color({
-        width: dotWidth(own),
-        type: [0.1, 3.6],
-        cap: "round",
-        opacity: own.future,
-      }),
-      ...states((s) => ({ width: dotWidth(s), opacity: s.future })),
+      lineStyle: color({ ...dash(line.role, line.back, true), ...paleEdge }),
+      ...dashStates(true),
       animation: false,
     });
 
@@ -491,13 +525,8 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       data: past.dotted,
       symbol: "none",
       clip: true,
-      lineStyle: color({
-        width: dotWidth(own),
-        type: [0.1, 3.6],
-        cap: "round",
-        opacity: own.join * (line.role === "subject" || line.role === "compared" ? 1 : 0.75),
-      }),
-      ...states((s) => ({ width: dotWidth(s), opacity: s.join * 0.9 })),
+      lineStyle: color({ ...dash(line.role, line.back, false), ...paleEdge }),
+      ...dashStates(false),
       animation: false,
     });
 
@@ -520,7 +549,13 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       symbolSize: radius > 0 ? size(own) : 0,
       connectNulls: false,
       clip: true,
-      lineStyle: color({ width: own.width, opacity: own.join, cap: "round", join: "round" }),
+      lineStyle: color({
+        width: own.width,
+        opacity: own.join,
+        cap: "round",
+        join: "round",
+        ...paleEdge,
+      }),
       itemStyle: color({
         opacity: own.dot,
         ...(edge ? { borderColor: edge, borderWidth: 0.7 } : {}),
@@ -724,21 +759,24 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
         filterMode: "none",
         startValue: map.from,
         endValue: map.to,
-        // A thin strip with small grips, as in D5.
+        // A thin strip with small grips, as in D5; at rest a faint track that says time can be cut.
         top: map.top + map.height + 38,
         left: map.left,
         width: map.width,
-        height: 6,
+        height: input.zoomed ? 6 : 4,
         showDetail: false,
         brushSelect: false,
         showDataShadow: false,
         borderColor: "transparent",
         backgroundColor: palette.grid,
-        fillerColor: palette.base,
+        fillerColor: input.zoomed ? palette.base : palette.grid,
         borderRadius: 3,
         handleIcon: "path://M0,0 h2.5 v10 h-2.5 z",
-        handleSize: 14,
-        handleStyle: { color: palette.muted, borderColor: palette.muted },
+        handleSize: input.zoomed ? 14 : 10,
+        handleStyle: {
+          color: input.zoomed ? palette.muted : palette.base,
+          borderColor: input.zoomed ? palette.muted : palette.base,
+        },
         moveHandleSize: 0,
         emphasis: { handleStyle: { color: palette.ink, borderColor: palette.ink } },
       },

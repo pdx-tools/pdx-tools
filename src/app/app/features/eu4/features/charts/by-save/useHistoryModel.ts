@@ -125,9 +125,26 @@ export function useHistoryModel({
     () => colorRule(rows, standings, subject, pins),
     [rows, standings, subject, pins],
   );
+  // The chip says what is drawn: with countries compared, those in front; else the color rule.
+  const front = useMemo(() => {
+    if (!pins.length) return null;
+    const label = (key: string | null) => {
+      const row = rows.find((x) => x.key === key);
+      const cell = row?.cells[selected] ?? row?.cells.findLast((c) => c !== null);
+      return cell ? nameOf(names, cell.tag) : "";
+    };
+    return [subject, ...pins].filter(Boolean).map(label).join(", ");
+  }, [pins, subject, rows, names, selected]);
+  const chip = world
+    ? null
+    : front
+      ? `In front: ${front}`
+      : rule.label
+        ? `In color: ${rule.label}`
+        : null;
   useEffect(() => {
-    useBySaveView.setState({ colorRule: world ? null : rule.label });
-  }, [rule.label, world]);
+    useBySaveView.setState({ colorRule: chip });
+  }, [chip]);
   useEffect(() => () => useBySaveView.setState({ colorRule: null }), []);
 
   // How each line and row stands: followed, pinned, plain or grey, and whether it steps back.

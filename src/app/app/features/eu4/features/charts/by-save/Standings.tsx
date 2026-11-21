@@ -31,6 +31,21 @@ export type StandingRow = {
   gone: boolean;
 };
 
+/**
+ * A row's earlier names fit whole beside its name: about 7 px a character of
+ * name and 5.6 of note, in what the rank, flag, badge and figure leave.
+ */
+export function noteFits(row: StandingRow): boolean {
+  if (!row.note) return false;
+  const room = 226 - 24 - 22 - 10 - row.figure.length * 8.5 - (row.badge ? 44 : 0);
+  return row.name.length * 7 + 6 + row.note.length * 5.6 <= room;
+}
+
+/** The followed and compared rows give a note that does not fit its own line. */
+export function secondLine(row: StandingRow): boolean {
+  return !!row.note && !noteFits(row) && (row.role === "subject" || row.pinned);
+}
+
 export type StandingsLayout =
   | {
       kind: "placed";
@@ -56,6 +71,7 @@ export function Standings({
   narrow,
   pointed,
   focusKey,
+  focused = null,
   onPick,
   onPoint,
   onFocusRow,
@@ -70,6 +86,8 @@ export function Standings({
   pointed: string | null;
   /** The row that takes the tab stop. */
   focusKey: string | null;
+  /** The row with keyboard focus now. */
+  focused?: string | null;
   onPick: (key: string) => void;
   onPoint: (key: string | null) => void;
   onFocusRow: (key: string | null) => void;
@@ -109,8 +127,8 @@ export function Standings({
     <>
       {bracket && (
         <div
-          className="absolute left-0.5 text-[11px] leading-3 text-gray-500 dark:text-gray-400"
-          style={{ top: bracket.top - 14 }}
+          className="absolute left-0.5 text-xs leading-3.5 text-gray-600 dark:text-gray-300"
+          style={{ top: bracket.top - 16 }}
         >
           in rank order
         </div>
@@ -142,13 +160,13 @@ export function Standings({
             const compared = row.role === "compared" || row.key === pointed;
             const subject = row.role === "subject";
             const grey = row.role === "grey" && !compared;
-            const two = !!row.note && height >= 34;
-            // Beside the name only where it fits whole; a long chain keeps a short way to its list.
-            // About 7 px a character of name and 5.6 of note, in what the rank, flag, badge
-            // and figure leave of the row.
-            const room = 226 - 24 - 22 - 10 - row.figure.length * 8.5 - (row.badge ? 44 : 0);
-            const fits = !!row.note && row.name.length * 7 + 6 + row.note.length * 5.6 <= room;
-            const inline = !!row.note && !two && !narrow && (fits || row.chain.length >= 3);
+            const fits = noteFits(row);
+            // In full beside the name where it fits; else on its own line for the followed and
+            // compared rows that have the room, or in a small tag while a row is pointed at.
+            const inline = !!row.note && !narrow && fits;
+            const two = !!row.note && !inline && height >= 34;
+            const tag =
+              !!row.note && !inline && !two && (row.key === pointed || row.key === focused);
             const flag = compact || narrow ? "mini" : "xs";
             return (
               <div
@@ -193,7 +211,7 @@ export function Standings({
                       <Flag.Image size={flag} />
                     </Flag>
                   </span>
-                  <span className={cx("flex min-w-0", two ? "flex-col" : "items-baseline gap-1.5")}>
+                  <span className="flex min-w-0 items-baseline gap-1.5">
                     <span
                       className={cx(
                         "flex min-w-0 shrink-0 items-center gap-1 leading-4",
@@ -216,13 +234,8 @@ export function Standings({
                         </Badge>
                       )}
                     </span>
-                    {(two || inline) && row.note && (
-                      <Note
-                        row={row}
-                        reachable={row.key === tabKey}
-                        note={two || fits ? row.note : `${row.chain.length} names`}
-                        small={!two}
-                      />
+                    {inline && row.note && (
+                      <Note row={row} reachable={row.key === tabKey} note={row.note} />
                     )}
                     <span className="sr-only">
                       {row.lineage ? `, ${row.lineage}` : ""}
@@ -230,10 +243,22 @@ export function Standings({
                     </span>
                   </span>
                 </span>
+                {(two || tag) && row.note && (
+                  <span
+                    className={cx(
+                      "absolute left-[3.25rem] z-2 flex",
+                      two
+                        ? "bottom-0.5"
+                        : "top-full rounded-sm border border-solid border-gray-200 bg-white px-1 shadow-sm dark:border-gray-600 dark:bg-slate-900",
+                    )}
+                  >
+                    <Note row={row} reachable={row.key === tabKey} note={row.note} />
+                  </span>
+                )}
                 <span
                   role="cell"
                   className={cx(
-                    "shrink-0 pl-2 text-right",
+                    narrow ? "shrink-0 pl-3 text-right" : "shrink-0 pl-2 text-right",
                     row.gone
                       ? "text-[11px] text-gray-500 dark:text-gray-400"
                       : cx(
@@ -267,19 +292,15 @@ export function Standings({
 function Note({
   row,
   note,
-  small,
   reachable,
 }: {
   row: StandingRow;
   note: string;
-  small: boolean;
   /** The row has the tab stop, so Tab from it reaches the list. */
   reachable: boolean;
 }) {
-  const text = cx(
-    "min-w-0 truncate text-gray-500 dark:text-gray-400",
-    small ? "text-[11px] leading-3" : "text-[11px] leading-3",
-  );
+  // Never cut short: a note is only shown where it fits or where it may run on.
+  const text = "whitespace-nowrap text-[11px] leading-3 text-gray-500 dark:text-gray-400";
   if (row.chain.length < 3) return <span className={text}>{note}</span>;
   return (
     <Popover>

@@ -15,7 +15,8 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
       <p>Each dot is one save: {definitions[viz]}</p>
       <p>
         A dotted join spans more than five years between saves, or a gap well over the
-        campaign&apos;s usual one: what happened between them is not known.
+        campaign&apos;s usual one: what happened between them is not known. A short tick on a line
+        marks where its country changed its tag.
       </p>
       {viz !== "world-dev-by-save" && (
         <>
@@ -33,8 +34,9 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
             not say who played it at a given date.
           </p>
           <p>
-            Click a country&apos;s line or row to follow it; with one followed, a click compares
-            another, up to three. Escape lets go of the compared countries, then the followed one.
+            Click a country&apos;s line or row to follow it; with one followed, click another
+            country to compare it, up to three. Escape lets go of the compared countries, then the
+            followed one.
           </p>
         </>
       )}
