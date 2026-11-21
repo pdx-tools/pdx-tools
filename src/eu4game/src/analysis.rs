@@ -674,19 +674,15 @@ pub fn country_series(
                     })
                 })
                 .collect::<Vec<_>>();
-            let played = view
-                .snapshots()
-                .iter()
-                .zip(&values)
-                .any(|(snapshot, cell)| {
-                    let tag = match cell {
-                        Some(
-                            LineageCell::Value { tag, .. } | LineageCell::NoRecord { tag, .. },
-                        ) => tag,
-                        None => return false,
-                    };
-                    snapshot.payload().played.binary_search(tag).is_ok()
-                });
+            // A save that says the tag it held there was played counts, also
+            // where the country has no figure, such as after an annexation.
+            let played = view.snapshots().iter().any(|snapshot| {
+                let date = GameDate::from_date_sort(snapshot.descriptor().date_sort);
+                let payload = snapshot.payload();
+                lineage
+                    .held_in(date, &payload.switches)
+                    .is_some_and(|(_, held)| payload.played.binary_search(&held.tag).is_ok())
+            });
             LineageValues {
                 lineage,
                 values,
@@ -1568,6 +1564,32 @@ mod tests {
             .collect();
         assert!(played.contains(&("NBI".to_string(), true)));
         assert!(played.contains(&("FRA".to_string(), false)));
+
+        // A later save lists FRA as played, though FRA owns nothing there.
+        let mut later = Store::new();
+        later
+            .append(
+                saved("a", 1445, &[p("ALO", 21.0), q("FRA", 5.0)], vec![]),
+                usize::MAX,
+            )
+            .unwrap();
+        let annexed = saved("b", 1460, &[p("ALO", 30.0)], vec![]);
+        let annexed = {
+            let mut payload = annexed.payload().clone();
+            payload.played = vec![tag("FRA")];
+            Observation::new(annexed.descriptor.clone(), Eu4Detail {}, payload).unwrap()
+        };
+        later.append(annexed, usize::MAX).unwrap();
+        let Eu4Answer::CountrySeries(series) = super::tests::answer(
+            &later,
+            Eu4Query::CountrySeries {
+                tags: vec![tag("FRA")],
+                metric: CountryMetric::ProvinceDevelopment,
+            },
+        ) else {
+            panic!("country series");
+        };
+        assert!(series[0].played);
         let Eu4Answer::PlayedCountries(by_save) =
             super::tests::answer(&store, Eu4Query::PlayedCountries)
         else {
