@@ -588,7 +588,17 @@ campaign_analysis::queries! {
         /// dates, by name. A part is zero on a date where the country exists
         /// without it, and a gap where the country does not exist.
         CountryBreakdown { tag: CountryTag, dimension: CountryDimension } => Vec<Series<String>> = country_breakdown,
+        /// The countries that each snapshot says have been played, in date
+        /// order: its player list and the countries marked as played.
+        PlayedCountries => Vec<Vec<CountryTag>> = played_by_snapshot,
     }
+}
+
+pub fn played_by_snapshot(view: &View<'_, Eu4Analysis>) -> Vec<Vec<CountryTag>> {
+    view.snapshots()
+        .iter()
+        .map(|snapshot| snapshot.payload().played.clone())
+        .collect()
 }
 
 pub fn world_development(view: &View<'_, Eu4Analysis>) -> History {
@@ -1558,6 +1568,12 @@ mod tests {
             .collect();
         assert!(played.contains(&("NBI".to_string(), true)));
         assert!(played.contains(&("FRA".to_string(), false)));
+        let Eu4Answer::PlayedCountries(by_save) =
+            super::tests::answer(&store, Eu4Query::PlayedCountries)
+        else {
+            panic!("played countries");
+        };
+        assert_eq!(by_save, [vec![tag("ALO")], vec![]]);
 
         // Two countries switch into BYZ on one day: whose BYZ it is cannot
         // be told, so BYZ has no values.
