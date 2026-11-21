@@ -511,7 +511,7 @@ function BySaveView({
         rank,
         tag,
         name: nameOf(names, tag),
-        note: heldNote(row, selected, names),
+        note: heldNote(row, column, names),
         lineage: lineageText(row, names),
         figure: figureText,
         color: role === "grey" ? field : (names.get(tag)?.color ?? "#808080"),
@@ -608,8 +608,10 @@ function BySaveView({
     if (next) {
       const least = Math.max(spacing.median, 30);
       if (next[1] - next[0] < least) {
+        // Widened about its middle, then moved back inside the campaign.
         const middle = (next[0] + next[1]) / 2;
-        next = [Math.round(middle - least / 2), Math.round(middle + least / 2)];
+        const from = Math.max(days[0], Math.min(days.at(-1)! - least, middle - least / 2));
+        next = [Math.round(from), Math.round(from + least)];
       }
     }
     if (next && next[0] <= days[0] && next[1] >= days.at(-1)!) next = null;
@@ -772,8 +774,12 @@ function sentenceFor({
   figure: BySaveFigure;
 }) {
   const row = (key: string | null) => rows.find((x) => x.key === key);
+  // A country without a cell at the save is named by its nearest earlier tag, else its next.
   const nameAt = (x: BySaveRow) => {
-    const cell = x.cells[selected] ?? x.cells.findLast((c) => c !== null);
+    const cell =
+      x.cells[selected] ??
+      x.cells.slice(0, selected).findLast((c) => c !== null) ??
+      x.cells.slice(selected + 1).find((c) => c !== null);
     return nameOf(names, cell?.tag ?? "");
   };
   const b = (text: string) => <b className="font-semibold text-gray-900 dark:text-white">{text}</b>;
@@ -797,9 +803,8 @@ function sentenceFor({
       ? formatLongDate(at)
       : String(at.year);
     // Before the latest save with both figures, the sentence ends at the selected save.
-    const later = columns.some(
-      (_, i) => i > selected && valueOf(me.cells[i]) !== null && valueOf(rival.cells[i]) !== null,
-    );
+    // Before the latest save, the run may end later, so the sentence ends at the selected save.
+    const later = selected < columns.length - 1;
     if (later) {
       const span = order.since === selected ? "in this save" : `from the ${year} save to this one`;
       if (order.sign === 0)

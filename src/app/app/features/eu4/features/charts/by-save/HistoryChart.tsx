@@ -274,7 +274,11 @@ export function HistoryChart(props: HistoryChartProps) {
       const atSave = Math.abs(columnX - x) <= 8;
       // Lines in front first, so a tie goes to the one drawn on top.
       const rank = { subject: 0, compared: 1, plain: 2, grey: 3 } as const;
-      const lines = [...props.lines].sort((a, b) => rank[a.role] - rank[b.role]);
+      // Within a role, a later series is drawn over an earlier one.
+      const lines = props.lines
+        .map((line, index) => ({ line, index }))
+        .sort((a, b) => rank[a.line.role] - rank[b.line.role] || b.index - a.index)
+        .map((x) => x.line);
       for (const line of lines) {
         // Only what is drawn: a join between two values, or a dot near the pointer.
         const value =
@@ -289,19 +293,21 @@ export function HistoryChart(props: HistoryChartProps) {
       }
       return { column, key };
     };
+    let shown = -1;
     // The hover is driven from here: one save in view, chosen once, places the rule and
     // every highlight. Each call leaves first, as the pointer keeps what it highlighted.
     hover.current = (at) => {
       chart.dispatchAction({ type: "updateAxisPointer", currTrigger: "leave" });
+      shown = -1;
       if (!at || !chart.containPixel({ gridIndex: 0 }, [at.x, at.y])) return;
       const { props, view } = latest.current;
       const [day] = chart.convertFromPixel({ gridIndex: 0 }, [at.x, at.y]) as number[];
       const column = nearestColumn(props.days, day, view);
       if (column < 0) return;
+      shown = column;
       const [x] = chart.convertToPixel({ gridIndex: 0 }, [props.days[column], 0]) as number[];
       chart.dispatchAction({ type: "updateAxisPointer", currTrigger: "mousemove", x, y: at.y });
     };
-    let shown = -1;
     zr.on("mousemove", (event) => {
       pointer.current = { x: event.offsetX, y: event.offsetY };
       const { props, view } = latest.current;
@@ -311,10 +317,7 @@ export function HistoryChart(props: HistoryChartProps) {
       ]) as number[];
       const inside = chart.containPixel({ gridIndex: 0 }, [event.offsetX, event.offsetY]);
       const column = inside ? nearestColumn(props.days, day, view) : -1;
-      if (column !== shown) {
-        shown = column;
-        hover.current(column < 0 ? null : pointer.current);
-      }
+      if (column !== shown) hover.current(column < 0 ? null : pointer.current);
       const { key } = hit(event.offsetX, event.offsetY);
       zr.setCursorStyle(key ? "pointer" : "default");
       if (key !== pointed) {
@@ -324,7 +327,6 @@ export function HistoryChart(props: HistoryChartProps) {
     });
     zr.on("globalout", () => {
       pointer.current = null;
-      shown = -1;
       hover.current(null);
       if (pointed !== null) {
         pointed = null;

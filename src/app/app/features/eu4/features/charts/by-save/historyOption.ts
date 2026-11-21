@@ -334,7 +334,8 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       return { solid, dotted };
     };
 
-    const tooltip = grey ? { tooltip: { show: false } } : {};
+    // The chart places the hover itself, so the lines take no pointer events of their own.
+    const tooltip = grey ? { tooltip: { show: false }, silent: true } : { silent: true };
     const label = (future: boolean) => ({
       show: true,
       position: "right" as const,

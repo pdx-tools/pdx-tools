@@ -114,9 +114,7 @@ export function Standings({
         aria-label={`${label}. Enter follows or compares the country of a row.`}
         className={cx(
           "w-full text-sm",
-          placed
-            ? "relative block"
-            : "block overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,black_88%,transparent)]",
+          placed ? "relative block" : "block overflow-y-auto overscroll-contain",
         )}
         style={layout.kind === "flow" ? { height: layout.height } : undefined}
       >

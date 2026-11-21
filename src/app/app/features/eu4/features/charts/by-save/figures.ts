@@ -21,6 +21,11 @@ const thousands = (value: number) =>
   Math.abs(value) < 100
     ? `${value.toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`
     : `${formatInt(value)}K`;
+/** The decimals that show every multiple of an axis step exactly, at most three. */
+const stepDigits = (step: number) =>
+  [0, 1, 2, 3].find((d) => Math.abs(step * 10 ** d - Math.round(step * 10 ** d)) < 1e-6) ?? 3;
+const tickOf = (unit: string) => (value: number, step: number) =>
+  `${value.toLocaleString("en-US", { maximumFractionDigits: stepDigits(step), minimumFractionDigits: 0 })}${unit}`;
 
 /** Each figure is a number that the viewer shows for one save, in the same unit and rounding. */
 export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
@@ -29,30 +34,28 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
     unit: "development points",
     metric: "provinceDevelopment",
     format: points,
-    tick: points,
+    tick: tickOf(""),
   },
   "army-by-save": {
     title: "Army size by save",
     unit: "thousands of men",
     metric: "armySize",
     format: thousands,
-    tick: (value: number, step: number) =>
-      `${value.toLocaleString("en-US", { maximumFractionDigits: step >= 1 ? 0 : step >= 0.1 ? 1 : 2 })}K`,
+    tick: tickOf("K"),
   },
   "manpower-by-save": {
     title: "Max manpower by save",
     unit: "thousands of men",
     metric: "maxManpower",
     format: thousands,
-    tick: (value: number, step: number) =>
-      `${value.toLocaleString("en-US", { maximumFractionDigits: step >= 1 ? 0 : step >= 0.1 ? 1 : 2 })}K`,
+    tick: tickOf("K"),
   },
   "world-dev-by-save": {
     title: "World development by save",
     unit: "development points",
     metric: null,
     format: points,
-    tick: points,
+    tick: tickOf(""),
   },
 };
 
