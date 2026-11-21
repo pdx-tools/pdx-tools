@@ -56,6 +56,7 @@ export function Standings({
   focusKey,
   onPick,
   onPoint,
+  onFocusRow,
 }: {
   rows: readonly StandingRow[];
   layout: StandingsLayout;
@@ -66,6 +67,7 @@ export function Standings({
   focusKey: string | null;
   onPick: (key: string) => void;
   onPoint: (key: string | null) => void;
+  onFocusRow: (key: string | null) => void;
 }) {
   const body = useRef<HTMLTableSectionElement>(null);
   const tabKey = rows.some((row) => row.key === focusKey) ? focusKey : (rows[0]?.key ?? null);
@@ -109,7 +111,7 @@ export function Standings({
         </div>
       )}
       <table
-        aria-label={label}
+        aria-label={`${label}. Enter follows or compares the country of a row.`}
         className={cx(
           "w-full text-sm",
           placed
@@ -149,8 +151,8 @@ export function Standings({
                 onClick={() => onPick(row.key)}
                 onPointerEnter={() => onPoint(row.key)}
                 onPointerLeave={() => onPoint(null)}
-                onFocus={() => onPoint(row.key)}
-                onBlur={() => onPoint(null)}
+                onFocus={() => onFocusRow(row.key)}
+                onBlur={() => onFocusRow(null)}
                 onKeyDown={onKeyDown}
               >
                 <td
@@ -206,7 +208,10 @@ export function Standings({
                         {row.note}
                       </span>
                     )}
-                    <span className="sr-only">{row.lineage}</span>
+                    <span className="sr-only">
+                      {row.lineage}
+                      {row.role === "subject" ? ", followed" : row.pinned ? ", compared" : ""}
+                    </span>
                   </span>
                 </td>
                 <td

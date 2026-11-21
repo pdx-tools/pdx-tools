@@ -49,6 +49,7 @@ const input = (
   palette: palettes.light,
   dark: false,
   format: String,
+  tick: String,
   font: "sans-serif",
   ...extra,
 });

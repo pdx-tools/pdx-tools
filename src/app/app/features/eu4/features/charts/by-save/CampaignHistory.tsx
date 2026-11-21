@@ -13,7 +13,7 @@ import { cx } from "class-variance-authority";
 import { eu4Analysis } from "@/features/eu4/analysis/analysisClient";
 import { useEu4History } from "@/features/eu4/analysis/store";
 import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
-import { useEu4Actions, useEu4Countries, useTagFilter } from "@/features/eu4/store";
+import { useEu4Actions, useEu4Countries, useEu4Meta, useTagFilter } from "@/features/eu4/store";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { ChartCountries, CountryMetric } from "@/wasm/wasm_eu4";
 import { Badge } from "@/components/Badge";
@@ -30,6 +30,8 @@ import {
   pickCountry,
   saveSpacing,
   standingsAt,
+  findKey,
+  pinsOf,
   subjectOf,
   valueOf,
 } from "./history";
@@ -323,6 +325,12 @@ function BySaveView({
   const zoom = useZoom(playthroughId);
   const view = zoom?.view ?? null;
   const fitted = !!zoom?.fitted && view !== null;
+  // A selection that leaves the view, such as a step to another open save, shows every save again.
+  const outOfView =
+    !!view && selected >= 0 && (days[selected] < view[0] || days[selected] > view[1]);
+  useEffect(() => {
+    if (outOfView && playthroughId) setZoom(playthroughId, null, false);
+  }, [outOfView, playthroughId]);
   const select = (column: number) => {
     const save = columns[column];
     if (!save || !playthroughId) return;
@@ -330,16 +338,14 @@ function BySaveView({
   };
 
   const focus = useFocus(playthroughId);
-  const subject = world ? null : subjectOf(focus, rows);
-  const shownKey = (key: string | null) =>
-    key && rows.some((row) => row.key === key) ? key : null;
-  const pins = useMemo(
-    () => focus.pins.filter((key) => key !== subject && rows.some((row) => row.key === key)),
-    [focus.pins, subject, rows],
-  );
-  // The country under the pointer or with keyboard focus.
-  const [pointedKey, setPointed] = useState<string | null>(null);
-  const pointed = world ? null : shownKey(pointedKey);
+  // Other players of a multiplayer campaign may be filtered out, so none is followed by default.
+  const multiplayer = useEu4Meta().multiplayer;
+  const subject = world ? null : subjectOf(focus, rows, multiplayer);
+  const pins = useMemo(() => pinsOf(focus, rows, subject), [focus, rows, subject]);
+  // The country under the pointer, and the one with keyboard focus: the pointer's wins while it lasts.
+  const [pointerKey, setPointerKey] = useState<string | null>(null);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const pointed = world ? null : (findKey(rows, pointerKey) ?? findKey(rows, focusKey));
   const compared = subject
     ? pointed && pointed !== subject
       ? pointed
@@ -347,7 +353,7 @@ function BySaveView({
     : pointed;
   // Escape lets go of the pins, then of the subject. The drawer closes on Escape
   // from the document, so this listens on the window first, while focus is in the chart.
-  const group = useRef<HTMLDivElement>(null);
+  const scope = useRef<HTMLDivElement>(null);
   const escape = useRef<() => boolean>(() => false);
   useLayoutEffect(() => {
     escape.current = () => {
@@ -359,14 +365,14 @@ function BySaveView({
   });
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || !group.current?.contains(document.activeElement)) return;
+      if (event.key !== "Escape" || !scope.current?.contains(document.activeElement)) return;
       if (escape.current()) event.preventDefault();
     };
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, []);
   const pick = (key: string) => {
-    if (playthroughId) setFocus(playthroughId, pickCountry(focus, rows, key));
+    if (playthroughId) setFocus(playthroughId, pickCountry(focus, rows, key, multiplayer));
   };
 
   const openColumn = campaign.open
@@ -488,7 +494,11 @@ function BySaveView({
   }, [lines, rows, subject, compared, selected]);
 
   const played = rows.filter((row) => row.played);
-  const badges = !world && played.length > 1 && played.length < rows.length;
+  const badges =
+    !world &&
+    (multiplayer || played.length > 1) &&
+    played.length > 0 &&
+    played.length < rows.length;
   const standingRows = useMemo((): StandingRow[] => {
     const make = (
       row: BySaveRow,
@@ -588,14 +598,22 @@ function BySaveView({
         {opening ? "Opening" : "Open save"}
       </Button>
     );
-  const zoomTo = (next: [number, number] | null, fit = fitted) => {
+  const zoomTo = (wanted: [number, number] | null, fit = fitted) => {
     if (!playthroughId) return;
+    // A view holds at least one save: one that falls between saves widens to the nearest.
+    let next = wanted;
+    if (next && !days.some((day) => day >= next![0] && day <= next![1])) {
+      const middle = (next[0] + next[1]) / 2;
+      const near = days.reduce((a, b) => (Math.abs(b - middle) < Math.abs(a - middle) ? b : a));
+      next = [Math.min(next[0], near), Math.max(next[1], near)];
+    }
+    if (next && next[0] <= days[0] && next[1] >= days.at(-1)!) next = null;
     setZoom(playthroughId, next, fit);
     // The selection stays in view.
     if (next && (days[selected] < next[0] || days[selected] > next[1])) {
       let best = -1;
       days.forEach((day, i) => {
-        if (day < next[0] || day > next[1]) return;
+        if (day < next![0] || day > next![1]) return;
         if (best < 0 || Math.abs(day - days[selected]) < Math.abs(days[best] - days[selected]))
           best = i;
       });
@@ -632,7 +650,7 @@ function BySaveView({
     selected < columns.length - 1 && inView(selected + 1) ? dateText(selected + 1) : null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={scope} className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
       <Alert.Error msg={error} />
       {changed && (
@@ -644,7 +662,6 @@ function BySaveView({
       )}
       {chart && <ChartCountriesNote chart={chart} count={rows.length} loaded={loaded} />}
       <div
-        ref={group}
         role="group"
         tabIndex={0}
         aria-label="Campaign chart. Left and right arrows select an earlier or a later save; plus and minus zoom; Escape lets go of pinned countries."
@@ -658,7 +675,8 @@ function BySaveView({
           } else if (key === "+" || key === "=" || key === "-") {
             const whole = days.at(-1)! - days[0];
             const now = view ? view[1] - view[0] : whole;
-            const half = Math.max(365 * 2, (key === "-" ? now * 2 : now / 2) / 2);
+            // Never narrower than a few of the campaign's own gaps between saves.
+            const half = Math.max(spacing.median * 1.5, 1, (key === "-" ? now * 2 : now / 2) / 2);
             const from = Math.max(days[0], days[selected] - half);
             const to = Math.min(days.at(-1)!, days[selected] + half);
             zoomTo(from <= days[0] && to >= days.at(-1)! ? null : [from, to]);
@@ -692,13 +710,15 @@ function BySaveView({
           long={spacing.long}
           comparison={comparison}
           format={figure.format}
+          tick={figure.tick}
           yearOf={yearOfDay}
           dateOf={dateOfDay}
           label={`${figure.title}, ${formatLongDate(selectedSave.date)}`}
           focusKey={compared ?? subject}
           onSelect={select}
           onPick={pick}
-          onPoint={setPointed}
+          onPoint={setPointerKey}
+          onFocusRow={setFocusKey}
           onZoom={(next) => zoomTo(next)}
         />
       </div>
@@ -766,7 +786,11 @@ function sentenceFor({
           {b(nameAt(valueOf(me.cells[selected]) === null ? me : rival))} has no figure in this save.
         </>
       );
-    const year = columns[order.since].date.year;
+    const at = columns[order.since].date;
+    // A year that another save shares is not enough to name the save.
+    const year = columns.some((x, i) => i !== order.since && x.date.year === at.year)
+      ? formatLongDate(at)
+      : String(at.year);
     const when = order.whole ? `in every save since ${year}` : `since the ${year} save`;
     if (order.sign === 0)
       return (
@@ -868,6 +892,18 @@ function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
   );
 }
 
+/** "the 1691, 1723 and 1761 saves", by date where two saves share a year. */
+function yearsText(saves: readonly AnalysisSave[]) {
+  const labels = saves.map((x) =>
+    saves.some((y) => y !== x && y.date.year === x.date.year)
+      ? formatLongDate(x.date)
+      : String(x.date.year),
+  );
+  const list =
+    labels.length <= 1 ? labels.join("") : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+  return `the ${list} ${saves.length === 1 ? "save" : "saves"}`;
+}
+
 /** Add saves, and what the chart leaves out, folded into one line. */
 function Foot({
   campaign,
@@ -885,7 +921,6 @@ function Foot({
   leftOutPlayed: readonly LeftOutPlayed[];
 }) {
   const { saves, issues, nav } = campaign;
-  const countries = useEu4Countries();
   const unreadable = saves.filter((x) => x.status === "failed" && !x.retry);
   // Saves of a date that the chart already shows: in multiplayer, often each player's copy.
   const sameDate = new Map<string, { kept: string; others: string[] }>();
@@ -908,10 +943,15 @@ function Foot({
     ([date, { kept, others }]) =>
       `${date}: ${plural(others.length, "more save", "more saves")} of this date (${others.join(", ")}); the chart shows ${kept}.`,
   );
-  const tagName = (tag: string) => {
-    const name = countries.find((x) => x.tag === tag)?.name;
-    return name && name !== tag ? `${name} (${tag})` : tag;
-  };
+  // The open save may give a generated tag to another country than the one played, so only its kind is named.
+  const kindOf = (tag: string) =>
+    ({
+      C: "a colonial nation",
+      E: "an estate country",
+      F: "a federation",
+      K: "a client state",
+      T: "a trade company",
+    })[tag[0]] ?? "a generated country";
   const playedTags = new Set(leftOutPlayed.map((x) => x.tag));
   const tags = (chart?.leftOut ?? []).filter((tag) => !playedTags.has(tag));
   const entries = [
@@ -919,7 +959,7 @@ function Foot({
     ...dateEntries,
     ...leftOutPlayed.map(
       ({ tag, saves: played }) =>
-        `${tagName(tag)}, marked as played from the ${played[0].date.year} save on: the game gives this tag to other countries later, so it is not followed from save to save.`,
+        `${tag}, ${kindOf(tag)}, is marked as played in ${yearsText(played)}: the game gives this tag to other countries later, so it is not followed from save to save.`,
     ),
     ...(tags.length
       ? [`${tags.join(", ")}: the game gives these tags to other countries later.`]

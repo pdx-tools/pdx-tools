@@ -273,16 +273,45 @@ export type Focus = {
 export const NO_FOCUS: Focus = { subject: null, released: false, pins: [] };
 const MOST_PINS = 3;
 
-/** The one country played in the campaign, if there is exactly one. */
-export function defaultSubject(rows: readonly LineRow[]): string | null {
+/**
+ * The shown row of a stored lineage key. A newer save can extend a lineage
+ * with a tag switch, so a key also finds the one row that extends it or
+ * that it extends.
+ */
+export function findKey(rows: readonly LineRow[], key: string | null): string | null {
+  if (!key) return null;
+  if (rows.some((row) => row.key === key)) return key;
+  const near = rows.filter((row) => row.key.startsWith(`${key}>`) || key.startsWith(`${row.key}>`));
+  return near.length === 1 ? near[0].key : null;
+}
+
+/**
+ * The one country played in a single-player campaign. A multiplayer
+ * campaign has no default: its other players may be filtered out.
+ */
+export function defaultSubject(rows: readonly LineRow[], multiplayer: boolean): string | null {
+  if (multiplayer) return null;
   const played = rows.filter((row) => row.played);
   return played.length === 1 ? played[0].key : null;
 }
 
 /** The subject in effect: the chosen one while it is shown, else the default unless released. */
-export function subjectOf(focus: Focus, rows: readonly LineRow[]): string | null {
-  if (focus.subject && rows.some((row) => row.key === focus.subject)) return focus.subject;
-  return focus.released ? null : defaultSubject(rows);
+export function subjectOf(
+  focus: Focus,
+  rows: readonly LineRow[],
+  multiplayer: boolean,
+): string | null {
+  const chosen = findKey(rows, focus.subject);
+  if (chosen) return chosen;
+  return focus.released ? null : defaultSubject(rows, multiplayer);
+}
+
+/** The shown pins, by their rows' keys, without the subject. */
+export function pinsOf(focus: Focus, rows: readonly LineRow[], subject: string | null): string[] {
+  const keys = focus.pins.map((pin) => findKey(rows, pin));
+  return keys.filter(
+    (key, i): key is string => !!key && key !== subject && keys.indexOf(key) === i,
+  );
 }
 
 /**
@@ -290,14 +319,20 @@ export function subjectOf(focus: Focus, rows: readonly LineRow[]): string | null
  * one it is pinned or unpinned, up to three, the oldest giving way; the
  * subject itself releases the subject and the pins.
  */
-export function pickCountry(focus: Focus, rows: readonly LineRow[], key: string): Focus {
-  const subject = subjectOf(focus, rows);
+export function pickCountry(
+  focus: Focus,
+  rows: readonly LineRow[],
+  key: string,
+  multiplayer: boolean,
+): Focus {
+  const subject = subjectOf(focus, rows, multiplayer);
   if (subject === key) return { subject: null, released: true, pins: [] };
   if (!subject) return { subject: key, released: false, pins: [] };
-  const pins = focus.pins.includes(key)
-    ? focus.pins.filter((pin) => pin !== key)
-    : [...focus.pins, key].slice(-MOST_PINS);
-  return { ...focus, pins };
+  const pins = pinsOf(focus, rows, subject);
+  const next = pins.includes(key)
+    ? pins.filter((pin) => pin !== key)
+    : [...pins, key].slice(-MOST_PINS);
+  return { ...focus, pins: next };
 }
 
 /** Escape: the pins go first, then the subject returns to its default. */

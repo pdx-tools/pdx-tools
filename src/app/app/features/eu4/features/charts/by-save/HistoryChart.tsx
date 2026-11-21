@@ -5,7 +5,7 @@ import { isDarkMode } from "@/lib/dark";
 import { placeRows, saveYearLabels, valueScale } from "./history";
 import type { ValueScale } from "./history";
 import { historyOption, nearestColumn, palettes } from "./historyOption";
-import type { ChartLine, Comparison, Leader, LineRole } from "./historyOption";
+import type { ChartLine, Comparison, Leader } from "./historyOption";
 import { Standings } from "./Standings";
 import type { StandingRow, StandingsLayout } from "./Standings";
 import { timeTicks } from "./timeTicks";
@@ -42,6 +42,7 @@ export type HistoryChartProps = {
   long: (gap: number) => boolean;
   comparison: Comparison | null;
   format: (value: number) => string;
+  tick: (value: number) => string;
   yearOf: (day: number) => string;
   dateOf: (day: number) => string;
   /** The standings table's name. */
@@ -50,6 +51,8 @@ export type HistoryChartProps = {
   onSelect: (column: number) => void;
   onPick: (key: string) => void;
   onPoint: (key: string | null) => void;
+  /** The standings row with keyboard focus. */
+  onFocusRow: (key: string | null) => void;
   onZoom: (view: [number, number] | null) => void;
 };
 
@@ -73,7 +76,7 @@ export function HistoryChart(props: HistoryChartProps) {
   }, []);
   const dark = isDarkMode();
   const palette = palettes[dark ? "dark" : "light"];
-  const { fitted, sparse, long, dots, open, comparison, format, yearOf, dateOf } = props;
+  const { fitted, sparse, long, dots, open, comparison, format, tick, yearOf, dateOf } = props;
   const narrow = width < 600;
   const n = days.length;
   const from = props.view?.[0] ?? days[0];
@@ -208,6 +211,7 @@ export function HistoryChart(props: HistoryChartProps) {
         palette,
         dark,
         format,
+        tick,
         font,
       }),
     [
@@ -235,6 +239,7 @@ export function HistoryChart(props: HistoryChartProps) {
       palette,
       dark,
       format,
+      tick,
       font,
     ],
   );
@@ -270,8 +275,12 @@ export function HistoryChart(props: HistoryChartProps) {
       // A line within a few pixels of the pointer, at the nearest save or between two.
       let key: string | null = null;
       let best = 7;
+      const [columnX] = chart.convertToPixel({ gridIndex: 0 }, [props.days[column], 0]) as number[];
+      const atSave = Math.abs(columnX - x) <= 8;
       for (const line of props.lines) {
-        const value = valueNear(line, props.days, day, column);
+        // Only what is drawn: a join between two values, or a dot near the pointer.
+        const value =
+          valueNear(line, props.days, day, column) ?? (atSave ? line.values[column] : null);
         if (value === null) continue;
         const [, py] = chart.convertToPixel({ gridIndex: 0 }, [day, value]) as number[];
         const distance = Math.abs(py - y);
@@ -358,6 +367,7 @@ export function HistoryChart(props: HistoryChartProps) {
             focusKey={props.focusKey}
             onPick={props.onPick}
             onPoint={props.onPoint}
+            onFocusRow={props.onFocusRow}
           />
         </div>
       )}
@@ -371,15 +381,13 @@ function valueNear(line: ChartLine, days: readonly number[], day: number, column
   const a = line.values[i];
   const b = line.values[i + 1];
   if (
-    i >= 0 &&
-    i + 1 < days.length &&
-    a !== null &&
-    a !== undefined &&
-    b !== null &&
-    b !== undefined
+    i < 0 ||
+    i + 1 >= days.length ||
+    a === null ||
+    a === undefined ||
+    b === null ||
+    b === undefined
   )
-    return a + ((b - a) * (day - days[i])) / (days[i + 1] - days[i] || 1);
-  return line.values[column] ?? null;
+    return null;
+  return a + ((b - a) * (day - days[i])) / (days[i + 1] - days[i] || 1);
 }
-
-export type { LineRole };

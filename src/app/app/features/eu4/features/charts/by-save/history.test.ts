@@ -5,6 +5,7 @@ import {
   absentAt,
   colorRule,
   escapeFocus,
+  findKey,
   orderSince,
   pickCountry,
   placeRows,
@@ -214,25 +215,37 @@ describe("focus", () => {
   const rows = [row("a", [1], true), row("b", [1]), row("c", [1]), row("d", [1]), row("e", [1])];
 
   it("follows the one played country by default", () => {
-    expect(subjectOf(NO_FOCUS, rows)).toBe("a");
+    expect(subjectOf(NO_FOCUS, rows, false)).toBe("a");
     const two = [row("a", [1], true), row("b", [1], true)];
-    expect(subjectOf(NO_FOCUS, two)).toBeNull();
+    expect(subjectOf(NO_FOCUS, two, false)).toBeNull();
+  });
+
+  it("has no default subject in multiplayer, where other players may be filtered out", () => {
+    expect(subjectOf(NO_FOCUS, rows, true)).toBeNull();
+  });
+
+  it("keeps a chosen country when a newer save extends its lineage", () => {
+    const later = [row("BRA>PRU@1701-01-18", [1], true), row("FRA", [1])];
+    const focus = { subject: "BRA", released: false, pins: ["FRA"] };
+    expect(subjectOf(focus, later, false)).toBe("BRA>PRU@1701-01-18");
+    expect(findKey(later, "FRA>XXX@1800-01-01")).toBe("FRA");
+    expect(findKey([row("A>B@1", [1]), row("A>C@2", [1])], "A")).toBeNull();
   });
 
   it("makes a click the subject without one, a pin with one, and releases on the subject", () => {
     const none = [row("a", [1]), row("b", [1])];
-    const chosen = pickCountry(NO_FOCUS, none, "b");
-    expect(subjectOf(chosen, none)).toBe("b");
-    let focus = pickCountry(NO_FOCUS, rows, "b");
+    const chosen = pickCountry(NO_FOCUS, none, "b", false);
+    expect(subjectOf(chosen, none, false)).toBe("b");
+    let focus = pickCountry(NO_FOCUS, rows, "b", false);
     expect(focus.pins).toEqual(["b"]);
-    focus = pickCountry(focus, rows, "c");
-    focus = pickCountry(focus, rows, "d");
-    focus = pickCountry(focus, rows, "e");
+    focus = pickCountry(focus, rows, "c", false);
+    focus = pickCountry(focus, rows, "d", false);
+    focus = pickCountry(focus, rows, "e", false);
     expect(focus.pins).toEqual(["c", "d", "e"]);
-    focus = pickCountry(focus, rows, "d");
+    focus = pickCountry(focus, rows, "d", false);
     expect(focus.pins).toEqual(["c", "e"]);
-    const released = pickCountry(focus, rows, "a");
-    expect(subjectOf(released, rows)).toBeNull();
+    const released = pickCountry(focus, rows, "a", false);
+    expect(subjectOf(released, rows, false)).toBeNull();
     expect(released.pins).toEqual([]);
   });
 
@@ -240,7 +253,7 @@ describe("focus", () => {
     const focus = { subject: "b", released: false, pins: ["c"] };
     const once = escapeFocus(focus);
     expect(once.pins).toEqual([]);
-    expect(subjectOf(once, rows)).toBe("b");
-    expect(subjectOf(escapeFocus(once), rows)).toBe("a");
+    expect(subjectOf(once, rows, false)).toBe("b");
+    expect(subjectOf(escapeFocus(once), rows, false)).toBe("a");
   });
 });

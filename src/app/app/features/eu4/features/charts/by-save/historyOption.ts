@@ -126,6 +126,8 @@ export type HistoryOptionInput = {
   palette: Palette;
   dark: boolean;
   format: (value: number) => string;
+  /** A round value on the value axis. */
+  tick: (value: number) => string;
   font: string;
 };
 
@@ -237,6 +239,8 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
 
   const series: (LineSeriesOption | CustomSeriesOption | ScatterSeriesOption)[] = [];
   const visualMap: VisualMapComponentOption[] = [];
+  /** Values with no save beside them, drawn as dots on any line. */
+  const lone: object[] = [];
   /** Breaks in joins where the tag changes: day, value, width, z. */
   const breaks: [number, number, number, number][] = [];
 
@@ -382,13 +386,14 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       type: "line",
       z,
       data: future.solid.map((p) => item(p, days.indexOf(p[0]))),
-      showSymbol: false,
+      // Later saves keep their dots, faded, as a dot says a point is a save.
+      showSymbol: radius > 0,
       symbol: "circle",
       symbolSize: futureSize,
       connectNulls: false,
       clip: true,
       lineStyle: colored({ width, opacity: futureOpacity, cap: "round", join: "round" }),
-      itemStyle: colored({}),
+      itemStyle: colored({ opacity: Math.min(1, futureOpacity * 1.4) }),
       emphasis: { ...emphasis(futureSize), label: label(true) },
       animation: false,
       ...tooltip,
@@ -453,19 +458,27 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     });
 
     const size = radius > 0 ? radius * 2 : 3;
-    const lone = (i: number) => has(i) && !has(i - 1) && !has(i + 1);
+    // A lone value has no join, so it shows as a dot even where the line has none.
+    if (radius === 0) {
+      for (let i = 0; i < n; i++) {
+        if (!has(i) || has(i - 1) || has(i + 1)) continue;
+        const after = i > selected;
+        lone.push({
+          value: [days[i], line.values[i]!],
+          symbolSize: 4,
+          itemStyle: {
+            color: colorOf(i),
+            opacity: after ? futureOpacity * 1.4 : grey ? dotOpacity : Math.max(dotOpacity, 0.8),
+          },
+        });
+      }
+    }
     const pastLine: LineSeriesOption = {
       id: `a:${line.key}`,
       name: line.key,
       type: "line",
       z,
-      data: past.solid.map((p) => {
-        const i = days.indexOf(p[0]);
-        // A lone value still shows when the line has no dots.
-        if (radius === 0 && i >= 0 && lone(i))
-          return { value: p, symbol: "circle", symbolSize: 4, showSymbol: true };
-        return item(p, i);
-      }),
+      data: past.solid.map((p) => item(p, days.indexOf(p[0]))),
       showSymbol: radius > 0,
       symbol: "circle",
       symbolSize: size,
@@ -768,7 +781,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     tooltip: { show: false },
     symbol: "circle",
     clip: false,
-    data: selectedMarks,
+    data: [...lone, ...selectedMarks],
     emphasis: { disabled: true },
     markLine: {
       silent: true,
@@ -806,7 +819,10 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       axisTick: {
         show: true,
         length: 5,
-        customValues: [...days],
+        // A tick at each save, thinned where they would run together.
+        customValues: days.filter(
+          (_, i) => i % Math.max(1, Math.ceil(3 / Math.max(pitch, 0.01))) === 0,
+        ),
         lineStyle: { color: palette.faint },
       },
       axisLabel: {
@@ -832,7 +848,8 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
         label: {
           show: true,
           formatter: (params: { value: unknown }) => {
-            const i = nearestColumn(days, Number(params.value), input.view);
+            // The save that the pointer's emphasis takes, also one just past a cut.
+            const i = nearestColumn(days, Number(params.value));
             return i >= 0 ? input.dateOf(days[i]) : "";
           },
           backgroundColor: palette.ground,
@@ -852,7 +869,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       max: scale.hi,
       interval: step,
       axisLabel: {
-        formatter: (value: number) => input.format(value),
+        formatter: (value: number) => input.tick(value),
         color: palette.faint,
         fontSize: 11,
         margin: 8,
