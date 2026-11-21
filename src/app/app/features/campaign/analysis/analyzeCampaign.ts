@@ -33,9 +33,8 @@ export function campaignAnalyzer<
     // One import runs in the tab, for all games.
     const lease = analysisAdmission().acquireImport();
     analysis.claim(playthroughId);
-    // The import stays on the session of this claim. Another claim, such as
-    // of a save that opens while files are read, ends it.
-    const session = { generation: analysis.generation(), signal: analysis.signal() };
+    // Another claim, such as of a save that opens while files are read, ends the import.
+    const session = analysis.signal();
     const controller = new AbortController();
     const startedAt = performance.now();
     const issues: string[] = [];
@@ -49,7 +48,7 @@ export function campaignAnalyzer<
         controller.abort();
       },
     }));
-    const signal = AbortSignal.any([controller.signal, session.signal]);
+    const signal = AbortSignal.any([controller.signal, session]);
     const recordFailure = (entry: LocalSaveEntry, error: string, file?: File) => {
       if (!currentEntry(entry, file)) return;
       const version = file ? fileVersion(file) : entry.version;
@@ -82,13 +81,10 @@ export function campaignAnalyzer<
       const result = await importBatch(
         sources.map((source) => source.file),
         parser,
-        // The live generation tells the scheduler that an append that a
-        // change of session interrupts is stale, not a failure.
         analysis,
         {
           signal,
           lease,
-          generation: session.generation,
           onFileComplete: (completion) => {
             const { file } = completion;
             if ("descriptor" in completion) {

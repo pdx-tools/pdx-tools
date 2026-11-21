@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
+import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 
 const MapHistoryProvider = lazy(() =>
   import("./MapHistory").then((module) => ({ default: module.MapHistoryProvider })),

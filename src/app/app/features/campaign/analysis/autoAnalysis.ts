@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useStore } from "zustand";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
-import { analysisAdmission, IMPORT_BUSY_ERROR } from "./admission";
 import { isAnalysisPaused } from "./analysisState";
 import type { AnalysisHistory, CampaignAnalysisState } from "./analysisState";
 import { entryVersion } from "./saveStatus";
@@ -72,33 +71,20 @@ export function useCampaignAutoAnalysis<D extends SnapshotDescriptor>({
     attempted.current = new Set();
     claim(playthroughId);
   }, [playthroughId, claim]);
-  // Changes when an import of another game ends, so a refused import runs again.
-  const [admitted, setAdmitted] = useState(0);
   useEffect(() => {
     if (!featureEnabled || !enabled || !playthroughId || progress || paused) return;
     const entries = pending(attempted.current);
     if (!entries.length) return;
-    const keys = entries.map(campaignAnalysisSourceKey);
-    for (const key of keys) attempted.current.add(key);
+    for (const entry of entries) attempted.current.add(campaignAnalysisSourceKey(entry));
     const started = visit.current;
-    let busy = false;
     void analyze(entries, playthroughId)
       .catch((error) => {
-        if (error instanceof Error && error.name === IMPORT_BUSY_ERROR) {
-          // Another import runs. These saves were not read, so try them when it ends.
-          busy = true;
-          for (const key of keys) attempted.current.delete(key);
-          void analysisAdmission()
-            .idle()
-            .then(() => setAdmitted((x) => x + 1));
-          return;
-        }
         history.setState({ issues: [String(error)] });
       })
       .finally(() => {
         // The import records the version that it read, so a failed file is not
         // tried again at once. A newer version that navigation read meanwhile is.
-        if (busy || visit.current !== started) return;
+        if (visit.current !== started) return;
         const { sources, failedSources } = history.getState();
         for (const entry of entries) {
           const current = localSaveRegistry.get(entry.id);
@@ -108,15 +94,5 @@ export function useCampaignAutoAnalysis<D extends SnapshotDescriptor>({
             attempted.current.add(campaignAnalysisSourceKey(current));
         }
       });
-  }, [
-    pending,
-    playthroughId,
-    progress,
-    paused,
-    featureEnabled,
-    enabled,
-    analyze,
-    history,
-    admitted,
-  ]);
+  }, [pending, playthroughId, progress, paused, featureEnabled, enabled, analyze, history]);
 }

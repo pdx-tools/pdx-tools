@@ -201,20 +201,19 @@ it("keeps a later read of the file over the parse that the viewer shows", async 
   const file = new File(["save"], "autosave.eu4", { lastModified: 1 });
   const ref = handleRef(async () => file, 1, file.name);
   const [entry] = await registry.register("eu4", [ref]);
-  const opened = {
+  const opened = (parsed: File) => ({
     ...identity(),
     game: "eu4" as const,
     multiplayer: false,
-    name: file.name,
-    source: registry.sourceFor("eu4", ref, file),
-  };
-  registry.observeOpen(opened);
+    name: parsed.name,
+    source: registry.sourceFor("eu4", ref, parsed),
+  });
   // Analysis reads a newer version of the file with the same date.
   const newer = { size: 9, lastModified: 2 };
   registry.recordIdentity(entry.id, identity(), newer);
-  registry.observeOpen(opened, "entry");
+  registry.observeOpen(opened(file));
   expect(registry.get(entry.id)?.version).toEqual(newer);
-  // A new parse is the latest read.
-  registry.observeOpen({ ...opened }, "parse");
-  expect(registry.get(entry.id)?.version).toEqual({ size: 4, lastModified: 1 });
+  // A parse of a later version is the latest read.
+  registry.observeOpen(opened(new File(["later save"], file.name, { lastModified: 3 })));
+  expect(registry.get(entry.id)?.version).toEqual({ size: 10, lastModified: 3 });
 });

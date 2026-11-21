@@ -1,12 +1,13 @@
 import PlusIcon from "@heroicons/react/16/solid/PlusIcon";
-import { useIsCampaignAnalysisEnabled } from "../history/useIsCampaignAnalysisEnabled";
+import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 import { saveProblemText } from "@/features/campaign/saveText";
 import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
 import { GameButton } from "@/components/game/Button";
 import { holdsRef, localSaveRegistry } from "@/features/campaign/localSaves";
 import { useEu5Input, useEu5PlaythroughId } from "../store";
-import { isAnalysisPaused, useHistory } from "../history/store";
+import { isAnalysisPaused } from "@/features/campaign/analysis/analysisState";
+import { useHistory } from "../history/store";
 import { ImportProgress } from "../history/ImportProgress";
 import { analyzeCampaign } from "../history/analyzeCampaign";
 import { pendingCampaignAnalysis } from "../history/CampaignAnalysis";

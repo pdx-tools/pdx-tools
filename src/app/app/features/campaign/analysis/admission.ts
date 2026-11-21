@@ -34,7 +34,6 @@ export class AnalysisAdmission {
   /** The session that keeps resident data, and its bytes. */
   private resident: { session: string; bytes: number } | null = null;
   private lease: ImportLease | undefined;
-  private waiting: (() => void)[] = [];
 
   constructor(readonly limits: AdmissionLimits) {}
 
@@ -68,18 +67,9 @@ export class AnalysisAdmission {
         if (!active) return;
         active = false;
         this.lease = undefined;
-        const waiting = this.waiting;
-        this.waiting = [];
-        for (const resolve of waiting) resolve();
       },
     };
     return (this.lease = lease);
-  }
-
-  /** Resolves when no import runs. */
-  idle(): Promise<void> {
-    if (!this.lease) return Promise.resolve();
-    return new Promise((resolve) => this.waiting.push(resolve));
   }
 }
 

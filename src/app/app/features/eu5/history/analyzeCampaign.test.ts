@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { analysisAdmission } from "@/features/campaign/analysis/admission";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import type { Eu5SnapshotDescriptor as Snapshot } from "./analysisTypes";
-import { isAnalysisPaused, useHistory } from "./store";
+import { isAnalysisPaused } from "@/features/campaign/analysis/analysisState";
+import { useHistory } from "./store";
 
 const mocks = vi.hoisted(() => ({
   importBatch: vi.fn(),
@@ -15,7 +16,7 @@ vi.mock("@/features/campaign/analysis/importScheduler", () => ({
 }));
 // The session of a claim does not end in these tests.
 vi.mock("./analysisClient", () => ({
-  eu5Analysis: { claim: () => {}, generation: () => 1, signal: () => new AbortController().signal },
+  eu5Analysis: { claim: () => {}, signal: () => new AbortController().signal },
 }));
 vi.mock("@/features/campaign/localSaves", () => ({
   localSaveRegistry: { get: mocks.getLocalSave, recordIdentity: mocks.setLocalSaveIdentity },

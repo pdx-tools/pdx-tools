@@ -245,19 +245,6 @@ describe("session clear", () => {
     expect(published(opts)).toEqual([]);
     expect(session.appended).toEqual([]);
   });
-
-  it("of another campaign across an append of a claimed generation is not a failure", async () => {
-    // A claim of another campaign releases the worker, which rejects the append.
-    const { promise: released, reject } = Promise.withResolvers<AppendResult<SnapshotDescriptor>>();
-    const session = sink(() => released);
-    const opts = options({ concurrency: 1, generation: 1 });
-    const run = importBatch(files(1), parser, session, opts);
-    await vi.waitFor(() => expect(session.append).toHaveBeenCalledOnce());
-    session.clear();
-    reject(new DOMException("Campaign analysis was released", "AbortError"));
-    expect((await run).files).toEqual(["cancelled"]);
-    expect(published(opts)).toEqual([]);
-  });
 });
 
 describe("memory", () => {

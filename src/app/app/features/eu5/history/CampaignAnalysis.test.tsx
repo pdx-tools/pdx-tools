@@ -3,7 +3,8 @@ import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 vi.mock("../store", () => ({ useEu5PlaythroughId: vi.fn() }));
 vi.mock("@/features/account", () => ({ useIsDeveloper: () => false }));
 vi.mock("./analyzeCampaign", () => ({ analyzeCampaign: vi.fn() }));
-import { pendingCampaignAnalysis, campaignAnalysisSourceKey } from "./CampaignAnalysis";
+import { campaignAnalysisSourceKey } from "@/features/campaign/analysis/autoAnalysis";
+import { pendingCampaignAnalysis } from "./CampaignAnalysis";
 const entry = (id: string): LocalSaveEntry => ({
   id,
   game: "eu5",

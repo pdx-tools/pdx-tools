@@ -25,20 +25,10 @@ export type CampaignAnalysisState<D extends SnapshotDescriptor = SnapshotDescrip
   removeSnapshots: () => void;
 };
 
-/**
- * A zustand store that holds a campaign analysis, such as one that
- * `campaignAnalysisState` fills. The store can hold more than the analysis.
- */
-export type AnalysisHistory<D extends SnapshotDescriptor = SnapshotDescriptor> = Pick<
-  StoreApi<CampaignAnalysisState<D>>,
-  "getState" | "getInitialState" | "subscribe"
-> & {
-  setState: (
-    partial:
-      | Partial<CampaignAnalysisState<D>>
-      | ((state: CampaignAnalysisState<D>) => Partial<CampaignAnalysisState<D>>),
-  ) => void;
-};
+/** A zustand store that holds a campaign analysis. The store can hold more than the analysis. */
+export type AnalysisHistory<D extends SnapshotDescriptor = SnapshotDescriptor> = StoreApi<
+  CampaignAnalysisState<D>
+>;
 
 export function isAnalysisPaused(
   state: Pick<CampaignAnalysisState, "analysisPausedCampaigns">,

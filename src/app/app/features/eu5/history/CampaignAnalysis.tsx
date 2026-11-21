@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
+import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import {
@@ -11,8 +11,6 @@ import { useEu5PlaythroughId } from "../store";
 import { eu5Analysis } from "./analysisClient";
 import { analyzeCampaign } from "./analyzeCampaign";
 import { useHistory } from "./store";
-
-export { campaignAnalysisSourceKey };
 
 export function pendingCampaignAnalysis(
   entries: readonly LocalSaveEntry[],

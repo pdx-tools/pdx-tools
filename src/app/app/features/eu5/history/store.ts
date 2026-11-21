@@ -3,8 +3,6 @@ import { campaignAnalysisState } from "@/features/campaign/analysis/analysisStat
 import type { CampaignAnalysisState } from "@/features/campaign/analysis/analysisState";
 import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 
-export { isAnalysisPaused } from "@/features/campaign/analysis/analysisState";
-
 type HistoryState = CampaignAnalysisState<Eu5SnapshotDescriptor> & {
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;

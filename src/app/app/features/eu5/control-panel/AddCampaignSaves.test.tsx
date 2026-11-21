@@ -15,7 +15,7 @@ vi.mock("@/features/engine", () => ({
     return mocks.publish;
   },
 }));
-vi.mock("../history/useIsCampaignAnalysisEnabled", () => ({
+vi.mock("@/features/campaign/analysis/useIsCampaignAnalysisEnabled", () => ({
   useIsCampaignAnalysisEnabled: () => mocks.developer,
 }));
 vi.mock("../store", () => ({
