@@ -10,6 +10,8 @@ export type BySaveRow = {
   lineage: Lineage | null;
   /** The cell in each column, or null where the country has no value. */
   cells: (LineageCell | null)[];
+  /** A save says the country was played at some point in the campaign. */
+  played: boolean;
 };
 
 /** The columns of the chart and the table: the snapshots of the campaign saves, in date order. */
@@ -72,6 +74,7 @@ export function lineageRows(series: readonly LineageValues[], at: readonly numbe
         .join(">"),
       lineage: x.lineage,
       cells: at.map((i) => x.values[i] ?? null),
+      played: x.played,
     }))
     .filter((row) => row.cells.some((cell) => cell !== null));
 }

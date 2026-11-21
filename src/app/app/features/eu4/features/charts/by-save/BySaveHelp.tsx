@@ -17,14 +17,27 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
         <>
           <p>
             Countries are the filter&apos;s, as chosen when you analyzed; a country without
-            provinces in a save has no dot there.
+            provinces in a save has no dot there. With more than twelve, the chip beside the filter
+            says which are in color.
           </p>
-          <p>A country that changed its tag stays one row; its dots change color with the tag.</p>
+          <p>
+            A country that changed its tag stays one line; it changes color with the tag. A country
+            annexed and later released keeps its line, as the game keeps its record.
+          </p>
+          <p>
+            &ldquo;player&rdquo; marks a country played at some point in this campaign. A save does
+            not say who played it at a given date.
+          </p>
+          <p>
+            Click a country&apos;s line or row to follow it; with one followed, a click compares
+            another, up to three. Escape lets go of the compared countries, then the followed one.
+          </p>
         </>
       )}
       <p>
-        The campaign list keeps one save for each date, and analysis keeps what it read until you
-        refresh this page.
+        Plus and minus zoom in time around the selected save; 0 shows every save again. The campaign
+        list keeps one save for each date, and analysis keeps what it read until you refresh this
+        page.
       </p>
     </>
   );

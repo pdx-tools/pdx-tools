@@ -8,8 +8,7 @@ import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
 import type { CampaignSaveFiles } from "@/features/campaign/useAddCampaignSaves";
 import { openCampaignSave } from "@/features/campaign/openSave";
 import { currentSaveInput } from "@/features/engine";
-import { MONTH_ABBR, formatLongDate } from "@/features/timeline/date";
-import { MONTH_DAY_SIZERS } from "@/features/timeline/TimelineReadout";
+import { dateFromDayNumber, dayNumber, formatLongDate, parseDate } from "@/features/timeline/date";
 import { cx } from "class-variance-authority";
 import { eu4Analysis } from "@/features/eu4/analysis/analysisClient";
 import { useEu4History } from "@/features/eu4/analysis/store";
@@ -17,18 +16,33 @@ import type { AnalysisSave } from "@/features/eu4/analysis/campaignSaves";
 import { useEu4Actions, useEu4Countries, useTagFilter } from "@/features/eu4/store";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { ChartCountries, CountryMetric } from "@/wasm/wasm_eu4";
-import ChevronLeftIcon from "@heroicons/react/20/solid/ChevronLeftIcon";
-import ChevronRightIcon from "@heroicons/react/20/solid/ChevronRightIcon";
 import { Badge } from "@/components/Badge";
 import { Collapsible } from "@/components/Collapsible";
-import { IconButton } from "@/components/IconButton";
-import { BySaveLedger, NotAtThisSave, useSettled } from "./BySaveLedger";
+import { isDarkMode } from "@/lib/dark";
+import XMarkIcon from "@heroicons/react/16/solid/XMarkIcon";
 import { bySaveFigures } from "./figures";
 import type { BySaveFigure, BySaveViz } from "./figures";
-import { alignColumns, bySaveCsv, lineageRows, rowsAt, sourceText, unclearTags } from "./model";
-import type { BySaveData } from "./model";
+import {
+  absentAt,
+  colorRule,
+  escapeFocus,
+  orderSince,
+  pickCountry,
+  saveSpacing,
+  standingsAt,
+  subjectOf,
+  valueOf,
+} from "./history";
+import type { Absence } from "./history";
+import { HistoryChart } from "./HistoryChart";
+import { HistoryHeader } from "./HistoryHeader";
+import { palettes } from "./historyOption";
+import type { ChartLine, Comparison, LineRole } from "./historyOption";
+import { alignColumns, bySaveCsv, heldIndex, lineageRows, sourceText, unclearTags } from "./model";
+import type { BySaveData, BySaveRow, CountryInfo } from "./model";
+import type { StandingRow } from "./Standings";
 import { useEu4Campaign } from "./useEu4Campaign";
-import { selectSave, useBySaveView } from "./view";
+import { selectSave, setFocus, setZoom, useBySaveView, useFocus, useZoom } from "./view";
 import type { Eu4Campaign } from "./useEu4Campaign";
 
 const EU4_SAVES: CampaignSaveFiles = {
@@ -39,8 +53,10 @@ const EU4_SAVES: CampaignSaveFiles = {
 
 /** The most countries that a filter gives a chart. */
 const COUNTRY_LIMIT = 20;
+/** With more saves than this, the zoom slider shows at rest. */
+const SLIDER_SAVES = 40;
 
-/** One value for each analyzed save of the campaign, as a chart and a table. */
+/** One value for each analyzed save of the campaign, as a chart and standings. */
 export function CampaignHistory({ viz }: { viz: BySaveViz }) {
   const campaign = useEu4Campaign();
   const { saves, enabled } = campaign;
@@ -108,6 +124,7 @@ function countLine(saves: readonly AnalysisSave[]) {
 }
 
 const WORLD_DEVELOPMENT = { kind: "worldDevelopment" } as const;
+const PLAYED_COUNTRIES = { kind: "playedCountries" } as const;
 
 function WorldFigure({ campaign, figure }: { campaign: Eu4Campaign; figure: BySaveFigure }) {
   const { result, snapshotIds, error } = useAnalysisQuery(
@@ -125,6 +142,7 @@ function WorldFigure({ campaign, figure }: { campaign: Eu4Campaign; figure: BySa
         {
           key: "world",
           lineage: null,
+          played: false,
           cells: at.map((i) => {
             const value = values[i];
             return value === null || value === undefined
@@ -152,12 +170,21 @@ function CountryFigure({
     () => (chart ? { kind: "countrySeries" as const, tags: chart.tags, metric } : null),
     [chart, metric],
   );
+  const shown = useShownSnapshots(campaign);
   const { result, snapshotIds, error } = useAnalysisQuery(
     eu4Analysis,
     useEu4History,
     campaign.playthroughId,
     query,
-    useShownSnapshots(campaign),
+    shown,
+  );
+  // Which saves played the generated tags that the chart leaves out.
+  const played = useAnalysisQuery(
+    eu4Analysis,
+    useEu4History,
+    campaign.playthroughId,
+    chart?.leftOut.length ? PLAYED_COUNTRIES : null,
+    shown,
   );
   const data = useMemo((): BySaveData => {
     const { columns, at } = alignColumns(snapshotIds, campaign.saves);
@@ -167,6 +194,14 @@ function CountryFigure({
       unclear: result ? unclearTags(result) : [],
     };
   }, [result, snapshotIds, campaign.saves]);
+  const leftOutPlayed = useMemo(() => {
+    if (!chart || !played.result) return [];
+    const { columns, at } = alignColumns(played.snapshotIds, campaign.saves);
+    return chart.leftOut.flatMap((tag) => {
+      const saves = at.flatMap((i, k) => (played.result![i]?.includes(tag) ? [columns[k]] : []));
+      return saves.length ? [{ tag, saves }] : [];
+    });
+  }, [chart, played.result, played.snapshotIds, campaign.saves]);
   return (
     <BySaveView
       campaign={campaign}
@@ -174,6 +209,7 @@ function CountryFigure({
       data={data}
       error={error}
       chart={chart}
+      leftOutPlayed={leftOutPlayed}
       loaded={!!result && data.columns.length > 0}
     />
   );
@@ -212,12 +248,42 @@ function useChartCountries(campaignId: string | null) {
   return current;
 }
 
+/** A generated tag that the chart leaves out, and the saves that say it was played. */
+type LeftOutPlayed = { tag: string; saves: AnalysisSave[] };
+
+const nameOf = (names: ReadonlyMap<string, CountryInfo>, tag: string) =>
+  names.get(tag)?.name ?? tag;
+
+/** "was Castile", "3 earlier names", or "later Spain". */
+function heldNote(row: BySaveRow, column: number, names: ReadonlyMap<string, CountryInfo>) {
+  const tags = row.lineage?.tags ?? [];
+  const k = heldIndex(row, column);
+  if (k === null || tags.length < 2) return null;
+  // One earlier name fits beside the row; a long chain gives its count, and the title lists it.
+  if (k > 0) return k === 1 ? `was ${nameOf(names, tags[0].tag)}` : `${k} earlier names`;
+  return `later ${nameOf(names, tags[tags.length - 1].tag)}`;
+}
+
+/** Every tag of a country with when it held it, for the row's title and assistive tech. */
+function lineageText(row: BySaveRow, names: ReadonlyMap<string, CountryInfo>) {
+  const tags = row.lineage?.tags ?? [];
+  if (tags.length < 2) return "";
+  return tags
+    .map((held) => {
+      const from = held.from ? ` from ${held.from.slice(0, 4)}` : "";
+      const until = held.until ? ` until ${held.until.slice(0, 4)}` : "";
+      return `${nameOf(names, held.tag)}${from}${until}`;
+    })
+    .join(", ");
+}
+
 function BySaveView({
   campaign,
   figure,
   data,
   error,
   chart,
+  leftOutPlayed = [],
   loaded = true,
 }: {
   campaign: Eu4Campaign;
@@ -225,11 +291,13 @@ function BySaveView({
   data: BySaveData;
   error: string | null;
   chart: ChartCountries | null;
+  leftOutPlayed?: readonly LeftOutPlayed[];
   /** False while the values are still coming. */
   loaded?: boolean;
 }) {
   const { nav, playthroughId } = campaign;
   const { columns, rows } = data;
+  const world = !chart;
   const countries = useEu4Countries();
   const names = useMemo(() => new Map(countries.map((x) => [x.tag, x])), [countries]);
   const unclear = (data.unclear ?? []).map((tag) => {
@@ -250,25 +318,57 @@ function BySaveView({
   );
   const found = columns.findIndex((x) => x.save.key === selectedKey);
   const selected = found >= 0 ? found : columns.length - 1;
-  // The snapshot under the pointer, so a column that goes or a file that is read again ends the hover.
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const days = useMemo(() => columns.map((x) => dayNumber(x.date)), [columns]);
+  const spacing = useMemo(() => saveSpacing(days), [days]);
+  const zoom = useZoom(playthroughId);
+  const view = zoom?.view ?? null;
+  const fitted = !!zoom?.fitted && view !== null;
   const select = (column: number) => {
     const save = columns[column];
     if (!save || !playthroughId) return;
-    // A step ends the hover, so the heading and values show the selection.
-    setHoveredId(null);
-    // A focused country without a value there leaves the list, and its emphasis with it.
-    if (focusEmphasis && !rows.find((row) => row.key === focusEmphasis)?.cells[column])
-      setFocusEmphasis(null);
     selectSave(playthroughId, save.save.key);
   };
-  const hoveredAt = columns.findIndex((x) => x.snapshot?.id === hoveredId);
-  const hovered = hoveredAt >= 0 ? hoveredAt : null;
-  const shown = hovered ?? selected;
+
+  const focus = useFocus(playthroughId);
+  const subject = world ? null : subjectOf(focus, rows);
+  const shownKey = (key: string | null) =>
+    key && rows.some((row) => row.key === key) ? key : null;
+  const pins = useMemo(
+    () => focus.pins.filter((key) => key !== subject && rows.some((row) => row.key === key)),
+    [focus.pins, subject, rows],
+  );
+  // The country under the pointer or with keyboard focus.
+  const [pointedKey, setPointed] = useState<string | null>(null);
+  const pointed = world ? null : shownKey(pointedKey);
+  const compared = subject
+    ? pointed && pointed !== subject
+      ? pointed
+      : (pins.at(-1) ?? null)
+    : pointed;
+  // Escape lets go of the pins, then of the subject. The drawer closes on Escape
+  // from the document, so this listens on the window first, while focus is in the chart.
   const group = useRef<HTMLDivElement>(null);
-  // The pointer's emphasis wins while it lasts; keyboard focus keeps its own.
-  const [pointerEmphasis, setPointerEmphasis] = useState<string | null>(null);
-  const [focusEmphasis, setFocusEmphasis] = useState<string | null>(null);
+  const escape = useRef<() => boolean>(() => false);
+  useLayoutEffect(() => {
+    escape.current = () => {
+      const next = escapeFocus(focus);
+      if (next === focus || !playthroughId) return false;
+      setFocus(playthroughId, next);
+      return true;
+    };
+  });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !group.current?.contains(document.activeElement)) return;
+      if (escape.current()) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, []);
+  const pick = (key: string) => {
+    if (playthroughId) setFocus(playthroughId, pickCountry(focus, rows, key));
+  };
+
   const openColumn = campaign.open
     ? columns.findIndex((x) => x.save.key === campaign.open!.save.key)
     : -1;
@@ -314,47 +414,157 @@ function BySaveView({
     }
   };
 
-  // Rows stand in the order of the selected save once stepping stops, so a
-  // held arrow key does not shuffle them. Hover never moves them. A country
-  // without a value there joins the end only while it has one.
-  const settledKey = useSettled(columns[selected]?.save.key ?? null, 350);
-  const settledAt = columns.findIndex((x) => x.save.key === settledKey);
-  const orderAt = settledAt >= 0 ? settledAt : selected;
-  const order = useMemo(() => (orderAt >= 0 ? rowsAt(rows, orderAt) : []), [rows, orderAt]);
-  const present = useMemo(
-    () => [...order, ...rows.filter((row) => !order.includes(row) && row.cells[selected] !== null)],
-    [order, rows, selected],
+  // Ties at the selected save list the subject first.
+  const ranked = useMemo(
+    () =>
+      subject
+        ? [...rows].sort((a, b) => Number(b.key === subject) - Number(a.key === subject))
+        : rows,
+    [rows, subject],
+  );
+  const standings = useMemo(
+    () => (selected >= 0 && !world ? standingsAt(ranked, selected) : []),
+    [ranked, selected, world],
   );
   const absent = useMemo(
-    () => (selected >= 0 ? rows.filter((row) => row.cells[selected] === null) : []),
-    [rows, selected],
+    () => (selected >= 0 && !world ? absentAt(rows, selected) : []),
+    [rows, selected, world],
   );
-  const shownRows =
-    hovered === null
-      ? present.filter((row) => row.cells[selected] !== null)
-      : [
-          ...present,
-          ...absent.filter((row) => row.cells[hovered] !== null && !present.includes(row)),
-        ];
-  // A focused row that a step removes hands focus to the chart, so the arrows keep stepping.
-  const focusedGone = focusEmphasis !== null && !shownRows.some((row) => row.key === focusEmphasis);
+  const rule = useMemo(
+    () => colorRule(rows, standings, subject, compared ? [...pins, compared] : pins),
+    [rows, standings, subject, pins, compared],
+  );
   useEffect(() => {
-    if (focusedGone && !group.current?.contains(document.activeElement)) group.current?.focus();
-  }, [focusedGone]);
+    useBySaveView.setState({ colorRule: world ? null : rule.label });
+  }, [rule.label, world]);
+  useEffect(() => () => useBySaveView.setState({ colorRule: null }), []);
+
+  const field = palettes[isDarkMode() ? "dark" : "light"].field;
+  // How each line and row stands: followed, compared, plain or grey, and whether it steps back.
+  const roles = useMemo(() => {
+    const emphasis = compared !== null || pins.length > 0;
+    return new Map(
+      rows.map((row) => {
+        const role: LineRole = world
+          ? "subject"
+          : row.key === subject
+            ? "subject"
+            : row.key === compared || pins.includes(row.key)
+              ? "compared"
+              : rule.inColor.has(row.key)
+                ? "plain"
+                : "grey";
+        const back = emphasis && (role === "plain" || role === "grey");
+        return [row.key, { role, back, pinned: pins.includes(row.key) }];
+      }),
+    );
+  }, [rows, world, subject, compared, pins, rule]);
+
+  const lines = useMemo((): ChartLine[] => {
+    const colorAt = (tag: string) => names.get(tag)?.color ?? "#808080";
+    return rows.map((row) => ({
+      key: row.key,
+      values: row.cells.map(valueOf),
+      colors: row.cells.map((cell) => (cell ? colorAt(cell.tag) : null)),
+      names: row.cells.map((cell) => (cell ? nameOf(names, cell.tag) : null)),
+      changes: (row.lineage?.tags ?? []).flatMap((held) => {
+        const from = held.from ? parseDate(held.from) : null;
+        return from ? [{ day: dayNumber(from), color: colorAt(held.tag) }] : [];
+      }),
+      role: roles.get(row.key)!.role,
+      back: roles.get(row.key)!.back,
+    }));
+  }, [rows, names, roles]);
+
+  const comparison = useMemo((): Comparison | null => {
+    if (!subject || !compared) return null;
+    const a = lines.find((line) => line.key === subject);
+    const b = lines.find((line) => line.key === compared);
+    const subjectRow = rows.find((row) => row.key === subject);
+    const rivalRow = rows.find((row) => row.key === compared);
+    if (!a || !b || !subjectRow || !rivalRow) return null;
+    const order = orderSince(subjectRow.cells, rivalRow.cells, selected);
+    return { subject: a, rival: b, since: order && !order.whole ? order.since : null };
+  }, [lines, rows, subject, compared, selected]);
+
+  const played = rows.filter((row) => row.played);
+  const badges = !world && played.length > 1 && played.length < rows.length;
+  const standingRows = useMemo((): StandingRow[] => {
+    const make = (
+      row: BySaveRow,
+      column: number,
+      rank: string,
+      figureText: string,
+      gone: boolean,
+    ) => {
+      const tag = row.cells[column]?.tag ?? "";
+      const { role, back, pinned } = roles.get(row.key)!;
+      return {
+        key: row.key,
+        rank,
+        tag,
+        name: nameOf(names, tag),
+        note: heldNote(row, selected, names),
+        lineage: lineageText(row, names),
+        figure: figureText,
+        color: role === "grey" ? field : (names.get(tag)?.color ?? "#808080"),
+        role,
+        back,
+        pinned,
+        badge: badges && row.played,
+        gone,
+      };
+    };
+    const yearAt = (column: number) => String(columns[column].date.year);
+    const noteOf = (absence: Absence<BySaveRow>) => {
+      const note = absence.note;
+      switch (note.kind) {
+        case "noRecord":
+          return "no record";
+        case "until":
+          return `until ${yearAt(note.column)}`;
+        case "from":
+          return `from ${yearAt(note.column)}`;
+        case "between":
+          return `back ${yearAt(note.from)}`;
+      }
+    };
+    return [
+      ...standings.map((x) =>
+        make(x.row, selected, `${x.tied ? "=" : ""}${x.rank}`, figure.format(x.value), false),
+      ),
+      ...absent.map((x) => make(x.row, x.column, "", noteOf(x), true)),
+    ];
+  }, [standings, absent, names, selected, roles, badges, field, columns, figure]);
+  const standingValues = useMemo(
+    () => [...standings.map((x) => x.value), ...absent.map(() => null)],
+    [standings, absent],
+  );
 
   if (!columns.length || selected < 0) {
     return (
       <div className="flex flex-col gap-3">
         <StatusLine campaign={campaign} />
         <Alert.Error msg={error} />
-        <Foot campaign={campaign} chart={chart} unclear={unclear} />
+        <Foot campaign={campaign} chart={chart} unclear={unclear} leftOutPlayed={leftOutPlayed} />
       </div>
     );
   }
-  const shownSave = columns[shown];
-  const world = !chart;
-  const preview = hovered !== null && hovered !== selected;
+
   const dateText = (column: number) => formatLongDate(columns[column].date);
+  const sentence = world
+    ? null
+    : sentenceFor({
+        rows,
+        names,
+        subject,
+        compared,
+        pointed,
+        selected,
+        columns,
+        standings,
+        figure,
+      });
   const openSlot =
     campaign.open && selectedSave.save.key === campaign.open.save.key ? (
       <Badge role="status" className="h-[34px] justify-center rounded-md px-3 text-sm font-medium">
@@ -378,57 +588,49 @@ function BySaveView({
         {opening ? "Opening" : "Open save"}
       </Button>
     );
-  const header = (
-    <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-2 py-1">
-      <span
-        className={cx("flex items-baseline gap-2.5 whitespace-nowrap", preview && "opacity-60")}
-        title={`${shownSave.save.name} · ${sourceText(shownSave.save)}`}
+  const zoomTo = (next: [number, number] | null, fit = fitted) => {
+    if (!playthroughId) return;
+    setZoom(playthroughId, next, fit);
+    // The selection stays in view.
+    if (next && (days[selected] < next[0] || days[selected] > next[1])) {
+      let best = -1;
+      days.forEach((day, i) => {
+        if (day < next[0] || day > next[1]) return;
+        if (best < 0 || Math.abs(day - days[selected]) < Math.abs(days[best] - days[selected]))
+          best = i;
+      });
+      if (best >= 0) select(best);
+    }
+  };
+  const chips = view && (
+    <span className="flex items-center gap-2 text-sm">
+      <Button
+        className="h-8 gap-1 px-2 py-0"
+        aria-label={`Show the whole campaign; now ${columns[0].date.year} to ${columns.at(-1)!.date.year} is cut to ${yearOfDay(view[0])} to ${yearOfDay(view[1])}`}
+        onClick={() => zoomTo(null, false)}
       >
-        <span className="text-[44px] leading-[44px] font-semibold tracking-tight tabular-nums">
-          {shownSave.date.year}
-        </span>
-        <span className="inline-grid text-xl text-gray-600 dark:text-gray-300">
-          {MONTH_DAY_SIZERS}
-          <span className="col-start-1 row-start-1">
-            {MONTH_ABBR[shownSave.date.month]} {shownSave.date.day}
-          </span>
-        </span>
-      </span>
-      <span className="flex">
-        <IconButton
-          shape="square"
-          className="rounded-r-none"
-          icon={<ChevronLeftIcon className="size-4" aria-hidden />}
-          disabled={selected <= 0}
-          aria-label={selected > 0 ? `Earlier save, ${dateText(selected - 1)}` : "Earlier save"}
-          // A tooltip at the ends too, so the button keeps its focus.
-          tooltip={selected > 0 ? `Earlier save: ${dateText(selected - 1)}` : "The earliest save"}
-          onClick={() => select(selected - 1)}
-        />
-        <IconButton
-          shape="square"
-          className="-ml-px rounded-l-none"
-          icon={<ChevronRightIcon className="size-4" aria-hidden />}
-          disabled={selected >= columns.length - 1}
-          aria-label={
-            selected < columns.length - 1 ? `Later save, ${dateText(selected + 1)}` : "Later save"
-          }
-          tooltip={
-            selected < columns.length - 1
-              ? `Later save: ${dateText(selected + 1)}`
-              : "The latest save"
-          }
-          onClick={() => select(selected + 1)}
-        />
-      </span>
-      {/* The slot acts on the selected save only, so it dims while the pointer shows another. */}
-      <span
-        className={cx("ml-auto flex w-28 justify-end transition-opacity", preview && "opacity-40")}
+        {yearOfDay(view[0])}–{yearOfDay(view[1])}
+        <XMarkIcon className="size-4" aria-hidden />
+      </Button>
+      <Button
+        className="h-8 px-2 py-0"
+        aria-pressed={fitted}
+        onClick={() => playthroughId && setZoom(playthroughId, view, !fitted)}
       >
-        {openSlot}
-      </span>
-    </div>
+        Scale: {fitted ? "fitted" : "full"}
+      </Button>
+    </span>
   );
+  const inView = (column: number) => !view || (days[column] >= view[0] && days[column] <= view[1]);
+  const step = (by: number) => {
+    let at = selected + by;
+    while (at >= 0 && at < columns.length && !inView(at)) at += Math.sign(by);
+    if (at >= 0 && at < columns.length) select(at);
+  };
+  const earlier = selected > 0 && inView(selected - 1) ? dateText(selected - 1) : null;
+  const later =
+    selected < columns.length - 1 && inView(selected + 1) ? dateText(selected + 1) : null;
+
   return (
     <div className="flex flex-col gap-3">
       <StatusLine campaign={campaign} />
@@ -445,59 +647,151 @@ function BySaveView({
         ref={group}
         role="group"
         tabIndex={0}
-        aria-label="Campaign chart. Left and right arrows select an earlier or a later save."
+        aria-label="Campaign chart. Left and right arrows select an earlier or a later save; plus and minus zoom; Escape lets go of pinned countries."
         className="rounded-md focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:outline-none"
         onKeyDown={(event) => {
-          const step =
-            event.key === "ArrowLeft"
-              ? selected - 1
-              : event.key === "ArrowRight"
-                ? selected + 1
-                : event.key === "Home"
-                  ? 0
-                  : event.key === "End"
-                    ? columns.length - 1
-                    : null;
-          if (step === null) return;
+          const key = event.key;
+          if (key === "ArrowLeft" || key === "ArrowRight") step(key === "ArrowLeft" ? -1 : 1);
+          else if (key === "Home" || key === "End") {
+            const visible = columns.flatMap((_, i) => (inView(i) ? [i] : []));
+            select(key === "Home" ? visible[0] : visible.at(-1)!);
+          } else if (key === "+" || key === "=" || key === "-") {
+            const whole = days.at(-1)! - days[0];
+            const now = view ? view[1] - view[0] : whole;
+            const half = Math.max(365 * 2, (key === "-" ? now * 2 : now / 2) / 2);
+            const from = Math.max(days[0], days[selected] - half);
+            const to = Math.min(days.at(-1)!, days[selected] + half);
+            zoomTo(from <= days[0] && to >= days.at(-1)! ? null : [from, to]);
+          } else if (key === "0") zoomTo(null, false);
+          else return;
           event.preventDefault();
-          select(Math.max(0, Math.min(columns.length - 1, step)));
         }}
       >
-        <BySaveLedger
-          columns={columns}
-          rows={world ? rows : shownRows}
-          allRows={rows}
-          selected={selected}
-          hovered={hovered}
-          openColumn={openColumn}
-          figure={figure}
-          names={names}
+        <HistoryHeader
+          date={selectedSave.date}
+          title={`${selectedSave.save.name} · ${sourceText(selectedSave.save)}`}
+          earlier={earlier}
+          later={later}
+          onStep={step}
+          sentence={sentence}
+          openSlot={openSlot}
+        />
+        <HistoryChart
+          days={days}
+          lines={lines}
+          rows={standingRows}
+          values={standingValues}
           world={world}
-          emphasized={
-            world
-              ? null
-              : ([pointerEmphasis, focusEmphasis].find(
-                  (key) => key !== null && shownRows.some((row) => row.key === key),
-                ) ?? null)
-          }
-          onPointerEmphasis={setPointerEmphasis}
-          onFocusEmphasis={setFocusEmphasis}
-          onHover={(column) =>
-            setHoveredId(column === null ? null : (columns[column]?.snapshot?.id ?? null))
-          }
-          onPick={select}
-          header={header}
+          dots
+          selected={selected}
+          open={openColumn}
+          view={view}
+          fitted={fitted}
+          slider={columns.length > SLIDER_SAVES}
+          sparse={spacing.sparse}
+          long={spacing.long}
+          comparison={comparison}
+          format={figure.format}
+          yearOf={yearOfDay}
+          dateOf={dateOfDay}
+          label={`${figure.title}, ${formatLongDate(selectedSave.date)}`}
+          focusKey={compared ?? subject}
+          onSelect={select}
+          onPick={pick}
+          onPoint={setPointed}
+          onZoom={(next) => zoomTo(next)}
         />
       </div>
       <p aria-live="polite" aria-atomic className="sr-only">
         Selected {formatLongDate(selectedSave.date)}, {selectedSave.save.name}
       </p>
-      {!world && hovered === null && (
-        <NotAtThisSave rows={absent} column={selected} names={names} />
-      )}
-      <Foot campaign={campaign} chart={chart} unclear={unclear} />
+      <Foot
+        campaign={campaign}
+        chart={chart}
+        unclear={unclear}
+        leftOutPlayed={leftOutPlayed}
+        chips={chips}
+      />
     </div>
   );
+}
+
+function yearOfDay(day: number) {
+  return String(dateFromDayNumber(day).year);
+}
+
+function dateOfDay(day: number) {
+  return formatLongDate(dateFromDayNumber(day));
+}
+
+/** The one sentence of the header: how the subject and the compared country have stood. */
+function sentenceFor({
+  rows,
+  names,
+  subject,
+  compared,
+  pointed,
+  selected,
+  columns,
+  standings,
+  figure,
+}: {
+  rows: readonly BySaveRow[];
+  names: ReadonlyMap<string, CountryInfo>;
+  subject: string | null;
+  compared: string | null;
+  pointed: string | null;
+  selected: number;
+  columns: readonly AnalysisSave[];
+  standings: ReturnType<typeof standingsAt<BySaveRow>>;
+  figure: BySaveFigure;
+}) {
+  const row = (key: string | null) => rows.find((x) => x.key === key);
+  const nameAt = (x: BySaveRow) => {
+    const cell = x.cells[selected] ?? x.cells.findLast((c) => c !== null);
+    return nameOf(names, cell?.tag ?? "");
+  };
+  const b = (text: string) => <b className="font-semibold text-gray-900 dark:text-white">{text}</b>;
+  const me = row(subject);
+  if (!me) {
+    const at = row(pointed);
+    return at ? <>Click to follow {b(nameAt(at))}.</> : null;
+  }
+  const rival = row(compared);
+  if (rival) {
+    const order = orderSince(me.cells, rival.cells, selected);
+    if (!order)
+      return (
+        <>
+          {b(nameAt(valueOf(me.cells[selected]) === null ? me : rival))} has no figure in this save.
+        </>
+      );
+    const year = columns[order.since].date.year;
+    const when = order.whole ? `in every save since ${year}` : `since the ${year} save`;
+    if (order.sign === 0)
+      return (
+        <>
+          {b(nameAt(me))} and {b(nameAt(rival))} have been level {when}.
+        </>
+      );
+    const [ahead, behind] = order.sign > 0 ? [me, rival] : [rival, me];
+    return (
+      <>
+        {b(nameAt(ahead))} has been ahead of {b(nameAt(behind))} {when}.
+      </>
+    );
+  }
+  const mine = standings.find((x) => x.row === me);
+  if (mine?.tied) {
+    const level = standings.filter((x) => x !== mine && x.value === mine.value);
+    return (
+      <>
+        {b(nameAt(me))} and {level.map((x) => nameAt(x.row)).join(" and ")} are level at{" "}
+        {figure.format(mine.value)}.
+      </>
+    );
+  }
+  return null;
 }
 
 /** Says when the filter gives one country, or none. */
@@ -579,25 +873,54 @@ function Foot({
   campaign,
   chart,
   unclear,
+  leftOutPlayed,
+  chips,
 }: {
   campaign: Eu4Campaign;
   chart: ChartCountries | null;
+  /** The zoom's chips, beside Add saves. */
+  chips?: React.ReactNode;
   /** The names of the tags whose holders cannot be told apart. */
   unclear: readonly string[];
+  leftOutPlayed: readonly LeftOutPlayed[];
 }) {
   const { saves, issues, nav } = campaign;
+  const countries = useEu4Countries();
   const unreadable = saves.filter((x) => x.status === "failed" && !x.retry);
+  // Saves of a date that the chart already shows: in multiplayer, often each player's copy.
+  const sameDate = new Map<string, { kept: string; others: string[] }>();
+  const leftOut = [...(nav?.leftOut ?? [])].sort(
+    (a, b) => dayNumber(a.save.date) - dayNumber(b.save.date),
+  );
+  for (const { save, kept } of leftOut) {
+    const date = formatLongDate(save.date);
+    const entry = sameDate.get(date) ?? { kept: kept.name, others: [] };
+    entry.others.push(save.name);
+    sameDate.set(date, entry);
+  }
+  const sameDateCount = nav?.leftOut.length ?? 0;
   const saveEntries = [
     ...unreadable.map((x) => `${x.save.name}: could not be read.`),
-    ...(nav?.leftOut ?? []).map(
-      ({ save, kept }) => `${save.name}: same date as ${kept.name}, which is shown.`,
-    ),
     // A notice names a save that analysis left out, such as one of another campaign.
     ...issues.filter((issue) => !unreadable.some((x) => issue.startsWith(`${x.save.name}:`))),
   ];
-  const tags = chart?.leftOut ?? [];
+  const dateEntries = [...sameDate].map(
+    ([date, { kept, others }]) =>
+      `${date}: ${plural(others.length, "more save", "more saves")} of this date (${others.join(", ")}); the chart shows ${kept}.`,
+  );
+  const tagName = (tag: string) => {
+    const name = countries.find((x) => x.tag === tag)?.name;
+    return name && name !== tag ? `${name} (${tag})` : tag;
+  };
+  const playedTags = new Set(leftOutPlayed.map((x) => x.tag));
+  const tags = (chart?.leftOut ?? []).filter((tag) => !playedTags.has(tag));
   const entries = [
     ...saveEntries,
+    ...dateEntries,
+    ...leftOutPlayed.map(
+      ({ tag, saves: played }) =>
+        `${tagName(tag)}, marked as played from the ${played[0].date.year} save on: the game gives this tag to other countries later, so it is not followed from save to save.`,
+    ),
     ...(tags.length
       ? [`${tags.join(", ")}: the game gives these tags to other countries later.`]
       : []),
@@ -608,14 +931,18 @@ function Foot({
       : []),
     ...(nav?.truncated ? ["Only the latest 200 uploads are listed."] : []),
   ];
-  const countries = tags.length + unclear.length;
+  const countryCount = tags.length + leftOutPlayed.length + unclear.length;
   const parts = [
     saveEntries.length > 0 && plural(saveEntries.length, "save", "saves"),
-    countries > 0 && plural(countries, "country", "countries"),
+    sameDateCount > 0 && `${plural(sameDateCount, "more save", "more saves")} of shown dates`,
+    countryCount > 0 && plural(countryCount, "country", "countries"),
   ].filter(Boolean);
   return (
     <Collapsible className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
-      <AddSaves quiet />
+      <span className="flex items-center gap-4">
+        <AddSaves quiet />
+        {chips}
+      </span>
       {entries.length > 0 && (
         <>
           <Collapsible.Trigger className="w-auto! gap-1.5 font-normal text-gray-600 dark:text-gray-300">

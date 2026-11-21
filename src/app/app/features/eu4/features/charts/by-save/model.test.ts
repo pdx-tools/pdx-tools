@@ -28,6 +28,7 @@ it("gives each country one row named by the tag it held, sorted at the selected 
   });
   const series: LineageValues[] = [
     {
+      played: false,
       lineage: {
         kind: "country",
         tags: [
@@ -38,16 +39,22 @@ it("gives each country one row named by the tag it held, sorted at the selected 
       values: [value("ALO", 21), value("NBI", 748, 1)],
     },
     {
+      played: false,
       lineage: { kind: "country", tags: [{ tag: "FRA" }] },
       values: [value("FRA", 252), value("FRA", 901)],
     },
     // The first Byzantium, before another country took the tag.
     {
+      played: false,
       lineage: { kind: "earlierHolder", tags: [{ tag: "BYZ", until: "1500-01-01" }] },
       values: [value("BYZ", 30), undefined],
     },
     // No value in any save: no row.
-    { lineage: { kind: "country", tags: [{ tag: "MLO" }] }, values: [undefined, undefined] },
+    {
+      played: false,
+      lineage: { kind: "country", tags: [{ tag: "MLO" }] },
+      values: [undefined, undefined],
+    },
   ];
   const rows = lineageRows(series, [0, 1]);
   expect(rows.map((x) => x.key)).toEqual(["ALO>NBI@1451-01-01", "FRA", "BYZ"]);
@@ -71,6 +78,7 @@ it("names a row by the tag it held at the column, even a tag it held twice", () 
   // Austria forms Bohemia and later takes back its tag.
   const series: LineageValues[] = [
     {
+      played: false,
       lineage: {
         kind: "country",
         tags: [
@@ -102,6 +110,7 @@ it("names the three nearest other tags of a long chain and counts the rest", () 
   const [row] = lineageRows(
     [
       {
+        played: false,
         lineage: { kind: "country", tags },
         values: [{ kind: "value", tag: "EEE", held: 4, value: 1 }],
       },

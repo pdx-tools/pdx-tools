@@ -16,6 +16,9 @@ import PlayIcon from "@heroicons/react/20/solid/PlayIcon";
 import { emitEvent } from "@/lib/events";
 import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 import { bySaveFigures, bySaveVizs } from "./by-save/figures";
+import type { BySaveViz } from "./by-save/figures";
+import { useBySaveView } from "./by-save/view";
+import { Badge } from "@/components/Badge";
 
 interface ChartDrawerTitleProps {
   selectedViz: VizModules;
@@ -33,6 +36,8 @@ export const ChartDrawerTitle = ({
   const viz = useVisualization();
   const campaignHistory = useIsCampaignAnalysisEnabled();
   const filename = useSaveFilenameWith(`-${selectedViz}.csv`);
+  const colorRule = useBySaveView((state) => state.colorRule);
+  const bySave = bySaveVizs.includes(selectedViz as BySaveViz);
 
   return (
     <div className="flex items-center gap-2">
@@ -104,6 +109,14 @@ export const ChartDrawerTitle = ({
         </Select.Content>
       </Select>
       <CountryFilterButton />
+      {bySave && colorRule && (
+        <Badge
+          title="The countries drawn in their own colors; the others are grey. Click a row to give it its color."
+          className="h-8 rounded-md font-medium whitespace-nowrap"
+        >
+          In color: {colorRule}
+        </Badge>
+      )}
       <IconButton
         shape="square"
         icon={<TableCellsIcon className="h-4 w-4" />}
