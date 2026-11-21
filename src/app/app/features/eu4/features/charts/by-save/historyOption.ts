@@ -1,17 +1,18 @@
-import type { CustomSeriesOption, LineSeriesOption, ScatterSeriesOption } from "echarts/charts";
+import type { LineSeriesOption, ScatterSeriesOption } from "echarts/charts";
 import type { VisualMapComponentOption } from "echarts/components";
 import type { EChartsOption } from "@/components/viz/EChart";
-import { placeRows } from "./history";
 import type { ValueScale } from "./history";
 
 /**
- * The plot of the history chart as an ECharts option: one line for each
+ * The lines of the history chart as an ECharts option: one line for each
  * country on one value scale, a dot at each save, the selected time as a
- * rule with what follows it faded, gap sticks to a compared country, and
- * the leaders from the selected marks to the standings beside the plot.
+ * rule with what follows it faded. Marks, leaders, gap sticks and the hover
+ * are drawn over the chart from the same plot mapping (see `plotMap`).
  *
- * The series keep one order and one count, whatever is pointed at or
- * pinned: the axis pointer remembers what it emphasized by series index.
+ * The series keep one order and one count whatever is selected or pinned,
+ * and pointing at a country only highlights and blurs series, so the option
+ * is rebuilt only when the selection, the pins or the data change. The
+ * strengths follow the prototype (`candidates/D5/app.js`, `D7/app.js`).
  */
 
 export type Palette = {
@@ -27,6 +28,8 @@ export type Palette = {
   field: string;
   /** The world total, which is no country. */
   accent: string;
+  /** Keyboard focus. */
+  ring: string;
 };
 
 export const palettes: Record<"light" | "dark", Palette> = {
@@ -39,8 +42,9 @@ export const palettes: Record<"light" | "dark", Palette> = {
     base: "#9ca3af",
     rule: "#0b1220",
     hoverRule: "#9ca3af",
-    field: "#a3a9b3",
+    field: "#9ca3af",
     accent: "#0284c7",
+    ring: "#0284c7",
   },
   dark: {
     ground: "#0f172a",
@@ -53,10 +57,11 @@ export const palettes: Record<"light" | "dark", Palette> = {
     hoverRule: "#64748b",
     field: "#64748b",
     accent: "#38bdf8",
+    ring: "#38bdf8",
   },
 };
 
-/** How a line stands: followed, compared, plain, or out of color. */
+/** How a line stands: followed, compared (pinned or pointed), plain, or out of color. */
 export type LineRole = "subject" | "compared" | "plain" | "grey";
 
 export type ChartLine = {
@@ -67,19 +72,13 @@ export type ChartLine = {
   colors: readonly (string | null)[];
   /** The name of the tag held at each column with a value. */
   names: readonly (string | null)[];
+  /** The tag held at each column with a value, for its flag. */
+  tags: readonly (string | null)[];
   /** Days where the line changes tag, with the color after. */
   changes: readonly { day: number; color: string }[];
+  /** The role that the selection and pins give it; pointing is drawn as a highlight. */
   role: LineRole;
-  /** Another line is compared, and this one steps back. */
-  back: boolean;
-};
-
-export type Leader = {
-  value: number;
-  /** The center of the row's place beside the plot, in pixels from the chart's top. */
-  rowY: number;
-  color: string;
-  role: LineRole;
+  /** A pinned country is compared, and this one steps back. */
   back: boolean;
 };
 
@@ -90,65 +89,212 @@ export type Comparison = {
   since: number | null;
 };
 
+/** Where days and values stand on the plot, in pixels from the chart's top left. */
+export type PlotMap = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  from: number;
+  to: number;
+  lo: number;
+  hi: number;
+  /** The step between the scale's round values. */
+  step: number;
+  x: (day: number) => number;
+  y: (value: number) => number;
+};
+
+/**
+ * The plot mapping that the option and everything drawn over it share: the
+ * option sets the grid and axis bounds from these numbers, so a point at a
+ * mapped pixel is where ECharts draws it.
+ */
+export function plotMap(
+  grid: { left: number; top: number; width: number; height: number },
+  view: readonly [number, number],
+  scale: ValueScale,
+): PlotMap {
+  const span = Math.max(1, view[1] - view[0]);
+  const range = scale.hi - scale.lo || 1;
+  return {
+    ...grid,
+    from: view[0],
+    to: view[1],
+    lo: scale.lo,
+    hi: scale.hi,
+    step: scale.ticks.length > 1 ? scale.ticks[1] - scale.ticks[0] : range,
+    x: (day) => grid.left + ((day - view[0]) / span) * grid.width,
+    y: (value) => grid.top + grid.height * (1 - (value - scale.lo) / range),
+  };
+}
+
+export type Strength = {
+  width: number;
+  join: number;
+  dot: number;
+  radius: number;
+  future: number;
+};
+
+export type StrengthContext = {
+  sparse: boolean;
+  noisy: boolean;
+  crowded: boolean;
+  /** Pixels between saves in view. */
+  pitch: number;
+  /** A country is followed; without one, nobody leads. */
+  anySubject: boolean;
+  world: boolean;
+};
+
+/**
+ * Line width, join and dot opacity, dot radius and the opacity after the
+ * selected save, from the prototypes: D5 for dense saves, D7 for sparse.
+ */
+export function strength(role: LineRole, back: boolean, c: StrengthContext): Strength {
+  const lead = role === "subject" || role === "compared" || c.world;
+  const grey = role === "grey";
+  const future = (lead ? 0.34 : grey ? 0.28 : 0.25) * (back ? 0.6 : 1);
+  if (c.sparse && !c.world) {
+    return {
+      width:
+        role === "subject" ? 2.25 : role === "compared" ? 1.75 : grey ? 1 : c.anySubject ? 1 : 1.5,
+      join: lead ? 1 : grey ? (back ? 0.35 : 0.7) : back ? 0.18 : c.anySubject ? 0.5 : 0.75,
+      dot: lead ? 1 : grey ? (back ? 0.25 : 0.45) : back ? 0.3 : 1,
+      radius:
+        role === "subject" ? 4.6 : role === "compared" ? 4 : grey ? (c.pitch >= 4 ? 1 : 0) : 3.4,
+      future,
+    };
+  }
+  const free = !c.anySubject && !lead && !grey;
+  return {
+    width: c.world
+      ? 2
+      : role === "subject"
+        ? 2.75
+        : role === "compared"
+          ? 2
+          : grey || c.noisy
+            ? 1
+            : c.crowded
+              ? 1.25
+              : 1.5,
+    join: lead
+      ? 1
+      : grey
+        ? back
+          ? 0.35
+          : 0.7
+        : back
+          ? 0.22
+          : c.noisy
+            ? 0.38
+            : free
+              ? c.crowded
+                ? 0.7
+                : 0.85
+              : c.crowded
+                ? 0.55
+                : 0.72,
+    dot: lead
+      ? 1
+      : grey
+        ? back
+          ? 0.25
+          : 0.45
+        : back
+          ? 0.25
+          : c.noisy
+            ? 0.85
+            : c.crowded
+              ? 0.6
+              : 0.75,
+    radius: c.world
+      ? 2.6
+      : grey
+        ? c.pitch >= 4
+          ? 1
+          : 0
+        : role === "subject"
+          ? c.pitch >= 5.5
+            ? 2.9
+            : c.pitch >= 2.5
+              ? 2.2
+              : 0
+          : c.pitch >= 5.5
+            ? role === "compared"
+              ? 2.1
+              : 1.6
+            : c.pitch >= 3.3
+              ? c.noisy || role === "compared"
+                ? 1.4
+                : 1.1
+              : 0,
+    future,
+  };
+}
+
+/**
+ * Values that reverse direction at more than a quarter of the inner saves:
+ * then the dots lead and the joins step back (the followed line excepted).
+ */
+export function isNoisy(lines: readonly ChartLine[]): boolean {
+  let turns = 0;
+  let inner = 0;
+  for (const line of lines) {
+    if (line.role === "subject") continue;
+    const v = line.values;
+    for (let i = 1; i < v.length - 1; i++) {
+      const [a, b, c] = [v[i - 1], v[i], v[i + 1]];
+      if (a === null || b === null || c === null) continue;
+      inner++;
+      if ((b - a) * (c - b) < 0) turns++;
+    }
+  }
+  return inner > 0 && turns / inner > 0.25;
+}
+
 export type HistoryOptionInput = {
   days: readonly number[];
   lines: readonly ChartLine[];
-  /** The world total: one line, its figure beside the selected mark, no standings. */
+  /** The world total: one line in the accent color. */
   world: boolean;
   /** A dot at each save; off for a yearly series. */
   dots: boolean;
   selected: number;
   /** The open save's column, or -1. */
   open: number;
-  /** The days in view; the whole campaign when not zoomed. */
-  view: readonly [number, number];
-  /** Show the zoom slider. */
+  map: PlotMap;
+  /** Show the zoom strip. */
   slider: boolean;
-  scale: ValueScale;
-  grid: { left: number; right: number; top: number; height: number };
-  /** The width between the plot and the standings, where the leaders bend. */
-  fan: number;
-  /** The plot's width in pixels. */
-  plotWidth: number;
-  /** Sparse saves lead with their dots. */
   sparse: boolean;
-  /** A gap in days that is drawn dotted. */
+  /** A gap in days that is not drawn as a measured trend. */
   long: (gap: number) => boolean;
   /** The save years to label, as columns, or round ticks in days. */
   xLabels:
     | { kind: "saves"; columns: readonly number[] }
     | { kind: "ticks"; days: readonly number[] };
-  /** The label of a day on the axis, and of the hovered save. */
   yearOf: (day: number) => string;
-  dateOf: (day: number) => string;
-  leaders: readonly Leader[] | null;
-  comparison: Comparison | null;
   palette: Palette;
   dark: boolean;
-  format: (value: number) => string;
   /** A round value on the value axis, with the axis step. */
   tick: (value: number, step: number) => string;
   font: string;
+  /** The chart's full height in pixels, for the zoom strip. */
+  height: number;
 };
+
+const PARTS = ["f", "g", "h", "d", "a"] as const;
 
 /** The series ids in their fixed order. */
 export function seriesIds(keys: readonly string[]): string[] {
-  return [
-    ...keys.flatMap((key) => ["f", "g", "h", "d", "a"].map((part) => `${part}:${key}`)),
-    "sticks",
-    "breaks",
-    "leaders",
-    "marks",
-  ];
+  return [...keys.flatMap((key) => PARTS.map((part) => `${part}:${key}`)), "rules"];
 }
 
-/** The dot radius of a line, from the pixels between saves. */
-export function dotRadius(role: LineRole, pitch: number, sparse: boolean): number {
-  if (sparse) return role === "subject" ? 4.6 : role === "compared" ? 4 : role === "grey" ? 2 : 3.4;
-  if (role === "grey") return pitch >= 4 ? 1 : 0;
-  if (role === "subject") return pitch >= 5.5 ? 2.9 : pitch >= 2.5 ? 2.2 : 0;
-  if (pitch >= 5.5) return role === "compared" ? 2.1 : 1.6;
-  return pitch >= 3.3 ? (role === "compared" ? 1.4 : 1.1) : 0;
+/** The series indices of a line, to highlight it. */
+export function lineSeries(index: number): number[] {
+  return PARTS.map((_, k) => index * PARTS.length + k);
 }
 
 /** The column whose day is nearest, among those in view. */
@@ -170,11 +316,6 @@ export function nearestColumn(
   return best;
 }
 
-const rgbaOf = (hex: string, alpha: number) => {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
-};
-
 function luminance(hex: string): number {
   const n = parseInt(hex.slice(1), 16);
   const f = (c: number) => {
@@ -184,13 +325,16 @@ function luminance(hex: string): number {
   return 0.2126 * f(n >> 16) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
 }
 
-/** A game color too close to the ground gets an edge a step darker or lighter; the fill is never changed. */
+/**
+ * A game color too close to the ground gets an edge a step darker (or
+ * lighter on the dark ground); the fill is never changed. D5's thresholds.
+ */
 export function edgeFor(hex: string, dark: boolean, ground: string): string | null {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return null;
   const a = luminance(hex);
   const b = luminance(ground);
   const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-  if (ratio >= (dark ? 2.2 : 1.6)) return null;
+  if (ratio >= (dark ? 2.2 : 2.05)) return null;
   const n = parseInt(hex.slice(1), 16);
   const toward = dark ? 255 : 0;
   const f = dark ? 0.45 : 0.3;
@@ -202,219 +346,108 @@ export function edgeFor(hex: string, dark: boolean, ground: string): string | nu
 }
 
 type Point = [number, number | null];
+type MarkPoints = NonNullable<NonNullable<LineSeriesOption["markPoint"]>["data"]>;
 
 export function historyOption(input: HistoryOptionInput): EChartsOption {
-  const { days, lines, selected, palette, scale, grid, dark } = input;
+  const { days, lines, selected, palette, map, dark } = input;
   const n = days.length;
   const selDay = days[selected];
-  const span = Math.max(1, input.view[1] - input.view[0]);
-  const pxPerDay = input.plotWidth / span;
-  const inView = days.filter((day) => day >= input.view[0] && day <= input.view[1]);
-  const pitch = inView.length > 1 ? input.plotWidth / (inView.length - 1) : input.plotWidth;
-  const yPx = (value: number) =>
-    grid.top + grid.height * (1 - (value - scale.lo) / (scale.hi - scale.lo || 1));
-  const xPx = (day: number) => grid.left + (day - input.view[0]) * pxPerDay;
-  const anyCompared = lines.some((line) => line.role === "compared");
-  const anySubject = lines.some((line) => line.role === "subject");
-  const crowded = lines.length > 8;
+  const inView = days.filter((day) => day >= map.from && day <= map.to);
+  const pitch = inView.length > 1 ? map.width / (inView.length - 1) : map.width;
+  const context: StrengthContext = {
+    sparse: input.sparse,
+    noisy: !input.world && isNoisy(lines),
+    crowded: lines.length > 8,
+    pitch,
+    anySubject: lines.some((line) => line.role === "subject"),
+    world: input.world,
+  };
 
-  // Hover figures do not push each other apart in ECharts, so each one's nudge is set here.
-  const nudges = new Map<string, Map<number, number>>(lines.map((line) => [line.key, new Map()]));
-  for (let i = 0; i < n; i++) {
-    if (days[i] < input.view[0] || days[i] > input.view[1]) continue;
-    const at = lines
-      .filter((line) => line.role !== "grey" && line.values[i] !== null)
-      .map((line) => ({ line, y: yPx(line.values[i]!) }))
-      .sort((a, b) => a.y - b.y);
-    const { tops } = placeRows(
-      at.map((x) => ({ want: x.y, height: 13 })),
-      grid.top - 6,
-      grid.top + grid.height + 6,
-    );
-    at.forEach((x, k) => {
-      const dy = Math.round(tops[k] + 6.5 - x.y);
-      if (dy) nudges.get(x.line.key)!.set(i, dy);
-    });
-  }
-
-  const series: (LineSeriesOption | CustomSeriesOption | ScatterSeriesOption)[] = [];
+  const series: (LineSeriesOption | ScatterSeriesOption)[] = [];
   const visualMap: VisualMapComponentOption[] = [];
-  /** Values with no save beside them, drawn as dots on any line. */
-  const lone: object[] = [];
-  /** Breaks in joins where the tag changes: day, value, width, z. */
-  const breaks: [number, number, number, number][] = [];
 
   for (const line of lines) {
-    const { role, back } = line;
-    const grey = role === "grey";
-    const lead = role === "subject" || role === "compared" || input.world;
-    const free = !anySubject && !lead && !grey;
-    const sparse = input.sparse && !input.world;
-    const width = input.world
-      ? 2
-      : sparse
-        ? role === "subject"
-          ? 2.25
-          : role === "compared"
-            ? 1.75
-            : 1
-        : role === "subject"
-          ? 2.75
-          : role === "compared"
-            ? 2
-            : grey
-              ? 1
-              : crowded
-                ? 1.25
-                : 1.5;
-    const joinOpacity = lead
-      ? 1
-      : grey
-        ? anyCompared
-          ? 0.35
-          : 0.7
-        : back
-          ? sparse
-            ? 0.18
-            : 0.22
-          : sparse
-            ? 0.5
-            : free
-              ? crowded
-                ? 0.7
-                : 0.85
-              : crowded
-                ? 0.55
-                : 0.72;
-    const dotOpacity = lead
-      ? 1
-      : grey
-        ? anyCompared
-          ? 0.25
-          : 0.45
-        : back
-          ? 0.28
-          : sparse
-            ? 1
-            : crowded
-              ? 0.6
-              : 0.75;
-    const radius = !input.dots ? 0 : input.world ? 2.6 : dotRadius(role, pitch, sparse);
-    const futureOpacity = (lead ? 0.38 : grey ? 0.3 : 0.28) * (back ? 0.6 : 1);
-    const first = line.colors.find((x) => x !== null) ?? palette.field;
-    const colorOf = (i: number) =>
-      grey ? palette.field : input.world ? palette.accent : (line.colors[i] ?? first);
-    const recolors = !grey && !input.world && line.changes.length > 0;
-    const point = (i: number): Point => [days[i], line.values[i]];
+    const grey = line.role === "grey";
+    const own = strength(line.role, line.back, context);
+    // Pointing highlights a line as compared and blurs the others to where they step back.
+    const lit = strength(line.role === "plain" || grey ? "compared" : line.role, false, context);
+    const dim = strength(line.role, true, context);
     const has = (i: number) => i >= 0 && i < n && line.values[i] !== null;
+    const point = (i: number): Point => [days[i], line.values[i]];
+    const first = line.colors.find((x) => x !== null) ?? palette.field;
+    const colorAt = (i: number) =>
+      input.world ? palette.accent : (line.colors[i] ?? line.colors[selected] ?? first);
+    const shown = grey ? palette.field : input.world ? palette.accent : null;
+    const litColor = input.world ? palette.accent : colorAt(selected);
 
-    const z = grey ? 2 : role === "subject" ? 5 : role === "compared" ? 4 : 3;
-    // Every point of a hovered line is a save, so the axis pointer finds the same save on
-    // every line: a gap is a null at the day of the save before it.
+    // A join between saves far apart is dotted: it is not a measured trend.
     const joins = (from: number, to: number) => {
       const solid: Point[] = [];
       const dotted: Point[] = [];
       for (let i = from; i <= to; i++) {
         solid.push(point(i));
         if (i === to || !has(i) || !has(i + 1)) continue;
-        const gap = days[i + 1] - days[i];
-        if (input.long(gap)) {
-          // A long join is dotted, and the solid line has a gap there.
+        if (input.long(days[i + 1] - days[i])) {
+          // A null at the earlier save's day ends the solid line without a point of its own.
           solid.push([days[i], null]);
           dotted.push(point(i), point(i + 1), [days[i + 1], null]);
-        } else if (sparse && !grey && i < selected) {
-          // A small break where the tag changes inside a sparse join, so the color change reads.
-          const [a, b] = [line.values[i]!, line.values[i + 1]!];
-          for (const cut of line.changes) {
-            if (cut.day <= days[i] || cut.day >= days[i + 1]) continue;
-            breaks.push([cut.day, a + ((b - a) * (cut.day - days[i])) / gap, width + 2, z]);
-          }
         }
       }
       return { solid, dotted };
     };
 
-    // The chart places the hover itself, so the lines take no pointer events of their own.
-    const tooltip = grey ? { tooltip: { show: false }, silent: true } : { silent: true };
-    const label = (future: boolean) => ({
-      show: true,
-      position: "right" as const,
-      distance: 5,
-      fontSize: 11,
-      fontWeight: lead ? 700 : 500,
-      color: lead ? palette.ink : palette.muted,
-      textBorderColor: palette.ground,
-      textBorderWidth: 3,
-      formatter: (params: { value: unknown }) => {
-        const [day, value] = params.value as [number, number | null];
-        // The selected save's figure is in the standings, and the future line repeats its first point.
-        if (value === null || (future && day === selDay)) return "";
-        const i = days.indexOf(day);
-        const name = role === "compared" && i >= 0 ? `${line.names[i] ?? ""} ` : "";
-        return `${name}${input.format(value)}`;
+    const z = grey ? 2 : line.role === "subject" ? 5 : line.role === "compared" ? 4 : 3;
+    const color = (style: Record<string, unknown>) =>
+      shown ? { ...style, color: shown } : line.changes.length ? style : { ...style, color: first };
+    const edge = !grey && !input.world ? edgeFor(first, dark, palette.ground) : null;
+    const dotWidth = (s: Strength) => Math.max(1.7, s.width - 0.5);
+    const states = (
+      base: (s: Strength) => Record<string, unknown>,
+      item?: (s: Strength) => object,
+    ) => ({
+      emphasis: {
+        focus: "series" as const,
+        blurScope: "coordinateSystem" as const,
+        scale: false,
+        lineStyle: { ...base(lit), ...(grey ? { color: litColor } : {}) },
+        ...(item ? { itemStyle: { ...item(lit), ...(grey ? { color: litColor } : {}) } } : {}),
+      },
+      blur: {
+        lineStyle: base(dim),
+        ...(item ? { itemStyle: item(dim) } : {}),
       },
     });
-    // Points that need their own emphasis: a nudged or flipped hover figure, or a recolored mark.
-    const item = (p: Point, i: number): Point | object => {
-      if (p[1] === null) return p;
-      // A point that is no save, at the ends of a break, has no dot.
-      if (i < 0) return { value: p, symbol: "none", emphasis: { disabled: true } };
-      const dy = nudges.get(line.key)!.get(i) ?? 0;
-      const flip = xPx(p[0]) + 70 > grid.left + input.plotWidth;
-      if (!dy && !flip) return p;
-      return {
-        value: p,
-        emphasis: {
-          label: { ...(flip ? { position: "left" } : {}), ...(dy ? { offset: [0, dy] } : {}) },
-        },
-      };
-    };
-    const edge = !grey && !input.world ? edgeFor(first, dark, palette.ground) : null;
-    const emphasis = (size: number) => ({
-      disabled: grey,
-      scale: (role === "subject" ? 9.5 : 7.5) / Math.max(size, 1),
-      itemStyle: { opacity: 1, borderColor: palette.ground, borderWidth: 1.5 },
-      lineStyle: { width },
-    });
-    const colored = (style: Record<string, unknown>) =>
-      recolors ? style : { ...style, color: colorOf(selected) };
 
-    // The future first, so the past of every line lies over it.
     const future = joins(selected, n - 1);
-    const futureSize = Math.max(radius * 2, 3);
     series.push({
       id: `f:${line.key}`,
       type: "line",
       z,
-      data: future.solid.map((p) => item(p, days.indexOf(p[0]))),
-      // Later saves keep their dots, faded, as a dot says a point is a save.
-      showSymbol: radius > 0,
-      symbol: "circle",
-      symbolSize: futureSize,
+      silent: true,
+      data: future.solid,
+      // After the selected save, lines are faded and without dots, as in D5.
+      showSymbol: false,
       connectNulls: false,
       clip: true,
-      lineStyle: colored({ width, opacity: futureOpacity, cap: "round", join: "round" }),
-      itemStyle: colored({ opacity: Math.min(1, futureOpacity * 1.4) }),
-      emphasis: { ...emphasis(futureSize), label: label(true) },
+      lineStyle: color({ width: own.width, opacity: own.future, cap: "round", join: "round" }),
+      ...states((s) => ({ width: s.width, opacity: s.future })),
       animation: false,
-      ...tooltip,
     });
     series.push({
       id: `g:${line.key}`,
       type: "line",
       z,
-      data: future.dotted,
       silent: true,
+      data: future.dotted,
       symbol: "none",
       clip: true,
-      emphasis: { disabled: true },
-      tooltip: { show: false },
-      lineStyle: colored({
-        width: Math.max(1.6, width - 0.4),
-        type: [0.1, 4],
+      lineStyle: color({
+        width: dotWidth(own),
+        type: [0.1, 3.6],
         cap: "round",
-        opacity: futureOpacity,
+        opacity: own.future,
       }),
+      ...states((s) => ({ width: dotWidth(s), opacity: s.future })),
       animation: false,
     });
 
@@ -423,86 +456,74 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       id: `h:${line.key}`,
       type: "line",
       z,
-      data: past.solid,
       silent: true,
+      data: past.solid,
       symbol: "none",
       clip: true,
-      emphasis: { disabled: true },
-      tooltip: { show: false },
-      // A ground-colored halo, so crossing lines part.
+      // A ground-colored halo, 1 px each side, so crossing lines part.
       lineStyle: {
         color: palette.ground,
-        width: sparse ? 0 : width + 2,
-        opacity: joinOpacity,
+        width: own.width + 2,
+        opacity: own.join,
         cap: "round",
         join: "round",
       },
+      ...states((s) => ({ width: s.width + 2, opacity: s.join })),
       animation: false,
     });
     series.push({
       id: `d:${line.key}`,
       type: "line",
       z,
-      data: past.dotted,
       silent: true,
+      data: past.dotted,
       symbol: "none",
       clip: true,
-      emphasis: { disabled: true },
-      tooltip: { show: false },
-      lineStyle: colored({
-        width: Math.max(1.6, width - 0.4),
-        type: [0.1, 4],
+      lineStyle: color({
+        width: dotWidth(own),
+        type: [0.1, 3.6],
         cap: "round",
-        opacity: lead ? 1 : Math.min(1, joinOpacity + 0.15),
+        opacity: own.join * (line.role === "subject" || line.role === "compared" ? 1 : 0.75),
       }),
+      ...states((s) => ({ width: dotWidth(s), opacity: s.join * 0.9 })),
       animation: false,
     });
 
-    const size = radius > 0 ? radius * 2 : 3;
-    // A lone value has no join, so it shows as a dot even where the line has none.
-    if (radius === 0) {
-      for (let i = 0; i < n; i++) {
-        if (!has(i) || has(i - 1) || has(i + 1)) continue;
-        if (days[i] < input.view[0] || days[i] > input.view[1]) continue;
-        const after = i > selected;
-        lone.push({
-          value: [days[i], line.values[i]!],
-          symbolSize: 4,
-          itemStyle: {
-            color: colorOf(i),
-            opacity: after ? futureOpacity * 1.4 : grey ? dotOpacity : Math.max(dotOpacity, 0.8),
-          },
-        });
-      }
-    }
+    const radius = !input.dots ? 0 : own.radius;
+    const size = (s: Strength) => (s.radius > 0 ? s.radius * 2 : 0);
+    // A lone value has no join, so it keeps a dot even where the line has none.
+    const lone = (i: number) => has(i) && !has(i - 1) && !has(i + 1);
     const pastLine: LineSeriesOption = {
       id: `a:${line.key}`,
       name: line.key,
       type: "line",
       z,
-      data: past.solid.map((p) => item(p, days.indexOf(p[0]))),
-      showSymbol: radius > 0,
+      silent: true,
+      data: past.solid.map((p) => {
+        const i = days.indexOf(p[0]);
+        return radius === 0 && p[1] !== null && i >= 0 && lone(i)
+          ? { value: p, symbol: "circle", symbolSize: 4 }
+          : p;
+      }),
+      showSymbol: radius > 0 || past.solid.some((p) => p[1] !== null && lone(days.indexOf(p[0]))),
       symbol: "circle",
-      symbolSize: size,
+      symbolSize: radius > 0 ? size(own) : 0,
       connectNulls: false,
       clip: true,
-      lineStyle: colored({ width, opacity: joinOpacity, cap: "round", join: "round" }),
-      itemStyle: colored({
-        opacity: dotOpacity,
-        // Large dots part with a ground edge; a pale color keeps its own.
-        ...(sparse && radius > 2.5
-          ? { borderColor: edge ?? palette.ground, borderWidth: edge ? 1 : 1.25 }
-          : edge
-            ? { borderColor: edge, borderWidth: 0.8 }
-            : {}),
+      lineStyle: color({ width: own.width, opacity: own.join, cap: "round", join: "round" }),
+      itemStyle: color({
+        opacity: own.dot,
+        ...(edge ? { borderColor: edge, borderWidth: 0.7 } : {}),
       }),
-      emphasis: { ...emphasis(size), label: label(false) },
+      ...states(
+        (s) => ({ width: s.width, opacity: s.join }),
+        (s) => ({ opacity: s.dot }),
+      ),
       animation: false,
-      ...tooltip,
     };
-    const marks: NonNullable<NonNullable<LineSeriesOption["markPoint"]>["data"]> = [];
-    if (!sparse && recolors) {
-      // A tick where the tag changes between dense saves.
+    if (!input.sparse && !grey && !input.world && line.changes.length) {
+      // A tick where the tag changes between dense saves, as in D5.
+      const marks: MarkPoints = [];
       for (const change of line.changes) {
         if (change.day > selDay) continue;
         const i = days.findIndex((day) => day >= change.day);
@@ -514,46 +535,40 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
           coord: [change.day, value],
           symbol: "rect",
           symbolSize: [1, 10],
-          itemStyle: { color: palette.ink, opacity: lead ? 1 : joinOpacity },
+          itemStyle: { color: palette.ink, opacity: own.join },
         });
       }
+      if (marks.length)
+        pastLine.markPoint = {
+          silent: true,
+          animation: false,
+          label: { show: false },
+          emphasis: { disabled: true },
+          data: marks,
+        };
     }
-    const comparison = input.comparison;
-    if (role === "subject" && comparison && comparison.since !== null) {
-      const at = comparison.since;
-      if (line.values[at] !== null)
-        marks.push({
-          name: "since",
-          coord: [days[at], line.values[at]!],
-          symbol: "circle",
-          symbolSize: 17,
-          itemStyle: { color: "transparent", borderColor: palette.ink, borderWidth: 1.25 },
-        });
-    }
-    if (marks.length)
-      pastLine.markPoint = {
-        silent: true,
-        animation: false,
-        label: { show: false },
-        emphasis: { disabled: true },
-        data: marks,
-      };
-    if (recolors) {
+    if (!shown && line.changes.length) {
+      // A tag change recolors the line where it happens; inside a dotted join, at the next save.
       const index = series.length;
+      const at = (day: number) => {
+        const i = days.findIndex((d) => d > day);
+        return i > 0 && has(i - 1) && has(i) && input.long(days[i] - days[i - 1]) ? days[i] : day;
+      };
       const pieces: { gte: number; lt: number; color: string }[] = [];
       let from = days[0] - 1;
-      let color = first;
+      let current = first;
       for (const change of line.changes) {
-        if (change.day <= from) {
-          color = change.color;
+        const day = at(change.day);
+        if (day <= from) {
+          current = change.color;
           continue;
         }
-        pieces.push({ gte: from, lt: change.day, color });
-        from = change.day;
-        color = change.color;
+        pieces.push({ gte: from, lt: day, color: current });
+        from = day;
+        current = change.color;
       }
       // Every piece is bounded: open-ended pieces leave ECharts 6.1 without stops.
-      pieces.push({ gte: from, lt: Math.max(days[n - 1], from) + 2, color });
+      pieces.push({ gte: from, lt: Math.max(days[n - 1], from) + 2, color: current });
       visualMap.push({
         type: "piecewise",
         show: false,
@@ -565,183 +580,16 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     series.push(pastLine);
   }
 
-  // The gap to the compared country at each save, in the color of whoever is ahead there.
-  const sticks: [number, number, number, string][] = [];
-  const comparison = input.comparison;
-  if (comparison) {
-    const every = Math.max(1, Math.ceil((selected + 1) / 110));
-    for (let i = 0; i <= selected; i += every) {
-      const a = comparison.subject.values[i];
-      const b = comparison.rival.values[i];
-      if (a === null || b === null || a === b) continue;
-      const color =
-        a > b
-          ? (comparison.subject.colors[i] ?? palette.ink)
-          : (comparison.rival.colors[i] ?? palette.ink);
-      sticks.push([days[i], a, b, color]);
-    }
-  }
-  series.push({
-    id: "sticks",
-    type: "custom",
-    z: 1,
-    silent: true,
-    tooltip: { show: false },
-    clip: true,
-    data: sticks.map(([x, a, b], k) => [x, a, b, k]),
-    encode: { x: 0, y: [1, 2] },
-    renderItem: (_params, api) => {
-      const [x, a, b, k] = [0, 1, 2, 3].map((d) => Number(api.value(d)));
-      const p = api.coord([x, a]);
-      const q = api.coord([x, b]);
-      return {
-        type: "line",
-        shape: { x1: p[0], y1: p[1], x2: q[0], y2: q[1] },
-        style: { stroke: sticks[k][3], opacity: 0.45, lineWidth: 1 },
-      };
-    },
-    animation: false,
-  });
-
-  // The breaks lie over the lines, in the ground's color.
-  series.push({
-    id: "breaks",
-    type: "custom",
-    z: 6,
-    silent: true,
-    tooltip: { show: false },
-    clip: true,
-    data: breaks.map(([x, y], k) => [x, y, k]),
-    encode: { x: 0, y: 1 },
-    renderItem: (_params, api) => {
-      const [x, y, k] = [0, 1, 2].map((d) => Number(api.value(d)));
-      const [px, py] = api.coord([x, y]);
-      return {
-        type: "line",
-        shape: { x1: px - 2, y1: py, x2: px + 2, y2: py },
-        style: { stroke: palette.ground, lineWidth: breaks[k][2] + 2 },
-        z2: breaks[k][3],
-      };
-    },
-    animation: false,
-  });
-
-  // The leaders: from each mark at the selected time, level to the plot's edge, then to its row.
-  const leaders = input.leaders ?? [];
-  series.push({
-    id: "leaders",
-    type: "custom",
-    z: 6,
-    silent: true,
-    tooltip: { show: false },
-    clip: false,
-    data: leaders.map((leader, k) => [selDay, leader.value, k]),
-    renderItem: (params, api) => {
-      const k = Number(api.value(2));
-      const leader = leaders[k];
-      const box = params.coordSys as unknown as { x: number; width: number };
-      const plotR = box.x + box.width;
-      const tableX = plotR + input.fan;
-      const [sx, sy] = api.coord([selDay, leader.value]);
-      const fromX = Math.max(box.x, Math.min(plotR, sx)) + 7;
-      const y = Math.round(sy) + 0.5;
-      const ry = Math.round(leader.rowY) + 0.5;
-      const lead = leader.role === "subject" || leader.role === "compared";
-      const stroke = lead ? palette.ink : palette.faint;
-      const dim = leader.back ? 0.45 : 1;
-      return {
-        type: "group",
-        children: [
-          {
-            type: "polyline",
-            // From far off, a level line across the plot would read as data; the bend starts at the edge.
-            ignore: plotR - fromX <= 2 || plotR - fromX > 60,
-            shape: {
-              points: [
-                [fromX, y],
-                [plotR + 5, y],
-              ],
-            },
-            style: { fill: "none", stroke, opacity: (lead ? 0.55 : 0.35) * dim, lineWidth: 1 },
-          },
-          {
-            type: "polyline",
-            shape: {
-              points: [
-                [plotR + 5, y],
-                [plotR + 9, y],
-                [tableX - 12, ry],
-                [tableX - 8, ry],
-              ],
-            },
-            style: { fill: "none", stroke, opacity: (lead ? 0.9 : 0.55) * dim, lineWidth: 1 },
-          },
-          {
-            type: "rect",
-            shape: {
-              x: tableX - 6,
-              y: Math.round(ry - (leader.role === "subject" ? 8 : 6)),
-              width: leader.role === "grey" ? 3 : 4,
-              height: leader.role === "subject" ? 16 : 12,
-            },
-            style: { fill: leader.color, opacity: dim },
-          },
-        ],
-      };
-    },
-    animation: false,
-  });
-
-  // The marks at the selected time. Marks that would pile up show as one, ringed.
-  const at = lines
-    .filter((line) => line.role !== "grey" && line.values[selected] !== null)
-    .map((line) => ({ line, y: yPx(line.values[selected]!) }))
-    .sort((a, b) => a.y - b.y);
-  const groups: (typeof at)[] = [];
-  for (const mark of at) {
-    const last = groups.at(-1);
-    if (last && mark.y - last.at(-1)!.y < 4) last.push(mark);
-    else groups.push([mark]);
-  }
-  const rank = (role: LineRole) => (role === "subject" ? 0 : role === "compared" ? 1 : 2);
-  const selectedMarks = groups.map((group) => {
-    const front = [...group].sort((a, b) => rank(a.line.role) - rank(b.line.role))[0];
-    const color = input.world ? palette.accent : (front.line.colors[selected] ?? palette.ink);
-    const radius = front.line.role === "subject" ? 4.6 : 3.8;
-    const edge = input.world ? null : edgeFor(color, dark, palette.ground);
-    return {
-      value: [selDay, front.line.values[selected]],
-      symbolSize: radius * 2 + 1.5,
-      itemStyle: {
-        color,
-        borderColor: group.length > 1 ? palette.ink : (edge ?? palette.ground),
-        borderWidth: group.length > 1 ? 1.5 : edge ? 1 : 1.5,
-        opacity: front.line.back ? 0.35 : 1,
-      },
-      ...(input.world
-        ? {
-            label: {
-              show: true,
-              position: "right" as const,
-              distance: 10,
-              formatter: () => input.format(front.line.values[selected]!),
-              fontSize: 18,
-              fontWeight: 700,
-              color: palette.ink,
-              textBorderColor: palette.ground,
-              textBorderWidth: 3,
-            },
-          }
-        : {}),
-    };
-  });
-  const rules: NonNullable<NonNullable<ScatterSeriesOption["markLine"]>["data"]> = [
+  // The selected rule with its cap, the open save's dashed rule, and the cut of a zoom.
+  type Rules = NonNullable<NonNullable<ScatterSeriesOption["markLine"]>["data"]>;
+  type Caps = NonNullable<NonNullable<ScatterSeriesOption["markPoint"]>["data"]>;
+  const rules: Rules = [
     { xAxis: selDay, lineStyle: { color: palette.rule, width: 1, type: "solid" } },
   ];
-  const caps: NonNullable<NonNullable<ScatterSeriesOption["markPoint"]>["data"]> = [
+  const caps: Caps = [
     {
       name: "selected",
-      coord: [selDay, scale.hi],
+      coord: [selDay, map.hi],
       symbol: "triangle",
       symbolSize: [9, 7],
       symbolRotate: 180,
@@ -756,7 +604,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     });
     caps.push({
       name: "open",
-      coord: [days[input.open], scale.hi],
+      coord: [days[input.open], map.hi],
       symbol: "triangle",
       symbolSize: [9, 7],
       symbolRotate: 180,
@@ -764,33 +612,23 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       itemStyle: { color: palette.ground, borderColor: palette.ink, borderWidth: 1 },
     });
   }
-  // A zoomed view says where it is cut.
-  if (input.view[0] > days[0])
-    rules.push({
-      xAxis: input.view[0],
-      lineStyle: { color: palette.base, width: 1, type: [2, 3] },
-    });
-  if (input.view[1] < days[n - 1])
-    rules.push({
-      xAxis: input.view[1],
-      lineStyle: { color: palette.base, width: 1, type: [2, 3] },
-    });
+  if (map.from > days[0])
+    rules.push({ xAxis: map.from, lineStyle: { color: palette.base, width: 1, type: [2, 3] } });
+  if (map.to < days[n - 1])
+    rules.push({ xAxis: map.to, lineStyle: { color: palette.base, width: 1, type: [2, 3] } });
   series.push({
-    id: "marks",
+    id: "rules",
     type: "scatter",
     z: 7,
     silent: true,
-    tooltip: { show: false },
-    symbol: "circle",
-    clip: false,
-    data: [...lone, ...selectedMarks],
-    emphasis: { disabled: true },
+    data: [],
     markLine: {
       silent: true,
       animation: false,
       symbol: ["none", "none"],
       label: { show: false },
       emphasis: { disabled: true },
+      blur: { lineStyle: { opacity: 1 } },
       data: rules,
     },
     markPoint: {
@@ -807,14 +645,17 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     input.xLabels.kind === "saves"
       ? input.xLabels.columns.map((i) => days[i])
       : [...input.xLabels.days];
-  const step = scale.ticks.length > 1 ? scale.ticks[1] - scale.ticks[0] : undefined;
   return {
     animation: false,
     backgroundColor: "transparent",
     textStyle: { fontFamily: input.font },
-    grid: { ...grid, outerBoundsMode: "none" },
-    // The chart drives the axis pointer itself, from one save in view.
-    axisPointer: { triggerOn: "none" },
+    grid: {
+      left: map.left,
+      top: map.top,
+      width: map.width,
+      height: map.height,
+      outerBoundsMode: "none",
+    },
     xAxis: {
       type: "value",
       min: days[0],
@@ -823,10 +664,8 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       axisTick: {
         show: true,
         length: 5,
-        // A tick at each save, thinned where they would run together.
-        customValues: days.filter(
-          (_, i) => i % Math.max(1, Math.ceil(3 / Math.max(pitch, 0.01))) === 0,
-        ),
+        // A tick at each save, every other one where they would run together (D5).
+        customValues: days.filter((_, i) => pitch >= 2 || i % 2 === 0),
         lineStyle: { color: palette.faint },
       },
       axisLabel: {
@@ -842,38 +681,15 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
         hideOverlap: true,
       },
       splitLine: { show: false },
-      axisPointer: {
-        show: true,
-        snap: true,
-        type: "line",
-        triggerEmphasis: true,
-        triggerTooltip: false,
-        lineStyle: { color: palette.hoverRule, width: 1, type: "solid" },
-        label: {
-          show: true,
-          formatter: (params: { value: unknown }) => {
-            // The save that the pointer's emphasis takes, also one just past a cut.
-            const i = nearestColumn(days, Number(params.value));
-            return i >= 0 ? input.dateOf(days[i]) : "";
-          },
-          backgroundColor: palette.ground,
-          color: palette.ink,
-          borderColor: palette.base,
-          borderWidth: 1,
-          padding: [2, 5],
-          fontSize: 11,
-          fontWeight: 600,
-          margin: 3,
-        },
-      },
+      axisPointer: { show: false },
     },
     yAxis: {
       type: "value",
-      min: scale.lo,
-      max: scale.hi,
-      interval: step,
+      min: map.lo,
+      max: map.hi,
+      interval: map.step,
       axisLabel: {
-        formatter: (value: number) => input.tick(value, step ?? 1),
+        formatter: (value: number) => input.tick(value, map.step),
         color: palette.faint,
         fontSize: 11,
         margin: 8,
@@ -889,17 +705,25 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
         show: input.slider,
         xAxisIndex: 0,
         filterMode: "none",
-        startValue: input.view[0],
-        endValue: input.view[1],
-        bottom: 4,
-        height: 18,
+        startValue: map.from,
+        endValue: map.to,
+        // A thin strip with small grips, as in D5.
+        top: map.top + map.height + 38,
+        left: map.left,
+        width: map.width,
+        height: 6,
         showDetail: false,
         brushSelect: false,
         showDataShadow: false,
-        borderColor: palette.grid,
-        fillerColor: rgbaOf(palette.base, 0.18),
-        handleStyle: { color: palette.ground, borderColor: palette.base },
+        borderColor: "transparent",
+        backgroundColor: palette.grid,
+        fillerColor: palette.base,
+        borderRadius: 3,
+        handleIcon: "path://M0,0 h2.5 v10 h-2.5 z",
+        handleSize: 14,
+        handleStyle: { color: palette.muted, borderColor: palette.muted },
         moveHandleSize: 0,
+        emphasis: { handleStyle: { color: palette.ink, borderColor: palette.ink } },
       },
     ],
     visualMap,

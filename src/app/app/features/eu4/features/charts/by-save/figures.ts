@@ -11,16 +11,18 @@ export type BySaveFigure = {
   metric: CountryMetric | null;
   /** The value as the viewer shows it. */
   format: (value: number) => string;
+  /** One decimal more, for figures that would otherwise read alike. */
+  fine: (value: number) => string;
   /** A round value on the axis, with the axis step, so ticks read apart. */
   tick: (value: number, step: number) => string;
 };
 
 const points = (value: number) => formatInt(value);
-// Below 100K a decimal keeps apart figures that rank apart, such as 9.5K and 10.5K.
-const thousands = (value: number) =>
-  Math.abs(value) < 100
-    ? `${value.toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`
-    : `${formatInt(value)}K`;
+const thousands = (value: number) => `${formatInt(value)}K`;
+const oneDecimal = (value: number) =>
+  value.toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const finePoints = (value: number) => oneDecimal(value);
+const fineThousands = (value: number) => `${oneDecimal(value)}K`;
 /** The decimals that show every multiple of an axis step exactly, at most three. */
 const stepDigits = (step: number) =>
   [0, 1, 2, 3].find((d) => Math.abs(step * 10 ** d - Math.round(step * 10 ** d)) < 1e-6) ?? 3;
@@ -34,6 +36,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
     unit: "development points",
     metric: "provinceDevelopment",
     format: points,
+    fine: finePoints,
     tick: tickOf(""),
   },
   "army-by-save": {
@@ -41,6 +44,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
     unit: "thousands of men",
     metric: "armySize",
     format: thousands,
+    fine: fineThousands,
     tick: tickOf("K"),
   },
   "manpower-by-save": {
@@ -48,6 +52,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
     unit: "thousands of men",
     metric: "maxManpower",
     format: thousands,
+    fine: fineThousands,
     tick: tickOf("K"),
   },
   "world-dev-by-save": {
@@ -55,6 +60,7 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
     unit: "development points",
     metric: null,
     format: points,
+    fine: finePoints,
     tick: tickOf(""),
   },
 };

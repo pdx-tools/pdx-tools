@@ -4,6 +4,7 @@ import {
   NO_FOCUS,
   absentAt,
   colorRule,
+  distinctTexts,
   escapeFocus,
   findKey,
   orderSince,
@@ -193,7 +194,8 @@ describe("saveSpacing", () => {
     const year = 365;
     const sparse = saveSpacing([0, 60, 125, 145, 180, 213, 251, 306].map((y) => y * year));
     expect(sparse.sparse).toBe(true);
-    expect(sparse.long(55 * year)).toBe(false);
+    expect(sparse.long(55 * year)).toBe(true);
+    expect(sparse.long(4 * year)).toBe(false);
     expect(sparse.long(150 * year)).toBe(true);
     const dense = saveSpacing(Array.from({ length: 80 }, (_, i) => i * year));
     expect(dense.sparse).toBe(false);
@@ -255,5 +257,29 @@ describe("focus", () => {
     expect(once.pins).toEqual([]);
     expect(subjectOf(once, rows, false)).toBe("b");
     expect(subjectOf(escapeFocus(once), rows, false)).toBe("a");
+  });
+});
+
+describe("distinctTexts", () => {
+  it("adds a decimal only to figures that would otherwise read alike", () => {
+    const coarse = (v: number) => `${Math.round(v)}K`;
+    const fine = (v: number) => `${v.toFixed(1)}K`;
+    expect(distinctTexts([75, 9.51, 10.49, 33, 33, null], coarse, fine)).toEqual([
+      "75K",
+      "9.5K",
+      "10.5K",
+      "33K",
+      "33K",
+      "",
+    ]);
+  });
+});
+
+describe("absentAt and the line", () => {
+  it("names as until the column of the line's last value", () => {
+    const line = row("ended", [1, 2, 3, null, null]);
+    const [absence] = absentAt([line], 4);
+    const last = line.cells.findLastIndex((cell) => cell !== null);
+    expect(absence.note).toEqual({ kind: "until", column: last });
   });
 });

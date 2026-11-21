@@ -13,6 +13,10 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
   return (
     <>
       <p>Each dot is one save: {definitions[viz]}</p>
+      <p>
+        A dotted join spans more than five years between saves: what happened between them is not
+        known.
+      </p>
       {viz !== "world-dev-by-save" && (
         <>
           <p>

@@ -228,7 +228,7 @@ const YEAR = 365;
 /**
  * How the saves sit in time. Sparse saves, a median gap over five years,
  * lead with their dots. A join is long, and dotted, when its gap is over
- * 2.5 times the median, or over five years among dense saves.
+ * five years or over 2.5 times the median.
  */
 export function saveSpacing(days: readonly number[]) {
   const gaps = days
@@ -237,8 +237,9 @@ export function saveSpacing(days: readonly number[]) {
     .sort((a, b) => a - b);
   const median = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
   const sparse = median > 5 * YEAR;
+  // Over five years between saves is not a measured trend, whatever the campaign's spacing.
   const long = (gap: number) =>
-    gaps.length > 1 && (gap > median * 2.5 || (!sparse && gap > 5 * YEAR));
+    gaps.length > 0 && (gap > 5 * YEAR || (gaps.length > 1 && gap > median * 2.5));
   return { median, sparse, long };
 }
 
@@ -340,4 +341,24 @@ export function escapeFocus(focus: Focus): Focus {
   if (focus.pins.length) return { ...focus, pins: [] };
   if (focus.subject || focus.released) return NO_FOCUS;
   return focus;
+}
+
+/**
+ * Each value as text, coarse unless two different values would read the
+ * same: those get the fine text, so figures that rank apart never read
+ * alike and no figure shows a decimal it does not need.
+ */
+export function distinctTexts(
+  values: readonly (number | null)[],
+  coarse: (value: number) => string,
+  fine: (value: number) => string,
+): string[] {
+  const texts = values.map((value) => (value === null ? "" : coarse(value)));
+  return values.map((value, i) => {
+    if (value === null) return "";
+    const clash = values.some(
+      (other, k) => k !== i && other !== null && other !== value && texts[k] === texts[i],
+    );
+    return clash ? fine(value) : texts[i];
+  });
 }

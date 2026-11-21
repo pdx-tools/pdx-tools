@@ -112,7 +112,8 @@ export const ChartDrawerTitle = ({
       {bySave && colorRule && (
         <Badge
           title="The countries drawn in their own colors; the others are grey. Click a row to give it its color."
-          className="h-8 rounded-md font-medium whitespace-nowrap"
+          variant="ghost"
+          className="h-6 rounded-full border border-solid border-gray-300 px-2.5 text-xs font-normal whitespace-nowrap text-gray-600 dark:border-gray-600 dark:text-gray-300"
         >
           In color: {colorRule}
         </Badge>

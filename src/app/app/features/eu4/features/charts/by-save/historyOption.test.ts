@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { dayNumber } from "@/features/timeline/date";
 import { valueScale } from "./history";
-import { dotRadius, historyOption, nearestColumn, palettes, seriesIds } from "./historyOption";
+import {
+  historyOption,
+  isNoisy,
+  lineSeries,
+  nearestColumn,
+  palettes,
+  plotMap,
+  seriesIds,
+  strength,
+} from "./historyOption";
 import type { ChartLine, HistoryOptionInput, LineRole } from "./historyOption";
 
 const year = (y: number, month = 1, day = 1) => dayNumber({ year: y, month, day });
@@ -18,11 +27,14 @@ const line = (key: string, values: (number | null)[], role: LineRole = "plain"):
   values,
   colors: values.map((v) => (v === null ? null : "#1144cc")),
   names: values.map((v) => (v === null ? null : key)),
+  tags: values.map((v) => (v === null ? null : key)),
   changes: [],
   role,
   back: false,
 });
 
+const scale = valueScale(0, 2200, true);
+const map = plotMap({ left: 46, top: 22, width: 482, height: 360 }, [days[0], days.at(-1)!], scale);
 const input = (
   lines: ChartLine[],
   extra: Partial<HistoryOptionInput> = {},
@@ -33,86 +45,136 @@ const input = (
   dots: true,
   selected: days.length - 1,
   open: -1,
-  view: [days[0], days.at(-1)!],
+  map,
   slider: false,
-  scale: valueScale(0, 2200, true),
-  grid: { left: 46, right: 272, top: 22, height: 360 },
-  fan: 40,
-  plotWidth: 482,
   sparse: true,
-  long: () => false,
+  long: (gap) => gap > 5 * 365,
   xLabels: { kind: "saves", columns: [0, 1, 2, 3, 4] },
   yearOf: String,
-  dateOf: String,
-  leaders: null,
-  comparison: null,
   palette: palettes.light,
   dark: false,
-  format: String,
   tick: String,
   font: "sans-serif",
+  height: 440,
   ...extra,
 });
 
-type Series = { id: string; data: unknown[]; markPoint?: { data: { name: string }[] } };
+type Series = { id: string; data: unknown[]; silent?: boolean; lineStyle?: { type?: unknown } };
 const seriesOf = (option: ReturnType<typeof historyOption>) => option.series as Series[];
+const points = (series: Series) =>
+  series.data.map((x) => (Array.isArray(x) ? x : (x as { value: unknown[] }).value));
 
 describe("historyOption", () => {
   const france = line("FRA", [820, 878, 1162, 1361, 1648], "subject");
   const britain = line("ENG>GBR", [594, 873, 922, 1973, 2017]);
 
-  it("keeps one series order and count whatever is pointed at or pinned", () => {
+  it("keeps one series order and count whatever is selected or pinned, and names each line's series", () => {
     const rest = seriesOf(historyOption(input([france, britain])));
-    const compared = { ...britain, role: "compared" as const };
-    const pointed = seriesOf(
-      historyOption(
-        input([france, compared], {
-          comparison: { subject: france, rival: compared, since: 3 },
-          selected: 2,
-        }),
-      ),
+    const pinned = seriesOf(
+      historyOption(input([france, { ...britain, role: "compared" }], { selected: 2 })),
     );
     expect(rest.map((x) => x.id)).toEqual(seriesIds(["FRA", "ENG>GBR"]));
-    expect(pointed.map((x) => x.id)).toEqual(rest.map((x) => x.id));
-  });
-
-  it("rings the subject where the present order with the compared country began", () => {
-    const compared = { ...britain, role: "compared" as const };
-    const series = seriesOf(
-      historyOption(
-        input([france, compared], { comparison: { subject: france, rival: compared, since: 3 } }),
-      ),
+    expect(pinned.map((x) => x.id)).toEqual(rest.map((x) => x.id));
+    expect(lineSeries(1).map((i) => rest[i].id)).toEqual(
+      ["f", "g", "h", "d", "a"].map((part) => `${part}:ENG>GBR`),
     );
-    const past = series.find((x) => x.id === "a:FRA")!;
-    expect(past.markPoint?.data.map((x) => x.name)).toEqual(["since"]);
-    // A stick at each save where the two differ.
-    expect(series.find((x) => x.id === "sticks")!.data).toHaveLength(5);
+    // The chart draws its own hover, so no series takes pointer events.
+    expect(rest.every((x) => x.silent)).toBe(true);
   });
 
-  it("keeps every hovered point at a save, and breaks a sparse join where the tag changes", () => {
+  it("puts the grid and axes where the plot mapping says", () => {
+    const option = historyOption(input([france])) as {
+      grid: { left: number; top: number; width: number; height: number };
+      yAxis: { min: number; max: number };
+      dataZoom: { startValue: number; endValue: number }[];
+    };
+    expect(option.grid).toMatchObject({
+      left: map.left,
+      top: map.top,
+      width: map.width,
+      height: map.height,
+    });
+    expect([option.yAxis.min, option.yAxis.max]).toEqual([map.lo, map.hi]);
+    expect([option.dataZoom[0].startValue, option.dataZoom[0].endValue]).toEqual([
+      map.from,
+      map.to,
+    ]);
+    expect(map.x(map.from)).toBe(map.left);
+    expect(map.y(map.lo)).toBe(map.top + map.height);
+  });
+
+  it("keeps every solid point at a save and dots each join over five years", () => {
     const changed = { ...britain, changes: [{ day: year(1563, 1, 20), color: "#cc0000" }] };
-    const series = seriesOf(historyOption(input([changed], { long: (gap) => gap > 30 * 365 })));
+    const series = seriesOf(historyOption(input([changed])));
     const past = series.find((x) => x.id === "a:ENG>GBR")!;
-    const points = past.data.map((x) => (Array.isArray(x) ? x : (x as { value: unknown[] }).value));
-    for (const point of points) expect(days).toContain(point[0]);
-    // The long 1547 to 1580 join is dotted: a gap in the solid line.
-    expect(points.some((x) => x[1] === null)).toBe(true);
-    const dense = seriesOf(historyOption(input([changed])));
-    expect(dense.find((x) => x.id === "breaks")!.data).toHaveLength(1);
+    for (const point of points(past)) expect(days).toContain(point[0]);
+    // Every join here spans over five years: the solid line is only its dots.
+    expect(points(past).filter((p) => p[1] === null)).toHaveLength(4);
+    expect(series.find((x) => x.id === "d:ENG>GBR")!.data.length).toBeGreaterThan(0);
+  });
+});
+
+describe("strength", () => {
+  const dense = {
+    sparse: false,
+    noisy: false,
+    crowded: false,
+    pitch: 6,
+    anySubject: true,
+    world: false,
+  };
+
+  it("uses the prototype's weights", () => {
+    expect(strength("plain", false, dense)).toEqual({
+      width: 1.5,
+      join: 0.72,
+      dot: 0.75,
+      radius: 1.6,
+      future: 0.25,
+    });
+    expect(strength("subject", false, dense)).toMatchObject({
+      width: 2.75,
+      join: 1,
+      radius: 2.9,
+      future: 0.34,
+    });
+    expect(strength("plain", true, dense)).toMatchObject({ join: 0.22, dot: 0.25, future: 0.15 });
+    expect(strength("plain", false, { ...dense, noisy: true })).toMatchObject({
+      width: 1,
+      join: 0.38,
+      dot: 0.85,
+    });
+    expect(strength("plain", false, { ...dense, crowded: true })).toMatchObject({
+      width: 1.25,
+      join: 0.55,
+    });
+    expect(strength("plain", false, { ...dense, sparse: true })).toMatchObject({
+      width: 1,
+      join: 0.5,
+      dot: 1,
+      radius: 3.4,
+    });
+    // Without a followed country, sparse lines stay readable.
+    expect(strength("plain", false, { ...dense, sparse: true, anySubject: false })).toMatchObject({
+      width: 1.5,
+      join: 0.75,
+    });
   });
 
-  it("dots each save and keeps dense saves light, as in the density cases of the ledger", () => {
-    // Three saves over 500 px, 83 yearly saves, and 320 monthly saves.
-    expect(dotRadius("plain", 500 / 2, false)).toBe(1.6);
-    expect(dotRadius("subject", 500 / 82, false)).toBe(2.9);
-    expect(dotRadius("plain", 500 / 82, false)).toBe(1.6);
-    expect(dotRadius("plain", 500 / 319, false)).toBe(0);
-    expect(dotRadius("subject", 500 / 319, false)).toBe(0);
-    expect(dotRadius("plain", 30, true)).toBeGreaterThan(3);
+  it("dots each save and drops rivals' dots when saves are dense, as in the ledger's density cases", () => {
+    expect(strength("plain", false, { ...dense, pitch: 500 / 2 }).radius).toBe(1.6);
+    expect(strength("subject", false, { ...dense, pitch: 500 / 82 }).radius).toBe(2.9);
+    expect(strength("plain", false, { ...dense, pitch: 500 / 319 }).radius).toBe(0);
+    expect(strength("subject", false, { ...dense, pitch: 500 / 319 }).radius).toBe(0);
   });
 
-  it("finds the nearest save among those in view", () => {
-    expect(nearestColumn(days, year(1560))).toBe(2);
-    expect(nearestColumn(days, year(1560), [year(1570), year(1610)])).toBe(3);
+  it("calls a figure noisy when it reverses at over a quarter of its saves", () => {
+    expect(isNoisy([line("a", [1, 5, 2, 6, 3])])).toBe(true);
+    expect(isNoisy([line("a", [1, 2, 3, 4, 5])])).toBe(false);
   });
+});
+
+it("finds the nearest save among those in view", () => {
+  expect(nearestColumn(days, year(1560))).toBe(2);
+  expect(nearestColumn(days, year(1560), [year(1570), year(1610)])).toBe(3);
 });

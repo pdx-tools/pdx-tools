@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useState } from "react";
 import type { KeyboardEvent } from "react";
 import { cx } from "class-variance-authority";
 import { Badge } from "@/components/Badge";
+import { Popover } from "@/components/Popover";
 import { Flag } from "@/features/eu4/components/avatars";
 import type { LineRole } from "./historyOption";
 
@@ -12,15 +13,18 @@ export type StandingRow = {
   rank: string;
   tag: string;
   name: string;
-  /** "was Castile" or "later Spain", shown when the row has room for a second line. */
+  /** "was Castile", "was Viti and 32 earlier", or "later Spain". */
   note: string | null;
+  /** Every tag of the country with the years it held it, when it held more than one. */
+  chain: readonly { tag: string; name: string; span: string }[];
   /** Every tag of the country, for the row's title and assistive tech. */
   lineage: string;
   /** The figure, or why there is none: "until 1640". */
   figure: string;
+  /** The color of the tag held at the selected save. */
   color: string;
+  /** The role from the selection and pins; pointing is passed apart. */
   role: LineRole;
-  back: boolean;
   pinned: boolean;
   /** Played at some point in the campaign, marked when others were not. */
   badge: boolean;
@@ -38,10 +42,7 @@ export type StandingsLayout =
       /** How many rows have a figure. */
       rows: number;
     }
-  | { kind: "flow"; height: number };
-
-export const rowGrid = "grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-1.5";
-const narrowGrid = "grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-x-1";
+  | { kind: "flow"; height: number; rowHeight: number };
 
 /**
  * The standings at the selected time as a table: one row renderer, placed
@@ -53,26 +54,33 @@ export function Standings({
   layout,
   label,
   narrow,
+  pointed,
   focusKey,
   onPick,
   onPoint,
   onFocusRow,
+  onScroll,
 }: {
   rows: readonly StandingRow[];
   layout: StandingsLayout;
   /** The table's name: the figure and the save. */
   label: string;
   narrow: boolean;
+  /** The country under the pointer or keyboard focus, drawn as compared. */
+  pointed: string | null;
   /** The row that takes the tab stop. */
   focusKey: string | null;
   onPick: (key: string) => void;
   onPoint: (key: string | null) => void;
   onFocusRow: (key: string | null) => void;
+  /** The scrolling list's offset, for the leaders drawn beside it. */
+  onScroll: (top: number) => void;
 }) {
-  const body = useRef<HTMLTableSectionElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
   const tabKey = rows.some((row) => row.key === focusKey) ? focusKey : (rows[0]?.key ?? null);
   const placed = layout.kind === "placed";
-  const onKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
+  const compact = !placed || layout.tight;
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const row = event.currentTarget;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -83,9 +91,13 @@ export function Standings({
       const next = (
         event.key === "ArrowDown" ? row.nextElementSibling : row.previousElementSibling
       ) as HTMLElement | null;
-      next?.focus();
+      if (next?.dataset.key) next.focus();
     }
   };
+  const flow = layout.kind === "flow" ? layout : null;
+  const more = flow
+    ? Math.max(0, Math.round(rows.length - (scrollTop + flow.height) / flow.rowHeight))
+    : 0;
   const bracket =
     layout.kind === "placed" && layout.listed && layout.rows > 1
       ? {
@@ -97,53 +109,59 @@ export function Standings({
     <>
       {bracket && (
         <div
-          aria-hidden
-          className="absolute -left-2 w-1.5 rounded-l-sm border-y border-l border-gray-400 dark:border-gray-500"
-          style={{ top: bracket.top + 3, height: bracket.bottom - bracket.top - 6 }}
-        />
-      )}
-      {bracket && (
-        <div
-          className="absolute left-1 text-[11px] leading-3 text-gray-500 dark:text-gray-400"
-          style={{ top: bracket.top - 13 }}
+          className="absolute left-0.5 text-[11px] leading-3 text-gray-500 dark:text-gray-400"
+          style={{ top: bracket.top - 14 }}
         >
-          In rank order
+          in rank order
         </div>
       )}
-      <table
+      <div
+        role="table"
         aria-label={`${label}. Enter follows or compares the country of a row.`}
         className={cx(
-          "w-full text-sm",
-          placed ? "relative block" : "block overflow-y-auto overscroll-contain",
+          "w-full text-sm tabular-nums",
+          placed ? "relative" : "[scrollbar-width:thin] overflow-y-auto overscroll-contain",
         )}
-        style={layout.kind === "flow" ? { height: layout.height } : undefined}
+        style={flow ? { height: flow.height } : undefined}
+        onScroll={(event) => {
+          const top = event.currentTarget.scrollTop;
+          setScrollTop(top);
+          onScroll(top);
+        }}
       >
-        <thead className="sr-only">
-          <tr>
-            <th scope="col">Rank</th>
-            <th scope="col">Country</th>
-            <th scope="col">Figure</th>
-          </tr>
-        </thead>
-        <tbody ref={body} className={cx("block", placed && "relative")}>
+        <div role="rowgroup" className="sr-only">
+          <div role="row">
+            <span role="columnheader">Rank</span>
+            <span role="columnheader">Country</span>
+            <span role="columnheader">Figure</span>
+          </div>
+        </div>
+        <div role="rowgroup" className={cx(placed && "relative")}>
           {rows.map((row, i) => {
-            const lead = row.role === "subject" || row.role === "compared";
-            const height = placed ? layout.heights[i] : 22;
+            const height = layout.kind === "placed" ? layout.heights[i] : layout.rowHeight;
+            const compared = row.role === "compared" || row.key === pointed;
+            const subject = row.role === "subject";
+            const grey = row.role === "grey" && !compared;
             const two = !!row.note && height >= 34;
+            const inline = !!row.note && !two && !narrow;
+            const flag = compact || narrow ? "mini" : "xs";
             return (
-              <tr
+              <div
+                role="row"
                 key={row.key}
                 data-key={row.key}
                 tabIndex={row.key === tabKey ? 0 : -1}
-                title={row.lineage}
-                aria-current={row.role === "subject" ? "true" : undefined}
+                title={row.lineage || undefined}
+                aria-current={subject ? "true" : undefined}
                 className={cx(
-                  narrow ? narrowGrid : rowGrid,
-                  "cursor-pointer rounded-sm px-1 transition-opacity focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-600",
+                  "flex cursor-pointer items-center rounded-[3px] pr-0.5 outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:focus-visible:ring-sky-400",
                   placed ? "absolute inset-x-0" : "relative",
-                  row.pinned && "bg-gray-200/70 dark:bg-gray-600/50",
-                  row.role === "compared" && !row.pinned && "bg-gray-100 dark:bg-gray-700/50",
-                  row.back && "opacity-50",
+                  row.pinned
+                    ? "bg-gray-200/80 dark:bg-gray-600/60"
+                    : compared
+                      ? "bg-gray-100 dark:bg-gray-700/60"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-700/40",
+                  !placed && subject && "sticky top-0 bottom-0 z-1 bg-white dark:bg-slate-900",
                 )}
                 style={placed ? { top: layout.tops[i], height } : { height }}
                 onClick={() => onPick(row.key)}
@@ -153,42 +171,34 @@ export function Standings({
                 onBlur={() => onFocusRow(null)}
                 onKeyDown={onKeyDown}
               >
-                <td
+                <span
+                  role="cell"
                   className={cx(
-                    "text-right text-xs tabular-nums",
+                    "shrink-0 pr-1.5 text-right",
+                    narrow ? "w-5" : "w-6",
+                    compact ? "text-[11px]" : "text-xs",
                     row.gone ? "text-transparent" : "text-gray-500 dark:text-gray-400",
                   )}
                 >
-                  {!placed && !row.gone && (
-                    <span
-                      aria-hidden
-                      className="mr-1 inline-block h-3 w-1 align-[-1px]"
-                      style={{ background: row.color }}
-                    />
-                  )}
                   {row.rank}
-                </td>
-                <td className="flex min-w-0 items-center gap-1.5">
-                  <span className={cx("shrink-0", row.gone && "opacity-50")}>
+                </span>
+                <span role="rowheader" className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span className={cx("flex shrink-0", row.gone && "opacity-55")}>
                     <Flag tag={row.tag} name={row.name}>
-                      <Flag.Image size="xs" />
+                      <Flag.Image size={flag} />
                     </Flag>
                   </span>
-                  <span className="flex min-w-0 flex-col">
+                  <span className={cx("flex min-w-0", two ? "flex-col" : "items-baseline gap-1.5")}>
                     <span
                       className={cx(
-                        "flex min-w-0 items-center gap-1 leading-4",
-                        row.role === "subject"
-                          ? "font-bold"
-                          : lead
-                            ? "font-semibold"
-                            : "font-medium",
+                        "flex min-w-0 shrink-0 items-center gap-1 leading-4",
+                        subject ? "font-bold" : compared ? "font-semibold" : "font-normal",
                         row.gone
                           ? "text-gray-500 dark:text-gray-400"
-                          : row.role === "grey"
+                          : grey
                             ? "text-gray-600 dark:text-gray-300"
-                            : "text-gray-900 dark:text-white",
-                        narrow ? "text-[13px]" : "text-sm",
+                            : "text-gray-950 dark:text-white",
+                        compact || narrow ? "text-[13px]" : "text-sm",
                       )}
                     >
                       <span className="truncate">{row.name}</span>
@@ -201,36 +211,92 @@ export function Standings({
                         </Badge>
                       )}
                     </span>
-                    {two && (
-                      <span className="truncate text-xs leading-4 text-gray-500 dark:text-gray-400">
-                        {row.note}
-                      </span>
-                    )}
+                    {(two || inline) && row.note && <Note row={row} note={row.note} small={!two} />}
                     <span className="sr-only">
-                      {row.lineage}
-                      {row.role === "subject" ? ", followed" : row.pinned ? ", compared" : ""}
+                      {row.lineage ? `, ${row.lineage}` : ""}
+                      {subject ? ", followed" : row.pinned ? ", compared" : ""}
                     </span>
                   </span>
-                </td>
-                <td
+                </span>
+                <span
+                  role="cell"
                   className={cx(
-                    "text-right tabular-nums",
+                    "shrink-0 pl-2 text-right",
                     row.gone
-                      ? "text-xs text-gray-500 dark:text-gray-400"
+                      ? "text-[11px] text-gray-500 dark:text-gray-400"
                       : cx(
-                          "text-gray-900 dark:text-white",
-                          row.role === "subject" ? "font-bold" : "font-medium",
-                          narrow ? "text-[13px]" : "text-sm",
+                          "text-gray-950 dark:text-white",
+                          subject ? "font-extrabold" : "font-medium",
+                          compact || narrow ? "text-[13px]" : "text-[15px]",
                         ),
                   )}
                 >
                   {row.figure}
-                </td>
-              </tr>
+                </span>
+              </div>
             );
           })}
-        </tbody>
-      </table>
+        </div>
+      </div>
+      {flow && more > 0 && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 text-center text-[11px] leading-3.5 text-gray-600 dark:text-gray-300"
+          style={{ top: flow.height + 2 }}
+        >
+          {more} more ↓
+        </div>
+      )}
     </>
+  );
+}
+
+/** "was Viti and 32 earlier": a long chain opens to every name it held. */
+function Note({ row, note, small }: { row: StandingRow; note: string; small: boolean }) {
+  const text = cx(
+    "min-w-0 truncate text-gray-500 dark:text-gray-400",
+    small ? "text-[11px] leading-3" : "text-[11px] leading-3",
+  );
+  if (row.chain.length < 3) return <span className={text}>{note}</span>;
+  return (
+    <Popover>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          tabIndex={-1}
+          className={cx(
+            text,
+            "cursor-pointer text-left underline decoration-dotted underline-offset-2",
+          )}
+          aria-label={`All ${row.chain.length} names of ${row.name}`}
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          {note}
+        </button>
+      </Popover.Trigger>
+      <Popover.Content
+        align="start"
+        onKeyDown={(event) => event.stopPropagation()}
+        className="max-h-80 w-[min(560px,90vw)] overflow-y-auto rounded-md border border-gray-300 bg-white p-3 text-xs shadow-md dark:border-gray-600 dark:bg-slate-900"
+      >
+        <ol className="columns-2 gap-x-6 sm:columns-3">
+          {row.chain.map((held, i) => (
+            <li
+              key={`${held.tag}${i}`}
+              className="flex break-inside-avoid items-center gap-1.5 py-0.5"
+            >
+              <Flag tag={held.tag} name={held.name}>
+                <Flag.Image size="micro" />
+              </Flag>
+              <span className="truncate text-gray-900 dark:text-white">{held.name}</span>
+              <span className="ml-auto pl-2 text-gray-500 tabular-nums dark:text-gray-400">
+                {held.span}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </Popover.Content>
+    </Popover>
   );
 }

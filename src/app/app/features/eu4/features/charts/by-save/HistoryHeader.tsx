@@ -31,47 +31,47 @@ export function HistoryHeader({
   openSlot: ReactNode;
 }) {
   return (
-    <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-2 py-1">
-      <span className="flex items-baseline gap-2.5 whitespace-nowrap" title={title}>
-        <span className="text-[44px] leading-[44px] font-semibold tracking-tight tabular-nums">
-          {date.year}
-        </span>
-        <span className="inline-grid text-xl text-gray-600 dark:text-gray-300">
-          {MONTH_DAY_SIZERS}
-          <span className="col-start-1 row-start-1">
-            {MONTH_ABBR[date.month]} {date.day}
+    <div className="flex flex-col gap-1 py-1">
+      <div className="flex min-h-12 items-center gap-x-4">
+        <span className="flex items-baseline gap-2.5 whitespace-nowrap" title={title}>
+          <span className="text-[44px] leading-[44px] font-semibold tracking-tight tabular-nums">
+            {date.year}
+          </span>
+          <span className="inline-grid text-xl text-gray-600 dark:text-gray-300">
+            {MONTH_DAY_SIZERS}
+            <span className="col-start-1 row-start-1">
+              {MONTH_ABBR[date.month]} {date.day}
+            </span>
           </span>
         </span>
-      </span>
-      <span className="flex">
-        <IconButton
-          shape="square"
-          className="rounded-r-none aria-disabled:cursor-default aria-disabled:opacity-50"
-          icon={<ChevronLeftIcon className="size-4" aria-hidden />}
-          // Not disabled at the end, so a keyboard press there keeps the focus.
-          aria-disabled={earlier === null}
-          aria-label={earlier ? `Earlier save, ${earlier}` : "Earlier save"}
-          // A tooltip at the ends too, so the button keeps its focus.
-          tooltip={earlier ? `Earlier save: ${earlier}` : "The earliest save"}
-          onClick={() => earlier !== null && onStep(-1)}
-        />
-        <IconButton
-          shape="square"
-          className="-ml-px rounded-l-none aria-disabled:cursor-default aria-disabled:opacity-50"
-          icon={<ChevronRightIcon className="size-4" aria-hidden />}
-          aria-disabled={later === null}
-          aria-label={later ? `Later save, ${later}` : "Later save"}
-          tooltip={later ? `Later save: ${later}` : "The latest save"}
-          onClick={() => later !== null && onStep(1)}
-        />
-      </span>
-      <span
-        aria-live="polite"
-        className="min-w-0 flex-1 basis-60 text-sm text-gray-700 dark:text-gray-200"
-      >
+        <span className="flex">
+          <IconButton
+            shape="square"
+            className="rounded-r-none aria-disabled:cursor-default aria-disabled:opacity-50"
+            icon={<ChevronLeftIcon className="size-4" aria-hidden />}
+            // Not disabled at the end, so a keyboard press there keeps the focus.
+            aria-disabled={earlier === null}
+            aria-label={earlier ? `Earlier save, ${earlier}` : "Earlier save"}
+            // A tooltip at the ends too, so the button keeps its focus.
+            tooltip={earlier ? `Earlier save: ${earlier}` : "The earliest save"}
+            onClick={() => earlier !== null && onStep(-1)}
+          />
+          <IconButton
+            shape="square"
+            className="-ml-px rounded-l-none aria-disabled:cursor-default aria-disabled:opacity-50"
+            icon={<ChevronRightIcon className="size-4" aria-hidden />}
+            aria-disabled={later === null}
+            aria-label={later ? `Later save, ${later}` : "Later save"}
+            tooltip={later ? `Later save: ${later}` : "The latest save"}
+            onClick={() => later !== null && onStep(1)}
+          />
+        </span>
+        <span className="ml-auto flex justify-end">{openSlot}</span>
+      </div>
+      {/* One line under the date, kept when empty, so the chart never moves. */}
+      <p aria-live="polite" className="min-h-5 text-sm leading-5 text-gray-700 dark:text-gray-200">
         {sentence}
-      </span>
-      <span className="ml-auto flex w-28 justify-end">{openSlot}</span>
+      </p>
     </div>
   );
 }
