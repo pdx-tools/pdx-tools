@@ -1,4 +1,5 @@
 import type React from "react";
+import { useInsightPreview } from "./history/insightPreview";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEu5Engine } from "./store";
 import type { AppEngine } from "./ui-engine";
@@ -64,6 +65,7 @@ function removeHoverSource(id: number) {
 }
 
 export function useEu5MapHoverSource() {
+  const previewing = useInsightPreview() !== null;
   const engine = useEu5Engine();
   const [sourceId] = useState(() => nextHoverSourceId++);
 
@@ -74,14 +76,14 @@ export function useEu5MapHoverSource() {
 
   const highlightTarget = useCallback(
     (target: Eu5MapHoverTarget | null | undefined) => {
-      if (target) {
+      if (target && !previewing) {
         upsertHoverSource(sourceId, target);
       } else {
         removeHoverSource(sourceId);
       }
       applyHoverTarget(engine, topHoverTarget());
     },
-    [engine, sourceId],
+    [engine, previewing, sourceId],
   );
 
   useEffect(() => clear, [clear]);

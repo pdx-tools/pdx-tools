@@ -16,7 +16,7 @@ import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { chartInk, chartText, chartTooltip, neutralMark } from "@/components/viz/echartsTheme";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
@@ -48,7 +48,7 @@ function PopulationGrowthScopeHeader({ data }: { data?: PopulationGrowthScopeSum
 }
 
 export function PopulationGrowthInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) =>
+  const insightQuery = useEu5Overview("populationGrowth", (engine) =>
     engine.queries.getPopulationGrowthInsight(),
   );
 

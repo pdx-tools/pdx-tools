@@ -6,6 +6,8 @@ import type { ImportProgressState } from "./importTiming";
 import type { Eu5SnapshotDescriptor } from "./analysisTypes";
 
 type HistoryState = {
+  panelOpen: boolean;
+  showPanel: (open: boolean) => void;
   playbackSpeed: number;
   setPlaybackSpeed: (speed: number) => void;
   snapshots: Eu5SnapshotDescriptor[];
@@ -34,6 +36,8 @@ export function isAnalysisPaused(
 
 /** Historical data only. Campaign navigation owns files and the active save. */
 export const useHistory = create<HistoryState>()((set) => ({
+  panelOpen: false,
+  showPanel: (panelOpen) => set({ panelOpen }),
   playbackSpeed: 1,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   snapshots: [],

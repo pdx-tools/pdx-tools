@@ -13,7 +13,7 @@ import {
   chartTooltip,
   neutralMark,
 } from "@/components/viz/echartsTheme";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { UnrealizedTaxBaseTopLocations } from "./UnrealizedTaxBaseTopLocations";
 import { RealizationHistogram } from "./RealizationHistogram";
@@ -31,7 +31,7 @@ import { SectionTitle } from "../../components";
 const BAR_CAP = 25;
 
 function UnrealizedTaxBaseScopeHeader() {
-  const { data, error, loading } = useEu5SelectionTrigger((engine) =>
+  const { data, error, loading } = useEu5Overview("unrealizedTaxBaseScope", (engine) =>
     engine.queries.getUnrealizedTaxBaseScope(),
   );
 
@@ -60,7 +60,7 @@ function UnrealizedTaxBaseScopeHeader() {
 }
 
 export function UnrealizedTaxBaseInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) =>
+  const insightQuery = useEu5Overview("unrealizedTaxBase", (engine) =>
     engine.queries.getUnrealizedTaxBaseInsight(),
   );
 

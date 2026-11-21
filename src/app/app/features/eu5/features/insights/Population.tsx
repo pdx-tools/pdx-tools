@@ -23,7 +23,7 @@ import {
   markGap,
   neutralMark,
 } from "@/components/viz/echartsTheme";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 import {
@@ -49,7 +49,9 @@ function PopulationScopeHeader({ data }: { data?: PopulationScopeSummary }) {
 }
 
 export function PopulationInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getPopulationInsight());
+  const insightQuery = useEu5Overview("population", (engine) =>
+    engine.queries.getPopulationInsight(),
+  );
 
   const countries = insightQuery.data?.countries ?? [];
   const rankTotals = insightQuery.data?.rankTotals ?? [];

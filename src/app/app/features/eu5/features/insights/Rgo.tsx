@@ -30,7 +30,7 @@ import {
   goodsDimensions32,
 } from "../../components/icons/goods";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 import {
@@ -314,7 +314,7 @@ function RgoTopLocationsTable({ locations }: { locations: RgoTopLocation[] }) {
 }
 
 export function RgoInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getRgoInsight());
+  const insightQuery = useEu5Overview("rgoLevel", (engine) => engine.queries.getRgoInsight());
 
   const data: RgoInsightData | undefined = insightQuery.data ?? undefined;
   const materials = data?.materials ?? [];

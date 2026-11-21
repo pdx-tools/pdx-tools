@@ -1,10 +1,15 @@
 //! The EU5 rules of campaign analysis: the snapshot payload and the history
 //! queries over it.
 
-use crate::insights::WorldSummary;
+mod analytics;
+
+pub use analytics::{AnalyticsCatalog, AnalyticsObservation, ChartOverview, OverviewKey};
+
 use crate::map_projection::{
     MapProjection, MapProjectionData, MapProjectionError, ValidatedMapProjectionData,
 };
+use crate::{OverviewData, insights::WorldSummary, snapshot::SaveSnapshot};
+use analytics::Analytics;
 use campaign_analysis::{
     AnalysisError, BoundSelectionRows, Columns, DecodeError, Decoder, Encoder, Game, History,
     IndexRegistry, Observation, PayloadError, PreparedIndex, ReferenceError, RegistryMemory,
@@ -12,6 +17,7 @@ use campaign_analysis::{
 };
 use eu5save::models::LocationId;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// The EU5 fields of a snapshot descriptor.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -60,15 +66,23 @@ pub struct Eu5Payload {
     pub countries: Vec<u32>,
     pub religion_colors: Vec<u32>,
     pub market_colors: Vec<u32>,
+    analytics: Analytics,
 }
-impl Columns for Eu5Payload {
-    fn encode(&self, out: &mut Encoder) {
+impl Eu5Payload {
+    fn encode_map(&self, out: &mut Encoder) {
         self.locations.encode_with(out, |keys, out| {
             out.column(&keys.iter().map(|id| id.value()).collect::<Vec<_>>())
         });
         self.countries.encode(out);
         self.religion_colors.encode(out);
         self.market_colors.encode(out);
+    }
+}
+
+impl Columns for Eu5Payload {
+    fn encode(&self, out: &mut Encoder) {
+        self.encode_map(out);
+        self.analytics.encode(out);
     }
     fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
         Ok(Self {
@@ -82,6 +96,7 @@ impl Columns for Eu5Payload {
             countries: Columns::decode(input)?,
             religion_colors: Columns::decode(input)?,
             market_colors: Columns::decode(input)?,
+            analytics: Columns::decode(input)?,
         })
     }
     fn heap_bytes(&self) -> usize {
@@ -89,12 +104,14 @@ impl Columns for Eu5Payload {
             + self.countries.heap_bytes()
             + self.religion_colors.heap_bytes()
             + self.market_colors.heap_bytes()
+            + self.analytics.heap_bytes()
     }
     fn allocated_bytes(&self) -> usize {
         self.locations.columns().allocated_bytes()
             + self.countries.allocated_bytes()
             + self.religion_colors.allocated_bytes()
             + self.market_colors.allocated_bytes()
+            + self.analytics.allocated_bytes()
     }
 }
 impl Eu5Payload {
@@ -139,6 +156,29 @@ pub fn observation(
     world: WorldSummary,
     source: SnapshotSource,
 ) -> Result<Observation<Eu5Analysis>, AnalysisError> {
+    build_observation(projection, world, source, Analytics::default())
+}
+
+/// Attach the history and optional chart data to the same stored map snapshot.
+pub fn analytical_observation(
+    projection: MapProjection,
+    world: WorldSummary,
+    source: SnapshotSource,
+    save: SaveSnapshot,
+    country_names: BTreeMap<u32, String>,
+    overviews: Option<OverviewData>,
+) -> Result<Observation<Eu5Analysis>, AnalysisError> {
+    let analytics =
+        Analytics::new(save, country_names, overviews).map_err(AnalysisError::Payload)?;
+    build_observation(projection, world, source, analytics)
+}
+
+fn build_observation(
+    projection: MapProjection,
+    world: WorldSummary,
+    source: SnapshotSource,
+    analytics: Analytics,
+) -> Result<Observation<Eu5Analysis>, AnalysisError> {
     let MapProjection {
         layout_key,
         location_ids,
@@ -174,16 +214,30 @@ pub fn observation(
         religions,
         markets,
     };
+    let mut descriptor = SnapshotDescriptor::new::<Eu5Analysis>(source, layout_key);
+    if analytics.has_overviews() {
+        descriptor.artifacts.push("charts".into());
+    }
     Observation::new(
-        SnapshotDescriptor::new::<Eu5Analysis>(source, layout_key),
+        descriptor,
         Eu5Detail { world },
         Eu5Payload {
             locations: Table::map_order(location_ids, columns)?,
             countries,
             religion_colors,
             market_colors,
+            analytics,
         },
     )
+}
+
+/// Preview and video rendering transfer only map columns. The analytical
+/// columns remain in the analysis worker even during fast playback.
+pub fn encode_map_frame(snapshot: &campaign_analysis::Snapshot<Eu5Analysis>) -> Vec<u8> {
+    snapshot.encode_with(|payload, out| {
+        payload.encode_map(out);
+        Analytics::default().encode(out);
+    })
 }
 
 #[derive(Debug)]
@@ -199,6 +253,7 @@ impl Game for Eu5Analysis {
     type Query = Eu5Query;
 
     fn validate(payload: &Eu5Payload) -> Result<(), PayloadError> {
+        payload.analytics.validate()?;
         payload
             .data("")
             .validate_intrinsic()
@@ -265,6 +320,18 @@ campaign_analysis::queries! {
             #[cfg_attr(feature = "tsify", tsify(type = "number[]"))]
             location_ids: Vec<LocationId>
         } => History = location_population,
+        AnalyticsCatalog => AnalyticsCatalog = analytics::catalog,
+        CampaignHistory {
+            #[serde(default)]
+            country_id: Option<u32>,
+            #[serde(default)]
+            good: Option<String>,
+            #[serde(default)]
+            centers: Vec<u32>
+        } => Vec<AnalyticsObservation> = analytics::history,
+        AnalyticsObservation { id: String } => Option<AnalyticsObservation> = analytics::observation,
+        CountryMarketCenters { country_id: u32 } => Vec<u32> = analytics::market_centers,
+        ChartOverview { key: OverviewKey } => Option<ChartOverview> = analytics::overview,
     }
 }
 
@@ -353,7 +420,10 @@ mod tests {
     fn values(store: &Store<Eu5Analysis>, campaign: &str, query: Eu5Query) -> Vec<Option<f64>> {
         let view = View::select(store, campaign, &Selection::All);
         let (Eu5Answer::WorldPopulation(history) | Eu5Answer::LocationPopulation(history)) =
-            query.answer(&view);
+            query.answer(&view)
+        else {
+            panic!("expected population history");
+        };
         history.rows.into_iter().map(|row| row.value).collect()
     }
 
@@ -418,6 +488,93 @@ mod tests {
     }
 
     #[test]
+    fn history_and_map_frames_share_one_stored_snapshot() {
+        use crate::snapshot::{CountryObservation, MarketObservation};
+
+        let mut store = Store::<Eu5Analysis>::new();
+        for (id, hash, date) in [(7, "a", 14000101), (8, "b", 14010101)] {
+            let map = save(hash, date, &[100.0], 100);
+            let mut payload = map.payload().clone();
+            payload.analytics = Analytics::new(
+                SaveSnapshot {
+                    countries: vec![CountryObservation {
+                        country_id: id,
+                        tag: "SAME".into(),
+                        population: 100.0,
+                        market_centers: vec![42],
+                        ..CountryObservation::default()
+                    }],
+                    markets: vec![
+                        MarketObservation {
+                            center: 42,
+                            center_name: Some("New_City".into()),
+                            market_id: 1,
+                            good: "wheat".into(),
+                            price: Some(3.0),
+                            total_taken: Some(25.0),
+                            supply: None,
+                            demand: None,
+                            stockpile: None,
+                        },
+                        MarketObservation {
+                            center: 43,
+                            center_name: None,
+                            market_id: 2,
+                            good: "wheat".into(),
+                            price: None,
+                            total_taken: None,
+                            supply: None,
+                            demand: None,
+                            stockpile: None,
+                        },
+                    ],
+                },
+                BTreeMap::from([(id, format!("Country {id}"))]),
+                None,
+            )
+            .unwrap();
+            let map_bytes = map.payload().heap_bytes();
+            assert!(payload.heap_bytes() > map_bytes);
+
+            let analysis =
+                Observation::<Eu5Analysis>::new(map.descriptor, map.detail, payload).unwrap();
+            let bytes = analysis.encode();
+            store
+                .append(Observation::decode(&bytes).unwrap(), usize::MAX)
+                .unwrap();
+        }
+
+        let view = View::select(&store, "campaign", &Selection::All);
+        let history = analytics::history(&view, Some(7), Some("wheat".into()), vec![42]);
+        assert_eq!(history[0].countries[0].country_id, 7);
+        assert!(
+            history[1].countries.is_empty(),
+            "the next country reused the tag"
+        );
+        assert_eq!(history[0].markets.len(), 1);
+        assert_eq!(history[0].markets[0].price, Some(3.0));
+        assert_eq!(history[0].markets[0].total_taken, Some(25.0));
+        assert_eq!(analytics::market_centers(&view, 7), [42]);
+        let catalog = analytics::catalog(&view);
+        assert_eq!(catalog.country_names.len(), 2);
+        assert_eq!(catalog.goods, ["wheat"]);
+        assert_eq!(catalog.market_labels[0].name, "New City");
+        assert_eq!(catalog.market_labels[1].name, "Location 43");
+
+        let saved = view.snapshots()[0];
+        let frame_bytes = encode_map_frame(saved);
+        assert!(frame_bytes.len() < saved.encode().len());
+        let frame = Observation::<Eu5Analysis>::decode(&frame_bytes).unwrap();
+        assert_eq!(frame.payload().analytics, Analytics::default());
+        let encode_map = |payload: &Eu5Payload| {
+            let mut out = Encoder::new();
+            payload.encode_map(&mut out);
+            out.finish()
+        };
+        assert_eq!(encode_map(frame.payload()), encode_map(saved.payload()));
+    }
+
+    #[test]
     fn refuses_nonfinite_values_and_invalid_references() {
         let original = save("a", 14000101, &[1.0], 1);
         let mut baseline = Encoder::new();
@@ -428,6 +585,7 @@ mod tests {
             countries,
             religion_colors: vec![],
             market_colors: vec![],
+            analytics: Analytics::default(),
         };
         let mut nonfinite = original.payload().locations.columns().clone();
         nonfinite.population[0] = f32::NAN;

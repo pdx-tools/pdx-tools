@@ -82,8 +82,13 @@ export function restoreCampaignView(app: ViewApp, countries: Countries, carry: E
     merge(app.change_selection("replace", "locations", Uint32Array.from(target.locations)));
   }
   if (selection?.focusedLocation != null) merge(app.focus_in_selection(selection.focusedLocation));
-  // A click on a snapshot applies to the save of that snapshot.
-  if (carry.inspection) merge(clickChange(app, carry.inspection.click));
+  // Snapshot-local indices are used only after the original file loads.
+  const inspection = carry.inspection;
+  if (inspection && "click" in inspection) merge(clickChange(app, inspection.click));
+  if (inspection && "selection" in inspection) {
+    const { op, kind, id } = inspection.selection;
+    merge(app.change_selection(op, kind, Uint32Array.of(id)));
+  }
 
   return { change, selection: app.get_selection_summary() };
 }

@@ -33,7 +33,7 @@ import {
   goodsAtlasUrl32,
   goodsDimensions32,
 } from "../../components/icons/goods";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
 import { MarketProductionLocations } from "./MarketProductionLocations";
 import { GoodsMarketsHeatmap } from "./GoodsMarketsHeatmap";
@@ -184,7 +184,7 @@ function MarketsScopeHeader({ data }: { data?: MarketScopeSummary }) {
 }
 
 export function MarketsInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getMarketInsight());
+  const insightQuery = useEu5Overview("markets", (engine) => engine.queries.getMarketInsight());
 
   const goods = insightQuery.data?.goods ?? [];
   const markets = insightQuery.data?.markets ?? [];

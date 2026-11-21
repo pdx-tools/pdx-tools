@@ -17,7 +17,7 @@ import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { buildingOwnershipColors } from "../../gameColors";
 import { chartTooltip, markGap } from "@/components/viz/echartsTheme";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 import {
@@ -335,7 +335,7 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
 }
 
 export function BuildingLevelsInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) =>
+  const insightQuery = useEu5Overview("buildingLevels", (engine) =>
     engine.queries.getBuildingLevelsInsight(),
   );
 

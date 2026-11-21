@@ -150,6 +150,22 @@ describe("a click on the map", () => {
   });
 });
 
+it("uses the chart's snapshot-local ID after remapping the carried selection", () => {
+  const app = save({ centers: new Map([[40, 100]]) });
+  restoreCampaignView(
+    asApp(app),
+    [],
+    carry({
+      selection: { target: { kind: "markets", centers: [100] }, focusedLocation: null },
+      inspection: { selection: { op: "replace", kind: "markets", id: 7 } },
+    }),
+  );
+  expect(app.change_selection.mock.calls).toEqual([
+    ["replace", "markets", Uint32Array.of(40)],
+    ["replace", "markets", Uint32Array.of(7)],
+  ]);
+});
+
 it("combines the buffer changes of a restore", () => {
   const app = save();
   app.change_selection.mockReturnValue({

@@ -6,7 +6,7 @@ import { Tooltip } from "@/components/Tooltip";
 import type { PoliticalWorldRow } from "@/wasm/wasm_eu5";
 import { formatInt } from "@/lib/format";
 import { formatExact, formatFixed } from "../../numberFormatting";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
 import { CountryLink } from "../profiles/EntityLink";
@@ -21,7 +21,9 @@ const BACK_LABEL = "Great Powers";
 const columnHelper = createColumnHelper<PoliticalWorldRow>();
 
 export function PoliticalInsight() {
-  const query = useEu5SelectionTrigger((engine) => engine.queries.getPoliticalWorldScoreboard());
+  const query = useEu5Overview("political", (engine) =>
+    engine.queries.getPoliticalWorldScoreboard(),
+  );
   const rows = query.data?.rows ?? [];
 
   if (query.error) {

@@ -8,7 +8,7 @@ import { formatInt } from "@/lib/format";
 import { formatPercent } from "../../numberFormatting";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { chartInk, chartTooltip, markGap, seriesColor } from "@/components/viz/echartsTheme";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import {
   Eu5InsightEmptyState,
   Eu5InsightErrorState,
@@ -19,7 +19,7 @@ import type * as echarts from "echarts/core";
 const STATE_RELIGION_CAP = 30;
 
 export function ReligionInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getReligionInsight());
+  const insightQuery = useEu5Overview("religion", (engine) => engine.queries.getReligionInsight());
 
   const stateReligions = insightQuery.data?.stateReligions ?? [];
   const religions = insightQuery.data?.religions ?? [];

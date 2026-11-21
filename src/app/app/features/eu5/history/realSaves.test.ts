@@ -76,7 +76,8 @@ it.skipIf(!ready)(
 
     const { campaignId } = parsed.descriptor;
     const world = store.query({ generation: 0, campaignId, query: { kind: "worldPopulation" } });
-    if (world.outcome.status !== "ok") throw Error(world.outcome.status);
+    if (world.outcome.status !== "ok" || world.outcome.answer.kind !== "worldPopulation")
+      throw Error("Expected world population history");
     expect(world.outcome.answer.value.rows.map((row) => row.value)).toEqual([355_459_580]);
     // A location that the map does not have is a gap.
     const missing = store.query({
@@ -84,8 +85,29 @@ it.skipIf(!ready)(
       campaignId,
       query: { kind: "locationPopulation", locationIds: [4_000_000_000] },
     });
-    if (missing.outcome.status !== "ok") throw Error(missing.outcome.status);
+    if (missing.outcome.status !== "ok" || missing.outcome.answer.kind !== "locationPopulation")
+      throw Error("Expected location population history");
     expect(missing.outcome.answer.value.rows.map((row) => row.value)).toEqual([undefined]);
+    const catalog = store.query({ generation: 0, campaignId, query: { kind: "analyticsCatalog" } });
+    if (catalog.outcome.status !== "ok" || catalog.outcome.answer.kind !== "analyticsCatalog")
+      throw Error("Expected analytical catalog");
+    expect(catalog.outcome.answer.value.goods).not.toHaveLength(0);
+    expect(catalog.outcome.answer.value.countryNames.length).toBeGreaterThan(100);
+
+    const good = catalog.outcome.answer.value.goods[0];
+    const countryId = catalog.outcome.answer.value.countryNames[0].countryId;
+    const history = store.query({
+      generation: 0,
+      campaignId,
+      query: { kind: "campaignHistory", countryId, good, centers: [] },
+    });
+    if (history.outcome.status !== "ok" || history.outcome.answer.kind !== "campaignHistory")
+      throw Error("Expected analytical history");
+    expect(history.outcome.answer.value[0].countries[0].countryId).toBe(countryId);
+    expect(history.outcome.answer.value[0].markets.length).toBeGreaterThan(0);
+    expect(store.map_frame(parsed.descriptor.id).data.byteLength).toBeLessThan(
+      stored.data.byteLength,
+    );
     store.free();
   },
 );

@@ -426,8 +426,9 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
 
 fn analysis_result(
     mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>,
+    bundles: Option<(&Eu5WasmGameBundle, &Eu5WasmLocalizationBundle)>,
 ) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
-    let (projection, world, campaign_id, date, game_version) = {
+    let (projection, world, campaign_id, date, game_version, save, names, overviews) = {
         let game = loaded.take_gamestate();
         let meta = game.metadata();
         if meta.playthrough_id.to_str().is_empty() {
@@ -440,16 +441,32 @@ fn analysis_result(
             "{}.{}.{}",
             meta.version.major, meta.version.minor, meta.version.patch
         );
+        let world = eu5app::map_projection::world_summary(&game);
+        let campaign = meta.playthrough_id.to_str().to_owned();
+        let date = campaign_analysis::SaveDate {
+            year: i32::from(date.year),
+            month: date.month,
+            day: date.day,
+        };
+        let save = eu5app::snapshot::extract(&game);
+        let (names, overviews) = match bundles {
+            Some((game_bundle, localization)) => {
+                let workspace = eu5app::Eu5Workspace::new(game, Arc::clone(&game_bundle.game_data))
+                    .map_err(|error| JsError::new(&error.to_string()))?;
+                let (names, overviews) =
+                    eu5app::extract_analytics(&workspace, &localization.localization, &save);
+                (names, Some(overviews))
+            }
+            None => (
+                save.countries
+                    .iter()
+                    .map(|country| (country.country_id, country.tag.clone()))
+                    .collect(),
+                None,
+            ),
+        };
         (
-            projection,
-            eu5app::map_projection::world_summary(&game),
-            meta.playthrough_id.to_str().to_owned(),
-            campaign_analysis::SaveDate {
-                year: i32::from(date.year),
-                month: date.month,
-                day: date.day,
-            },
-            version,
+            projection, world, campaign, date, version, save, names, overviews,
         )
     };
     // The checksum is complete after the game state is released.
@@ -459,8 +476,9 @@ fn analysis_result(
         date,
         game_version,
     };
-    let observation = eu5app::analysis::observation(projection, world, source)
-        .map_err(campaign_analysis::wasm::error)?;
+    let observation =
+        eu5app::analysis::analytical_observation(projection, world, source, save, names, overviews)
+            .map_err(campaign_analysis::wasm::error)?;
     analysis::AnalysisSnapshot::observation(&observation)
 }
 
@@ -490,11 +508,28 @@ impl ImportLoader {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
     pub fn parse_import(self) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
+        self.parse(None)
+    }
+
+    pub fn parse_import_with_charts(
+        self,
+        game: &Eu5WasmGameBundle,
+        localization: &Eu5WasmLocalizationBundle,
+    ) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
+        self.parse(Some((game, localization)))
+    }
+}
+
+impl ImportLoader {
+    fn parse(
+        self,
+        bundles: Option<(&Eu5WasmGameBundle, &Eu5WasmLocalizationBundle)>,
+    ) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
         let loaded = self
             .parser
             .parse()
             .map_err(|e| JsError::new(&e.to_string()))?;
-        analysis_result(loaded)
+        analysis_result(loaded, bundles)
     }
 }
 

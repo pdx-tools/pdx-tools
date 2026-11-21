@@ -1,4 +1,6 @@
 import { useEffectEvent } from "react";
+import { inspectShownSnapshot } from "../../history/previewSession";
+import { useInsightPreview } from "../../history/insightPreview";
 import type * as echarts from "echarts/core";
 import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
@@ -22,6 +24,7 @@ export function useEu5EntityChartClick(
     | { kind: "country"; getTarget: GetTarget }
     | { kind: "market"; backLabel: string; getTarget: GetTarget },
 ) {
+  const preview = useInsightPreview();
   const nav = usePanelNav();
   const engine = useEu5Engine();
   const jumpToEntity = useJumpToEntity();
@@ -32,6 +35,17 @@ export function useEu5EntityChartClick(
     if (target == null) return;
     const ev = params.event?.event as MouseEvent | undefined;
     const kind = opts.kind === "country" ? "countries" : "markets";
+    const add = opts.kind === "country" && (ev?.shiftKey || ev?.ctrlKey || ev?.metaKey);
+    if (preview) {
+      if (preview.canInspect()) {
+        inspectShownSnapshot(preview.id, {
+          kind,
+          id: target.id,
+          op: ev?.altKey ? "remove" : add ? "add" : "replace",
+        });
+      }
+      return;
+    }
 
     if (ev?.altKey) {
       void engine.commands.changeSelection("remove", kind, [target.id]);
@@ -39,7 +53,7 @@ export function useEu5EntityChartClick(
     }
 
     if (opts.kind === "country") {
-      if (ev?.shiftKey || ev?.ctrlKey || ev?.metaKey) {
+      if (add) {
         void engine.commands.changeSelection("add", kind, [target.id]);
       } else {
         void engine.commands.changeSelection("replace", kind, [target.id]);
@@ -53,6 +67,7 @@ export function useEu5EntityChartClick(
   });
 
   const handleMouseover = useEffectEvent((params: echarts.ECElementEvent) => {
+    if (preview) return;
     const target = opts.getTarget(params);
     if (target == null) {
       hoverSource.clear();

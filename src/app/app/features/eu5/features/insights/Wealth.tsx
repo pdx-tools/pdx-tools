@@ -3,7 +3,7 @@ import { formatInt } from "@/lib/format";
 import { formatExact } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { WealthTopLocations } from "./WealthTopLocations";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
@@ -18,7 +18,7 @@ import { CountryScatter } from "./countryScatter";
 import type { CountryPoint } from "./countryScatter";
 
 function WealthScopeHeader() {
-  const { data, error, loading } = useEu5SelectionTrigger((engine) =>
+  const { data, error, loading } = useEu5Overview("wealthScope", (engine) =>
     engine.queries.getWealthScope(),
   );
 
@@ -40,7 +40,7 @@ function WealthScopeHeader() {
 }
 
 export function WealthInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getWealthInsight());
+  const insightQuery = useEu5Overview("wealth", (engine) => engine.queries.getWealthInsight());
 
   const countries = insightQuery.data?.countries ?? [];
 

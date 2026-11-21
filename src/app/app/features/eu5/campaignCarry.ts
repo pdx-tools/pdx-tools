@@ -23,10 +23,20 @@ export type CarriedSelection = {
   focusedLocation: number | null;
 };
 
+export type SnapshotSelection = {
+  op: "replace" | "add" | "remove";
+  kind: "countries" | "markets" | "locations";
+  id: number;
+};
+
+export type SnapshotInspection =
+  | { click: LocationClickChangeEvent }
+  | { selection: SnapshotSelection };
+
 /** What the next EU5 save of the campaign keeps of the view. */
 export type Eu5Carry = {
-  /** A click on a snapshot, to apply after the save of the snapshot loads. */
-  inspection?: { click: LocationClickChangeEvent };
+  /** A snapshot interaction to apply after its exact save loads. */
+  inspection?: SnapshotInspection;
   mapMode: MapMode;
   viewport: MapViewport["viewport"] | null;
   insightPanel: { open: boolean; width: number };

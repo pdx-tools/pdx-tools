@@ -4,7 +4,7 @@ import { formatInt } from "@/lib/format";
 import { formatExact } from "../../numberFormatting";
 import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { useEu5Engine } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { DevelopmentTopLocations } from "./DevelopmentTopLocations";
@@ -47,7 +47,9 @@ function DevelopmentScopeHeader({ data }: { data?: DevelopmentInsightData }) {
 }
 
 export function DevelopmentInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getDevelopmentInsight());
+  const insightQuery = useEu5Overview("development", (engine) =>
+    engine.queries.getDevelopmentInsight(),
+  );
 
   const countries = insightQuery.data?.countries ?? [];
 

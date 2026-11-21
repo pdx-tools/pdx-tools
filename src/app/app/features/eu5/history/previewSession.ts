@@ -1,3 +1,4 @@
+import type { SnapshotInspection, SnapshotSelection } from "../campaignCarry";
 import { create } from "zustand";
 import type { CampaignNav } from "@/features/campaign/useCampaignNav";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
@@ -178,11 +179,11 @@ type OpenRequest = {
   campaignId: string;
   snapshotId: string;
   navigation: CampaignNav;
-  click?: LocationClickChangeEvent;
+  inspection?: SnapshotInspection;
 };
 
 async function openSnapshotSave(
-  { campaignId, snapshotId, navigation, click }: OpenRequest,
+  { campaignId, snapshotId, navigation, inspection }: OpenRequest,
   current: () => boolean,
 ) {
   const loaded = activeEu5Store();
@@ -215,24 +216,25 @@ async function openSnapshotSave(
         payload: {
           ...carry,
           insightPanel: {
-            open: click ? true : state.insightPanelOpen,
+            open: inspection ? true : state.insightPanelOpen,
             width: state.insightPanelWidth,
           },
-          inspection: click ? { click } : undefined,
+          inspection,
         },
       },
     );
     if (result.kind === "cancelled") throw changed();
     if (result.kind !== "navigated")
       throw Error("Could not open this save. Try selecting it in the campaign list.");
-  } else if (click) {
+  } else if (inspection) {
     // The save of the snapshot is open, so the click applies to it now.
     const carry = await captureEu5Carry(loaded);
-    await state.engine.trigger.restoreCampaignView({ ...carry, inspection: { click } });
+    if (!current()) throw changed();
+    await state.engine.trigger.restoreCampaignView({ ...carry, inspection });
   }
   // A save that loads in place keeps the panel state of the previous save,
   // so the carry alone does not open the panel.
-  if (click) activeEu5Store()?.getState().setInsightPanelOpen(true);
+  if (inspection && current()) activeEu5Store()?.getState().setInsightPanelOpen(true);
 
   // Show the loaded save only when the playhead is still on it and no other save waits.
   const after = get();
@@ -244,12 +246,16 @@ const opens = new LatestRequest<OpenRequest, void>(openSnapshotSave);
 
 /** Open the save of the snapshot at the playhead. The overlay stays until that save is ready. */
 export function openPreview(navigation: CampaignNav, click?: LocationClickChangeEvent) {
+  return openPreviewSave(navigation, click ? { click } : undefined);
+}
+
+function openPreviewSave(navigation: CampaignNav, inspection?: SnapshotInspection) {
   const state = get();
   // A recording uses the loaded save until it is done.
   if (state.kind === "live" || isRecording()) return Promise.resolve();
   const { id, campaignId, snapshotId } = state;
   set({ ...state, kind: "opening", error: null });
-  return opens.request({ campaignId, snapshotId, navigation, click }).catch((error) => {
+  return opens.request({ campaignId, snapshotId, navigation, inspection }).catch((error) => {
     const now = get();
     if (now.kind === "live" || now.id !== id || now.snapshotId !== snapshotId) return;
     if (isAbortError(error)) {
@@ -259,6 +265,22 @@ export function openPreview(navigation: CampaignNav, click?: LocationClickChange
 }
 
 let navigation: CampaignNav | null = null;
+
+/** Apply a chart or table selection only to the snapshot whose data supplied it. */
+export function inspectShownSnapshot(id: string, selection: SnapshotSelection) {
+  const state = get();
+  if (
+    !navigation ||
+    state.kind !== "preview" ||
+    isRecording() ||
+    state.snapshotId !== id ||
+    state.shown?.snapshotId !== id
+  )
+    return;
+
+  setPreviewPlayback(null);
+  void openPreviewSave(navigation, { selection });
+}
 
 /** The campaign navigation that a click on the map uses to open a save. */
 export function bindPreviewNavigation(next: CampaignNav | null) {

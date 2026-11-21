@@ -1,4 +1,6 @@
 import type React from "react";
+import { inspectShownSnapshot } from "../../history/previewSession";
+import { useInsightPreview } from "../../history/insightPreview";
 import { cx } from "class-variance-authority";
 import type { CountryRef, MarketRef } from "@/wasm/wasm_eu5";
 import { usePanelNav, entityProfileEntry } from "./PanelNavContext";
@@ -93,10 +95,12 @@ function LinkBody({
   children,
   ...rest
 }: LinkBodyProps) {
+  const preview = useInsightPreview();
   const nav = usePanelNav();
   const jumpToEntity = useJumpToEntity();
   const s = sizeClasses[size];
   const hoverProps = useEu5MapHoverTarget(hoverTarget);
+  const readOnly = rest.static;
   const nameClass = cx(
     "min-w-0 flex-[0_1_auto] overflow-hidden font-medium text-ellipsis whitespace-nowrap",
     s.name,
@@ -106,7 +110,7 @@ function LinkBody({
       {visual ?? <EntitySwatch colorHex={colorHex} isPlayer={isPlayer} className={s.swatch} />}
       {tag}
       {children ??
-        (rest.static ? (
+        (readOnly ? (
           <span className={cx(nameClass, "text-game-ink-100")}>{name}</span>
         ) : (
           <EntityName className={nameClass}>{name}</EntityName>
@@ -114,7 +118,7 @@ function LinkBody({
     </>
   );
 
-  if (rest.static) {
+  if (readOnly) {
     return (
       <span
         {...hoverProps}
@@ -130,6 +134,15 @@ function LinkBody({
       type="button"
       onClick={(event) => {
         event.stopPropagation();
+        if (preview) {
+          if (preview.canInspect())
+            inspectShownSnapshot(preview.id, {
+              kind: kind === "country" ? "countries" : "markets",
+              id,
+              op: event.altKey ? "remove" : "replace",
+            });
+          return;
+        }
         if (event.altKey) {
           onAltActivate();
           return;

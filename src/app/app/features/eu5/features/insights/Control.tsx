@@ -21,7 +21,7 @@ import { Figure } from "../../components/Figure";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
 import { chartTooltip, markGap, ordinalRamp } from "@/components/viz/echartsTheme";
 import { InsightReadout, InsightReadoutSkeleton, ReadoutFigure } from "../InsightReadout";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { LocationLink } from "../profiles/LocationLink";
 import { CountryLink } from "../profiles/EntityLink";
 import {
@@ -64,7 +64,7 @@ function ControlScopeHeader({ data }: { data?: ControlScopeSummary }) {
 }
 
 export function ControlInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getControlInsight());
+  const insightQuery = useEu5Overview("control", (engine) => engine.queries.getControlInsight());
 
   const data = insightQuery.data;
   const barCountries = data?.barCountries ?? [];

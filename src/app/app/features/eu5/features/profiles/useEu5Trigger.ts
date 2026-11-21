@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import type { OverviewData, OverviewKey } from "@/wasm/wasm_eu5";
+import { useInsightPreview } from "../../history/insightPreview";
+import { previewOverview } from "../../history/previewOverview";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DependencyList } from "react";
 import { isAbortError } from "@/lib/abortController";
 import { useEu5Engine, useEu5SelectionRevision } from "../../store";
@@ -46,4 +49,24 @@ export function useEu5SelectionTrigger<T>(
 ): { data: T | undefined; error: Error | undefined; loading: boolean } {
   const selectionRevision = useEu5SelectionRevision();
   return useEu5Trigger(fetch, [selectionRevision, ...deps]);
+}
+
+/** Use the shown snapshot's chart results while the loaded save stays beneath the preview. */
+export function useEu5Overview<K extends OverviewKey>(
+  key: K,
+  fetch: (engine: AppEngine) => Promise<OverviewData[K]>,
+) {
+  const preview = useInsightPreview();
+  const selection = useEu5SelectionRevision();
+  const chart = useRef({});
+  const query = useEu5Trigger(
+    async (engine) => ({
+      id: preview?.id,
+      data: await (preview ? previewOverview(preview, key) : fetch(engine)),
+    }),
+    [key, preview?.id, preview?.campaignId, preview ? undefined : selection],
+  );
+  const shown = query.data?.id;
+  useLayoutEffect(() => preview?.track(chart.current, shown), [preview, shown]);
+  return { data: query.data?.data, error: query.error, loading: query.loading };
 }

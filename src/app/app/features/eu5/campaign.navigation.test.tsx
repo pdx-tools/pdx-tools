@@ -87,6 +87,7 @@ import { useHistory } from "./history/store";
 import {
   bindPreviewNavigation,
   cancelPreview,
+  inspectShownSnapshot,
   openPreview,
   previewSnapshot,
   setPreviewPlayback,
@@ -214,6 +215,27 @@ it("opens the save at the playhead and then shows that save", async () => {
   expect(mocks.clear).toHaveBeenCalledOnce();
   expect(lastToken(mocks.clear)).toBeGreaterThan(lastToken(mocks.present) as number);
   expect(mocks.gate).toHaveBeenLastCalledWith(null);
+});
+
+it("applies a chart selection only to the accepted snapshot it came from", async () => {
+  bindPreviewNavigation(navigation());
+  preview("a");
+  await vi.waitFor(() =>
+    expect(usePreviewSession.getState()).toMatchObject({ shown: { snapshotId: "a" } }),
+  );
+  const selection = { kind: "markets", op: "replace", id: 7 } as const;
+  inspectShownSnapshot("b", selection);
+  expect(opened()).toEqual([]);
+
+  setPreviewPlayback("control");
+  inspectShownSnapshot("a", selection);
+  await vi.waitFor(() => expect(usePreviewSession.getState().kind).toBe("live"));
+  expect(opened()).toEqual(["a.eu5"]);
+  expect(usePreviewPlayback.getState().mode).toBeNull();
+  expect(campaignTransitions.takeView("eu5", toPlaythroughId("campaign"))).toMatchObject({
+    inspection: { selection },
+    insightPanel: { open: true },
+  });
 });
 
 it("opens only the newest target and keeps it on the map while an older save loads", async () => {

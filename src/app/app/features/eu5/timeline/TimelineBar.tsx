@@ -9,6 +9,7 @@ import { useHistory } from "../history/store";
 import { useMapHistory } from "../history/context";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "class-variance-authority";
+import { GameButton } from "@/components/game/Button";
 import { focusRing } from "@/components/game/focusRing";
 import { SavedDateExport, TimelapseExport } from "./TimelapseExport";
 import { TimelineReadout } from "@/features/timeline/TimelineReadout";
@@ -18,7 +19,12 @@ import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import type { TimelineController } from "@/features/timeline/controller";
 import { useTimelineController } from "./useTimelineController";
-import { useEu5Input, useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
+import {
+  useEu5Input,
+  useEu5MapMode,
+  useSetEu5TimelineBarHeight,
+  useSetEu5InsightPanelOpen,
+} from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";
 import styles from "./TimelineBar.module.css";
@@ -91,6 +97,8 @@ export function TimelineBar() {
     history?.enabled ? analysisStatus : undefined,
   );
   const speed = useHistory((state) => state.playbackSpeed);
+  const showHistory = useHistory((state) => state.showPanel);
+  const openInsights = useSetEu5InsightPanelOpen();
   const insets = useViewportInsets();
   useTimelineKeyboard(controller);
   const open = controller !== null;
@@ -135,6 +143,17 @@ export function TimelineBar() {
           </div>
         ) : (
           <TimelapseExport controller={controller} />
+        )}
+        {history?.enabled && history.frames > 0 && (
+          <GameButton
+            variant="ghost"
+            onClick={() => {
+              showHistory(true);
+              openInsights(true);
+            }}
+          >
+            Over time
+          </GameButton>
         )}
         {history?.enabled && hasLocalSaves && (
           <span

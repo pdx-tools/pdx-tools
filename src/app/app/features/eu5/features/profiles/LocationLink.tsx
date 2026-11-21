@@ -1,4 +1,6 @@
 import type React from "react";
+import { inspectShownSnapshot } from "../../history/previewSession";
+import { useInsightPreview } from "../../history/insightPreview";
 import { cx } from "class-variance-authority";
 import { MapHoverButton } from "../../MapHoverButton";
 import { EntityName, entityLinkControl } from "../../components/EntityName";
@@ -21,6 +23,7 @@ export function LocationLink({
   className,
   ...props
 }: LocationLinkProps) {
+  const preview = useInsightPreview();
   const nav = usePanelNav();
   const jumpToEntity = useJumpToEntity();
   const activate =
@@ -35,7 +38,16 @@ export function LocationLink({
       {...props}
       target={{ kind: "location", locationIdx: location.key }}
       className={cx(entityLinkControl, "min-w-0 text-left", className)}
-      onClick={() => activate(location)}
+      onClick={() => {
+        if (preview) {
+          if (preview.canInspect())
+            inspectShownSnapshot(preview.id, {
+              kind: "locations",
+              id: location.key,
+              op: "replace",
+            });
+        } else activate(location);
+      }}
     >
       <EntityName className="block min-w-0 truncate">{location.name}</EntityName>
     </MapHoverButton>

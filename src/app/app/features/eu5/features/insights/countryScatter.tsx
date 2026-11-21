@@ -15,6 +15,7 @@ import {
 import type { CountryRef, SelectionTargetData } from "@/wasm/wasm_eu5";
 import { formatTick } from "../../numberFormatting";
 import { useEu5HomeCountry } from "../../store";
+import { useInsightPreview } from "../../history/insightPreview";
 import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
 import { useEu5EntityChartClick } from "./useEntityChartClick";
 import { logName, ResetZoom, SCATTER_GRID, useBoxZoom } from "./scatterZoom";
@@ -300,17 +301,24 @@ export function placeLabels(
  */
 function useScatterMarks(): ScatterMarks | undefined {
   const home = useEu5HomeCountry();
-  const { data } = useEu5SelectionTrigger((engine) =>
-    engine.queries.getSelectionTarget().then((target) => ({ target })),
+  const previewing = useInsightPreview() !== null;
+  const { data } = useEu5SelectionTrigger(
+    (engine) =>
+      previewing
+        ? Promise.resolve({ target: null })
+        : engine.queries.getSelectionTarget().then((target) => ({ target })),
+    [previewing],
   );
   // A new selection that names the same countries keeps the chart as it is.
   const key = data === undefined ? undefined : JSON.stringify(data.target);
   return useMemo(
     () =>
-      key === undefined
-        ? undefined
-        : { home, target: JSON.parse(key) as SelectionTargetData | null },
-    [home, key],
+      previewing
+        ? NO_MARKS
+        : key === undefined
+          ? undefined
+          : { home, target: JSON.parse(key) as SelectionTargetData | null },
+    [home, key, previewing],
   );
 }
 

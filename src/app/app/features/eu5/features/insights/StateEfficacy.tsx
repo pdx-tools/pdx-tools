@@ -16,7 +16,7 @@ import { Figure } from "../../components/Figure";
 import { createColumnHelper } from "@/lib/tanstack-table";
 import { Eu5DataTable, Eu5MapDataTable, SectionTitle } from "../../components";
 import { escapeEChartsHtml } from "@/components/viz/EChart";
-import { useEu5SelectionTrigger } from "../profiles/useEu5Trigger";
+import { useEu5Overview } from "../profiles/useEu5Trigger";
 import { useEu5Engine } from "../../store";
 import { LocationDistributionChart } from "./LocationDistributionChart";
 import { LocationLink } from "../profiles/LocationLink";
@@ -65,7 +65,9 @@ function StateEfficacyScopeHeader({ data }: { data?: StateEfficacyScopeSummary }
 }
 
 export function StateEfficacyInsight() {
-  const insightQuery = useEu5SelectionTrigger((engine) => engine.queries.getStateEfficacy());
+  const insightQuery = useEu5Overview("stateEfficacy", (engine) =>
+    engine.queries.getStateEfficacy(),
+  );
 
   const countries = insightQuery.data?.countries ?? [];
 
