@@ -13,9 +13,13 @@ export type AssetRelease = CatalogRelease & {
   bundle: string;
 };
 
+/** Games that the catalog lists */
+export const catalogGames = ["eu4", "eu5", "hoi4"] as const;
+export type CatalogGame = (typeof catalogGames)[number];
+
 export type AssetCatalog = {
   schema_version: number;
-  games: Record<"eu4" | "eu5", { releases: AssetRelease[] }>;
+  games: Record<CatalogGame, { releases: AssetRelease[] }>;
 };
 
 export const catalogPath = new URL("../../assets/catalog.json", import.meta.url);
@@ -24,7 +28,7 @@ export const catalogPath = new URL("../../assets/catalog.json", import.meta.url)
 export async function readAssetCatalog(): Promise<AssetCatalog> {
   const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
   if (catalog.schema_version !== 1) throw new Error("Unsupported asset catalog schema");
-  for (const game of ["eu4", "eu5"] as const) {
+  for (const game of catalogGames) {
     const releases: AssetRelease[] = catalog.games[game]?.releases ?? [];
     if (releases.length === 0) throw new Error(`The catalog has no ${game} releases`);
     releases.forEach((release, index) => {

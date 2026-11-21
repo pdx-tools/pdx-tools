@@ -4,8 +4,8 @@ import { spawn } from "child_process";
 import { readdir, access } from "fs/promises";
 import { join, resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { readAssetCatalog } from "./asset-catalog.mts";
-import type { AssetRelease } from "./asset-catalog.mts";
+import { catalogGames, readAssetCatalog } from "./asset-catalog.mts";
+import type { AssetRelease, CatalogGame } from "./asset-catalog.mts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -51,12 +51,11 @@ const execCommand = async (command: string, args: string[] = [], options = {}) =
   });
 };
 
-type Game = "eu4" | "eu5";
-
-const gameFromMise = (): Game | undefined => {
+const gameFromMise = (): CatalogGame | undefined => {
   const game = process.env.usage_game;
   if (game === undefined || game === "") return undefined;
-  if (game === "eu4" || game === "eu5") return game;
+  const found = catalogGames.find((x) => x === game);
+  if (found !== undefined) return found;
   throw new Error(`Invalid usage_game from mise: ${game}`);
 };
 
@@ -77,7 +76,7 @@ async function packageAll() {
   const catalog = await readAssetCatalog();
   const files = new Set(await readdir(gameBundlesDir));
   const remainingTasks: Promise<unknown>[] = [];
-  for (const game of ["eu4", "eu5"] as const) {
+  for (const game of catalogGames) {
     if (filterGame !== undefined && game !== filterGame) continue;
     // An unpublished release has no bundle, thus use the latest bundle that is
     // present. It supplies the shared images. Older releases skip them.

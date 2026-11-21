@@ -78,6 +78,15 @@
           "sha256": "3983dc8b3c4e1c5b6cc054a7614f89b8a87a78cfd78fac79ad805e5979dd17ca"
         }
       ]
+    },
+    "hoi4": {
+      "releases": [
+        {
+          "branch": "public",
+          "game_version": "1.19.3",
+          "sha256": "44633e2f1eb7acdda317e6d1cf367ba3655db9bc57ba384d9d95ca1a5112601d"
+        }
+      ]
     }
   }
 }
