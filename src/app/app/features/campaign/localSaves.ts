@@ -300,11 +300,17 @@ export function createLocalSaveRegistry(
     return null;
   }
 
-  function observeOpen(open: OpenSave): void {
+  /**
+   * Record the identity of the save that the viewer parsed. After an update
+   * of the entry only, restore an identity that the update dropped: a known
+   * version of the entry is a later read of the file than the parse.
+   */
+  function observeOpen(open: OpenSave, cause: "parse" | "entry" = "parse"): void {
     if (open.source.kind !== "local") return;
     if (open.source.entryId === null) return;
     const entry = getLocalSave(open.source.entryId);
     if (!entry || entry.game !== open.game) return;
+    if (cause === "entry" && entry.identity !== null) return;
     const identity: SaveIdentity = {
       playthroughId: open.playthroughId,
       campaignIdHint: open.campaignIdHint,
