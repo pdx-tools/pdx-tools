@@ -44,11 +44,11 @@ impl<G: Game> Observation<G> {
         if input.raw(MAGIC.len())? != MAGIC {
             return Err(DecodeError::NotASnapshot.into());
         }
-        let descriptor: SnapshotDescriptor = header(&input.column::<u8>()?)?;
+        let descriptor: SnapshotDescriptor = input.serde()?;
         if descriptor.game != G::GAME {
             return Err(AnalysisError::WrongGame { game: G::GAME });
         }
-        let detail = header(&input.column::<u8>()?)?;
+        let detail = input.serde()?;
         let payload = G::Payload::decode(&mut input)?;
         input.finish()?;
         Self::new(descriptor, detail, payload)
@@ -66,10 +66,6 @@ pub(crate) fn encode<G: Game>(
     out.column(&header_bytes(detail));
     payload.encode(&mut out);
     out.finish()
-}
-
-fn header<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, DecodeError> {
-    postcard::from_bytes(bytes).map_err(|error| DecodeError::Header(error.to_string()))
 }
 
 /// Postcard cannot fail on the headers: they have no maps of unknown length.

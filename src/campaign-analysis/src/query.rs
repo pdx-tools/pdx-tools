@@ -19,6 +19,7 @@ pub enum Selection {
 #[derive(Debug)]
 pub struct View<'a, G: Game> {
     snapshots: Vec<&'a Snapshot<G>>,
+    shared: &'a G::Shared,
 }
 
 impl<'a, G: Game> View<'a, G> {
@@ -39,11 +40,19 @@ impl<'a, G: Game> View<'a, G> {
                 }
             }
         };
-        Self { snapshots }
+        Self {
+            snapshots,
+            shared: store.shared(),
+        }
     }
 
     pub fn snapshots(&self) -> &[&'a Snapshot<G>] {
         &self.snapshots
+    }
+
+    /// The registries of the store, such as its text dictionaries.
+    pub fn shared(&self) -> &'a G::Shared {
+        self.shared
     }
 
     pub fn ids(&self) -> Vec<String> {
@@ -91,6 +100,15 @@ pub struct HistoryRow {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct History {
     pub rows: Vec<HistoryRow>,
+}
+
+/// The values of one key, aligned to the snapshot IDs of the reply. A gap
+/// has no value.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+pub struct Series<K> {
+    pub key: K,
+    pub values: Vec<Option<f64>>,
 }
 
 /// The queries of a game. Use [`queries!`](crate::queries) to declare them.

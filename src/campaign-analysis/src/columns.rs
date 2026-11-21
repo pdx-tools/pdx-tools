@@ -149,8 +149,16 @@ impl<'a> Decoder<'a> {
         self.take(len).map(|_| ())
     }
 
+    /// A value that fills its column exactly.
     pub fn serde<T: serde::de::DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
-        postcard::from_bytes(&self.column::<u8>()?).map_err(|e| DecodeError::Header(e.to_string()))
+        let bytes = self.column::<u8>()?;
+        match postcard::take_from_bytes(&bytes) {
+            Ok((value, [])) => Ok(value),
+            Ok(_) => Err(DecodeError::Header(String::from(
+                "A value has data after its end",
+            ))),
+            Err(error) => Err(DecodeError::Header(error.to_string())),
+        }
     }
 
     /// Refuse bytes after the last column.
@@ -355,6 +363,22 @@ impl<T: Pod> NullableColumn<T> {
     }
     pub fn iter(&self) -> impl ExactSizeIterator<Item = Option<T>> + '_ {
         (0..self.len()).map(|i| self.get(i).expect("in-range row"))
+    }
+}
+impl<T: Pod> FromIterator<Option<T>> for NullableColumn<T> {
+    fn from_iter<I: IntoIterator<Item = Option<T>>>(iter: I) -> Self {
+        let mut values = Vec::new();
+        let mut validity = Vec::new();
+        for (offset, value) in iter.into_iter().enumerate() {
+            if offset % 8 == 0 {
+                validity.push(0);
+            }
+            if value.is_some() {
+                *validity.last_mut().expect("a byte for this value") |= 1 << (offset % 8);
+            }
+            values.push(value.unwrap_or_else(T::zeroed));
+        }
+        Self { values, validity }
     }
 }
 impl<T: Pod> Columns for NullableColumn<T> {
@@ -568,6 +592,13 @@ mod tests {
     }
 
     #[test]
+    fn a_serde_value_must_fill_its_column() {
+        let mut out = Encoder::new();
+        out.column(&[2u8, b'a', b'b', 0]);
+        Decoder::new(&out.finish()).serde::<String>().unwrap_err();
+    }
+
+    #[test]
     fn refuses_truncated_and_trailing_bytes() {
         let mut out = Encoder::new();
         out.column(&[7u32; 3]);
@@ -607,6 +638,26 @@ mod nullable_tests {
         let decoded = NullableColumn::<f64>::decode(&mut Decoder::new(&out.finish())).unwrap();
         assert_eq!(decoded.values[0].to_bits(), 0.0f64.to_bits());
         assert_eq!(decoded.values[1].to_bits(), (-0.0f64).to_bits());
+    }
+    #[test]
+    fn collects_options_into_a_valid_bitmap() {
+        let values = [
+            Some(1u32),
+            None,
+            Some(3),
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(9),
+        ];
+        let column: NullableColumn<u32> = values.into_iter().collect();
+        assert_eq!(column.iter().collect::<Vec<_>>(), values);
+        assert_eq!(
+            column,
+            NullableColumn::new(column.values.clone(), column.validity.clone()).unwrap()
+        );
     }
     #[test]
     fn nullable_bitmap_and_value_bounds_are_checked() {
