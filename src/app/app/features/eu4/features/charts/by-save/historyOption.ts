@@ -126,8 +126,8 @@ export type HistoryOptionInput = {
   palette: Palette;
   dark: boolean;
   format: (value: number) => string;
-  /** A round value on the value axis. */
-  tick: (value: number) => string;
+  /** A round value on the value axis, with the axis step. */
+  tick: (value: number, step: number) => string;
   font: string;
 };
 
@@ -306,7 +306,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       grey ? palette.field : input.world ? palette.accent : (line.colors[i] ?? first);
     const recolors = !grey && !input.world && line.changes.length > 0;
     const point = (i: number): Point => [days[i], line.values[i]];
-    const has = (i: number) => line.values[i] !== null;
+    const has = (i: number) => i >= 0 && i < n && line.values[i] !== null;
 
     const z = grey ? 2 : role === "subject" ? 5 : role === "compared" ? 4 : 3;
     // Every point of a hovered line is a save, so the axis pointer finds the same save on
@@ -462,6 +462,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     if (radius === 0) {
       for (let i = 0; i < n; i++) {
         if (!has(i) || has(i - 1) || has(i + 1)) continue;
+        if (days[i] < input.view[0] || days[i] > input.view[1]) continue;
         const after = i > selected;
         lone.push({
           value: [days[i], line.values[i]!],
@@ -811,6 +812,8 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     backgroundColor: "transparent",
     textStyle: { fontFamily: input.font },
     grid: { ...grid, outerBoundsMode: "none" },
+    // The chart drives the axis pointer itself, from one save in view.
+    axisPointer: { triggerOn: "none" },
     xAxis: {
       type: "value",
       min: days[0],
@@ -869,7 +872,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
       max: scale.hi,
       interval: step,
       axisLabel: {
-        formatter: (value: number) => input.tick(value),
+        formatter: (value: number) => input.tick(value, step ?? 1),
         color: palette.faint,
         fontSize: 11,
         margin: 8,

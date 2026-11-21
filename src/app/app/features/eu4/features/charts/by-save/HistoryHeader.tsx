@@ -46,22 +46,23 @@ export function HistoryHeader({
       <span className="flex">
         <IconButton
           shape="square"
-          className="rounded-r-none"
+          className="rounded-r-none aria-disabled:cursor-default aria-disabled:opacity-50"
           icon={<ChevronLeftIcon className="size-4" aria-hidden />}
-          disabled={earlier === null}
+          // Not disabled at the end, so a keyboard press there keeps the focus.
+          aria-disabled={earlier === null}
           aria-label={earlier ? `Earlier save, ${earlier}` : "Earlier save"}
           // A tooltip at the ends too, so the button keeps its focus.
           tooltip={earlier ? `Earlier save: ${earlier}` : "The earliest save"}
-          onClick={() => onStep(-1)}
+          onClick={() => earlier !== null && onStep(-1)}
         />
         <IconButton
           shape="square"
-          className="-ml-px rounded-l-none"
+          className="-ml-px rounded-l-none aria-disabled:cursor-default aria-disabled:opacity-50"
           icon={<ChevronRightIcon className="size-4" aria-hidden />}
-          disabled={later === null}
+          aria-disabled={later === null}
           aria-label={later ? `Later save, ${later}` : "Later save"}
           tooltip={later ? `Later save: ${later}` : "The latest save"}
-          onClick={() => onStep(1)}
+          onClick={() => later !== null && onStep(1)}
         />
       </span>
       <span

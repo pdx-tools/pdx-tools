@@ -11,8 +11,8 @@ export type BySaveFigure = {
   metric: CountryMetric | null;
   /** The value as the viewer shows it. */
   format: (value: number) => string;
-  /** A round value on the axis. */
-  tick: (value: number) => string;
+  /** A round value on the axis, with the axis step, so ticks read apart. */
+  tick: (value: number, step: number) => string;
 };
 
 const points = (value: number) => formatInt(value);
@@ -36,14 +36,16 @@ export const bySaveFigures: Record<BySaveViz, BySaveFigure> = {
     unit: "thousands of men",
     metric: "armySize",
     format: thousands,
-    tick: (value: number) => `${formatInt(value)}K`,
+    tick: (value: number, step: number) =>
+      `${value.toLocaleString("en-US", { maximumFractionDigits: step >= 1 ? 0 : step >= 0.1 ? 1 : 2 })}K`,
   },
   "manpower-by-save": {
     title: "Max manpower by save",
     unit: "thousands of men",
     metric: "maxManpower",
     format: thousands,
-    tick: (value: number) => `${formatInt(value)}K`,
+    tick: (value: number, step: number) =>
+      `${value.toLocaleString("en-US", { maximumFractionDigits: step >= 1 ? 0 : step >= 0.1 ? 1 : 2 })}K`,
   },
   "world-dev-by-save": {
     title: "World development by save",

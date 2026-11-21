@@ -494,11 +494,8 @@ function BySaveView({
   }, [lines, rows, subject, compared, selected]);
 
   const played = rows.filter((row) => row.played);
-  const badges =
-    !world &&
-    (multiplayer || played.length > 1) &&
-    played.length > 0 &&
-    played.length < rows.length;
+  // Only a multiplayer campaign marks its players; one player is the followed country.
+  const badges = !world && multiplayer && played.length > 0 && played.length < rows.length;
   const standingRows = useMemo((): StandingRow[] => {
     const make = (
       row: BySaveRow,
@@ -607,6 +604,14 @@ function BySaveView({
       const near = days.reduce((a, b) => (Math.abs(b - middle) < Math.abs(a - middle) ? b : a));
       next = [Math.min(next[0], near), Math.max(next[1], near)];
     }
+    // A view is never narrower than the campaign's typical gap between saves.
+    if (next) {
+      const least = Math.max(spacing.median, 30);
+      if (next[1] - next[0] < least) {
+        const middle = (next[0] + next[1]) / 2;
+        next = [Math.round(middle - least / 2), Math.round(middle + least / 2)];
+      }
+    }
     if (next && next[0] <= days[0] && next[1] >= days.at(-1)!) next = null;
     setZoom(playthroughId, next, fit);
     // The selection stays in view.
@@ -714,7 +719,7 @@ function BySaveView({
           yearOf={yearOfDay}
           dateOf={dateOfDay}
           label={`${figure.title}, ${formatLongDate(selectedSave.date)}`}
-          focusKey={compared ?? subject}
+          focusKey={focusKey ?? subject}
           onSelect={select}
           onPick={pick}
           onPoint={setPointerKey}
@@ -791,6 +796,25 @@ function sentenceFor({
     const year = columns.some((x, i) => i !== order.since && x.date.year === at.year)
       ? formatLongDate(at)
       : String(at.year);
+    // Before the latest save with both figures, the sentence ends at the selected save.
+    const later = columns.some(
+      (_, i) => i > selected && valueOf(me.cells[i]) !== null && valueOf(rival.cells[i]) !== null,
+    );
+    if (later) {
+      const span = order.since === selected ? "in this save" : `from the ${year} save to this one`;
+      if (order.sign === 0)
+        return (
+          <>
+            {b(nameAt(me))} and {b(nameAt(rival))} were level {span}.
+          </>
+        );
+      const [ahead, behind] = order.sign > 0 ? [me, rival] : [rival, me];
+      return (
+        <>
+          {b(nameAt(ahead))} was ahead of {b(nameAt(behind))} {span}.
+        </>
+      );
+    }
     const when = order.whole ? `in every save since ${year}` : `since the ${year} save`;
     if (order.sign === 0)
       return (
@@ -893,9 +917,9 @@ function StatusLine({ campaign }: { campaign: Eu4Campaign }) {
 }
 
 /** "the 1691, 1723 and 1761 saves", by date where two saves share a year. */
-function yearsText(saves: readonly AnalysisSave[]) {
+function yearsText(saves: readonly AnalysisSave[], all: readonly AnalysisSave[]) {
   const labels = saves.map((x) =>
-    saves.some((y) => y !== x && y.date.year === x.date.year)
+    all.some((y) => y !== x && y.date.year === x.date.year)
       ? formatLongDate(x.date)
       : String(x.date.year),
   );
@@ -959,7 +983,7 @@ function Foot({
     ...dateEntries,
     ...leftOutPlayed.map(
       ({ tag, saves: played }) =>
-        `${tag}, ${kindOf(tag)}, is marked as played in ${yearsText(played)}: the game gives this tag to other countries later, so it is not followed from save to save.`,
+        `${tag}, ${kindOf(tag)}, is marked as played in ${yearsText(played, campaign.saves)}: the game gives this tag to other countries later, so it is not followed from save to save.`,
     ),
     ...(tags.length
       ? [`${tags.join(", ")}: the game gives these tags to other countries later.`]
