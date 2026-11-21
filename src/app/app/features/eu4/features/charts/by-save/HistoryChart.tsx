@@ -308,6 +308,11 @@ export function HistoryChart(props: HistoryChartProps) {
     lit.current = next;
   }, [option, pointed, subject, lines]);
 
+  // The canvas follows a zoom set by the keys or a chip, also one equal to the last option.
+  useEffect(() => {
+    chartRef.current?.dispatchAction({ type: "dataZoom", startValue: from, endValue: to });
+  }, [from, to]);
+
   // A new layout or new saves move what the resting pointer is over: hover it afresh.
   const pointerAt = useRef<{ x: number; y: number } | null>(null);
   const rehover = useRef<() => void>(() => {});
@@ -362,11 +367,17 @@ export function HistoryChart(props: HistoryChartProps) {
     };
     rehover.current = () => {
       const at = pointerAt.current;
-      const { column } = at ? hit(at.x, at.y) : { column: -1 };
+      const { column, key } = at ? hit(at.x, at.y) : { column: -1, key: null };
       const next = column >= 0 ? column : null;
       if (next !== shown) {
         shown = next;
         setHover(next);
+      }
+      // The line under a resting pointer can change too.
+      if (at && key !== pointedKey) {
+        pointedKey = key;
+        zr.setCursorStyle(key ? "pointer" : "default");
+        latest.current.props.onPoint(key);
       }
     };
     zr.on("mousemove", (event) => {
@@ -411,17 +422,25 @@ export function HistoryChart(props: HistoryChartProps) {
       const first = props.days[0];
       const last = props.days[props.days.length - 1];
       if (at.start === undefined || at.end === undefined) return;
-      // The overlay follows ECharts' own bounds; whole days are kept only once the hand rests.
+      // The overlay follows the bounds ECharts applied; whole days are kept once the hand rests.
+      const applied = (
+        chart.getOption() as { dataZoom?: { startValue?: number; endValue?: number }[] }
+      ).dataZoom?.[0];
       const view: [number, number] = [
-        first + ((last - first) * at.start) / 100,
-        first + ((last - first) * at.end) / 100,
+        applied?.startValue ?? first + ((last - first) * at.start) / 100,
+        applied?.endValue ?? first + ((last - first) * at.end) / 100,
       ];
       const base = props.view ?? [first, last];
-      setDrag({ key: `${base[0]}:${base[1]}`, view });
+      const key = `${base[0]}:${base[1]}`;
+      setDrag({ key, view });
       clearTimeout(timer);
       timer = setTimeout(() => {
-        const whole = view[0] <= first && view[1] >= last;
-        latest.current.props.onZoom(whole ? null : [Math.round(view[0]), Math.round(view[1])]);
+        // A zoom set meanwhile, by the keys or a chip, wins over this drag.
+        const now = latest.current.props.view ?? [first, last];
+        if (`${now[0]}:${now[1]}` === key) {
+          const whole = view[0] <= first && view[1] >= last;
+          latest.current.props.onZoom(whole ? null : [Math.round(view[0]), Math.round(view[1])]);
+        }
         setDrag(null);
       }, 250);
     });

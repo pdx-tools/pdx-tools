@@ -18,7 +18,11 @@ export type BySaveFigure = {
 };
 
 const points = (value: number) => formatInt(value);
-const thousands = (value: number) => `${formatInt(value)}K`;
+// A few hundred men never read as none: below 1K the figure keeps a decimal.
+const thousands = (value: number) =>
+  value !== 0 && Math.abs(value) < 0.95
+    ? `${value.toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`
+    : `${formatInt(value)}K`;
 const decimals = (value: number, digits: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 const finePoints = (value: number, digits: number) => decimals(value, digits);

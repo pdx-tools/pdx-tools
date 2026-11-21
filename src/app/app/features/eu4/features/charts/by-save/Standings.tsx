@@ -249,7 +249,11 @@ export function Standings({
                       "absolute left-[3.25rem] z-2 flex",
                       two
                         ? "bottom-0.5"
-                        : "top-full rounded-sm border border-solid border-gray-200 bg-white px-1 shadow-sm dark:border-gray-600 dark:bg-slate-900",
+                        : cx(
+                            // In the scrolling list it opens above, where the list keeps it in view.
+                            placed ? "top-full" : "bottom-full",
+                            "rounded-sm border border-solid border-gray-200 bg-white px-1 shadow-sm dark:border-gray-600 dark:bg-slate-900",
+                          ),
                     )}
                   >
                     <Note row={row} reachable={row.key === tabKey} note={row.note} />

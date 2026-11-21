@@ -78,6 +78,9 @@ export const Marks = memo(function Marks(p: MarkProps) {
     return { isP, isE, grey, back: emphasis && !isP && !isE };
   };
   const clip = (x: number) => x >= map.left - 1 && x <= plotR + 1;
+  // A point drawn over the chart must lie in the plot on both axes, as a fitted scale may cut it.
+  const inside = (x: number, y: number) =>
+    clip(x) && y >= map.top - 2 && y <= map.top + map.height + 2;
 
   if (p.world) {
     const value = lines[0]?.values[sel];
@@ -193,7 +196,7 @@ export const Marks = memo(function Marks(p: MarkProps) {
     const last = line.values.findLastIndex((v) => v !== null);
     if (last < 0 || last >= sel) return [];
     const x = map.x(days[last]);
-    if (!clip(x)) return [];
+    if (!inside(x, map.y(line.values[last]!))) return [];
     const back =
       emphasis && line.key !== p.pointed && line.role !== "subject" && line.role !== "compared";
     return [
@@ -260,7 +263,7 @@ export const Marks = memo(function Marks(p: MarkProps) {
             strokeOpacity={0.7}
           />
         )}
-        {since !== null && sinceValue !== null && clip(map.x(days[since])) && (
+        {since !== null && sinceValue !== null && inside(map.x(days[since]), map.y(sinceValue)) && (
           <circle
             cx={map.x(days[since])}
             cy={map.y(sinceValue)}
@@ -402,6 +405,15 @@ export const Hover = memo(function Hover(p: HoverProps) {
       >
         {p.dateOf(days[h])}
       </div>
+      {p.world && shown[0] && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute text-[15px] font-bold whitespace-nowrap text-gray-950 tabular-nums dark:text-white"
+          style={{ left: hx + 12, top: map.y(shown[0].value) - 10, textShadow: halo }}
+        >
+          {p.format(shown[0].value)}
+        </div>
+      )}
       {!p.world &&
         shown.map(({ line }, i) => {
           const emphasized = line.key === p.pointed;

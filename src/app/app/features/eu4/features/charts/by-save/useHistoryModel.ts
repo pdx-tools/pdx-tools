@@ -130,7 +130,11 @@ export function useHistoryModel({
     if (!pins.length) return null;
     const label = (key: string | null) => {
       const row = rows.find((x) => x.key === key);
-      const cell = row?.cells[selected] ?? row?.cells.findLast((c) => c !== null);
+      // The tag the standings name: at the save, else the nearest earlier, else the next.
+      const cell =
+        row?.cells[selected] ??
+        row?.cells.slice(0, selected).findLast((c) => c !== null) ??
+        row?.cells.slice(selected + 1).find((c) => c !== null);
       return cell ? nameOf(names, cell.tag) : "";
     };
     return [subject, ...pins].filter(Boolean).map(label).join(", ");

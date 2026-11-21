@@ -435,7 +435,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
         blurScope: "coordinateSystem" as const,
         lineStyle: {
           ...dash(line.role === "subject" ? "subject" : "compared", false, future),
-          ...(grey ? { color: litColor } : {}),
+          ...(grey && !line.changes.length ? { color: litColor } : {}),
         },
       },
       blur: { lineStyle: dash(line.role, true, future) },
@@ -448,8 +448,15 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
         focus: "series" as const,
         blurScope: "coordinateSystem" as const,
         scale: false,
-        lineStyle: { ...base(lit), ...(grey ? { color: litColor } : {}) },
-        ...(item ? { itemStyle: { ...item(lit), ...(grey ? { color: litColor } : {}) } } : {}),
+        lineStyle: { ...base(lit), ...(grey && !line.changes.length ? { color: litColor } : {}) },
+        ...(item
+          ? {
+              itemStyle: {
+                ...item(lit),
+                ...(grey && !line.changes.length ? { color: litColor } : {}),
+              },
+            }
+          : {}),
       },
       blur: {
         lineStyle: base(dim),
