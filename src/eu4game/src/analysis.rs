@@ -116,6 +116,12 @@ pub struct Eu4Payload {
     pub country_religions: Table<CountryReligion, CountryReligionColumns>,
     /// The tag switches that the save records, in date order.
     pub switches: Vec<TagSwitch>,
+    /// The countries that the save says have been played, now or before:
+    /// its player list and the countries it marks as played. Sorted.
+    pub played: Vec<CountryTag>,
+    /// The countries a person was playing when the save was made, by its
+    /// human flags. Sorted. In multiplayer only who was connected then.
+    pub connected: Vec<CountryTag>,
 }
 impl Columns for Eu4Payload {
     fn encode(&self, out: &mut Encoder) {
@@ -134,6 +140,8 @@ impl Columns for Eu4Payload {
             );
         });
         out.serde(&self.switches);
+        out.serde(&self.played);
+        out.serde(&self.connected);
     }
     fn decode(input: &mut Decoder<'_>) -> Result<Self, DecodeError> {
         let provinces = Table::decode_sorted_with(input, |input| {
@@ -158,12 +166,16 @@ impl Columns for Eu4Payload {
                 .collect())
         })?;
         let switches = input.serde()?;
+        let played = input.serde()?;
+        let connected = input.serde()?;
         Ok(Self {
             provinces,
             countries,
             religions,
             country_religions,
             switches,
+            played,
+            connected,
         })
     }
     /// Country religion keys and switches are local to the snapshot, so they count here.
@@ -267,6 +279,28 @@ pub struct Eu4Detail {}
 
 /// Extract the observations from a full parse. The campaign identity comes
 /// from the parsed game state, not from the metadata.
+/// The countries a save says have been played: its player list, which pairs
+/// each player with a country, and the countries marked as played now or
+/// before. Sorted, each once.
+fn played_countries(save: &eu4save::models::Eu4Save) -> Vec<CountryTag> {
+    let listed = save
+        .game
+        .players_countries
+        .chunks(2)
+        .filter_map(|pair| pair.get(1)?.parse::<CountryTag>().ok());
+    let marked = save
+        .game
+        .countries
+        .iter()
+        .filter(|(_, country)| country.human || country.was_player)
+        .map(|(tag, _)| *tag);
+    listed
+        .chain(marked)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
 pub fn extract(
     query: &Query,
     content_hash: String,
@@ -372,6 +406,16 @@ pub fn extract(
                 },
             )?,
             switches: tag_switches(save),
+            played: played_countries(save),
+            connected: save
+                .game
+                .countries
+                .iter()
+                .filter(|(_, country)| country.human)
+                .map(|(tag, _)| *tag)
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect(),
         },
     )
 }
@@ -514,6 +558,9 @@ pub enum LineageCell {
 pub struct LineageValues {
     pub lineage: Lineage,
     pub values: Vec<Option<LineageCell>>,
+    /// A snapshot says the country was played, under the tag it held there,
+    /// at that save or before. Who was playing at a given save is not known.
+    pub played: bool,
 }
 
 /// How to split a country value.
@@ -617,7 +664,24 @@ pub fn country_series(
                     })
                 })
                 .collect::<Vec<_>>();
-            LineageValues { lineage, values }
+            let played = view
+                .snapshots()
+                .iter()
+                .zip(&values)
+                .any(|(snapshot, cell)| {
+                    let tag = match cell {
+                        Some(
+                            LineageCell::Value { tag, .. } | LineageCell::NoRecord { tag, .. },
+                        ) => tag,
+                        None => return false,
+                    };
+                    snapshot.payload().played.binary_search(tag).is_ok()
+                });
+            LineageValues {
+                lineage,
+                values,
+                played,
+            }
         })
         // A tag whose holders cannot be told apart stays, so the chart can say so.
         .filter(|x| {
@@ -775,6 +839,8 @@ mod tests {
             country_religions: Table::sorted_prefix(keys, CountryReligionColumns { development })
                 .unwrap(),
             switches: Vec::new(),
+            played: Vec::new(),
+            connected: Vec::new(),
         }
     }
 
@@ -1456,6 +1522,42 @@ mod tests {
                 ("ULM>BYZ>ROM".into(), vec![None, None, cell("ROM", 30.0)]),
             ]
         );
+
+        // A save that lists ALO as played marks the whole country as played.
+        let first = saved("a", 1445, &[p("ALO", 21.0), q("FRA", 5.0)], vec![]);
+        let first = {
+            let mut payload = first.payload().clone();
+            payload.played = vec![tag("ALO")];
+            Observation::new(first.descriptor.clone(), Eu4Detail {}, payload).unwrap()
+        };
+        let mut store = Store::new();
+        store.append(first, usize::MAX).unwrap();
+        store
+            .append(
+                saved(
+                    "b",
+                    1460,
+                    &[p("NBI", 55.0)],
+                    vec![switch("ALO", "NBI", 1451)],
+                ),
+                usize::MAX,
+            )
+            .unwrap();
+        let Eu4Answer::CountrySeries(played) = super::tests::answer(
+            &store,
+            Eu4Query::CountrySeries {
+                tags: vec![tag("NBI"), tag("FRA")],
+                metric: CountryMetric::ProvinceDevelopment,
+            },
+        ) else {
+            panic!("country series");
+        };
+        let played: Vec<_> = played
+            .iter()
+            .map(|x| (x.lineage.tags().last().unwrap().tag.to_string(), x.played))
+            .collect();
+        assert!(played.contains(&("NBI".to_string(), true)));
+        assert!(played.contains(&("FRA".to_string(), false)));
 
         // Two countries switch into BYZ on one day: whose BYZ it is cannot
         // be told, so BYZ has no values.
