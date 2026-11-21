@@ -14,7 +14,7 @@ export function BySaveHelp({ viz }: { viz: BySaveViz }) {
     <>
       <p>Each dot is one save: {definitions[viz]}</p>
       <p>
-        A dotted join spans more than five years between saves, or a gap well over the
+        A dashed join spans more than five years between saves, or a gap well over the
         campaign&apos;s usual one: what happened between them is not known. A short tick on a line
         marks where its country changed its tag.
       </p>

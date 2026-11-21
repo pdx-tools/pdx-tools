@@ -227,7 +227,7 @@ const YEAR = 365;
 
 /**
  * How the saves sit in time. Sparse saves, a median gap over five years,
- * lead with their dots. A join is long, and dotted, when its gap is over
+ * lead with their dots. A join is long, and dashed, when its gap is over
  * five years or over 2.5 times the median.
  */
 export function saveSpacing(days: readonly number[]) {

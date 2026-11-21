@@ -634,7 +634,7 @@ function sentenceFor({
     const year = columns.some((x, i) => i !== order.since && x.date.year === at.year)
       ? formatLongDate(at)
       : String(at.year);
-    // Where the order began after a long, dotted join, it is known only by that save.
+    // Where the order began after a long, dashed join, it is known only by that save.
     const unmeasured =
       !order.whole && order.since > 0 && long(days[order.since] - days[order.since - 1]);
     const start = unmeasured ? `by the ${year} save` : `since the ${year} save`;

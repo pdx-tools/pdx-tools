@@ -389,7 +389,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
     const shown = grey ? palette.field : input.world ? palette.accent : null;
     const litColor = input.world ? palette.accent : colorAt(selected);
 
-    // A join between saves far apart is dotted: it is not a measured trend.
+    // A join between saves far apart is dashed: it is not a measured trend.
     const joins = (from: number, to: number) => {
       const solid: Point[] = [];
       const dotted: Point[] = [];
@@ -600,7 +600,7 @@ export function historyOption(input: HistoryOptionInput): EChartsOption {
         };
     }
     if (!shown && line.changes.length) {
-      // A tag change recolors the line where it happens; inside a dotted join, at the next save.
+      // A tag change recolors the line where it happens; inside a dashed join, at the next save.
       const index = series.length;
       const at = (day: number) => {
         const i = days.findIndex((d) => d > day);
