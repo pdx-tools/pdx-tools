@@ -349,7 +349,13 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn recompute_derived_scope(&mut self) {
-        let kind = Self::entity_kind_for_map_mode(self.current_map_mode);
+        // The players are countries in each map mode.
+        let kind =
+            if self.selection_state.preset() == Some(crate::selection::SelectionPreset::Players) {
+                EntityKind::Country
+            } else {
+                Self::entity_kind_for_map_mode(self.current_map_mode)
+            };
         self.recompute_derived_scope_for_kind(kind);
     }
 

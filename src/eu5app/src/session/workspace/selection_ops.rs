@@ -327,8 +327,7 @@ impl<'bump> Eu5Workspace<'bump> {
         self.selection_state
             .replace_with_preset(locations, SelectionPreset::Players);
         self.selection_state.set_followed(players);
-        // Players are countries, also in the markets mode.
-        self.recompute_derived_scope_for_kind(EntityKind::Country);
+        self.recompute_derived_scope();
         self.rebuild_colors()
     }
 

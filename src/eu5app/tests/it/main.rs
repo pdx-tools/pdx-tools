@@ -8,8 +8,8 @@ use eu5app::game_data::Localization;
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
 use eu5app::population::PopulationHistory;
 use eu5app::{
-    EntityKind, Eu5SaveLoader, Eu5Workspace, LocationData, MapMode, SelectionOp, SelectionSet,
-    SelectionTarget,
+    EntityKind, Eu5SaveLoader, Eu5Workspace, LocationData, MapMode, SelectionOp, SelectionPreset,
+    SelectionSet, SelectionTarget,
 };
 use eu5save::hash::FnvHashSet;
 use eu5save::models::{CountryId, LocationIdx, MarketId};
@@ -911,16 +911,37 @@ fn mode_scope_matrix(ws: &mut Eu5Workspace, localization: &Localization) -> serd
             player_rows = dev.countries.len();
         }
     }
-    // In the markets mode, the players stay followed as countries.
+    // In the markets mode, the players stay followed as countries, also
+    // after a focus comes and Esc takes it off.
     ws.set_map_mode(MapMode::Markets);
     ws.select_players();
-    for player in ws.players().collect::<Vec<_>>() {
-        let id = ws.gamestate().countries.index(player.country).id();
-        let id = id.real_id().unwrap();
-        assert!(
-            ws.selection_state().followed().contains(&id),
-            "markets: a player is followed"
-        );
+    let focus = ws
+        .selection_state()
+        .selected_locations()
+        .iter()
+        .next()
+        .copied();
+    if let Some(location) = focus {
+        for step in ["select", "focus", "clear focus"] {
+            match step {
+                "focus" => ws.focus_in_selection(location),
+                "clear focus" => ws.clear_focus_or_selection(),
+                _ => ws.no_map_change(),
+            };
+            let selection = ws.selection_state();
+            assert_eq!(
+                selection.preset(),
+                Some(SelectionPreset::Players),
+                "markets/{step}"
+            );
+            for player in ws.players() {
+                let id = ws.gamestate().countries.index(player.country).id();
+                let followed = id
+                    .real_id()
+                    .is_some_and(|id| selection.followed().contains(&id));
+                assert!(followed, "markets/{step}: a player is followed");
+            }
+        }
     }
     ws.set_map_mode(MapMode::Political);
     ws.clear_selection();
