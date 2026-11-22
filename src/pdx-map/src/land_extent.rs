@@ -19,26 +19,35 @@ pub fn land_extent<'a>(
     groups: impl IntoIterator<Item = &'a [WorldPoint<f32>]>,
     world_width: f32,
 ) -> Option<WorldRect<f32>> {
-    let mut rects: Vec<WorldRect<f32>> = groups
+    let rects: Vec<WorldRect<f32>> = groups
         .into_iter()
         .filter_map(|points| group_extent(points, world_width))
         .collect();
-    if rects.is_empty() {
-        return None;
-    }
 
-    // Move each area by whole worlds so that they are as close as possible.
-    rects.sort_by(|a, b| a.center().x.total_cmp(&b.center().x));
-    let centers: Vec<f32> = rects.iter().map(|rect| rect.center().x).collect();
-    let shifts = unwrap_shifts(&centers, world_width);
-    let (mut x0, mut x1) = (f32::INFINITY, f32::NEG_INFINITY);
-    let (mut y0, mut y1) = (f32::INFINITY, f32::NEG_INFINITY);
-    for (rect, shift) in rects.iter().zip(shifts) {
-        x0 = x0.min(rect.origin.x + shift);
-        x1 = x1.max(rect.origin.x + rect.size.width + shift);
-        y0 = y0.min(rect.origin.y);
-        y1 = y1.max(rect.origin.y + rect.size.height);
-    }
+    // Start the span at the west edge of each area in turn, move the other
+    // areas east by whole worlds to follow it, and keep the narrowest span.
+    let (x0, x1) = rects
+        .iter()
+        .map(|start| {
+            let x0 = start.origin.x;
+            let x1 = rects
+                .iter()
+                .map(|rect| {
+                    let shift = ((x0 - rect.origin.x) / world_width).ceil() * world_width;
+                    rect.origin.x + shift + rect.size.width
+                })
+                .fold(f32::NEG_INFINITY, f32::max);
+            (x0, x1)
+        })
+        .min_by(|a, b| (a.1 - a.0).total_cmp(&(b.1 - b.0)))?;
+    let y0 = rects
+        .iter()
+        .map(|r| r.origin.y)
+        .fold(f32::INFINITY, f32::min);
+    let y1 = rects
+        .iter()
+        .map(|r| r.origin.y + r.size.height)
+        .fold(f32::NEG_INFINITY, f32::max);
     let width = (x1 - x0).min(world_width);
     let x0 = (x0 + x1 - width) / 2.0;
     Some(WorldRect::new(
@@ -191,6 +200,24 @@ mod tests {
         assert_eq!(rect.origin.x, 1000.0);
         assert_eq!(rect.size.width, 2000.0);
         assert_eq!(rect.size.height, 100.0);
+    }
+
+    #[test]
+    fn the_span_starts_after_the_widest_gap_between_areas() {
+        // On a world 1000 wide, 820..1400 holds all three areas.
+        let wide = vec![
+            WorldPoint::new(0.0, 0.0),
+            WorldPoint::new(40.0, 0.0),
+            WorldPoint::new(400.0, 0.0),
+        ];
+        let groups = [
+            wide,
+            vec![WorldPoint::new(500.0, 0.0)],
+            vec![WorldPoint::new(820.0, 0.0)],
+        ];
+        let rect = land_extent(groups.iter().map(Vec::as_slice), 1000.0).unwrap();
+        assert_eq!(rect.origin.x, 820.0);
+        assert_eq!(rect.size.width, 680.0);
     }
 
     #[test]

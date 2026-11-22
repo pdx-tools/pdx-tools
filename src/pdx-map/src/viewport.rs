@@ -407,21 +407,21 @@ impl MapViewport {
     /// margin around it. The zoom stays at or below `max_zoom`, so a small
     /// area does not fill the map.
     pub fn frame(&mut self, rect: WorldRect<f32>, insets: ViewportInsets, max_zoom: f32) {
-        let zoom = self.frame_zoom(rect, insets).min(max_zoom);
+        let zoom = self.frame_zoom(rect, insets, FRAME_MARGIN).min(max_zoom);
         self.zoom_to(rect.center(), zoom, insets);
     }
 
     /// Whether all of `rect` fits in the region that the insets do not cover,
-    /// within the zoom limits.
+    /// within the zoom limits. The margin can be less than a frame gives.
     pub fn can_frame(&self, rect: WorldRect<f32>, insets: ViewportInsets) -> bool {
-        self.frame_zoom(rect, insets) >= self.min_zoom()
+        self.frame_zoom(rect, insets, 0.0) >= self.min_zoom()
     }
 
-    /// The zoom that fits `rect` and its margin in the region that the insets
-    /// do not cover, without the zoom limits.
-    fn frame_zoom(&self, rect: WorldRect<f32>, insets: ViewportInsets) -> f32 {
+    /// The zoom that fits `rect` and a `margin` on each side in the region
+    /// that the insets do not cover, without the zoom limits.
+    fn frame_zoom(&self, rect: WorldRect<f32>, insets: ViewportInsets, margin: f32) -> f32 {
         let region = self.visible_region(insets);
-        let fit = |free: f32, size: f32| free * (1.0 - 2.0 * FRAME_MARGIN) / size.max(1.0);
+        let fit = |free: f32, size: f32| free * (1.0 - 2.0 * margin) / size.max(1.0);
         fit(region.size.width, rect.size.width).min(fit(region.size.height, rect.size.height))
     }
 

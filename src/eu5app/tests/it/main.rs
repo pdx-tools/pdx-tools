@@ -911,6 +911,18 @@ fn mode_scope_matrix(ws: &mut Eu5Workspace, localization: &Localization) -> serd
             player_rows = dev.countries.len();
         }
     }
+    // In the markets mode, the players stay followed as countries.
+    ws.set_map_mode(MapMode::Markets);
+    ws.select_players();
+    for player in ws.players().collect::<Vec<_>>() {
+        let id = ws.gamestate().countries.index(player.country).id();
+        let id = id.real_id().unwrap();
+        assert!(
+            ws.selection_state().followed().contains(&id),
+            "markets: a player is followed"
+        );
+    }
+    ws.set_map_mode(MapMode::Political);
     ws.clear_selection();
     serde_json::json!({ "player_rows": player_rows })
 }

@@ -155,7 +155,7 @@ describe("EU5 campaign transitions", () => {
       const snapshot = session.getSnapshot();
       return snapshot.status === "success" ? snapshot.data.getState() : null;
     };
-    expect(shown()?.openedOnPlayers).toBe(true);
+    expect(shown()?.frameOnOpen).toBe(true);
 
     // Nothing was selected before the step, and nothing is after it.
     const transition = campaignTransitions.begin("local-save")!;
@@ -171,13 +171,15 @@ describe("EU5 campaign transitions", () => {
     await stepEu5Session(save("local-save"));
     expect(selectPlayers).toHaveBeenCalledOnce();
     expect(mocks.applyCarry).toHaveBeenCalledOnce();
-    expect(shown()?.openedOnPlayers).toBe(false);
+    expect(shown()?.frameOnOpen).toBe(false);
   });
 
   it("opens a single player save with nothing selected", async () => {
+    const opened = mocks.open.getMockImplementation()!;
+    mocks.open.mockImplementation(async () => ({ ...(await opened()), players: [{ name: "a" }] }));
     const session = await openSession();
     const snapshot = session.getSnapshot();
-    expect(snapshot.status === "success" && snapshot.data.getState().openedOnPlayers).toBe(false);
+    expect(snapshot.status === "success" && snapshot.data.getState().frameOnOpen).toBe(false);
   });
 
   it("starts with the same snapshot as a page without a session", () => {

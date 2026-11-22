@@ -10,7 +10,8 @@ export async function escapeToDefaultScope(
   groupSave: boolean,
 ): Promise<void> {
   const selection = engine.getState().selectionState;
-  if (!groupSave || selection == null || selection.isEmpty || selection.focusedLocation != null) {
+  if (selection == null || selection.isEmpty) return;
+  if (!groupSave || selection.focusedLocation != null) {
     await engine.commands.clearFocusOrSelection();
   } else if (selection.preset !== "players") {
     await engine.commands.selectPlayers();

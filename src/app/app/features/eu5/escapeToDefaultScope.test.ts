@@ -45,5 +45,6 @@ describe("escapeToDefaultScope", () => {
     const { engine, commands } = engineWith({ isEmpty: true });
     await escapeToDefaultScope(engine, true);
     expect(commands.selectPlayers).not.toHaveBeenCalled();
+    expect(commands.clearFocusOrSelection).not.toHaveBeenCalled();
   });
 });

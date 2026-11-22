@@ -30,10 +30,8 @@ import {
   useEu5GroupSave,
   useEu5InsightPanelOpen,
   useEu5MapMode,
-  useEu5OpenedOnPlayers,
   useSetEu5InsightPanelOpen,
 } from "./store";
-import type { Eu5Store } from "./store";
 import { escapeToDefaultScope } from "./escapeToDefaultScope";
 import { useFrameSelection } from "./useFrameSelection";
 import type { Eu5SaveInput } from "./store/types";
@@ -134,14 +132,11 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
 /** A save that opened on the players frames their land one time. */
 function useFramePlayersOnOpen() {
   const store = useEu5Context();
-  const openedOnPlayers = useEu5OpenedOnPlayers();
   const frame = useFrameSelection();
-  const framed = useRef<Eu5Store | null>(null);
   useEffect(() => {
-    if (!openedOnPlayers || framed.current === store) return;
-    framed.current = store;
+    if (!store.getState().takeFrameOnOpen()) return;
     frame().catch((error: unknown) => console.warn("Failed to frame the players", error));
-  }, [store, openedOnPlayers, frame]);
+  }, [store, frame]);
 }
 
 function saveFilename(save: Eu5SaveInput): string {
