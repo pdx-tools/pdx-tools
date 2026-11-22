@@ -322,6 +322,9 @@ pub struct CountryArmedForces {
     pub cavalry_units: LandUnitStrength,
     pub artillery_units: LandUnitStrength,
     pub mercenary_units: LandUnitStrength,
+    /// Every land regiment, in thousands of men. The split by unit type
+    /// leaves out a type that the game data does not have.
+    pub army_size: f32,
     pub heavy_ship_units: usize,
     pub light_ship_units: usize,
     pub galley_units: usize,

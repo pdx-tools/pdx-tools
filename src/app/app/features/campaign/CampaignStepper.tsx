@@ -10,6 +10,7 @@ import { isTypingTarget } from "@/features/timeline/controller";
 import { formatLongDate } from "@/features/timeline/date";
 import { toast } from "@/lib/toast";
 import { useCampaign } from "./CampaignProvider";
+import { useCampaignListAction } from "./CampaignListAction";
 import { SaveList } from "./SaveList";
 import { openCampaignSave } from "./openSave";
 import type { CampaignNav } from "./useCampaignNav";
@@ -233,6 +234,7 @@ function CampaignListButton({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const action = useCampaignListAction();
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
@@ -256,6 +258,20 @@ function CampaignListButton({
       >
         <p className={cx("px-3 pt-3", sectionLabel)}>Campaign</p>
         <SaveList nav={nav} saves={nav.saves} onOpen={() => setOpen(false)} />
+        {action && (
+          <div className="border-t border-game-line px-3 py-2">
+            <GameButton
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setOpen(false);
+                action.run();
+              }}
+            >
+              {action.label}
+            </GameButton>
+          </div>
+        )}
       </Popover.Content>
     </Popover>
   );

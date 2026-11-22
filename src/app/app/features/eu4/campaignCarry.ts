@@ -9,6 +9,8 @@ export type Eu4Carry = {
   /** Restore a country selection only if its tag remains available. */
   selectedTag: string;
   countryDrawerVisible: boolean;
+  countryFilter: Eu4State["countryFilter"];
+  charts: Eu4State["charts"];
   camera: MapCamera | null;
 };
 
@@ -18,6 +20,8 @@ export async function captureEu4Carry(store: Eu4Store): Promise<Eu4Carry> {
     mapMode: state.mapMode,
     selectedTag: state.selectedTag,
     countryDrawerVisible: state.countryDrawerVisible,
+    countryFilter: state.countryFilter,
+    charts: state.charts,
     camera: await state.map.getCamera(),
   };
 }

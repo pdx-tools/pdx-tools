@@ -48,6 +48,11 @@ export function useCampaign(): CampaignNav | null {
   return nav.saves.length > 1 || nav.pending > 0 ? nav : null;
 }
 
+/** Campaign navigation, also when the open save is the only save of its campaign. */
+export function useCampaignNavigation(): CampaignNav | null {
+  return useContext(CampaignContext);
+}
+
 /** Timeline dates stay stable until the newly selected files have been identified. */
 export function useCampaignTimeline(): CampaignNav | null {
   const nav = useContext(CampaignTimelineContext);

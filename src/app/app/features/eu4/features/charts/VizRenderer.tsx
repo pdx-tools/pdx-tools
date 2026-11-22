@@ -1,4 +1,5 @@
 import { IdeaGroupsChart } from "./IdeaGroupsChart";
+import { CampaignHistory } from "./by-save/CampaignHistory";
 import type { VizModules } from "../../types/visualizations";
 import { AnnualIncome, AnnualScore, AnnualNationSize, AnnualInflation } from "./annual-ledger";
 import { HealthGrid } from "./HealthGrid";
@@ -22,6 +23,11 @@ interface VizRendererProps {
 
 export const VizRenderer = ({ module }: VizRendererProps) => {
   switch (module) {
+    case "dev-by-save":
+    case "army-by-save":
+    case "manpower-by-save":
+    case "world-dev-by-save":
+      return <CampaignHistory viz={module} />;
     case "idea-group":
       return <IdeaGroupsChart />;
     case "monthly-income":

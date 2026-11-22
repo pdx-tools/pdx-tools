@@ -536,6 +536,27 @@ mod tests {
     }
 
     #[test]
+    fn a_removed_snapshot_frees_its_date_and_its_columns() {
+        let mut session = session();
+        let before = session.memory();
+        let stale = snapshot_id("test", "b");
+        let other = observation(descriptor("other", 14100101, "[42]"), &[42]).encode();
+        assert!(matches!(
+            session.append(0, &other, usize::MAX).unwrap_err(),
+            AnalysisError::DateConflict { .. }
+        ));
+        assert_eq!(
+            session.remove(1, std::slice::from_ref(&stale)).unwrap_err(),
+            AnalysisError::Stale
+        );
+        session.remove(0, std::slice::from_ref(&stale)).unwrap();
+        session.snapshot(&stale).unwrap_err();
+        assert!(session.memory().buffer_bytes < before.buffer_bytes);
+        session.append(0, &other, usize::MAX).unwrap();
+        assert_eq!(session.memory(), before);
+    }
+
+    #[test]
     fn clear_releases_everything() {
         let mut session = session();
         session.clear(1);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useChartDrawer, useEu4Actions } from "../../store";
 import { SideBarButton } from "../../components/SideBarButton";
 import type { SideBarButtonProps } from "../../components/SideBarButton";
 import { VisualizationProvider } from "@/components/viz";
@@ -13,8 +13,10 @@ import { VizRenderer } from "./VizRenderer";
 import { ChartDrawerTitle } from "./ChartDrawerTitle";
 
 export const ChartSideBarButton = ({ children, ...props }: SideBarButtonProps) => {
+  const { open } = useChartDrawer();
+  const { setCharts } = useEu4Actions();
   return (
-    <Sheet modal={false}>
+    <Sheet modal={false} open={open} onOpenChange={(open) => setCharts({ open })}>
       <Sheet.Trigger asChild>
         <SideBarButton {...props}>{children}</SideBarButton>
       </Sheet.Trigger>
@@ -28,11 +30,11 @@ export const ChartSideBarButton = ({ children, ...props }: SideBarButtonProps) =
   );
 };
 
-const DEFAULT_VIZUALIZATION_SELECTION = "monthly-income";
-
 export const ChartContent = () => {
-  const [selectedViz, setSelectedViz] = useState<VizModules>(DEFAULT_VIZUALIZATION_SELECTION);
-  const [expanded, setExpanded] = useState(false);
+  const { viz: selectedViz, expanded } = useChartDrawer();
+  const { setCharts } = useEu4Actions();
+  const setSelectedViz = (viz: VizModules) => setCharts({ viz });
+  const setExpanded = (expanded: boolean) => setCharts({ expanded });
   const sideBarContainerRef = useSideBarContainerRef();
 
   return (

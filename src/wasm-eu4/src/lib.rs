@@ -210,6 +210,14 @@ impl SaveFile {
         into_ts(self.0.get_provinces(payload.to_rust()?).into())
     }
 
+    pub fn chart_countries(
+        &self,
+        payload: Ts<TagFilterPayloadRaw>,
+        limit: usize,
+    ) -> Result<Ts<eu4game::analysis::ChartCountries>, JsError> {
+        into_ts(self.0.chart_countries(payload.to_rust()?, limit))
+    }
+
     pub fn get_health(&self, payload: Ts<TagFilterPayloadRaw>) -> Result<Ts<HealthData>, JsError> {
         into_ts(self.0.get_health(payload.to_rust()?))
     }

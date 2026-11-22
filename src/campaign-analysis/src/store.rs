@@ -294,6 +294,19 @@ impl<G: Game> Store<G> {
         *self = Self::default();
     }
 
+    /// Release the snapshots with these IDs, such as a save that the
+    /// campaign replaced with another save of its date. Shared key data
+    /// stays. Unknown IDs are ignored.
+    pub fn remove(&mut self, ids: &[String]) {
+        self.snapshots.retain(|snapshot| {
+            let keep = !ids.contains(&snapshot.descriptor.id);
+            if !keep {
+                self.bytes -= snapshot.payload.heap_bytes();
+            }
+            keep
+        });
+    }
+
     pub fn memory(&self) -> StoreMemory {
         let shared = self.shared.memory();
         let columns = self

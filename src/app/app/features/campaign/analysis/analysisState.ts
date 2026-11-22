@@ -5,6 +5,12 @@ import type { SnapshotDescriptor, SourceAssociation } from "./descriptor";
 import type { ImportProgressState } from "./importTiming";
 import type { AnalysisWorkerOptions } from "./workerClient";
 
+/** What analysis has of an upload. An upload does not change, so it needs no version. */
+export type UploadAnalysis =
+  | { kind: "ready"; snapshotId: string }
+  /** A download can work on a retry. A save that could not be read fails again. */
+  | { kind: "failed"; reason: "download" | "read"; error: string };
+
 /** The analysis of the claimed campaign. Campaign navigation owns files and the active save. */
 export type CampaignAnalysisState<D extends SnapshotDescriptor = SnapshotDescriptor> = {
   snapshots: D[];
@@ -12,6 +18,9 @@ export type CampaignAnalysisState<D extends SnapshotDescriptor = SnapshotDescrip
   sources: Record<string, SourceAssociation>;
   analyzingEntryIds: readonly string[];
   failedSources: Record<string, { version: FileVersion | null; error: string }>;
+  /** What analysis has of each upload, by save ID. */
+  uploads: Record<string, UploadAnalysis>;
+  analyzingUploadIds: readonly string[];
   analysisEnabledCampaigns: readonly string[];
   enableAnalysis: (campaignId: string) => void;
   /** The campaigns that do not start imports until the player resumes them. */
@@ -20,9 +29,16 @@ export type CampaignAnalysisState<D extends SnapshotDescriptor = SnapshotDescrip
   progress: ImportProgressState | null;
   issues: string[];
   cancel: (() => void) | null;
-  add: (snapshots: D[], sources?: Record<string, SourceAssociation>) => void;
+  add: (
+    snapshots: D[],
+    sources?: Record<string, SourceAssociation>,
+    /** The snapshot of each upload, by save ID. */
+    uploads?: Record<string, string>,
+  ) => void;
   /** Remove the snapshots and the source associations to them. */
   removeSnapshots: () => void;
+  /** Remove these snapshots and the source associations to them. */
+  forget: (ids: readonly string[]) => void;
 };
 
 /** A zustand store that holds a campaign analysis. The store can hold more than the analysis. */
@@ -46,6 +62,8 @@ export function campaignAnalysisState<D extends SnapshotDescriptor>(
     sources: {},
     analyzingEntryIds: [],
     failedSources: {},
+    uploads: {},
+    analyzingUploadIds: [],
     analysisEnabledCampaigns: [],
     enableAnalysis: (campaignId) =>
       set((state) => ({
@@ -62,19 +80,39 @@ export function campaignAnalysisState<D extends SnapshotDescriptor>(
     progress: null,
     issues: [],
     cancel: null,
-    add: (snapshots, sources = {}) =>
+    add: (snapshots, sources = {}, uploads = {}) =>
       set((state) => {
         const byId = new Map(state.snapshots.map((snapshot) => [snapshot.id, snapshot]));
         for (const snapshot of snapshots) byId.set(snapshot.id, snapshot);
         const failedSources = { ...state.failedSources };
         for (const id of Object.keys(sources)) delete failedSources[id];
+        const ready = Object.entries(uploads).map(([id, snapshotId]) => [
+          id,
+          { kind: "ready", snapshotId } satisfies UploadAnalysis,
+        ]);
         return {
           failedSources,
           snapshots: [...byId.values()].sort(compareDescriptors),
           sources: { ...state.sources, ...sources },
+          uploads: { ...state.uploads, ...Object.fromEntries(ready) },
         };
       }),
-    removeSnapshots: () => set({ snapshots: [], sources: {} }),
+    removeSnapshots: () => set({ snapshots: [], sources: {}, uploads: {} }),
+    forget: (ids) =>
+      set((state) => {
+        const gone = new Set(ids);
+        return {
+          snapshots: state.snapshots.filter((snapshot) => !gone.has(snapshot.id)),
+          sources: Object.fromEntries(
+            Object.entries(state.sources).filter(([, x]) => !gone.has(x.snapshotId)),
+          ),
+          uploads: Object.fromEntries(
+            Object.entries(state.uploads).filter(
+              ([, x]) => x.kind !== "ready" || !gone.has(x.snapshotId),
+            ),
+          ),
+        };
+      }),
   };
 }
 
