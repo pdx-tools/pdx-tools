@@ -38,7 +38,7 @@ import {
   usePreviewSession,
 } from "./previewSession";
 import { useHistory } from "./store";
-import { useIsCampaignAnalysisEnabled } from "./useIsCampaignAnalysisEnabled";
+import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 
 const EMPTY_FRAMES: Eu5SnapshotDescriptor[] = [];
 

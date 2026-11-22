@@ -300,18 +300,28 @@ export function createLocalSaveRegistry(
     return null;
   }
 
+  /**
+   * Record the identity of the save that the viewer parsed, unless the entry
+   * already holds a later read of the file.
+   */
   function observeOpen(open: OpenSave): void {
     if (open.source.kind !== "local") return;
     if (open.source.entryId === null) return;
     const entry = getLocalSave(open.source.entryId);
     if (!entry || entry.game !== open.game) return;
+    const version = open.source.fileVersion;
+    if (
+      version !== null &&
+      entry.version !== null &&
+      version.lastModified < entry.version.lastModified
+    )
+      return;
     const identity: SaveIdentity = {
       playthroughId: open.playthroughId,
       campaignIdHint: open.campaignIdHint,
       date: open.date,
     };
     const known = entry.identity;
-    const version = open.source.fileVersion;
     const sameVersion =
       version === entry.version ||
       (version !== null && entry.version !== null && sameFileVersion(version, entry.version));

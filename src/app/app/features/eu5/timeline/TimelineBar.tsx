@@ -1,6 +1,5 @@
 import { useCampaign } from "@/features/campaign/CampaignProvider";
-import { localSaveRegistry } from "@/features/campaign/localSaves";
-import { sameFileVersion } from "@/features/campaign/types";
+import { localSaveAnalysisStatus } from "@/features/campaign/analysis/saveStatus";
 import type { CampaignSave } from "@/features/campaign/types";
 import { SaveAnalysisGlyph } from "@/features/campaign/SaveAnalysisGlyph";
 import { saveAnalysisPresentation } from "@/features/campaign/saveAnalysisPresentation";
@@ -60,30 +59,12 @@ export function TimelineBar() {
   const failedSources = useHistory((state) => state.failedSources);
   const analyzingEntryIds = useHistory((state) => state.analyzingEntryIds);
   const analysisStatus = useCallback(
-    (save: CampaignSave): SaveAnalysisStatus | undefined => {
-      if (save.source.kind !== "local" || !save.source.entryId) return undefined;
-      // Analysis never includes a save of another campaign, so it never waits for one.
-      if (save.membership === "different") return undefined;
-      const source = sources[save.source.entryId];
-      const entry = localSaveRegistry.get(save.source.entryId);
-      const version = entry?.ref.kind === "file" ? entry.ref.file : entry?.version;
-      if (
-        !!source &&
-        !!version &&
-        sameFileVersion(version, source.version) &&
-        !!history?.readyIds.has(source.snapshotId)
-      )
-        return "ready";
-      if (analyzingEntryIds.includes(save.source.entryId)) return "analyzing";
-      const failure = failedSources[save.source.entryId];
-      if (entry?.problem && entry.problem.kind !== "moved") return "failed";
-      if (
-        failure &&
-        (failure.version === null || (!!version && sameFileVersion(version, failure.version)))
-      )
-        return "failed";
-      return "pending";
-    },
+    (save: CampaignSave): SaveAnalysisStatus | undefined =>
+      localSaveAnalysisStatus(
+        save,
+        { sources, failedSources, analyzingEntryIds },
+        history?.readyIds,
+      ),
     [sources, history?.readyIds, analyzingEntryIds, failedSources],
   );
   const campaign = useTimelineCampaign(

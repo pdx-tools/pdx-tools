@@ -195,3 +195,25 @@ it("drops a previously opened EU4 identity when the selected handle has changed"
   expect(registry.get(entry.id)?.identity?.playthroughId).toBeNull();
   expect(registry.get(entry.id)?.identity?.date.year).toBe(1500);
 });
+
+it("keeps a later read of the file over the parse that the viewer shows", async () => {
+  const registry = createLocalSaveRegistry(async () => identity());
+  const file = new File(["save"], "autosave.eu4", { lastModified: 1 });
+  const ref = handleRef(async () => file, 1, file.name);
+  const [entry] = await registry.register("eu4", [ref]);
+  const opened = (parsed: File) => ({
+    ...identity(),
+    game: "eu4" as const,
+    multiplayer: false,
+    name: parsed.name,
+    source: registry.sourceFor("eu4", ref, parsed),
+  });
+  // Analysis reads a newer version of the file with the same date.
+  const newer = { size: 9, lastModified: 2 };
+  registry.recordIdentity(entry.id, identity(), newer);
+  registry.observeOpen(opened(file));
+  expect(registry.get(entry.id)?.version).toEqual(newer);
+  // A parse of a later version is the latest read.
+  registry.observeOpen(opened(new File(["later save"], file.name, { lastModified: 3 })));
+  expect(registry.get(entry.id)?.version).toEqual({ size: 10, lastModified: 3 });
+});
