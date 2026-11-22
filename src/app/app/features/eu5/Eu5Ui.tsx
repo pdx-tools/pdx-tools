@@ -135,7 +135,7 @@ function useFramePlayersOnOpen() {
   const frame = useFrameSelection();
   useEffect(() => {
     if (!store.getState().takeFrameOnOpen()) return;
-    frame().catch((error: unknown) => console.warn("Failed to frame the players", error));
+    void frame();
   }, [store, frame]);
 }
 

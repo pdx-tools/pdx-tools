@@ -9,8 +9,12 @@ import { viewportInsets } from "./useViewportInsets";
  */
 export function useFrameSelection() {
   const store = useEu5Context();
-  return useCallback(() => {
+  return useCallback(async () => {
     const state = store.getState();
-    return state.engine.trigger.frameSelection(viewportInsets(state));
+    try {
+      await state.engine.trigger.frameSelection(viewportInsets(state));
+    } catch (error) {
+      console.warn("Failed to frame the selection", error);
+    }
   }, [store]);
 }

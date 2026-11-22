@@ -45,7 +45,14 @@ export function useEu5EntityChartClick(
       if (ev?.shiftKey || ev?.ctrlKey || ev?.metaKey) {
         void engine.commands.changeSelection("add", kind, [target.id]);
       } else {
-        void engine.commands.changeSelection("replace", kind, [target.id]).then(frameSelection);
+        void engine.commands.changeSelection("replace", kind, [target.id]).then(() => {
+          // A country with no land on the timeline date leaves the selection as it was.
+          const profile = engine.getState().selectionState?.activeProfile;
+          if (profile?.kind === "country" && profile.country.key === target.id) {
+            return frameSelection();
+          }
+          jumpToEntity(target.anchorLocationIdx);
+        });
       }
       return;
     }
