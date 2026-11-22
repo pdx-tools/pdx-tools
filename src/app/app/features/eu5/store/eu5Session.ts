@@ -7,9 +7,11 @@ import { registerAnalysisTerminator } from "@/features/engine/analysisLifecycle"
 import type { AnalysisChange } from "@/features/engine/analysisLifecycle";
 import { campaignTransitions } from "@/features/campaign/transitions";
 import { applyEu5Carry } from "../campaignCarry";
+import type { Eu5Carry } from "../campaignCarry";
 import { Eu5GameAdapter } from "../game-adapter";
 import { openEngine, readSaveData } from "../ui-engine";
-import { createEu5Store, eu5ViewState } from "./eu5Store";
+import type { OpenedSave } from "../ui-engine";
+import { createEu5Store, eu5ViewState, isGroupSave } from "./eu5Store";
 import type { Eu5Store } from "./eu5Store";
 import { sameEu5Save } from "./types";
 import type { Eu5SaveData, Eu5SaveInput } from "./types";
@@ -236,19 +238,17 @@ class Eu5Session {
 
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
     const reload = this.pendingStep?.failure != null;
-    if (carry !== null) {
-      await this.applyCarry(opened.engine, carry);
-      if (!this.isCurrent(generation)) {
-        opened.engine.destroy();
-        return;
-      }
+    const openedOnPlayers = await this.openView(opened, carry);
+    if (!this.isCurrent(generation)) {
+      opened.engine.destroy();
+      return;
     }
 
     const view = carry
       ? { insightPanelOpen: carry.insightPanel.open, insightPanelWidth: carry.insightPanel.width }
       : undefined;
     const { save: saveInput } = await source;
-    this.show(createEu5Store({ opened, input: save, saveInput, view }), {
+    this.show(createEu5Store({ opened, input: save, saveInput, view, openedOnPlayers }), {
       reload,
     });
   }
@@ -316,10 +316,8 @@ class Eu5Session {
     }
 
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
-    if (carry !== null) {
-      // The retained canvas already has the current camera position.
-      await this.applyCarry(opened.engine, { ...carry, viewport: null });
-    }
+    // The retained canvas already has the current camera position.
+    const openedOnPlayers = await this.openView(opened, carry && { ...carry, viewport: null });
 
     await game.show();
     if (!this.isCurrent(generation)) {
@@ -332,8 +330,29 @@ class Eu5Session {
       input: save,
       saveInput: source.save,
       view: eu5ViewState(previous),
+      openedOnPlayers,
     });
     this.show(store, { reload });
+  }
+
+  /**
+   * A campaign step keeps the view of the save before it, also when nothing
+   * is selected. Otherwise a group's save opens on the players. Returns true
+   * when the save opened on the players.
+   */
+  private async openView(opened: OpenedSave, carry: Eu5Carry | null): Promise<boolean> {
+    if (carry !== null) {
+      await this.applyCarry(opened.engine, carry);
+      return false;
+    }
+    if (!isGroupSave(opened.players)) return false;
+    try {
+      await opened.engine.commands.selectPlayers();
+    } catch (error) {
+      captureException(error, { tags: { msg: "open-on-players" } });
+      return false;
+    }
+    return true;
   }
 
   private async applyCarry(...args: Parameters<typeof applyEu5Carry>): Promise<void> {

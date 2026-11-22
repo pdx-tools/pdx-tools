@@ -640,6 +640,8 @@ const loadSaveInner = async (
       return app.center_at(locationIdx) ?? null;
     },
 
+    getSelectedLandGroups: () => app.selected_land_groups(),
+
     getPoliticalDefaultCountryAnchor: (): number | null => {
       return app.political_default_country_anchor() ?? null;
     },

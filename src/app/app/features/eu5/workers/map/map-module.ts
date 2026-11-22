@@ -6,7 +6,12 @@ import init, {
   location_borders_at_zoom,
   setup_eu5_map_wasm,
 } from "../../../../wasm/wasm_eu5_map";
-import type { CanvasDisplay, LogLevel, OpeningView } from "../../../../wasm/wasm_eu5_map";
+import type {
+  CanvasDisplay,
+  LandGroups,
+  LogLevel,
+  OpeningView,
+} from "../../../../wasm/wasm_eu5_map";
 import wasmPath from "../../../../wasm/wasm_eu5_map_bg.wasm?url";
 import { proxy, expose } from "comlink";
 import { formatInt } from "@/lib/format";
@@ -900,6 +905,13 @@ export const createMapEngine = async (
       insets: { left: number; right: number; top: number; bottom: number },
     ) => {
       return app.jump_to_color_id(colorId, insets);
+    },
+
+    frameLand: (
+      land: LandGroups,
+      insets: { left: number; right: number; top: number; bottom: number },
+    ) => {
+      return app.frame_land(land, insets);
     },
 
     onBoxSelectRectUpdate: (callback: (rect: BoxSelectOverlayRect | null) => void) => {

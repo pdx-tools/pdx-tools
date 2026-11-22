@@ -386,6 +386,19 @@ impl InteractionController {
         }
     }
 
+    /// Show all of `rect` in the region that the insets do not cover. The
+    /// zoom stays at or below `max_zoom`.
+    pub fn frame(&mut self, rect: WorldRect<f32>, insets: ViewportInsets, max_zoom: f32) {
+        let mut end = self.viewport.clone();
+        end.frame(rect, insets, max_zoom);
+        self.move_to(end, insets);
+    }
+
+    /// Whether all of `rect` fits in the region that the insets do not cover.
+    pub fn can_frame(&self, rect: WorldRect<f32>, insets: ViewportInsets) -> bool {
+        self.viewport.can_frame(rect, insets)
+    }
+
     /// Center on world point.
     pub fn center_on(&mut self, world: WorldPoint<f32>) {
         self.animation = None;

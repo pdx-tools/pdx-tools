@@ -25,11 +25,17 @@ import {
   Eu5StoreProvider,
   useEu5SelectionState,
   useEu5CursorHint,
+  useEu5Context,
   useEu5Engine,
+  useEu5GroupSave,
   useEu5InsightPanelOpen,
   useEu5MapMode,
+  useEu5OpenedOnPlayers,
   useSetEu5InsightPanelOpen,
 } from "./store";
+import type { Eu5Store } from "./store";
+import { escapeToDefaultScope } from "./escapeToDefaultScope";
+import { useFrameSelection } from "./useFrameSelection";
 import type { Eu5SaveInput } from "./store/types";
 import { Eu5CursorTooltip } from "./Eu5CursorTooltip";
 import { useCursorPosition } from "@/hooks/useCursorPosition";
@@ -125,6 +131,19 @@ const InsightPanelTab = ({ onOpen }: { onOpen: () => void }) => {
   );
 };
 
+/** A save that opened on the players frames their land one time. */
+function useFramePlayersOnOpen() {
+  const store = useEu5Context();
+  const openedOnPlayers = useEu5OpenedOnPlayers();
+  const frame = useFrameSelection();
+  const framed = useRef<Eu5Store | null>(null);
+  useEffect(() => {
+    if (!openedOnPlayers || framed.current === store) return;
+    framed.current = store;
+    frame().catch((error: unknown) => console.warn("Failed to frame the players", error));
+  }, [store, openedOnPlayers, frame]);
+}
+
 function saveFilename(save: Eu5SaveInput): string {
   return save.kind === "file" ? save.file.name : save.name;
 }
@@ -150,6 +169,7 @@ const Eu5UiContent = ({
   const engine = useEu5Engine();
   const wasEmptyRef = useRef(true);
   const preview = useMapHistory()?.preview;
+  const groupSave = useEu5GroupSave();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -157,13 +177,13 @@ const Eu5UiContent = ({
         return;
       }
       if (event.key === "Escape" && !busy && !preview) {
-        void engine.commands.clearFocusOrSelection();
+        void escapeToDefaultScope(engine, groupSave);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [engine, busy, preview]);
+  }, [engine, busy, preview, groupSave]);
 
   useEffect(() => {
     host.setCursor(cursorHint);
@@ -176,6 +196,9 @@ const Eu5UiContent = ({
     }
     wasEmptyRef.current = isEmpty;
   }, [selectionState, setInsightOpen, preview]);
+
+  // After the effect above, so that the frame clears the panel that it opens.
+  useFramePlayersOnOpen();
 
   return (
     <div

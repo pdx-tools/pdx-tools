@@ -141,6 +141,45 @@ describe("EU5 campaign transitions", () => {
     transition.complete();
   });
 
+  it("opens a group's save on the players, and a step keeps the carried view", async () => {
+    const selectPlayers = vi.fn(async () => {});
+    const opened = mocks.open.getMockImplementation()!;
+    mocks.open.mockImplementation(async () => {
+      const save = await opened();
+      const players = [{ name: "a" }, { name: "b" }];
+      return { ...save, players, engine: { ...save.engine, commands: { selectPlayers } } };
+    });
+    const session = await openSession();
+    expect(selectPlayers).toHaveBeenCalledOnce();
+    const shown = () => {
+      const snapshot = session.getSnapshot();
+      return snapshot.status === "success" ? snapshot.data.getState() : null;
+    };
+    expect(shown()?.openedOnPlayers).toBe(true);
+
+    // Nothing was selected before the step, and nothing is after it.
+    const transition = campaignTransitions.begin("local-save")!;
+    transition.preserveView(toPlaythroughId("campaign")!, {
+      game: "eu5",
+      payload: {
+        mapMode: "political",
+        viewport: null,
+        selection: null,
+        insightPanel: { open: false, width: 640 },
+      },
+    });
+    await stepEu5Session(save("local-save"));
+    expect(selectPlayers).toHaveBeenCalledOnce();
+    expect(mocks.applyCarry).toHaveBeenCalledOnce();
+    expect(shown()?.openedOnPlayers).toBe(false);
+  });
+
+  it("opens a single player save with nothing selected", async () => {
+    const session = await openSession();
+    const snapshot = session.getSnapshot();
+    expect(snapshot.status === "success" && snapshot.data.getState().openedOnPlayers).toBe(false);
+  });
+
   it("starts with the same snapshot as a page without a session", () => {
     expect(getEu5Session(save("initial")).getSnapshot()).toBe(initialEu5SessionSnapshot);
   });

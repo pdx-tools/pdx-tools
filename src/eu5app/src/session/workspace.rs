@@ -186,6 +186,7 @@ fn nice_bucket_step(range: f64, target_buckets: usize) -> f64 {
 pub mod entity_profile;
 mod hover;
 mod insights;
+mod map_frame;
 mod map_painter;
 mod map_projection;
 mod map_render;
@@ -195,6 +196,7 @@ mod selection_ops;
 mod terrain_fill;
 mod timeline;
 
+pub use self::map_frame::LandGroups;
 pub(crate) use self::map_render::MapColors;
 pub use self::opening_view::OpeningView;
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
