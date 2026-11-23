@@ -2035,9 +2035,9 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.38.0"
+version = "0.38.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f871f2204fb8dfc02da4e5d4823f06aff062cfba7b8f5d079c98dee956ea9a0"
+checksum = "59e83c12e7fd3a731919882639bf35936a7917a828e6597d78ab0a3c6c6aa28f"
 dependencies = [
  "fearless_simd",
  "flate2",
