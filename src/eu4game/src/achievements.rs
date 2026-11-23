@@ -894,7 +894,7 @@ impl<'a> AchievementHunter<'a> {
             .provinces
             .get(&ProvinceId::from(12))
             .and_then(|x| x.owner)
-            == Some(dtt);
+            == Some(self.tag);
         result.and(AchievementCondition::new(owns_sjaelland, "owns Sjaelland"));
 
         let owns_holland = self
@@ -903,7 +903,7 @@ impl<'a> AchievementHunter<'a> {
             .provinces
             .get(&ProvinceId::from(97))
             .and_then(|x| x.owner)
-            == Some(dtt);
+            == Some(self.tag);
         result.and(AchievementCondition::new(owns_holland, "owns Holland"));
 
         result
