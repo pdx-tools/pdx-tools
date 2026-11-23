@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "fixes": [
+      "Support CK3 1.21 saves",
+      "Support HOI4 1.20.0 saves",
+      "EU4: Lessons of Hemmingstedt achievement follows tag switching"
+    ]
+  }
+}
