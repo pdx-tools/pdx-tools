@@ -15,10 +15,10 @@ use eu4save::{
 };
 use models::{CountriesManaExpenditure, CountryDevEfficiencies};
 use savefile::{
-    AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
-    FileObservationFrequency, HealthData, LocalizedLedger, MapPayload, MapPayloadKind,
-    MapQuickTipPayload, Monitor, ProvinceDetails, ProvinceDevDensity, Reparse, RootTree,
-    SaveFileImpl, TagFilterPayloadRaw, TimelineKind, WarInfo,
+    AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate, HealthData,
+    LocalizedLedger, MapPayload, MapPayloadKind, MapQuickTipPayload, ProvinceDetails,
+    ProvinceDevDensity, Reparse, RootTree, SaveFileImpl, TagFilterPayloadRaw, TimelineKind,
+    WarInfo,
 };
 use serde::Serialize;
 use std::{collections::HashMap, io::Cursor};
@@ -100,13 +100,12 @@ pub struct SaveFile(SaveFileImpl);
 impl SaveFile {
     pub fn reparse(
         &mut self,
-        frequency: Ts<FileObservationFrequency>,
+        playthrough: &str,
         save_data: Vec<u8>,
     ) -> Result<Ts<Reparse>, JsError> {
-        let frequency = frequency.to_rust()?;
         into_ts(
             self.0
-                .reparse(frequency, save_data)
+                .reparse(playthrough, save_data)
                 .map_err(JsError::from)?,
         )
     }
@@ -463,10 +462,6 @@ impl SaveFile {
     pub fn get_war(&self, war_name: String) -> Result<Option<Ts<WarInfo>>, JsError> {
         option_into_ts(self.0.get_war(&war_name))
     }
-
-    pub fn monitoring_data(&self) -> Result<Ts<Monitor>, JsError> {
-        into_ts(self.0.monitoring_data())
-    }
 }
 
 #[wasm_bindgen]
@@ -526,6 +521,7 @@ pub fn game_save(
         player_histories,
         religion_lookup,
         province_id_to_color_index,
+        content_hash: None,
     }))
 }
 

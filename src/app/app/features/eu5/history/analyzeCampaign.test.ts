@@ -66,7 +66,7 @@ beforeEach(() => {
     issues: [],
     progress: null,
     cancel: null,
-    analysisPausedCampaigns: [],
+    pausedCampaigns: {},
   });
   entries = [entry("first")];
   mocks.getLocalSave.mockImplementation((id) => entries.find((item) => item.id === id));
@@ -140,7 +140,7 @@ describe("campaign analysis", () => {
       { ...entry("good", { kind: "file", file: good }), name: good.name },
       { ...entry("bad", { kind: "file", file: bad }), name: bad.name },
     ];
-    useHistory.setState({ analysisPausedCampaigns: ["other-campaign"] });
+    useHistory.setState({ pausedCampaigns: { "other-campaign": "stopped" } });
     mocks.importBatch.mockImplementation(async (_files, options) => {
       const snapshot = observation("good-observation");
       options.onFileComplete({ status: "accepted", file: good, descriptor: snapshot });
@@ -149,7 +149,7 @@ describe("campaign analysis", () => {
 
     await analyzeCampaign(entries, "campaign");
 
-    expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other-campaign"]);
+    expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual(["other-campaign"]);
     expect(isAnalysisPaused(useHistory.getState(), "campaign")).toBe(false);
     expect(useHistory.getState().snapshots.map(({ id }) => id)).toEqual(["good-observation"]);
     expect(useHistory.getState().sources.good.snapshotId).toBe("good-observation");
@@ -163,15 +163,15 @@ describe("campaign analysis", () => {
     mocks.importBatch.mockResolvedValue(done());
     await analyzeCampaign([added], "campaign");
     expect(mocks.importBatch.mock.calls[1][0]).toEqual([added.ref.file]);
-    expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other-campaign"]);
+    expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual(["other-campaign"]);
   });
 
   it("keeps another campaign paused when a new campaign analysis starts", async () => {
-    useHistory.setState({ analysisPausedCampaigns: ["paused-campaign"] });
+    useHistory.setState({ pausedCampaigns: { "paused-campaign": "stopped" } });
 
     await analyzeCampaign(entries, "new-campaign");
 
-    expect(useHistory.getState().analysisPausedCampaigns).toEqual(["paused-campaign"]);
+    expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual(["paused-campaign"]);
   });
 
   it("re-reads a file handle and keeps its new content separate from the old observation", async () => {
@@ -219,14 +219,14 @@ describe("campaign analysis", () => {
       const snapshot = observation();
       options.onFileComplete({ status: "accepted", file, descriptor: snapshot });
       useHistory.getState().cancel!();
-      expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
+      expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual(["campaign"]);
       expect(options.signal.aborted).toBe(true);
       options.onFileComplete({ status: "accepted", file, descriptor: observation("late") });
       return done();
     });
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().snapshots.map((s) => s.id)).toEqual(["eu5:abc", "late"]);
-    expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
+    expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual(["campaign"]);
     expect(useHistory.getState().progress).toBeNull();
     expect(useHistory.getState().issues).toEqual([]);
   });
@@ -273,7 +273,7 @@ describe("campaign analysis", () => {
     });
     await analyzeCampaign(entries, "campaign");
     expect(useHistory.getState().issues).toContain("observer.eu5: Error: Missing file");
-    expect(useHistory.getState().analysisPausedCampaigns).toEqual([]);
+    expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual([]);
   });
 
   it("cancels while a file handle read remains pending", async () => {
@@ -290,15 +290,15 @@ describe("campaign analysis", () => {
     await analysis;
     expect(useHistory.getState().progress).toBeNull();
     expect(useHistory.getState().issues).toEqual([]);
-    expect(useHistory.getState().analysisPausedCampaigns).toEqual(["campaign"]);
+    expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual(["campaign"]);
     expect(mocks.importBatch).not.toHaveBeenCalled();
   });
 
   it("resumes the current campaign without resuming another paused campaign", async () => {
-    useHistory.setState({ analysisPausedCampaigns: ["campaign", "other"] });
+    useHistory.setState({ pausedCampaigns: { campaign: "stopped", other: "stopped" } });
     mocks.importBatch.mockResolvedValue(done());
     await analyzeCampaign(entries, "campaign");
-    expect(useHistory.getState().analysisPausedCampaigns).toEqual(["other"]);
+    expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual(["other"]);
   });
 
   it("rejects concurrent runs before starting another importer", async () => {

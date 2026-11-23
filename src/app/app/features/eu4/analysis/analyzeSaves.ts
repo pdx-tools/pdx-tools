@@ -1,9 +1,11 @@
-import { IMPORT_BUSY_ERROR } from "@/features/campaign/analysis/admission";
+import { IMPORT_BUSY_ERROR, analysisAdmission } from "@/features/campaign/analysis/admission";
 import type { CampaignUpload } from "@/features/campaign/analysis/analyzeCampaign";
+import { isAnalysisPaused } from "@/features/campaign/analysis/analysisState";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
-import type { CampaignSave } from "@/features/campaign/types";
+import type { ChartedSave } from "@/features/campaign/types";
 import { analyzeEu4Campaign } from "./analyzeCampaign";
-import { replacedSnapshots } from "./campaignSaves";
+import { eu4Analysis } from "./analysisClient";
+import { pendingUploads, replacedSnapshots } from "./campaignSaves";
 import { useEu4History } from "./store";
 
 /**
@@ -11,7 +13,7 @@ import { useEu4History } from "./store";
  * list replaced goes first, so the new save of that date can take its place.
  */
 export async function importEu4Saves(
-  saves: readonly CampaignSave[],
+  saves: readonly ChartedSave[],
   playthroughId: string,
   entries: LocalSaveEntry[],
   uploads: readonly CampaignUpload[] = [],
@@ -20,18 +22,22 @@ export async function importEu4Saves(
   await analyzeEu4Campaign(entries, playthroughId, uploads, replaced);
 }
 
-/** Like `importEu4Saves`, but nothing happens while another analysis runs. */
-export async function analyzeEu4Saves(
-  saves: readonly CampaignSave[],
-  playthroughId: string,
-  entries: LocalSaveEntry[],
-  uploads: readonly CampaignUpload[] = [],
-) {
-  try {
-    await importEu4Saves(saves, playthroughId, entries, uploads);
-  } catch (error) {
-    // Another analysis runs, and it reads these saves too.
-    if (error instanceof Error && error.name === IMPORT_BUSY_ERROR) return;
-    throw error;
+/**
+ * Download and read the campaign's uploads that are not read yet. When another
+ * import runs, such as the local saves or a watched write, this waits for it to
+ * end. It then gives up if the campaign changed or was paused in the meantime.
+ */
+export async function readEu4Uploads(saves: readonly ChartedSave[], playthroughId: string) {
+  const session = eu4Analysis.signal();
+  for (;;) {
+    const uploads = pendingUploads(saves, useEu4History.getState());
+    if (!uploads.length) return;
+    try {
+      return await importEu4Saves(saves, playthroughId, [], uploads);
+    } catch (error) {
+      if (!(error instanceof Error && error.name === IMPORT_BUSY_ERROR)) throw error;
+      await analysisAdmission().idle();
+      if (session.aborted || isAnalysisPaused(useEu4History.getState(), playthroughId)) return;
+    }
   }
 }

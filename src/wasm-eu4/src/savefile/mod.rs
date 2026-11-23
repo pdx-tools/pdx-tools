@@ -41,36 +41,29 @@ pub struct SaveFileImpl {
     pub province_owners: eu4save::query::ProvinceOwners,
     pub religion_lookup: eu4save::query::ReligionLookup,
     pub province_id_to_color_index: Vec<u16>,
+    /// Set when the save was read again from its file, for its analysis snapshot.
+    pub content_hash: Option<String>,
 }
 
 impl SaveFileImpl {
+    /// Replace the save with a new write of its file, unless the write
+    /// holds another campaign.
     pub fn reparse(
         &mut self,
-        frequency: FileObservationFrequency,
+        playthrough: &str,
         save_data: Vec<u8>,
     ) -> Result<Reparse, Eu4GameError> {
         let tokens = tokens::get_tokens();
-
-        let meta = eu4game::shared::parse_meta(&save_data, tokens)?;
-
-        let prev_date = self.query.save().meta.date;
-
-        let too_soon = Ok(Reparse::TooSoon { date: meta.date });
-        use FileObservationFrequency as FOF;
-        match frequency {
-            FOF::Daily if meta.date == prev_date => return too_soon,
-            FOF::Monthly
-                if meta.date.year() == prev_date.year()
-                    && meta.date.month() == prev_date.month() =>
-            {
-                return too_soon;
-            }
-            FOF::Yearly if meta.date.year() == prev_date.year() => return too_soon,
-            _ => {}
+        let out = Eu4Parser::new()
+            .with_hash(true)
+            .parse_with(&save_data, tokens)?;
+        let query = Query::from_save(out.save);
+        if playthrough_id(&query) != playthrough {
+            return Ok(Reparse::OtherCampaign);
         }
 
-        let save = Eu4Parser::new().parse_with(&save_data, tokens)?.save;
-        self.query = Query::from_save(save);
+        self.query = query;
+        self.content_hash = out.hash;
         self.province_owners = self.query.province_owners();
         self.nation_events = self.query.nation_events(&self.province_owners);
         self.player_histories = self.query.player_histories(&self.nation_events);
@@ -2226,20 +2219,6 @@ impl SaveFileImpl {
             defenders: result.defenders,
             battles,
         })
-    }
-
-    pub fn monitoring_data(&self) -> Monitor {
-        let players: HashSet<_> = self.all_players().drain(..).collect();
-        let country_data = players
-            .iter()
-            .filter_map(|x| self.query.save_country(x))
-            .map(|c| self.get_country_details(c))
-            .collect();
-
-        Monitor {
-            date: self.query.save().meta.date,
-            countries: country_data,
-        }
     }
 }
 

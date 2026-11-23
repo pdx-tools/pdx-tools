@@ -26,8 +26,6 @@ import type {
 export type CampaignAdapter = {
   /** Capture view state before changing saves. */
   captureCarry: () => CampaignCarry | Promise<CampaignCarry>;
-  /** Stop background work that could restore the previous save. */
-  leave?: () => Promise<void>;
 } & (
   | {
       /** The step ends when preparation and navigation finish. */
@@ -174,7 +172,6 @@ export function useCampaignNav(
   ): Promise<OpenFailure | null> => {
     const carry = requestedCarry ?? (await adapter.captureCarry());
     if (openPlaythroughId !== null) transition.preserveView(openPlaythroughId, carry);
-    await adapter.leave?.();
     if (adapter.completion === "before-navigation") {
       try {
         await adapter.prepare(target);

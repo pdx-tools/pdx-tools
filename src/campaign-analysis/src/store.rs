@@ -235,13 +235,13 @@ impl<G: Game> Store<G> {
                 duplicate: true,
             });
         }
+        // Saves of one date keep the order they came in.
         let at = self
             .snapshots
-            .partition_point(|snapshot| snapshot.descriptor.date_sort < descriptor.date_sort);
-        if self
-            .snapshots
-            .get(at)
-            .is_some_and(|snapshot| snapshot.descriptor.date_sort == descriptor.date_sort)
+            .partition_point(|snapshot| snapshot.descriptor.date_sort <= descriptor.date_sort);
+        if !G::BRANCHES
+            && at > 0
+            && self.snapshots[at - 1].descriptor.date_sort == descriptor.date_sort
         {
             return Err(AnalysisError::DateConflict {
                 date: descriptor.date,

@@ -1,6 +1,6 @@
 import { formatLongDate } from "@/features/timeline/date";
 import { getErrorMessage } from "@/lib/getErrorMessage";
-import type { CampaignSave, LocalSaveProblem, OpenFailure } from "./types";
+import type { CampaignSave, FiguresOnlyReason, LocalSaveProblem, OpenFailure } from "./types";
 
 /** Where a save comes from, as one short line. */
 export function saveSourceText(save: CampaignSave): string {
@@ -41,4 +41,16 @@ export function openFailureText(failure: OpenFailure): string {
 /** The accessible name of a save: its date, then where it comes from. */
 export function saveLabel(save: CampaignSave): string {
   return `Save, ${formatLongDate(save.date)}, ${saveSourceText(save).toLowerCase()}`;
+}
+
+/** Why a save has figures only, as one line. */
+export function figuresOnlyText(reason: FiguresOnlyReason): string {
+  switch (reason) {
+    case "writtenOver":
+      return "The game wrote over this save";
+    case "otherBranch":
+      return "The map can't show this branch";
+    case "notOpen":
+      return "This file isn't open in this tab";
+  }
 }

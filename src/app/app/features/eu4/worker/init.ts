@@ -1,26 +1,23 @@
 import { fileVersion, toPlaythroughId } from "@/features/campaign/types";
-import type { FileVersion } from "@/features/campaign/types";
+import type { FileVersion, PlaythroughId } from "@/features/campaign/types";
 import { timeSync } from "@/lib/timeit";
 import type { AchievementsScore } from "../types/models";
 import { wasm } from "./common";
 import type * as mod from "@/wasm/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu4SaveInput } from "../store";
-import { captureException } from "@/lib/captureException";
 import { resetTimelineCursor } from "./timeline";
+import { transfer } from "comlink";
+import { captureException } from "@/lib/captureException";
+import type { Eu4Snapshot } from "../analysis/analysisTypes";
 
 export const initializeWasm = wasm.initializeModule;
 export async function fetchData(save: Eu4SaveInput) {
   switch (save.kind) {
     case "handle": {
       const file = await save.file.getFile();
-      const lastModified = file.lastModified;
       const data = await file.arrayBuffer();
-      wasm.stash(new Uint8Array(data), {
-        kind: "handle",
-        file: save.file,
-        lastModified,
-      });
+      wasm.stash(new Uint8Array(data), { kind: "handle", file: save.file });
       return fileVersion(file);
     }
     case "file": {
@@ -104,47 +101,46 @@ function eu4DefaultSelectedTag(meta: EnhancedMeta): string {
   throw new Error("unable to determine default selected country");
 }
 
-export function supportsFileObserver() {
-  return wasm.supportsFileObserver();
-}
-
-export type FileObservationFrequency = Parameters<typeof wasm.save.reparse>[0];
-let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
-export function startFileObserver<T>(
-  frequency: FileObservationFrequency,
-  cb: (save: {
-    meta: EnhancedMeta;
-    achievements: AchievementsScore;
-    fileVersion: FileVersion;
-  }) => T,
-) {
-  observer = wasm.startFileObserver((data, file) => {
-    try {
-      const reparse = timeSync(
-        (result) =>
-          result.kind === "tooSoon"
-            ? `save date too soon to update: ${result.date}`
-            : "reparsed save",
-        () => wasm.save.reparse(frequency, data),
-      );
-      if (reparse.kind === "tooSoon") {
-        return;
-      }
-
-      // The old cursor points into the save that was just replaced.
-      resetTimelineCursor();
-      const achievements = wasm.save.get_achievements();
-      cb({
-        meta: getMeta(wasm.save),
-        achievements,
-        fileVersion: fileVersion(file),
-      });
-    } catch (ex) {
-      captureException(ex, { tags: { msg: "file-watcher" } });
+/**
+ * Replace the open save with a new write of its file. A write of another
+ * campaign, or a save that another file replaced meanwhile, is not read.
+ * The campaign analysis snapshot comes from the same parse when asked for.
+ */
+export async function eu4Reparse(
+  handle: FileSystemFileHandle,
+  file: File,
+  playthroughId: PlaythroughId,
+  withSnapshot: boolean,
+): Promise<
+  | {
+      kind: "updated";
+      meta: EnhancedMeta;
+      achievements: AchievementsScore;
+      fileVersion: FileVersion;
+      snapshot: Eu4Snapshot | null;
     }
-  });
-}
+  | { kind: "otherCampaign" | "replaced" }
+> {
+  const data = new Uint8Array(await file.arrayBuffer());
+  if (!(await wasm.holdsHandle(handle))) return { kind: "replaced" };
+  const reparse = timeSync("reparsed save", () => wasm.save.reparse(playthroughId, data));
+  if (reparse.kind === "otherCampaign") return reparse;
 
-export function stopFileObserver() {
-  observer.stopObserver();
+  // The old cursor points into the save that was just replaced.
+  resetTimelineCursor();
+  // The save is replaced already, so a failed snapshot must not fail the update.
+  let snapshot: Eu4Snapshot | null = null;
+  try {
+    if (withSnapshot) snapshot = wasm.save.analysis_snapshot();
+  } catch (error) {
+    captureException(error, { tags: { msg: "file-watcher" } });
+  }
+  const result = {
+    kind: "updated" as const,
+    meta: getMeta(wasm.save),
+    achievements: wasm.save.get_achievements(),
+    fileVersion: fileVersion(file),
+    snapshot,
+  };
+  return snapshot ? transfer(result, [snapshot.data.buffer]) : result;
 }

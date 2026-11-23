@@ -345,18 +345,6 @@ export function eu4GetWarInfo(war: string) {
   };
 }
 
-export type MonitorData = ReturnType<typeof eu4MonitoringData>;
-export function eu4MonitoringData() {
-  const result = wasm.save.monitoring_data();
-  return {
-    ...result,
-    countries: result.countries.map(({ armed_forces, ...rest }) => ({
-      ...rest,
-      ...armed_forces,
-    })),
-  };
-}
-
 export function eu4DaysToDate(s: number) {
   return wasm.save.days_to_date(s);
 }

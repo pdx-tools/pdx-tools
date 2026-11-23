@@ -1,11 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { localSaveRegistry } from "@/features/campaign/localSaves";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { sameFileVersion } from "@/features/campaign/types";
+import { IMPORT_BUSY_ERROR, analysisAdmission } from "./admission";
 import { isAnalysisPaused } from "./analysisState";
+import { IMPORT_LIMIT } from "./analyzeCampaign";
 import type { AnalysisHistory, CampaignAnalysisState } from "./analysisState";
-import { entryVersion } from "./saveStatus";
+import { entryVersion, failedInVersion } from "./saveStatus";
 import type { SnapshotDescriptor } from "./descriptor";
 
 /** The entry and the file version that an analysis attempt read. */
@@ -50,8 +52,8 @@ export function useCampaignAutoAnalysis<D extends SnapshotDescriptor>({
   claim: (campaignId: string) => void;
   playthroughId: string | null;
   featureEnabled: boolean;
-  /** The entries to analyze, without those of the attempted source keys. Changes run it again. */
-  pending: (attempted: ReadonlySet<string>) => LocalSaveEntry[];
+  /** The unread local saves of the campaign. Changes run it again. */
+  pending: () => LocalSaveEntry[];
   analyze: (entries: LocalSaveEntry[], playthroughId: string) => Promise<void>;
 }) {
   const paused = useStore(history, (state) => isAnalysisPaused(state, playthroughId));
@@ -65,26 +67,49 @@ export function useCampaignAutoAnalysis<D extends SnapshotDescriptor>({
   // Changes when the campaign changes. An import of an earlier visit then
   // does not mark its saves as attempted.
   const visit = useRef(0);
+  // Counts the waits for another import, such as of a watched file, to end.
+  const [waits, setWaits] = useState(0);
   useEffect(() => {
     if (!playthroughId) return;
     visit.current++;
     attempted.current = new Set();
     claim(playthroughId);
   }, [playthroughId, claim]);
+  // A resume reads again what a stop or a failure left unread.
+  const wasPaused = useRef(paused);
+  useEffect(() => {
+    if (wasPaused.current && !paused) attempted.current = new Set();
+    wasPaused.current = paused;
+  }, [paused]);
   useEffect(() => {
     if (!featureEnabled || !enabled || !playthroughId || progress || paused) return;
-    const entries = pending(attempted.current);
+    // A file that failed in its current version waits for a change, or a manual retry.
+    const { failedSources } = history.getState();
+    const entries = pending()
+      .filter((entry) => !attempted.current.has(campaignAnalysisSourceKey(entry)))
+      .filter((entry) => !failedInVersion(entry, failedSources[entry.id]))
+      .slice(0, IMPORT_LIMIT);
     if (!entries.length) return;
     for (const entry of entries) attempted.current.add(campaignAnalysisSourceKey(entry));
     const started = visit.current;
+    let busy = false;
     void analyze(entries, playthroughId)
       .catch((error) => {
+        if (error instanceof Error && error.name === IMPORT_BUSY_ERROR) {
+          // Not attempted: try these again when the other import ends.
+          busy = true;
+          for (const entry of entries) attempted.current.delete(campaignAnalysisSourceKey(entry));
+          void analysisAdmission()
+            .idle()
+            .then(() => setWaits((x) => x + 1));
+          return;
+        }
         history.setState({ issues: [String(error)] });
       })
       .finally(() => {
         // The import records the version that it read, so a failed file is not
         // tried again at once. A newer version that navigation read meanwhile is.
-        if (visit.current !== started) return;
+        if (visit.current !== started || busy) return;
         const { sources, failedSources } = history.getState();
         for (const entry of entries) {
           const current = localSaveRegistry.get(entry.id);
@@ -94,5 +119,5 @@ export function useCampaignAutoAnalysis<D extends SnapshotDescriptor>({
             attempted.current.add(campaignAnalysisSourceKey(current));
         }
       });
-  }, [pending, playthroughId, progress, paused, featureEnabled, enabled, analyze, history]);
+  }, [pending, playthroughId, progress, paused, featureEnabled, enabled, analyze, history, waits]);
 }

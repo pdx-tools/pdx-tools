@@ -417,15 +417,9 @@ pub struct LocalizedLedger {
 #[derive(Tsify, Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Reparse {
-    TooSoon { date: Eu4Date },
     Updated,
-}
-
-#[derive(Tsify, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Monitor {
-    pub date: Eu4Date,
-    pub countries: Vec<CountryDetails>,
+    /// The file now holds another campaign, so the save was kept.
+    OtherCampaign,
 }
 
 #[derive(Tsify, Serialize, Clone, Debug)]
@@ -625,14 +619,6 @@ pub struct ContinentDevelopment {
     pub production: f32,
     pub manpower: f32,
     pub children: Vec<SuperRegionDevelopment>,
-}
-
-#[derive(Debug, Tsify, Serialize, Deserialize)]
-pub enum FileObservationFrequency {
-    EverySave,
-    Daily,
-    Monthly,
-    Yearly,
 }
 
 #[derive(Debug, Tsify, Serialize)]

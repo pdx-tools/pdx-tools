@@ -10,7 +10,7 @@ export type { DateComponents };
 
 const DAYS_BEFORE_MONTH = [0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 const DAYS_IN_MONTH = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-const DAYS_PER_YEAR = 365;
+export const DAYS_PER_YEAR = 365;
 
 export const MONTH_ABBR = [
   "",

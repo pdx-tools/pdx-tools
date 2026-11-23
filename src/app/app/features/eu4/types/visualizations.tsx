@@ -1,7 +1,4 @@
-import type { BySaveViz } from "../features/charts/by-save/figures";
-
 export type VizModules =
-  | BySaveViz
   | "idea-group"
   | "monthly-income"
   | "nation-size"

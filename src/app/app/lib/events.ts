@@ -13,15 +13,11 @@ export type Event =
       game: DetectedDataType;
     }
   | {
-      kind: "$pageview" | "Timelapse playing" | "Login click" | "Register click";
+      kind: "$pageview" | "Timelapse playing" | "Login click" | "Register click" | "Save watching";
     }
   | {
       kind: "Screenshot taken" | "Timelapse recording";
       view: string;
-    }
-  | {
-      kind: "Save watching";
-      frequency: string;
     }
   | {
       kind: "Map mode switch";

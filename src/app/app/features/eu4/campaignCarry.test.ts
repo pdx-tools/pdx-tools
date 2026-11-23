@@ -29,11 +29,21 @@ it("carries the chart drawer and the country filter to the next save", async () 
   const first = await createEu4Store({ store: null, save, map, settings });
   const filter = { ...initialEu4CountryFilter, ai: "great" } as const;
   first.setState({ countryFilter: filter });
-  first.getState().actions.setCharts({ open: true, viz: "dev-by-save" });
+  first.getState().actions.setCharts({ open: true, viz: "score" });
+  first
+    .getState()
+    .actions.setCampaignSheet({ open: true, family: "mana", figures: { mana: "mana-banked" } });
 
   // A step that changes route starts a new store from the carry alone.
   const carry = await captureEu4Carry(first);
   const next = await createEu4Store({ store: null, save, map, settings, carry });
-  expect(next.getState().charts).toEqual({ open: true, viz: "dev-by-save", expanded: false });
+  expect(next.getState().charts).toEqual({ open: true, viz: "score", expanded: false });
+  expect(next.getState().campaignSheet).toEqual({
+    open: true,
+    family: "mana",
+    figures: { mana: "mana-banked" },
+    mana: { types: "all", use: "all", pool: "adm" },
+    expanded: false,
+  });
   expect(next.getState().countryFilter).toEqual(filter);
 });

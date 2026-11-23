@@ -16,7 +16,8 @@ import { GameThemeProvider } from "@/components/GameThemeProvider";
 import { Eu4CampaignProvider } from "./campaign";
 import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 import { Eu4CampaignAnalysis } from "./analysis/Eu4CampaignAnalysis";
-import { ChartCampaignAction } from "./features/charts/by-save/ChartCampaignAction";
+import { useWatchLifetime } from "./campaignWatch";
+import { ChartCampaignAction } from "./features/campaign/ChartCampaignAction";
 
 type Eu4UiProps = {
   save: Eu4SaveInput;
@@ -38,6 +39,7 @@ const TrackingCanvas = memo(
 
 export const Eu4Ui = ({ save }: Eu4UiProps) => {
   const { loading, data, error, mapCanvas, mapContainer } = useLoadEu4(save);
+  useWatchLifetime();
   const campaignAnalysis = useIsCampaignAnalysisEnabled();
   // The sidebar keeps its zoom and map modes above the timeline bar.
   const [timelineClearance, setTimelineClearance] = useState<number | null>(null);

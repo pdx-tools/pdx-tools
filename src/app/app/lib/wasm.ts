@@ -1,7 +1,6 @@
 import { fetchOk } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { transfer } from "comlink";
-import { timeAsync } from "./timeit";
 
 type Allocated = {
   free(): void;
@@ -21,7 +20,6 @@ type StashOp =
   | {
       kind: "handle";
       file: FileSystemFileHandle;
-      lastModified: number;
     }
   | { kind: "remote"; url: string };
 
@@ -95,43 +93,12 @@ export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allo
       stashed = stashOp;
     }
 
-    supportsFileObserver() {
-      return stashed?.kind === "handle";
-    }
-
-    startFileObserver(callback: (data: Uint8Array, file: File) => Promise<void> | void) {
-      if (stashed?.kind !== "handle") {
-        throw new Error("file observer not supported");
-      }
-
-      const handle = stashed.file;
-      let lastModified = stashed.lastModified;
-      let timeoutHandle: ReturnType<typeof setTimeout>;
-
-      function intervalCheck() {
-        poll();
-        timeoutHandle = setTimeout(() => intervalCheck(), 5000);
-      }
-
-      async function poll() {
-        const file = await timeAsync("poll file", () => handle.getFile());
-        if (file.lastModified <= lastModified) {
-          return;
-        }
-
-        lastModified = file.lastModified;
-        stashed = { kind: "handle", file: handle, lastModified };
-        const bytes = await timeAsync("read polled file", () => file.arrayBuffer());
-        await callback(new Uint8Array(bytes), file);
-      }
-
-      intervalCheck();
-
-      return {
-        stopObserver() {
-          clearTimeout(timeoutHandle);
-        },
-      };
+    /** True when the open save was read from this file. */
+    async holdsHandle(handle: FileSystemFileHandle) {
+      const op = stashed;
+      if (op?.kind !== "handle") return false;
+      // Another save can open while the entries are compared.
+      return (await op.file.isSameEntry(handle)) && stashed === op;
     }
 
     viewStash() {

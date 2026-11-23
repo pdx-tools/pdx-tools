@@ -4,8 +4,11 @@ import { isWorkerFailure } from "@/lib/workerQueue";
 import { analysisAdmission } from "./admission";
 import type { AnalysisAdmission, ImportLease } from "./admission";
 import { MEMORY_LIMIT_ERROR, isAnswerOf, staleGenerationError } from "./session";
+import type { PersistReply, PersistRequest, RestoreReply } from "./campaignStore";
 import type {
   AnalysisStore,
+  DescriptorOf,
+  ResidentMemory,
   AnswerValue,
   Async,
   QueryOf,
@@ -18,6 +21,21 @@ import type {
   StoreTypes,
   TypesOf,
 } from "./session";
+
+/** The methods of a worker that keeps points between visits, as `campaignStoreApi` gives them. */
+type CampaignStoreServer<D> = {
+  restore: (
+    generation: number,
+    campaignId: string,
+    limitBytes: number,
+  ) => Promise<RestoreReply<D> & { memory: ResidentMemory }>;
+  persist: (
+    campaignId: string,
+    request: PersistRequest,
+    limitBytes: number,
+  ) => Promise<PersistReply>;
+  forget: (campaignId: string) => Promise<void>;
+};
 
 /** The frame methods that an analysis worker gives to game workers. */
 export type FrameServer = {
@@ -91,6 +109,22 @@ export type AnalysisWorkerClient<S extends AnalysisStore> = {
   ) => Promise<QueryReply<AnswerValue<TypesOf<S>, Q["kind"]>>>;
 };
 
+/** A client of a worker that keeps the campaign's points between visits, as `campaignStoreApi` gives them. */
+export type StoringAnalysisWorkerClient<S extends AnalysisStore> = AnalysisWorkerClient<S> & {
+  /**
+   * Add the points that this browser kept of the campaign. Hold the import
+   * lease, which gives the resident limit.
+   */
+  restore: (
+    campaignId: string,
+    lease: ImportLease,
+  ) => Promise<{ generation: number; reply: RestoreReply<DescriptorOf<S>> }>;
+  /** Keep these points in this browser, within the resident limit. */
+  persist: (campaignId: string, request: PersistRequest) => Promise<PersistReply>;
+  /** Remove what this browser keeps of the campaign. */
+  forget: (campaignId: string) => Promise<void>;
+};
+
 /** A client of a worker that also serves frames, as `frameServer` gives them. */
 export type FrameAnalysisWorkerClient<S extends AnalysisStore> = AnalysisWorkerClient<S> & {
   /** Connect a game worker to the frames of this worker. Return the disconnect. */
@@ -109,6 +143,20 @@ const sessions = new Set<{ release: () => void }>();
 export function createAnalysisWorker<S extends AnalysisStore>(
   options: AnalysisWorkerOptions,
 ): AnalysisWorkerClient<S> {
+  const {
+    connectFrames: _,
+    restore: _r,
+    persist: _p,
+    forget: _f,
+    ...client
+  } = createSession<S>(options);
+  return client;
+}
+
+/** An analysis worker that also keeps the campaign's points in this browser. */
+export function createStoringAnalysisWorker<S extends AnalysisStore>(
+  options: AnalysisWorkerOptions,
+): StoringAnalysisWorkerClient<S> {
   const { connectFrames: _, ...client } = createSession<S>(options);
   return client;
 }
@@ -117,7 +165,8 @@ export function createAnalysisWorker<S extends AnalysisStore>(
 export function createFrameAnalysisWorker<S extends AnalysisStore>(
   options: AnalysisWorkerOptions,
 ): FrameAnalysisWorkerClient<S> {
-  return createSession<S>(options);
+  const { restore: _r, persist: _p, forget: _f, ...client } = createSession<S>(options);
+  return client;
 }
 
 function createSession<S extends AnalysisStore>({
@@ -127,8 +176,8 @@ function createSession<S extends AnalysisStore>({
   onFailure,
   onRelease = () => {},
   appendTimeoutMs = 60_000,
-}: AnalysisWorkerOptions): FrameAnalysisWorkerClient<S> {
-  type Api = StoreApi<TypesOf<S>> & Async<FrameServer>;
+}: AnalysisWorkerOptions): FrameAnalysisWorkerClient<S> & StoringAnalysisWorkerClient<S> {
+  type Api = StoreApi<TypesOf<S>> & Async<FrameServer> & CampaignStoreServer<DescriptorOf<S>>;
   // The shared admission reads the device memory, so get it when first used.
   const admission = () => custom ?? analysisAdmission();
   /** One started worker. A call keeps the instance that it started on. */
@@ -302,6 +351,24 @@ function createSession<S extends AnalysisStore>({
     };
   };
 
+  const restore: StoringAnalysisWorkerClient<S>["restore"] = async (campaignId, lease) => {
+    if (!lease.active()) throw Error("Restoring kept points needs the import lease");
+    const worker = instance();
+    await worker.ready;
+    const requested = generation;
+    const { memory, ...reply } = await worker.client.restore(
+      requested,
+      campaignId,
+      lease.residentLimit(),
+    );
+    admission().setResident(session, memory.bufferBytes);
+    return { generation: requested, reply };
+  };
+  const persist: StoringAnalysisWorkerClient<S>["persist"] = (campaignId, request) =>
+    instance().client.persist(campaignId, request, admission().limits.residentBytes);
+  const forget: StoringAnalysisWorkerClient<S>["forget"] = (campaignId) =>
+    instance().client.forget(campaignId);
+
   let sequence = 0;
   const connectFrames: FrameAnalysisWorkerClient<S>["connectFrames"] = async (connect) => {
     const id = `frame:${++sequence}`;
@@ -327,7 +394,7 @@ function createSession<S extends AnalysisStore>({
     }
   };
 
-  const self: FrameAnalysisWorkerClient<S> = {
+  const self: FrameAnalysisWorkerClient<S> & StoringAnalysisWorkerClient<S> = {
     remote: () => instance().client,
     generation: () => generation,
     signal: () => stop.signal,
@@ -337,6 +404,9 @@ function createSession<S extends AnalysisStore>({
     claim,
     release,
     query,
+    restore,
+    persist,
+    forget,
     connectFrames,
   };
   sessions.add(self);

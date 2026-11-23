@@ -313,6 +313,11 @@ macro_rules! wasm_store {
                 $crate::wasm::ts(AnalysisSnapshot($crate::wasm::snapshot(snapshot)))
             }
 
+            /// The version of the binary form that this build writes.
+            pub fn encoder(&self) -> u16 {
+                $crate::encoder::<$game>()
+            }
+
             pub fn memory(
                 &self,
             ) -> Result<

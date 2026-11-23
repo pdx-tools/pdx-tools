@@ -9,6 +9,7 @@ import {
 } from "@/features/campaign/analysis/sources";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { fileVersion } from "@/features/campaign/types";
+import { withoutKey } from "./analysisState";
 import type { AnalysisHistory } from "./analysisState";
 import type { SnapshotDescriptor } from "./descriptor";
 import type { ImportPhaseState } from "./importTiming";
@@ -33,6 +34,9 @@ export type CampaignAnalyzer<Api, R, D extends SnapshotDescriptor> = {
    */
   releaseEarlierVersions?: boolean;
 };
+
+/** The most saves that one import reads. */
+export const IMPORT_LIMIT = 1000;
 
 /** An uploaded save of the campaign. */
 export type CampaignUpload = { saveId: string; name: string };
@@ -65,8 +69,8 @@ export function campaignAnalyzer<
     if (!playthroughId) throw Error("This save has no campaign identity.");
     if (!entries.length && !uploads.length && !replace.length)
       throw Error("Add local saves to analyze this campaign.");
-    if (entries.length + uploads.length > 1000)
-      throw Error("Analyze at most 1000 saves at a time.");
+    if (entries.length + uploads.length > IMPORT_LIMIT)
+      throw Error(`Analyze at most ${IMPORT_LIMIT} saves at a time.`);
     if (uploads.length && !download) throw Error("This game cannot analyze uploads.");
     // One import runs in the tab, for all games.
     const lease = analysisAdmission().acquireImport();
@@ -77,7 +81,7 @@ export function campaignAnalyzer<
     const startedAt = performance.now();
     const issues: string[] = [];
     history.setState((state) => ({
-      analysisPausedCampaigns: state.analysisPausedCampaigns.filter((id) => id !== playthroughId),
+      pausedCampaigns: withoutKey(state.pausedCampaigns, playthroughId),
       progress: { completed: 0, total: entries.length + uploads.length, startedAt },
       analyzingEntryIds: [],
       issues: [],
@@ -105,6 +109,10 @@ export function campaignAnalyzer<
     const reclaim = async (ids: ReadonlySet<string>) => {
       const state = history.getState();
       const bound = new Set([
+        // Watched writes stay: the game wrote over their files. Kept points stay too.
+        ...Object.entries(state.points).flatMap(([id, x]) =>
+          x.session !== null || x.kept ? [id] : [],
+        ),
         ...Object.values(state.sources).map((x) => x.snapshotId),
         ...Object.values(state.uploads).flatMap((x) => (x.kind === "ready" ? [x.snapshotId] : [])),
       ]);
@@ -182,7 +190,7 @@ export function campaignAnalyzer<
           issues.push(
             `${result.memoryFull} ${refused === 1 ? "1 upload was" : `${refused} uploads were`} not analyzed.`,
           );
-          history.getState().pauseAnalysis(playthroughId);
+          history.getState().pauseAnalysis(playthroughId, "full");
           break;
         }
       }
@@ -294,7 +302,7 @@ export function campaignAnalyzer<
           `${result.memoryFull} ${saves} not analyzed. Clear the campaign analysis to analyze other saves.`,
         );
         // Do not parse more saves that cannot fit.
-        history.getState().pauseAnalysis(playthroughId);
+        history.getState().pauseAnalysis(playthroughId, "full");
       } else if (download && uploads.length) {
         // The uploads can need the memory of the released snapshots.
         await reclaim(superseded);

@@ -102,7 +102,7 @@ it("stops downloads when the player stops the analysis", async () => {
   history.getState().cancel!();
   await running;
   expect(history.getState().uploads).toEqual({});
-  expect(history.getState().analysisPausedCampaigns).toEqual(["campaign"]);
+  expect(Object.keys(history.getState().pausedCampaigns)).toEqual(["campaign"]);
   expect(mocks.importBatch.mock.calls.every(([files]) => files.length === 0)).toBe(true);
 });
 
@@ -234,3 +234,38 @@ it.each([true, false])(
     expect(history.getState().snapshots.map((x) => x.id)).toEqual(["eu4:1500"]);
   },
 );
+
+it("keeps a point that this browser keeps when its file moves on", async () => {
+  const history = create<CampaignAnalysisState>()((set) => campaignAnalysisState(set));
+  const file = new File(["1510"], "autosave.eu4", { lastModified: 2 });
+  const [entry] = await localSaveRegistry.register("eu4", [{ kind: "file", file }]);
+  // The browser kept 1500 from an earlier visit, and the file held it when it opened.
+  history.getState().add([descriptor("eu4:1500")], {
+    [entry.id]: { snapshotId: "eu4:1500", version: { size: 4, lastModified: 1 } },
+  });
+  history.setState((x) => ({
+    points: { "eu4:1500": { ...x.points["eu4:1500"], kept: true } },
+  }));
+  mocks.importBatch
+    .mockReset()
+    .mockImplementation(async (files: File[], options: ImportOptions<SnapshotDescriptor>) => {
+      for (const file of files)
+        options.onFileComplete({ status: "accepted", file, descriptor: descriptor("eu4:1510") });
+      return done;
+    });
+  const remove = vi.fn(async () => {});
+  await campaignAnalyzer({
+    history,
+    analysis: {
+      claim: () => {},
+      generation: () => 1,
+      signal: () => new AbortController().signal,
+      append: vi.fn(),
+      remove,
+    },
+    parser: { refuse: () => null, start: vi.fn(), parse: vi.fn(), peakBytes: () => 0 },
+    releaseEarlierVersions: true,
+  })([entry], "campaign");
+  expect(remove).not.toHaveBeenCalled();
+  expect(history.getState().snapshots.map((x) => x.id)).toEqual(["eu4:1500", "eu4:1510"]);
+});

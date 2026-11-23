@@ -14,11 +14,6 @@ import { MenuUnfoldIcon } from "@/components/icons/MenuUnfoldIcon";
 import { MenuFoldIcon } from "@/components/icons/MenuFoldIcon";
 import PlayIcon from "@heroicons/react/20/solid/PlayIcon";
 import { emitEvent } from "@/lib/events";
-import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
-import { bySaveFigures, bySaveVizs } from "./by-save/figures";
-import type { BySaveViz } from "./by-save/figures";
-import { useBySaveView } from "./by-save/view";
-import { Badge } from "@/components/Badge";
 
 interface ChartDrawerTitleProps {
   selectedViz: VizModules;
@@ -34,10 +29,7 @@ export const ChartDrawerTitle = ({
   setExpanded,
 }: ChartDrawerTitleProps) => {
   const viz = useVisualization();
-  const campaignHistory = useIsCampaignAnalysisEnabled();
   const filename = useSaveFilenameWith(`-${selectedViz}.csv`);
-  const colorRule = useBySaveView((state) => state.colorRule);
-  const bySave = bySaveVizs.includes(selectedViz as BySaveViz);
 
   return (
     <div className="flex items-center gap-2">
@@ -63,16 +55,6 @@ export const ChartDrawerTitle = ({
           </Button>
         </Select.Trigger>
         <Select.Content>
-          {campaignHistory && (
-            <Select.Group>
-              <Select.Label>By save</Select.Label>
-              {bySaveVizs.map((viz) => (
-                <Select.Item key={viz} value={viz}>
-                  {bySaveFigures[viz].title}
-                </Select.Item>
-              ))}
-            </Select.Group>
-          )}
           <Select.Group>
             <Select.Label>Charts</Select.Label>
             <Select.Item value="monthly-income">Monthly Income</Select.Item>
@@ -109,15 +91,6 @@ export const ChartDrawerTitle = ({
         </Select.Content>
       </Select>
       <CountryFilterButton />
-      {bySave && colorRule && (
-        <Badge
-          title="What the chart draws in front: the color rule at rest, or the followed and compared countries."
-          variant="ghost"
-          className="h-6 rounded-full border border-solid border-gray-300 px-2.5 text-xs font-normal whitespace-nowrap text-gray-600 dark:border-gray-600 dark:text-gray-300"
-        >
-          {colorRule}
-        </Badge>
-      )}
       <IconButton
         shape="square"
         icon={<TableCellsIcon className="h-4 w-4" />}

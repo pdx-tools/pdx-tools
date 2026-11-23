@@ -5,6 +5,7 @@ import type { CampaignAdapter } from "@/features/campaign/useCampaignNav";
 import type { OpenSave } from "@/features/campaign/types";
 import { parseDate } from "@/features/timeline/date";
 import { captureEu4Carry } from "./campaignCarry";
+import { Eu4CampaignWatch } from "./campaignWatch";
 import {
   useEu4Context,
   useEu4Meta,
@@ -14,7 +15,7 @@ import {
   useServerSaveFile,
 } from "./store";
 
-function useEu4OpenSave(): OpenSave | null {
+export function useEu4OpenSave(): OpenSave | null {
   // Use the save on screen while its replacement loads.
   const input = useEu4SaveInput();
   const fileVersion = useEu4FileVersion();
@@ -58,18 +59,13 @@ export function Eu4CampaignProvider({
     (): CampaignAdapter => ({
       completion: "after-navigation",
       captureCarry: async () => ({ game: "eu4", payload: await captureEu4Carry(store) }),
-      // Prevent the file watcher from restoring the previous save.
-      leave: async () => {
-        if (store.getState().watcher.status !== "idle") {
-          await store.getState().actions.stopWatcher();
-        }
-      },
     }),
     [store],
   );
 
   return (
     <CampaignProvider open={open} adapter={adapter} loadError={loadError}>
+      <Eu4CampaignWatch open={open} />
       {children}
     </CampaignProvider>
   );

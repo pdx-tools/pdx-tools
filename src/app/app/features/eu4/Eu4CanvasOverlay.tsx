@@ -11,20 +11,20 @@ import {
   useEu4Meta,
   useIsServerSaveFile,
   useSaveFilename,
-  useWatcher,
 } from "./store";
-import { WatchSideBarButton } from "./features/watch";
 import { useEngineActions } from "../engine";
 import { SideBarButton } from "./components/SideBarButton";
 import { MapModeImage } from "./components/map-modes/MapModeImage";
 import { MapModeButtonGroup } from "./components/map-modes";
-import { Tooltip } from "@/components/Tooltip";
 import ArrowUpTrayIcon from "@heroicons/react/24/outline/ArrowUpTrayIcon";
 import FlagIcon from "@heroicons/react/24/outline/FlagIcon";
+import BookOpenIcon from "@heroicons/react/24/outline/BookOpenIcon";
+import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
+import { CampaignSideBarButton } from "./features/campaign/CampaignSideBarButton";
+import { CAMPAIGN_SHEET_NAME } from "./features/campaign/name";
 import HomeIcon from "@heroicons/react/24/outline/HomeIcon";
 import InformationCircleIcon from "@heroicons/react/24/outline/InformationCircleIcon";
 import { ChartAreaIcon } from "@/components/icons/ChartAreaIcon";
-import { FileSyncIcon } from "@/components/icons/FileSyncIcon";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { Link as UnstyledLink, useLocation } from "react-router";
 
@@ -32,11 +32,11 @@ export const Eu4CanvasOverlay = () => {
   const serverFile = useIsServerSaveFile();
   const meta = useEu4Meta();
   const filename = useSaveFilename();
-  const watcher = useWatcher();
   const actions = useEngineActions();
   const mapMode = useEu4MapMode();
   const eu4Actions = useEu4Actions();
   const location = useLocation();
+  const campaignSheet = useIsCampaignAnalysisEnabled();
   useDocumentTitle(
     `${filename.replace(".eu4", "")} (${meta.date}) - EU4 (${
       meta.savegame_version.first
@@ -99,12 +99,13 @@ export const Eu4CanvasOverlay = () => {
           </CountrySideBarButton>
         </div>
 
-        {!serverFile ? (
+        {/* Watching needs a local file; the campaign's figures are behind the developer flag. */}
+        {campaignSheet || !serverFile ? (
           <div className="flex justify-end overflow-hidden whitespace-nowrap">
-            <WatchSideBarButton key="watch">
-              <span className="text-base">Watch save</span>
-              <FileSyncIcon className="h-8 w-8" />
-            </WatchSideBarButton>
+            <CampaignSideBarButton key="campaign">
+              <span className="text-base">{CAMPAIGN_SHEET_NAME}</span>
+              <BookOpenIcon className="h-8 w-8 stroke-2" />
+            </CampaignSideBarButton>
           </div>
         ) : null}
 
@@ -119,16 +120,6 @@ export const Eu4CanvasOverlay = () => {
           />
         </div>
       </div>
-      {watcher.status != "idle" ? (
-        <Tooltip>
-          <Tooltip.Trigger>
-            <div className="fixed top-0 left-0 touch-none border-2 border-solid border-black bg-gray-800 p-1 select-none">
-              <div className="h-[56px] w-[56px] rounded-full bg-teal-500"></div>
-            </div>
-          </Tooltip.Trigger>
-          <Tooltip.Content>Save watcher: {watcher.status}</Tooltip.Content>
-        </Tooltip>
-      ) : null}
       <ProvinceSelectListener />
       <SaveWarnings />
     </>

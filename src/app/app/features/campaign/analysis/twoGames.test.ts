@@ -93,6 +93,7 @@ function fakeStore(): AnalysisStore {
     },
     remove: () => memory(),
     query: () => ({ generation: 0, snapshotIds: [], outcome: { status: "stale" } }),
+    encoder: () => 257,
     snapshot: () => {
       throw Error("No snapshot");
     },

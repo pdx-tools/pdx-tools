@@ -11,6 +11,7 @@ export type Eu4Carry = {
   countryDrawerVisible: boolean;
   countryFilter: Eu4State["countryFilter"];
   charts: Eu4State["charts"];
+  campaignSheet: Eu4State["campaignSheet"];
   camera: MapCamera | null;
 };
 
@@ -22,6 +23,7 @@ export async function captureEu4Carry(store: Eu4Store): Promise<Eu4Carry> {
     countryDrawerVisible: state.countryDrawerVisible,
     countryFilter: state.countryFilter,
     charts: state.charts,
+    campaignSheet: state.campaignSheet,
     camera: await state.map.getCamera(),
   };
 }

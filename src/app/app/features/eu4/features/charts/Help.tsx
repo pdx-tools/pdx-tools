@@ -1,7 +1,6 @@
 import { Link } from "@/components/Link";
 import type { VizModules } from "../../types/visualizations";
 import { FinancialHelp } from "./FinancialHelp";
-import { BySaveHelp } from "./by-save/BySaveHelp";
 
 interface HelpProps {
   module: VizModules;
@@ -9,11 +8,6 @@ interface HelpProps {
 
 export const Help = ({ module }: HelpProps) => {
   switch (module) {
-    case "dev-by-save":
-    case "army-by-save":
-    case "manpower-by-save":
-    case "world-dev-by-save":
-      return <BySaveHelp viz={module} />;
     case "monthly-income": {
       return (
         <>

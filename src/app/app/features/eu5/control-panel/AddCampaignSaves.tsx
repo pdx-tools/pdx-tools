@@ -1,4 +1,5 @@
 import PlusIcon from "@heroicons/react/16/solid/PlusIcon";
+import { IMPORT_LIMIT } from "@/features/campaign/analysis/analyzeCampaign";
 import { useIsCampaignAnalysisEnabled } from "@/features/campaign/analysis/useIsCampaignAnalysisEnabled";
 import { saveProblemText } from "@/features/campaign/saveText";
 import { useAddCampaignSaves } from "@/features/campaign/useAddCampaignSaves";
@@ -67,7 +68,7 @@ export function AddCampaignSaves() {
             useHistory.getState().enableAnalysis(playthroughId);
             if (!enabled) return;
             // A retry ignores earlier attempts, but analyzed saves stay.
-            const pending = pendingCampaignAnalysis(entries, playthroughId, new Set());
+            const pending = pendingCampaignAnalysis(entries, playthroughId).slice(0, IMPORT_LIMIT);
             if (pending.length)
               void analyzeCampaign(pending, playthroughId).catch((error) =>
                 useHistory.setState({ issues: [String(error)] }),
