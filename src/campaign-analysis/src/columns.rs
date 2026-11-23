@@ -174,6 +174,11 @@ impl<'a> Decoder<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
     NotASnapshot,
+    /// A snapshot of a format or payload version that this build does not read.
+    Version {
+        format: u8,
+        version: u8,
+    },
     Table(crate::TableError),
     Column(ColumnError),
     Reference(ReferenceError),
@@ -196,6 +201,10 @@ impl fmt::Display for DecodeError {
             DecodeError::InColumn { column, source } => write!(f, "Column {column}: {source}"),
             DecodeError::InTable { table, source } => write!(f, "Table {table}: {source}"),
             DecodeError::NotASnapshot => write!(f, "The data is not a campaign snapshot"),
+            DecodeError::Version { format, version } => write!(
+                f,
+                "The campaign snapshot has format {format}, version {version}, which this version does not read"
+            ),
             DecodeError::Table(error) => write!(f, "Invalid table: {error}"),
             DecodeError::Column(error) => write!(f, "Invalid column: {error}"),
             DecodeError::Reference(error) => write!(f, "Invalid reference: {error}"),

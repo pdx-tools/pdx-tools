@@ -275,6 +275,20 @@ macro_rules! wasm_store {
                 $crate::wasm::ts($crate::wasm::memory(&self.session))
             }
 
+            /// Release these snapshots of `generation`, such as a save that
+            /// the campaign replaced with another save of its date.
+            pub fn remove(
+                &mut self,
+                generation: u32,
+                ids: Vec<String>,
+            ) -> Result<
+                $crate::wasm::__private::tsify::Ts<$crate::StoreMemory>,
+                $crate::wasm::__private::wasm_bindgen::JsError,
+            > {
+                self.session.remove(generation, &ids).map_err($crate::wasm::error)?;
+                $crate::wasm::ts($crate::wasm::memory(&self.session))
+            }
+
             pub fn query(
                 &self,
                 request: $crate::wasm::__private::tsify::Ts<AnalysisQueryRequest>,
@@ -297,6 +311,11 @@ macro_rules! wasm_store {
             > {
                 let snapshot = self.session.snapshot(id).map_err($crate::wasm::error)?;
                 $crate::wasm::ts(AnalysisSnapshot($crate::wasm::snapshot(snapshot)))
+            }
+
+            /// The version of the binary form that this build writes.
+            pub fn encoder(&self) -> u16 {
+                $crate::encoder::<$game>()
             }
 
             pub fn memory(

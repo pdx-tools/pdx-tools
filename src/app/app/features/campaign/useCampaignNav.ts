@@ -6,7 +6,8 @@ import { captureException } from "@/lib/captureException";
 import { isAbortError } from "@/lib/abortController";
 import { pdxApi } from "@/services/appApi";
 import { campaignKeyFor } from "./campaignKey";
-import { canOpen, mergeCampaignSaves } from "./campaignSaves";
+import { canOpen, mergeCampaign } from "./campaignSaves";
+import type { LeftOutSave } from "./campaignSaves";
 import { campaignTransitions } from "./transitions";
 import type { CampaignCarry, CampaignTransition, CampaignTransitions } from "./transitions";
 import { localSaveRegistry, localSaveInput } from "./localSaves";
@@ -25,8 +26,6 @@ import type {
 export type CampaignAdapter = {
   /** Capture view state before changing saves. */
   captureCarry: () => CampaignCarry | Promise<CampaignCarry>;
-  /** Stop background work that could restore the previous save. */
-  leave?: () => Promise<void>;
 } & (
   | {
       /** The step ends when preparation and navigation finish. */
@@ -45,6 +44,8 @@ export type CampaignAdapter = {
 export type CampaignNav = Readonly<{
   game: CampaignGame;
   saves: readonly CampaignSave[];
+  /** Saves of the campaign that `saves` leaves out, because another save has their date. */
+  leftOut: readonly LeftOutSave[];
   /** The index of the open save in `saves`. */
   openIndex: number;
   previous: CampaignSave | null;
@@ -151,11 +152,11 @@ export function useCampaignNav(
     for (const entry of pendingEntries) void registry.readIdentity(entry.id);
   }, [pendingEntries, registry]);
 
-  const saves = useMemo(
+  const { saves, leftOut } = useMemo(
     () =>
       open === null
-        ? []
-        : mergeCampaignSaves({
+        ? { saves: [], leftOut: [] }
+        : mergeCampaign({
             open,
             uploads: uploads.data?.saves ?? [],
             entries,
@@ -171,7 +172,6 @@ export function useCampaignNav(
   ): Promise<OpenFailure | null> => {
     const carry = requestedCarry ?? (await adapter.captureCarry());
     if (openPlaythroughId !== null) transition.preserveView(openPlaythroughId, carry);
-    await adapter.leave?.();
     if (adapter.completion === "before-navigation") {
       try {
         await adapter.prepare(target);
@@ -266,6 +266,7 @@ export function useCampaignNav(
     return {
       game,
       saves,
+      leftOut,
       openIndex,
       previous: openIndex < 0 ? null : (saves.slice(0, openIndex).findLast(canOpen) ?? null),
       next: openIndex < 0 ? null : (saves.slice(openIndex + 1).find(canOpen) ?? null),
@@ -275,5 +276,5 @@ export function useCampaignNav(
       opening,
       open: stableOpenSave,
     };
-  }, [game, saves, pending, otherCampaign, truncated, opening, stableOpenSave]);
+  }, [game, saves, leftOut, pending, otherCampaign, truncated, opening, stableOpenSave]);
 }

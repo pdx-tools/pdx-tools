@@ -14,9 +14,8 @@ import type {
   CountryTag,
 } from "../types/models";
 import { getEu4Worker } from "../worker/getEu4Worker";
-import type { EnhancedMeta, FileObservationFrequency, MapTimelapseItem } from "../worker/module";
+import type { EnhancedMeta, MapTimelapseItem } from "../worker/module";
 import type { TimelineData, TimelineKind } from "@/wasm/wasm_eu4";
-import { proxy } from "comlink";
 import { emitEvent } from "@/lib/events";
 import {
   addDays,
@@ -36,6 +35,11 @@ import type {
 } from "@/features/timeline/controller";
 import { log } from "@/lib/log";
 import type { Eu4Carry } from "../campaignCarry";
+import type { VizModules } from "../types/visualizations";
+import { figureOf } from "../features/campaign/figures";
+import type { FamilyId, FigureId } from "../features/campaign/figures";
+import { DEFAULT_MANA_VIEW } from "../features/campaign/mana";
+import type { ManaView } from "../features/campaign/mana";
 import type { FileVersion } from "@/features/campaign/types";
 import type { Eu4SaveInput } from "./useLoadEu4";
 
@@ -61,7 +65,7 @@ type Eu4StateProps = {
     countries: EnhancedCountryInfo[];
     defaultSelectedCountry: string;
     saveInfo: { kind: "sync"; data: string } | { kind: "async"; saveId: string };
-    /** Retain the original input for file watching. */
+    /** The file or upload that the save was read from. */
     input: Eu4SaveInput;
     fileVersion: FileVersion | null;
     initialPoliticalMapColors: Uint8Array;
@@ -80,6 +84,10 @@ type Eu4State = Eu4StateProps & {
   showMapModeBorders: boolean;
   selectedTag: string;
   countryDrawerVisible: boolean;
+  /** The world charts drawer. A campaign step keeps it. */
+  charts: ChartDrawer;
+  /** The campaign sheet: watching and every save of the campaign. A campaign step keeps it. */
+  campaignSheet: CampaignSheet;
   /**
    * The political timeline is read with the save; the others are read on
    * the first switch to their map mode. All three span the same dates.
@@ -94,11 +102,10 @@ type Eu4State = Eu4StateProps & {
   timelapse: TimelapseProgress;
   showOneTimeLineItems: boolean;
   prefereredValueFormat: "absolute" | "percent";
-  watcher: {
-    status: "idle" | "running" | "working";
-  };
   actions: {
     setCountryDrawer: (open: boolean) => void;
+    setCharts: (charts: Partial<ChartDrawer>) => void;
+    setCampaignSheet: (sheet: Partial<CampaignSheet>) => void;
     panToTag: (tag: string, offset?: number) => Promise<void>;
     nextMapMode: () => void;
     setMapMode: (mode: Eu4State["mapMode"]) => Promise<void>;
@@ -118,8 +125,6 @@ type Eu4State = Eu4StateProps & {
     toggleTimelinePlayback: () => void;
     recordTimelapse: (options: TimelapseOptions) => Promise<TimelapseFile | null>;
     stopTimelapse: () => void;
-    startWatcher: (frequency: FileObservationFrequency) => void;
-    stopWatcher: () => void;
     updateProvinceColors: (options?: { countryColors?: Uint8Array }) => Promise<void>;
     updateMap: (frame: MapTimelapseItem) => void;
     updateTagFilter: (matcher: Partial<CountryMatcher>) => Promise<void>;
@@ -132,6 +137,17 @@ type Eu4State = Eu4StateProps & {
     zoomIn: () => void;
     zoomOut: () => void;
   };
+};
+
+export type ChartDrawer = { open: boolean; viz: VizModules; expanded: boolean };
+export type CampaignSheet = {
+  open: boolean;
+  family: FamilyId;
+  /** The figure last chosen in each family. */
+  figures: Partial<Record<FamilyId, FigureId>>;
+  /** The Mana family's types, use and pool. */
+  mana: ManaView;
+  expanded: boolean;
 };
 
 export type Eu4Store = StoreApi<Eu4State>;
@@ -168,6 +184,14 @@ export const createEu4Store = async ({
     showCountryBorders: true,
     showMapModeBorders: false,
     countryDrawerVisible: false,
+    charts: { open: false, viz: "monthly-income", expanded: false } as ChartDrawer,
+    campaignSheet: {
+      open: false,
+      family: "development",
+      figures: {},
+      mana: DEFAULT_MANA_VIEW,
+      expanded: false,
+    } as CampaignSheet,
   } as const;
 
   const syncMapSettings = (state: Eu4State, options?: { draw?: boolean }) => {
@@ -235,6 +259,9 @@ export const createEu4Store = async ({
     ...(carry && {
       mapMode: carry.mapMode,
       countryDrawerVisible: carry.countryDrawerVisible && carriedTag !== null,
+      countryFilter: carry.countryFilter,
+      charts: carry.charts,
+      campaignSheet: carry.campaignSheet,
     }),
     timelines: { political: politicalTimeline },
     requestedDay: save.meta.total_days,
@@ -242,11 +269,10 @@ export const createEu4Store = async ({
     playback: "paused",
     locked: false,
     timelapse: { status: "idle", frame: 0, frames: 0 },
-    watcher: {
-      status: "idle",
-    },
     actions: {
       setCountryDrawer: (open: boolean) => set({ countryDrawerVisible: open }),
+      setCharts: (charts) => set({ charts: { ...get().charts, ...charts } }),
+      setCampaignSheet: (sheet) => set({ campaignSheet: { ...get().campaignSheet, ...sheet } }),
       panToTag: async (tag, offset?: number) => {
         const pos = await getEu4Worker().eu4MapPositionOf(tag);
         map.setScaleOfMax(0.5);
@@ -453,29 +479,6 @@ export const createEu4Store = async ({
       setPrefersPercents: (checked: boolean) =>
         set({ prefereredValueFormat: checked ? "percent" : "absolute" }),
       setShowOneTimeLineItems: (checked: boolean) => set({ showOneTimeLineItems: checked }),
-      startWatcher: (frequency: FileObservationFrequency) => {
-        emitEvent({ kind: "Save watching", frequency });
-        getEu4Worker().startFileObserver(
-          frequency,
-          proxy(async ({ meta, achievements, fileVersion }) => {
-            emitEvent({ kind: "Save parsed", game: "eu4", source: "watched" });
-            get().actions.updateSave({
-              meta,
-              achievements,
-              fileVersion,
-              countries: await getEu4Worker().eu4GetCountries(),
-            });
-          }),
-        );
-
-        set({ watcher: { ...get().watcher, status: "running" } });
-      },
-
-      stopWatcher: async () => {
-        await getEu4Worker().stopFileObserver();
-        set({ watcher: { ...get().watcher, status: "idle" } });
-      },
-
       updateTagFilter: async (matcher: Partial<CountryMatcher>) => {
         const newFilter = { ...get().countryFilter, ...matcher };
         set({ countryFilter: newFilter });
@@ -509,6 +512,8 @@ export const createEu4Store = async ({
           kinds.map(async (kind) => [kind, await worker.eu4GetTimeline(kind)] as const),
         );
         const political = loaded.find(([kind]) => kind === "political")?.[1] ?? politicalTimeline;
+        // A player who looks back keeps their date; a live view moves to the new end.
+        const live = get().requestedDay >= selectTotalDays(get());
         set({
           save: {
             ...get().save,
@@ -518,8 +523,9 @@ export const createEu4Store = async ({
             countries,
           },
           timelines: { ...Object.fromEntries(loaded), political },
-          requestedDay: meta.total_days,
-          mapDayOffset: meta.total_days,
+          // An earlier write, such as after a reload, ends before the kept date.
+          requestedDay: live ? meta.total_days : Math.min(get().requestedDay, meta.total_days),
+          mapDayOffset: live ? meta.total_days : Math.min(get().mapDayOffset, meta.total_days),
         });
 
         await get().actions.updateProvinceColors();
@@ -583,7 +589,11 @@ export const useTagFilter = () => useEu4Store((x) => x.countryFilter);
 export const useValueFormatPreference = () => useEu4Store((x) => x.prefereredValueFormat);
 export const useShowOnetimeLineItems = () => useEu4Store((x) => x.showOneTimeLineItems);
 export const useCountryDrawerVisible = () => useEu4Store((x) => x.countryDrawerVisible);
-export const useWatcher = () => useEu4Store((x) => x.watcher);
+export const useChartDrawer = () => useEu4Store((x) => x.charts);
+export const useCampaignSheet = () => useEu4Store((x) => x.campaignSheet);
+/** The figure that the campaign chart shows. */
+export const useCampaignFigure = () =>
+  useEu4Store((x) => figureOf(x.campaignSheet.family, x.campaignSheet.figures));
 export const useEu4Timeline = () => useEu4Store(selectTimeline);
 export const useEu4TimelineRequestedDay = () => useEu4Store((x) => x.requestedDay);
 export const useEu4TimelineMapDay = () => useEu4Store((x) => x.mapDayOffset);

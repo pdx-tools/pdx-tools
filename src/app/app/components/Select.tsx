@@ -87,8 +87,11 @@ Select.Label = SelectLabel;
 
 const SelectItem = React.forwardRef<
   React.ComponentRef<typeof SelectPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(function SelectItem({ className, children, ...props }, ref) {
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
+    /** Small text after the item's name, shown only in the list. */
+    hint?: string;
+  }
+>(function SelectItem({ className, children, hint, ...props }, ref) {
   return (
     <SelectPrimitive.Item
       ref={ref}
@@ -105,6 +108,11 @@ const SelectItem = React.forwardRef<
       </span>
 
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      {hint && (
+        <span className="ml-4 grow text-right text-xs text-gray-500 dark:text-gray-400">
+          {hint}
+        </span>
+      )}
     </SelectPrimitive.Item>
   );
 });

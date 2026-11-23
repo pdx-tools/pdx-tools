@@ -235,13 +235,13 @@ impl<G: Game> Store<G> {
                 duplicate: true,
             });
         }
+        // Saves of one date keep the order they came in.
         let at = self
             .snapshots
-            .partition_point(|snapshot| snapshot.descriptor.date_sort < descriptor.date_sort);
-        if self
-            .snapshots
-            .get(at)
-            .is_some_and(|snapshot| snapshot.descriptor.date_sort == descriptor.date_sort)
+            .partition_point(|snapshot| snapshot.descriptor.date_sort <= descriptor.date_sort);
+        if !G::BRANCHES
+            && at > 0
+            && self.snapshots[at - 1].descriptor.date_sort == descriptor.date_sort
         {
             return Err(AnalysisError::DateConflict {
                 date: descriptor.date,
@@ -292,6 +292,19 @@ impl<G: Game> Store<G> {
 
     pub fn clear(&mut self) {
         *self = Self::default();
+    }
+
+    /// Release the snapshots with these IDs, such as a save that the
+    /// campaign replaced with another save of its date. Shared key data
+    /// stays. Unknown IDs are ignored.
+    pub fn remove(&mut self, ids: &[String]) {
+        self.snapshots.retain(|snapshot| {
+            let keep = !ids.contains(&snapshot.descriptor.id);
+            if !keep {
+                self.bytes -= snapshot.payload.heap_bytes();
+            }
+            keep
+        });
     }
 
     pub fn memory(&self) -> StoreMemory {

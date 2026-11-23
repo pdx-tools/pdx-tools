@@ -65,7 +65,7 @@ beforeEach(() => {
   mocks.publish.mockClear();
   useHistory.setState({
     analysisEnabledCampaigns: [],
-    analysisPausedCampaigns: [],
+    pausedCampaigns: {},
     progress: null,
     issues: [],
     snapshots: [],
@@ -99,11 +99,11 @@ it("activates analysis only after the developer clicks Analyze campaign", () => 
 it("resumes a paused campaign through the existing importer", () => {
   useHistory.setState({
     analysisEnabledCampaigns: ["campaign"],
-    analysisPausedCampaigns: ["campaign"],
+    pausedCampaigns: { campaign: "stopped" },
   });
   expect(renderToStaticMarkup(<AddCampaignSaves />)).toContain("Resume import");
   mocks.actions[2]();
-  expect(useHistory.getState().analysisPausedCampaigns).toEqual([]);
+  expect(Object.keys(useHistory.getState().pausedCampaigns)).toEqual([]);
   expect(mocks.analyze).toHaveBeenCalledWith(expect.any(Array), "campaign");
 });
 

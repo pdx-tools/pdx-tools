@@ -6,13 +6,8 @@ export async function fetchData(save: Vic3SaveInput) {
   switch (save.kind) {
     case "handle": {
       const file = await save.file.getFile();
-      const lastModified = file.lastModified;
       const data = await file.arrayBuffer();
-      wasm.stash(new Uint8Array(data), {
-        kind: "handle",
-        file: save.file,
-        lastModified,
-      });
+      wasm.stash(new Uint8Array(data), { kind: "handle", file: save.file });
       return;
     }
     case "file": {

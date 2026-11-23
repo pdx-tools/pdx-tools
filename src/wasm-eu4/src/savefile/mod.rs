@@ -41,36 +41,29 @@ pub struct SaveFileImpl {
     pub province_owners: eu4save::query::ProvinceOwners,
     pub religion_lookup: eu4save::query::ReligionLookup,
     pub province_id_to_color_index: Vec<u16>,
+    /// Set when the save was read again from its file, for its analysis snapshot.
+    pub content_hash: Option<String>,
 }
 
 impl SaveFileImpl {
+    /// Replace the save with a new write of its file, unless the write
+    /// holds another campaign.
     pub fn reparse(
         &mut self,
-        frequency: FileObservationFrequency,
+        playthrough: &str,
         save_data: Vec<u8>,
     ) -> Result<Reparse, Eu4GameError> {
         let tokens = tokens::get_tokens();
-
-        let meta = eu4game::shared::parse_meta(&save_data, tokens)?;
-
-        let prev_date = self.query.save().meta.date;
-
-        let too_soon = Ok(Reparse::TooSoon { date: meta.date });
-        use FileObservationFrequency as FOF;
-        match frequency {
-            FOF::Daily if meta.date == prev_date => return too_soon,
-            FOF::Monthly
-                if meta.date.year() == prev_date.year()
-                    && meta.date.month() == prev_date.month() =>
-            {
-                return too_soon;
-            }
-            FOF::Yearly if meta.date.year() == prev_date.year() => return too_soon,
-            _ => {}
+        let out = Eu4Parser::new()
+            .with_hash(true)
+            .parse_with(&save_data, tokens)?;
+        let query = Query::from_save(out.save);
+        if playthrough_id(&query) != playthrough {
+            return Ok(Reparse::OtherCampaign);
         }
 
-        let save = Eu4Parser::new().parse_with(&save_data, tokens)?.save;
-        self.query = Query::from_save(save);
+        self.query = query;
+        self.content_hash = out.hash;
         self.province_owners = self.query.province_owners();
         self.nation_events = self.query.nation_events(&self.province_owners);
         self.player_histories = self.query.player_histories(&self.nation_events);
@@ -99,8 +92,24 @@ impl SaveFileImpl {
         payload: TagFilterPayloadRaw,
         limit: usize,
     ) -> HashSet<CountryTag> {
+        self.filter_stored_tags_where(payload, limit, |_| true)
+    }
+
+    /// The tags of the filter that `keep` accepts, at most `limit` of them.
+    fn filter_stored_tags_where(
+        &self,
+        payload: TagFilterPayloadRaw,
+        limit: usize,
+        keep: impl Fn(&CountryTag) -> bool + Copy,
+    ) -> HashSet<CountryTag> {
         let payload = TagFilterPayload::from(payload);
-        let tags = self.matching_tags(&payload);
+        let matching = |payload: &TagFilterPayload| -> HashSet<CountryTag> {
+            self.matching_tags(payload)
+                .into_iter()
+                .filter(keep)
+                .collect()
+        };
+        let tags = matching(&payload);
         if tags.len() > limit {
             let ai = if self.player_histories.len() == 1 {
                 AiTagsState::Great
@@ -108,23 +117,21 @@ impl SaveFileImpl {
                 AiTagsState::None
             };
 
-            let ntags: HashSet<CountryTag> =
-                self.matching_tags(&TagFilterPayload { ai, ..payload });
+            let ntags = matching(&TagFilterPayload { ai, ..payload });
 
             let inter: HashSet<CountryTag> = tags.intersection(&ntags).cloned().collect();
             if inter.is_empty() {
-                tags.into_iter()
-                    .enumerate()
-                    .filter(|(i, _x)| *i < limit)
-                    .map(|(_i, x)| x)
-                    .collect()
+                // Sorted, so each call keeps the same tags.
+                let mut tags: Vec<_> = tags.into_iter().collect();
+                tags.sort_unstable();
+                tags.into_iter().take(limit).collect()
             } else {
                 inter
             }
         } else if payload.ai == AiTagsState::Alive && self.player_histories.len() == 1 {
             // If there are fewer AI alive than the limit, we should consider
             // past greats to the AI that is alive
-            self.matching_tags(&TagFilterPayload {
+            matching(&TagFilterPayload {
                 ai: AiTagsState::Great,
                 ..payload
             })
@@ -1044,6 +1051,24 @@ impl SaveFileImpl {
             .collect()
     }
 
+    /// The countries of a campaign chart: the tags of the filter, up to the
+    /// limit, and the generated tags that the chart leaves out.
+    pub fn chart_countries(
+        &self,
+        payload: TagFilterPayloadRaw,
+        limit: usize,
+    ) -> eu4game::analysis::ChartCountries {
+        use eu4game::analysis::is_generated_tag;
+        // The generated tags that the other charts show for this filter.
+        let left_out = self
+            .filter_stored_tags(payload.clone(), limit)
+            .into_iter()
+            .filter(is_generated_tag);
+        // The limit counts only the tags that the chart keeps.
+        let tags = self.filter_stored_tags_where(payload, limit, |tag| !is_generated_tag(tag));
+        eu4game::analysis::chart_countries(tags.into_iter().chain(left_out))
+    }
+
     pub fn get_health(&self, payload: TagFilterPayloadRaw) -> HealthData {
         struct CountryHealthDatum {
             tag: CountryTag,
@@ -1070,13 +1095,6 @@ impl SaveFileImpl {
         }
 
         impl CountryHealthDatum {
-            fn force_strength(&self) -> f32 {
-                self.armed_forces.infantry_units.strength
-                    + self.armed_forces.cavalry_units.strength
-                    + self.armed_forces.artillery_units.strength
-                    + self.armed_forces.mercenary_units.strength
-            }
-
             fn ships(&self) -> usize {
                 self.armed_forces.heavy_ship_units
                     + self.armed_forces.light_ship_units
@@ -1172,7 +1190,7 @@ impl SaveFileImpl {
 
         let max_force_strength = countries
             .iter()
-            .map(|x| x.force_strength())
+            .map(|x| x.armed_forces.army_size)
             .fold(0., f32::max);
 
         let max_max_manpower = countries
@@ -1228,7 +1246,7 @@ impl SaveFileImpl {
                 let tech_total = (country.technology.adm_tech
                     + country.technology.dip_tech
                     + country.technology.mil_tech) as f32;
-                let standard_regiments = country.force_strength();
+                let standard_regiments = country.armed_forces.army_size;
                 let ships = country.ships() as f32;
                 CountryHealth {
                     tag: country.tag,
@@ -2201,20 +2219,6 @@ impl SaveFileImpl {
             defenders: result.defenders,
             battles,
         })
-    }
-
-    pub fn monitoring_data(&self) -> Monitor {
-        let players: HashSet<_> = self.all_players().drain(..).collect();
-        let country_data = players
-            .iter()
-            .filter_map(|x| self.query.save_country(x))
-            .map(|c| self.get_country_details(c))
-            .collect();
-
-        Monitor {
-            date: self.query.save().meta.date,
-            countries: country_data,
-        }
     }
 }
 

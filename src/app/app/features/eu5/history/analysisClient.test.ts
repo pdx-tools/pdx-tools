@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   pauseAnalysis: vi.fn(),
   setState: vi.fn(),
   workers: [] as Worker[],
-  state: { snapshots: [] as { campaignId: string }[], analysisPausedCampaigns: [] as string[] },
+  state: {
+    snapshots: [] as { campaignId: string }[],
+    pausedCampaigns: {} as Record<string, string>,
+  },
 }));
 vi.mock("comlink", () => ({ wrap: () => mocks.api, transfer: (value: unknown) => value }));
 vi.mock("@/lib/sentryWorker", () => ({ trackWorker: () => () => {} }));
@@ -25,7 +28,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
   mocks.workers = [];
-  mocks.state = { snapshots: [], analysisPausedCampaigns: [] };
+  mocks.state = { snapshots: [], pausedCampaigns: {} };
   vi.stubGlobal(
     "Worker",
     class extends EventTarget {
@@ -52,5 +55,5 @@ it("pauses the claimed campaign when the worker fails", async () => {
   eu5Analysis.claim("a");
   eu5Analysis.remote();
   mocks.workers[0].dispatchEvent(new Event("error"));
-  expect(mocks.pauseAnalysis).toHaveBeenCalledExactlyOnceWith("a");
+  expect(mocks.pauseAnalysis).toHaveBeenCalledExactlyOnceWith("a", "failed");
 });

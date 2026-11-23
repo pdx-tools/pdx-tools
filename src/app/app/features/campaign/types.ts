@@ -120,3 +120,32 @@ export type CampaignSave = Readonly<{
   membership: Membership;
   problem: LocalSaveProblem | null;
 }>;
+
+/** Why the browser has the figures of a save but no file to open. */
+export type FiguresOnlyReason =
+  /** A watched state on the game's current path. */
+  | "writtenOver"
+  /** A watched state that the game left when it went back. */
+  | "otherBranch"
+  /** A save whose file this tab does not have. */
+  | "notOpen";
+
+/**
+ * A save whose figures the campaign analysis kept, but whose file this tab
+ * cannot open, such as a watched state that the game wrote over. It is
+ * never a `CampaignSave`, so navigation cannot open it.
+ */
+export type FiguresOnlySave = Readonly<{
+  key: string;
+  date: DateComponents;
+  name: string;
+  isOpen: false;
+  source: Readonly<{ kind: "figures"; snapshotId: string; reason: FiguresOnlyReason }>;
+}>;
+
+/** A save of the campaign chart: one that opens, or one with figures only. */
+export type ChartedSave = CampaignSave | FiguresOnlySave;
+
+export function isFiguresOnly(save: ChartedSave): save is FiguresOnlySave {
+  return save.source.kind === "figures";
+}

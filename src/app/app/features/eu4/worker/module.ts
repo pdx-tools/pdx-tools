@@ -227,6 +227,11 @@ export function eu4GetProvinces(filter: CountryMatcher) {
   return wasm.save.get_provinces(filter);
 }
 
+/** The countries of a campaign chart for a filter, at most `limit` of them before pairing. */
+export function eu4ChartCountries(filter: CountryMatcher, limit: number) {
+  return wasm.save.chart_countries(filter, limit);
+}
+
 export function eu4GetHealth(filter: CountryMatcher): HealthData {
   return wasm.save.get_health(filter);
 }
@@ -336,18 +341,6 @@ export function eu4GetWarInfo(war: string) {
     defenderParticipants: raw.defenders.members.map((x) => ({
       ...x,
       losses: expandLosses(x.losses),
-    })),
-  };
-}
-
-export type MonitorData = ReturnType<typeof eu4MonitoringData>;
-export function eu4MonitoringData() {
-  const result = wasm.save.monitoring_data();
-  return {
-    ...result,
-    countries: result.countries.map(({ armed_forces, ...rest }) => ({
-      ...rest,
-      ...armed_forces,
     })),
   };
 }

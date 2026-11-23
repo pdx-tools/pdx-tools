@@ -22,6 +22,19 @@ describe("import lease", () => {
     next.release();
   });
 
+  it("tells a refused import when the running one ends", async () => {
+    const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 100 });
+    await admission.idle();
+    const lease = admission.acquireImport();
+    let idle = false;
+    const waiting = admission.idle().then(() => (idle = true));
+    await Promise.resolve();
+    expect(idle).toBe(false);
+    lease.release();
+    await waiting;
+    expect(idle).toBe(true);
+  });
+
   it("fits parsers next to the resident data of the session", () => {
     const admission = new AnalysisAdmission({ residentBytes: 100, parserBytes: 100 });
     const lease = admission.acquireImport();

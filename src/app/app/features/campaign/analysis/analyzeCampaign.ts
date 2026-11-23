@@ -9,6 +9,7 @@ import {
 } from "@/features/campaign/analysis/sources";
 import type { LocalSaveEntry } from "@/features/campaign/localSaves";
 import { fileVersion } from "@/features/campaign/types";
+import { withoutKey } from "./analysisState";
 import type { AnalysisHistory } from "./analysisState";
 import type { SnapshotDescriptor } from "./descriptor";
 import type { ImportPhaseState } from "./importTiming";
@@ -16,20 +17,61 @@ import type { ImportPhaseState } from "./importTiming";
 /** The parts of a game that analyze its campaign saves. */
 export type CampaignAnalyzer<Api, R, D extends SnapshotDescriptor> = {
   history: AnalysisHistory<D>;
-  analysis: AnalysisSink<R, D> & { claim: (campaignId: string) => void };
+  analysis: AnalysisSink<R, D> & {
+    claim: (campaignId: string) => void;
+    remove: (ids: string[]) => Promise<void>;
+  };
   parser: ParserAdapter<Api, R>;
+  /**
+   * Download an uploaded save from the endpoint that the viewer reads, as a
+   * file that the parser accepts.
+   */
+  download?: (upload: CampaignUpload, signal: AbortSignal) => Promise<File>;
+  /**
+   * Release the snapshot of a file's earlier version, such as of a rolling
+   * autosave, once no save is bound to it. A game that shows every snapshot
+   * keeps them.
+   */
+  releaseEarlierVersions?: boolean;
 };
 
-/** Analyze local campaign entries without opening a save or controlling navigation. */
+/** The most saves that one import reads. */
+export const IMPORT_LIMIT = 1000;
+
+/** An uploaded save of the campaign. */
+export type CampaignUpload = { saveId: string; name: string };
+
+/** The uploads that download at a time. The bytes of each go when its parse ends. */
+const UPLOAD_BATCH = 4;
+
+/**
+ * Analyze local campaign entries, then uploads, without opening a save or
+ * controlling navigation.
+ */
 export function campaignAnalyzer<
   Api,
   R extends { descriptor: SnapshotDescriptor },
   D extends SnapshotDescriptor,
->({ history, analysis, parser }: CampaignAnalyzer<Api, R, D>) {
-  return async function analyzeCampaign(entries: LocalSaveEntry[], playthroughId: string) {
+>({
+  history,
+  analysis,
+  parser,
+  download,
+  releaseEarlierVersions = false,
+}: CampaignAnalyzer<Api, R, D>) {
+  return async function analyzeCampaign(
+    entries: LocalSaveEntry[],
+    playthroughId: string,
+    uploads: readonly CampaignUpload[] = [],
+    /** Snapshots to release first, such as those of a date whose save was replaced. */
+    replace: readonly string[] = [],
+  ) {
     if (!playthroughId) throw Error("This save has no campaign identity.");
-    if (!entries.length) throw Error("Add local saves to analyze this campaign.");
-    if (entries.length > 1000) throw Error("Analyze at most 1000 saves at a time.");
+    if (!entries.length && !uploads.length && !replace.length)
+      throw Error("Add local saves to analyze this campaign.");
+    if (entries.length + uploads.length > IMPORT_LIMIT)
+      throw Error(`Analyze at most ${IMPORT_LIMIT} saves at a time.`);
+    if (uploads.length && !download) throw Error("This game cannot analyze uploads.");
     // One import runs in the tab, for all games.
     const lease = analysisAdmission().acquireImport();
     analysis.claim(playthroughId);
@@ -39,8 +81,8 @@ export function campaignAnalyzer<
     const startedAt = performance.now();
     const issues: string[] = [];
     history.setState((state) => ({
-      analysisPausedCampaigns: state.analysisPausedCampaigns.filter((id) => id !== playthroughId),
-      progress: { completed: 0, total: entries.length, startedAt },
+      pausedCampaigns: withoutKey(state.pausedCampaigns, playthroughId),
+      progress: { completed: 0, total: entries.length + uploads.length, startedAt },
       analyzingEntryIds: [],
       issues: [],
       cancel: () => {
@@ -56,7 +98,112 @@ export function campaignAnalyzer<
         failedSources: { ...state.failedSources, [entry.id]: { version, error } },
       }));
     };
+    const recordUpload = (saveId: string, reason: "download" | "read", error: string) =>
+      history.setState((state) => ({
+        uploads: { ...state.uploads, [saveId]: { kind: "failed", reason, error } },
+      }));
+
+    // The snapshots of earlier versions of the files that this import read.
+    const superseded = new Set<string>();
+    /** Release the snapshots that no save is bound to anymore. Nothing shows them. */
+    const reclaim = async (ids: ReadonlySet<string>) => {
+      const state = history.getState();
+      const bound = new Set([
+        // Watched writes stay: the game wrote over their files. Kept points stay too.
+        ...Object.entries(state.points).flatMap(([id, x]) =>
+          x.session !== null || x.kept ? [id] : [],
+        ),
+        ...Object.values(state.sources).map((x) => x.snapshotId),
+        ...Object.values(state.uploads).flatMap((x) => (x.kind === "ready" ? [x.snapshotId] : [])),
+      ]);
+      const unbound = state.snapshots
+        .map((snapshot) => snapshot.id)
+        .filter((id) => ids.has(id) && !bound.has(id));
+      // A stopped import still releases them, but a later session has none of them.
+      if (!unbound.length || session.aborted) return;
+      await analysis.remove(unbound);
+      history.getState().forget(unbound);
+    };
+
+    /** Download a few uploads, parse them, and drop their bytes before the next ones. */
+    const analyzeUploads = async (
+      uploads: readonly CampaignUpload[],
+      before: number,
+      download: NonNullable<CampaignAnalyzer<Api, R, D>["download"]>,
+    ) => {
+      const issues: string[] = [];
+      let completed = 0;
+      const total = before + uploads.length;
+      const progress = (fileName: string, downloading: boolean) =>
+        history.setState({
+          progress: { completed: before + completed, total, startedAt, fileName, downloading },
+        });
+      for (let i = 0; i < uploads.length && !signal.aborted; i += UPLOAD_BATCH) {
+        const batch = uploads.slice(i, i + UPLOAD_BATCH);
+        history.setState({ analyzingUploadIds: batch.map((x) => x.saveId) });
+        progress(batch[0].name, true);
+        const downloaded = await Promise.all(
+          batch.map(async (upload) => {
+            try {
+              return { upload, file: await download(upload, signal) };
+            } catch (error) {
+              if (signal.aborted) return null;
+              completed++;
+              issues.push(`Could not download ${upload.name}: ${String(error)}`);
+              recordUpload(upload.saveId, "download", String(error));
+              return null;
+            }
+          }),
+        );
+        if (signal.aborted) break;
+        const files = downloaded.filter((x) => x !== null);
+        const uploadOf = new Map(files.map(({ upload, file }) => [file, upload]));
+        const result = await importBatch(
+          files.map((x) => x.file),
+          parser,
+          analysis,
+          {
+            signal,
+            lease,
+            onFileComplete: (completion) => {
+              const upload = uploadOf.get(completion.file)!;
+              if ("descriptor" in completion) {
+                const { descriptor } = completion;
+                history.getState().add([descriptor], {}, { [upload.saveId]: descriptor.id });
+              } else if (completion.status === "failed") {
+                recordUpload(upload.saveId, "read", completion.error);
+              }
+            },
+            onProgress: ({ fileName }) => {
+              completed++;
+              progress(fileName, false);
+            },
+            refuseOutput: ({ descriptor }) =>
+              descriptor.campaignId === playthroughId
+                ? null
+                : "belongs to another campaign; not analyzed with this campaign.",
+          },
+        );
+        issues.push(...result.failures.map(({ fileName, error }) => `${fileName}: ${error}`));
+        if (result.memoryFull) {
+          const refused = result.outcomes.refused + result.outcomes.unprocessed;
+          issues.push(
+            `${result.memoryFull} ${refused === 1 ? "1 upload was" : `${refused} uploads were`} not analyzed.`,
+          );
+          history.getState().pauseAnalysis(playthroughId, "full");
+          break;
+        }
+      }
+      return issues;
+    };
+
     try {
+      // The import lease is the right to change the stored snapshots.
+      if (replace.length) {
+        signal.throwIfAborted();
+        await analysis.remove([...replace]);
+        history.getState().forget(replace);
+      }
       const { sources, failures } = await readSources(entries, signal).catch((error) => {
         if (signal.aborted) return { sources: [], failures: [] };
         throw error;
@@ -89,9 +236,17 @@ export function campaignAnalyzer<
             const { file } = completion;
             if ("descriptor" in completion) {
               const { descriptor } = completion;
-              history
-                .getState()
-                .add([descriptor], associateSources(sourcesOf(file), file, descriptor));
+              const associations = associateSources(sourcesOf(file), file, descriptor);
+              const before = history.getState().sources;
+              for (const id of Object.keys(associations)) {
+                const previous = before[id]?.snapshotId;
+                if (releaseEarlierVersions && previous && previous !== descriptor.id)
+                  superseded.add(previous);
+              }
+              // A file that changed while it was parsed gives a snapshot no save is bound to.
+              if (releaseEarlierVersions && !Object.keys(associations).length)
+                superseded.add(descriptor.id);
+              history.getState().add([descriptor], associations);
             } else if (completion.status === "failed" && !otherCampaign.has(file)) {
               for (const { entry } of sourcesOf(file)) recordFailure(entry, completion.error, file);
             }
@@ -116,7 +271,7 @@ export function campaignAnalyzer<
               history.setState({
                 progress: {
                   completed: completed + unavailable,
-                  total: total + unavailable,
+                  total: total + unavailable + uploads.length,
                   startedAt,
                   fileName,
                   phase,
@@ -147,15 +302,21 @@ export function campaignAnalyzer<
           `${result.memoryFull} ${saves} not analyzed. Clear the campaign analysis to analyze other saves.`,
         );
         // Do not parse more saves that cannot fit.
-        history.getState().pauseAnalysis(playthroughId);
+        history.getState().pauseAnalysis(playthroughId, "full");
+      } else if (download && uploads.length) {
+        // The uploads can need the memory of the released snapshots.
+        await reclaim(superseded);
+        issues.push(...(await analyzeUploads(uploads, entries.length, download)));
       }
     } catch (error) {
       if (!signal.aborted) issues.push(String(error));
     } finally {
+      await reclaim(superseded).catch((error) => issues.push(String(error)));
       lease.release();
       history.setState((state) => ({
         progress: null,
         analyzingEntryIds: [],
+        ...(uploads.length && { analyzingUploadIds: [] }),
         cancel: null,
         issues: signal.aborted ? [...new Set([...state.issues, ...issues])] : issues,
       }));

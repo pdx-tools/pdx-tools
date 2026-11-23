@@ -1,3 +1,4 @@
+use crate::SaveFile;
 use campaign_analysis::wasm_store;
 use eu4game::analysis::{Eu4Analysis, Eu4Answer, Eu4Detail, Eu4Query};
 use eu4game::shared::Eu4Parser;
@@ -23,6 +24,22 @@ pub fn parse_analysis(data: Vec<u8>) -> Result<Ts<AnalysisSnapshot>, JsError> {
     let observation = eu4game::analysis::extract(&Query::from_save(out.save), content_hash)
         .map_err(campaign_analysis::wasm::error)?;
     AnalysisSnapshot::observation(&observation)
+}
+
+#[wasm_bindgen]
+impl SaveFile {
+    /// The campaign analysis snapshot of a save that was read again from its
+    /// file, from the parse that the viewer already did.
+    pub fn analysis_snapshot(&self) -> Result<Ts<AnalysisSnapshot>, JsError> {
+        let content_hash = self
+            .0
+            .content_hash
+            .clone()
+            .ok_or_else(|| JsError::new("The save has no content hash"))?;
+        let observation = eu4game::analysis::extract(&self.0.query, content_hash)
+            .map_err(campaign_analysis::wasm::error)?;
+        AnalysisSnapshot::observation(&observation)
+    }
 }
 
 wasm_store! {

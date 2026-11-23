@@ -44,7 +44,7 @@ pub use query::{
 };
 pub use registry::Registry;
 pub use session::Session;
-pub use snapshot::Observation;
+pub use snapshot::{Observation, encoder};
 pub use store::{AnalysisError, AnalysisErrorName, Appended, Snapshot, Store, StoreMemory};
 pub use table::{
     BoundRows, BoundSelectionRows, Column, IndexId, IndexRegistry, KeyError, KeyOrder, MapOrder,
@@ -61,6 +61,26 @@ pub trait Game: Sized + 'static {
     const GAME: &'static str;
     /// The kinds of data in the payload, such as "observations" or "map".
     const ARTIFACTS: &'static [&'static str];
+    /// True when saves of one date can be kept together, such as states of
+    /// two branches of the campaign after the game went back.
+    const BRANCHES: bool = false;
+    /// The version of the payload's binary form. Raise it when the columns
+    /// change, and keep reading the versions before it in `decode_payload`.
+    const PAYLOAD_VERSION: u8 = 1;
+
+    /// Read a payload of a version that this build wrote or still reads,
+    /// in the snapshot format that was read.
+    fn decode_payload(
+        format: u8,
+        version: u8,
+        input: &mut Decoder<'_>,
+    ) -> Result<Self::Payload, DecodeError> {
+        if version == Self::PAYLOAD_VERSION {
+            Self::Payload::decode(input)
+        } else {
+            Err(DecodeError::Version { format, version })
+        }
+    }
     /// The descriptor fields of this game: a struct with named fields, as
     /// JavaScript reads them next to the common fields. A game without
     /// fields uses an empty struct.
@@ -536,6 +556,27 @@ mod tests {
     }
 
     #[test]
+    fn a_removed_snapshot_frees_its_date_and_its_columns() {
+        let mut session = session();
+        let before = session.memory();
+        let stale = snapshot_id("test", "b");
+        let other = observation(descriptor("other", 14100101, "[42]"), &[42]).encode();
+        assert!(matches!(
+            session.append(0, &other, usize::MAX).unwrap_err(),
+            AnalysisError::DateConflict { .. }
+        ));
+        assert_eq!(
+            session.remove(1, std::slice::from_ref(&stale)).unwrap_err(),
+            AnalysisError::Stale
+        );
+        session.remove(0, std::slice::from_ref(&stale)).unwrap();
+        session.snapshot(&stale).unwrap_err();
+        assert!(session.memory().buffer_bytes < before.buffer_bytes);
+        session.append(0, &other, usize::MAX).unwrap();
+        assert_eq!(session.memory(), before);
+    }
+
+    #[test]
     fn clear_releases_everything() {
         let mut session = session();
         session.clear(1);
@@ -574,5 +615,19 @@ mod tests {
         store.append(next, 0).unwrap_err();
         assert_eq!(store.memory(), before);
         assert_eq!(VALIDATIONS.with(std::cell::Cell::get), count);
+    }
+
+    #[test]
+    fn a_snapshot_of_an_unknown_version_is_refused_by_name() {
+        let mut bytes = observation(descriptor("v", 15000101, "map"), &[42]).encode();
+        Observation::<TestGame>::decode(&bytes).unwrap();
+        bytes[5] = 9;
+        assert!(matches!(
+            Observation::<TestGame>::decode(&bytes).unwrap_err(),
+            AnalysisError::Decode(DecodeError::Version {
+                format: 1,
+                version: 9
+            })
+        ));
     }
 }

@@ -35,6 +35,7 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+pdx-save-codec = { workspace = true, features = ["zstd_rust"] }
 campaign-analysis = { workspace = true }
 attohttpc = { workspace = true }
 sha1_smol = { workspace = true }
