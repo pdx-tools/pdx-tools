@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "arena-serde"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "arena-serde-derive",
  "bumpalo",
@@ -187,7 +187,7 @@ dependencies = [
 [[package]]
 name = "arena-serde-derive"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -588,7 +588,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "jomini",
  "serde",
@@ -1095,17 +1095,17 @@ version = "0.1.0"
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "flate2",
  "jomini",
  "rawzip",
- "ruzstd",
  "serde",
  "specta",
  "thiserror 2.0.18",
  "tsify",
  "wasm-bindgen",
+ "zrip",
  "zstd",
 ]
 
@@ -1164,7 +1164,7 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "arena-serde",
  "bumpalo",
@@ -1617,7 +1617,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "jomini",
  "serde",
@@ -1879,7 +1879,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "jomini",
  "serde",
@@ -2035,18 +2035,18 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.38.1"
+version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59e83c12e7fd3a731919882639bf35936a7917a828e6597d78ab0a3c6c6aa28f"
+checksum = "8d784acae093b765c1d8512a1bf59153289f371588ef786027e06454304cc9d5"
 dependencies = [
  "fearless_simd",
  "flate2",
  "itoa",
  "jomini_derive",
  "rawzip",
- "ruzstd",
  "serde",
  "serde_json",
+ "zrip",
  "zstd",
 ]
 
@@ -4756,7 +4756,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vic3save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "getrandom 0.3.4",
  "jomini",
@@ -5987,6 +5987,43 @@ name = "zmij"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
+
+[[package]]
+name = "zrip"
+version = "0.8.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4e6e42015358c525cdd20b7e110ac8f25838efacfe89a4f5890b9c464a6c270"
+dependencies = [
+ "zrip-core",
+ "zrip-decode",
+ "zrip-encode",
+]
+
+[[package]]
+name = "zrip-core"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47a015d2504d12688520bc7ba375a08ded1c1838795e21d2a0c12a4312614152"
+
+[[package]]
+name = "zrip-decode"
+version = "0.8.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58d8a5160431444760787034d0c732ba1bf2a9925364aa4f7497bfee76f51c3f"
+dependencies = [
+ "fearless_simd",
+ "zrip-core",
+]
+
+[[package]]
+name = "zrip-encode"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aaf5071da1730bd45ba87479d223a27215cab35371334f5533e7fb94ad0fc07"
+dependencies = [
+ "fearless_simd",
+ "zrip-core",
+]
 
 [[package]]
 name = "zstd"

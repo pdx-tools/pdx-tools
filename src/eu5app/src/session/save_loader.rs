@@ -212,17 +212,17 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
             .map_err(Eu5LoadError::StringLookup)?;
 
         let mut path_buf = Vec::new();
-        let track = arena_serde::tracked::Track::new_with(&mut path_buf);
+        let mut track = arena_serde::tracked::Track::new_with(&mut path_buf);
 
         let game = match Self::gamestate_reader(&self.archive, &mut self.observer)? {
             GamestateReader::Text(mut x) => {
                 let mut deser = text_deserializer(&mut x);
-                let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &track);
+                let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &mut track);
                 Gamestate::deserialize_in_arena(tracked, &self.arena)
             }
             GamestateReader::Binary(x) => {
                 let mut deser = GamestateReader::binary_deserializer(x, &resolver);
-                let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &track);
+                let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &mut track);
                 Gamestate::deserialize_in_arena(tracked, &self.arena)
             }
         };

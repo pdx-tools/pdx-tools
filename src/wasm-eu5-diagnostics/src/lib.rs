@@ -38,7 +38,7 @@ fn diagnose_save_impl(save: web_sys::Blob) -> Result<(), String> {
 
     let arena = bumpalo::Bump::with_capacity(100 * 1024 * 1024);
     let mut path_buf = Vec::new();
-    let track = arena_serde::tracked::Track::new_with(&mut path_buf);
+    let mut track = arena_serde::tracked::Track::new_with(&mut path_buf);
 
     // An uploaded save is a Zstd stream of a text save. Read it through the
     // debug text reader, which decodes the stream as it parses.
@@ -48,7 +48,7 @@ fn diagnose_save_impl(save: web_sys::Blob) -> Result<(), String> {
         let file = eu5save::Eu5DebugFile::from_reader(decoder)
             .map_err(|error| format!("Unable to parse save file: {error}"))?;
         let mut deserializer = TextDeserializer::from_reader(file, Utf8Encoding::new());
-        let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &track);
+        let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &mut track);
         Gamestate::deserialize_in_arena(tracked, &arena)
     } else {
         let file = eu5save::Eu5File::from_reader_at(save, size)
@@ -62,12 +62,14 @@ fn diagnose_save_impl(save: web_sys::Blob) -> Result<(), String> {
         match game_content {
             eu5save::SaveContentKind::Text(mut content) => {
                 let mut deserializer = content.deserializer();
-                let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &track);
+                let tracked =
+                    arena_serde::tracked::Deserializer::new(&mut deserializer, &mut track);
                 Gamestate::deserialize_in_arena(tracked, &arena)
             }
             eu5save::SaveContentKind::Binary(mut content) => {
                 let mut deserializer = content.deserializer(&resolver);
-                let tracked = arena_serde::tracked::Deserializer::new(&mut deserializer, &track);
+                let tracked =
+                    arena_serde::tracked::Deserializer::new(&mut deserializer, &mut track);
                 Gamestate::deserialize_in_arena(tracked, &arena)
             }
         }
