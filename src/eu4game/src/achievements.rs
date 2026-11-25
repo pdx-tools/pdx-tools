@@ -734,9 +734,23 @@ impl<'a> AchievementHunter<'a> {
         let desc = "started as Byzantium";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "BYZ";
-        let desc = "currently Byzantium";
-        result.and(AchievementCondition::new(playing, desc));
+        if self.patch >= (1, 36) {
+            let playing = self.tag == "BYZ" || self.tag == "ROM";
+            let desc = "currently Byzantium or the Roman Empire";
+            result.and(AchievementCondition::new(playing, desc));
+
+            let submitted = self
+                .country
+                .flags
+                .iter()
+                .any(|(flag, _)| flag == "byz_dishonoring_justinian");
+            let desc = "has never submitted to become the Latin Empire";
+            result.and(AchievementCondition::new(!submitted, desc));
+        } else {
+            let playing = self.tag == "BYZ";
+            let desc = "currently Byzantium";
+            result.and(AchievementCondition::new(playing, desc));
+        }
 
         let has_all_provinces = if result.completed() {
             [
