@@ -2035,9 +2035,10 @@ impl<'a> AchievementHunter<'a> {
         let mut result = AchievementResult::new(118);
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
+        result.and(self.has_not_switched_nation());
 
-        let playing = self.tag == "PER";
-        let desc = "currently Persia";
+        let playing = self.tag == "PER" || (self.patch >= (1, 36) && self.tag == "ERS");
+        let desc = "currently Persia or Eranshahr";
         result.and(AchievementCondition::new(playing, desc));
 
         let has_all_provinces = if result.completed() {
