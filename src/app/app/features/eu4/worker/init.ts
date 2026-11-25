@@ -1,40 +1,122 @@
 import { fileVersion, toPlaythroughId } from "@/features/campaign/types";
-import type { FileVersion } from "@/features/campaign/types";
+import type { FileVersion, LocalSaveRef } from "@/features/campaign/types";
+import { sha256 } from "@/lib/sha256";
 import { timeSync } from "@/lib/timeit";
 import type { AchievementsScore } from "../types/models";
 import { wasm } from "./common";
 import type * as mod from "@/wasm/wasm_eu4";
 import { fetchOk } from "@/lib/fetch";
 import type { Eu4SaveInput } from "../store";
-import { captureException } from "@/lib/captureException";
 import { resetTimelineCursor } from "./timeline";
 
 export const initializeWasm = wasm.initializeModule;
-export async function fetchData(save: Eu4SaveInput) {
-  switch (save.kind) {
-    case "handle": {
-      const file = await save.file.getFile();
-      const lastModified = file.lastModified;
-      const data = await file.arrayBuffer();
-      wasm.stash(new Uint8Array(data), {
-        kind: "handle",
-        file: save.file,
-        lastModified,
-      });
-      return fileVersion(file);
-    }
-    case "file": {
-      const data = await save.file.arrayBuffer();
-      wasm.stash(new Uint8Array(data), { kind: "file", file: save.file });
-      return fileVersion(save.file);
-    }
-    case "server": {
-      const url = `/api/saves/${save.saveId}/file`;
-      const data = await fetchOk(url).then((x) => x.arrayBuffer());
-      wasm.stash(new Uint8Array(data), { kind: "remote", url });
-      return null;
-    }
+/** Changes when the worker gets another save, so that a late call has no effect. */
+let generation = 0;
+
+export type ParsedSource = {
+  fileVersion: FileVersion | null;
+  /** The SHA-256 of the bytes. */
+  hash: string | null;
+  generation: number;
+};
+
+/** A page that is not secure has no hashes, and no kept saves. */
+const hashOf = async (data: Uint8Array<ArrayBuffer>) =>
+  isSecureContext ? await sha256(data) : null;
+
+async function readRef(ref: LocalSaveRef) {
+  const file = ref.kind === "handle" ? await ref.file.getFile() : ref.file;
+  const data = new Uint8Array(await file.arrayBuffer());
+  return { file, data, hash: await hashOf(data) };
+}
+
+async function readInput(save: Eu4SaveInput) {
+  if (save.kind !== "server") {
+    const { file, ...read } = await readRef(save);
+    return { ...read, origin: save, version: fileVersion(file) };
   }
+  const url = `/api/saves/${save.saveId}/file`;
+  const data = new Uint8Array(await (await fetchOk(url)).arrayBuffer());
+  return {
+    data,
+    hash: await hashOf(data),
+    origin: { kind: "remote", url } as const,
+    version: null,
+  };
+}
+
+let lastFetch = 0;
+
+export async function fetchData(save: Eu4SaveInput): Promise<ParsedSource> {
+  const fetch = ++lastFetch;
+  const { data, hash, origin, version } = await readInput(save);
+  // A load that a newer one replaced can end its read last.
+  if (fetch !== lastFetch) throw new DOMException("Another save was opened", "AbortError");
+  wasm.stash(data, origin, hash);
+  generation += 1;
+  return { fileVersion: version, hash, generation };
+}
+
+/** The open save that a call is about. */
+export type OpenSource = Pick<ParsedSource, "hash" | "generation">;
+
+const isOpen = (open: OpenSource) => open.generation === generation && open.hash === wasm.hash;
+
+/** Read the open save from a copy from now on, when the copy has the parsed bytes. */
+export async function rebind(open: OpenSource, ref: LocalSaveRef): Promise<boolean> {
+  const { hash } = await readRef(ref);
+  if (hash !== open.hash || !isOpen(open)) return false;
+  wasm.restash(ref, hash);
+  return true;
+}
+
+export type LiveUpdate =
+  | ({ kind: "updated"; meta: EnhancedMeta; achievements: AchievementsScore } & ParsedSource)
+  /** The save needs other game data, so it must be opened. */
+  | { kind: "other-version" }
+  /** Another save was opened, or the file is not the expected one. */
+  | { kind: "stale" };
+
+/** Parse a later save of the campaign over the open one. A failure leaves the open save. */
+export async function reparse(
+  open: OpenSource,
+  ref: LocalSaveRef,
+  expected: string,
+): Promise<LiveUpdate> {
+  const { file, data, hash } = await readRef(ref);
+  if (hash !== expected || !isOpen(open)) return { kind: "stale" };
+  const { first, second } = wasm.save.get_meta_raw().savegame_version;
+  const next = wasm.module.parse_meta(data).savegame_version;
+  if (next.first !== first || next.second !== second) return { kind: "other-version" };
+
+  timeSync("reparsed save", () => wasm.save.reparse(data));
+  // The old cursor points into the save that was just replaced.
+  resetTimelineCursor();
+  wasm.restash(ref, hash);
+  generation += 1;
+  return {
+    kind: "updated",
+    meta: getMeta(wasm.save),
+    achievements: wasm.save.get_achievements(),
+    fileVersion: fileVersion(file),
+    hash,
+    generation,
+  };
+}
+
+function checkOpen(open: OpenSource): void {
+  if (!isOpen(open)) throw new Error("Another save was opened. Try again when it shows.");
+}
+
+/** The bytes of the save that the caller shows. */
+export async function getRawData(open: OpenSource) {
+  checkOpen(open);
+  return wasm.viewData();
+}
+
+export async function melt(open: OpenSource) {
+  checkOpen(open);
+  return wasm.melt();
 }
 
 export function eu4GameParse(gameData: Uint8Array, provinceIdToColorIndex: Uint16Array) {
@@ -102,49 +184,4 @@ function eu4DefaultSelectedTag(meta: EnhancedMeta): string {
   }
 
   throw new Error("unable to determine default selected country");
-}
-
-export function supportsFileObserver() {
-  return wasm.supportsFileObserver();
-}
-
-export type FileObservationFrequency = Parameters<typeof wasm.save.reparse>[0];
-let observer: ReturnType<(typeof wasm)["startFileObserver"]>;
-export function startFileObserver<T>(
-  frequency: FileObservationFrequency,
-  cb: (save: {
-    meta: EnhancedMeta;
-    achievements: AchievementsScore;
-    fileVersion: FileVersion;
-  }) => T,
-) {
-  observer = wasm.startFileObserver((data, file) => {
-    try {
-      const reparse = timeSync(
-        (result) =>
-          result.kind === "tooSoon"
-            ? `save date too soon to update: ${result.date}`
-            : "reparsed save",
-        () => wasm.save.reparse(frequency, data),
-      );
-      if (reparse.kind === "tooSoon") {
-        return;
-      }
-
-      // The old cursor points into the save that was just replaced.
-      resetTimelineCursor();
-      const achievements = wasm.save.get_achievements();
-      cb({
-        meta: getMeta(wasm.save),
-        achievements,
-        fileVersion: fileVersion(file),
-      });
-    } catch (ex) {
-      captureException(ex, { tags: { msg: "file-watcher" } });
-    }
-  });
-}
-
-export function stopFileObserver() {
-  observer.stopObserver();
 }

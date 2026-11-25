@@ -3,7 +3,13 @@ import type { SaveGameInput } from "@/features/engine/engineStore";
 import type { Eu5SaveInput } from "./types";
 import { initialEu5SessionSnapshot } from "./eu5SessionState";
 import type { Eu5SessionSnapshot } from "./eu5SessionState";
-import { findEu5Session, getEu5Session, stepEu5Session, terminateEu5Session } from "./eu5Session";
+import {
+  findEu5Session,
+  getEu5Session,
+  rebindEu5Session,
+  stepEu5Session,
+  terminateEu5Session,
+} from "./eu5Session";
 import { terminateCurrentAnalysis } from "@/features/engine/analysisLifecycle";
 import { campaignTransitions } from "@/features/campaign/transitions";
 import { toPlaythroughId } from "@/features/campaign/types";
@@ -273,5 +279,111 @@ describe("EU5 campaign transitions", () => {
     terminateEu5Session();
     await rejection;
     loading.resolve(game(save("next")));
+  });
+
+  const local = (text: string) =>
+    ({ kind: "file", file: new File([text], `${text}.eu5`) }) satisfies Eu5SaveInput;
+
+  it("goes back to the copied bytes when the player cancels, without an error", async () => {
+    const previous = local("previous");
+    const session = await openSession(previous);
+    const loading = Promise.withResolvers<ReturnType<typeof game>>();
+    mocks.load.mockReturnValueOnce(loading.promise);
+    const controller = new AbortController();
+    const step = stepEu5Session(local("next"), { signal: controller.signal });
+    const rejection = expect(step).rejects.toMatchObject({ name: "AbortError" });
+    await vi.waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(1));
+    // The game writes over the file, and the player goes back.
+    vi.spyOn(previous.file, "arrayBuffer").mockRejectedValue(
+      new DOMException("The file changed", "NotReadableError"),
+    );
+    const next = game(local("next"));
+    controller.abort(new DOMException("Back", "AbortError"));
+    loading.resolve(next);
+    await rejection;
+
+    expect(next.release).toHaveBeenCalledOnce();
+    expect(shownInput(session)).toBe(previous);
+    const { save: reloaded } = mocks.load.mock.lastCall![0];
+    expect(await reloaded.file.text()).toBe("previous");
+    await stepEu5Session(local("other"));
+  });
+
+  it("does not release a save that it could not restore for a follow", async () => {
+    const previous = local("previous");
+    const session = await openSession(previous);
+    vi.spyOn(previous.file, "arrayBuffer").mockRejectedValue(
+      new DOMException("The file changed", "NotReadableError"),
+    );
+    await expect(stepEu5Session(local("next"), { isWanted: () => true })).rejects.toThrow(
+      "changed",
+    );
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(session.getSnapshot()).toMatchObject({ status: "success", stepping: false });
+    // A player can still choose the save.
+    await stepEu5Session(local("next"));
+    expect(mocks.load).toHaveBeenCalledOnce();
+  });
+
+  it.each(["before the read", "carry", "show"])("goes back when cancelled at %s", async (at) => {
+    const previous = local("previous");
+    const session = await openSession(previous);
+    const controller = new AbortController();
+    const abort = () => controller.abort(new DOMException("Back", "AbortError"));
+    const next = local("next");
+    if (at === "before the read") abort();
+    const transition = campaignTransitions.begin("next")!;
+    if (at === "carry") {
+      transition.preserveView(toPlaythroughId("campaign")!, {
+        game: "eu5",
+        payload: {
+          mapMode: "markets",
+          viewport: null,
+          selection: null,
+          insightPanel: { open: false, width: 640 },
+        },
+      });
+      mocks.applyCarry.mockImplementationOnce(async () => abort());
+    }
+    if (at === "show")
+      mocks.load.mockResolvedValueOnce(
+        game(
+          next,
+          vi.fn(async () => abort()),
+        ),
+      );
+    const step = stepEu5Session(next, { signal: controller.signal });
+    await expect(step).rejects.toMatchObject({ name: "AbortError" });
+    transition.cancel();
+    expect(shownInput(session)).toBe(previous);
+    expect(session.getSnapshot()).toMatchObject({ status: "success", stepping: false });
+  });
+
+  it("does not open a follow that is not wanted after the read", async () => {
+    const session = await openSession(local("previous"));
+    const step = stepEu5Session(local("next"), { isWanted: () => false });
+    await expect(step).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(session.getSnapshot()).toMatchObject({ stepping: false });
+  });
+
+  it("points every holder at the copy, and not while a step loads", async () => {
+    const previous = local("previous");
+    const session = await openSession(previous);
+    const copy = local("copy");
+    expect(rebindEu5Session(local("other"), copy, copy)).toBe(false);
+    expect(rebindEu5Session(previous, copy, copy)).toBe(true);
+    expect(shownInput(session)).toBe(copy);
+    expect(findEu5Session(copy)).toBe(session);
+    expect(findEu5Session(previous)).toBeNull();
+
+    const loading = Promise.withResolvers<ReturnType<typeof game>>();
+    mocks.load.mockReturnValueOnce(loading.promise);
+    const next = local("next");
+    const step = stepEu5Session(next);
+    await vi.waitFor(() => expect(mocks.load).toHaveBeenCalledOnce());
+    expect(rebindEu5Session(copy, previous, previous)).toBe(false);
+    loading.resolve(game(next));
+    await step;
   });
 });

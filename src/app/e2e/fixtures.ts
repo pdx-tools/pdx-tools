@@ -69,6 +69,6 @@ export function campaignDate(page: Page) {
 }
 
 /** Click the visible icon because closed side panel labels are clipped. */
-export async function clickSideBar(page: Page, name: string) {
-  await page.getByRole("button", { name, exact: true }).locator("svg").click();
+export async function clickSideBar(page: Page, name: string | RegExp) {
+  await page.getByRole("button", { name, exact: true }).locator("svg").first().click();
 }

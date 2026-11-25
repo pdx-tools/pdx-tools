@@ -54,6 +54,9 @@ const target: CampaignSave = {
   isOpen: false,
   membership: "same",
   problem: null,
+  kept: null,
+  hash: null,
+  writtenAt: null,
   source: { kind: "upload", saveId: "next", uploaderId: null, userName: "" },
 };
 const carry: CampaignCarry = {
@@ -67,9 +70,16 @@ const carry: CampaignCarry = {
 };
 const captureCarry: CampaignAdapter["captureCarry"] = () => carry;
 
-const beforeNavigation = (prepare: NonNullable<CampaignAdapter["prepare"]>): CampaignAdapter => ({
-  completion: "before-navigation",
+const base: Omit<CampaignAdapter, "completion" | "prepare"> = {
   captureCarry,
+  adopt: async () => false,
+  isWorking: () => false,
+  country: async () => ({ flag: null, name: null }),
+};
+const afterNavigation: CampaignAdapter = { ...base, completion: "after-navigation" };
+const beforeNavigation = (prepare: NonNullable<CampaignAdapter["prepare"]>): CampaignAdapter => ({
+  ...base,
+  completion: "before-navigation",
   prepare,
 });
 
@@ -136,7 +146,7 @@ describe("campaign navigation", () => {
   });
 
   it("keeps the reservation for a game that loads after navigation", async () => {
-    const nav = renderNav({ completion: "after-navigation", captureCarry });
+    const nav = renderNav(afterNavigation);
     expect(await nav.open(target)).toEqual({ kind: "navigated" });
     expect(await nav.open(target)).toEqual({ kind: "busy" });
   });
@@ -144,7 +154,7 @@ describe("campaign navigation", () => {
   it("reports unexpected navigation errors and releases the reservation", async () => {
     const error = new Error("Unexpected router failure");
     mocks.navigate.mockRejectedValueOnce(error);
-    const nav = renderNav({ completion: "after-navigation", captureCarry });
+    const nav = renderNav(afterNavigation);
     expect(await nav.open(target)).toEqual({ kind: "failed", failure: { kind: "unavailable" } });
     expect(mocks.capture).toHaveBeenCalledOnce();
     expect(mocks.capture).toHaveBeenCalledWith(error, { tags: { msg: "campaign-open" } });
@@ -244,7 +254,7 @@ describe("campaign navigation", () => {
 
   it("allows another step and starts fresh after a save fails to load", async () => {
     const playthroughId = toPlaythroughId("campaign")!;
-    const nav = renderNav({ completion: "after-navigation", captureCarry });
+    const nav = renderNav(afterNavigation);
     expect(await nav.open(target)).toEqual({ kind: "navigated" });
     expect(await nav.open(target)).toEqual({ kind: "busy" });
     transitions.failed();

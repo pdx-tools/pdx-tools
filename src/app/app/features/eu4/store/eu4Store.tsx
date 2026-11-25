@@ -14,9 +14,8 @@ import type {
   CountryTag,
 } from "../types/models";
 import { getEu4Worker } from "../worker/getEu4Worker";
-import type { EnhancedMeta, FileObservationFrequency, MapTimelapseItem } from "../worker/module";
+import type { EnhancedMeta, MapTimelapseItem, ParsedSource } from "../worker/module";
 import type { TimelineData, TimelineKind } from "@/wasm/wasm_eu4";
-import { proxy } from "comlink";
 import { emitEvent } from "@/lib/events";
 import {
   addDays,
@@ -36,7 +35,8 @@ import type {
 } from "@/features/timeline/controller";
 import { log } from "@/lib/log";
 import type { Eu4Carry } from "../campaignCarry";
-import type { FileVersion } from "@/features/campaign/types";
+import { localSaveName } from "@/features/campaign/types";
+import type { FileVersion, LocalSaveRef } from "@/features/campaign/types";
 import type { Eu4SaveInput } from "./useLoadEu4";
 
 export const emptyEu4CountryFilter: CountryMatcher = {
@@ -61,9 +61,8 @@ type Eu4StateProps = {
     countries: EnhancedCountryInfo[];
     defaultSelectedCountry: string;
     saveInfo: { kind: "sync"; data: string } | { kind: "async"; saveId: string };
-    /** Retain the original input for file watching. */
     input: Eu4SaveInput;
-    fileVersion: FileVersion | null;
+    source: ParsedSource;
     initialPoliticalMapColors: Uint8Array;
   };
   map: MapController;
@@ -94,9 +93,6 @@ type Eu4State = Eu4StateProps & {
   timelapse: TimelapseProgress;
   showOneTimeLineItems: boolean;
   prefereredValueFormat: "absolute" | "percent";
-  watcher: {
-    status: "idle" | "running" | "working";
-  };
   actions: {
     setCountryDrawer: (open: boolean) => void;
     panToTag: (tag: string, offset?: number) => Promise<void>;
@@ -118,8 +114,6 @@ type Eu4State = Eu4StateProps & {
     toggleTimelinePlayback: () => void;
     recordTimelapse: (options: TimelapseOptions) => Promise<TimelapseFile | null>;
     stopTimelapse: () => void;
-    startWatcher: (frequency: FileObservationFrequency) => void;
-    stopWatcher: () => void;
     updateProvinceColors: (options?: { countryColors?: Uint8Array }) => Promise<void>;
     updateMap: (frame: MapTimelapseItem) => void;
     updateTagFilter: (matcher: Partial<CountryMatcher>) => Promise<void>;
@@ -127,8 +121,11 @@ type Eu4State = Eu4StateProps & {
       meta: EnhancedMeta;
       achievements: AchievementsScore;
       countries: EnhancedCountryInfo[];
-      fileVersion: FileVersion | null;
+      input: LocalSaveRef;
+      source: ParsedSource;
     }) => Promise<void>;
+    /** Point the save at a copy of the same bytes. */
+    replaceInput: (input: LocalSaveRef, version: FileVersion) => void;
     zoomIn: () => void;
     zoomOut: () => void;
   };
@@ -242,9 +239,6 @@ export const createEu4Store = async ({
     playback: "paused",
     locked: false,
     timelapse: { status: "idle", frame: 0, frames: 0 },
-    watcher: {
-      status: "idle",
-    },
     actions: {
       setCountryDrawer: (open: boolean) => set({ countryDrawerVisible: open }),
       panToTag: async (tag, offset?: number) => {
@@ -453,29 +447,6 @@ export const createEu4Store = async ({
       setPrefersPercents: (checked: boolean) =>
         set({ prefereredValueFormat: checked ? "percent" : "absolute" }),
       setShowOneTimeLineItems: (checked: boolean) => set({ showOneTimeLineItems: checked }),
-      startWatcher: (frequency: FileObservationFrequency) => {
-        emitEvent({ kind: "Save watching", frequency });
-        getEu4Worker().startFileObserver(
-          frequency,
-          proxy(async ({ meta, achievements, fileVersion }) => {
-            emitEvent({ kind: "Save parsed", game: "eu4", source: "watched" });
-            get().actions.updateSave({
-              meta,
-              achievements,
-              fileVersion,
-              countries: await getEu4Worker().eu4GetCountries(),
-            });
-          }),
-        );
-
-        set({ watcher: { ...get().watcher, status: "running" } });
-      },
-
-      stopWatcher: async () => {
-        await getEu4Worker().stopFileObserver();
-        set({ watcher: { ...get().watcher, status: "idle" } });
-      },
-
       updateTagFilter: async (matcher: Partial<CountryMatcher>) => {
         const newFilter = { ...get().countryFilter, ...matcher };
         set({ countryFilter: newFilter });
@@ -501,7 +472,7 @@ export const createEu4Store = async ({
           country: frame.country,
         });
       },
-      async updateSave({ meta, achievements, countries, fileVersion }) {
+      async updateSave({ meta, achievements, countries, input, source }) {
         // The worker dropped its cursor with the reparse. Re-read only the
         // timelines that have been read before; the rest load on demand.
         const kinds = Object.keys(get().timelines) as TimelineKind[];
@@ -512,7 +483,9 @@ export const createEu4Store = async ({
         set({
           save: {
             ...get().save,
-            fileVersion,
+            input,
+            source,
+            saveInfo: { kind: "sync", data: localSaveName(input) },
             meta,
             achievements,
             countries,
@@ -524,6 +497,10 @@ export const createEu4Store = async ({
 
         await get().actions.updateProvinceColors();
         get().map.redrawMap();
+      },
+      replaceInput: (input, fileVersion) => {
+        const { save } = get();
+        set({ save: { ...save, input, source: { ...save.source, fileVersion } } });
       },
       zoomIn: () => {
         get().map.zoomIn();
@@ -575,7 +552,7 @@ export const selectShowCountryBorders = (x: Eu4State) =>
 export const useShowMapModeBorders = () => useEu4Store((x) => x.showMapModeBorders);
 export const usePaintSubjectInOverlordHue = () => useEu4Store((x) => x.paintSubjectInOverlordHue);
 export const useEu4Meta = () => useEu4Store((x) => x.save.meta);
-export const useEu4FileVersion = () => useEu4Store((x) => x.save.fileVersion);
+export const useEu4ParsedSource = () => useEu4Store((x) => x.save.source);
 export const useEu4SaveInput = () => useEu4Store((x) => x.save.input);
 export const useAchievements = () => useEu4Store((x) => x.save.achievements);
 export const useSelectedTag = () => useEu4Store((x) => x.selectedTag);
@@ -583,7 +560,6 @@ export const useTagFilter = () => useEu4Store((x) => x.countryFilter);
 export const useValueFormatPreference = () => useEu4Store((x) => x.prefereredValueFormat);
 export const useShowOnetimeLineItems = () => useEu4Store((x) => x.showOneTimeLineItems);
 export const useCountryDrawerVisible = () => useEu4Store((x) => x.countryDrawerVisible);
-export const useWatcher = () => useEu4Store((x) => x.watcher);
 export const useEu4Timeline = () => useEu4Store(selectTimeline);
 export const useEu4TimelineRequestedDay = () => useEu4Store((x) => x.requestedDay);
 export const useEu4TimelineMapDay = () => useEu4Store((x) => x.mapDayOffset);

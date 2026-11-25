@@ -1,4 +1,4 @@
-use pdx_save_codec::{Compression, ContentType, compress, download};
+use pdx_save_codec::{Compression, ContentType, Integrity, check, compress, download};
 use rawzip::CompressionMethod;
 use std::io::{Read, Write};
 
@@ -170,4 +170,87 @@ fn test_progress_reports_end_at_one() {
 fn test_download_passes_through_deflate_zip() {
     let data = deflate_zip(b"EU5txt\n", &[("gamestate", b"state"), ("meta", b"meta")]);
     assert_eq!(download(data.clone()).unwrap(), data);
+}
+
+#[test]
+fn check_zip_saves() {
+    let entries: &[(&str, &[u8])] = &[("meta", b"EU4bin meta"), ("gamestate", &[7u8; 50_000])];
+    for prelude in [&b""[..], b"SAV0103aaaaaaaa00000000\n"] {
+        let zip = deflate_zip(prelude, entries);
+        assert_eq!(check(&zip), Integrity::Complete);
+        let transcoded = compress(zip.clone()).unwrap();
+        assert_eq!(check(&transcoded), Integrity::Complete);
+        for len in [prelude.len() + 30, zip.len() / 2, zip.len() - 1] {
+            assert_eq!(check(&zip[..len]), Integrity::Incomplete, "len {len}");
+        }
+
+        // The directory is whole, but the game wrote only some of an entry.
+        let mut damaged = zip.clone();
+        let at = prelude.len() + 70;
+        damaged[at..at + 8].fill(0);
+        assert_eq!(check(&damaged), Integrity::Incomplete);
+    }
+}
+
+#[test]
+fn check_zstd_streams() {
+    let data: Vec<u8> = (0..200_000u32).flat_map(|x| x.to_le_bytes()).collect();
+    let stream = compress(data).unwrap();
+    assert_eq!(check(&stream), Integrity::Complete);
+    assert_eq!(check(&stream[..stream.len() / 2]), Integrity::Incomplete);
+}
+
+#[test]
+fn check_plain_saves() {
+    use Integrity::*;
+    let cases: &[(&[u8], Integrity)] = &[
+        (b"EU4txt\ndate=1444.11.11\nchecksum=\"abc\"\n", Complete),
+        (b"EU4txt\na={\n\tname=\"{ \\\" {\"\n}\n", Complete),
+        (b"EU4txt\na={\n}\n}\n", Complete),
+        (b"EU4txt\ncountries={\n\tSWE={\n", Incomplete),
+        // Cut after a value and after a block inside an open block.
+        (b"EU4txt\ncountries={\n\tname=\"abc\"", Incomplete),
+        (b"EU4txt\ncountries={\n\tSWE={\n\t}", Incomplete),
+        (b"EU4txt\nname=\"abc\"", Incomplete),
+        (b"SAV01004da2282500000002\nmetadata={\n}\n", Complete),
+        (
+            b"SAV01004da2282500000002\nmetadata={\n\tdate=13",
+            Incomplete,
+        ),
+        // The header promises more metadata than there is.
+        (b"SAV01004da228250004e772\nmetadata={\n}\n", Incomplete),
+        (b"EU4bin\x2d\x28\x01\x00\x03\x00\x04\x00", Complete),
+        (b"EU4bin\x2d\x28\x01\x00\x03\x00", Incomplete),
+        (b"EU4bin\x2d\x28\x01\x00\x0c\x00\x01", Incomplete),
+        (b"SAV01014da2282500000002\n\x2d\x28", Complete),
+        (b"SAV01014da2282500000002\n\x01", Incomplete),
+        (b"SAV01014da228250004e772\n\x2d\x28", Incomplete),
+        (b"SAV01034da2282500000002\n\x01\x02", Incomplete),
+        (b"a text file", Unsupported),
+        (b"", Unsupported),
+    ];
+    for (data, expected) in cases {
+        assert_eq!(
+            check(data),
+            *expected,
+            "{:?}",
+            data.escape_ascii().to_string()
+        );
+    }
+}
+
+#[test]
+fn check_fixture_zip() {
+    let data = include_bytes!("test.zip");
+    assert_eq!(check(data), Integrity::Complete);
+}
+
+#[test]
+fn check_unsupported_method() {
+    let mut data = deflate_zip(b"", &[("meta", b"EU4bin meta")]);
+    assert_eq!(check(&data), Integrity::Complete);
+    let directory = data.windows(4).position(|x| x == b"PK\x01\x02").unwrap();
+    data[8] = 99;
+    data[directory + 10] = 99;
+    assert_eq!(check(&data), Integrity::Unsupported);
 }

@@ -2,6 +2,10 @@ import { useLayoutEffect, useRef } from "react";
 import { cx } from "class-variance-authority";
 import { GameButton, Kbd } from "@/components/game";
 import { formatLongDate } from "@/features/timeline/date";
+import { KeptSaveMenu } from "@/features/keptSaves/KeptSaveMenu";
+import { KeptSaveNotes, WatchHint } from "@/features/keptSaves/KeptSaveNotes";
+import { useKept } from "@/features/keptSaves/keptStore";
+import { KeptSavesLink } from "@/features/keptSaves/WatchPopover";
 import { openCampaignSave } from "./openSave";
 import type { CampaignNav } from "./useCampaignNav";
 import { otherCampaignText, saveProblemText, saveSourceText } from "./saveText";
@@ -19,6 +23,7 @@ export function SaveList({
   onOpen: () => void;
   className?: string;
 }) {
+  const hasKept = useKept((state) => !!state.saves?.length || nav.game in state.watches);
   // Keep the initial scroll position stable as file metadata arrives.
   const listRef = useRef<HTMLUListElement>(null);
   useLayoutEffect(() => {
@@ -32,10 +37,11 @@ export function SaveList({
           <SaveRow key={save.key} nav={nav} save={save} onOpen={onOpen} />
         ))}
       </ul>
-      <p className="flex items-center gap-1 border-t border-game-line px-3 py-2 text-game-small text-game-ink-500">
+      <p className="flex items-center gap-1 border-t border-game-line px-3 py-2 text-xs text-game-ink-500">
         <Kbd>[</Kbd>
         <Kbd>]</Kbd>
-        <span className="ml-0.5">previous and next save</span>
+        <span className="mr-auto ml-0.5">previous and next save</span>
+        {hasKept && <KeptSavesLink />}
       </p>
     </>
   );
@@ -60,17 +66,20 @@ function SaveRow({
         <p className="font-game-num text-[13px] leading-tight text-game-ink-100 tabular-nums">
           {formatLongDate(save.date)}
         </p>
-        <p className="mt-1 truncate text-[12px] leading-tight text-game-ink-300">{save.name}</p>
-        <p className="mt-0.5 text-game-small leading-tight text-game-ink-500">
-          {saveSourceText(save)}
-        </p>
+        <p className="mt-1 text-xs leading-tight break-words text-game-ink-300">{save.name}</p>
+        {save.kept !== null ? (
+          <KeptSaveNotes save={save} saves={nav.saves} kept={save.kept} />
+        ) : (
+          <p className="mt-0.5 text-xs leading-tight text-game-ink-500">{saveSourceText(save)}</p>
+        )}
         {save.problem !== null && (
-          <p className="mt-1.5 text-game-small leading-[1.4] text-game-warn">
+          <p className="mt-1.5 text-xs leading-[1.4] text-game-warn">
             {saveProblemText(save.problem)}
           </p>
         )}
+        {save.problem?.kind === "moved" && <WatchHint game={nav.game} />}
         {save.membership === "different" && (
-          <p className="mt-1.5 text-game-small leading-[1.4] text-game-warn">{otherCampaignText}</p>
+          <p className="mt-1.5 text-xs leading-[1.4] text-game-warn">{otherCampaignText}</p>
         )}
       </div>
       {save.isOpen ? (
@@ -79,7 +88,6 @@ function SaveRow({
         </span>
       ) : (
         <GameButton
-          variant="commit"
           className="shrink-0"
           disabled={nav.opening !== null}
           onClick={async () => {
@@ -89,6 +97,15 @@ function SaveRow({
         >
           {opening ? "Opening" : "Open save"}
         </GameButton>
+      )}
+      {save.kept !== null && (
+        <KeptSaveMenu
+          save={save.kept}
+          isOpen={save.isOpen}
+          surface="game"
+          onDialog={onOpen}
+          className="-mr-1.5"
+        />
       )}
     </li>
   );

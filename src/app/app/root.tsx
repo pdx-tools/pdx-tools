@@ -22,6 +22,7 @@ import {
 } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/account";
 import { useHomeSaveScope } from "@/features/engine";
+import { KeptSavesRoot } from "@/features/keptSaves/KeptSavesRoot";
 import { Tooltip } from "@/components/Tooltip";
 import { Toaster } from "@/components/Toaster";
 import { usePageViewEvents } from "@/hooks/usePageViewEvents";
@@ -152,6 +153,7 @@ export default function App() {
         <SessionProvider>
           <Tooltip.Provider delayDuration={300}>
             <Toaster />
+            <KeptSavesRoot />
             <Outlet />
           </Tooltip.Provider>
         </SessionProvider>

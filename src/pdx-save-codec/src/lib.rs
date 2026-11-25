@@ -349,3 +349,174 @@ pub fn download_with_progress(
         }
     }
 }
+
+/// Whether a file holds a whole save.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Integrity {
+    Complete,
+    /// The file ends early or its content is damaged, such as a file that the
+    /// game still writes.
+    Incomplete,
+    /// The file is not a save in a known format.
+    Unsupported,
+}
+
+/// Checks that a save of any format that the viewers open is whole.
+///
+/// - Each entry of a zip archive is decoded and its size and CRC are compared
+///   with the central directory.
+/// - A Zstd stream is decoded to its end.
+/// - Plain text must close its blocks and end as the games end it.
+/// - Plain binary must lex to its end with its blocks closed.
+///
+/// Plain data that stops between two top-level fields cannot be told from a
+/// whole save, so it counts as complete.
+pub fn check(data: &[u8]) -> Integrity {
+    if pdx_zstd::is_zstd_compressed(data) {
+        let decoded = pdx_zstd::copy_decode(data, &mut std::io::sink());
+        return Integrity::from_complete(decoded.is_ok());
+    }
+
+    // A header can claim that an archive is not compressed, so look for the
+    // archive first, as the save loaders do.
+    let is_zip = data.starts_with(b"PK\x03\x04");
+    let envelope = Envelope::parse(data);
+    if is_zip || envelope.is_some() {
+        let locator = rawzip::ZipLocator::new().max_search_space(64 * 1024);
+        if let Ok(zip) = locator.locate_in_slice(data) {
+            return match verify_entries(&zip) {
+                Ok(()) => Integrity::Complete,
+                Err(Error::UnsupportedMethod { .. }) => Integrity::Unsupported,
+                Err(_) => Integrity::Incomplete,
+            };
+        }
+    }
+
+    let (kind, body) = match envelope {
+        Some(envelope) => (envelope.kind, envelope.body),
+        None if is_zip => return Integrity::Incomplete,
+        None => match data.split_at_checked(6) {
+            Some((b"EU4txt", body)) => (0, Some(body)),
+            Some((b"EU4bin", body)) => (1, Some(body)),
+            _ => return Integrity::Unsupported,
+        },
+    };
+    let Some(body) = body else {
+        return Integrity::Incomplete;
+    };
+    Integrity::from_complete(match kind {
+        0 => is_whole_text(body),
+        1 => is_whole_binary(body),
+        // The archive that the header promises is not there.
+        _ => false,
+    })
+}
+
+/// A `SAV` header. Kind 0 is plain text, 1 is plain binary, and the others
+/// hold an archive.
+struct Envelope<'a> {
+    kind: u16,
+    /// The data after the header, when it has its whole metadata.
+    body: Option<&'a [u8]>,
+}
+
+impl<'a> Envelope<'a> {
+    fn parse(data: &'a [u8]) -> Option<Self> {
+        let fields = data.strip_prefix(b"SAV")?.get(..20)?;
+        let hex = |range: std::ops::Range<usize>| {
+            let digits = std::str::from_utf8(&fields[range]).ok()?;
+            u64::from_str_radix(digits, 16).ok()
+        };
+        let kind = hex(2..4)? as u16;
+        let metadata_len = hex(12..20)?;
+        let newline = data.iter().take(33).position(|x| *x == b'\n');
+        let body = newline
+            .map(|end| &data[end + 1..])
+            .filter(|body| !body.is_empty() && body.len() as u64 >= metadata_len);
+        Some(Self { kind, body })
+    }
+}
+
+/// The loaders also refuse text with an open block.
+fn is_whole_text(data: &[u8]) -> bool {
+    let data = data.trim_ascii_end();
+    let last_line = data.rsplit(|x| *x == b'\n').next().unwrap_or_default();
+    if !data.ends_with(b"}") && !last_line.starts_with(b"checksum=\"") {
+        return false;
+    }
+
+    let mut depth = 0_i64;
+    let mut quoted = false;
+    let mut bytes = data.iter();
+    while let Some(byte) = bytes.next() {
+        match byte {
+            b'"' => quoted = !quoted,
+            b'\\' if quoted => {
+                bytes.next();
+            }
+            b'{' if !quoted => depth += 1,
+            b'}' if !quoted => depth -= 1,
+            _ => {}
+        }
+    }
+    // Some games write more closing braces than they need.
+    !quoted && depth <= 0
+}
+
+/// The loaders use the same lexer, so data that it refuses cannot be opened.
+fn is_whole_binary(data: &[u8]) -> bool {
+    use jomini::binary::{Lexer, Token};
+    let mut lexer = Lexer::new(data);
+    let mut depth = 0_i64;
+    loop {
+        match lexer.next() {
+            Ok(Some(Token::Open)) => depth += 1,
+            Ok(Some(Token::Close)) => depth -= 1,
+            Ok(Some(_)) => {}
+            Ok(None) => return depth <= 0,
+            Err(_) => return false,
+        }
+    }
+}
+
+impl Integrity {
+    fn from_complete(complete: bool) -> Self {
+        if complete {
+            Integrity::Complete
+        } else {
+            Integrity::Incomplete
+        }
+    }
+}
+
+fn verify_entries(zip: &rawzip::ZipSliceArchive<&[u8]>) -> Result<(), Error> {
+    let mut iter = zip.entries();
+    while let Some(record) = iter.next_entry()? {
+        if record.is_dir() {
+            continue;
+        }
+
+        let entry = zip.get_entry(record.wayfinder())?;
+        let mut sink = std::io::sink();
+        match record.compression_method() {
+            rawzip::CompressionMethod::STORE => {
+                std::io::copy(&mut entry.verifying_reader(entry.data()), &mut sink)?
+            }
+            rawzip::CompressionMethod::ZSTD => {
+                let reader = pdx_zstd::Decoder::new(entry.data())?;
+                std::io::copy(&mut entry.verifying_reader(reader), &mut sink)?
+            }
+            rawzip::CompressionMethod::DEFLATE => {
+                let reader = flate2::bufread::DeflateDecoder::new(entry.data());
+                std::io::copy(&mut entry.verifying_reader(reader), &mut sink)?
+            }
+            actual => {
+                return Err(Error::UnsupportedMethod {
+                    expected: rawzip::CompressionMethod::DEFLATE,
+                    actual,
+                });
+            }
+        };
+    }
+    Ok(())
+}

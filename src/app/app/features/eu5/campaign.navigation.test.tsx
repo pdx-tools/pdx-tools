@@ -72,6 +72,7 @@ vi.mock("./store", () => ({
   useEu5Context: () => store,
   activeEu5Store: () => store,
   useEu5Input: () => state.input,
+  useEu5ParsedHash: () => null,
   useEu5SaveInput: () => state.saveInput,
   useEu5Multiplayer: () => false,
   useEu5PlaythroughId: () => "campaign",

@@ -9,6 +9,7 @@ import { useTimelineKeyboard } from "@/features/timeline/controller";
 import { useEu4MapMode, dateEnabledMapMode } from "../../store";
 import { useTimelineController } from "./useTimelineController";
 import { CampaignStepper } from "@/features/campaign/CampaignStepper";
+import { LatestSave } from "./LatestSave";
 import { useTimelineCampaign } from "@/features/campaign/SaveMarks";
 
 /** The space between the bar and the controls above it, in px. */
@@ -28,11 +29,12 @@ function useClearance(onClearance: (px: number) => void) {
     observer.observe(parent);
     return () => observer.disconnect();
   }, [el]);
-  return setEl;
+  return [el, setEl] as const;
 }
 
 export function TimelineBar({ onClearance }: { onClearance: (px: number) => void }) {
-  const barRef = useClearance(onClearance);
+  const [bar, barRef] = useClearance(onClearance);
+  const [track, setTrack] = useState<HTMLDivElement | null>(null);
   const controller = useTimelineController();
   const campaign = useTimelineCampaign(controller?.timeline.start);
   const mapMode = useEu4MapMode();
@@ -45,6 +47,7 @@ export function TimelineBar({ onClearance }: { onClearance: (px: number) => void
         ref={barRef}
         className="pointer-events-auto absolute bottom-4 left-4 z-20 flex items-center gap-1 rounded-panel border border-game-line-strong bg-game-overlay p-1.5 text-game-ink-100 shadow-xl backdrop-blur-md"
       >
+        <LatestSave key="latest" bar={bar} />
         <CampaignStepper />
         <MapSettingsControl />
         <CameraControl />
@@ -60,7 +63,7 @@ export function TimelineBar({ onClearance }: { onClearance: (px: number) => void
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-game-line-strong bg-game-overlay py-2 pr-2 pl-2.5 text-game-ink-100 shadow-xl backdrop-blur-md">
         <TimelineTransport controller={controller} />
         <TimelineReadout controller={controller} className="shrink-0" />
-        <div className="min-w-0 flex-1 basis-64">
+        <div ref={setTrack} className="min-w-0 flex-1 basis-64">
           <TimelineScrubber controller={controller} campaign={campaign} />
         </div>
         <CampaignStepper />
@@ -68,6 +71,7 @@ export function TimelineBar({ onClearance }: { onClearance: (px: number) => void
         <CameraControl />
         <TimelapseExport controller={controller} />
       </div>
+      <LatestSave key="latest" bar={bar} track={track} timeline={controller} />
     </div>
   );
 }

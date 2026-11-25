@@ -10,6 +10,7 @@ workspace = true
 
 [dependencies]
 flate2 = { default-features = false, features = ["zlib-rs"], workspace = true }
+jomini = { workspace = true }
 pdx-zstd = { workspace = true }
 rawzip = { workspace = true }
 thiserror = { workspace = true }

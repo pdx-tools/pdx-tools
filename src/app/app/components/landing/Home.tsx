@@ -16,6 +16,7 @@ import { CreatorReel } from "./CreatorReel";
 import { HomeLeaderboard } from "./HomeLeaderboard";
 import { AchievementMarquee } from "./AchievementMarquee";
 import { cx } from "class-variance-authority";
+import { KeptSavesHome } from "@/features/keptSaves/KeptSavesHome";
 import { analysisGames, meltGames } from "@/lib/games";
 import { DISCORD_INVITE_URL } from "@/lib/links";
 import type { Game } from "@/lib/games";
@@ -97,6 +98,7 @@ export const Home = ({ subtitle }: HomeProps) => {
         </div>
       </div>
       <Lip />
+      <KeptSavesHome />
       <div
         className={cx(
           classes.row,

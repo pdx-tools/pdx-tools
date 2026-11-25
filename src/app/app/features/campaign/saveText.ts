@@ -1,4 +1,5 @@
 import { formatLongDate } from "@/features/timeline/date";
+import { COPY_MISSING } from "@/features/keptSaves/text";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import type { CampaignSave, LocalSaveProblem, OpenFailure } from "./types";
 
@@ -7,6 +8,7 @@ export function saveSourceText(save: CampaignSave): string {
   if (save.source.kind === "upload") {
     return save.source.userName ? `Upload by ${save.source.userName}` : "Upload";
   }
+  if (save.kept !== null) return "Kept save";
   return save.source.uploadedBy
     ? `Local file, also uploaded by ${save.source.uploadedBy}`
     : "Local file";
@@ -16,6 +18,8 @@ export function saveProblemText(problem: LocalSaveProblem): string {
   switch (problem.kind) {
     case "missing":
       return "This file is no longer available. Drop or pick it again to open it.";
+    case "copy-missing":
+      return COPY_MISSING;
     case "unreadable":
       return "This file could not be read as a save.";
     case "moved":

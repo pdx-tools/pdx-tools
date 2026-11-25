@@ -10,6 +10,7 @@ import type { Eu4SaveInput } from "./store";
 import { Alert } from "@/components/Alert";
 import { getErrorMessage } from "@/lib/getErrorMessage";
 import { ogImageUrl } from "@/lib/media";
+import { WatchNotice } from "./features/watch";
 import { Eu4CursorTooltip } from "./features/map/Eu4CursorTooltip";
 import { TimelineBar } from "./features/timeline/TimelineBar";
 import { GameThemeProvider } from "@/components/GameThemeProvider";
@@ -73,7 +74,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
             <GameThemeProvider theme="eu4">
               <TimelineBar onClearance={setTimelineClearance} />
               <div
-                className="group absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500"
+                className="group peer absolute top-0 right-0 bottom-0 w-14 bg-slate-900 transition-[width] duration-150 hover:w-64 hover:shadow-lg hover:shadow-slate-500"
                 style={
                   timelineClearance === null
                     ? undefined
@@ -82,6 +83,7 @@ export const Eu4Ui = ({ save }: Eu4UiProps) => {
               >
                 <Eu4CanvasOverlay />
               </div>
+              <WatchNotice />
               <Eu4CursorTooltip />
             </GameThemeProvider>
           </Eu4CampaignProvider>

@@ -44,41 +44,17 @@ pub struct SaveFileImpl {
 }
 
 impl SaveFileImpl {
-    pub fn reparse(
-        &mut self,
-        frequency: FileObservationFrequency,
-        save_data: Vec<u8>,
-    ) -> Result<Reparse, Eu4GameError> {
-        let tokens = tokens::get_tokens();
-
-        let meta = eu4game::shared::parse_meta(&save_data, tokens)?;
-
-        let prev_date = self.query.save().meta.date;
-
-        let too_soon = Ok(Reparse::TooSoon { date: meta.date });
-        use FileObservationFrequency as FOF;
-        match frequency {
-            FOF::Daily if meta.date == prev_date => return too_soon,
-            FOF::Monthly
-                if meta.date.year() == prev_date.year()
-                    && meta.date.month() == prev_date.month() =>
-            {
-                return too_soon;
-            }
-            FOF::Yearly if meta.date.year() == prev_date.year() => return too_soon,
-            _ => {}
-        }
-
-        let save = Eu4Parser::new().parse_with(&save_data, tokens)?.save;
-        self.query = Query::from_save(save);
+    pub fn reparse(&mut self, save_data: Vec<u8>) -> Result<(), Eu4GameError> {
+        let parsed = Eu4Parser::new().parse_with(&save_data, tokens::get_tokens())?;
+        self.encoding = parsed.encoding;
+        self.query = Query::from_save(parsed.save);
         self.province_owners = self.query.province_owners();
         self.nation_events = self.query.nation_events(&self.province_owners);
         self.player_histories = self.query.player_histories(&self.nation_events);
         self.tag_resolver = self.query.tag_resolver(&self.nation_events);
         self.war_participants = self.query.resolved_war_participants(&self.tag_resolver);
         self.religion_lookup = self.query.religion_lookup();
-
-        Ok(Reparse::Updated)
+        Ok(())
     }
 
     pub fn get_meta_raw(&self) -> &'_ eu4save::models::Meta {

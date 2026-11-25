@@ -160,7 +160,7 @@ async function loadEu4Save(
     }),
   ]);
 
-  const [, fileVersion] = await initTasks;
+  const [, source] = await initTasks;
   const { version } = await run({
     fn: () => worker.parseMeta(),
     name: "parsed eu4 metadata",
@@ -299,10 +299,23 @@ async function loadEu4Save(
     defaultSelectedCountry: defaultSelectedTag,
     saveInfo,
     input: save,
-    fileVersion,
+    source,
     carry,
   };
 }
+
+/**
+ * The input that the worker and the store hold. Null while a save loads. A
+ * change of the page input to it does not load the save again.
+ */
+let heldInput: Eu4SaveInput | null = null;
+
+export const eu4Input = {
+  holds: (input: Eu4SaveInput) => heldInput === input,
+  replace: (input: Eu4SaveInput) => {
+    heldInput = input;
+  },
+};
 
 const useMapContainer = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -329,6 +342,9 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
       return;
     }
 
+    if (storeRef.current !== null && eu4Input.holds(save)) return;
+
+    heldInput = null;
     const controller = pdxAbortController();
     const settings = loadSettings();
     loadEu4Save(
@@ -358,6 +374,7 @@ export const useLoadEu4 = (save: Eu4SaveInput) => {
           progress: 4,
         });
 
+        if (!controller.signal.aborted) heldInput = save;
         dispatch({ kind: "data", data: store });
       })
       .catch((error) => {

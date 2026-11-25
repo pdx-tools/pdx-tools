@@ -10,6 +10,8 @@ import {
 import type { Achievement, Difficulty } from "@/wasm/wasm_app";
 import { getEu4Worker } from "@/features/eu4/worker/getEu4Worker";
 import type { SavePostResponse, UploadMetadaInput } from "@/server-lib/models";
+import { sha256 } from "@/lib/sha256";
+import type { OpenSource } from "@/features/eu4/worker/module";
 import { createCompressionWorker } from "@/features/compress";
 import type { PdxSession } from "@/server-lib/auth/session";
 import type { FeedResponse } from "@/routes/api.feed";
@@ -41,6 +43,16 @@ async function readParsedFile(file: File) {
     throw error;
   }
 }
+
+/** Read a file, and check that it has the bytes of the hash. */
+async function readExactFile(file: File, hash: string) {
+  const data = new Uint8Array(await readParsedFile(file));
+  if ((await sha256(data)) !== hash) throw new Error("The file does not have the expected bytes.");
+  return data;
+}
+
+/** The server does not take larger saves. */
+const EU4_UPLOAD_LIMIT = 20 * 1024 * 1024;
 
 /**
  * Read a response body to the end. `onProgress` receives the read portion,
@@ -257,10 +269,13 @@ export const pdxApi = {
         mutationFn: async ({
           dispatch,
           values,
+          source,
           signal,
         }: {
           dispatch: (arg: { kind: "progress"; progress: number }) => void;
           values: { aar?: string; filename: string };
+          /** What the player saw at submit: the open save or a kept copy. No other bytes are sent. */
+          source: OpenSource | { file: File; hash: string };
           signal?: AbortSignal;
         }) => {
           const compression = createCompressionWorker();
@@ -269,8 +284,10 @@ export const pdxApi = {
             const data = new FormData();
             dispatch({ kind: "progress", progress: 5 });
 
-            const worker = getEu4Worker();
-            const rawFileData = await worker.getRawData();
+            const rawFileData =
+              "file" in source
+                ? await readExactFile(source.file, source.hash)
+                : await getEu4Worker().getRawData(source);
             dispatch({ kind: "progress", progress: 10 });
 
             const compressProgress = (portion: number) => {
@@ -282,6 +299,9 @@ export const pdxApi = {
               new Uint8Array(rawFileData),
               compressProgress,
             );
+            if (fileData.data.byteLength > EU4_UPLOAD_LIMIT) {
+              throw new Error("Larger than 20 MB compressed. Not uploaded.");
+            }
             dispatch({ kind: "progress", progress: 50 });
 
             const blob = new Blob([fileData.data], {
@@ -318,11 +338,14 @@ export const pdxApi = {
         onSuccess: invalidateSaves(queryClient),
         mutationFn: async ({
           save,
+          hash,
           filename,
           dispatch,
           signal,
         }: {
           save: Eu5LocalSave;
+          /** The hash of the bytes, when it is known. */
+          hash: string | null;
           filename: string;
           dispatch: (progress: number) => void;
           signal?: AbortSignal;
@@ -330,7 +353,11 @@ export const pdxApi = {
           const compression = createCompressionWorker();
           try {
             dispatch(5);
-            const source = new Uint8Array(await readParsedFile(save.file));
+            const source = hash
+              ? await readExactFile(save.file, hash)
+              : new Uint8Array(await readParsedFile(save.file));
+            // The view can learn the hash after the upload starts.
+            const sentHash = hash ?? (isSecureContext ? await sha256(source) : null);
             dispatch(10);
             const compressed = await compression.compress(source, (portion) =>
               dispatch(10 + portion * 40),
@@ -343,7 +370,7 @@ export const pdxApi = {
             // it into storage. The metadata travels in headers.
             const body = new Blob([compressed.data], { type: compressed.contentType });
 
-            return await xhrUpload({
+            const response = await xhrUpload({
               url: "/api/eu5/saves",
               body,
               headers: {
@@ -353,6 +380,7 @@ export const pdxApi = {
               signal,
               onProgress: (portion) => dispatch(50 + portion * 50),
             });
+            return { ...response, hash: sentHash };
           } finally {
             compression.release();
           }

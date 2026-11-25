@@ -41,6 +41,9 @@ const entry = (
   version: null,
   problem: null,
   batch: 1,
+  hash: null,
+  kept: null,
+  uploadedId: null,
 });
 const observation = (id = "eu5:abc", campaignId = "campaign") =>
   ({

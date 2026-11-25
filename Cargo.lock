@@ -3052,6 +3052,7 @@ name = "pdx-save-codec"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "jomini",
  "pdx-zstd",
  "rawzip",
  "thiserror 2.0.18",

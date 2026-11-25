@@ -24,6 +24,9 @@ const save = (key: string, day = 1): CampaignSave => ({
   source: { kind: "local", entryId: key, uploadedBy: null },
   membership: "same",
   problem: null,
+  kept: null,
+  hash: null,
+  writtenAt: null,
 });
 function Track({
   ready,
