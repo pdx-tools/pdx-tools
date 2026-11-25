@@ -18,6 +18,9 @@ pub struct ViewportInsets {
     pub bottom: Length<Logical, f32>,
 }
 
+/// The share of the free region on each side of a framed area.
+const FRAME_MARGIN: f32 = 0.08;
+
 /// A pan target in world coordinates.
 #[derive(Debug, Clone, Copy)]
 pub enum PanTarget {
@@ -398,6 +401,28 @@ impl MapViewport {
     pub fn zoom_to(&mut self, target: WorldPoint<f32>, zoom: f32, insets: ViewportInsets) {
         let center = self.visible_region(insets).center();
         self.set_zoom_with_point_at(zoom, target, center);
+    }
+
+    /// Show all of `rect` in the region that the insets do not cover, with a
+    /// margin around it. The zoom stays at or below `max_zoom`, so a small
+    /// area does not fill the map.
+    pub fn frame(&mut self, rect: WorldRect<f32>, insets: ViewportInsets, max_zoom: f32) {
+        let zoom = self.frame_zoom(rect, insets, FRAME_MARGIN).min(max_zoom);
+        self.zoom_to(rect.center(), zoom, insets);
+    }
+
+    /// Whether all of `rect` fits in the region that the insets do not cover,
+    /// within the zoom limits. The margin can be less than a frame gives.
+    pub fn can_frame(&self, rect: WorldRect<f32>, insets: ViewportInsets) -> bool {
+        self.frame_zoom(rect, insets, 0.0) >= self.min_zoom()
+    }
+
+    /// The zoom that fits `rect` and a `margin` on each side in the region
+    /// that the insets do not cover, without the zoom limits.
+    fn frame_zoom(&self, rect: WorldRect<f32>, insets: ViewportInsets, margin: f32) -> f32 {
+        let region = self.visible_region(insets);
+        let fit = |free: f32, size: f32| free * (1.0 - 2.0 * margin) / size.max(1.0);
+        fit(region.size.width, rect.size.width).min(fit(region.size.height, rect.size.height))
     }
 
     /// Set the zoom, within the zoom limits, and put `world` under `canvas`.
@@ -876,6 +901,31 @@ mod tests {
         // A zoom past the limit stops at the limit.
         vp.zoom_to(WorldPoint::new(4000.0, 4000.0), 10.0, no_insets());
         assert_eq!(vp.zoom_level(), MapViewport::MAX_ZOOM);
+    }
+
+    #[test]
+    fn frame_fits_the_area_in_the_region_the_insets_leave() {
+        let mut vp = MapViewport::new(LogicalSize::new(1000, 500), WorldSize::new(8192, 8192));
+        let rect = WorldRect::new(
+            WorldPoint::new(3500.0, 3900.0),
+            WorldSize::new(1000.0, 200.0),
+        );
+
+        // The free region is 500 wide, and the area is 1000 wide.
+        vp.frame(rect, insets(500.0, 0.0, 0.0, 0.0), 1.0);
+        assert_eq!(vp.zoom_level(), 0.5 * (1.0 - 2.0 * FRAME_MARGIN));
+        let center = vp.canvas_to_world(LogicalPoint::new(750.0, 250.0));
+        assert_eq!(center, WorldPoint::new(4000.0, 4000.0));
+
+        // An area wider than the free region at the farthest zoom does not fit.
+        let wide = WorldRect::new(WorldPoint::new(0.0, 0.0), WorldSize::new(12000.0, 10.0));
+        assert!(vp.can_frame(rect, insets(500.0, 0.0, 0.0, 0.0)));
+        assert!(!vp.can_frame(wide, insets(500.0, 0.0, 0.0, 0.0)));
+
+        // A small area stops at the most zoom that the caller gives.
+        let small = WorldRect::new(WorldPoint::new(4000.0, 4000.0), WorldSize::new(1.0, 1.0));
+        vp.frame(small, no_insets(), 0.4);
+        assert_eq!(vp.zoom_level(), 0.4);
     }
 
     #[test]

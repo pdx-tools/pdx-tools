@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useEu5SelectionState, useEu5Engine, useEu5Players } from "./store";
+import { useFrameSelection } from "./useFrameSelection";
 import { useJumpToEntity } from "./useJumpToEntity";
 import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon";
 import { Command as CommandPrimitive } from "cmdk";
@@ -92,9 +93,11 @@ export function Eu5Toolbar() {
     setResults([]);
   }, []);
 
+  const frameSelection = useFrameSelection();
   const handleSelectPlayers = useCallback(async () => {
     await engine.commands.selectPlayers();
-  }, [engine]);
+    await frameSelection();
+  }, [engine, frameSelection]);
 
   const countryResults = useMemo(
     () => (searchQuery ? results.filter((r) => r.kind === "country") : []),

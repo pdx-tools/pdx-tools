@@ -1,5 +1,5 @@
 use eu5app::{
-    GroupId, GroupingTable, JUMP_ZOOM, OpeningView,
+    GroupId, GroupingTable, JUMP_ZOOM, LandGroups, OpeningView,
     game_data::{BundleMap, OptimizedMapBundle},
     should_highlight_individual_locations,
 };
@@ -8,7 +8,7 @@ use pdx_map::{
     Aabb, CanvasDimensions, Clock, GpuLocationIdx, GpuSurfaceContext, InteractionController,
     KeyboardKey, LocationArrays, LocationBitset, LocationFlags, LogicalPoint, LogicalSize,
     MouseButton, PhysicalSize, R16, SpatialIndex, SurfaceMapRenderer, ViewportBounds,
-    ViewportInsets, WorldPoint, WorldRect, WorldSize, default_clock,
+    ViewportInsets, WorldPoint, WorldRect, WorldSize, default_clock, land_extent,
 };
 use std::time::Duration;
 use tsify::Ts;
@@ -480,6 +480,43 @@ impl Eu5WasmMapRenderer {
             return Ok(());
         };
         self.input.jump_to(target, insets, JUMP_ZOOM);
+        self.apply_viewport();
+        Ok(())
+    }
+
+    /// Show the main land of each group in the region that the insets do not
+    /// cover. When the land of all groups does not fit, show the group with
+    /// the most land, and not the gap between groups. A frame zooms in no
+    /// closer than a jump. Land that is not on the map leaves the view as it is.
+    #[wasm_bindgen]
+    pub fn frame_land(
+        &mut self,
+        land: Ts<LandGroups>,
+        insets: Ts<WasmViewportInsets>,
+    ) -> Result<(), JsError> {
+        let land = land.to_rust()?;
+        let insets: ViewportInsets = insets.to_rust()?.into();
+        let groups: Vec<Vec<WorldPoint<f32>>> = land
+            .groups
+            .iter()
+            .map(|group| {
+                group
+                    .iter()
+                    .filter_map(|color| self.location_point(color.value()))
+                    .collect()
+            })
+            .collect();
+        let world_width = self.map.hemisphere_size().world().width as f32;
+        let Some(mut rect) = land_extent(groups.iter().map(Vec::as_slice), world_width) else {
+            return Ok(());
+        };
+        if !self.input.can_frame(rect, insets) {
+            let largest = groups.iter().max_by_key(|group| group.len());
+            if let Some(largest) = largest.and_then(|g| land_extent([g.as_slice()], world_width)) {
+                rect = largest;
+            }
+        }
+        self.input.frame(rect, insets, JUMP_ZOOM.to());
         self.apply_viewport();
         Ok(())
     }

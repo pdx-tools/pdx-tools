@@ -4,6 +4,7 @@ import { entityProfileEntry, usePanelNav } from "../profiles/PanelNavContext";
 import { useEu5Engine } from "../../store";
 import { useJumpToEntity } from "../../useJumpToEntity";
 import { useEu5MapHoverSource } from "../../useEu5MapHoverTarget";
+import { useFrameSelection } from "../../useFrameSelection";
 
 type EntityChartTarget = {
   id: number;
@@ -14,8 +15,9 @@ type EntityChartTarget = {
 type GetTarget = (params: echarts.ECElementEvent) => EntityChartTarget | null | undefined;
 
 /**
- * A click on a country selects it, as the map does: Shift, Ctrl or Cmd adds
- * it, and Alt removes it. A click on a market opens its profile.
+ * A click on a country selects it, as the map does, and frames its land:
+ * Shift, Ctrl or Cmd adds it, and Alt removes it. A click on a market opens
+ * its profile.
  */
 export function useEu5EntityChartClick(
   opts:
@@ -26,6 +28,7 @@ export function useEu5EntityChartClick(
   const engine = useEu5Engine();
   const jumpToEntity = useJumpToEntity();
   const hoverSource = useEu5MapHoverSource();
+  const frameSelection = useFrameSelection();
 
   const handleClick = useEffectEvent((params: echarts.ECElementEvent) => {
     const target = opts.getTarget(params);
@@ -42,8 +45,14 @@ export function useEu5EntityChartClick(
       if (ev?.shiftKey || ev?.ctrlKey || ev?.metaKey) {
         void engine.commands.changeSelection("add", kind, [target.id]);
       } else {
-        void engine.commands.changeSelection("replace", kind, [target.id]);
-        jumpToEntity(target.anchorLocationIdx);
+        void engine.commands.changeSelection("replace", kind, [target.id]).then(() => {
+          // A country with no land on the timeline date leaves the selection as it was.
+          const profile = engine.getState().selectionState?.activeProfile;
+          if (profile?.kind === "country" && profile.country.key === target.id) {
+            return frameSelection();
+          }
+          jumpToEntity(target.anchorLocationIdx);
+        });
       }
       return;
     }

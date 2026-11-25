@@ -8,8 +8,8 @@ use eu5app::game_data::Localization;
 use eu5app::hover::presentation::DisplayData as HoverDisplayData;
 use eu5app::population::PopulationHistory;
 use eu5app::{
-    EntityKind, Eu5SaveLoader, Eu5Workspace, LocationData, MapMode, SelectionOp, SelectionSet,
-    SelectionTarget,
+    EntityKind, Eu5SaveLoader, Eu5Workspace, LocationData, MapMode, SelectionOp, SelectionPreset,
+    SelectionSet, SelectionTarget,
 };
 use eu5save::hash::FnvHashSet;
 use eu5save::models::{CountryId, LocationIdx, MarketId};
@@ -152,6 +152,10 @@ fn workspace_scenarios() {
                 foreign_owner_cells_hold_the_most_foreign_building(ws, &localization)
             })
             .into();
+        snapshot["mode_scope_matrix"] =
+            run_workspace_scenario(save_name, "mode scope matrix", ws, |ws| {
+                mode_scope_matrix(ws, &localization)
+            });
         snapshot["swatches"] =
             run_workspace_scenario(save_name, "swatches match the map", ws, |ws| {
                 swatches_match_the_map(ws, &localization)
@@ -819,6 +823,129 @@ fn selection_targets_select_the_same_land(
         "focus_on_unowned_land": focus_on_unowned_land,
         "remove_with_a_landless_country": landless.is_some(),
     })
+}
+
+/// In each scope, the scope totals of a map mode add up from its country
+/// rows, and each row is a country in the scope. The players scope holds
+/// only the countries that people play, without their subjects.
+fn mode_scope_matrix(ws: &mut Eu5Workspace, localization: &Localization) -> serde_json::Value {
+    let mut player_rows = 0;
+    for scope in ["all", "players"] {
+        ws.clear_selection();
+        if scope == "players" {
+            ws.select_players();
+            if ws.selection_state().is_empty() {
+                continue;
+            }
+        }
+        let state = ws.selection_state();
+        let owners: BTreeSet<u32> = ws
+            .gamestate()
+            .locations
+            .iter()
+            .filter(|entry| state.is_empty() || state.contains(entry.idx()))
+            .filter_map(|entry| ws.location_info(entry.idx()).owner)
+            .filter_map(|id| ws.gamestate().countries.get(id.country_id()))
+            .map(|idx| idx.value())
+            .collect();
+        if scope == "players" {
+            let played: BTreeSet<u32> = ws.players().map(|p| p.country.value()).collect();
+            assert_eq!(owners, played, "players: the scope is the players' land");
+            // The map frames each owner on its own.
+            assert_eq!(ws.selected_land_groups().groups.len(), owners.len());
+        }
+
+        let presenter = ws.localized(localization).presenter();
+        let rows_in_scope = |what: &str, rows: BTreeSet<u32>| {
+            assert_eq!(
+                rows, owners,
+                "{scope}/{what}: the rows are the owners in scope"
+            );
+        };
+        let close = |what: &str, total: f64, rows: f64| {
+            assert!(
+                (total - rows).abs() <= 1e-6 * total.abs().max(1.0),
+                "{scope}/{what}: total {total} against rows {rows}"
+            );
+        };
+
+        let dev = presenter.calculate_development_insight();
+        rows_in_scope(
+            "development",
+            dev.countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+        close(
+            "development",
+            dev.scope.total_development,
+            dev.countries.iter().map(|r| r.total_development).sum(),
+        );
+        close(
+            "development population",
+            f64::from(dev.scope.total_population),
+            dev.countries
+                .iter()
+                .map(|r| f64::from(r.total_population))
+                .sum(),
+        );
+        assert_eq!(dev.scope.country_count as usize, dev.countries.len());
+
+        let efficacy = presenter.calculate_state_efficacy_insight();
+        rows_in_scope(
+            "state efficacy",
+            efficacy
+                .countries
+                .iter()
+                .map(|r| u32::from(r.country.country.key))
+                .collect(),
+        );
+        close(
+            "state efficacy",
+            efficacy.scope.total_efficacy,
+            efficacy.countries.iter().map(|r| r.total_efficacy).sum(),
+        );
+
+        if scope == "players" {
+            player_rows = dev.countries.len();
+        }
+    }
+    // In the markets mode, the players stay followed as countries, also
+    // after a focus comes and Esc takes it off.
+    ws.set_map_mode(MapMode::Markets);
+    ws.select_players();
+    let focus = ws
+        .selection_state()
+        .selected_locations()
+        .iter()
+        .next()
+        .copied();
+    if let Some(location) = focus {
+        for step in ["select", "focus", "clear focus"] {
+            match step {
+                "focus" => ws.focus_in_selection(location),
+                "clear focus" => ws.clear_focus_or_selection(),
+                _ => ws.no_map_change(),
+            };
+            let selection = ws.selection_state();
+            assert_eq!(
+                selection.preset(),
+                Some(SelectionPreset::Players),
+                "markets/{step}"
+            );
+            for player in ws.players() {
+                let id = ws.gamestate().countries.index(player.country).id();
+                let followed = id
+                    .real_id()
+                    .is_some_and(|id| selection.followed().contains(&id));
+                assert!(followed, "markets/{step}: a player is followed");
+            }
+        }
+    }
+    ws.set_map_mode(MapMode::Political);
+    ws.clear_selection();
+    serde_json::json!({ "player_rows": player_rows })
 }
 
 /// A box on filled terrain, as from a Shift-click, covers the country it

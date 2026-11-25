@@ -446,5 +446,16 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
         await mapEngine.jumpToColorId(colorId, insets);
       }
     },
+
+    frameSelection: async (insets: {
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+    }) => {
+      if (isReleased) return;
+      const land = await save.getSelectedLandGroups();
+      await mapEngine.frameLand(land, insets);
+    },
   };
 }

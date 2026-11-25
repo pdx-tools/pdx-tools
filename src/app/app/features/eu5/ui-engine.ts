@@ -220,6 +220,13 @@ export interface AppTriggers {
     locationIdx: number,
     insets: { left: number; right: number; top: number; bottom: number },
   ): Promise<void>;
+  /** Show all of the selected land in the region that the insets leave. */
+  frameSelection(insets: {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  }): Promise<void>;
 
   fitWorldRect(rect: MapViewport["viewport"]): Promise<void>;
 }
@@ -359,6 +366,7 @@ export class Eu5UIEngine implements AppEngine {
     generateScreenshot: (fullResolution) => this.handleGenerateScreenshot(fullResolution),
     toggleOwnerBorders: () => this.handleToggleOwnerBorders(),
     jumpToLocation: (locationIdx, insets) => this.gameInstance.jumpToLocation(locationIdx, insets),
+    frameSelection: (insets) => this.gameInstance.frameSelection(insets),
     fitWorldRect: (rect) => this.gameInstance.fitWorldRect(rect),
   };
 

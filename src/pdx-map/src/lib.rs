@@ -1,5 +1,6 @@
 mod color;
 mod hash;
+mod land_extent;
 mod loc_arrays;
 mod pixel;
 mod units;
@@ -20,6 +21,7 @@ pub mod layers;
 mod renderer;
 
 pub use color::GpuColor;
+pub use land_extent::land_extent;
 pub use loc_arrays::*;
 pub use pixel::{R16, R16Palette, R16SecondaryMap, Rgb};
 pub use units::*;

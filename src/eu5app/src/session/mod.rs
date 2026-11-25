@@ -6,6 +6,6 @@ pub use save_loader::{
     Eu5SaveLoader, Eu5SaveMetadata, SAVE_HEADER_MAX_LEN, read_metadata_at,
 };
 pub use workspace::{
-    Eu5Workspace, LocalizedEu5Workspace, MapChange, MapDirty, OpeningView, Player, TimelineNote,
-    TimelineSummary, humanize_note_key,
+    Eu5Workspace, LandGroups, LocalizedEu5Workspace, MapChange, MapDirty, OpeningView, Player,
+    TimelineNote, TimelineSummary, humanize_note_key,
 };

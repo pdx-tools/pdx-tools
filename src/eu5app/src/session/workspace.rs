@@ -186,6 +186,7 @@ fn nice_bucket_step(range: f64, target_buckets: usize) -> f64 {
 pub mod entity_profile;
 mod hover;
 mod insights;
+mod map_frame;
 mod map_painter;
 mod map_projection;
 mod map_render;
@@ -195,6 +196,7 @@ mod selection_ops;
 mod terrain_fill;
 mod timeline;
 
+pub use self::map_frame::LandGroups;
 pub(crate) use self::map_render::MapColors;
 pub use self::opening_view::OpeningView;
 pub use self::timeline::{TimelineNote, TimelineSummary, humanize_note_key};
@@ -347,7 +349,13 @@ impl<'bump> Eu5Workspace<'bump> {
     }
 
     fn recompute_derived_scope(&mut self) {
-        let kind = Self::entity_kind_for_map_mode(self.current_map_mode);
+        // The players are countries in each map mode.
+        let kind =
+            if self.selection_state.preset() == Some(crate::selection::SelectionPreset::Players) {
+                EntityKind::Country
+            } else {
+                Self::entity_kind_for_map_mode(self.current_map_mode)
+            };
         self.recompute_derived_scope_for_kind(kind);
     }
 

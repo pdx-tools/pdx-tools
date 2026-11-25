@@ -25,8 +25,8 @@ use eu5app::insights::state_efficacy::presentation::StateEfficacyInsightData;
 use eu5app::insights::tax::presentation::{UnrealizedTaxBaseInsightData, WealthInsightData};
 use eu5app::insights::{UnrealizedTaxBaseScope, WealthScope, WorldSummary};
 use eu5app::{
-    CanvasDimensions, Eu5DateComponents, MapChange, MapDirty, MapMode as Eu5MapMode, OpeningView,
-    UiCountryIdx,
+    CanvasDimensions, Eu5DateComponents, LandGroups, MapChange, MapDirty, MapMode as Eu5MapMode,
+    OpeningView, UiCountryIdx,
 };
 use eu5app::{Eu5AnySaveLoader, Eu5LoadedSave};
 use eu5app::{SelectionOp, SelectionSet, SelectionTarget};
@@ -1017,7 +1017,7 @@ impl Eu5App {
         js_sys::Uint32Array::from(raw.as_slice())
     }
 
-    /// Select all locations owned by human-controlled countries and their subjects.
+    /// Select the land of the countries that people play, without their subjects.
     #[wasm_bindgen]
     pub fn select_players(&mut self) -> Result<Ts<MapChangeData>, JsError> {
         map_change_ts(self.app.select_players())
@@ -1095,6 +1095,12 @@ impl Eu5App {
             patch_version,
             body: OverlayBodyConfig::from(overlay_data),
         })
+    }
+
+    /// The selected land that is on the map, by owner, for the map to frame.
+    #[wasm_bindgen]
+    pub fn selected_land_groups(&self) -> Result<Ts<LandGroups>, JsError> {
+        into_ts(self.app().selected_land_groups())
     }
 
     /// Return the GPU color ID needed to center the map at a given location.

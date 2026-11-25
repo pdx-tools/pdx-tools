@@ -317,65 +317,30 @@ impl<'bump> Eu5Workspace<'bump> {
         self.rebuild_colors()
     }
 
-    /// Select all locations owned by human-controlled countries and their subjects.
+    /// Select the land of the countries that people play. Subjects are not in
+    /// the preset, so each figure of the scope adds up from the players' rows.
+    /// Players with no land on the timeline date stay followed.
     pub fn select_players(&mut self) -> MapChange {
-        let Some((player_and_subjects, locations)) = self.players_land() else {
+        let Some((players, locations)) = self.players_land() else {
             return self.no_map_change();
         };
         self.selection_state
-            .replace_with_preset(locations, crate::selection::SelectionPreset::Players);
+            .replace_with_preset(locations, SelectionPreset::Players);
+        self.selection_state.set_followed(players);
         self.recompute_derived_scope();
-        // Also follow players and subjects with no land on this date.
-        let mut followed = self.selection_state.followed().clone();
-        followed.extend(
-            player_and_subjects
-                .iter()
-                .filter_map(|&idx| self.gamestate.countries.index(idx).id().real_id()),
-        );
-        self.selection_state.set_followed(followed);
         self.rebuild_colors()
     }
 
-    /// The players and their subjects, and their land on the timeline date.
+    /// Each id of the players' countries, and their land on the timeline date.
     /// None when the save has no players.
-    fn players_land(&self) -> Option<(FnvHashSet<CountryIdx>, FnvHashSet<LocationIdx>)> {
-        let player_idxs: FnvHashSet<CountryIdx> = self.players().map(|p| p.country).collect();
-        if player_idxs.is_empty() {
+    fn players_land(&self) -> Option<(FnvHashSet<RealCountryId>, FnvHashSet<LocationIdx>)> {
+        let players: Vec<CountryIdx> = self.players().map(|p| p.country).collect();
+        if players.is_empty() {
             return None;
         }
-        let player_and_subjects: FnvHashSet<CountryIdx> = self
-            .gamestate
-            .countries
-            .iter()
-            .filter_map(|entry| {
-                self.is_player_or_subject(entry.idx(), &player_idxs)
-                    .then_some(entry.idx())
-            })
-            .collect();
-        let locations = self
-            .iter_locations()
-            .filter_map(|(idx, info)| {
-                let owner_idx = self.gamestate.countries.get(info.owner?.country_id())?;
-                player_and_subjects.contains(&owner_idx).then_some(idx)
-            })
-            .collect();
-        Some((player_and_subjects, locations))
-    }
-
-    fn is_player_or_subject(
-        &self,
-        mut current: CountryIdx,
-        player_idxs: &FnvHashSet<CountryIdx>,
-    ) -> bool {
-        loop {
-            if player_idxs.contains(&current) {
-                return true;
-            }
-            match self.overlord_of[current] {
-                Some(overlord) => current = overlord,
-                None => return false,
-            }
-        }
+        let lineage = self.lineage_of(&players);
+        let land = self.land_of_owners(&lineage);
+        Some((lineage, land))
     }
 
     /// Return the GPU color ID needed to center the map at this location.

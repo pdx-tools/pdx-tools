@@ -24,6 +24,10 @@ type Eu5State = {
   multiplayer: boolean;
   /** Human players in save order. Empty for observer games. */
   players: Eu5PlayerData[];
+  /** The save opened on the players, and the map has not framed them yet. */
+  frameOnOpen: boolean;
+  /** True one time when the map has to frame the players of the opening. */
+  takeFrameOnOpen: () => boolean;
   /** The whole map: the scope of every insight when nothing is selected. */
   world: WorldSummary;
   insightPanelOpen: boolean;
@@ -55,16 +59,18 @@ export const createEu5Store = ({
   input,
   saveInput,
   view,
+  openedOnPlayers = false,
 }: {
   opened: OpenedSave;
   input: Eu5SaveInput;
   saveInput: Eu5ParsedSave;
+  openedOnPlayers?: boolean;
 
   view?: Partial<Eu5ViewState>;
 }): Eu5Store => {
   const { engine } = opened;
   const filename = saveInput.kind === "file" ? saveInput.file.name : saveInput.name;
-  const store = createStore<Eu5State>()((set) => ({
+  const store = createStore<Eu5State>()((set, get) => ({
     engine,
     input,
     saveInput,
@@ -75,6 +81,12 @@ export const createEu5Store = ({
     playthroughName: opened.playthroughName,
     multiplayer: opened.multiplayer,
     players: opened.players,
+    frameOnOpen: openedOnPlayers,
+    takeFrameOnOpen: () => {
+      const take = get().frameOnOpen;
+      if (take) set({ frameOnOpen: false });
+      return take;
+    },
     world: opened.world,
     insightPanelOpen: view?.insightPanelOpen ?? false,
     insightPanelWidth: view?.insightPanelWidth ?? 640,
@@ -128,6 +140,12 @@ export const useEu5PlaythroughId = () => useEu5Store((x) => x.playthroughId);
 export const useEu5PlaythroughName = () => useEu5Store((x) => x.playthroughName);
 export const useEu5Players = () => useEu5Store((x) => x.players);
 export const useEu5Multiplayer = () => useEu5Store((x) => x.multiplayer);
+
+/** A save with two or more players is a group's save. Its default scope is the players. */
+export function isGroupSave(players: readonly Eu5PlayerData[]): boolean {
+  return players.length > 1;
+}
+export const useEu5GroupSave = () => useEu5Store((x) => isGroupSave(x.players));
 /** The player's country in a save with one player. Other saves have none. */
 export function useEu5HomeCountry(): number | null {
   const players = useEu5Players();
