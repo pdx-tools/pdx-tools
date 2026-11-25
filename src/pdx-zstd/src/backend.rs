@@ -31,7 +31,7 @@ pub struct Decoder<R> {
 
 impl<R: Read> fmt::Debug for Decoder<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Decoder zstd_c").finish()
+        f.debug_struct("Decoder").finish()
     }
 }
 
@@ -72,7 +72,7 @@ pub struct Encoder<W: Write> {
 
 impl<W: Write> fmt::Debug for Encoder<W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Encoder zstd_c").finish()
+        f.debug_struct("Encoder").finish()
     }
 }
 

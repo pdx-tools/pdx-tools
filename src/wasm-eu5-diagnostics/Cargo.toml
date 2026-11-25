@@ -6,11 +6,6 @@ edition = "2024"
 [lints]
 workspace = true
 
-[features]
-default = ["zstd_rust"]
-zstd_c = ["pdx-zstd/zstd_c"]
-zstd_rust = ["pdx-zstd/zstd_rust"]
-
 [lib]
 doctest = false
 crate-type = ["cdylib", "rlib"]
@@ -20,7 +15,7 @@ bumpalo = { workspace = true }
 arena-serde = { workspace = true }
 eu5save = { workspace = true }
 jomini = { workspace = true }
-pdx-zstd = { workspace = true, default-features = false }
+pdx-zstd = { workspace = true }
 rawzip = { workspace = true }
 schemas = { workspace = true }
 wasm-bindgen = { workspace = true }

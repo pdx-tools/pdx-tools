@@ -4,12 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["zstd_rust"]
 game-install = ["dep:image", "dep:regex", "dep:walkdir", "jomini/syntax"]
 track-parse = []
 tsify = ["dep:tsify", "dep:wasm-bindgen", "campaign-analysis/tsify"]
-zstd_c = ["pdx-zstd/zstd_c", "jomini/zstd_c"]
-zstd_rust = ["pdx-zstd/zstd_rust", "jomini/zstd_rust"]
 
 [dependencies]
 bumpalo = { workspace = true }
@@ -20,9 +17,9 @@ campaign-analysis = { workspace = true }
 eu5save = { workspace = true }
 highway = { workspace = true }
 image = { workspace = true, features = ["png"], optional = true }
-jomini = { workspace = true }
+jomini = { workspace = true, features = ["zstd_c"] }
 pdx-map = { workspace = true, default-features = false }
-pdx-zstd = { workspace = true, default-features = false }
+pdx-zstd = { workspace = true }
 postcard = { workspace = true, features = ["use-std"] }
 rawzip = { workspace = true }
 regex = { workspace = true, optional = true }
@@ -41,9 +38,9 @@ path = "tests/it/main.rs"
 campaign-analysis = { workspace = true }
 attohttpc = { workspace = true }
 bytemuck = { workspace = true }
-eu5app = { path = ".", default-features = false, features = ["game-install", "track-parse"] }
+eu5app = { path = ".", features = ["game-install", "track-parse"] }
 insta = { workspace = true, features = ["glob"] }
 rstest = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
-pdx-save-codec = { workspace = true, features = ["zstd_rust"] }
+pdx-save-codec = { workspace = true }

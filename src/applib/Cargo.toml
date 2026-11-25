@@ -7,11 +7,6 @@ publish = false
 [lints]
 workspace = true
 
-[features]
-default = ["zstd_rust"]
-zstd_c = ["eu4save/zstd_c", "eu4game/zstd_c"]
-zstd_rust = ["eu4save/zstd_rust", "eu4game/zstd_rust"]
-
 [dependencies]
 serde = { features = ["derive"], workspace = true }
 eu4save = { default-features = false, features = ["serialize", "specta"] , workspace = true }

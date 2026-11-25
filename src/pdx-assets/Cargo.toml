@@ -12,8 +12,8 @@ attohttpc = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 csv = { workspace = true }
 eu4-achievements = { workspace = true }
-eu4save = { default-features = false , workspace = true, features = ["zstd_c"] }
-eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
+eu4save = { default-features = false , workspace = true }
+eu5app = { workspace = true, features = ["game-install"] }
 eu5save = { workspace = true, default-features = false }
 flate2 = { workspace = true, default-features = false, features = ["zlib-rs"]}
 image = { workspace = true, features = ["bmp", "png", "tga"] }
@@ -21,7 +21,7 @@ image-extras = { workspace = true, default-features = false, features = ["dds"] 
 image_dds = { workspace = true }
 jomini = { workspace = true, features = ["syntax"] }
 pdx-map = { workspace = true, default-features = false }
-pdx-zstd = { workspace = true, default-features = false, features = ["zstd_c"] }
+pdx-zstd = { workspace = true }
 postcard = { workspace = true }
 rawbmp = { workspace = true }
 rawzip = { workspace = true }

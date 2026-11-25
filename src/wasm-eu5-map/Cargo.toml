@@ -10,13 +10,8 @@ workspace = true
 doctest = false
 crate-type = ["cdylib", "rlib"]
 
-[features]
-default = ["zstd_rust"]
-zstd_c = ["eu5app/zstd_c"]
-zstd_rust = ["eu5app/zstd_rust"]
-
 [dependencies]
-eu5app = { workspace = true, default-features = false, features = ["tsify"] }
+eu5app = { workspace = true, features = ["tsify"] }
 eu5save = { workspace = true, default-features = false }
 js-sys = { workspace = true }
 pdx-map = { workspace = true, features = ["tracing", "interaction"] }

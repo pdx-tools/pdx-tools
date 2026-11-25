@@ -12,11 +12,6 @@ workspace = true
 doctest = false
 crate-type = ["cdylib", "rlib"]
 
-[features]
-default = ["zstd_rust"]
-zstd_c = ["pdx-save-codec/zstd_c"]
-zstd_rust = ["pdx-save-codec/zstd_rust"]
-
 [dependencies]
 js-sys = { workspace = true }
 pdx-save-codec = { workspace = true }
