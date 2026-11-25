@@ -9,18 +9,18 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-applib = { workspace = true, default-features = false, features = ["zstd_c"] }
+applib = { workspace = true }
 axum = { workspace = true, features = ["http2"] }
 bytemuck = { workspace = true, features = ["derive"] }
-eu5app = { workspace = true, default-features = false, features = ["zstd_c"] }
+eu5app = { workspace = true }
 eu5save = { workspace = true, default-features = false }
-jomini = { workspace = true, features = ["zstd_c"] }
+jomini = { workspace = true }
 opentelemetry = { workspace = true }
 opentelemetry-otlp = { workspace = true }
 opentelemetry_sdk = { workspace = true }
 pdx-map = { workspace = true, features = ["render", "date-layer", "tracing"] }
 pdx-screenshot = { workspace = true, features = ["eu4", "eu5"] }
-pdx-zstd = { workspace = true, features = ["zstd_c"] }
+pdx-zstd = { workspace = true }
 schemas = { workspace = true, features = ["inline"] }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
@@ -35,4 +35,4 @@ mimalloc = { workspace = true }
 
 [dev-dependencies]
 pdx-assets = { workspace = true }
-pdx-save-codec = { workspace = true, features = ["zstd_c"] }
+pdx-save-codec = { workspace = true }

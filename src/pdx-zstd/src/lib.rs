@@ -1,3 +1,4 @@
+mod backend;
 mod error;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod zstd_tee;
@@ -8,20 +9,12 @@ pub mod zstd_tee;
 /// `2^window_log_max` bytes of history, so the decoder's memory is bounded by
 /// the caller rather than by the frame header.
 ///
-/// [`Decoder::get_ref`] is the reader of compressed data. The C backend can
-/// read it ahead of what it has decoded, so it is only exact at the end.
+/// [`Decoder::get_ref`] is the reader of compressed data. It is read
+/// ahead of what is decoded, so it is only exact at the end.
 pub use backend::Decoder;
 pub use backend::Encoder;
 pub use error::Error;
 pub type Result<T> = std::result::Result<T, Error>;
-
-#[cfg(feature = "zstd_c")]
-#[path = "backend/zstd_c.rs"]
-mod backend;
-
-#[cfg(all(feature = "zstd_rust", not(feature = "zstd_c")))]
-#[path = "backend/zstd_rust.rs"]
-mod backend;
 
 const MAGIC_NUMBER: [u8; 4] = [0x28, 0xB5, 0x2F, 0xFD];
 

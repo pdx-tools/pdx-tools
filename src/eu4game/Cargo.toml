@@ -9,10 +9,8 @@ publish = false
 workspace = true
 
 [features]
-default = ["embedded", "zstd_rust"]
+default = ["embedded"]
 embedded = ["eu4game-data/embedded"]
-zstd_rust = ["pdx-zstd/zstd_rust", "eu4save/zstd_rust"]
-zstd_c = ["pdx-zstd/zstd_c", "eu4save/zstd_c"]
 tsify = ["dep:tsify", "dep:wasm-bindgen", "campaign-analysis/tsify"]
 
 [dependencies]
@@ -22,7 +20,7 @@ jomini = { workspace = true }
 erased-serde = { workspace = true }
 eu4-achievements = { workspace = true }
 eu4game-data = { workspace = true }
-eu4save = { default-features = false , workspace = true }
+eu4save = { default-features = false, features = ["zstd_c"], workspace = true }
 schemas = { features = ["inline"] , workspace = true }
 serde = { features = ["derive"] , workspace = true }
 serde_path_to_error = { workspace = true }

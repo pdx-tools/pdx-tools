@@ -8,11 +8,5 @@ publish = false
 [lints]
 workspace = true
 
-[features]
-default = ["zstd_rust"]
-zstd_c = ["dep:zstd"]
-zstd_rust = ["dep:ruzstd"]
-
 [dependencies]
-ruzstd = { optional = true, workspace = true }
-zstd = { default-features = false, optional = true, workspace = true }
+zstd = { workspace = true }

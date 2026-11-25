@@ -10,7 +10,7 @@ workspace = true
 anyhow = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
-eu5app = { workspace = true, default-features = false, features = ["game-install", "zstd_c"] }
+eu5app = { workspace = true, features = ["game-install"] }
 eu5save = { workspace = true }
 image = { workspace = true, features = ["png"] }
 nu-ansi-term = { workspace = true }

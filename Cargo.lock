@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "arena-serde"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "arena-serde-derive",
  "bumpalo",
@@ -187,7 +187,7 @@ dependencies = [
 [[package]]
 name = "arena-serde-derive"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -588,7 +588,7 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "jomini",
  "serde",
@@ -1095,12 +1095,11 @@ version = "0.1.0"
 [[package]]
 name = "eu4save"
 version = "0.8.2"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "flate2",
  "jomini",
  "rawzip",
- "ruzstd",
  "serde",
  "specta",
  "thiserror 2.0.18",
@@ -1164,7 +1163,7 @@ dependencies = [
 [[package]]
 name = "eu5save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "arena-serde",
  "bumpalo",
@@ -1617,7 +1616,7 @@ checksum = "9040319a6910b901d5d49cbada4a99db52836a1b63228a05f7e2b7f8feef89b1"
 [[package]]
 name = "hoi4save"
 version = "0.4.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "jomini",
  "serde",
@@ -1879,7 +1878,7 @@ dependencies = [
 [[package]]
 name = "imperator-save"
 version = "0.4.2"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "jomini",
  "serde",
@@ -2035,16 +2034,15 @@ dependencies = [
 
 [[package]]
 name = "jomini"
-version = "0.38.1"
+version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59e83c12e7fd3a731919882639bf35936a7917a828e6597d78ab0a3c6c6aa28f"
+checksum = "8d784acae093b765c1d8512a1bf59153289f371588ef786027e06454304cc9d5"
 dependencies = [
  "fearless_simd",
  "flate2",
  "itoa",
  "jomini_derive",
  "rawzip",
- "ruzstd",
  "serde",
  "serde_json",
  "zstd",
@@ -3125,7 +3123,6 @@ dependencies = [
 name = "pdx-zstd"
 version = "0.1.0"
 dependencies = [
- "ruzstd",
  "zstd",
 ]
 
@@ -3857,15 +3854,6 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
-
-[[package]]
-name = "ruzstd"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a252f5e20f038fe7b4ea53e073e65398d652c864cc162fc77c56c2f13717b888"
-dependencies = [
- "twox-hash",
-]
 
 [[package]]
 name = "ryu"
@@ -4670,12 +4658,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 
 [[package]]
-name = "twox-hash"
-version = "2.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
-
-[[package]]
 name = "typeid"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4756,7 +4738,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vic3save"
 version = "0.1.0"
-source = "git+https://github.com/rakaly/jomini.git#3c58f5c6174fb7c001e74e5cbbe330c191f0a7d3"
+source = "git+https://github.com/rakaly/jomini.git#f0a93979b82e173dd7156da588851110be432a96"
 dependencies = [
  "getrandom 0.3.4",
  "jomini",

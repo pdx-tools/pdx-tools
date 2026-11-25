@@ -12,11 +12,6 @@ workspace = true
 doctest = false
 crate-type = ["cdylib", "rlib"]
 
-[features]
-default = ["zstd_rust"]
-zstd_c = ["pdx-zstd/zstd_c"]
-zstd_rust = ["pdx-zstd/zstd_rust"]
-
 [dependencies]
 schemas = { workspace = true }
 wasm-bindgen = { workspace = true }

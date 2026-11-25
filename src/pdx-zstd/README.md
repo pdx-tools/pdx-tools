@@ -1,3 +1,5 @@
 # pdx-zstd
 
-The native bindings to zstd via `zstd-rs` [do not compile to Wasm on Windows](https://github.com/gyscos/zstd-rs/issues/151) (due to requring clang as MSVC cannot target WebAssembly), so this crate defaults to the slower, less featureful, but pure rust `ruzstd` and provides a common API over both.
+A small facade over zstd. Other crates use its API, so the implementation behind it (`src/backend.rs`) can be replaced without changing them.
+
+The only implementation today is the C library through `zstd-rs`, on every target, including Wasm. Compiling C to Wasm needs a clang that can target it. Apple clang and MSVC can't, so mise installs the WASI SDK on macOS and Windows.
