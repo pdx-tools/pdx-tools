@@ -12,7 +12,10 @@ const entry = (id: string): LocalSaveEntry => ({
   identity: null,
   version: null,
   problem: null,
-  batch: 0,
+  batch: 1,
+  hash: null,
+  kept: null,
+  uploadedId: null,
   ref: { kind: "file", file: new File(["save"], `${id}.eu5`, { lastModified: 1 }) },
 });
 it("finds new selected files without repeating attempted imports", () => {

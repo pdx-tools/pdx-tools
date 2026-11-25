@@ -8,6 +8,7 @@ import { sectionLabel } from "@/components/game/SectionTitle";
 import { Tooltip } from "@/components/Tooltip";
 import { isTypingTarget } from "@/features/timeline/controller";
 import { formatLongDate } from "@/features/timeline/date";
+import { saveDateText } from "@/features/keptSaves/text";
 import { toast } from "@/lib/toast";
 import { useCampaign } from "./CampaignProvider";
 import { SaveList } from "./SaveList";
@@ -51,10 +52,10 @@ function useStep(
   return step;
 }
 
-function stepLabel(direction: Direction, save: CampaignSave | null): string {
+function stepLabel(nav: CampaignNav, direction: Direction, save: CampaignSave | null): string {
   if (save === null) return direction === "previous" ? "No earlier save" : "No later save";
   const which = direction === "previous" ? "Previous save" : "Next save";
-  return `${which}, ${formatLongDate(save.date)}, ${saveSourceText(save).toLowerCase()}`;
+  return `${which}, ${saveDateText(save, nav.saves)}, ${saveSourceText(save).toLowerCase()}`;
 }
 
 /** Describe pending reads and files from other campaigns. */
@@ -125,7 +126,7 @@ function CampaignSectionContent({ nav, className }: { nav: CampaignNav; classNam
             return (
               <GameButton
                 key={direction}
-                aria-label={stepLabel(direction, save)}
+                aria-label={stepLabel(nav, direction, save)}
                 aria-busy={busy || undefined}
                 disabled={save === null || nav.opening !== null}
                 onClick={() => void step(direction)}
@@ -137,8 +138,8 @@ function CampaignSectionContent({ nav, className }: { nav: CampaignNav; classNam
                 {direction === "previous" && (
                   <ChevronLeftIcon aria-hidden className="size-4 shrink-0" />
                 )}
-                <span className="truncate font-game-num text-game-small tabular-nums">
-                  {busy ? "Opening" : save ? formatLongDate(save.date) : "None"}
+                <span className="font-game-num text-xs tabular-nums">
+                  {busy ? "Loading" : save ? saveDateText(save, nav.saves) : "None"}
                 </span>
                 {direction === "next" && (
                   <ChevronRightIcon aria-hidden className="size-4 shrink-0" />
@@ -189,7 +190,7 @@ function CampaignStepperContent({ nav }: { nav: CampaignNav }) {
         const button = (
           <GameButton
             variant="icon"
-            aria-label={stepLabel(direction, save)}
+            aria-label={stepLabel(nav, direction, save)}
             disabled={save === null || nav.opening !== null}
             onClick={() => void step(direction)}
           >
@@ -209,14 +210,19 @@ function CampaignStepperContent({ nav }: { nav: CampaignNav }) {
                 side="top"
                 className="flex items-center gap-2 font-game-ui text-xs tabular-nums"
               >
-                {save ? formatLongDate(save.date) : stepLabel(direction, save)}
+                {save ? saveDateText(save, nav.saves) : stepLabel(nav, direction, save)}
                 {save && <Kbd>{direction === "previous" ? "[" : "]"}</Kbd>}
               </Tooltip.Content>
             </Tooltip>
           </span>
         );
       })}
-      <CampaignListButton nav={nav} className="px-1 text-game-small text-game-ink-300">
+      {/* The list stays off the Latest label on the track beside it. */}
+      <CampaignListButton
+        nav={nav}
+        sideOffset={28}
+        className="px-1 text-game-small text-game-ink-300"
+      >
         {nav.openIndex + 1}/{nav.saves.length}
       </CampaignListButton>
     </div>
@@ -225,10 +231,12 @@ function CampaignStepperContent({ nav }: { nav: CampaignNav }) {
 
 function CampaignListButton({
   nav,
+  sideOffset = 10,
   className,
   children,
 }: {
   nav: CampaignNav;
+  sideOffset?: number;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -238,6 +246,7 @@ function CampaignListButton({
       <Popover.Trigger asChild>
         <button
           type="button"
+          data-save-list
           aria-label={`Save ${nav.openIndex + 1} of ${nav.saves.length}, show all saves`}
           className={cx(
             "rounded-control font-game-num tabular-nums transition-colors hover:bg-game-panel-hover hover:text-game-ink-100",
@@ -250,9 +259,9 @@ function CampaignListButton({
       </Popover.Trigger>
       <Popover.Content
         side="top"
-        sideOffset={10}
+        sideOffset={sideOffset}
         collisionPadding={16}
-        className="w-72 max-w-[calc(100vw-32px)] rounded-panel border border-game-line-strong bg-game-panel-2 font-game-ui shadow-xl"
+        className="w-[360px] max-w-[calc(100vw-32px)] rounded-panel border border-game-line-strong bg-game-panel-2 font-game-ui shadow-xl"
       >
         <p className={cx("px-3 pt-3", sectionLabel)}>Campaign</p>
         <SaveList nav={nav} saves={nav.saves} onOpen={() => setOpen(false)} />

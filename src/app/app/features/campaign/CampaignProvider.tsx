@@ -4,6 +4,7 @@ import type { CampaignAdapter, CampaignNav } from "./useCampaignNav";
 import { publishCampaignTimeline } from "./campaignTimeline";
 import type { PublishedCampaignTimeline } from "./campaignTimeline";
 import type { OpenSave } from "./types";
+import { useWatchFollow, WatchViewContext } from "@/features/keptSaves/useWatchFollow";
 
 const CampaignContext = createContext<CampaignNav | null>(null);
 const CampaignTimelineContext = createContext<CampaignNav | null>(null);
@@ -20,6 +21,7 @@ type CampaignProviderProps = {
 /** Keep campaign controls available across save changes without replacing the page. */
 export function CampaignProvider({ open, adapter, loadError, children }: CampaignProviderProps) {
   const nav = useCampaignNav(open, adapter, loadError);
+  const watch = useWatchFollow(open, nav, adapter);
   const key = open && JSON.stringify([open.game, open.playthroughId]);
   const [published, setPublished] = useState<PublishedCampaignTimeline>({
     key: null,
@@ -35,7 +37,7 @@ export function CampaignProvider({ open, adapter, loadError, children }: Campaig
   return (
     <CampaignContext.Provider value={nav}>
       <CampaignTimelineContext.Provider value={nav && { ...nav, saves: timeline.saves }}>
-        {children}
+        <WatchViewContext.Provider value={watch}>{children}</WatchViewContext.Provider>
       </CampaignTimelineContext.Provider>
     </CampaignContext.Provider>
   );

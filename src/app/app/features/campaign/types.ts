@@ -1,5 +1,6 @@
 import type { DateComponents } from "@/features/timeline/date";
 import type { FeedGame } from "@/server-lib/fn/feed";
+import type { KeptSave } from "@/features/keptSaves/types";
 
 export type CampaignGame = FeedGame;
 
@@ -11,6 +12,9 @@ export type LocalSaveRef =
 export function localSaveName(ref: LocalSaveRef): string {
   return ref.kind === "handle" ? ref.name : ref.file.name;
 }
+
+/** The batch of kept saves, which are not part of a selection. */
+export const KEPT_BATCH = 0;
 
 /** The size and modification time of a file, to detect a change since a read. */
 export type FileVersion = Readonly<{ size: number; lastModified: number }>;
@@ -71,6 +75,8 @@ export type OpenSave = SaveIdentity & {
         ref: LocalSaveRef;
         /** The version of the file snapshot used by the full parse. */
         fileVersion: FileVersion | null;
+        /** The SHA-256 of the parsed bytes. Null when they are not known. */
+        hash: string | null;
       };
 };
 
@@ -88,6 +94,8 @@ type CampaignSaveSource = Readonly<
 export type LocalSaveProblem = Readonly<
   | { kind: "missing" }
   | { kind: "unreadable" }
+  /** The browser no longer has the kept copy. */
+  | { kind: "copy-missing" }
   /** The file now represents another date. */
   | { kind: "moved"; from: DateComponents }
 >;
@@ -119,4 +127,9 @@ export type CampaignSave = Readonly<{
   /** Files from other campaigns remain visible with a warning. */
   membership: Membership;
   problem: LocalSaveProblem | null;
+  /** The copy of this save in the browser. */
+  kept: KeptSave | null;
+  hash: string | null;
+  /** When the game wrote the file. Null for an upload. */
+  writtenAt: number | null;
 }>;

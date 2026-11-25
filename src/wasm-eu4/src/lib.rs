@@ -7,7 +7,10 @@ use crate::{
     },
     savefile::{CountryHistory, CountryInstitution, CountryMana, SaveInfo},
 };
-use eu4game::{game::Game, shared::Eu4Parser};
+use eu4game::{
+    game::Game,
+    shared::{Eu4Parser, playthrough_id},
+};
 use eu4save::{
     Encoding, Eu4File, FailedResolveStrategy, MeltOptions,
     models::{Eu4Save, Meta},
@@ -15,10 +18,9 @@ use eu4save::{
 };
 use models::{CountriesManaExpenditure, CountryDevEfficiencies};
 use savefile::{
-    AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate,
-    FileObservationFrequency, HealthData, LocalizedLedger, MapPayload, MapPayloadKind,
-    MapQuickTipPayload, Monitor, ProvinceDetails, ProvinceDevDensity, Reparse, RootTree,
-    SaveFileImpl, TagFilterPayloadRaw, TimelineKind, WarInfo,
+    AchievementsScore, CountryAdvisors, CountryDetails, CountryReligions, Estate, HealthData,
+    LocalizedLedger, MapPayload, MapPayloadKind, MapQuickTipPayload, Monitor, ProvinceDetails,
+    ProvinceDevDensity, RootTree, SaveFileImpl, TagFilterPayloadRaw, TimelineKind, WarInfo,
 };
 use serde::Serialize;
 use std::{collections::HashMap, io::Cursor};
@@ -98,17 +100,8 @@ pub struct SaveFile(SaveFileImpl);
 
 #[wasm_bindgen]
 impl SaveFile {
-    pub fn reparse(
-        &mut self,
-        frequency: Ts<FileObservationFrequency>,
-        save_data: Vec<u8>,
-    ) -> Result<Ts<Reparse>, JsError> {
-        let frequency = frequency.to_rust()?;
-        into_ts(
-            self.0
-                .reparse(frequency, save_data)
-                .map_err(JsError::from)?,
-        )
+    pub fn reparse(&mut self, save_data: Vec<u8>) -> Result<(), JsError> {
+        self.0.reparse(save_data).map_err(JsError::from)
     }
 
     pub fn get_meta_raw(&self) -> Result<Ts<MetaRef>, JsError> {
@@ -471,6 +464,35 @@ pub fn parse_meta(data: &[u8]) -> Result<Ts<eu4save::models::Meta>, JsError> {
     let tokens = tokens::get_tokens();
     let meta = eu4game::shared::parse_meta(data, tokens).map_err(JsError::from)?;
     into_ts(meta)
+}
+
+/// What identifies a save without the game data.
+#[derive(Debug, Serialize, Tsify)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveIdentity {
+    pub playthrough_id: String,
+    pub campaign_id: String,
+    pub player_tag: String,
+    pub country_name: String,
+    pub date: Eu4DateComponents,
+}
+
+/// Read the exact campaign identity, which needs the whole save.
+#[wasm_bindgen]
+pub fn read_save_identity(data: &[u8]) -> Result<Ts<SaveIdentity>, JsError> {
+    wasm_pdx_core::console_error_panic_hook::set_once();
+    let save = Eu4Parser::new()
+        .parse_with(data, tokens::get_tokens())?
+        .save;
+    let query = Query::from_save(save);
+    let meta = &query.save().meta;
+    into_ts(SaveIdentity {
+        playthrough_id: playthrough_id(&query),
+        campaign_id: meta.campaign_id.clone(),
+        player_tag: meta.player.to_string(),
+        country_name: meta.displayed_country_name.clone(),
+        date: meta.date.into(),
+    })
 }
 
 #[wasm_bindgen]

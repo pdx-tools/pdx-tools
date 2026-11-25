@@ -1,7 +1,7 @@
 import { fetchOk } from "@/lib/fetch";
 import { check } from "@/lib/isPresent";
 import { transfer } from "comlink";
-import { timeAsync } from "./timeit";
+import { sha256 } from "@/lib/sha256";
 
 type Allocated = {
   free(): void;
@@ -21,9 +21,12 @@ type StashOp =
   | {
       kind: "handle";
       file: FileSystemFileHandle;
-      lastModified: number;
     }
   | { kind: "remote"; url: string };
+
+/** Bytes that are read again must be the bytes that were parsed. */
+export const OVERWRITTEN =
+  "The game has written over this file, so the save on screen cannot be read again.";
 
 export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allocated, P>(
   mod: WasmModule,
@@ -35,6 +38,7 @@ export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allo
   let initTask: Promise<void> | undefined = undefined;
   let initialized = false;
   let stashed: StashOp | undefined;
+  let stashedHash: string | null = null;
 
   const loadModule = async () => {
     const [tokenData] = await Promise.all([
@@ -65,6 +69,13 @@ export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allo
     }
 
     async viewData() {
+      const expected = stashedHash;
+      const data = await this.readStashed();
+      if (expected !== null && (await sha256(data)) !== expected) throw new Error(OVERWRITTEN);
+      return data;
+    }
+
+    private async readStashed() {
       switch (stashed?.kind) {
         case undefined:
           throw new Error("expected raw data to exist");
@@ -90,48 +101,20 @@ export function createWasmGame<WasmModule extends Wasm<P>, SaveFile extends Allo
       return transfer(melt, [melt.buffer]);
     }
 
-    stash(data: Uint8Array<ArrayBuffer>, stashOp: StashOp) {
+    /** A hash binds later reads to these bytes. */
+    stash(data: Uint8Array<ArrayBuffer>, stashOp: StashOp, hash: string | null = null) {
       bytes = data;
+      this.restash(stashOp, hash);
+    }
+
+    /** Read the save from another source from now on. */
+    restash(stashOp: StashOp, hash: string | null) {
       stashed = stashOp;
+      stashedHash = hash;
     }
 
-    supportsFileObserver() {
-      return stashed?.kind === "handle";
-    }
-
-    startFileObserver(callback: (data: Uint8Array, file: File) => Promise<void> | void) {
-      if (stashed?.kind !== "handle") {
-        throw new Error("file observer not supported");
-      }
-
-      const handle = stashed.file;
-      let lastModified = stashed.lastModified;
-      let timeoutHandle: ReturnType<typeof setTimeout>;
-
-      function intervalCheck() {
-        poll();
-        timeoutHandle = setTimeout(() => intervalCheck(), 5000);
-      }
-
-      async function poll() {
-        const file = await timeAsync("poll file", () => handle.getFile());
-        if (file.lastModified <= lastModified) {
-          return;
-        }
-
-        lastModified = file.lastModified;
-        stashed = { kind: "handle", file: handle, lastModified };
-        const bytes = await timeAsync("read polled file", () => file.arrayBuffer());
-        await callback(new Uint8Array(bytes), file);
-      }
-
-      intervalCheck();
-
-      return {
-        stopObserver() {
-          clearTimeout(timeoutHandle);
-        },
-      };
+    get hash() {
+      return stashedHash;
     }
 
     viewStash() {

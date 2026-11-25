@@ -12,6 +12,8 @@ import type {
   MapDataSync,
 } from "../map/map-module";
 import type { BoxSelectCommitEvent } from "../../types/box-select";
+import { sha256, sha256File } from "@/lib/sha256";
+import { OVERWRITTEN } from "@/lib/wasm";
 import { eu5SaveFileUrl } from "../../store/types";
 import type { Eu5ParsedSave } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
@@ -262,10 +264,20 @@ const loadSaveInner = async (
 
   // Melt reads the save again, so that the worker does not keep a large
   // file in memory.
-  const readFile = async () =>
-    save.kind === "file"
-      ? save.file.arrayBuffer()
-      : fetchOk(eu5SaveFileUrl(save.saveId)).then((response) => response.arrayBuffer());
+  let source = save;
+  let pinned: Promise<string | null> | undefined;
+  const pin = () =>
+    (pinned ??=
+      source.kind === "file" ? sha256File(source.file).catch(() => null) : Promise.resolve(null));
+  const readFile = async () => {
+    if (source.kind === "server") {
+      return fetchOk(eu5SaveFileUrl(source.saveId)).then((response) => response.arrayBuffer());
+    }
+    const expected = await pinned;
+    const data = await source.file.arrayBuffer();
+    if (expected && (await sha256(data)) !== expected) throw new Error(OVERWRITTEN);
+    return data;
+  };
 
   const [wasm] = await Promise.all([initialized, tokensTask, tokensReady]);
   onProgress?.(5, "Reading save file");
@@ -479,6 +491,14 @@ const loadSaveInner = async (
       // Create a copy of the data since the original is tied to WASM memory
       const dataArray = new Uint32Array(locationArray);
       return new Blob([dataArray.buffer], { type: "application/octet-stream" });
+    },
+    /** The SHA-256 of the parsed file, or null when the file changed since. */
+    pin,
+    /** Read the save from a copy from now on, when the copy has the parsed bytes. */
+    rebind: async (file: File, hash: string): Promise<boolean> => {
+      const same = (await pin()) === hash && (await sha256File(file)) === hash;
+      if (same) source = { kind: "file", file };
+      return same;
     },
     melt: async (): Promise<Uint8Array<ArrayBuffer>> => {
       // We re-read the save file so that we don't have to keep a potentially

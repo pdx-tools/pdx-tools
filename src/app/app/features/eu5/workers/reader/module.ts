@@ -4,6 +4,7 @@ import wasmPath from "@/wasm/wasm_eu5_bg.wasm?url";
 import tokenPath from "../../../../../../../assets/tokens/eu5.bin?url";
 import { toPlaythroughId } from "@/features/campaign/types";
 import type { SaveIdentity } from "@/features/campaign/types";
+import type { KeptIdentity } from "@/features/keptSaves/types";
 
 const ready = Promise.all([
   init({ module_or_path: wasmPath }),
@@ -18,5 +19,21 @@ export async function readIdentity(file: File): Promise<SaveIdentity> {
     playthroughId: toPlaythroughId(meta.playthroughId),
     campaignIdHint: null,
     date: meta.date,
+  };
+}
+
+/**
+ * The metadata has the exact campaign identity. Its country name can be a
+ * localization key, so the name that the view also shows goes first.
+ */
+export async function readKeptIdentity(file: File): Promise<KeptIdentity> {
+  await ready;
+  const meta = wasm_eu5.read_save_metadata(file);
+  return {
+    playthroughId: toPlaythroughId(meta.playthroughId),
+    campaignIdHint: null,
+    date: meta.date,
+    flag: null,
+    countryName: meta.playthroughName || meta.playerCountryName || null,
   };
 }

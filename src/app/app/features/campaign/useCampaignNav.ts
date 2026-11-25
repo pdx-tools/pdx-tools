@@ -4,18 +4,20 @@ import { useSession } from "@/features/account";
 import { useEngineActions } from "@/features/engine";
 import { captureException } from "@/lib/captureException";
 import { isAbortError } from "@/lib/abortController";
+import { holdKept } from "@/features/keptSaves/watchService";
 import { pdxApi } from "@/services/appApi";
 import { campaignKeyFor } from "./campaignKey";
 import { canOpen, mergeCampaignSaves } from "./campaignSaves";
 import { campaignTransitions } from "./transitions";
 import type { CampaignCarry, CampaignTransition, CampaignTransitions } from "./transitions";
 import { localSaveRegistry, localSaveInput } from "./localSaves";
-import type { LocalSaveRegistry } from "./localSaves";
+import type { LocalSaveEntry, LocalSaveRegistry } from "./localSaves";
 import type {
   CampaignGame,
   CampaignSave,
   CampaignStepTarget,
   LocalSaveProblem,
+  LocalSaveRef,
   OpenFailure,
   OpenResult,
   OpenSave,
@@ -25,14 +27,28 @@ import type {
 export type CampaignAdapter = {
   /** Capture view state before changing saves. */
   captureCarry: () => CampaignCarry | Promise<CampaignCarry>;
-  /** Stop background work that could restore the previous save. */
-  leave?: () => Promise<void>;
+  /** Read the open save from its kept copy, without a load. Return false when it has other bytes. */
+  adopt: (copy: KeptCopy) => Promise<boolean>;
+  /** Learn the hash of the open save, when a load does not. */
+  pin?: () => Promise<void>;
+  /** Show a later save of the campaign on the same view. */
+  update?: (
+    entry: LocalSaveEntry,
+    isWanted: () => boolean,
+  ) => Promise<"updated" | "stale" | "other-version">;
+  /** The player watches or records the timeline of the open save. */
+  isWorking: () => boolean;
+  /** The country of the player, as the game data names it. */
+  country: () => Promise<{ flag: string | null; name: string | null }>;
 } & (
   | {
       /** The step ends when preparation and navigation finish. */
       completion: "before-navigation";
-      /** Load the target. On failure, recover before rejection. */
-      prepare: (target: CampaignStepTarget) => Promise<void>;
+      /** Load the target. On failure and abort, recover before rejection. */
+      prepare: (
+        target: CampaignStepTarget,
+        options: OpenOptions & { signal: AbortSignal },
+      ) => Promise<void>;
     }
   | {
       /** The step ends when the page gets the new save or its load error. */
@@ -40,6 +56,19 @@ export type CampaignAdapter = {
       prepare?: never;
     }
 );
+
+/** With `isWanted`, the map follows the game, and no player chose the save. */
+export type OpenOptions = { isWanted?: () => boolean };
+
+export type KeptCopy = {
+  /** The file that the open save was opened from. */
+  from: LocalSaveRef;
+  ref: Extract<LocalSaveRef, { kind: "handle" }>;
+  file: File;
+  hash: string;
+  /** Update the list of saves, in step with the view. */
+  commit: () => void;
+};
 
 /** Campaign navigation state and operations. */
 export type CampaignNav = Readonly<{
@@ -58,8 +87,12 @@ export type CampaignNav = Readonly<{
   /** The key of the save that is being opened. */
   opening: string | null;
   /** Report navigation failures without replacing the current save when preparation fails. */
-  open: (save: CampaignSave, carry?: CampaignCarry) => Promise<OpenResult>;
+  open: (save: CampaignSave, carry?: CampaignCarry, options?: OpenOptions) => Promise<OpenResult>;
+  /** Return to the open save from a load that can be cancelled. */
+  cancel: (() => void) | null;
 }>;
+
+const stepCancelled = () => new DOMException("The step was cancelled", "AbortError");
 
 /** Identify the open save across changes to local file references. */
 function openSaveKey(open: OpenSave | null): string | File | FileSystemFileHandle | null {
@@ -164,17 +197,19 @@ export function useCampaignNav(
     [uploads.data, entries, open, openEntry],
   );
 
+  const cancelStep = useRef<AbortController | null>(null);
   const leaveFor = async (
     target: CampaignStepTarget,
     transition: CampaignTransition,
-    requestedCarry?: CampaignCarry,
+    requestedCarry: CampaignCarry | undefined,
+    options: OpenOptions & { signal: AbortSignal },
   ): Promise<OpenFailure | null> => {
     const carry = requestedCarry ?? (await adapter.captureCarry());
+    options.signal.throwIfAborted();
     if (openPlaythroughId !== null) transition.preserveView(openPlaythroughId, carry);
-    await adapter.leave?.();
     if (adapter.completion === "before-navigation") {
       try {
-        await adapter.prepare(target);
+        await adapter.prepare(target, options);
       } catch (error) {
         if (isAbortError(error)) throw error;
         return { kind: "load", error };
@@ -183,7 +218,11 @@ export function useCampaignNav(
     return null;
   };
 
-  const openSave = async (save: CampaignSave, carry?: CampaignCarry): Promise<OpenResult> => {
+  const openSave = async (
+    save: CampaignSave,
+    carry?: CampaignCarry,
+    options: OpenOptions = {},
+  ): Promise<OpenResult> => {
     const from = open;
     if (from === null) return { kind: "busy" };
     const transition = save.isOpen ? null : transitions.begin(save.key);
@@ -193,6 +232,11 @@ export function useCampaignNav(
 
     // A step must not change the input or route after the user goes to another page.
     // The provider can unmount while EU5 replaces its map, so its lifetime is not a signal.
+    const controller = new AbortController();
+    cancelStep.current = controller;
+    const step = { ...options, signal: controller.signal };
+    let hold: ReturnType<typeof holdKept> | null = null;
+
     const startAddress = address();
     const left = () => address() !== startAddress;
     let navigated = false;
@@ -207,6 +251,7 @@ export function useCampaignNav(
           },
           transition,
           carry,
+          step,
         );
         if (failure !== null) return { kind: "failed", failure };
         if (left()) return { kind: "cancelled" };
@@ -222,12 +267,17 @@ export function useCampaignNav(
       const { entryId } = save.source;
       let entry = entryId === null ? undefined : registry.get(entryId);
       if (entry === undefined) return refuse({ kind: "missing" });
+      if (entry.kept !== null) {
+        // No tab can delete the copy from here until the page holds it.
+        hold = holdKept(entry.kept.hash);
+        await hold.granted;
+      }
       const problem = await registry.verify(entry.id);
       if (problem !== null) return refuse(problem);
       entry = registry.get(entry.id);
       if (entry === undefined) return refuse({ kind: "missing" });
 
-      const failure = await leaveFor({ kind: "local", ref: entry.ref }, transition, carry);
+      const failure = await leaveFor({ kind: "local", ref: entry.ref }, transition, carry, step);
       if (failure !== null) return { kind: "failed", failure };
       if (left()) return { kind: "cancelled" };
       fileInput(localSaveInput(from.game, entry.ref));
@@ -242,10 +292,20 @@ export function useCampaignNav(
       captureException(error, { tags: { msg: "campaign-open" } });
       return { kind: "failed", failure: { kind: "unavailable" } };
     } finally {
+      hold?.release();
+      cancelStep.current = null;
       if (!navigated) transition.cancel();
       else if (adapter.completion === "before-navigation") transition.complete();
     }
   };
+
+  // A step to a local save on the same page keeps the open save until it ends.
+  const target = saves.find((save) => save.key === opening);
+  const canCancel =
+    adapter.completion === "before-navigation" &&
+    open?.source.kind === "local" &&
+    target?.source.kind === "local";
+  const cancel = useCallback(() => cancelStep.current?.abort(stepCancelled()), []);
 
   // Keep the navigation callback stable while using the current save state.
   const latestOpenSave = useRef(openSave);
@@ -253,7 +313,7 @@ export function useCampaignNav(
     latestOpenSave.current = openSave;
   });
   const stableOpenSave = useCallback(
-    (save: CampaignSave, carry?: CampaignCarry) => latestOpenSave.current(save, carry),
+    (...args: Parameters<CampaignNav["open"]>) => latestOpenSave.current(...args),
     [],
   );
 
@@ -274,6 +334,7 @@ export function useCampaignNav(
       truncated,
       opening,
       open: stableOpenSave,
+      cancel: canCancel ? cancel : null,
     };
-  }, [game, saves, pending, otherCampaign, truncated, opening, stableOpenSave]);
+  }, [game, saves, pending, otherCampaign, truncated, opening, stableOpenSave, canCancel, cancel]);
 }

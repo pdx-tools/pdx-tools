@@ -28,7 +28,7 @@ type Cluster = {
 /** Undefined keeps unsupported sources as ordinary navigation bookmarks. */
 type AnalysisStatus = (save: CampaignSave) => SaveAnalysisStatus | undefined;
 
-function clusterSaves(
+export function clusterSaves(
   saves: readonly CampaignSave[],
   start: DateComponents,
   px: (day: number) => number,
@@ -165,10 +165,12 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
   const opening = saves.some((x) => x.key === nav.opening);
   const problem = saves.every((x) => x.problem !== null && x.problem.kind !== "moved");
   const analysisLabel = cluster.analysis?.label;
+  const first = formatLongDate(saves[0].date);
+  const last = formatLongDate(saves[saves.length - 1].date);
   const label =
     saves.length === 1
       ? saveLabel(saves[0])
-      : `${saves.length} saves, ${formatLongDate(saves[0].date)} to ${formatLongDate(saves[saves.length - 1].date)}`;
+      : `${saves.length} saves, ${first === last ? first : `${first} to ${last}`}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -228,7 +230,7 @@ function SaveMark({ nav, cluster, top }: { nav: CampaignNav; cluster: Cluster; t
         side="top"
         sideOffset={10}
         collisionPadding={16}
-        className="w-72 max-w-[calc(100vw-32px)] rounded-panel border border-game-line-strong bg-game-panel-2 font-game-ui shadow-xl"
+        className="w-[360px] max-w-[calc(100vw-32px)] rounded-panel border border-game-line-strong bg-game-panel-2 font-game-ui shadow-xl"
       >
         {saves.length > 1 && <p className={cx("px-3 pt-3", sectionLabel)}>{saves.length} saves</p>}
         {analysisLabel && <p className="px-3 pt-3 text-xs text-game-ink-300">{analysisLabel}</p>}

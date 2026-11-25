@@ -7,6 +7,7 @@ import {
   isEntryAnalyzed,
   useCampaignAutoAnalysis,
 } from "@/features/campaign/analysis/autoAnalysis";
+import { KEPT_BATCH } from "@/features/campaign/types";
 import { useEu5PlaythroughId } from "../store";
 import { eu5Analysis } from "./analysisClient";
 import { analyzeCampaign } from "./analyzeCampaign";
@@ -24,6 +25,8 @@ export function pendingCampaignAnalysis(
     .filter(
       (entry) =>
         entry.game === "eu5" &&
+        // Copies are not a selection of the player, and there can be many.
+        entry.batch !== KEPT_BATCH &&
         (!entry.identity || entry.identity.playthroughId === playthroughId) &&
         !attempted.has(campaignAnalysisSourceKey(entry)),
     )

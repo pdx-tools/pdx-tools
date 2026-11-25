@@ -3,8 +3,9 @@ import { userId } from "@/lib/auth";
 import { campaignKeyFor } from "./campaignKey";
 import { mergeCampaignSaves } from "./campaignSaves";
 import type { CampaignUpload } from "./campaignSaves";
+import type { KeptSave } from "@/features/keptSaves/types";
 import type { LocalSaveEntry } from "./localSaves";
-import { toPlaythroughId } from "./types";
+import { KEPT_BATCH, toPlaythroughId } from "./types";
 import type { PlaythroughId, OpenSave } from "./types";
 
 const CAMPAIGN = "camp" as PlaythroughId;
@@ -37,8 +38,23 @@ const entry = (
     version: null,
     problem: null,
     batch,
+    hash: null,
+    kept: null,
+    uploadedId: null,
   };
 };
+
+/** A copy whose bytes have the hash `hash-<id>`. */
+const keptEntry = (
+  id: string,
+  date: string,
+  kept: Partial<KeptSave> = {},
+  identity: Parameters<typeof entry>[2] = {},
+): LocalSaveEntry => ({
+  ...entry(id, date, { ...identity, batch: KEPT_BATCH }),
+  hash: `hash-${id}`,
+  kept: { hash: `hash-${id}`, uploadedId: null, writtenAt: 1, ...kept } as KeptSave,
+});
 
 const openUpload = (saveId: string, date: string): OpenSave => {
   const [year, month, day] = date.split("-").map(Number);
@@ -59,6 +75,7 @@ const openLocal = (date: string): OpenSave => ({
     kind: "local",
     entryId: null,
     fileVersion: null,
+    hash: null,
     ref: { kind: "file", file: new File([], "local.eu5") },
   },
 });
@@ -86,15 +103,92 @@ describe("mergeCampaignSaves", () => {
     expect(saves[1].source).toEqual({ kind: "local", entryId: "l1", uploadedBy: "Bob" });
   });
 
-  it("keeps the uploader name when a local file replaces another at the same date", () => {
+  it("keeps two files of one date apart, and the upload that could be of either", () => {
     const saves = mergeCampaignSaves({
       open: openUpload("a", "1350-06-02"),
       uploads: [upload("b", "1400-01-01", "Bob"), upload("a", "1350-06-02")],
       entries: [entry("l1", "1400-01-01"), entry("l2", "1400-01-01")],
       openEntry: undefined,
     });
-    expect(saves.map((x) => x.key)).toEqual(["upload:a", "local:l2"]);
-    expect(saves[1].source).toEqual({ kind: "local", entryId: "l2", uploadedBy: "Bob" });
+    expect(saves.map((x) => x.key)).toEqual(["upload:a", "local:l1", "local:l2", "upload:b"]);
+  });
+
+  it("pairs an upload with a kept save by its id only", () => {
+    const first = keptEntry("l1", "1400-01-01", { writtenAt: 2, uploadedId: "b" });
+    const second = keptEntry("l2", "1400-01-01", { writtenAt: 1 });
+    const saves = mergeCampaignSaves({
+      open: openUpload("a", "1350-06-02"),
+      uploads: [upload("b", "1400-01-01", "Bob"), upload("a", "1350-06-02")],
+      entries: [first, second],
+      openEntry: undefined,
+    });
+    expect(saves.map((x) => x.key)).toEqual(["upload:a", "local:l2", "local:l1"]);
+    expect(saves[2].source).toEqual({ kind: "local", entryId: "l1", uploadedBy: "Bob" });
+  });
+
+  it("does not pair a kept save with an upload of its date", () => {
+    const saves = mergeCampaignSaves({
+      open: openUpload("a", "1350-06-02"),
+      uploads: [upload("b", "1400-01-01"), upload("a", "1350-06-02")],
+      entries: [keptEntry("l1", "1400-01-01")],
+      openEntry: undefined,
+    });
+    expect(saves.map((x) => x.key)).toEqual(["upload:a", "upload:b", "local:l1"]);
+  });
+
+  it("shows the bytes of the open file once, also when they are kept", () => {
+    const open = { ...entry("open", "1400-01-01"), hash: "hash-l1" };
+    const kept = keptEntry("l1", "1400-01-01");
+    for (const entries of [
+      [open, kept],
+      [kept, open],
+    ]) {
+      const saves = mergeCampaignSaves({
+        open: openLocal("1400-01-01"),
+        uploads: [],
+        entries,
+        openEntry: open,
+      });
+      expect(saves.map((x) => [x.key, x.isOpen, x.kept?.hash])).toEqual([
+        ["local:open", true, "hash-l1"],
+      ]);
+    }
+  });
+
+  it("keeps the warning of a file whose later save is open from its own bytes", () => {
+    const open = { ...entry("open", "1450-01-01"), hash: "later" };
+    const from = { year: 1400, month: 1, day: 1 };
+    const moved: LocalSaveEntry = {
+      ...entry("moved", "1450-01-01"),
+      hash: "later",
+      problem: { kind: "moved", from },
+    };
+    for (const entries of [
+      [open, moved],
+      [moved, open],
+    ]) {
+      const saves = mergeCampaignSaves({
+        open: openLocal("1450-01-01"),
+        uploads: [],
+        entries,
+        openEntry: open,
+      });
+      expect(saves.map((x) => [x.key, x.problem])).toEqual([
+        ["local:open", { kind: "moved", from }],
+      ]);
+    }
+  });
+
+  it("does not add kept saves of other campaigns, as they are not a selection", () => {
+    const local = entry("open", "1400-01-01");
+    const other = { playthroughId: "else" as PlaythroughId };
+    const saves = mergeCampaignSaves({
+      open: openLocal("1400-01-01"),
+      uploads: [],
+      entries: [local, keptEntry("l1", "1401-01-01"), keptEntry("l2", "1402-01-01", {}, other)],
+      openEntry: local,
+    });
+    expect(saves.map((x) => x.key)).toEqual(["local:open", "local:l1"]);
   });
 
   it("keeps an upload over a local file that cannot open", () => {
@@ -173,7 +267,11 @@ describe("mergeCampaignSaves", () => {
       entries: [local, entry("other", "1410-01-01", { playthroughId: "else" as PlaythroughId })],
       openEntry: local,
     });
-    expect(saves.map((x) => x.key)).toEqual(["local:open", "upload:b"]);
+    expect(saves.map((x) => [x.key, x.membership])).toEqual([
+      ["local:open", "same"],
+      ["local:other", "different"],
+      ["upload:b", "same"],
+    ]);
   });
 
   it("groups EU4 files by the metadata campaign id until the fingerprint is known", () => {

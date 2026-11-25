@@ -177,28 +177,30 @@ const Eu5UiContent = ({
     wasEmptyRef.current = isEmpty;
   }, [selectionState, setInsightOpen, preview]);
 
+  // A save that loads for a preview keeps the timeline usable, also
+  // when the playhead moves during the load.
+  const inert = busy && !preview;
+
   return (
-    <div
-      className="pointer-events-none absolute inset-0"
-      // A save that loads for a preview keeps the timeline usable, also
-      // when the playhead moves during the load.
-      inert={busy && !preview}
-      aria-busy={busy || undefined}
-    >
+    <div className="pointer-events-none absolute inset-0" aria-busy={busy || undefined}>
+      {inert ? <div className="absolute inset-0 bg-game-page/40" /> : null}
+
       {/* Left sidebar — always visible */}
-      <Eu5ControlPanel />
+      <Eu5ControlPanel inert={inert} />
 
-      {/* Right panel — slides off right edge when closed */}
-      <Eu5InsightPanel open={insightOpen} onClose={() => setInsightOpen(false)} />
+      <div className="contents" inert={inert}>
+        {/* Right panel — slides off right edge when closed */}
+        <Eu5InsightPanel open={insightOpen} onClose={() => setInsightOpen(false)} />
 
-      {!insightOpen ? <InsightPanelTab onOpen={() => setInsightOpen(true)} /> : null}
+        {!insightOpen ? <InsightPanelTab onOpen={() => setInsightOpen(true)} /> : null}
 
-      {/* Canvas overlays */}
-      <BoxSelectOverlay />
-      {!preview ? <Eu5CursorTooltip cursorRef={cursorRef} /> : null}
-      {!preview ? <Eu5SelectionPill /> : null}
-      <TimelineBar />
-      {!preview ? <Eu5Toolbar /> : null}
+        {/* Canvas overlays */}
+        <BoxSelectOverlay />
+        {!preview ? <Eu5CursorTooltip cursorRef={cursorRef} /> : null}
+        {!preview ? <Eu5SelectionPill /> : null}
+        <TimelineBar />
+        {!preview ? <Eu5Toolbar /> : null}
+      </div>
     </div>
   );
 };

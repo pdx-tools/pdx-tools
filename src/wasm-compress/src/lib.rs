@@ -64,6 +64,25 @@ pub fn download_save(data: Vec<u8>, f: Option<js_sys::Function>) -> Result<Vec<u
     )?)
 }
 
+/// Tell if the file holds a whole save. See [`pdx_save_codec::check`].
+#[wasm_bindgen]
+pub fn check_save(data: &[u8]) -> Result<Ts<SaveIntegrity>, JsError> {
+    let integrity = match pdx_save_codec::check(data) {
+        pdx_save_codec::Integrity::Complete => SaveIntegrity::Complete,
+        pdx_save_codec::Integrity::Incomplete => SaveIntegrity::Incomplete,
+        pdx_save_codec::Integrity::Unsupported => SaveIntegrity::Unsupported,
+    };
+    Ok(integrity.into_ts()?)
+}
+
+#[derive(Serialize, Tsify, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum SaveIntegrity {
+    Complete,
+    Incomplete,
+    Unsupported,
+}
+
 /// Turn an optional JavaScript callback into a progress function.
 fn progress_fn(f: Option<js_sys::Function>) -> impl FnMut(f64) {
     move |progress| {

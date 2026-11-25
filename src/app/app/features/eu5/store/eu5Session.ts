@@ -12,7 +12,7 @@ import { openEngine, readSaveData } from "../ui-engine";
 import { createEu5Store, eu5ViewState } from "./eu5Store";
 import type { Eu5Store } from "./eu5Store";
 import { sameEu5Save } from "./types";
-import type { Eu5SaveData, Eu5SaveInput } from "./types";
+import type { Eu5ParsedSave, Eu5SaveData, Eu5SaveInput } from "./types";
 import { initialEu5SessionSnapshot } from "./eu5SessionState";
 import type { Eu5SessionSnapshot } from "./eu5SessionState";
 
@@ -22,6 +22,14 @@ const CANVAS_CLASS = "h-full w-full touch-none outline-none";
 
 /** Allow a short gap between page owners before releasing the session. */
 const UNCLAIMED_MS = 1_000;
+
+export type Eu5StepOptions = {
+  /** The bytes of the open save do not change, so they can be read again. */
+  isStable?: boolean;
+  /** Set for a follow, which ends when the save is not wanted any more. */
+  isWanted?: () => boolean;
+  signal?: AbortSignal;
+};
 
 /** Keep the canvas and workers available across compatible save changes. */
 class Eu5Session {
@@ -47,6 +55,10 @@ class Eu5Session {
     save: Eu5SaveInput;
     /** The save to restore if the step fails. */
     fallback: Eu5SaveInput;
+    /** The player went back to that save. */
+    signal: AbortSignal | undefined;
+    /** A copy of that save, when the game can write over its file. */
+    copy: Eu5SaveData | null;
     /** The step failure, kept until the fallback save shows. */
     failure: { error: unknown } | null;
     resolve: () => void;
@@ -74,8 +86,11 @@ class Eu5Session {
     return this.pageSaves.some((x) => sameEu5Save(x, save));
   }
 
-  /** Prepare the next save before navigation. Restore the current save if preparation fails. */
-  async step(save: Eu5SaveInput): Promise<void> {
+  /**
+   * Prepare the next save before navigation. Restore the current save if
+   * preparation fails.
+   */
+  async step(save: Eu5SaveInput, options: Eu5StepOptions = {}): Promise<void> {
     if (this.destroyed) throw new DOMException("The session ended", "AbortError");
     if (this.snapshot.status === "error") throw new Error("No save is open");
     if (this.snapshot.status === "pending" || this.snapshot.stepping || this.pendingStep !== null) {
@@ -86,8 +101,14 @@ class Eu5Session {
     this.setStepping(true);
 
     let source: Eu5SaveData;
+    let copy: Eu5SaveData | null;
     try {
       source = await readSaveData(save);
+      copy = await this.copyOpenSave(options);
+      options.signal?.throwIfAborted();
+      if (options.isWanted?.() === false) {
+        throw new DOMException("The save is not wanted any more", "AbortError");
+      }
     } catch (error) {
       if (this.isCurrent(generation)) this.setStepping(false);
       throw error;
@@ -100,6 +121,8 @@ class Eu5Session {
     this.pendingStep = {
       save,
       fallback: this.save,
+      copy,
+      signal: options.signal,
       failure: null,
       resolve: () => completion.resolve(),
       reject: completion.reject,
@@ -108,6 +131,37 @@ class Eu5Session {
     this.pageSaves = [...this.pageSaves, save];
     this.enqueue((generation) => this.loadInPlace(save, source, generation));
     await completion.promise;
+  }
+
+  /** Copy the open save before the step releases it. */
+  private async copyOpenSave({
+    isStable = false,
+    isWanted,
+  }: Eu5StepOptions): Promise<Eu5SaveData | null> {
+    const saveInput = this.shown()?.getState().saveInput;
+    if (isStable || saveInput?.kind !== "file") return null;
+    const { file } = saveInput;
+    const { name, lastModified } = file;
+    try {
+      const copy = new File([await file.arrayBuffer()], name, { lastModified });
+      return { save: { kind: "file", file: copy }, data: copy };
+    } catch (error) {
+      // A follow does not release a save that it could not restore.
+      if (isWanted !== undefined) throw error;
+      return null;
+    }
+  }
+
+  /** Read the save from a copy of the same bytes from now on. */
+  rebindInput(from: Eu5SaveInput, to: Eu5SaveInput, saveInput: Eu5ParsedSave): boolean {
+    const store = this.shown();
+    if (store === null || this.snapshot.status !== "success" || this.snapshot.stepping)
+      return false;
+    if (this.pendingStep !== null || !sameEu5Save(store.getState().input, from)) return false;
+    this.save = to;
+    this.pageSaves = this.pageSaves.map((x) => (sameEu5Save(x, from) ? to : x));
+    store.setState({ input: to, saveInput });
+    return true;
   }
 
   /** Retain the session while a page owns it. Return a function that releases ownership. */
@@ -213,7 +267,8 @@ class Eu5Session {
   ): Promise<void> {
     this.update({ status: "pending", progress: { percent: 0, stage: "Starting workers" } });
 
-    const source = readSaveData(save);
+    const { failure = null, copy = null } = this.pendingStep ?? {};
+    const source = failure !== null && copy !== null ? Promise.resolve(copy) : readSaveData(save);
     const game = await workers.start(
       {
         canvas: surface.offscreen,
@@ -235,7 +290,7 @@ class Eu5Session {
     }
 
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
-    const reload = this.pendingStep?.failure != null;
+    const reload = failure !== null;
     if (carry !== null) {
       await this.applyCarry(opened.engine, carry);
       if (!this.isCurrent(generation)) {
@@ -280,7 +335,7 @@ class Eu5Session {
       const { input, saveInput } = previous.getState();
       this.save = input;
       this.pageSaves = [input];
-      const data = await readSaveData(saveInput);
+      const data = this.pendingStep?.copy ?? (await readSaveData(saveInput));
       await this.showInPlace(workers, input, data, previous, generation, { reload: true });
       if (this.isCurrent(generation)) this.rejectStep(error);
     }
@@ -295,7 +350,12 @@ class Eu5Session {
     generation: number,
     { reload = false }: { reload?: boolean } = {},
   ): Promise<void> {
+    const signal = reload ? undefined : this.pendingStep?.signal;
     const game = await workers.load(source);
+    if (signal?.aborted) {
+      game?.release();
+      throw signal.reason;
+    }
     if (game === null) {
       // Different map bundles require a new canvas.
       if (this.isCurrent(generation)) this.host.renew();
@@ -314,11 +374,18 @@ class Eu5Session {
       opened.engine.destroy();
       return;
     }
+    const endIfAborted = () => {
+      if (!signal?.aborted) return;
+      opened.engine.destroy();
+      throw signal.reason;
+    };
+    endIfAborted();
 
     const carry = campaignTransitions.takeView("eu5", opened.playthroughId);
     if (carry !== null) {
       // The retained canvas already has the current camera position.
       await this.applyCarry(opened.engine, { ...carry, viewport: null });
+      endIfAborted();
     }
 
     await game.show();
@@ -326,6 +393,7 @@ class Eu5Session {
       opened.engine.destroy();
       return;
     }
+    endIfAborted();
 
     const store = createEu5Store({
       opened,
@@ -422,9 +490,13 @@ export function getEu5Session(save: Eu5SaveInput): Eu5Session {
 }
 
 /** Prepare a save in the current session before changing pages. */
-export async function stepEu5Session(save: Eu5SaveInput): Promise<void> {
+export async function stepEu5Session(save: Eu5SaveInput, options?: Eu5StepOptions): Promise<void> {
   if (currentSession === null) throw new Error("No EU5 session is open");
-  await currentSession.step(save);
+  await currentSession.step(save, options);
+}
+
+export function rebindEu5Session(...args: Parameters<Eu5Session["rebindInput"]>): boolean {
+  return currentSession?.rebindInput(...args) ?? false;
 }
 
 export function terminateEu5Session(): void {

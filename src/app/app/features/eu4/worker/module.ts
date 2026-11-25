@@ -24,9 +24,6 @@ import { createBudget } from "../features/country-details/budget";
 export * from "./init";
 export * from "./timeline";
 
-export const getRawData = () => wasm.viewData();
-export const melt = () => wasm.melt();
-
 let provinceIdToColorIndex = new Uint16Array();
 
 export function eu4SetProvinceIdToColorIndex(_provinceIdToColorIndex: Uint16Array<ArrayBuffer>) {

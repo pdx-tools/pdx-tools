@@ -16,8 +16,15 @@ import { DISCORD_INVITE_URL } from "@/lib/links";
 import { downloadData } from "@/lib/downloadData";
 import { emitEvent } from "@/lib/events";
 import { toast } from "@/lib/toast";
+import { useProtectedWork } from "@/features/keptSaves/protectedWork";
+import { OVERWRITTEN_OPEN } from "@/features/keptSaves/text";
+import { useKeptFile } from "@/features/keptSaves/useKeptFile";
+import { beginUpload } from "@/features/keptSaves/ui";
+import { pairUpload } from "@/features/keptSaves/watchService";
 import { pdxApi } from "@/services/appApi";
 import {
+  useEu5Input,
+  useEu5ParsedHash,
   useEu5SaveInput,
   useEu5UploadedSaveId,
   useSaveFilename,
@@ -41,11 +48,15 @@ export type ShareState =
 export function useShareState(): ShareState {
   const session = useSession();
   const save = useEu5SaveInput();
+  const input = useEu5Input();
+  const hash = useEu5ParsedHash();
   const filename = useSaveFilename();
   const uploadedSaveId = useEu5UploadedSaveId();
   const setUploadedSaveId = useSetEu5UploadedSaveId();
   const upload = pdxApi.eu5Saves.useAdd();
   const [progress, setProgress] = useState(0);
+
+  useProtectedWork(upload.isPending);
 
   // A save opened from its permalink is shared, but the visitor did not
   // share it.
@@ -67,19 +78,25 @@ export function useShareState(): ShareState {
   }
 
   const share = () => {
+    const end = beginUpload();
+    if (end === null) return;
+    const pair = input.kind === "server" ? null : pairUpload("eu5", input);
     setProgress(0);
-    upload.mutate(
-      { save, filename, dispatch: setProgress },
-      {
-        onSuccess: (data) => setUploadedSaveId(data.save_id),
-        onError: (error) =>
-          toast.error("Could not share the save", {
-            description: getErrorMessage(error),
-            duration: Infinity,
-            closeButton: true,
-          }),
-      },
-    );
+    // The promise also settles when the view closes.
+    upload
+      .mutateAsync({ save, hash, filename, dispatch: setProgress })
+      .then((data) => {
+        setUploadedSaveId(data.save_id);
+        pair?.(data.save_id, data.hash);
+      })
+      .catch((error) =>
+        toast.error("Could not share the save", {
+          description: getErrorMessage(error),
+          duration: Infinity,
+          closeButton: true,
+        }),
+      )
+      .finally(end);
   };
 
   return { kind: "ready", share };
@@ -128,8 +145,13 @@ export function ShareRow({ unavailable = false }: { unavailable?: boolean }) {
 const status = "min-w-0 flex-1 truncate font-game-ui text-[12px] text-game-ink-500";
 
 function Ready({ onShare }: { onShare: () => void }) {
+  const file = useKeptFile(useEu5ParsedHash());
   return (
-    <GameButton variant="commit" onClick={onShare}>
+    <GameButton
+      variant="commit"
+      onClick={onShare}
+      title={file === "overwritten" ? OVERWRITTEN_OPEN : undefined}
+    >
       Share save
     </GameButton>
   );

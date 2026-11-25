@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { OverwrittenNotice } from "@/features/keptSaves/OverwrittenNotice";
+import { useProtectedWork } from "@/features/keptSaves/protectedWork";
 import { useSideBarContainerRef } from "../../components/SideBarContainer";
 import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
@@ -11,6 +14,9 @@ export const UploadDrawerContent = ({ fileUpload }: { fileUpload: FileUploadMuta
   const sideBarContainerRef = useSideBarContainerRef();
   const session = useSession();
   const hasPermissionToUpload = hasPermission(session, "savefile:create");
+  const [hasAar, setHasAar] = useState(false);
+  const [isFocused, setFocused] = useState(false);
+  useProtectedWork(hasAar || isFocused || fileUpload.isPending);
   return (
     <div className="flex flex-col gap-2" ref={sideBarContainerRef}>
       {!hasPermissionToUpload ? (
@@ -24,6 +30,7 @@ export const UploadDrawerContent = ({ fileUpload }: { fileUpload: FileUploadMuta
         </Alert>
       ) : null}
 
+      <OverwrittenNotice />
       <Alert.Error className="px-4 py-2" msg={fileUpload.error} />
 
       <form
@@ -40,6 +47,9 @@ export const UploadDrawerContent = ({ fileUpload }: { fileUpload: FileUploadMuta
             maxLength={5000}
             name="aar"
             rows={8}
+            onChange={(ev) => setHasAar(ev.currentTarget.value !== "")}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             className="w-full border px-2 py-1 dark:border-gray-600"
           />
         </label>

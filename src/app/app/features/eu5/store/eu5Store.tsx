@@ -16,6 +16,9 @@ type Eu5State = {
   /** Retain the original input for future file reads. */
   input: Eu5SaveInput;
   saveInput: Eu5ParsedSave;
+  /** The SHA-256 of the parsed file, when it is needed and could be read. */
+  parsedHash: string | null;
+  setParsedHash: (hash: string | null) => void;
   saveDate: Eu5DateComponents;
 
   playthroughId: PlaythroughId | null;
@@ -63,11 +66,14 @@ export const createEu5Store = ({
   view?: Partial<Eu5ViewState>;
 }): Eu5Store => {
   const { engine } = opened;
-  const filename = saveInput.kind === "file" ? saveInput.file.name : saveInput.name;
+  // The file of a kept copy has a hash as its name.
+  const filename = input.kind === "file" ? input.file.name : input.name;
   const store = createStore<Eu5State>()((set) => ({
     engine,
     input,
     saveInput,
+    parsedHash: null,
+    setParsedHash: (parsedHash) => set({ parsedHash }),
     appState: engine.getState(),
     filename,
     saveDate: opened.saveDate,
@@ -121,6 +127,7 @@ export const useEu5BoxSelectRect = () => useEu5Store((x) => x.appState.boxSelect
 export const useEu5CursorHint = () => useEu5Store((x) => x.appState.cursorHint);
 export const useSaveFilename = () => useEu5Store((x) => x.filename);
 export const useEu5SaveInput = () => useEu5Store((x) => x.saveInput);
+export const useEu5ParsedHash = () => useEu5Store((x) => x.parsedHash);
 export const useEu5Input = () => useEu5Store((x) => x.input);
 export const useEu5SaveDate = () => useEu5Store((x) => x.saveDate);
 export const useEu5World = () => useEu5Store((x) => x.world);

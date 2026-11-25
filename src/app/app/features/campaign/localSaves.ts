@@ -4,7 +4,8 @@ import { sameDate } from "@/features/timeline/date";
 import { captureException } from "@/lib/captureException";
 import { readSaveIdentity } from "./reader";
 import type { SaveGameInput } from "@/features/engine/engineStore";
-import { fileVersion, localSaveName, sameFileVersion } from "./types";
+import type { KeptSave } from "@/features/keptSaves/types";
+import { fileVersion, KEPT_BATCH, localSaveName, sameFileVersion } from "./types";
 import type {
   CampaignGame,
   FileVersion,
@@ -27,6 +28,11 @@ export type LocalSaveEntry = Readonly<{
   problem: LocalSaveProblem | null;
   /** Files selected together remain associated while their campaign identity is unknown. */
   batch: number;
+  /** The SHA-256 of the bytes that the identity is of. */
+  hash: string | null;
+  /** The copy that `ref` points at. */
+  kept: KeptSave | null;
+  uploadedId: string | null;
 }>;
 
 function indexEntries(game: CampaignGame, entries: readonly LocalSaveEntry[]) {
@@ -41,6 +47,8 @@ function indexEntries(game: CampaignGame, entries: readonly LocalSaveEntry[]) {
     if (entry.ref.kind === "file") {
       byFile.set(fileKey(entry.ref.file), entry);
     } else {
+      // A file that the player picks is never in the storage of the copies.
+      if (entry.kept !== null) return;
       const name = localSaveName(entry.ref);
       const candidates = byHandleName.get(name) ?? [];
       candidates.push(entry);
@@ -122,6 +130,9 @@ export function createLocalSaveRegistry(
         version: null,
         problem: null,
         batch,
+        hash: null,
+        kept: null,
+        uploadedId: null,
       };
       added.push(entry);
       index.add(entry);
@@ -154,7 +165,7 @@ export function createLocalSaveRegistry(
         name: localSaveName(ref),
         problem: null,
         batch,
-        ...(invalidate && { identity: null, version: null }),
+        ...(invalidate && { identity: null, version: null, hash: null, uploadedId: null }),
       };
       refreshed.set(entry.id, next);
       return next;
@@ -173,8 +184,19 @@ export function createLocalSaveRegistry(
     id: string,
     identity: SaveIdentity,
     version: FileVersion | null = null,
+    hash: string | null = null,
   ): void {
-    updateEntry(id, { identity, version, problem: null });
+    const entry = getLocalSave(id);
+    const next = { identity, version: version && fileVersion(version), problem: null };
+    // The bytes of a kept save do not change.
+    // An upload was of the version that the entry had.
+    const isReplaced =
+      entry?.version && next.version && !sameFileVersion(entry.version, next.version);
+    updateEntry(id, {
+      ...next,
+      hash: entry?.kept?.hash ?? hash,
+      ...(isReplaced && { uploadedId: null }),
+    });
   }
 
   function setLocalSaveProblem(id: string, problem: LocalSaveProblem | null): void {
@@ -238,6 +260,11 @@ export function createLocalSaveRegistry(
       return problem;
     };
 
+    if (entry.kept !== null && entry.ref.kind === "handle") {
+      const file = await entry.ref.file.getFile().catch(() => null);
+      return file?.size === entry.kept.size ? null : fail({ kind: "copy-missing" });
+    }
+
     if (entry.ref.kind === "file") {
       // Check that the browser can still read the selected file.
       try {
@@ -287,7 +314,13 @@ export function createLocalSaveRegistry(
     }
     if (current.identity && !sameDate(identity.date, current.identity.date)) {
       const problem: LocalSaveProblem = { kind: "moved", from: current.identity.date };
-      updateEntry(entry.id, { identity, version: fileVersion(file), problem });
+      updateEntry(entry.id, {
+        identity,
+        version: fileVersion(file),
+        problem,
+        hash: null,
+        uploadedId: null,
+      });
       return problem;
     }
 
@@ -329,10 +362,75 @@ export function createLocalSaveRegistry(
       known?.playthroughId === identity.playthroughId &&
       known.campaignIdHint === identity.campaignIdHint &&
       sameDate(known.date, identity.date) &&
-      sameVersion
+      sameVersion &&
+      (open.source.hash === null || open.source.hash === entry.hash)
     )
       return;
-    setLocalSaveIdentity(entry.id, identity, version);
+    setLocalSaveIdentity(entry.id, identity, version, open.source.hash);
+  }
+
+  /** Add an entry for a kept copy that has none. */
+  function addKept(save: KeptSave, file: FileSystemFileHandle): LocalSaveEntry {
+    const current = findKept(save.hash);
+    if (current !== undefined) return current;
+    const entry: LocalSaveEntry = {
+      id: `local-${nextId++}`,
+      game: save.game,
+      ref: { kind: "handle", file, name: save.name },
+      name: save.name,
+      identity: keptIdentity(save),
+      version: { size: save.size, lastModified: save.opfsModified },
+      problem: null,
+      batch: KEPT_BATCH,
+      hash: save.hash,
+      kept: save,
+      uploadedId: null,
+    };
+    references[save.game].set(file, entry.id);
+    store.setState(({ entries }) => ({ entries: [...entries, entry] }));
+    return entry;
+  }
+
+  const findKept = (hash: string) => store.getState().entries.find((x) => x.kept?.hash === hash);
+
+  /** Give each kept save with a known date an entry, and remove the deleted ones. */
+  async function syncKept(
+    saves: readonly KeptSave[],
+    handleOf: (hash: string) => Promise<FileSystemFileHandle | null>,
+  ): Promise<void> {
+    const listed = new Set(store.getState().entries.map((entry) => entry.kept?.hash));
+    const handles = await Promise.all(
+      saves
+        .filter((save) => save.date !== null && !listed.has(save.hash))
+        .map(async (save) => [save, await handleOf(save.hash)] as const),
+    );
+    const byHash = new Map(saves.map((save) => [save.hash, save]));
+    store.setState(({ entries }) => ({
+      entries: entries.flatMap((entry) => {
+        if (entry.kept === null) return [entry];
+        const save = byHash.get(entry.kept.hash);
+        if (save === undefined) return [];
+        return [{ ...entry, kept: save, identity: keptIdentity(save) ?? entry.identity }];
+      }),
+    }));
+    for (const [save, file] of handles) if (file !== null) addKept(save, file);
+  }
+
+  /** Point an entry at the kept copy of its bytes, and drop the entry of the copy. */
+  function adopt(id: string, kept: KeptSave, ref: LocalSaveRef): void {
+    const entry = getLocalSave(id);
+    if (entry === undefined) return;
+    references[entry.game].delete(entry.ref.file);
+    references[entry.game].set(ref.file, id);
+    revisions.set(id, (revisions.get(id) ?? 0) + 1);
+    const { hash, size, opfsModified } = kept;
+    const version = { size, lastModified: opfsModified };
+    store.setState(({ entries }) => ({
+      entries: entries.flatMap((x) => {
+        if (x.id === id) return [{ ...x, ref, version, kept, hash, problem: null }];
+        return x.kept?.hash === hash ? [] : [x];
+      }),
+    }));
   }
 
   return {
@@ -341,19 +439,55 @@ export function createLocalSaveRegistry(
       game: CampaignGame,
       ref: LocalSaveRef,
       parsedVersion: FileVersion | null = ref.kind === "file" ? ref.file : null,
-    ): Extract<OpenSave["source"], { kind: "local" }> => ({
-      kind: "local",
-      ref,
-      entryId: references[game].get(ref.file) ?? null,
-      fileVersion: parsedVersion === null ? null : fileVersion(parsedVersion),
-    }),
+      hash: string | null = null,
+    ): Extract<OpenSave["source"], { kind: "local" }> => {
+      const entryId = references[game].get(ref.file) ?? null;
+      return {
+        kind: "local",
+        ref,
+        entryId,
+        fileVersion: parsedVersion === null ? null : fileVersion(parsedVersion),
+        hash: hash ?? getLocalSave(entryId ?? "")?.kept?.hash ?? null,
+      };
+    },
     get: getLocalSave,
     recordIdentity: setLocalSaveIdentity,
     readIdentity,
+    /** Pair an upload with the entry that it was sent from, unless the entry has other bytes now. */
+    recordUpload: (sent: LocalSaveEntry, hash: string | null, uploadedId: string) => {
+      const entry = getLocalSave(sent.id);
+      if (entry === undefined) return;
+      const sameBytes =
+        hash !== null && entry.hash !== null
+          ? entry.hash === hash
+          : entry.version === sent.version ||
+            (entry.version && sent.version && sameFileVersion(entry.version, sent.version));
+      if (sameBytes) updateEntry(sent.id, { uploadedId });
+    },
     verify,
     observeOpen,
+    syncKept,
+    adopt,
+    remove: (id: string) =>
+      store.setState(({ entries }) => ({ entries: entries.filter((x) => x.id !== id) })),
+    entryOf: (game: CampaignGame, ref: LocalSaveRef) =>
+      getLocalSave(references[game].get(ref.file) ?? ""),
+    findKept,
+    addKept,
+    entries: () => store.getState().entries,
+    subscribe: (listener: () => void) => store.subscribe(listener),
+    /** Record the content of a file, unless the entry is for a later version of it. */
+    recordHash: (id: string, version: FileVersion, hash: string) => {
+      const entry = getLocalSave(id);
+      if (entry?.version && sameFileVersion(entry.version, version)) updateEntry(id, { hash });
+    },
     useEntries: () => useStore(store, (state) => state.entries),
   };
+}
+
+function keptIdentity(save: KeptSave): SaveIdentity | null {
+  const { playthroughId, campaignIdHint, date } = save;
+  return date && { playthroughId, campaignIdHint, date };
 }
 
 export type LocalSaveRegistry = ReturnType<typeof createLocalSaveRegistry>;

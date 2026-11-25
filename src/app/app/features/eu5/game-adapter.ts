@@ -257,6 +257,8 @@ export type SaveQueries = Pick<
   | "getCountryIdentity"
   | "findCountry"
   | "getLocationArrays"
+  | "pin"
+  | "rebind"
   | "melt"
 >;
 

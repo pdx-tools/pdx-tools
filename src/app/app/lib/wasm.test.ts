@@ -1,11 +1,9 @@
-import { afterEach, expect, it, vi } from "vitest";
-import { createWasmGame } from "./wasm";
+import { expect, it } from "vitest";
+import { sha256File } from "@/lib/sha256";
+import { createWasmGame, OVERWRITTEN } from "./wasm";
 
-afterEach(() => vi.useRealTimers());
-
-it("reports the watched file snapshot that supplied the bytes even if the disk file changes during the read", async () => {
-  vi.useFakeTimers();
-  const game = createWasmGame(
+const createGame = () =>
+  createWasmGame(
     {
       default: async () => {},
       melt: (data: Uint8Array) => data,
@@ -14,24 +12,19 @@ it("reports the watched file snapshot that supplied the bytes even if the disk f
     "test.wasm",
     "tokens.bin",
   );
-  const snapshot = new File(["watched save"], "autosave.eu4", { lastModified: 2 });
-  const bytes = new TextEncoder().encode("watched save");
-  const reading = Promise.withResolvers<ArrayBuffer>();
-  const read = vi.spyOn(snapshot, "arrayBuffer").mockImplementation(() => reading.promise);
-  let diskFile = snapshot;
+
+it("does not read other bytes than the parsed ones after the file changes on disk", async () => {
+  const game = createGame();
+  let diskFile = new File(["parsed save"], "autosave.eu4");
   const handle = { getFile: async () => diskFile } as unknown as FileSystemFileHandle;
-  game.stash(new Uint8Array(), { kind: "handle", file: handle, lastModified: 1 });
-  const notification = Promise.withResolvers<{ bytes: Uint8Array; file: File }>();
-  const observer = game.startFileObserver((bytes, file) => notification.resolve({ bytes, file }));
-  try {
-    await vi.waitFor(() => expect(read).toHaveBeenCalled());
-    diskFile = new File(["newer save"], "autosave.eu4", { lastModified: 3 });
-    reading.resolve(bytes.buffer);
-    const result = await notification.promise;
-    expect(new TextDecoder().decode(result.bytes)).toBe("watched save");
-    expect(result.file.lastModified).toBe(2);
-    expect(result.file.size).toBe(bytes.byteLength);
-  } finally {
-    observer.stopObserver();
-  }
+  const hash = await sha256File(diskFile);
+  game.stash(new Uint8Array(), { kind: "handle", file: handle }, hash);
+  expect(new TextDecoder().decode(await game.viewData())).toBe("parsed save");
+
+  const copy = diskFile;
+  diskFile = new File(["newer save"], "autosave.eu4");
+  await expect(game.viewData()).rejects.toThrow(OVERWRITTEN);
+
+  game.restash({ kind: "file", file: copy }, hash);
+  expect(new TextDecoder().decode(await game.viewData())).toBe("parsed save");
 });
