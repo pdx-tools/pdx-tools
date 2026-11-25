@@ -2620,8 +2620,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(self.no_custom_nations());
         result.and(self.normal_start_date());
 
-        let denmark = "DAN".parse().unwrap();
-        let starter = self.starting_country == denmark;
+        let starter = self.starting_country == "DAN";
         let desc = "started as Denmark";
         result.and(AchievementCondition::new(starter, desc));
 
@@ -2635,7 +2634,7 @@ impl<'a> AchievementHunter<'a> {
         result.and(AchievementCondition::new(reform, desc));
 
         let territory = if result.completed() {
-            self.all_provs_in_region("scandinavia_region", |p, _| owned_and_cored_by(p, denmark))
+            self.all_provs_in_region("scandinavia_region", |p, _| owned_and_cored_by(p, self.tag))
         } else {
             false
         };
