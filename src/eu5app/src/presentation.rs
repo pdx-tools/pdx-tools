@@ -123,6 +123,10 @@ impl<'a, 'bump> Eu5Presenter<'a, 'bump> {
             .present(&self.ctx)
     }
 
+    pub fn map_names(&self) -> crate::map_names::MapNames {
+        self.workspace.map_names().present(&self.ctx)
+    }
+
     pub fn political_world_scoreboard(&self) -> PoliticalWorldScoreboard {
         self.workspace
             .calculate_political_world_scoreboard()

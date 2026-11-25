@@ -4,6 +4,7 @@ import { cx } from "class-variance-authority";
 import { Popover } from "@/components/Popover";
 import { focusRing } from "@/components/game/focusRing";
 import { sectionLabel } from "@/components/game/SectionTitle";
+import { mapCoverRef } from "./MapNames";
 import { Kbd } from "@/components/game/Kbd";
 
 interface Shortcut {
@@ -67,6 +68,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     label: "Tools",
     shortcuts: [
       { action: "Search", keys: ["/"] },
+      { action: "Show or hide names", keys: ["N"] },
       { action: "Toggle shortcuts", keys: ["?"] },
     ],
   },
@@ -107,41 +109,45 @@ export function Eu5ShortcutPanel() {
         </button>
       </Popover.Trigger>
       <Popover.Content
+        ref={mapCoverRef}
         side="bottom"
         align="center"
         sideOffset={16}
-        className="w-104 rounded-panel border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl"
+        collisionPadding={16}
+        className="flex max-h-(--radix-popover-content-available-height) w-104 max-w-[calc(100vw-2rem)] flex-col rounded-panel border border-game-line-strong bg-game-panel/95 p-0 font-game-ui shadow-2xl backdrop-blur-xl lg:w-216"
       >
-        <div className="px-5 pt-4 pb-5">
-          {SHORTCUT_GROUPS.map((group, groupIdx) => (
-            <div key={group.label}>
-              {groupIdx > 0 && <div className="my-3 h-px bg-game-line" />}
-              <div className={cx("mb-2 pl-0.5", sectionLabel)}>{group.label}</div>
-              {group.shortcuts
-                .filter((shortcut) => isMac || !shortcut.macOnly)
-                .map((shortcut, i) => (
-                  <div key={i} className="flex items-center justify-between gap-3 py-[5px]">
-                    <span className="text-[13px] text-game-ink-300">{shortcut.action}</span>
-                    <span className="flex shrink-0 items-center gap-1">
-                      {shortcut.keys.map((key, j) =>
-                        key === "+" ? (
-                          <span key={j} className="text-[12px] text-game-ink-500">
-                            +
-                          </span>
-                        ) : (
-                          <Kbd key={j} className="h-[22px] min-w-[22px] px-1.5">
-                            {key}
-                          </Kbd>
-                        ),
-                      )}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          ))}
+        {/* Two columns on a wide screen; a scroll where the screen is short. */}
+        <div className="min-h-0 overflow-y-auto scheme-dark">
+          <div className="gap-x-8 px-5 pt-4 pb-1 lg:columns-2">
+            {SHORTCUT_GROUPS.map((group) => (
+              <div key={group.label} className="mb-4 break-inside-avoid">
+                <div className={cx("mb-2 pl-0.5", sectionLabel)}>{group.label}</div>
+                {group.shortcuts
+                  .filter((shortcut) => isMac || !shortcut.macOnly)
+                  .map((shortcut, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 py-[5px]">
+                      <span className="text-[13px] text-game-ink-300">{shortcut.action}</span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        {shortcut.keys.map((key, j) =>
+                          key === "+" ? (
+                            <span key={j} className="text-[12px] text-game-ink-500">
+                              +
+                            </span>
+                          ) : (
+                            <Kbd key={j} className="h-[22px] min-w-[22px] px-1.5">
+                              {key}
+                            </Kbd>
+                          ),
+                        )}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center justify-center gap-1 border-t border-game-line py-2.5">
+        <div className="flex shrink-0 items-center justify-center gap-1 border-t border-game-line py-2.5">
           <Kbd>?</Kbd>
           <span className="text-[12px] text-game-ink-500">to dismiss</span>
         </div>

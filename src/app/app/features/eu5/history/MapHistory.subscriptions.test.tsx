@@ -72,6 +72,7 @@ function historyStore() {
     onCursorHintUpdate: vi.fn(),
     onViewportChange: vi.fn(),
     startHoverTracking: vi.fn(),
+    showMapNames: vi.fn(),
   } as unknown as GameInstance;
   const engine = new Eu5UIEngine(game, {} as PaletteGradients, timeline);
   const input = { kind: "file", file: new File(["save"], "save.eu5") } as const;

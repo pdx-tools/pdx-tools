@@ -12,6 +12,7 @@ const view: CampaignCarry = {
     viewport: null,
     selection: null,
     insightPanel: { open: false, width: 640 },
+    mapNames: true,
   },
 };
 afterEach(() => vi.useRealTimers());

@@ -126,6 +126,7 @@ describe("EU5 campaign transitions", () => {
         viewport: null,
         selection: null,
         insightPanel: { open: true, width: 640 },
+        mapNames: true,
         inspection: { click },
       },
     });

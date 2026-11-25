@@ -17,6 +17,7 @@ import { TimelineTransport } from "@/features/timeline/TimelineTransport";
 import { useTimelineKeyboard } from "@/features/timeline/controller";
 import type { TimelineController } from "@/features/timeline/controller";
 import { useTimelineController } from "./useTimelineController";
+import { mapCoverRef } from "../MapNames";
 import { useEu5Input, useEu5MapMode, useSetEu5TimelineBarHeight } from "../store";
 import { isHistoricalMapMode } from "../ui-engine";
 import { useViewportInsets } from "../useViewportInsets";
@@ -77,11 +78,19 @@ export function TimelineBar() {
   const open = controller !== null;
   const presence = usePresence(open);
   const barRef = useRef<HTMLDivElement>(null);
+  const setBar = useCallback((element: HTMLDivElement) => {
+    barRef.current = element;
+    const uncover = mapCoverRef(element);
+    return () => {
+      barRef.current = null;
+      uncover?.();
+    };
+  }, []);
   useReportedHeight(barRef, open, presence.mounted);
   if (!presence.mounted || !controller) return null;
   return (
     <div
-      ref={barRef}
+      ref={setBar}
       data-state={presence.state}
       onAnimationEnd={presence.onAnimationEnd}
       className={cx(styles.bar, "@container pointer-events-auto absolute z-20 font-game-ui")}

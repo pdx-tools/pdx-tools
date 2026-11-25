@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
     selection: { kind: "country" as const, tag: "FRA", focusedLocation: null },
     viewport: null,
     insightPanel: { open: false, width: 640 },
+    mapNames: true,
   })),
   fileInput: vi.fn(),
 }));
@@ -329,6 +330,7 @@ it("does not open a save when the preview ends while the view is captured", asyn
     selection: null,
     viewport: null,
     insightPanel: { open: false, width: 640 },
+    mapNames: true,
   } as never);
   await opening;
   expect(mocks.step).not.toHaveBeenCalled();

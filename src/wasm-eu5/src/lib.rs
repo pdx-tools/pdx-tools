@@ -1136,6 +1136,12 @@ impl Eu5App {
             .map(|idx| idx.value())
     }
 
+    /// The names to set on the map, the most important first.
+    #[wasm_bindgen]
+    pub fn map_names(&self) -> Eu5MapNames {
+        Eu5MapNames(self.localized().presenter().map_names())
+    }
+
     /// Political world scoreboard: top great powers in scope plus player
     /// countries outside the top tier.
     #[wasm_bindgen]
@@ -1426,6 +1432,25 @@ impl ProjectionPaintData {
     #[wasm_bindgen(getter)]
     pub fn change(&self) -> Result<Ts<MapChangeData>, JsError> {
         into_ts(self.change.clone())
+    }
+}
+
+/// The names on the map. Their land is one buffer, which is quick to copy.
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct Eu5MapNames(eu5app::map_names::MapNames);
+
+#[wasm_bindgen]
+impl Eu5MapNames {
+    #[wasm_bindgen]
+    pub fn names(&self) -> Result<Vec<Ts<eu5app::map_names::MapName>>, JsError> {
+        vec_into_ts(self.0.names().to_vec())
+    }
+
+    /// The map color ids of the land of each name, in the order of the names.
+    #[wasm_bindgen]
+    pub fn locations(&self) -> Vec<u16> {
+        self.0.locations().to_vec()
     }
 }
 

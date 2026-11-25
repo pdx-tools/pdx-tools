@@ -113,6 +113,7 @@ export const useEu5Engine = () => useEu5Store((x) => x.engine);
 export const useEu5MapMode = () => useEu5Store((x) => x.appState.currentMapMode);
 export const useEu5HoverData = () => useEu5Store((x) => x.appState.hoverDisplayData);
 export const useEu5OwnerBorders = () => useEu5Store((x) => x.appState.ownerBordersEnabled);
+export const useEu5MapNamesVisible = () => useEu5Store((x) => x.appState.mapNamesVisible);
 export const useEu5IsGeneratingScreenshot = () =>
   useEu5Store((x) => x.appState.isGeneratingScreenshot);
 export const useEu5MapModeGradient = () => useEu5Store((x) => x.appState.mapModeGradient);

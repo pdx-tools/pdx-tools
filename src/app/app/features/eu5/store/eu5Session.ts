@@ -19,6 +19,8 @@ import type { Eu5SessionSnapshot } from "./eu5SessionState";
 export type { Eu5LoadingState, Eu5SessionSnapshot } from "./eu5SessionState";
 
 const CANVAS_CLASS = "h-full w-full touch-none outline-none";
+/** The names on the map. The map worker draws them in the same frame as the map. */
+const NAMES_CLASS = "pointer-events-none absolute inset-0 h-full w-full";
 
 /** Allow a short gap between page owners before releasing the session. */
 const UNCLAIMED_MS = 1_000;
@@ -40,6 +42,8 @@ class Eu5Session {
   private pageSaves: Eu5SaveInput[];
 
   private claims = 0;
+  /** The names setting of the last shown save, for the next new map */
+  private mapNamesVisible = true;
 
   private unclaimed: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -56,8 +60,10 @@ class Eu5Session {
   constructor(private save: Eu5SaveInput) {
     this.pageSaves = [save];
     this.unregisterTerminator = registerAnalysisTerminator((next) => this.terminate(next));
-    this.host = new CanvasCourierHost(CANVAS_CLASS, (surface, transport) =>
-      this.startMap(surface, transport),
+    this.host = new CanvasCourierHost(
+      CANVAS_CLASS,
+      (surface, transport) => this.startMap(surface, transport),
+      NAMES_CLASS,
     );
   }
 
@@ -211,12 +217,18 @@ class Eu5Session {
     transport: CanvasCourierTransport,
     generation: number,
   ): Promise<void> {
+    // A new map keeps the names setting of the map it replaces, also when a load fails.
+    this.mapNamesVisible =
+      this.shown()?.getState().appState.mapNamesVisible ?? this.mapNamesVisible;
     this.update({ status: "pending", progress: { percent: 0, stage: "Starting workers" } });
 
+    const namesCanvas = surface.overlay;
+    if (namesCanvas === null) throw new Error("The map has no canvas for its names");
     const source = readSaveData(save);
     const game = await workers.start(
       {
         canvas: surface.offscreen,
+        names: { canvas: namesCanvas, visible: this.mapNamesVisible },
         display: transport.currentSize(),
         inputConfig: transport.inputConfig,
         save: source,
@@ -228,7 +240,7 @@ class Eu5Session {
       },
     );
 
-    const opened = await openEngine(game);
+    const opened = await openEngine(game, { mapNamesVisible: this.mapNamesVisible });
     if (!this.isCurrent(generation)) {
       opened.engine.destroy();
       return;
@@ -309,6 +321,7 @@ class Eu5Session {
 
     const opened = await openEngine(game, {
       ownerBordersEnabled: previous.getState().appState.ownerBordersEnabled,
+      mapNamesVisible: previous.getState().appState.mapNamesVisible,
     });
     if (!this.isCurrent(generation)) {
       opened.engine.destroy();

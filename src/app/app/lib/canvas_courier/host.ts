@@ -4,6 +4,7 @@ import type { CanvasCourierSurface } from "./types";
 /** Retain one worker surface while the canvas moves between page owners. */
 export class CanvasCourierHost {
   private element: HTMLCanvasElement | null = null;
+  private overlay: HTMLCanvasElement | null = null;
   private container: HTMLElement | null = null;
   private transport = new CanvasCourierTransport();
   private cursor = "";
@@ -11,6 +12,8 @@ export class CanvasCourierHost {
   /**
    * @param className Classes that make the canvas fill its container.
    * @param onSurface Receive each new worker surface after attachment.
+   * @param overlayClassName Classes for a second canvas over the first, which
+   * the worker also draws. Without them the host has no overlay.
    */
   constructor(
     private readonly className: string,
@@ -18,6 +21,7 @@ export class CanvasCourierHost {
       surface: CanvasCourierSurface,
       transport: CanvasCourierTransport,
     ) => void,
+    private readonly overlayClassName: string | null = null,
   ) {}
 
   get canvas(): HTMLCanvasElement | null {
@@ -39,6 +43,7 @@ export class CanvasCourierHost {
     }
 
     container.appendChild(this.element);
+    if (this.overlay !== null) container.appendChild(this.overlay);
     this.transport.attachSurface({ canvas: this.element });
   }
 
@@ -50,12 +55,15 @@ export class CanvasCourierHost {
     this.container = null;
     this.transport.detachSurface();
     this.element?.remove();
+    this.overlay?.remove();
   }
 
   /** Replace the canvas when its worker ends; an offscreen transfer cannot be reversed. */
   renew(): void {
     const previous = this.element;
     this.element = null;
+    this.overlay?.remove();
+    this.overlay = null;
     this.transport.dispose();
     this.transport = new CanvasCourierTransport();
 
@@ -71,6 +79,8 @@ export class CanvasCourierHost {
     this.transport.dispose();
     this.element?.remove();
     this.element = null;
+    this.overlay?.remove();
+    this.overlay = null;
     this.container = null;
   }
 
@@ -93,7 +103,16 @@ export class CanvasCourierHost {
 
     this.element = canvas;
     const offscreen = canvas.transferControlToOffscreen();
+    let overlay: OffscreenCanvas | null = null;
+    if (this.overlayClassName !== null) {
+      const element = document.createElement("canvas");
+      element.className = this.overlayClassName;
+      element.setAttribute("aria-hidden", "true");
+      canvas.insertAdjacentElement("afterend", element);
+      this.overlay = element;
+      overlay = element.transferControlToOffscreen();
+    }
     this.transport.attachSurface({ canvas });
-    this.onSurface({ canvas, offscreen }, this.transport);
+    this.onSurface({ canvas, offscreen, overlay }, this.transport);
   }
 }

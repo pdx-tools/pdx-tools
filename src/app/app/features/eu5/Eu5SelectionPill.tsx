@@ -4,6 +4,7 @@ import XMarkIcon from "@heroicons/react/24/solid/XMarkIcon";
 import { cx } from "class-variance-authority";
 import { formatInt } from "@/lib/format";
 import { focusRing } from "@/components/game/focusRing";
+import { mapCoverRef } from "./MapNames";
 
 function formatSelectionSummary(entityCount: number, locationCount: number): string {
   // A followed country can have no land on a past date.
@@ -37,6 +38,7 @@ export function Eu5SelectionPill() {
 
   return (
     <div
+      ref={mapCoverRef}
       className="pointer-events-auto absolute left-84 z-20 inline-flex h-7 items-center gap-2 rounded-panel border border-game-accent-line bg-game-overlay px-2.5 font-game-ui shadow-lg backdrop-blur-md transition-[bottom] duration-200 ease-out motion-reduce:transition-none"
       // Sits above the timeline bar and follows it as the bar comes and goes.
       style={{

@@ -21,6 +21,7 @@ import type * as Eu5MapWorkerModuleDefinition from "./workers/map/map-module";
 import type { SharedCanvasInputConfig } from "@/lib/canvas_courier";
 import type { BoxSelectOverlayRect } from "./types/box-select";
 import type { CursorHint, LocationClickChangeEvent } from "./workers/map/map-module";
+import type { Rect } from "./workers/map/atlas";
 import type {
   DatePlateColors,
   DatePlateFonts,
@@ -99,6 +100,8 @@ export class Eu5GameAdapter {
   async start(
     config: {
       canvas: OffscreenCanvas;
+      /** The canvas over the map for the names on it, and if they show at the start */
+      names: { canvas: OffscreenCanvas; visible: boolean };
       display: {
         width: number;
         height: number;
@@ -161,10 +164,11 @@ export class Eu5GameAdapter {
         transfer(
           {
             canvas: config.canvas,
+            names: config.names,
             display: config.display,
             inputConfig: config.inputConfig,
           },
-          [config.canvas],
+          [config.canvas, config.names.canvas],
         ),
         proxy({
           mapBundle: mapBundleApi,
@@ -402,6 +406,12 @@ function saveWorker(saveEngine: SaveEngine, mapEngine: MapEngine, gameWorker: Eu
     },
     setOwnerBorders: (enabled: boolean) => {
       mapEngine.execCommands([{ kind: "setOwnerBorders", enabled }]);
+    },
+    showMapNames: (visible: boolean) => {
+      void mapEngine.execCommands([{ kind: "showNames", visible }]);
+    },
+    coverMapNames: (covers: Rect[]) => {
+      void mapEngine.execCommands([{ kind: "coverNames", covers }]);
     },
 
     startHoverTracking: () => mapEngine.startHoverTracking(),

@@ -156,6 +156,25 @@ input_file: src/eu5app/tests/it/saves.d/Poland_1455-01-01.eu5.save
       ]
     }
   },
+  "map_names": {
+    "markets": [
+      "Hatunqulla",
+      "Iałopháybo",
+      "Canajoharie"
+    ],
+    "political": [
+      "France",
+      "England",
+      "Poland",
+      "Pinya",
+      "Bohemia"
+    ],
+    "religion": [
+      "Catholicism",
+      "Sunnism",
+      "Orthodoxy"
+    ]
+  },
   "most_foreign_building": "banking_office 940",
   "past_political": {
     "colors": 1083,

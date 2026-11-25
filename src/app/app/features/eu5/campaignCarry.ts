@@ -30,6 +30,8 @@ export type Eu5Carry = {
   mapMode: MapMode;
   viewport: MapViewport["viewport"] | null;
   insightPanel: { open: boolean; width: number };
+  /** The names on the map show */
+  mapNames: boolean;
   selection: CarriedSelection | null;
 };
 
@@ -40,6 +42,7 @@ export async function captureEu5Carry(store: Eu5Store): Promise<Eu5Carry> {
     mapMode: appState.currentMapMode,
     viewport: appState.mapViewport?.viewport ?? null,
     insightPanel: { open: state.insightPanelOpen, width: state.insightPanelWidth },
+    mapNames: appState.mapNamesVisible,
     selection: await engine.trigger.getCarriedSelection(),
   };
 }
@@ -50,6 +53,7 @@ export async function captureEu5Carry(store: Eu5Store): Promise<Eu5Carry> {
  * selection.
  */
 export async function applyEu5Carry(engine: AppEngine, carry: Eu5Carry): Promise<void> {
+  engine.trigger.setMapNamesVisible(carry.mapNames);
   await engine.trigger.restoreCampaignView(carry);
   // The camera comes last, so that nothing above moves it.
   if (carry.viewport !== null) await engine.trigger.fitWorldRect(carry.viewport);

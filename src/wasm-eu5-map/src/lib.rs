@@ -159,6 +159,16 @@ impl Eu5WasmMapRenderer {
         ]
     }
 
+    /// The middle of each location in world units, as `[x, y]` pairs indexed
+    /// by color id. A location that is not on the map has `u32::MAX` for both.
+    #[wasm_bindgen]
+    pub fn location_points(&self) -> Vec<u32> {
+        self.spatial_index
+            .points()
+            .flat_map(|point| point.map_or([u32::MAX; 2], |point| [point.x, point.y]))
+            .collect()
+    }
+
     /// The size of the whole world in world units: `[width, height]`.
     #[wasm_bindgen]
     pub fn world_size(&self) -> Vec<u32> {
