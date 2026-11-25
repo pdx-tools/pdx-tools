@@ -2024,8 +2024,8 @@ impl<'a> AchievementHunter<'a> {
         let desc = "started as Ardabil";
         result.and(AchievementCondition::new(starter, desc));
 
-        let playing = self.tag == "PER";
-        let desc = "currently Persia";
+        let playing = self.tag == "PER" || (self.patch >= (1, 36) && self.tag == "ERS");
+        let desc = "currently Persia or Eranshahr";
         result.and(AchievementCondition::new(playing, desc));
 
         result
