@@ -91,6 +91,40 @@ fn random_access_import_matches_buffered_text_binary_and_zstd() {
     }
 }
 
+/// A ZIP gamestate that another reader decompresses parses as the archive's own.
+#[test]
+fn external_gamestate_matches_the_archive_gamestate() {
+    let resolver = utils::tokens();
+    let mut content = Vec::new();
+    fixtures::request_file("SP_MLO_1617_04_01_166d38a1-bffb-4182-9e37-9540b0c2ac4f.eu5")
+        .read_to_end(&mut content)
+        .unwrap();
+    let open =
+        || Eu5AnySaveLoader::open_with(&content, resolver, eu5app::SaveCheckSummer::new()).unwrap();
+    let mut regular = open().parse().unwrap();
+    let expected = eu5app::map_projection::extract(&regular.take_gamestate()).unwrap();
+    let checksum = regular.into_observer().finish();
+
+    let loader = open();
+    assert!(loader.has_compressed_gamestate());
+    let eu5app::Eu5SaveKind::Zip(loader) = loader.into_kind() else {
+        panic!("expected a ZIP save");
+    };
+    let mut gamestate = Vec::new();
+    eu5save::Eu5File::from_slice(content.as_slice())
+        .unwrap()
+        .gamestate()
+        .unwrap()
+        .read_to_end(&mut gamestate)
+        .unwrap();
+    let mut loaded = loader.parse_with(gamestate.as_slice()).unwrap();
+    assert_eq!(
+        eu5app::map_projection::extract(&loaded.take_gamestate()).unwrap(),
+        expected
+    );
+    assert_eq!(loaded.into_observer().finish(), checksum);
+}
+
 /// Paint each mode from an extracted frame and compare it with the live map.
 /// The u16 fractions of the frame permit a difference of 1 in a color channel.
 #[test]

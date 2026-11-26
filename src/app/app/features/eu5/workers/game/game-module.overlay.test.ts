@@ -35,6 +35,7 @@ vi.mock("@/wasm/wasm_eu5", () => ({
   SaveLoader: {
     open: async () => ({
       meta: () => ({ version: { major: 1, minor: 0 } }),
+      has_compressed_gamestate: () => false,
       parse_gamestate: vi.fn(),
     }),
   },

@@ -407,17 +407,20 @@ impl From<eu5app::OverlayTable> for OverlayTable {
 }
 
 /// Stream an uncompressed save, so the large file is not in memory. Read a
-/// compressed save at once, because one read is faster.
-async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
+/// compressed save at once, because one read is faster. With
+/// `stream_compressed`, also stream a save with a header, as another worker
+/// decompresses its gamestate and this one reads only the small parts.
+async fn open_save(save: web_sys::Blob, stream_compressed: bool) -> std::io::Result<BlobReader> {
     let start = read_blob_start(&save, eu5app::SAVE_HEADER_MAX_LEN as u64)?;
-    let uncompressed = eu5save::SaveHeader::from_slice(&start).is_ok_and(|header| {
-        matches!(
-            header.kind(),
-            eu5save::SaveHeaderKind::Text | eu5save::SaveHeaderKind::Binary
-        )
+    let streaming = eu5save::SaveHeader::from_slice(&start).is_ok_and(|header| {
+        stream_compressed
+            || matches!(
+                header.kind(),
+                eu5save::SaveHeaderKind::Text | eu5save::SaveHeaderKind::Binary
+            )
     });
 
-    if uncompressed {
+    if streaming {
         BlobReader::streaming(save)
     } else {
         BlobReader::buffered(&save).await
@@ -470,7 +473,7 @@ pub struct ImportLoader {
 impl ImportLoader {
     /// Use the viewer's format-aware reader and checksum the parsed content.
     pub async fn open(save: web_sys::Blob) -> Result<ImportLoader, JsError> {
-        let reader = open_save(save)
+        let reader = open_save(save, false)
             .await
             .map_err(|e| JsError::new(&format!("Failed to read save file: {e}")))?;
         let size = reader.size();
@@ -495,6 +498,51 @@ impl ImportLoader {
     }
 }
 
+#[wasm_bindgen(typescript_custom_section)]
+const GAMESTATE_SOURCE: &str = r#"
+/** The decompressed gamestate, as another worker gives it. */
+export interface GamestateSource {
+  /** Fill `buf` from its start and return the byte count, or 0 at the end. */
+  read(buf: Uint8Array): number;
+}
+"#;
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "GamestateSource")]
+    pub type GamestateSource;
+
+    #[wasm_bindgen(method, catch, js_name = read)]
+    fn read_into(this: &GamestateSource, buf: &mut [u8]) -> Result<usize, JsValue>;
+}
+
+/// Reads a [`GamestateSource`] and keeps its error, because a parse error
+/// reports only the kind of an I/O error.
+struct SourceReader {
+    source: GamestateSource,
+    error: Option<JsValue>,
+}
+
+impl SourceReader {
+    /// The message of the error that the source threw, if any.
+    fn into_error(self) -> Option<String> {
+        let e = self.error?;
+        let message = e
+            .dyn_ref::<js_sys::Error>()
+            .map(|e| String::from(e.message()));
+        Some(message.unwrap_or_else(|| format!("{e:?}")))
+    }
+}
+
+impl std::io::Read for SourceReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.source.read_into(buf).map_err(|e| {
+            self.error = Some(e);
+            std::io::ErrorKind::Other.into()
+        })
+    }
+}
+
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct SaveLoader {
@@ -504,10 +552,11 @@ pub struct SaveLoader {
 #[wasm_bindgen]
 impl SaveLoader {
     /// Open a save from a `Blob`, such as a `File`. The save is never
-    /// copied completely into wasm memory.
+    /// copied completely into wasm memory. A compressed save is streamed, as
+    /// a [`GamestateSource`] is expected to give its gamestate.
     #[wasm_bindgen]
     pub async fn open(save: web_sys::Blob) -> Result<SaveLoader, JsError> {
-        let reader = open_save(save)
+        let reader = open_save(save, true)
             .await
             .map_err(|e| JsError::new(&format!("Failed to read save file: {e}")))?;
         let size = reader.size();
@@ -522,6 +571,14 @@ impl SaveLoader {
         into_ts(Eu5SaveMetadataHandle(self.parser.meta()))
     }
 
+    /// Whether a [`GamestateSource`] can give the gamestate, as it is a
+    /// compressed entry of a ZIP archive.
+    #[wasm_bindgen]
+    pub fn has_compressed_gamestate(&self) -> bool {
+        self.parser.has_compressed_gamestate()
+    }
+
+    /// Parse the gamestate, which this worker decompresses when needed.
     #[wasm_bindgen]
     pub fn parse_gamestate(self) -> Result<Eu5WasmGamestate, JsError> {
         let meta = Eu5SaveMetadataHandle(self.parser.meta());
@@ -529,7 +586,32 @@ impl SaveLoader {
             .parser
             .parse()
             .map_err(|e| JsError::new(&format!("Failed to parse game state: {e}")))?;
+        Ok(Eu5WasmGamestate { parsed_save, meta })
+    }
 
+    /// Parse the decompressed gamestate that `source` gives, for a save
+    /// where [`has_compressed_gamestate`](Self::has_compressed_gamestate).
+    #[wasm_bindgen]
+    pub fn parse_gamestate_from(
+        self,
+        source: GamestateSource,
+    ) -> Result<Eu5WasmGamestate, JsError> {
+        let meta = Eu5SaveMetadataHandle(self.parser.meta());
+        let eu5app::Eu5SaveKind::Zip(loader) = self.parser.into_kind() else {
+            return Err(JsError::new("Save has no compressed gamestate"));
+        };
+        let mut reader = SourceReader {
+            source,
+            error: None,
+        };
+        let parsed = loader.parse_with(&mut reader);
+        if let (Err(_), Some(message)) = (&parsed, reader.into_error()) {
+            return Err(JsError::new(&format!(
+                "Failed to read game state: {message}"
+            )));
+        }
+        let parsed_save =
+            parsed.map_err(|e| JsError::new(&format!("Failed to parse game state: {e}")))?;
         Ok(Eu5WasmGamestate { parsed_save, meta })
     }
 }

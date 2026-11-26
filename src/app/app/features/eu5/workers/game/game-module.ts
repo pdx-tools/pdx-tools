@@ -15,6 +15,7 @@ import type { BoxSelectCommitEvent } from "../../types/box-select";
 import { eu5SaveFileUrl } from "../../store/types";
 import type { Eu5ParsedSave } from "../../store/types";
 import { timeAsync, timeSync } from "@/lib/timeit";
+import { streamGamestate } from "@/lib/gamestate_stream";
 import { findCarriedCountry } from "../../carriedCountry";
 import type { CountryIdentity } from "../../carriedCountry";
 import init, * as wasm_eu5 from "../../../../wasm/wasm_eu5";
@@ -207,14 +208,21 @@ async function parseApp(
     return null;
   }
   const { game: gameBundleTask, localization: localizationTask } = openBundles(gameBundle);
+  // Decompress in another worker while this one parses.
+  const stream = saveParser.has_compressed_gamestate() ? streamGamestate(saveData) : null;
   const gamestate = await (async () => {
     try {
-      return timeSync("Parse Gamestate", () => saveParser.parse_gamestate());
+      const source = await stream?.source;
+      return timeSync("Parse Gamestate", () =>
+        source ? saveParser.parse_gamestate_from(source) : saveParser.parse_gamestate(),
+      );
     } catch (originalError) {
       if (!diagnose) throw originalError;
       const { diagnoseEu5Save } = await import("./eu5-diagnostics");
       await diagnoseEu5Save(saveData, tokens);
       throw originalError;
+    } finally {
+      stream?.close();
     }
   })();
   onProgress?.(30, "Loading game data");
