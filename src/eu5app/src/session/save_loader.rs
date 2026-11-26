@@ -125,10 +125,34 @@ impl Eu5SaveLoader<(), ()> {
     }
 }
 
-/// The gamestate stream of a save, with the encoding it is in.
-enum GamestateReader<'a, W> {
-    Text(TeeReader<'a, W>),
-    Binary(TeeReader<'a, W>),
+/// The decompressed gamestate stream of a save, with the encoding it is in.
+enum GamestateReader<'a> {
+    Text(Box<dyn Read + 'a>),
+    Binary(Box<dyn Read + 'a>),
+}
+
+impl<'a> GamestateReader<'a> {
+    fn new(is_text: bool, reader: impl Read + 'a) -> Self {
+        // Read with a dynamic dispatch read implementation. This is not
+        // technically required, but it significantly helps out compile times.
+        let reader: Box<dyn Read + 'a> = Box::new(reader);
+        if is_text {
+            GamestateReader::Text(reader)
+        } else {
+            GamestateReader::Binary(reader)
+        }
+    }
+
+    /// The gamestate stream that the archive gives.
+    fn from_archive<R: ReaderAt>(archive: &'a Eu5File<R>) -> Result<Self, Eu5LoadError> {
+        let content = archive
+            .gamestate()
+            .map_err(Eu5LoadError::GamestateExtraction)?;
+        Ok(match content {
+            SaveContentKind::Text(x) => Self::new(true, x.into_inner()),
+            SaveContentKind::Binary(x) => Self::new(false, x.into_inner()),
+        })
+    }
 }
 
 /// Share one text parser across reader types in the Wasm build.
@@ -136,13 +160,11 @@ fn text_deserializer(reader: &mut dyn Read) -> Eu5TextDeserializer<&mut dyn Read
     TextDeserializer::from_reader(reader, Utf8Encoding::new())
 }
 
-impl<'a, W: Write> GamestateReader<'a, W> {
-    fn binary_deserializer<'res, RES: TokenResolver>(
-        reader: TeeReader<'a, W>,
-        resolver: &'res RES,
-    ) -> Eu5BinaryDeserializer<'a, 'res, RES> {
-        BinaryFormatDeserializer::from_reader(reader, Eu5BinaryFormat::new(resolver))
-    }
+fn binary_deserializer<'a, 'res, RES: TokenResolver, W: Write>(
+    reader: TeeReader<'a, W>,
+    resolver: &'res RES,
+) -> Eu5BinaryDeserializer<'a, 'res, RES> {
+    BinaryFormatDeserializer::from_reader(reader, Eu5BinaryFormat::new(resolver))
 }
 
 impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
@@ -150,42 +172,72 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
         self.meta.clone()
     }
 
-    /// Open the gamestate stream with the observer between it and the reader.
-    fn gamestate_reader<'a>(
-        archive: &'a Eu5File<R>,
-        observer: &'a mut W,
-    ) -> Result<GamestateReader<'a, W>, Eu5LoadError> {
-        let content = archive
-            .gamestate()
-            .map_err(Eu5LoadError::GamestateExtraction)?;
+    fn is_zip(&self) -> bool {
+        matches!(
+            self.archive.kind(),
+            jomini::envelope::JominiFileKind::Zip(_)
+        )
+    }
 
-        // Read with a dynamic dispatch read implementation. This is not
-        // technically required, but it significantly helps out compile times.
-        Ok(match content {
-            SaveContentKind::Text(x) => GamestateReader::Text(TeeReader {
-                reader: Box::new(x),
-                observer,
-            }),
-            SaveContentKind::Binary(x) => GamestateReader::Binary(TeeReader {
-                reader: Box::new(x),
-                observer,
-            }),
-        })
+    /// Parse the gamestate that the archive gives.
+    pub fn parse(self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        let Self {
+            resolver,
+            archive,
+            arena,
+            observer,
+            ..
+        } = self;
+        let gamestate = GamestateReader::from_archive(&archive)?;
+        Self::parse_reader(&archive, resolver, arena, observer, gamestate)
+    }
+
+    /// Like [`parse`](Self::parse), but read the gamestate from `gamestate`
+    /// instead of from the archive, so that another thread can decompress
+    /// while this one parses. The stream must hold the bytes that the
+    /// archive's gamestate decodes to: the decompressed entry of a ZIP, or
+    /// the body after the header of an uncompressed save.
+    pub fn parse_with(self, gamestate: impl Read) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        let Self {
+            resolver,
+            archive,
+            arena,
+            observer,
+            ..
+        } = self;
+        // The header gives the encoding, so the archive's entry is not opened.
+        let is_text = archive.header().kind().is_text();
+        let gamestate = GamestateReader::new(is_text, gamestate);
+        Self::parse_reader(&archive, resolver, arena, observer, gamestate)
     }
 
     #[tracing::instrument(name = "eu5.gamestate.parse", skip_all)]
-    pub fn parse(mut self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
-        let resolver = eu5save::SaveResolver::from_file(&self.archive, self.resolver)
+    fn parse_reader(
+        archive: &Eu5File<R>,
+        resolver: RES,
+        arena: bumpalo::Bump,
+        mut observer: W,
+        gamestate: GamestateReader<'_>,
+    ) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        let resolver = eu5save::SaveResolver::from_file(archive, resolver)
             .map_err(Eu5LoadError::StringLookup)?;
 
-        let game = match Self::gamestate_reader(&self.archive, &mut self.observer)? {
-            GamestateReader::Text(mut x) => {
+        let game = match gamestate {
+            GamestateReader::Text(reader) => {
+                let mut x = TeeReader {
+                    reader,
+                    observer: &mut observer,
+                };
                 let mut deser = text_deserializer(&mut x);
-                Gamestate::deserialize_in_arena(&mut deser, &self.arena)
+                Gamestate::deserialize_in_arena(&mut deser, &arena)
             }
-            GamestateReader::Binary(x) => {
-                let mut deser = GamestateReader::binary_deserializer(x, &resolver);
-                Gamestate::deserialize_in_arena(&mut deser, &self.arena)
+            GamestateReader::Binary(reader) => {
+                let x = TeeReader {
+                    reader,
+                    observer: &mut observer,
+                };
+                let mut deser = binary_deserializer(x, &resolver);
+                Gamestate::deserialize_in_arena(&mut deser, &arena)
             }
         };
 
@@ -197,7 +249,7 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
         // gamestate won't live longer than the arena.
         let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
 
-        Ok(Eu5LoadedSave::new(self.arena, game, self.observer))
+        Ok(Eu5LoadedSave::new(arena, game, observer))
     }
 }
 
@@ -207,23 +259,38 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
     /// [`arena_serde::tracked::Deserializer`] so that deserialization errors include the
     /// field path (e.g. `culture_manager.database.?.name`).
     #[tracing::instrument(name = "eu5.gamestate.parse_tracked", skip_all)]
-    pub fn parse_tracked(mut self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
-        let resolver = eu5save::SaveResolver::from_file(&self.archive, self.resolver)
+    pub fn parse_tracked(self) -> Result<Eu5LoadedSave<W>, Eu5LoadError> {
+        let Self {
+            resolver,
+            archive,
+            arena,
+            mut observer,
+            ..
+        } = self;
+        let resolver = eu5save::SaveResolver::from_file(&archive, resolver)
             .map_err(Eu5LoadError::StringLookup)?;
 
         let mut path_buf = Vec::new();
         let mut track = arena_serde::tracked::Track::new_with(&mut path_buf);
 
-        let game = match Self::gamestate_reader(&self.archive, &mut self.observer)? {
-            GamestateReader::Text(mut x) => {
+        let game = match GamestateReader::from_archive(&archive)? {
+            GamestateReader::Text(reader) => {
+                let mut x = TeeReader {
+                    reader,
+                    observer: &mut observer,
+                };
                 let mut deser = text_deserializer(&mut x);
                 let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &mut track);
-                Gamestate::deserialize_in_arena(tracked, &self.arena)
+                Gamestate::deserialize_in_arena(tracked, &arena)
             }
-            GamestateReader::Binary(x) => {
-                let mut deser = GamestateReader::binary_deserializer(x, &resolver);
+            GamestateReader::Binary(reader) => {
+                let x = TeeReader {
+                    reader,
+                    observer: &mut observer,
+                };
+                let mut deser = binary_deserializer(x, &resolver);
                 let tracked = arena_serde::tracked::Deserializer::new(&mut deser, &mut track);
-                Gamestate::deserialize_in_arena(tracked, &self.arena)
+                Gamestate::deserialize_in_arena(tracked, &arena)
             }
         };
 
@@ -233,7 +300,7 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5SaveLoader<R, RES, W> {
         })?;
 
         let game = unsafe { std::mem::transmute::<Gamestate<'_>, Gamestate<'static>>(game) };
-        Ok(Eu5LoadedSave::new(self.arena, game, self.observer))
+        Ok(Eu5LoadedSave::new(arena, game, observer))
     }
 }
 
@@ -395,6 +462,21 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5AnySaveLoader<R, RES, W> {
         Ok(Self { inner })
     }
 
+    /// Whether the gamestate is a compressed entry of a ZIP archive, which
+    /// another thread can decompress. See [`into_kind`](Self::into_kind).
+    pub fn has_compressed_gamestate(&self) -> bool {
+        matches!(&self.inner, AnySaveLoader::File(loader) if loader.is_zip())
+    }
+
+    /// Split out a ZIP save, whose gamestate another reader can decompress
+    /// for [`Eu5SaveLoader::parse_with`].
+    pub fn into_kind(self) -> Eu5SaveKind<R, RES, W> {
+        match self.inner {
+            AnySaveLoader::File(loader) if loader.is_zip() => Eu5SaveKind::Zip(loader),
+            inner => Eu5SaveKind::Other(Self { inner }),
+        }
+    }
+
     pub fn meta(&self) -> Rc<Eu5SaveMetadata> {
         match &self.inner {
             AnySaveLoader::Stream(loader) => loader.meta(),
@@ -408,6 +490,15 @@ impl<R: ReaderAt, RES: TokenResolver, W: Write> Eu5AnySaveLoader<R, RES, W> {
             AnySaveLoader::File(loader) => loader.parse(),
         }
     }
+}
+
+/// A save loader split by whether its gamestate is a compressed ZIP entry.
+#[derive(Debug)]
+pub enum Eu5SaveKind<R: ReaderAt, RES, W = std::io::Sink> {
+    /// The gamestate is a compressed entry that another reader can decompress.
+    Zip(Eu5SaveLoader<R, RES, W>),
+    /// An uncompressed save, or one Zstd stream with no separate gamestate.
+    Other(Eu5AnySaveLoader<R, RES, W>),
 }
 
 /// Maximum header size, including optional padding and the line ending.

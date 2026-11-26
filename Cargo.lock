@@ -4914,11 +4914,14 @@ dependencies = [
 name = "wasm-compress"
 version = "0.1.0"
 dependencies = [
+ "jomini",
  "js-sys",
  "pdx-save-codec",
  "serde",
  "tsify",
  "wasm-bindgen",
+ "wasm-pdx-core",
+ "web-sys",
 ]
 
 [[package]]

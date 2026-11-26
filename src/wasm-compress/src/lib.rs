@@ -1,6 +1,8 @@
-//! Browser bindings for [`pdx_save_codec`].
+//! Browser bindings for [`pdx_save_codec`], and a gamestate decoder that
+//! runs beside the parser.
 
 use serde::{Serialize, Serializer};
+use std::io::Read;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::prelude::*;
 
@@ -70,5 +72,50 @@ fn progress_fn(f: Option<js_sys::Function>) -> impl FnMut(f64) {
         if let Some(cb) = &f {
             let _ = cb.call1(&JsValue::null(), &JsValue::from_f64(progress));
         }
+    }
+}
+
+#[wasm_bindgen(typescript_custom_section)]
+const GAMESTATE_SINK: &str = r#"
+/** Receives the decompressed gamestate in order. */
+export interface GamestateSink {
+  /** Copy `chunk` out before returning, as the next chunk overwrites it. */
+  write(chunk: Uint8Array): void;
+}
+"#;
+
+#[wasm_bindgen]
+extern "C" {
+    /// Receives the decompressed gamestate in order.
+    #[wasm_bindgen(typescript_type = "GamestateSink")]
+    pub type GamestateSink;
+
+    /// Copy `chunk` out before the call returns, because the chunk is a view
+    /// of wasm memory that the next chunk overwrites.
+    #[wasm_bindgen(method, catch)]
+    fn write(this: &GamestateSink, chunk: &[u8]) -> Result<(), JsValue>;
+}
+
+/// Decompress the gamestate of a save with an envelope, such as an EU5
+/// save, into `sink`. Another worker parses the chunks while this one
+/// decompresses, which overlaps the two.
+#[wasm_bindgen]
+pub fn decompress_gamestate(save: web_sys::Blob, sink: &GamestateSink) -> Result<(), JsError> {
+    // Read in windows, so the save is not held in memory.
+    let reader = wasm_pdx_core::blob::BlobReader::streaming(save)?;
+    let size = reader.size();
+    let file = jomini::envelope::JominiFile::from_reader_at(reader, size)?;
+    let mut gamestate = file.gamestate()?;
+    // One chunk fills one slot of the ring that the worker writes to.
+    const CHUNK_LEN: u64 = 1024 * 1024;
+    let mut buf = Vec::with_capacity(CHUNK_LEN as usize);
+    loop {
+        buf.clear();
+        (&mut gamestate).take(CHUNK_LEN).read_to_end(&mut buf)?;
+        if buf.is_empty() {
+            return Ok(());
+        }
+        sink.write(&buf)
+            .map_err(|e| JsError::new(&format!("Failed to write gamestate: {e:?}")))?;
     }
 }
