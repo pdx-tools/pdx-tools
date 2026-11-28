@@ -124,7 +124,12 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
 
   const height = Math.max(120, rows.length * 28 + 40);
   return (
-    <EChart gpuBars mergeUpdates option={option} style={{ height: `${height}px`, width: "100%" }} />
+    <EChart
+      barOverlay
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+    />
   );
 }
 
@@ -326,6 +331,9 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
       className="w-full"
       columns={columns}
       data={cells}
+      tableOptions={{
+        getRowId: (row) => JSON.stringify([row.owner.country.key, row.building.key]),
+      }}
       getRowHoverTarget={(row) => ({
         kind: "country",
         countryIdx: row.owner.country.key,

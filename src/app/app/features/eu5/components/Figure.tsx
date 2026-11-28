@@ -6,6 +6,7 @@ import {
   formatMetric,
   formatPercent,
 } from "../numberFormatting";
+import { AnimatedValue } from "./AnimatedValue";
 import { ExactValue } from "./ExactValue";
 
 /** A building or RGO level: 17 stays 17, and a mean is 16.5 */
@@ -36,9 +37,7 @@ export function Figure({
   const full = exact(value);
   return (
     <ExactValue exact={full === undefined ? undefined : `${prefix}${full}${suffix}`}>
-      {prefix}
-      {text(value)}
-      {suffix}
+      <AnimatedValue value={`${prefix}${text(value)}${suffix}`} />
     </ExactValue>
   );
 }

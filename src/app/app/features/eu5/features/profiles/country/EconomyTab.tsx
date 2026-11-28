@@ -369,7 +369,7 @@ function RevenueMarginChart({ revenue, balance }: { revenue: number[]; balance: 
   return (
     <section>
       <SectionTitle>Revenue &amp; Net Margin</SectionTitle>
-      <EChart gpuBars mergeUpdates option={option} style={{ height: "200px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "200px", width: "100%" }} />
     </section>
   );
 }

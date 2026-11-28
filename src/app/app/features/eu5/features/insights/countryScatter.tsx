@@ -525,6 +525,8 @@ export function CountryScatter<T>({
         {
           type: "scatter",
           data: dots.map((dot) => ({
+            id: dot.point.country.country.key,
+            name: dot.point.country.country.name,
             value: dot.value,
             symbolSize: dot.symbolSize,
             label: { show: dot.labeled },
@@ -545,7 +547,7 @@ export function CountryScatter<T>({
     });
   }, [log, extent, sameY, dots, below, seriesIndex, xName, yName, yAxis, tooltip]);
 
-  const zoom = useBoxZoom(option);
+  const zoom = useBoxZoom(option, `${logX}-${sameY}`);
   const handleClick = useEu5EntityChartClick({
     kind: "country",
     getTarget: (params) => {
@@ -567,6 +569,8 @@ export function CountryScatter<T>({
     <>
       <div className="relative">
         <EChart
+          mergeUpdates
+          gpuScatter
           option={zoom.option}
           style={{ height: "420px", width: "100%" }}
           onInit={(chart) => {

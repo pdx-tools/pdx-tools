@@ -1,36 +1,18 @@
-import { CHART_UPDATE_DURATION, CHART_UPDATE_EASING } from "./chartMotion";
+import { CHART_UPDATE_DURATION, CHART_UPDATE_EASING, prefersReducedMotion } from "./chartMotion";
+import { getChartModel } from "./echartsInternals";
+import type { SankeyGraphic, SankeyShape } from "./echartsInternals";
 import type { ECharts } from "echarts/core";
 
 // The native Sankey view recreates its graphics on update. Capture only geometry,
 // then tween the replacement shapes; never retain an old canvas or full series.
-type Shape = Record<string, number | string | number[]>;
-type Graphic = {
-  shape?: Shape;
-  stopAnimation: () => void;
-  animateFrom: (props: object, options: { duration: number; easing: string }) => void;
-  disableLabelAnimation?: boolean;
-};
-type Data = {
-  count: () => number;
-  getId: (index: number) => string;
-  getRawDataItem: (index: number) => unknown;
-  getItemGraphicEl: (index: number) => Graphic | undefined;
-};
-type Model = { id: string; subType: string; getData: (kind?: string) => Data };
-// ECharts does not publish this runtime accessor in its public TypeScript API.
-// Keep its use isolated and optional so other charts do not depend on it.
-type ChartModelAccess = {
-  getModel?: () => { eachSeries: (visit: (model: Model) => void) => void };
-};
-
-function visitSankey(chart: ECharts, visit: (key: string, graphic: Graphic) => void) {
-  const model = (chart as unknown as ChartModelAccess).getModel?.();
+function visitSankey(chart: ECharts, visit: (key: string, graphic: SankeyGraphic) => void) {
+  const model = getChartModel(chart);
   model?.eachSeries((series) => {
     if (series.subType !== "sankey") return;
     for (const kind of ["node", "edge"]) {
       const data = series.getData(kind === "node" ? undefined : kind);
       for (let i = 0; i < data.count(); i++) {
-        const graphic = data.getItemGraphicEl(i);
+        const graphic = data.getItemGraphicEl(i) as SankeyGraphic | undefined;
         if (!graphic?.shape) continue;
         const raw = data.getRawDataItem(i) as { source?: string; target?: string } | undefined;
         const id = kind === "edge" ? JSON.stringify([raw?.source, raw?.target]) : data.getId(i);
@@ -40,22 +22,29 @@ function visitSankey(chart: ECharts, visit: (key: string, graphic: Graphic) => v
   });
 }
 
-export function captureSankey(chart: ECharts) {
-  const shapes = new Map<string, Shape>();
-  visitSankey(chart, (key, graphic) => shapes.set(key, { ...graphic.shape! }));
+export function captureSankey(chart: ECharts): Map<string, SankeyShape> | undefined {
+  let shapes: Map<string, SankeyShape> | undefined;
+  visitSankey(chart, (key, graphic) => {
+    shapes ??= new Map<string, SankeyShape>();
+    shapes.set(key, { ...graphic.shape! });
+  });
   return shapes;
 }
 
 export function animateSankey(
   chart: ECharts,
-  previous: Map<string, Shape>,
+  previous: Map<string, SankeyShape>,
   duration = CHART_UPDATE_DURATION,
 ) {
-  if (!previous.size || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!previous.size || duration <= 0 || prefersReducedMotion()) return;
   visitSankey(chart, (key, graphic) => {
     graphic.stopAnimation();
     graphic.disableLabelAnimation = false;
     const shape = previous.get(key);
+    if (!shape && graphic.style && graphic.style.opacity == null) {
+      // ZRender's animateFrom skips properties whose target value is nullish.
+      graphic.style.opacity = 1;
+    }
     graphic.animateFrom(shape ? { shape } : { style: { opacity: 0 } }, {
       duration,
       easing: CHART_UPDATE_EASING,

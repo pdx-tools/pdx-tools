@@ -1,7 +1,13 @@
-import { CHART_UPDATE_DURATION, CHART_UPDATE_EASING } from "./chartMotion";
+import {
+  CHART_UPDATE_EASING,
+  adaptiveDuration,
+  prefersReducedMotion,
+  subscribeReducedMotion,
+} from "./chartMotion";
+import { setZRenderAnimationRunning, throttleZRenderAnimation } from "./echartsInternals";
 import { captureSankey, animateSankey } from "./sankeyTransitions";
 import { createGpuScatter, gpuScatterOption } from "./gpuScatter";
-import { createGpuBars, gpuBarOption, supportsGpuBars } from "./gpuBars";
+import { barOverlayOption, createBarOverlay, supportsBarOverlay } from "./barOverlay";
 import { memo, useEffect, useEffectEvent, useRef } from "react";
 import * as echarts from "echarts/core";
 import {
@@ -105,30 +111,36 @@ export interface EChartProps {
   mergeUpdates?: boolean;
   /** Render a single circular scatterplot's points on the GPU. */
   gpuScatter?: boolean;
-  /** Animate Cartesian bars on the GPU, retaining the ECharts layout and controls. */
-  gpuBars?: boolean;
+  /** Animate Cartesian bars on a lightweight 2D Canvas overlay, keeping axes/gridlines static. */
+  barOverlay?: boolean;
 }
 
 export const escapeEChartsHtml = (value: unknown) =>
   echarts.format.encodeHTML(value == null ? "" : String(value));
 
-function datasetIdentity(source: unknown) {
+const isKeyValue = (value: unknown): value is string | number =>
+  typeof value === "string" || typeof value === "number";
+
+/**
+ * Derive a stable item identity dimension for object-array datasets:
+ * prefer canonical `id` or `name`, otherwise fall back to the first declared
+ * category dimension (ECharts' convention for category-axis datasets).
+ */
+function datasetIdentity(dataset: DatasetComponentOption | undefined): string | undefined {
+  const source = dataset?.source;
   const first = Array.isArray(source) ? source[0] : undefined;
-  return first && !Array.isArray(first) && typeof first === "object"
-    ? "id" in first
-      ? "id"
-      : "name" in first
-        ? "name"
-        : "religion" in first
-          ? "religion"
-          : "scope" in first
-            ? "scope"
-            : undefined
-    : undefined;
+  if (!first || Array.isArray(first) || typeof first !== "object") return undefined;
+  const record = first as Record<string, unknown>;
+  if ("id" in record && isKeyValue(record.id)) return "id";
+  if ("name" in record && isKeyValue(record.name)) return "name";
+  const firstDim = dataset?.dimensions?.[0];
+  const dimName = typeof firstDim === "string" ? firstDim : firstDim?.name;
+  if (dimName && dimName in record && isKeyValue(record[dimName])) return dimName;
+  return undefined;
 }
 
 // ECharts diffs by series ID and item ID. Keep these stable while rankings change.
-function animatedOption(option: EChartsOption, duration: number): EChartsOption {
+export function animatedOption(option: EChartsOption, duration: number): EChartsOption {
   const list = <T,>(value: T | T[] | undefined): T[] =>
     value == null ? [] : Array.isArray(value) ? value : [value];
   const categoryAxis = [...list(option.xAxis), ...list(option.yAxis)].find(
@@ -138,13 +150,11 @@ function animatedOption(option: EChartsOption, duration: number): EChartsOption 
   const datasets = list(option.dataset);
   return {
     ...option,
-    animation:
-      option.animation !== false && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    animation: option.animation !== false && !prefersReducedMotion(),
     animationDurationUpdate: duration,
     animationEasingUpdate: CHART_UPDATE_EASING,
     dataset: datasets.map((dataset) => {
-      const source = dataset.source;
-      const identity = datasetIdentity(source);
+      const identity = datasetIdentity(dataset);
       const dimensions = dataset.dimensions;
       return identity &&
         dimensions &&
@@ -153,24 +163,25 @@ function animatedOption(option: EChartsOption, duration: number): EChartsOption 
         : dataset;
     }),
     series: list(option.series).map((series, index) => {
-      const dataset = datasets[("datasetIndex" in series ? series.datasetIndex : 0) ?? 0];
-      const source = dataset?.source;
-      const identity = datasetIdentity(source);
-      const data =
-        "data" in series && Array.isArray(series.data)
-          ? series.data.map((item, i) => {
-              if (item && typeof item === "object" && !Array.isArray(item)) {
-                const row = item as { id?: string | number; tag?: string; name?: string };
-                return { ...item, id: row.id ?? row.tag ?? row.name ?? String(i) };
-              }
-              if (series.type === "bar" && labels?.[i] != null) {
-                const label = labels[i];
-                const name = typeof label === "object" ? label.value : label;
-                return { value: item, name: String(name), id: String(name) };
-              }
-              return item;
-            })
-          : undefined;
+      const hasInlineData = "data" in series && Array.isArray(series.data);
+      const dataset = hasInlineData
+        ? undefined
+        : datasets[("datasetIndex" in series ? series.datasetIndex : 0) ?? 0];
+      const identity = datasetIdentity(dataset);
+      const data = hasInlineData
+        ? (series.data as unknown[]).map((item, i) => {
+            if (item && typeof item === "object" && !Array.isArray(item)) {
+              const row = item as { id?: string | number; tag?: string; name?: string };
+              return { ...item, id: row.id ?? row.tag ?? row.name ?? String(i) };
+            }
+            if (series.type === "bar" && labels?.[i] != null) {
+              const label = labels[i];
+              const name = typeof label === "object" ? label.value : label;
+              return { value: item, name: String(name), id: String(name) };
+            }
+            return item;
+          })
+        : undefined;
       return {
         ...series,
         id: series.id ?? `transition/${series.type}/${series.name ?? index}`,
@@ -191,13 +202,12 @@ export const EChart = memo(function EChart({
   className,
   mergeUpdates = false,
   gpuScatter = false,
-  gpuBars = false,
+  barOverlay = false,
 }: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
   const gpuRef = useRef<ReturnType<typeof createGpuScatter>>(undefined);
-  const barsRef = useRef<ReturnType<typeof createGpuBars>>(undefined);
-  const barsFailed = useRef(false);
+  const barsRef = useRef<ReturnType<typeof createBarOverlay>>(undefined);
   const theme = chartTheme(useGameTheme()?.theme);
   const onInitEvent = useEffectEvent((chart: echarts.ECharts) => onInit?.(chart));
 
@@ -205,61 +215,50 @@ export const EChart = memo(function EChart({
   const resetOptionRef = useRef(false);
   const appliedRef = useRef<EChartProps["option"] | null>(null);
   const lastUpdateRef = useRef<{ option: EChartProps["option"]; at: number } | null>(null);
-  const applyOptionRef = useRef<(() => void) | undefined>(undefined);
+
+  // Overlays are mutually exclusive; gpuScatter takes precedence if both are ever set.
+  const useBarOverlayProp = barOverlay && !gpuScatter;
+
   const applyOption = useEffectEvent(() => {
     const chart = chartRef.current;
     if (!chart || !visibleRef.current || appliedRef.current === option) return;
     const previousSankey = mergeUpdates ? captureSankey(chart) : undefined;
     const now = performance.now();
-    // Finish frequent playback transitions before the next observation arrives.
-    // Slower updates retain the usual duration; interrupted transitions still
-    // start from their current position rather than jumping to the destination.
-    const duration =
-      lastUpdateRef.current == null
-        ? CHART_UPDATE_DURATION
-        : Math.min(CHART_UPDATE_DURATION, (now - lastUpdateRef.current.at) * 0.8);
+    const duration = adaptiveDuration(lastUpdateRef.current?.at ?? null, now);
     const resolved = typeof option === "function" ? option(chart) : option;
     const next = mergeUpdates ? animatedOption(resolved, duration) : resolved;
-    if (gpuBars && !barsFailed.current && !barsRef.current && supportsGpuBars(next)) {
-      barsRef.current = createGpuBars(chart, () => {
-        barsRef.current?.dispose();
-        barsRef.current = undefined;
-        barsFailed.current = true;
-        resetOptionRef.current = true;
-        appliedRef.current = null;
-        applyOptionRef.current?.();
-      });
-      if (!barsRef.current) barsFailed.current = true;
-    }
-    if (barsRef.current && !supportsGpuBars(next)) {
-      barsRef.current.dispose();
-      barsRef.current = undefined;
+
+    const useBars = Boolean(barsRef.current && supportsBarOverlay(next));
+    if (barsRef.current && !useBars && barsRef.current.isActive()) {
+      barsRef.current.deactivate();
       resetOptionRef.current = true;
     }
-    barsRef.current?.restore();
+
     const merge = mergeUpdates && !resetOptionRef.current;
+    // Always replace series, axes, and legend so conditional components never linger;
+    // only replace dataZoom when omitted so persistent sliders retain user zoom state.
+    const replaceMerge =
+      next.dataZoom == null
+        ? ["series", "xAxis", "yAxis", "legend", "dataZoom"]
+        : ["series", "xAxis", "yAxis", "legend"];
     chart.setOption(
-      gpuRef.current ? gpuScatterOption(next) : barsRef.current ? gpuBarOption(next) : next,
+      gpuRef.current ? gpuScatterOption(next) : useBars ? barOverlayOption(next) : next,
       {
         notMerge: !merge,
-        // Box zoom applies through this same path, including the Canvas fallback.
-        ...(merge ? { replaceMerge: gpuScatter ? ["series", "xAxis", "yAxis"] : ["series"] } : {}),
+        ...(merge ? { replaceMerge } : {}),
       },
     );
     resetOptionRef.current = false;
-    barsRef.current?.update(next);
+    if (useBars) barsRef.current?.update(next);
     gpuRef.current?.update(next);
     appliedRef.current = option;
     if (lastUpdateRef.current?.option !== option) lastUpdateRef.current = { option, at: now };
-    if (previousSankey) animateSankey(chart, previousSankey, duration);
+    if (previousSankey && next.animation !== false && duration > 0) {
+      animateSankey(chart, previousSankey, duration);
+    }
   });
 
-  useEffect(() => {
-    applyOptionRef.current = applyOption;
-    return () => {
-      applyOptionRef.current = undefined;
-    };
-  });
+  const hasPendingOption = useEffectEvent(() => appliedRef.current !== option);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -267,16 +266,18 @@ export const EChart = memo(function EChart({
     let rafId: number | undefined;
     let cleanup: void | (() => void);
     let size = { width: 0, height: 0 };
-    const resize = () => {
+    const resize = (syncOverlays = true) => {
       const chart = chartRef.current;
       if (!chart || !visibleRef.current) return;
-      const width = container.clientWidth,
-        height = container.clientHeight;
-      if (width === size.width && height === size.height) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      if (width === 0 || height === 0 || (width === size.width && height === size.height)) return;
       size = { width, height };
       chart.resize();
-      gpuRef.current?.resize();
-      barsRef.current?.resize();
+      if (syncOverlays) {
+        gpuRef.current?.resize();
+        barsRef.current?.resize();
+      }
     };
     const activate = () => {
       if (!chartRef.current) {
@@ -294,65 +295,64 @@ export const EChart = memo(function EChart({
             applyOption();
           });
         }
-        if (mergeUpdates) {
-          // Canvas text painting dominated the profile on a 180 Hz display.
-          // Advance chart animations at at most 60 Hz, retaining their wall-clock duration.
-          // Explicit synchronous updates (setOption/resize) must run immediately.
-          const animation = chart.getZr().animation;
-          const update = animation.update.bind(animation);
-          let lastFrame = -Infinity;
-          animation.update = (synchronous) => {
-            const now = performance.now();
-            if (!synchronous && now - lastFrame < 1000 / 60 - 0.5) return;
-            lastFrame = now;
-            update(synchronous);
-          };
+        if (useBarOverlayProp) {
+          barsRef.current = createBarOverlay(chart, () => {
+            barsRef.current?.dispose();
+            barsRef.current = undefined;
+            resetOptionRef.current = true;
+            appliedRef.current = null;
+            applyOption();
+          });
         }
+        if (mergeUpdates) throttleZRenderAnimation(chart);
         size = { width: container.clientWidth, height: container.clientHeight };
         cleanup = onInitEvent(chart);
       } else {
-        resize();
+        // If a new option is pending, only resize ECharts here so overlays rebuild once in applyOption.
+        resize(!hasPendingOption());
       }
-      applyOption();
-      chartRef.current?.getZr().animation.start();
+      setZRenderAnimationRunning(chartRef.current, true);
       gpuRef.current?.resume();
       barsRef.current?.resume();
-    };
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const motionChanged = () => {
-      appliedRef.current = null;
       applyOption();
     };
-    if (mergeUpdates) motion.addEventListener("change", motionChanged);
+    const unsubscribeMotion = mergeUpdates
+      ? subscribeReducedMotion(() => {
+          appliedRef.current = null;
+          applyOption();
+        })
+      : undefined;
     // EU5 charts keep the latest option while clipped by a scroll panel or hidden.
     // They are created only when visible, then retained for subsequent animated updates.
-    const visibility = mergeUpdates
-      ? new IntersectionObserver(([entry]) => {
-          visibleRef.current = entry.isIntersecting;
-          if (entry.isIntersecting) activate();
-          else {
-            chartRef.current?.getZr().animation.stop();
-            gpuRef.current?.pause();
-            barsRef.current?.pause();
-          }
-        })
-      : null;
+    const visibility =
+      mergeUpdates && typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver((entries) => {
+            const entry = entries.at(-1);
+            if (!entry) return;
+            visibleRef.current = entry.isIntersecting;
+            if (entry.isIntersecting) activate();
+            else {
+              if (chartRef.current) setZRenderAnimationRunning(chartRef.current, false);
+              gpuRef.current?.pause();
+              barsRef.current?.pause();
+            }
+          })
+        : null;
     visibleRef.current = !visibility;
     if (visibility) visibility.observe(container);
     else activate();
     const resizeObserver = new ResizeObserver(() => {
       if (rafId != null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(resize);
+      rafId = requestAnimationFrame(() => resize(true));
     });
     resizeObserver.observe(container);
     return () => {
       if (rafId != null) cancelAnimationFrame(rafId);
-      if (mergeUpdates) motion.removeEventListener("change", motionChanged);
+      unsubscribeMotion?.();
       visibility?.disconnect();
       resizeObserver.disconnect();
       barsRef.current?.dispose();
       barsRef.current = undefined;
-      barsFailed.current = false;
       gpuRef.current?.dispose();
       gpuRef.current = undefined;
       cleanup?.();
@@ -362,7 +362,7 @@ export const EChart = memo(function EChart({
       appliedRef.current = null;
       lastUpdateRef.current = null;
     };
-  }, [mergeUpdates, gpuScatter, gpuBars, theme]);
+  }, [mergeUpdates, gpuScatter, useBarOverlayProp, theme]);
 
   useEffect(() => {
     applyOption();

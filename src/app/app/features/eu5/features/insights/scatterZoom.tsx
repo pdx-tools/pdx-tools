@@ -169,14 +169,22 @@ const resolve = (option: ScatterOption, chart: echarts.ECharts) =>
 /**
  * Drag a box over a scatter to zoom each axis to the box: the chart draws
  * again with its option and new ends on the axes. `option` is the option of
- * the chart, with one x axis and one y axis. A new option draws the chart
- * again with no zoom.
+ * the chart, with one x axis and one y axis. When `resetKey` is given, the
+ * zoom stays across option updates (such as playback ticks) until `resetKey`
+ * changes; otherwise a new option clears the zoom.
  */
-export function useBoxZoom(option: ScatterOption) {
-  // The option that the zoom is for. In a box, because an option can be a function.
+export function useBoxZoom(option: ScatterOption, resetKey?: string | number | boolean) {
+  // The option or key that the zoom is for.
   type ZoomRange = { x: [number, number]; y: [number, number] };
-  const [zoom, setZoom] = useState<{ option: ScatterOption; range: ZoomRange } | null>(null);
-  const zoomed = zoom?.option === option ? zoom : null;
+  const [zoom, setZoom] = useState<{
+    option: ScatterOption;
+    resetKey: string | number | boolean | undefined;
+    range: ZoomRange;
+  } | null>(null);
+  const zoomed =
+    zoom && (resetKey !== undefined ? zoom.resetKey === resetKey : zoom.option === option)
+      ? zoom
+      : null;
   const zoomOption = useMemo(() => {
     if (!zoomed) return option;
     return (chart: echarts.ECharts): EChartsOption => {
@@ -187,7 +195,7 @@ export function useBoxZoom(option: ScatterOption) {
     };
   }, [option, zoomed]);
 
-  const zoomChart = useEffectEvent((range: ZoomRange) => setZoom({ option, range }));
+  const zoomChart = useEffectEvent((range: ZoomRange) => setZoom({ option, resetKey, range }));
 
   const attach = (chart: echarts.ECharts) => {
     // A new chart starts with no zoom, such as after a change of theme.

@@ -1,6 +1,13 @@
 import { AnimatedValue } from "./AnimatedValue";
+import { ElementVisibilityContext, useElementVisible } from "./useElementVisible";
+import { useFlipList } from "./useFlipList";
+import {
+  HIGHLIGHT_DURATION,
+  HIGHLIGHT_EASING,
+  prefersReducedMotion,
+} from "@/components/viz/chartMotion";
 import { DefinedTerm, glossaryTerm } from "./EntityName";
-import React, { useId, useMemo, useState, useRef, useLayoutEffect } from "react";
+import React, { useContext, useId, useMemo, useState, useRef, useLayoutEffect } from "react";
 import { flexRender, useTable } from "@tanstack/react-table";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import type {
@@ -276,35 +283,44 @@ export function Eu5DataTable<TData extends RowData>({
         const r = row as Record<string, unknown>;
         if ("kind" in r && "culture" in r && "religion" in r) {
           const culture = r.culture as { key?: string } | undefined;
-          const religion = r.religion as { key?: string };
-          return JSON.stringify([r.kind, culture?.key ?? null, religion.key]);
+          const religion = r.religion as { key?: string } | undefined;
+          return JSON.stringify([r.kind, culture?.key ?? null, religion?.key ?? null]);
         }
         const location = r.location as { key?: number; name?: string } | undefined;
         const parts: [string, string | number][] = [];
         if (location?.key != null) parts.push(["location", location.key]);
-        for (const field of [
-          "country",
-          "market",
-          "religion",
-          "good",
-          "building",
-          "material",
-          "rawMaterial",
-          "buildingType",
-          "ownerCountry",
-          "foreignOwner",
-          "kind",
-          "popType",
-        ]) {
+        // When a row is already keyed by a canonical location, only append sub-row discriminators
+        // (building / foreignOwner / pop kind) — never mutable relations like market or owner.
+        const fields =
+          location?.key != null
+            ? ["building", "buildingType", "foreignOwner", "kind", "popType"]
+            : [
+                "country",
+                "owner",
+                "market",
+                "religion",
+                "good",
+                "building",
+                "material",
+                "rawMaterial",
+                "buildingType",
+                "ownerCountry",
+                "foreignOwner",
+                "kind",
+                "popType",
+              ];
+        for (const field of fields) {
           const v = r[field];
           if (v && typeof v === "object") {
             const entity = v as {
               tag?: string;
               key?: number | string;
               country?: { key?: number };
+              market?: { key?: number };
               name?: string;
             };
-            const id = entity.tag ?? entity.key ?? entity.country?.key ?? entity.name;
+            const id =
+              entity.tag ?? entity.key ?? entity.country?.key ?? entity.market?.key ?? entity.name;
             if (id != null) parts.push([field, id]);
           } else if (typeof v === "string" || typeof v === "number") parts.push([field, v]);
         }
@@ -331,43 +347,15 @@ export function Eu5DataTable<TData extends RowData>({
   });
 
   const rows = table.getRowModel().rows;
-  const body = useRef<HTMLTableSectionElement>(null);
-  const positions = useRef(new Map<string, number>());
-  const rowAnimations = useRef(new Map<HTMLTableRowElement, Animation>());
-  useLayoutEffect(() => {
-    const next = new Map<string, number>();
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const measured = Array.from(
-      body.current?.querySelectorAll<HTMLTableRowElement>("tr[data-row-key]") ?? [],
-      (row) => ({
-        row,
-        key: row.dataset.rowKey!,
-        top: row.offsetTop,
-      }),
-    );
-    // Read all positions before starting animations, avoiding read/write layout flushes.
-    for (const { row, key, top } of measured) {
-      const previous = positions.current.get(key);
-      next.set(key, top);
-      if (!reduced && previous != null && previous !== top) {
-        rowAnimations.current.get(row)?.cancel();
-        rowAnimations.current.set(
-          row,
-          row.animate(
-            [{ transform: `translateY(${previous - top}px)` }, { transform: "translateY(0)" }],
-            { duration: 800, easing: "cubic-bezier(.22,.61,.36,1)" },
-          ),
-        );
-      }
-    }
-    for (const [row, animation] of rowAnimations.current) {
-      if (!row.isConnected) {
-        animation.cancel();
-        rowAnimations.current.delete(row);
-      }
-    }
-    positions.current = next;
-  }, [rows]);
+  const { ref: tableContainerRef, visible: tableVisible } = useElementVisible<HTMLDivElement>();
+  const body = useFlipList<HTMLTableSectionElement, HTMLTableRowElement>(
+    {
+      selector: "tr[data-row-key]",
+      getKey: (row) => row.dataset.rowKey!,
+      enabled: tableVisible,
+    },
+    [rows],
+  );
   const filteredCount = data.length;
   const displayTotal = totalCount ?? data.length;
   const showTitleCount = totalCount !== undefined || data.length !== filteredCount;
@@ -376,6 +364,7 @@ export function Eu5DataTable<TData extends RowData>({
 
   return (
     <div
+      ref={tableContainerRef}
       className={cx(
         "flex flex-col overflow-hidden rounded-(--radius-panel) border border-solid border-game-line-strong bg-game-panel",
         className,
@@ -395,77 +384,79 @@ export function Eu5DataTable<TData extends RowData>({
         <table className="w-full min-w-full table-auto border-separate border-spacing-0">
           <ColumnGroup table={table} />
           <HeaderBand table={table} />
-          <tbody ref={body} onKeyDown={onExactCellKeyDown} onBlur={restoreExactValue}>
-            {rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={table.getVisibleLeafColumns().length}
-                  className="h-24 text-center font-game-ui text-[12px] text-game-ink-500"
-                >
-                  No results.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row, idx) => {
-                const inFilter = isRowInFilter?.(row.original) ?? false;
-                const separator =
-                  rowSeparator?.(row.original, idx, { sorted: sorting.length > 0 }) ?? null;
-                const colCount = table.getVisibleLeafColumns().length;
-                return (
-                  <React.Fragment key={row.id}>
-                    {separator !== null && (
-                      <tr>
-                        <td colSpan={colCount} className="p-0">
-                          {separator}
-                        </td>
-                      </tr>
-                    )}
-                    <tr
-                      data-row-key={row.id}
-                      data-in-filter={inFilter || undefined}
-                      onMouseEnter={
-                        onRowHoverChange ? () => onRowHoverChange(row.original) : undefined
-                      }
-                      onMouseLeave={onRowHoverChange ? () => onRowHoverChange(null) : undefined}
-                      onFocus={
-                        onRowFocusChange
-                          ? (event) => {
-                              if (
-                                event.currentTarget.contains(event.relatedTarget as Node | null)
-                              ) {
-                                return;
-                              }
-                              onRowFocusChange(row.original);
-                            }
-                          : undefined
-                      }
-                      onBlur={
-                        onRowFocusChange
-                          ? (event) => {
-                              if (
-                                event.currentTarget.contains(event.relatedTarget as Node | null)
-                              ) {
-                                return;
-                              }
-                              onRowFocusChange(null);
-                            }
-                          : undefined
-                      }
-                      className={cx(
-                        "bg-game-panel transition-colors duration-75 hover:bg-game-panel-hover",
-                        "data-[in-filter=true]:bg-game-panel-active data-[in-filter=true]:hover:bg-game-panel-active",
-                        "data-[in-filter=true]:shadow-[inset_2px_0_0_var(--game-accent-300)]",
+          <ElementVisibilityContext.Provider value={tableVisible}>
+            <tbody ref={body} onKeyDown={onExactCellKeyDown} onBlur={restoreExactValue}>
+              {rows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={table.getVisibleLeafColumns().length}
+                    className="h-24 text-center font-game-ui text-[12px] text-game-ink-500"
+                  >
+                    No results.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, idx) => {
+                  const inFilter = isRowInFilter?.(row.original) ?? false;
+                  const separator =
+                    rowSeparator?.(row.original, idx, { sorted: sorting.length > 0 }) ?? null;
+                  const colCount = table.getVisibleLeafColumns().length;
+                  return (
+                    <React.Fragment key={row.id}>
+                      {separator !== null && (
+                        <tr>
+                          <td colSpan={colCount} className="p-0">
+                            {separator}
+                          </td>
+                        </tr>
                       )}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <BodyCell key={cell.id} cell={cell} tabStop={cell.id === exactStop} />
-                      ))}
-                    </tr>
-                  </React.Fragment>
-                );
-              })
-            )}
-          </tbody>
+                      <tr
+                        data-row-key={row.id}
+                        data-in-filter={inFilter || undefined}
+                        onMouseEnter={
+                          onRowHoverChange ? () => onRowHoverChange(row.original) : undefined
+                        }
+                        onMouseLeave={onRowHoverChange ? () => onRowHoverChange(null) : undefined}
+                        onFocus={
+                          onRowFocusChange
+                            ? (event) => {
+                                if (
+                                  event.currentTarget.contains(event.relatedTarget as Node | null)
+                                ) {
+                                  return;
+                                }
+                                onRowFocusChange(row.original);
+                              }
+                            : undefined
+                        }
+                        onBlur={
+                          onRowFocusChange
+                            ? (event) => {
+                                if (
+                                  event.currentTarget.contains(event.relatedTarget as Node | null)
+                                ) {
+                                  return;
+                                }
+                                onRowFocusChange(null);
+                              }
+                            : undefined
+                        }
+                        className={cx(
+                          "bg-game-panel transition-colors duration-75 hover:bg-game-panel-hover",
+                          "data-[in-filter=true]:bg-game-panel-active data-[in-filter=true]:hover:bg-game-panel-active",
+                          "data-[in-filter=true]:shadow-[inset_2px_0_0_var(--game-accent-300)]",
+                        )}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <BodyCell key={cell.id} cell={cell} tabStop={cell.id === exactStop} />
+                        ))}
+                      </tr>
+                    </React.Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </ElementVisibilityContext.Provider>
           {summaryContent && <SummaryBand>{summaryContent}</SummaryBand>}
         </table>
       </div>
@@ -665,6 +656,37 @@ function firstExactCellId<TData extends RowData>(rows: AppRow<TData>[]): string 
   return undefined;
 }
 
+function NumericChangeHighlight({ value }: { value: number }) {
+  const visible = useContext(ElementVisibilityContext) ?? true;
+  const element = useRef<HTMLSpanElement>(null);
+  const previous = useRef(value);
+  const highlight = useRef<Animation | undefined>(undefined);
+  useLayoutEffect(() => {
+    const old = previous.current;
+    previous.current = value;
+    if (!visible || old === value || prefersReducedMotion()) return;
+    highlight.current?.cancel();
+    if (element.current) {
+      element.current.style.backgroundColor =
+        value > old
+          ? "color-mix(in srgb, var(--game-good) 18%, transparent)"
+          : "color-mix(in srgb, var(--game-err) 18%, transparent)";
+      highlight.current = element.current.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: HIGHLIGHT_DURATION,
+        easing: HIGHLIGHT_EASING,
+      });
+    }
+    return () => highlight.current?.cancel();
+  }, [value, visible]);
+  return (
+    <span
+      ref={element}
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 opacity-0"
+    />
+  );
+}
+
 function BodyCell<TData extends RowData>({
   cell,
   tabStop,
@@ -675,39 +697,16 @@ function BodyCell<TData extends RowData>({
   const meta = cell.column.columnDef.meta?.eu5;
   const variant: Eu5DataTableColumnVariant = meta?.variant ?? "default";
   const align = meta?.align ?? alignForVariant(variant);
-  const element = useRef<HTMLSpanElement>(null);
   const value = cell.getValue();
-  const previous = useRef(value);
-  const highlight = useRef<Animation | undefined>(undefined);
-  useLayoutEffect(() => {
-    const old = previous.current;
-    previous.current = value;
-    if (
-      typeof old !== "number" ||
-      typeof value !== "number" ||
-      !Number.isFinite(value) ||
-      old === value ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    )
-      return;
-    highlight.current?.cancel();
-    if (element.current) {
-      element.current.style.backgroundColor = value > old ? "#8fcfa725" : "#ed969225";
-      highlight.current = element.current.animate([{ opacity: 1 }, { opacity: 0 }], {
-        duration: 1000,
-        easing: "ease-out",
-      });
-    }
-    return () => highlight.current?.cancel();
-  }, [value]);
-  const exact = exactCellValue(cell.getValue(), meta);
+  const isFiniteNumber = typeof value === "number" && Number.isFinite(value);
+  const exact = exactCellValue(value, meta);
   return (
     <td
       className={cx(
         cellVariants({ variant }),
         alignClass(align),
         "border-b border-game-line",
-        "relative",
+        isFiniteNumber && "relative",
         exact && exactCell,
       )}
       data-exact={exact}
@@ -715,11 +714,7 @@ function BodyCell<TData extends RowData>({
       tabIndex={exact ? (tabStop ? 0 : -1) : undefined}
       style={cellStyle(meta?.minWidth)}
     >
-      <span
-        ref={element}
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-0"
-      />
+      {isFiniteNumber && <NumericChangeHighlight value={value} />}
       {flexRender(cell.column.columnDef.cell, cell.getContext())}
     </td>
   );

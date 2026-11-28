@@ -236,7 +236,7 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
 
   return (
     <EChart
-      gpuBars
+      barOverlay
       mergeUpdates
       option={option}
       style={{ height: `${height}px`, width: "100%" }}

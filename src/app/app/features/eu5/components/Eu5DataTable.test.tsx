@@ -132,3 +132,37 @@ it("uses canonical location keys rather than potentially repeated display names"
   expect(ids[0]).not.toBe(ids[1]);
   expect(renderedBuildingKeys([{ ...rows[0], value: 99 }])[0]).toBe(ids[0]);
 });
+
+it("handles rows with kind, culture, and missing religion without throwing", () => {
+  const html = renderToStaticMarkup(
+    <Eu5DataTable
+      data={[{ kind: "peasants", culture: undefined, religion: undefined, value: 12 }]}
+      columns={[{ accessorKey: "kind" }, { accessorKey: "value" }]}
+    />,
+  );
+  expect(html).toContain("peasants");
+  // Only the numeric cell mounts the change-highlight overlay span.
+  expect(html.match(/pointer-events-none absolute inset-0 opacity-0/g)?.length).toBe(1);
+});
+
+it("keeps foreign owner cells distinct by owner+building and keeps location identity stable across market changes", () => {
+  const ownerHtml = renderToStaticMarkup(
+    <Eu5DataTable
+      data={[
+        { owner: { country: { key: 1 } }, building: { key: "farm" }, levels: 5 },
+        { owner: { country: { key: 2 } }, building: { key: "farm" }, levels: 8 },
+      ]}
+      columns={[{ accessorKey: "levels" }]}
+    />,
+  );
+  const ownerIds = [...ownerHtml.matchAll(/data-row-key="([^"]+)"/g)].map((m) => m[1]);
+  expect(new Set(ownerIds).size).toBe(2);
+
+  const locRowA = { location: { key: 42 }, market: { market: { key: 1 } }, value: 10 };
+  const locRowB = { location: { key: 42 }, market: { market: { key: 2 } }, value: 12 };
+  const locKey = (row: typeof locRowA) =>
+    renderToStaticMarkup(<Eu5DataTable data={[row]} columns={[{ accessorKey: "value" }]} />).match(
+      /data-row-key="([^"]+)"/,
+    )?.[1];
+  expect(locKey(locRowA)).toBe(locKey(locRowB));
+});

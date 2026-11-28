@@ -454,7 +454,7 @@ export function GoodsPressureChart({
         </div>
       )}
       <EChart
-        gpuBars
+        barOverlay
         mergeUpdates
         option={option}
         style={{ height: `${height}px`, width: "100%" }}
@@ -689,7 +689,7 @@ function MarketGoodFulfillmentChart({ good }: { good: ScopedGoodSummary }) {
 
   return (
     <EChart
-      gpuBars
+      barOverlay
       mergeUpdates
       option={option}
       style={{ height: `${rows.length * 34 + 70}px`, width: "100%" }}
@@ -1208,7 +1208,7 @@ function MarketsStressChart({ markets }: { markets: ScopedMarketSummary[] }) {
     };
   }, [markets, topMarkets, maxTaken, domain]);
 
-  const zoom = useBoxZoom(option);
+  const zoom = useBoxZoom(option, "markets-stress");
   const handleClick = useEu5EntityChartClick({
     kind: "market",
     backLabel: "Markets",

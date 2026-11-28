@@ -89,10 +89,10 @@ function Row({ label, value, denom, bar, rank, tied = 1, icon, tooltip }: StatRa
       {/* Bar track — only painted for bounded ratios. */}
       <span className="flex items-center">
         {bar !== undefined && (
-          <span className="relative h-1 w-full rounded-[1px] bg-game-track">
+          <span className="relative h-1 w-full overflow-hidden rounded-[1px] bg-game-track">
             <span
-              className="absolute inset-y-0 left-0 rounded-[1px] bg-game-ink-500 transition-[width] duration-800 ease-in-out motion-reduce:transition-none"
-              style={{ width: `${Math.max(0, Math.min(1, bar)) * 100}%` }}
+              className="absolute inset-0 origin-left rounded-[1px] bg-game-ink-500 transition-transform duration-800 ease-in-out motion-reduce:transition-none"
+              style={{ transform: `scaleX(${Math.max(0, Math.min(1, bar))})` }}
             />
           </span>
         )}

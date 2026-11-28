@@ -258,7 +258,12 @@ function RawMaterialProfileDeltaChart({ deltas }: { deltas: RgoMaterialProfileDe
 
   const height = data.length * 22 + 52;
   return (
-    <EChart gpuBars mergeUpdates option={option} style={{ height: `${height}px`, width: "100%" }} />
+    <EChart
+      barOverlay
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+    />
   );
 }
 

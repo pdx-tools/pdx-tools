@@ -252,7 +252,7 @@ function CountryPopulationSpine({ countries }: { countries: ScopedCountryPopulat
   const height = rows.length * 24 + 54;
   return (
     <EChart
-      gpuBars
+      barOverlay
       mergeUpdates
       option={option}
       style={{ height: `${height}px`, width: "100%" }}
@@ -348,7 +348,9 @@ export function UrbanizationMix({ ranks }: { ranks: PopulationRankSegment[] }) {
     };
   }, [row, total]);
 
-  return <EChart gpuBars mergeUpdates option={option} style={{ height: "86px", width: "100%" }} />;
+  return (
+    <EChart barOverlay mergeUpdates option={option} style={{ height: "86px", width: "100%" }} />
+  );
 }
 
 const columnHelper = createColumnHelper<PopulationTopLocation>();
@@ -552,7 +554,12 @@ export function PopulationTypeProfile({
 
   const height = data.length * 22 + 52;
   return (
-    <EChart gpuBars mergeUpdates option={option} style={{ height: `${height}px`, width: "100%" }} />
+    <EChart
+      barOverlay
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+    />
   );
 }
 
