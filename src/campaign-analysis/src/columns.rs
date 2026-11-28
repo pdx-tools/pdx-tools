@@ -325,6 +325,14 @@ pub struct NullableColumn<T> {
     values: Vec<T>,
     validity: Vec<u8>,
 }
+impl<T> Default for NullableColumn<T> {
+    fn default() -> Self {
+        Self {
+            values: Vec::new(),
+            validity: Vec::new(),
+        }
+    }
+}
 impl<T: Pod> NullableColumn<T> {
     pub fn new(mut values: Vec<T>, validity: Vec<u8>) -> Result<Self, ColumnError> {
         let expected = (values.len() / 8)

@@ -14,7 +14,10 @@ pub struct TextId(u32);
 
 /// A row of the dictionary of one snapshot. Use it in table keys and
 /// columns. Validation checks the row against the dictionary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable,
+)]
+#[repr(transparent)]
 pub struct TextRow(u32);
 impl TextRow {
     pub fn new(row: u32) -> Self {
@@ -28,7 +31,7 @@ impl TextRow {
 /// The texts of one snapshot, sorted and distinct, so row order is text
 /// order. A store append shares each text with the store dictionary and
 /// records its [`TextId`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Texts {
     texts: Vec<Rc<str>>,
     /// Empty until a store prepares the snapshot.

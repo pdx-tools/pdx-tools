@@ -427,7 +427,7 @@ async fn open_save(save: web_sys::Blob) -> std::io::Result<BlobReader> {
 fn analysis_result(
     mut loaded: Eu5LoadedSave<eu5app::SaveCheckSummer>,
 ) -> Result<Ts<analysis::AnalysisSnapshot>, JsError> {
-    let (projection, world, campaign_id, date, game_version) = {
+    let (projection, world, analytics, campaign_id, date, game_version) = {
         let game = loaded.take_gamestate();
         let meta = game.metadata();
         if meta.playthrough_id.to_str().is_empty() {
@@ -436,6 +436,8 @@ fn analysis_result(
         let date = Eu5DateComponents::from(meta.date);
         let projection =
             eu5app::map_projection::extract(&game).map_err(|e| JsError::new(&e.to_string()))?;
+        let analytics = eu5app::analysis::Analytics::extract(&game)
+            .map_err(|e| campaign_analysis::wasm::error(e.into()))?;
         let version = format!(
             "{}.{}.{}",
             meta.version.major, meta.version.minor, meta.version.patch
@@ -443,6 +445,7 @@ fn analysis_result(
         (
             projection,
             eu5app::map_projection::world_summary(&game),
+            analytics,
             meta.playthrough_id.to_str().to_owned(),
             jomini::common::Date::from_ymd_opt(date.year, date.month, date.day)
                 .ok_or_else(|| JsError::new("Save date is out of range"))?,
@@ -456,8 +459,9 @@ fn analysis_result(
         date,
         game_version,
     };
-    let observation = eu5app::analysis::observation(projection, world, source)
-        .map_err(campaign_analysis::wasm::error)?;
+    let observation =
+        eu5app::analysis::observation_with_analytics(projection, world, analytics, source)
+            .map_err(campaign_analysis::wasm::error)?;
     analysis::AnalysisSnapshot::observation(&observation)
 }
 
