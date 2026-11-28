@@ -42,6 +42,7 @@ vi.mock("../store", () => ({
   useEu5Input: () => ({ kind: mocks.inputKind }),
   useEu5MapMode: () => mocks.mode,
   useSetEu5TimelineBarHeight: () => vi.fn(),
+  useSetEu5InsightPanelOpen: () => vi.fn(),
 }));
 vi.mock("./useTimelineController", () => ({
   useTimelineController: () => ({ timeline: { start: { year: 1337, month: 1, day: 1 } } }),

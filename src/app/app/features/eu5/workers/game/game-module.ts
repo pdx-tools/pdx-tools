@@ -632,6 +632,10 @@ const loadSaveInner = async (
       return entry ? { id: entry.id, tag: entry.tag } : null;
     },
 
+    getCountryNames: (): { countryId: number; name: string }[] => {
+      return countryIndex.map((c) => ({ countryId: c.id, name: c.country.name }));
+    },
+
     findCountry: (country: CountryIdentity): number | null => {
       return findCarriedCountry(countryIndex, country);
     },
