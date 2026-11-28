@@ -181,16 +181,18 @@ function Header({ className, children }: HeaderProps) {
 }
 
 interface ContentProps {
+  scroll?: boolean;
   className?: string;
   children: ReactNode;
 }
 
-function Content({ className, children }: ContentProps) {
+function Content({ scroll = true, className, children }: ContentProps) {
   const { isDragging, width, collapseThreshold } = useResizablePanel();
   return (
     <div
       className={cx(
-        "flex-1 overflow-y-auto",
+        "flex-1",
+        scroll ? "overflow-y-auto" : "overflow-hidden",
         isDragging && width < collapseThreshold && "opacity-50",
         className,
       )}

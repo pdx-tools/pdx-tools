@@ -1,4 +1,4 @@
-use crate::columns::{Columns, DecodeError};
+use crate::columns::{Columns, DecodeError, Encoder};
 use crate::snapshot::encode;
 use crate::{Descriptor, Game, Observation, Registry, SnapshotDescriptor, snapshot_id};
 use serde::Serialize;
@@ -35,7 +35,14 @@ impl<G: Game> Snapshot<G> {
 
     /// The binary form, as the parser gave it.
     pub fn encode(&self) -> Vec<u8> {
-        encode::<G>(&self.descriptor, &self.detail, &self.payload)
+        self.encode_with(|payload, out| payload.encode(out))
+    }
+
+    /// Encode a narrower payload for a consumer that only needs part of it.
+    pub fn encode_with(&self, payload: impl FnOnce(&G::Payload, &mut Encoder)) -> Vec<u8> {
+        encode(&self.descriptor, &self.detail, |out| {
+            payload(&self.payload, out)
+        })
     }
 }
 

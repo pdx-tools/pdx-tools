@@ -153,7 +153,11 @@ const Eu5UiContent = ({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      if (
+        event.defaultPrevented ||
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
       if (event.key === "Escape" && !busy && !preview) {
