@@ -178,7 +178,13 @@ function StateReligionChart({ stateReligions }: { stateReligions: StateReligionR
 
   const height = rows.length * 24 + 54;
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <EChart
+      barOverlay
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+      onInit={handleInit}
+    />
   );
 }
 
@@ -198,9 +204,14 @@ function CoverageBar({
   const srPct = srPop / total;
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex h-2 w-24 overflow-hidden rounded-sm">
-        <div style={{ width: `${srPct * 100}%`, backgroundColor: colorHex }} />
-        <div className="flex-1 bg-game-panel-hover" />
+      <div className="relative h-2 w-24 overflow-hidden rounded-sm bg-game-panel-hover">
+        <div
+          className="absolute inset-0 origin-left transition-transform duration-800 ease-in-out motion-reduce:transition-none"
+          style={{
+            transform: `scaleX(${Math.max(0, Math.min(1, srPct))})`,
+            backgroundColor: colorHex,
+          }}
+        />
       </div>
       <span className="text-[12px] text-game-ink-300">{formatPercent(srPct)} state religion</span>
     </div>

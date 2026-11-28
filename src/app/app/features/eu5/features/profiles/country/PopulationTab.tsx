@@ -75,7 +75,7 @@ function PopulationHistoryChart({ series, now }: { series: PopulationHistory; no
   return (
     <section>
       <SectionTitle>How has population changed over time?</SectionTitle>
-      <EChart option={option} style={{ height: "200px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "200px", width: "100%" }} />
     </section>
   );
 }

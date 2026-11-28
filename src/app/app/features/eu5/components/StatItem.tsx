@@ -1,3 +1,4 @@
+import { AnimatedValue } from "./AnimatedValue";
 import type { ReactNode } from "react";
 import { cx } from "class-variance-authority";
 import { sectionLabel } from "@/components/game/SectionTitle";
@@ -37,7 +38,7 @@ export function StatItem({ label, value, boxed, className }: StatItemProps) {
           boxed ? "text-sm" : "text-[17px]",
         )}
       >
-        {value}
+        <AnimatedValue value={value} />
       </span>
     </div>
   );

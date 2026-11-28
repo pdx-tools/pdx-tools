@@ -235,7 +235,13 @@ function UnrealizedTaxBaseBarChart({ countries }: { countries: CountryUnrealized
   const height = Math.min(sorted.length, BAR_CAP) * 18 + 68;
 
   return (
-    <EChart option={option} style={{ height: `${height}px`, width: "100%" }} onInit={handleInit} />
+    <EChart
+      barOverlay
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+      onInit={handleInit}
+    />
   );
 }
 

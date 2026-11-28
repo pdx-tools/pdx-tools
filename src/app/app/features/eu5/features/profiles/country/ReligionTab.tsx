@@ -87,7 +87,9 @@ function ReligionStackedBars({ breakdown }: { breakdown: ReligionShare[] }) {
     };
   }, [breakdown, totalLocations, totalPopulation]);
 
-  return <EChart option={option} style={{ height: "86px", width: "100%" }} />;
+  return (
+    <EChart barOverlay mergeUpdates option={option} style={{ height: "86px", width: "100%" }} />
+  );
 }
 
 function ReligionLegend({ breakdown }: { breakdown: ReligionShare[] }) {

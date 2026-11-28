@@ -132,7 +132,7 @@ export function ConcentrationCurve({
           of the {metric}
         </p>
       )}
-      <EChart option={option} style={{ height: "260px", width: "100%" }} />
+      <EChart mergeUpdates option={option} style={{ height: "260px", width: "100%" }} />
     </>
   );
 }

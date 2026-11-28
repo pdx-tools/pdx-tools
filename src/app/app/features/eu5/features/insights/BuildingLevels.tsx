@@ -123,7 +123,14 @@ function BuildingTypesChart({ types }: { types: BuildingTypeSummary[] }) {
   }, [rows]);
 
   const height = Math.max(120, rows.length * 28 + 40);
-  return <EChart option={option} style={{ height: `${height}px`, width: "100%" }} />;
+  return (
+    <EChart
+      barOverlay
+      mergeUpdates
+      option={option}
+      style={{ height: `${height}px`, width: "100%" }}
+    />
+  );
 }
 
 function ForeignShareCallout({ scope }: { scope: BuildingLevelsScopeSummary }) {
@@ -324,6 +331,9 @@ function ForeignOwnerCellsTable({ cells }: { cells: BuildingTypeForeignOwnerCell
       className="w-full"
       columns={columns}
       data={cells}
+      tableOptions={{
+        getRowId: (row) => JSON.stringify([row.owner.country.key, row.building.key]),
+      }}
       getRowHoverTarget={(row) => ({
         kind: "country",
         countryIdx: row.owner.country.key,

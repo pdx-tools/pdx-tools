@@ -1,7 +1,10 @@
 import { cx } from "class-variance-authority";
 import { focusRing } from "@/components/game/focusRing";
+import { HIGHLIGHT_DURATION, HIGHLIGHT_EASING } from "@/components/viz/chartMotion";
 import { chartInk } from "@/components/viz/echartsTheme";
 import { useMemo, useState } from "react";
+import { useElementVisible } from "../../../components/useElementVisible";
+import { useFlipList } from "../../../components/useFlipList";
 import {
   GoodsPressureChart,
   GoodsPriceVsBaseChart,
@@ -103,6 +106,35 @@ function SummaryTable({
     [rows, metric],
   );
 
+  const { ref: visibilityRef, visible } = useElementVisible<HTMLDivElement>();
+  const container = useFlipList<
+    HTMLDivElement,
+    HTMLDivElement,
+    { value: number; metric: GoodsPressureMetric }
+  >(
+    {
+      selector: "[data-trade-good]",
+      getKey: (element) => element.dataset.tradeGood!,
+      enabled: visible,
+      readMeta: (element) => ({ value: Number(element.dataset.tradeValue), metric }),
+      onUpdate: (element, meta, previous, reduced) => {
+        const sameMetric = previous?.metric === meta.metric;
+        const number = element.querySelector<HTMLElement>("[data-trade-number]");
+        if (previous && !sameMetric) {
+          number?.getAnimations().forEach((animation) => animation.cancel());
+        }
+        if (!reduced && previous && sameMetric && previous.value !== meta.value) {
+          number?.getAnimations().forEach((animation) => animation.cancel());
+          number?.animate(
+            [{ color: meta.value > previous.value ? "var(--game-good)" : "var(--game-err)" }, {}],
+            { duration: HIGHLIGHT_DURATION, easing: HIGHLIGHT_EASING },
+          );
+        }
+      },
+    },
+    [sorted, metric],
+  );
+
   if (sorted.length === 0) {
     return <p className="py-3 text-center text-sm text-game-ink-500">None</p>;
   }
@@ -113,32 +145,45 @@ function SummaryTable({
       : Math.max(1, sorted[0]?.primaryValue ?? 1);
 
   return (
-    <div className="flex flex-col gap-0.5">
-      {sorted.map((row) => {
-        const primary = metric === "units" ? row.primaryUnits : row.primaryValue;
-        const secondary = metric === "units" ? row.primaryValue : row.primaryUnits;
-        const barPct = (primary / topValue) * 100;
-        return (
-          <div key={row.name} className="flex items-center gap-2 rounded px-2 py-1">
-            <GoodDot color={row.colorHex} />
-            <span className="w-20 shrink-0 truncate text-xs font-semibold text-game-ink-100">
-              {row.name}
-            </span>
-            <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-game-panel-hover">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-current opacity-70"
-                style={{ width: `${barPct}%`, color: row.colorHex || chartInk.muted }}
-              />
+    <div ref={visibilityRef}>
+      <div ref={container} className="relative flex flex-col gap-0.5">
+        {sorted.map((row) => {
+          const primary = metric === "units" ? row.primaryUnits : row.primaryValue;
+          const secondary = metric === "units" ? row.primaryValue : row.primaryUnits;
+          const barRatio = Math.max(0, Math.min(1, primary / topValue));
+          return (
+            <div
+              key={row.name}
+              data-trade-good={row.name}
+              data-trade-value={primary}
+              className="flex items-center gap-2 rounded px-2 py-1"
+            >
+              <GoodDot color={row.colorHex} />
+              <span className="w-20 shrink-0 truncate text-xs font-semibold text-game-ink-100">
+                {row.name}
+              </span>
+              <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-game-panel-hover">
+                <div
+                  className="absolute inset-0 origin-left bg-current opacity-70 transition-transform duration-800 ease-in-out motion-reduce:transition-none"
+                  style={{
+                    transform: `scaleX(${barRatio})`,
+                    color: row.colorHex || chartInk.muted,
+                  }}
+                />
+              </div>
+              <span
+                data-trade-number
+                className="w-11 shrink-0 text-right text-xs font-semibold text-game-ink-100"
+              >
+                <Figure value={primary} prefix={metric === "units" ? "" : "$"} />
+              </span>
+              <span className="w-11 shrink-0 text-right text-xs text-game-ink-500">
+                <Figure value={secondary} prefix={metric === "units" ? "$" : ""} />
+              </span>
             </div>
-            <span className="w-11 shrink-0 text-right text-xs font-semibold text-game-ink-100">
-              <Figure value={primary} prefix={metric === "units" ? "" : "$"} />
-            </span>
-            <span className="w-11 shrink-0 text-right text-xs text-game-ink-500">
-              <Figure value={secondary} prefix={metric === "units" ? "$" : ""} />
-            </span>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
