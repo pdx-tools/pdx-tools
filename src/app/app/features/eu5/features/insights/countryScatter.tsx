@@ -567,7 +567,7 @@ export function CountryScatter<T>({
     <>
       <div className="relative">
         <EChart
-          option={option}
+          option={zoom.option}
           style={{ height: "420px", width: "100%" }}
           onInit={(chart) => {
             handleClick(chart);

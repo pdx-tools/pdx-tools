@@ -141,7 +141,7 @@ export function LocationDistributionChart({ distribution, title }: Props) {
         {title ?? `Locations by ${distribution.metricLabel.toLowerCase()}`}
       </SectionTitle>
       <div ref={chartRef}>
-        <EChart option={option} style={{ height: 200 }} />
+        <EChart mergeUpdates gpuBars option={option} style={{ height: 200 }} />
       </div>
     </div>
   );
