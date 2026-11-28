@@ -315,5 +315,200 @@ fn world_population_of_the_map_observations_agrees_with_the_world_summary() {
     };
     let values: Vec<_> = world.rows.iter().map(|row| row.value).collect();
     assert_eq!(values, [Some(355_459_580.0), Some(358_275_487.0)]);
-    assert_eq!(session.memory().layouts, 1);
+    assert_eq!(session.store().shared().locations.memory().indexes, 1);
+    assert_eq!(session.memory().layouts, 3);
+}
+
+#[test]
+fn country_and_market_history_agree_with_parsed_saves() {
+    use campaign_analysis::{Query, Selection, Session, SnapshotSource, View};
+    use eu5app::analysis::{
+        CountryDimension, CountryMetric, Eu5Analysis, Eu5Answer, Eu5Query, MarketMetric,
+    };
+    use jomini::common::Date;
+    use std::collections::BTreeMap;
+
+    let mut session = Session::<Eu5Analysis>::new();
+    let mut poland_id = None;
+    let mut expected_poland_pop = Vec::new();
+    let mut expected_poland_dev = Vec::new();
+    let mut expected_poland_religions = Vec::new();
+    let mut expected_world_locations = Vec::new();
+
+    for (save, date) in [
+        ("Poland_1339-02-03.eu5", (1339, 2, 3)),
+        ("Poland_1455-01-01.eu5", (1455, 1, 1)),
+    ] {
+        let file = eu5save::Eu5File::from_file(fixtures::request_file(save)).unwrap();
+        if file.header().kind().is_binary()
+            && jomini::binary::TokenResolver::is_empty(utils::tokens())
+        {
+            assert!(
+                !utils::require_test_assets(),
+                "{save}: EU5 binary tokens not loaded"
+            );
+            return;
+        }
+        let mut loaded = eu5app::Eu5SaveLoader::open(file, utils::tokens())
+            .unwrap()
+            .parse()
+            .unwrap();
+        let game = loaded.take_gamestate();
+
+        let mut poland_pop = 0.0;
+        let mut poland_dev = 0.0;
+        let mut poland_religions = BTreeMap::<String, f64>::new();
+        let mut owned_locations = 0u32;
+        for entry in game.locations.iter() {
+            let loc = entry.location();
+            if loc.owner.is_dummy() {
+                continue;
+            }
+            let Some(owner) = game.countries.get_entry(loc.owner) else {
+                continue;
+            };
+            owned_locations += 1;
+            if owner.tag().to_str() == "POL" {
+                poland_id.get_or_insert(owner.id().value());
+                poland_pop += game.location_population(loc);
+                poland_dev += loc.development;
+                for &pop_id in loc.population.pops {
+                    if let Some(pop) = game.population.database.lookup(pop_id)
+                        && let Some(religion) = game.religion_manager.lookup(pop.religion)
+                    {
+                        *poland_religions
+                            .entry(religion.key.to_str().to_owned())
+                            .or_default() +=
+                            (pop.size * eu5app::population::POP_SIZE_SCALE).floor();
+                    }
+                }
+            }
+        }
+        expected_poland_pop.push(Some(poland_pop));
+        expected_poland_dev.push(Some(poland_dev));
+        expected_poland_religions.push(poland_religions);
+        expected_world_locations.push(Some(f64::from(owned_locations)));
+
+        let source = SnapshotSource {
+            campaign_id: String::from("poland"),
+            content_hash: String::from(save),
+            date: Date::from_ymd(date.0, date.1, date.2),
+            game_version: String::from("1.0.0"),
+        };
+        let observed = eu5app::analysis::extract(&game, source).unwrap();
+        session.append(0, &observed.encode(), usize::MAX).unwrap();
+    }
+
+    let poland_id = poland_id.expect("POL exists in Poland saves");
+    let poland_country = eu5save::models::CountryId::new(poland_id);
+    let view = View::select(session.store(), "poland", &Selection::All);
+
+    let Eu5Answer::AnalyticsCatalog(catalog) = Eu5Query::AnalyticsCatalog.answer(&view) else {
+        panic!("catalog");
+    };
+    assert!(
+        catalog
+            .countries
+            .iter()
+            .all(|country| !eu5save::models::CountryId::new(country.country_id).is_dummy())
+    );
+    assert!(
+        catalog
+            .countries
+            .iter()
+            .any(|country| country.country_id == poland_id && country.tag == "POL")
+    );
+    assert!(!catalog.goods.is_empty());
+    assert!(!catalog.markets.is_empty());
+
+    let Eu5Answer::WorldSeries(locations) = (Eu5Query::WorldSeries {
+        metric: CountryMetric::Locations,
+    })
+    .answer(&view) else {
+        panic!("world series");
+    };
+    assert_eq!(
+        locations
+            .rows
+            .into_iter()
+            .map(|row| row.value)
+            .collect::<Vec<_>>(),
+        expected_world_locations
+    );
+
+    let Eu5Answer::CountrySeries(pop) = (Eu5Query::CountrySeries {
+        country_ids: vec![poland_country],
+        metric: CountryMetric::Population,
+    })
+    .answer(&view) else {
+        panic!("country series");
+    };
+    assert_eq!(pop[0].values, expected_poland_pop);
+
+    let Eu5Answer::CountrySeries(dev) = (Eu5Query::CountrySeries {
+        country_ids: vec![poland_country],
+        metric: CountryMetric::Development,
+    })
+    .answer(&view) else {
+        panic!("country series");
+    };
+    assert_eq!(dev[0].values, expected_poland_dev);
+
+    let Eu5Answer::CountryBreakdown(religions) = (Eu5Query::CountryBreakdown {
+        country_id: Some(poland_country),
+        dimension: CountryDimension::Religion,
+    })
+    .answer(&view) else {
+        panic!("country breakdown");
+    };
+    for series in &religions {
+        let expected: Vec<_> = expected_poland_religions
+            .iter()
+            .map(|totals| Some(totals.get(&series.key).copied().unwrap_or(0.0)))
+            .collect();
+        assert_eq!(series.values, expected, "{}", series.key);
+    }
+
+    let Eu5Answer::CountryMarketCenters(centers) = (Eu5Query::CountryMarketCenters {
+        country_id: poland_country,
+    })
+    .answer(&view) else {
+        panic!("market centers");
+    };
+    assert!(!centers.is_empty());
+
+    let good = catalog.goods[0].clone();
+    let center_ids: Vec<_> = centers
+        .iter()
+        .copied()
+        .map(eu5save::models::LocationId::new)
+        .collect();
+    let Eu5Answer::MarketSeries(prices) = (Eu5Query::MarketSeries {
+        good: good.clone(),
+        centers: center_ids,
+        metric: MarketMetric::Price,
+    })
+    .answer(&view) else {
+        panic!("market series");
+    };
+    assert_eq!(prices.len(), centers.len());
+    assert!(
+        prices
+            .iter()
+            .any(|series| series.values.iter().flatten().next().is_some())
+    );
+
+    let Eu5Answer::MarketWeightedPrice(weighted) = (Eu5Query::MarketWeightedPrice {
+        good,
+        centers: None,
+    })
+    .answer(&view) else {
+        panic!("weighted price");
+    };
+    assert_eq!(weighted.rows.len(), 2);
+
+    let first = view.snapshots()[0];
+    assert!(eu5app::analysis::encode_map_frame(first).len() < first.encode().len());
+    assert_eq!(session.store().shared().locations.memory().indexes, 1);
+    assert_eq!(session.memory().layouts, 5);
 }

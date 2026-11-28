@@ -11,6 +11,24 @@ wasm_store! {
     }
 }
 
+#[wasm_bindgen::prelude::wasm_bindgen]
+impl Eu5AnalysisStore {
+    /// The map and recorder need only the shared projection.
+    pub fn map_frame(
+        &self,
+        id: &str,
+    ) -> Result<tsify::Ts<AnalysisSnapshot>, wasm_bindgen::JsError> {
+        let snapshot = self
+            .session
+            .snapshot(id)
+            .map_err(campaign_analysis::wasm::error)?;
+        campaign_analysis::wasm::ts(AnalysisSnapshot(campaign_analysis::wasm::EncodedSnapshot {
+            descriptor: snapshot.described(),
+            data: eu5app::analysis::encode_map_frame(snapshot),
+        }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
